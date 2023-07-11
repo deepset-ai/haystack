@@ -302,12 +302,19 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
         if self.skip_missing_embeddings:
             script_score_query = {"bool": {"filter": {"bool": {"must": [{"exists": {"field": self.embedding_field}}]}}}}
 
+        # Elasticsearch 7.6 introduced a breaking change:
+        # https://www.elastic.co/guide/en/elasticsearch/reference/7.6/breaking-changes-7.6.html#_update_to_vector_function_signatures
+        if self.server_version[0] == 7 and self.server_version[1] < 6:
+            similarity_script_source = f"{similarity_fn_name}(params.query_vector,doc['{self.embedding_field}']) + 1000"
+        else:
+            similarity_script_source = f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000"
+
         query = {
             "script_score": {
                 "query": script_score_query,
                 "script": {
                     # offset score to ensure a positive range as required by Elasticsearch
-                    "source": f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000",
+                    "source": similarity_script_source,
                     "params": {"query_vector": query_emb.tolist()},
                 },
             }

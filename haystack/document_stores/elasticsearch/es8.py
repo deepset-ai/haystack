@@ -186,6 +186,13 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
             batch_size=batch_size,
         )
 
+        if self.server_version[0] != 8:
+            logger.warning(
+                "This ElasticsearchDocumentStore has been built for Elasticsearch 8, but the detected version of the "
+                "Elasticsearch server is %s. Unexpected behaviors or errors may occur due to version incompatibility.",
+                ".".join(map(str, self.server_version)),
+            )
+
     def _do_bulk(self, *args, **kwargs):
         """Override the base class method to use the Elasticsearch client"""
         return bulk(*args, **kwargs)
