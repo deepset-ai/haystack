@@ -546,10 +546,10 @@ def test_find_unambiguous_connection_many_connections_possible_no_name_matches()
     "type_,repr",
     [
         pytest.param(str, "str", id="primitive-types"),
-        pytest.param(Any, "typing.Any", id="any"),
+        pytest.param(Any, "Any", id="any"),
         pytest.param(TestClass1, "TestClass1", id="class"),
         pytest.param(Optional[int], "Optional[int]", id="shallow-optional-with-primitive"),
-        pytest.param(Optional[Any], "Optional[typing.Any]", id="shallow-optional-with-any"),
+        pytest.param(Optional[Any], "Optional[Any]", id="shallow-optional-with-any"),
         pytest.param(Optional[TestClass1], "Optional[TestClass1]", id="shallow-optional-with-class"),
         pytest.param(Union[bool, TestClass1], "Union[bool, TestClass1]", id="shallow-union"),
         pytest.param(List[str], "List[str]", id="shallow-sequence-of-primitives"),
@@ -576,7 +576,7 @@ def test_find_unambiguous_connection_many_connections_possible_no_name_matches()
         ),
         pytest.param(
             Dict[str, Mapping[Any, Dict[str, int]]],
-            "Dict[str, Mapping[typing.Any, Dict[str, int]]]",
+            "Dict[str, Mapping[Any, Dict[str, int]]]",
             id="nested-mapping-of-primitives-with-any",
         ),
         pytest.param(Dict[str, TestClass1], "Dict[str, TestClass1]", id="shallow-mapping-of-classes"),

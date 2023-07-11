@@ -99,9 +99,16 @@ def _get_socket_type_desc(type_):
 
     if not args:
         if isinstance(type_, type):
+            if type_.__name__.startswith("typing."):
+                return type_.__name__[len("typing.") :]
             return type_.__name__
+
         # Literals only accept instances, not classes, so we need to account for those.
-        return str(type_) if not isinstance(type_, str) else f"'{type_}'"  # Quote strings
+        if isinstance(type_, str):
+            return f"'{type_}'"  # Quote strings
+        if str(type_).startswith("typing."):
+            return str(type_)[len("typing.") :]
+        return str(type_)
 
     # Python < 3.10 support
     if hasattr(type_, "_name"):
