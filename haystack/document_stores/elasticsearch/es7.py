@@ -3,13 +3,21 @@ from typing import List, Optional, Type, Union
 
 from haystack.lazy_imports import LazyImport
 from haystack.document_stores.search_engine import prepare_hosts
+from .base import _ElasticsearchDocumentStore
 
-with LazyImport("Run 'pip install farm-haystack[elasticsearch]'") as es_import:
+
+failed_import_message = (
+    "Run 'pip install farm-haystack[elasticsearch]'.\n"
+    "Note that this installs the Elasticsearch 7 client and requires a running Elasticsearch 7 instance. Starting from "
+    "Haystack version 1.21 , the 'elasticsearch' extra will install the Elasticsearch 8 client and will require a "
+    "running Elasticsearch 8 instance. To continue using Elasticsearch 7 with Haystack 1.21 and beyond, install the "
+    "'elasticsearch7' extra.\n"
+    "If you want to already start using Elasticsearch 8, install the 'elasticsearch8' extra"
+)
+with LazyImport(failed_import_message) as es_import:
     from elasticsearch import Connection, Elasticsearch, RequestsHttpConnection, Urllib3HttpConnection
     from elasticsearch.helpers import bulk, scan
     from elasticsearch.exceptions import RequestError
-
-from .base import _ElasticsearchDocumentStore
 
 logger = logging.getLogger(__name__)
 
