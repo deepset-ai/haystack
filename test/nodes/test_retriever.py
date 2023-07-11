@@ -345,8 +345,8 @@ def test_openai_embedding_retriever_model_format():
 
 @pytest.mark.unit
 def test_openai_encoder_setup_encoding_models():
-    with patch("haystack.nodes.retriever._openai_encoder._OpenAIEmbeddingEncoder.__init__") as mock_ranker_init:
-        mock_ranker_init.return_value = None
+    with patch("haystack.nodes.retriever._openai_encoder._OpenAIEmbeddingEncoder.__init__") as mock_encoder_init:
+        mock_encoder_init.return_value = None
         encoder = _OpenAIEmbeddingEncoder(retriever=None)  # type: ignore
 
     encoder._setup_encoding_models(model_class="ada", model_name="text-embedding-ada-002", max_seq_len=512)
