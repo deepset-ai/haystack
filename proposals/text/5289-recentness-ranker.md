@@ -157,7 +157,7 @@ This is not a breaking change and there does not seem to be any need for a migra
 
 A small change like this might not require creating a whole new tutorial (although it is of course up to you), although it can be interesting to discuss this ranker with example usage in blog post format like we have for metadata filtering (https://www.deepset.ai/blog/metadata-filtering-in-haystack).
 
-As for documentation needs, it would be good to add some info on how to use this recentness ranker - it can be added to the same page where the other existing rerankers are explained. If you need help writing the documentation and/or the blog post/tutorial, please do not hesitate to reach out to me.
+As for documentation needs, it would be good to add some info on how to use this recentness ranker - it can be added to the same page where the other existing rankers are explained. If you need help writing the documentation and/or the blog post/tutorial, please do not hesitate to reach out to me.
 
 # Unresolved questions
 
