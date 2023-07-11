@@ -1,9 +1,8 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
 import typing
 from typing import List, Optional, Union, Set, Sequence, Iterable, Dict, Mapping, Tuple
-
-from dataclasses import dataclass
-
-import pytest
 
 from canals.component import component
 from canals.pipeline.sockets import (
