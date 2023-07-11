@@ -305,7 +305,7 @@ def test_connect_non_compatible_types(output, input):
         pipe.connect("c1", "c2")
 
 
-def test_connect_nonexisting_from_component():
+def test_connect_sender_component_does_not_exist():
     add_1 = AddFixedValue()
     add_2 = AddFixedValue()
 
@@ -316,7 +316,7 @@ def test_connect_nonexisting_from_component():
         pipe.connect("third", "second")
 
 
-def test_connect_nonexisting_to_component():
+def test_connect_receiver_component_does_not_exist():
     add_1 = AddFixedValue()
     add_2 = AddFixedValue()
 
@@ -327,7 +327,7 @@ def test_connect_nonexisting_to_component():
         pipe.connect("first", "third")
 
 
-def test_connect_nonexisting_from_socket():
+def test_connect_sender_socket_does_not_exist():
     add_1 = AddFixedValue()
     add_2 = AddFixedValue()
 
@@ -338,7 +338,7 @@ def test_connect_nonexisting_from_socket():
         pipe.connect("first.wrong", "second")
 
 
-def test_connect_nonexisting_to_socket():
+def test_connect_receiver_socket_does_not_exist():
     add_1 = AddFixedValue()
     add_2 = AddFixedValue()
 
@@ -347,19 +347,6 @@ def test_connect_nonexisting_to_socket():
     pipe.add_component("second", add_2)
     with pytest.raises(PipelineConnectError, match="second.wrong does not exist"):
         pipe.connect("first", "second.wrong")
-
-
-def test_connect_mismatched_components():
-    add = AddFixedValue()
-    greet = Greet()
-
-    pipe = Pipeline()
-    pipe.add_component("first", add)
-    pipe.add_component("second", greet)
-    with pytest.raises(
-        PipelineConnectError, match="Cannot connect 'first' with 'second': no matching connections available."
-    ):
-        pipe.connect("first", "second.message")
 
 
 def test_connect_many_outputs_to_the_same_input():
