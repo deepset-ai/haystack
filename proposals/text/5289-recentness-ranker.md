@@ -147,8 +147,9 @@ As a general description, the ranker has the following parameters (date_identifi
           - 1 only recency will be considered for the calculation)
 - top_k (number of documents to return, works the same way as top-k in other rankers as well as retrievers)
 - method (the options are:
-          - "reciprocal_rank_fusion" which allows for this node to be used in combination with BM25 and hybrid retriever;
-          - "score" for using this node in combination with other nodes that output a 0-1 relevance score, such as EmbeddingRetriever, CohereRanker and SentenceTransformersRanker)
+          - "reciprocal_rank_fusion" which does not require any relevance score from the previous node;
+          - "score" requires the RecentnessRanker to be used only with nodes that output a 0-1 relevance score.
+          More information on method compatibility with different retrievers is in the Drawbacks section below)
 
 The RecentnessRanker works by:
 1. Adjusting the relevance score based on the chosen weight.
@@ -163,7 +164,7 @@ The RecentnessRanker works by:
 
 Since this is a relatively small change without any effect on existing nodes, I do not see major reasons not to add this ranker. The only important limitation to using this node is the need to have a metadata field with document date already present.
 
-For the "score" method, you would also need to double-check that the previous node (e.g. CohereRanker, SentenceTransformersRanker, EmbeddingRetriever) outputs a score within [0,1] range. With the "reciprocal_rank_fusion" method, you can use BM25 and hybrid retriever as well.
+For the "score" method, you would also need to double-check that the previous node outputs a score within [0,1] range (e.g. CohereRanker, SentenceTransformersRanker, EmbeddingRetriever). With the "reciprocal_rank_fusion" method, you do not need to have the relevance score pre-calculated, so using this method allows to combine RecentnessRanker with other retrieval nodes, like BM25 retriever.
 
 # Alternatives
 
