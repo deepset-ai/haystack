@@ -6,6 +6,7 @@ from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, T
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
 from haystack.lazy_imports import LazyImport
 
+from transformers import TOKENIZER_MAPPING, AutoConfig, AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -168,19 +169,28 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         torch_dtype = self._extract_torch_dtype(**kwargs)
         # and the model (prefer model instance over model_name_or_path str identifier)
         model = kwargs.get("model") or kwargs.get("model_name_or_path")
+        trust_remote_code = kwargs.get("trust_remote_code", False)
+
+        tokenizer = kwargs.get("tokenizer", None)
+
+        if isinstance(tokenizer, str):
+            model_config = AutoConfig.from_pretrained(model, trust_remote_code=trust_remote_code)
+            load_tokenizer = type(model_config) in TOKENIZER_MAPPING or model_config.tokenizer_class is not None
+            if not load_tokenizer:
+                tokenizer = AutoTokenizer.from_pretrained(model, trust_remote_code=trust_remote_code)
 
         pipeline_kwargs = {
             "task": kwargs.get("task", None),
             "model": model,
             "config": kwargs.get("config", None),
-            "tokenizer": kwargs.get("tokenizer", None),
+            "tokenizer": tokenizer,
             "feature_extractor": kwargs.get("feature_extractor", None),
             "revision": kwargs.get("revision", None),
             "use_auth_token": kwargs.get("use_auth_token", None),
             "device_map": device_map,
             "device": device,
             "torch_dtype": torch_dtype,
-            "trust_remote_code": kwargs.get("trust_remote_code", False),
+            "trust_remote_code": trust_remote_code,
             "model_kwargs": kwargs.get("model_kwargs", {}),
             "pipeline_class": kwargs.get("pipeline_class", None),
         }
