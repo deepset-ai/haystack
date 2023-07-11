@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import List, Set, Sequence, Tuple, Dict, Mapping, Literal, Union, Optional
+from typing import List, Set, Sequence, Tuple, Dict, Mapping, Literal, Union, Optional, Any
 from enum import Enum
 import re
 from pathlib import Path
@@ -79,6 +79,63 @@ def test_connect_on_primitive_types():
             """Cannot connect 'comp2' with 'comp1': no matching connections available.
 'comp2':
  - value (bool)
+'comp1':
+ - value (int), available"""
+        ),
+    ):
+        pipe.connect("comp2", "comp1")
+
+
+def test_connect_on_Any_only_on_receiving_end():
+    @component
+    class Component:
+        @component.input
+        def input(self):
+            class Input:
+                value: int
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: str
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    @component
+    class Component2:
+        @component.input
+        def input(self):
+            class Input:
+                value: Any
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: Any
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    pipe = Pipeline()
+    pipe.add_component("comp1", Component())
+    pipe.add_component("comp2", Component2())
+    pipe.connect("comp1", "comp2")
+
+    with pytest.raises(
+        PipelineConnectError,
+        match=re.escape(
+            """Cannot connect 'comp2' with 'comp1': no matching connections available.
+'comp2':
+ - value (typing.Any)
 'comp1':
  - value (int), available"""
         ),
@@ -259,6 +316,120 @@ def test_connect_on_a_deeply_nested_sequence_type_with_primitives():
             """Cannot connect 'comp2' with 'comp1': no matching connections available.
 'comp2':
  - value (List[Set[Sequence[bool]]])
+'comp1':
+ - value (List[Set[Sequence[int]]]), available"""
+        ),
+    ):
+        pipe.connect("comp2", "comp1")
+
+
+def test_connect_on_a_shallow_sequence_type_with_Any_only_on_receiving_end():
+    @component
+    class Component:
+        @component.input
+        def input(self):
+            class Input:
+                value: List[int]
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: List[str]
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    @component
+    class Component2:
+        @component.input
+        def input(self):
+            class Input:
+                value: List[Any]
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: List[Any]
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    pipe = Pipeline()
+    pipe.add_component("comp1", Component())
+    pipe.add_component("comp2", Component2())
+    pipe.connect("comp1", "comp2")
+
+    with pytest.raises(
+        PipelineConnectError,
+        match=re.escape(
+            """Cannot connect 'comp2' with 'comp1': no matching connections available.
+'comp2':
+ - value (List[Any])
+'comp1':
+ - value (List[int]), available"""
+        ),
+    ):
+        pipe.connect("comp2", "comp1")
+
+
+def test_connect_on_a_deeply_nested_sequence_type_with_Any_only_on_receiving_end():
+    @component
+    class Component:
+        @component.input
+        def input(self):
+            class Input:
+                value: List[Set[Sequence[int]]]
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: List[Set[Sequence[str]]]
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    @component
+    class Component2:
+        @component.input
+        def input(self):
+            class Input:
+                value: List[Set[Sequence[Any]]]
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: List[Set[Sequence[Any]]]
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    pipe = Pipeline()
+    pipe.add_component("comp1", Component())
+    pipe.add_component("comp2", Component2())
+    pipe.connect("comp1", "comp2")
+
+    with pytest.raises(
+        PipelineConnectError,
+        match=re.escape(
+            """Cannot connect 'comp2' with 'comp1': no matching connections available.
+'comp2':
+ - value (List[Set[Sequence[typing.Any]]])
 'comp1':
  - value (List[Set[Sequence[int]]]), available"""
         ),
@@ -505,6 +676,120 @@ def test_connect_on_a_deeply_nested_mapping_type_with_primitives():
             """Cannot connect 'comp2' with 'comp1': no matching connections available.
 'comp2':
  - value (Dict[str, Mapping[str, Dict[str, bool]]])
+'comp1':
+ - value (Dict[str, Mapping[str, Dict[str, int]]]), available"""
+        ),
+    ):
+        pipe.connect("comp2", "comp1")
+
+
+def test_connect_on_a_shallow_mapping_type_with_Any_only_on_receiving_end():
+    @component
+    class Component:
+        @component.input
+        def input(self):
+            class Input:
+                value: Dict[str, int]
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: Dict[str, str]
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    @component
+    class Component2:
+        @component.input
+        def input(self):
+            class Input:
+                value: Dict[Any, Any]
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: Dict[Any, int]
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    pipe = Pipeline()
+    pipe.add_component("comp1", Component())
+    pipe.add_component("comp2", Component2())
+    pipe.connect("comp1", "comp2")
+
+    with pytest.raises(
+        PipelineConnectError,
+        match=re.escape(
+            """Cannot connect 'comp2' with 'comp1': no matching connections available.
+'comp2':
+ - value (Dict[typing.Any, int])
+'comp1':
+ - value (Dict[str, int]), available"""
+        ),
+    ):
+        pipe.connect("comp2", "comp1")
+
+
+def test_connect_on_a_deeply_nested_mapping_type_with_Any_only_on_receiving_end():
+    @component
+    class Component:
+        @component.input
+        def input(self):
+            class Input:
+                value: Dict[str, Mapping[str, Dict[str, int]]]
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: Dict[str, Mapping[str, Dict[str, str]]]
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    @component
+    class Component2:
+        @component.input
+        def input(self):
+            class Input:
+                value: Dict[str, Mapping[Any, Dict[Any, str]]]
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: Dict[str, Mapping[str, Dict[str, Any]]]
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    pipe = Pipeline()
+    pipe.add_component("comp1", Component())
+    pipe.add_component("comp2", Component2())
+    pipe.connect("comp1", "comp2")
+
+    with pytest.raises(
+        PipelineConnectError,
+        match=re.escape(
+            """Cannot connect 'comp2' with 'comp1': no matching connections available.
+'comp2':
+ - value (Dict[str, Mapping[str, Dict[str, typing.Any]]])
 'comp1':
  - value (Dict[str, Mapping[str, Dict[str, int]]]), available"""
         ),
@@ -833,6 +1118,67 @@ def test_connect_on_optional_with_primitives():
         pipe.connect("comp2", "comp1")
 
 
+def test_connect_on_optional_with_Any_only_on_the_receiving_end():
+    """
+    Note that Optionals are "transparent", so they disappear when top-level
+    """
+
+    @component
+    class Component:
+        @component.input
+        def input(self):
+            class Input:
+                value: Optional[int]
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: Optional[str]
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    @component
+    class Component2:
+        @component.input
+        def input(self):
+            class Input:
+                value: Optional[Any]
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: Optional[Any]
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    pipe = Pipeline()
+    pipe.add_component("comp1", Component())
+    pipe.add_component("comp2", Component2())
+    pipe.connect("comp1", "comp2")
+
+    with pytest.raises(
+        PipelineConnectError,
+        match=re.escape(
+            """Cannot connect 'comp2' with 'comp1': no matching connections available.
+'comp2':
+ - value (typing.Any)
+'comp1':
+ - value (int), available"""
+        ),
+    ):
+        pipe.connect("comp2", "comp1")
+
+
 def test_connect_on_optional_with_classes():
     """
     Note that Optionals are "transparent", so they disappear when top-level
@@ -962,6 +1308,69 @@ def test_connect_on_a_deeply_nested_complex_type():
             """Cannot connect 'comp2' with 'comp1': no matching connections available.
 'comp2':
  - value (Tuple[Optional[Literal['a', 'b', 'c']], Union[Path, Dict[int, TestClass3]]])
+'comp1':
+ - value (Tuple[Optional[Literal['a', 'b', 'c']], Union[Path, Dict[int, TestClass1]]]), available"""
+        ),
+    ):
+        pipe.connect("comp2", "comp1")
+
+
+def test_connect_on_a_deeply_nested_complex_type_Any_only_on_the_receiving_end():
+    class TestClass1:
+        ...
+
+    class TestClass2:
+        ...
+
+    @component
+    class Component:
+        @component.input
+        def input(self):
+            class Input:
+                value: Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, TestClass1]]]
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, TestClass2]]]
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    @component
+    class Component2:
+        @component.input
+        def input(self):
+            class Input:
+                value: Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, Any]]]
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                value: Tuple[Optional[Literal["a", "b", "c"]], Union[Any, Dict[int, TestClass1]]]
+
+            return Output
+
+        def run(self, data):
+            return self.output(value="a")
+
+    pipe = Pipeline()
+    pipe.add_component("comp1", Component())
+    pipe.add_component("comp2", Component2())
+    pipe.connect("comp1", "comp2")
+
+    with pytest.raises(
+        PipelineConnectError,
+        match=re.escape(
+            """Cannot connect 'comp2' with 'comp1': no matching connections available.
+'comp2':
+ - value (Tuple[Optional[Literal['a', 'b', 'c']], Union[typing.Any, Dict[int, TestClass1]]])
 'comp1':
  - value (Tuple[Optional[Literal['a', 'b', 'c']], Union[Path, Dict[int, TestClass1]]]), available"""
         ),
