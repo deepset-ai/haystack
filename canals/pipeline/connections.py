@@ -112,7 +112,7 @@ def _get_socket_type_desc(type_):
 
     # Python < 3.10 support
     if hasattr(type_, "_name"):
-        type_name = type_._name  # pylint: disable=protected-access)
+        type_name = type_._name  # pylint: disable=protected-access
         # Support for Optionals and Unions in Python < 3.10
         if not type_name:
             if type(None) in args:

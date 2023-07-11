@@ -15,7 +15,7 @@ from canals.pipeline.sockets import find_input_sockets, find_output_sockets
 from canals.pipeline.connections import find_unambiguous_connection, _get_socket_type_desc
 
 from test.sample_components import AddFixedValue, Greet
-from test._helpers.component_factory import make_component
+from test._helpers import make_component
 
 
 class TestClass1:
