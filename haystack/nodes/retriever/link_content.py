@@ -181,9 +181,8 @@ class LinkContentRetriever(BaseComponent):
         """
         try:
             response = requests.get(url, headers=LinkContentRetriever.REQUEST_HEADERS, timeout=timeout)
-            if response.status_code != HTTPStatus.OK:
-                logger.debug("Couldn't retrieve content from %s, status code: %s", url, response.status_code)
-        except requests.RequestException as e:
+            response.raise_for_status()
+        except Exception as e:
             if self.raise_on_failure:
                 raise e
 

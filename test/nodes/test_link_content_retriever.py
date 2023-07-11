@@ -233,6 +233,26 @@ def test_handle_various_response_errors(caplog, mocked_requests, error_code: int
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("error_code", [403, 404, 500])
+def test_handle_http_error(mocked_requests, error_code: int):
+    """
+    Checks the behavior when there's an HTTPError raised, and raise_on_failure is set to True.
+    """
+
+    url = "https://some-problematic-url.com"
+
+    # we don't throw exceptions, there might be many of them
+    # we log them on debug level
+    mock_response = Response()
+    mock_response.status_code = error_code
+    mocked_requests.get.return_value = mock_response
+
+    r = LinkContentRetriever(raise_on_failure=True)
+    with pytest.raises(requests.HTTPError):
+        r.fetch(url=url)
+
+
+@pytest.mark.unit
 def test_is_valid_url():
     """
     Checks the _is_valid_url function with a set of valid URLs.
