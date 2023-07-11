@@ -15,6 +15,7 @@ def mocked_requests():
         mock_requests.get.return_value = mock_response
         mock_response.status_code = 200
         mock_response.text = "Sample content from webpage"
+        mock_response.headers = {"Content-Type": "text/html"}
         yield mock_requests
 
 
@@ -33,7 +34,8 @@ def test_init():
 
     assert r.processor is None
     assert isinstance(r.handlers, dict)
-    assert "html" in r.handlers
+    assert "text/html" in r.handlers
+    assert "application/pdf" in r.handlers
 
 
 @pytest.mark.unit
@@ -45,7 +47,8 @@ def test_init_with_preprocessor():
     r = LinkContentFetcher(processor=pre_processor_mock)
     assert r.processor == pre_processor_mock
     assert isinstance(r.handlers, dict)
-    assert "html" in r.handlers
+    assert "text/html" in r.handlers
+    assert "application/pdf" in r.handlers
 
 
 @pytest.mark.unit

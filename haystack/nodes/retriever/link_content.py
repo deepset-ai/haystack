@@ -1,3 +1,5 @@
+import io
+import itertools
 import logging
 from datetime import datetime
 from http import HTTPStatus
@@ -6,8 +8,10 @@ from urllib.parse import urlparse
 
 import requests
 from boilerpy3 import extractors
+import fitz
 from requests import Response
-from requests.exceptions import InvalidURL
+from requests.exceptions import InvalidURL, HTTPError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryCallState
 
 from haystack import __version__
 from haystack.nodes import PreProcessor, BaseComponent
@@ -18,23 +22,26 @@ logger = logging.getLogger(__name__)
 
 def html_content_handler(response: Response, raise_on_failure: bool = False) -> Optional[str]:
     """
-    Extracts content from the response text using the boilerpy3 extractor.
+    Extracts text from HTML response text using the boilerpy3 extractor.
     :param response: Response object from the request.
     :param raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
     """
     extractor = extractors.ArticleExtractor(raise_on_failure=raise_on_failure)
-    content = ""
-    try:
-        content = extractor.get_content(response.text)
-    except Exception as e:
-        if raise_on_failure:
-            raise e
-    return content
+    return extractor.get_content(response.text)
 
 
 def pdf_content_handler(response: Response, raise_on_failure: bool = False) -> Optional[str]:
-    # TODO: implement this
-    return None
+    """
+    Extracts text from PDF response stream using the PyMuPDF library.
+
+    :param response: Response object from the request.
+    :param raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
+    """
+    file_path = io.BytesIO(response.content)
+    with fitz.open(stream=file_path, filetype="pdf") as doc:
+        text = chr(12).join([page.get_text() for page in doc])
+
+    return text.encode("ascii", errors="ignore").decode()
 
 
 class LinkContentFetcher(BaseComponent):
@@ -43,19 +50,27 @@ class LinkContentFetcher(BaseComponent):
 
     LinkContentFetcher supports the following content types:
     - HTML
+    - PDF
 
     """
 
     outgoing_edges = 1
 
+    USER_AGENT = f"haystack/LinkContentRetriever/{__version__}"
+
     REQUEST_HEADERS = {
         "accept": "*/*",
-        "User-Agent": f"haystack/LinkContentFetcher/{__version__}",
+        "User-Agent": USER_AGENT,
         "Accept-Language": "en-US,en;q=0.9,it;q=0.8,es;q=0.7",
         "referer": "https://www.google.com/",
     }
 
-    def __init__(self, processor: Optional[PreProcessor] = None, raise_on_failure: Optional[bool] = False):
+    def __init__(
+        self,
+        processor: Optional[PreProcessor] = None,
+        raise_on_failure: Optional[bool] = False,
+        user_agents: Optional[List[str]] = None,
+    ):
         """
 
         Creates a LinkContentFetcher instance.
@@ -63,11 +78,15 @@ class LinkContentFetcher(BaseComponent):
         :param raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
                          during content extraction. If False, the error is simply logged and the program continues.
                          Defaults to False.
+        :param user_agents: A list of user agents to use when fetching content. Defaults to None.
         """
         super().__init__()
         self.processor = processor
         self.raise_on_failure = raise_on_failure
-        self.handlers: Dict[str, Callable] = {"html": html_content_handler, "pdf": pdf_content_handler}
+        self.user_agents = itertools.cycle(user_agents or [LinkContentFetcher.USER_AGENT])
+        self.default_user_agent = next(self.user_agents)
+        self.current_user_agent = self.default_user_agent
+        self.handlers: Dict[str, Callable] = {"text/html": html_content_handler, "application/pdf": pdf_content_handler}
 
     def fetch(self, url: str, timeout: Optional[int] = 3, doc_kwargs: Optional[dict] = None) -> List[Document]:
         """
@@ -87,31 +106,32 @@ class LinkContentFetcher(BaseComponent):
             "meta": {"url": url, "timestamp": int(datetime.utcnow().timestamp())}
         }
         extracted_doc.update(doc_kwargs)
-
         response = self._get_response(url, timeout=timeout)
-        has_content = response.status_code == HTTPStatus.OK and response.text
+        has_content = response.status_code == HTTPStatus.OK and (response.text or response.content)
         fetched_documents = []
         if has_content:
-            handler = "html"  # will handle non-HTML content types soon, add content type resolution here
-            if handler in self.handlers:
-                extracted_content = self.handlers[handler](response, self.raise_on_failure)
-                if extracted_content:
-                    extracted_doc["content"] = extracted_content
-                    logger.debug("%s handler extracted content from %s", handler, url)
+            extracted_content: str = ""
+            handler: Callable = self._get_content_type_handler(response.headers.get("Content-Type", ""))
+            try:
+                extracted_content = handler(response, self.raise_on_failure)
+            except Exception as e:
+                if self.raise_on_failure:
+                    raise e
+                logger.warning("failed to extract content from %s", response.url)
+            if extracted_content:
+                extracted_doc["content"] = extracted_content
+                logger.debug("%s handler extracted content from %s", handler, url)
+            else:
+                snippet_text = extracted_doc.get("snippet_text", "")
+                if snippet_text:
+                    extracted_doc["content"] = snippet_text
+            if "content" in extracted_doc:
+                document = Document.from_dict(extracted_doc)
+
+                if self.processor:
+                    fetched_documents = self.processor.process(documents=[document])
                 else:
-                    logger.warning("%s handler failed to extract content from %s", handler, url)
-                    # perhaps we have a snippet from web search, if so, use it as content
-                    snippet_text = extracted_doc.get("snippet_text", "")
-                    if snippet_text:
-                        extracted_doc["content"] = snippet_text
-
-                if "content" in extracted_doc:
-                    document = Document.from_dict(extracted_doc)
-
-                    if self.processor:
-                        fetched_documents = self.processor.process(documents=[document])
-                    else:
-                        fetched_documents = [document]
+                    fetched_documents = [document]
         return fetched_documents
 
     def run(
@@ -126,8 +146,7 @@ class LinkContentFetcher(BaseComponent):
         Fetches content from a URL specified by query parameter and converts it into a list of Document objects.
 
         param query: The query - a URL to fetch content from.
-        param filters: Not used.
-        param top_k: Not used.
+        param file_paths: Not used.
         param labels: Not used.
         param documents: Not used.
         param meta: Not used.
@@ -184,16 +203,48 @@ class LinkContentFetcher(BaseComponent):
         :param timeout: The timeout in seconds.
         :return: A response object.
         """
+        headers = self.REQUEST_HEADERS.copy()
+
+        @retry(
+            reraise=True,
+            stop=stop_after_attempt(2),
+            wait=wait_exponential(multiplier=1, min=2, max=10),
+            retry=(retry_if_exception_type((HTTPError, requests.RequestException))),
+            after=self._switch_user_agent,
+        )
+        def _request():
+            headers["User-Agent"] = self.current_user_agent
+            r = requests.get(url, headers=headers, timeout=timeout)
+            r.raise_for_status()
+            return r
+
         try:
-            response = requests.get(url, headers=LinkContentFetcher.REQUEST_HEADERS, timeout=timeout)
-            response.raise_for_status()
+            response = _request()
         except Exception as e:
             if self.raise_on_failure:
                 raise e
 
             logger.warning("Couldn't retrieve content from %s", url)
             response = requests.Response()
+        finally:
+            self.current_user_agent = self.default_user_agent
         return response
+
+    def _get_content_type_handler(self, content_type: str) -> Callable:
+        """
+        Get the appropriate content handler based on the content type.
+        :param content_type: The content type of the response.
+        :return: The matching content handler callable or the default html_content_handler if no match is found.
+        """
+        mime_type = (content_type or "").split(";")[0]
+        return self.handlers.get(mime_type, html_content_handler)
+
+    def _switch_user_agent(self, retry_state: RetryCallState) -> None:
+        """
+        Switches the User-Agent for this LinkContentRetriever to the next one in the list of user agents.
+        :param retry_state: The retry state (unused, required by tenacity)
+        """
+        self.current_user_agent = next(self.user_agents)
 
     def _is_valid_url(self, url: str) -> bool:
         """
