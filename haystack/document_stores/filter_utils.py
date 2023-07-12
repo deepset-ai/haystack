@@ -358,16 +358,21 @@ class NotOperation(LogicalFilterClause):
             return conditions[0]
 
     def convert_to_tair(self) -> str:
-        conditions = [condition.invert().convert_to_tair() for condition in self.conditions]
-        infix = ""
+        conditions = [condition.convert_to_tair() for condition in self.conditions]
+        infix = "("
         if len(conditions) > 1:
             # Conditions in self.conditions are by default combined with AND which becomes OR according to DeMorgan
             for i in range(len(conditions)):
                 if i > 0:
-                    infix += "||"
+                    infix += "&&"
+                infix += "(!("
                 infix += conditions[i]
+                infix += "))"
         else:
+            infix += "(!("
             infix += conditions[0]
+            infix += "))"
+        infix += ")"
         return infix
 
     def invert(self) -> Union[LogicalFilterClause, ComparisonOperation]:
@@ -413,9 +418,19 @@ class AndOperation(LogicalFilterClause):
         conditions = [condition.convert_to_pinecone() for condition in self.conditions]
         return {"$and": conditions}
 
-    def convert_to_tair(self) -> Dict[str, Union[str, List[Dict]]]:
+    def convert_to_tair(self) -> str:
         conditions = [condition.convert_to_tair() for condition in self.conditions]
-        return {"$and": conditions}
+        infix = "("
+        if len(conditions) > 1:
+            # Conditions in self.conditions are by default combined with AND which becomes OR according to DeMorgan
+            for i in range(len(conditions)):
+                if i > 0:
+                    infix += "&&"
+                infix += conditions[i]
+        else:
+            infix += conditions[0]
+        infix += ")"
+        return infix
 
     def invert(self) -> "OrOperation":
         return OrOperation([condition.invert() for condition in self.conditions])
@@ -453,9 +468,19 @@ class OrOperation(LogicalFilterClause):
         conditions = [condition.convert_to_pinecone() for condition in self.conditions]
         return {"$or": conditions}
 
-    def convert_to_tair(self) -> Dict[str, Union[str, List[Dict]]]:
+    def convert_to_tair(self) -> str:
         conditions = [condition.convert_to_tair() for condition in self.conditions]
-        return {"$or": conditions}
+        infix = "("
+        if len(conditions) > 1:
+            # Conditions in self.conditions are by default combined with AND which becomes OR according to DeMorgan
+            for i in range(len(conditions)):
+                if i > 0:
+                    infix += "||"
+                infix += conditions[i]
+        else:
+            infix += conditions[0]
+        infix += ")"
+        return infix
 
     def invert(self) -> AndOperation:
         return AndOperation([condition.invert() for condition in self.conditions])
@@ -503,8 +528,12 @@ class EqOperation(ComparisonOperation):
     def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[List[str], str, int, float, bool]]]:
         return {self.field_name: {"$eq": self.comparison_value}}
 
-    def convert_to_tair(self) -> Dict[str, Dict[str, Union[List[str], str, int, float, bool]]]:
-        return {self.field_name: {"$eq": self.comparison_value}}
+    def convert_to_tair(self) -> str:
+        if(isinstance(self.comparison_value,str) or isinstance(self.comparison_value,bool)):
+            infix = self.field_name + "==" + "\"" + str(self.comparison_value) + "\""
+        else:
+            infix = self.field_name + "==" + str(self.comparison_value)
+        return infix
 
     def invert(self) -> "NeOperation":
         return NeOperation(self.field_name, self.comparison_value)
@@ -553,10 +582,16 @@ class InOperation(ComparisonOperation):
             raise FilterError("'$in' operation requires comparison value to be a list.")
         return {self.field_name: {"$in": self.comparison_value}}
 
-    def convert_to_tair(self) -> Dict[str, Dict[str, List]]:
+    def convert_to_tair(self) -> str:
         if not isinstance(self.comparison_value, list):
             raise FilterError("'$in' operation requires comparison value to be a list.")
-        return {self.field_name: {"$in": self.comparison_value}}
+        infix = "("
+        for i in range(len(self.comparison_value)):
+            if i > 0:
+                infix += "||"
+            infix += (self.field_name + "==" + "\"" + self.comparison_value[i] + "\"")
+        infix += ")"
+        return infix
 
     def invert(self) -> "NinOperation":
         return NinOperation(self.field_name, self.comparison_value)
@@ -594,7 +629,10 @@ class NeOperation(ComparisonOperation):
         return {self.field_name: {"$ne": self.comparison_value}}
 
     def convert_to_tair(self) -> str:
-        infix = self.field_name + "!=" + "\"" + self.comparison_value + "\""
+        if (isinstance(self.comparison_value, str) or isinstance(self.comparison_value, bool)):
+            infix = "(" + self.field_name + "!=" + "\"" + str(self.comparison_value) + "\"" + ")"
+        else:
+            infix = "(" + self.field_name + "!=" + str(self.comparison_value) + ")"
         return infix
 
     def invert(self) -> "EqOperation":
@@ -644,10 +682,16 @@ class NinOperation(ComparisonOperation):
             raise FilterError("'$in' operation requires comparison value to be a list.")
         return {self.field_name: {"$nin": self.comparison_value}}
 
-    def convert_to_tair(self) -> Dict[str, Dict[str, List]]:
+    def convert_to_tair(self) -> str:
         if not isinstance(self.comparison_value, list):
             raise FilterError("'$in' operation requires comparison value to be a list.")
-        return {self.field_name: {"$nin": self.comparison_value}}
+        infix = "("
+        for i in range(len(self.comparison_value)):
+            if i > 0:
+                infix += "&&"
+            infix += (self.field_name + "!=" + "\"" + self.comparison_value[i] + "\"")
+        infix += ")"
+        return infix
 
     def invert(self) -> "InOperation":
         return InOperation(self.field_name, self.comparison_value)
@@ -688,10 +732,10 @@ class GtOperation(ComparisonOperation):
             raise FilterError("Comparison value for '$gt' operation must be a float or int.")
         return {self.field_name: {"$gt": self.comparison_value}}
 
-    def convert_to_tair(self) -> Dict[str, Dict[str, Union[float, int]]]:
+    def convert_to_tair(self) -> str:
         if not isinstance(self.comparison_value, (float, int)):
             raise FilterError("Comparison value for '$gt' operation must be a float or int.")
-        return {self.field_name: {"$gt": self.comparison_value}}
+        return "(" + self.field_name + ">" + str(self.comparison_value) + ")"
 
     def invert(self) -> "LteOperation":
         return LteOperation(self.field_name, self.comparison_value)
@@ -732,10 +776,10 @@ class GteOperation(ComparisonOperation):
             raise FilterError("Comparison value for '$gte' operation must be a float or int.")
         return {self.field_name: {"$gte": self.comparison_value}}
 
-    def convert_to_tair(self) -> Dict[str, Dict[str, Union[float, int]]]:
+    def convert_to_tair(self) -> str:
         if not isinstance(self.comparison_value, (float, int)):
             raise FilterError("Comparison value for '$gte' operation must be a float or int.")
-        return {self.field_name: {"$gte": self.comparison_value}}
+        return "(" + self.field_name + ">=" + str(self.comparison_value) + ")"
 
     def invert(self) -> "LtOperation":
         return LtOperation(self.field_name, self.comparison_value)
@@ -776,10 +820,10 @@ class LtOperation(ComparisonOperation):
             raise FilterError("Comparison value for '$lt' operation must be a float or int.")
         return {self.field_name: {"$lt": self.comparison_value}}
 
-    def convert_to_tair(self) -> Dict[str, Dict[str, Union[float, int]]]:
+    def convert_to_tair(self) -> str:
         if not isinstance(self.comparison_value, (float, int)):
             raise FilterError("Comparison value for '$lt' operation must be a float or int.")
-        return {self.field_name: {"$lt": self.comparison_value}}
+        return "(" + self.field_name + "<" + str(self.comparison_value) + ")"
 
     def invert(self) -> "GteOperation":
         return GteOperation(self.field_name, self.comparison_value)
@@ -820,10 +864,10 @@ class LteOperation(ComparisonOperation):
             raise FilterError("Comparison value for '$lte' operation must be a float or int.")
         return {self.field_name: {"$lte": self.comparison_value}}
 
-    def convert_to_tair(self) -> Dict[str, Dict[str, Union[float, int]]]:
+    def convert_to_tair(self) -> str:
         if not isinstance(self.comparison_value, (float, int)):
             raise FilterError("Comparison value for '$lte' operation must be a float or int.")
-        return {self.field_name: {"$lte": self.comparison_value}}
+        return "(" + self.field_name + "<=" + str(self.comparison_value) + ")"
 
     def invert(self) -> "GtOperation":
         return GtOperation(self.field_name, self.comparison_value)

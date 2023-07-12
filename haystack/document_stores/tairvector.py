@@ -1,5 +1,4 @@
 import copy
-import json
 from typing import Set, Union, List, Optional, Dict, Generator, Any
 
 import json
@@ -50,7 +49,7 @@ class TairDocumentStore(BaseDocumentStore):
         embedding_dim: int = 768,
         return_embedding: bool = False,
         index: str = "document",
-        similarity: str = "IP",
+        similarity: str = "COSINE",
         index_type: str = "HNSW",
         data_type: str = "FLOAT32",
         embedding_field: str = "embedding",
@@ -59,18 +58,50 @@ class TairDocumentStore(BaseDocumentStore):
         recreate_index: bool = False,
         **kwargs: Any,
     ):
+        """
+        :param url: Tair vector database url corresponding to a instance(https://www.alibabacloud.com/help/en/tair/latest/tairvector).
+        :param tair_index: tair-client Index object, an index will be initialized or loaded if not specified.
+        :param embedding_dim: The embedding vector size.
+        :param return_embedding: Whether to return document embeddings.
+        :param index: Name of index in document store to use.
+        :param similarity: The similarity function used to compare document vectors. `"COSINE"` is the default
+            and is recommended if you are using a Sentence-Transformer model. `"IP"` is more performant
+            with DPR embeddings.
+            In both cases, the returned values in Document.score are normalized to be in range [0,1]:
+                - For `"IP"`: `expit(np.asarray(raw_score / 100))`
+                - For `"COSINE"`: `(raw_score + 1) / 2`
+        :param index_type: The type of indexing algorithms. Valid values: "HNSW" creates graph-based vector indexes,
+            "FLAT" uses the Flat Search algorithm to search for vectors without creating indexes.
+        :param data_type: the data type of the vector. Valid values: "FLOAT32", "FLOAT16", "BINARY"
+        :param embedding_field: Name of field containing an embedding vector.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+            Can be helpful to disable in production deployments to keep the logs clean.
+        :param duplicate_documents: Handle duplicate documents based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
+        :param recreate_index: If set to True, an existing Pinecone index will be deleted and a new one will be
+            created using the config you are using for initialization. Be aware that all data in the old index will be
+            lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+            be recreated.
+        """
         # Connect to Tair server using python client binding
+        if not url:
+            raise TairDocumentStoreError(
+                "Tair requires an url, please provide one. https://www.alibabacloud.com/help/en/tair/latest/tairvector,"
+                "The format of url: redis://[[username]:[password]]@localhost:6379/0"
+            )
 
         # Formal similarity string
-        if similarity == "IP":
+        if similarity == "IP" or "COSINE":
             self.distance_type = similarity
-        elif similarity == "Jaccard":
-            self.distance_type = "JACCARD"
         elif similarity in ("L2", "Euclidean"):
             self.distance_type = "L2"
         else:
             raise ValueError(
-                "The Tair document store can currently only support inner_product, jaccard and euclidean metrics. "
+                "The Tair document store can currently only support inner_product and euclidean metrics. "
                 "Please set distance_type to one of the above."
             )
 
@@ -95,8 +126,6 @@ class TairDocumentStore(BaseDocumentStore):
         self.embedding_field = embedding_field
         self.progress_bar = progress_bar
         self.duplicate_documents = duplicate_documents
-        self.document_namespace = "no-vectors"
-        self.embedding_namespace = "vectors"
 
         # Tair index params
         self.index_type = index_type
@@ -140,18 +169,17 @@ class TairDocumentStore(BaseDocumentStore):
 
     def _index_name(self, index) -> str:
         index = _sanitize_index_name(index) or self.index
-        # self.index = index  # TODO maybe not needed
         return index
 
     def _create_index(
-            self,
-            embedding_dim: int,
-            index: Optional[str] = None,
-            distance_type: Optional[str] = "IP",
-            index_type: Optional[str] = "HNSW",
-            data_type: Optional[str] = "FLOAT32",
-            recreate_index: bool = False,
-            **kwargs,
+        self,
+        embedding_dim: int,
+        index: Optional[str] = None,
+        distance_type: Optional[str] = "IP",
+        index_type: Optional[str] = "HNSW",
+        data_type: Optional[str] = "FLOAT32",
+        recreate_index: bool = False,
+        **kwargs,
     ):
         """
         Create a new index for storing documents in case an
@@ -178,13 +206,6 @@ class TairDocumentStore(BaseDocumentStore):
             )
         index_connection = self.client.tvs_get_index(index)
 
-        # # Get index statistics
-        # stats = index_connection.describe_index_stats()
-        # dims = stats["dimension"]
-        # count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
-        # logger.info("Index statistics: name: %s embedding dimensions: %s, record count: %s", index, dims, count)
-
-        # return index connection
         return index_connection
 
     def write_documents(
@@ -244,12 +265,7 @@ class TairDocumentStore(BaseDocumentStore):
         )
         if len(document_objects) > 0:
             add_vectors = False if document_objects[0].embedding is None else True
-            # If these are not labels, we need to find the correct namespace
-            if not labels:
-                # If not adding vectors we use document namespace
-                namespace = self.embedding_namespace if add_vectors else self.document_namespace
-            else:
-                namespace = "labels"
+
             if not add_vectors:
                 # To store documents, we use dummy embeddings (to be replaced with real embeddings later)
                 embeddings_to_index = np.random.rand(batch_size, self.embedding_dim).astype(np.float32)
@@ -259,7 +275,7 @@ class TairDocumentStore(BaseDocumentStore):
                     total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
             ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
-                    document_batch = document_objects[i : i + batch_size]
+                    document_batch = document_objects[i: i + batch_size]
                     ids = [doc.id for doc in document_batch]
                     # If duplicate_documents set to skip or fail, we need to check for existing documents
                     if duplicate_documents in ["skip", "fail"]:
@@ -298,16 +314,22 @@ class TairDocumentStore(BaseDocumentStore):
                         for doc in document_objects[i: i + batch_size]
                     ]
                     if add_vectors:
-                        embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
+                        embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
-                        if self.similarity == "IP":
+                        if self.similarity == "COSINE":
                             # Normalize embeddings inplace
                             self.normalize_embedding(embeddings_to_index)
                         # Convert embeddings to list objects
                         embeddings = [embed.tolist() if embed is not None else None for embed in embeddings_to_index]
+
                     # Insert documents into index
                     for j in range(len(ids)):
-                        result = self.client.tvs_hset(
+                        for meta_key in metadata[j]:
+                            if isinstance(metadata[j][meta_key], bool):
+                                metadata[j][meta_key] = str(metadata[j][meta_key])
+                            if isinstance(metadata[j][meta_key], list):
+                                metadata[j][meta_key] = ','.join(metadata[j][meta_key])
+                        self.client.tvs_hset(
                             index=index,
                             key=ids[j],
                             vector=embeddings[j],
@@ -315,6 +337,7 @@ class TairDocumentStore(BaseDocumentStore):
                             **{
                                 "meta": json.dumps(metadata[j]),
                             },
+                            **(metadata[j])
                         )
                     # Add IDs to ID list
                     self._add_local_ids(index, ids)
@@ -323,7 +346,7 @@ class TairDocumentStore(BaseDocumentStore):
 
     def _meta_for_tair(self, meta: Dict[str, Any], parent_key: str = "", labels: bool = False) -> Dict[str, Any]:
         """
-        Converts the meta dictionary to a format that can be stored in Pinecone.
+        Converts the meta dictionary to a format that can be stored in Tair.
         :param meta: Metadata dictionary to be converted.
         :param parent_key: Optional, used for recursive calls to keep track of parent keys, for example:
             ```
@@ -376,7 +399,7 @@ class TairDocumentStore(BaseDocumentStore):
         :param index: Optional index name to retrieve all documents from.
         :param batch_size: Number of documents to retrieve at a time. When working with large number of documents,
             batching can help reduce memory footprint.
-        :param headers: Pinecone does not support headers.
+        :param headers: Tair does not support headers.
         :param return_embedding: Optional flag to return the embedding of the document.
         """
 
@@ -397,24 +420,17 @@ class TairDocumentStore(BaseDocumentStore):
         for i in range(0, len(ids), batch_size):
             i_end = min(len(ids), i + batch_size)
             id_batch = ids[i:i_end]
-            # result = self.tair_indexes[index].fetch(ids=id_batch)
             result = []
             vector_id_matrix = []
             meta_matrix = []
             embedding_matrix = []
             for id_iter in id_batch:
                 result_iter = self.client.tvs_hgetall(index, id_iter)
-                result.append(result_iter)
-                vector_id_matrix.append(id_iter)
-                embedding_matrix.append(result_iter['VECTOR'])
-                meta_matrix.append(json.loads(result_iter['meta']))
-
-
-            # for _id in result["vectors"].keys():
-            #     vector_id_matrix.append(_id)
-            #     meta_matrix.append(self._tair_meta_format(result["vectors"][_id]["metadata"]))
-            #     if return_embedding:
-            #         embedding_matrix.append(result["vectors"][_id]["values"])
+                if len(result_iter)>0:
+                    result.append(result_iter)
+                    vector_id_matrix.append(id_iter)
+                    embedding_matrix.append(result_iter['VECTOR'])
+                    meta_matrix.append(json.loads(result_iter['meta']))
 
             if return_embedding:
                 values = embedding_matrix
@@ -451,7 +467,6 @@ class TairDocumentStore(BaseDocumentStore):
         self,
         retriever: DenseRetriever,
         index: Optional[str] = None,
-        update_existing_embeddings: bool = True,
         filters: Optional[FilterType] = None,
         batch_size: int = 32,
     ):
@@ -463,9 +478,6 @@ class TairDocumentStore(BaseDocumentStore):
         :param retriever: Retriever to use to get embeddings for text.
         :param index: Index name for which embeddings are to be updated. If set to `None`, the default `self.index` is
             used.
-        :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to `False`,
-            only documents without embeddings are processed. This mode can be used for incremental updating of
-            embeddings, wherein, only newly indexed documents get processed.
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
             Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
             operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
@@ -519,7 +531,7 @@ class TairDocumentStore(BaseDocumentStore):
                 embeddings = retriever.embed_documents(document_batch)
                 if embeddings.size == 0:
                     # Skip batch if there are no embeddings. Otherwise, incorrect embedding shape will be inferred and
-                    # Pinecone APi will return a "No vectors provided" Bad Request Error
+                    # Tair APi will return a "No vectors provided" Bad Request Error
                     progress_bar.set_description_str("Documents Processed")
                     progress_bar.update(batch_size)
                     continue
@@ -527,7 +539,7 @@ class TairDocumentStore(BaseDocumentStore):
                     embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
                 )
 
-                if self.similarity == "IP":
+                if self.similarity == "COSINE":
                     self.normalize_embedding(embeddings)
 
                 metadata = []
@@ -539,16 +551,16 @@ class TairDocumentStore(BaseDocumentStore):
                     ids.append(doc.id)
                 # Update existing vectors in tair index
                 for j in range(len(ids)):
-                    result = self.client.tvs_hset(
+                    self.client.tvs_hset(
                         index=index,
                         key=ids[j],
-                        vector=embeddings.tolist()[j],
+                        vector=embeddings[j].tolist(),
                         is_binary=False,
                         **{
                             "meta": json.dumps(metadata[j]),
                         },
                     )
-                # Delete existing vectors from document namespace if they exist there
+                # Delete existing vectors if they exist there
                 self.delete_documents(index=index, ids=ids)
                 # Add these vector IDs to local store
                 self._add_local_ids(index, ids)
@@ -595,7 +607,6 @@ class TairDocumentStore(BaseDocumentStore):
                                 }
                             }
                             ```
-
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: Number of documents that are passed to bulk function at a time.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
@@ -691,7 +702,6 @@ class TairDocumentStore(BaseDocumentStore):
     def _get_all_document_ids(
         self,
         index: Optional[str] = None,
-        namespace: Optional[str] = None,
         filters: Optional[FilterType] = None,
         batch_size: int = 32,
     ) -> List[str]:
@@ -710,27 +720,18 @@ class TairDocumentStore(BaseDocumentStore):
             # We have all of the IDs and don't need to extract from Tair
             return list(self.all_ids[index])
         else:
-            # Otherwise we must query and extract IDs from the original namespace, then move the retrieved embeddings
-            # to a temporary namespace and query again for new items. We repeat this process until all embeddings
-            # have been retrieved.
             all_ids: Set[str] = set()
             vector_id_matrix = ["dummy-id"]
-            # with tqdm(
-            #     total=document_count, disable=not self.progress_bar, position=0, unit=" ids", desc="Retrieving IDs"
-            # ) as progress_bar:
-            while len(vector_id_matrix) != 0:
+            if len(vector_id_matrix) != 0:
                 # Retrieve IDs from Tair
                 vector_id_matrix = self._get_ids(
                     index=index, batch_size=batch_size, filters=filters
                 )
                 # Save IDs
                 all_ids = all_ids.union(set(vector_id_matrix))
-                    # progress_bar.set_description_str("Retrieved IDs")
-                    # progress_bar.update(len(set(vector_id_matrix)))
-            # Now move all documents back to source namespace
+
             self._add_local_ids(index, list(all_ids))
             return list(all_ids)
-
 
 
     def get_all_labels(
@@ -777,12 +778,17 @@ class TairDocumentStore(BaseDocumentStore):
 
         tair_syntax_filter = LogicalFilterClause.parse(filters).convert_to_tair() if filters else None
 
-        # stats = self.tair_indexes[index].describe_index_stats(filter=tair_syntax_filter)
         stats = self.client.tvs_get_index(index)
 
-        # Document count is total number of vectors across all namespaces (no-vectors + vectors)
-        count = stats["data_count"]
-        return count
+        # Document count is total number of vectors(no-vectors + vectors)
+        count = int(stats["data_count"])
+        if tair_syntax_filter is None:
+            return count
+
+        res = self.client.tvs_knnsearch(index=index, k=count,
+                                        vector=self.dummy_query, filter_str=tair_syntax_filter)
+
+        return len(res)
 
     def query_by_embedding(
         self,
@@ -825,22 +831,11 @@ class TairDocumentStore(BaseDocumentStore):
 
         score_matrix = []
         vector_id_matrix = []
-        meta_matrix = []
-        embedding_matrix = []
         for match in res:
             score_matrix.append(1/match[1]) # score is calculated by inverse of distance
             vector_id = match[0].decode('utf-8')
             vector_id_matrix.append(vector_id)
-            # meta_matrix.append(json.loads(self.tair_indexes[index]['meta']))
-            # if return_embedding:
-            #     embedding_matrix.append(match["values"])
-        # if return_embedding:
-        #     values = embedding_matrix
-        # else:
-        #     values = None
-        # documents = self._get_documents_by_meta(
-        #     vector_id_matrix, meta_matrix, values=values, index=index, return_embedding=return_embedding
-        # )
+
         documents = self.get_documents_by_id(ids=vector_id_matrix, index=index, batch_size=top_k)
 
         if filters is not None and len(documents) == 0:
@@ -866,7 +861,7 @@ class TairDocumentStore(BaseDocumentStore):
         """
         Default class method used for counting labels. Not supported by TairDocumentStore.
         """
-        raise NotImplementedError("Labels are not supported by TairDocumentStore.")
+        raise NotImplementedError("Counting labels is not supported by TairDocumentStore.")
 
     def write_labels(
         self,
@@ -891,15 +886,13 @@ class TairDocumentStore(BaseDocumentStore):
         # Convert Label objects to dictionary of metadata
         metadata = self._label_to_meta(labels)
         ids = list(metadata.keys())
-        # Check if vectors exist
         existing_documents = self.get_documents_by_id(ids=ids, index=index, return_embedding=True)
         if len(existing_documents) != 0:
             # If they exist, we loop through and partial update their metadata with the new labels
             existing_ids = [doc.id for doc in existing_documents]
             for _id in existing_ids:
                 meta = self._meta_for_tair(metadata[_id])
-                # self.tair_indexes[index].update(id=_id, set_metadata=meta)
-                self.client.tvs_hset(index=index, key=id, kwargs=meta)
+                self.client.tvs_hset(index=index, key=_id, kwargs=meta)
                 # After update, we delete the ID from the metadata list
                 del metadata[_id]
         # If there are any remaining IDs, we create new documents with the remaining metadata
@@ -933,22 +926,20 @@ class TairDocumentStore(BaseDocumentStore):
             self.all_ids[index] = set()
         if ids is None and tair_syntax_filter is None:
             # If no filters or IDs we delete everything
-            # keys = self.client.tvs_scan(index=index)
             id_values = list(self.all_ids[index])
             for id_value in id_values:
                 self.client.tvs_del(index, id_value)
         else:
             if ids is None:
                 # In this case we identify all IDs that satisfy the filter condition
-                # id_values = self.client.tvs_scan(index=index, pattern=tair_syntax_filter)
-                id_values = self._get_all_document_ids(index=index, filters=tair_syntax_filter)
+                id_values = self._get_all_document_ids(index=index, filters=filters)
             else:
                 id_values = ids
             if tair_syntax_filter:
                 # We must first identify the IDs that satisfy the filter condition
-                docs = self.get_all_documents(index=index, filters=tair_syntax_filter)
+                docs = self.get_all_documents(index=index, filters=filters)
                 filter_ids = [doc.id for doc in docs]
-                # Find the intersect
+                # Find the intersection
                 id_values = list(set(id_values).intersection(set(filter_ids)))
             if len(id_values) > 0:
                 for id_value in id_values:
@@ -972,37 +963,23 @@ class TairDocumentStore(BaseDocumentStore):
                 f"'update_embeddings()' to create and populate an index."
             )
 
-        tair_syntax_filter = LogicalFilterClause.parse(filters).convert_to_tair() if filters else None
-
         i = 0
         dummy_query = np.asarray(self.dummy_query)
 
         while True:
+            docs = self.query_by_embedding(
+                dummy_query,
+                filters=filters,
+                top_k=batch_size,
+                index=index,
+                return_embedding=True,
+            )
             if ids is None:
                 # Iteratively upsert new records without the labels metadata
-                docs = self.query_by_embedding(
-                    dummy_query,
-                    filters=tair_syntax_filter,
-                    top_k=batch_size,
-                    index=index,
-                    return_embedding=True,
-                )
                 update_ids = [doc.id for doc in docs]
             else:
                 i_end = min(i + batch_size, len(ids))
                 update_ids = ids[i:i_end]
-                if tair_syntax_filter:
-                    tair_syntax_filter["label-id"] = {"$in": update_ids}
-                else:
-                    pinecone_syntax_filter = {"label-id": {"$in": update_ids}}
-                # Retrieve embeddings and metadata for the batch of documents
-                docs = self.query_by_embedding(
-                    dummy_query,
-                    filters=tair_syntax_filter,
-                    top_k=batch_size,
-                    index=index,
-                    return_embedding=True,
-                )
                 # Apply filter to update IDs, finding intersection
                 update_ids = list(set(update_ids).intersection({doc.id for doc in docs}))
                 i = i_end
@@ -1063,11 +1040,12 @@ class TairDocumentStore(BaseDocumentStore):
         doc = self.get_documents_by_id(ids=[id], index=index, return_embedding=True)[0]
         if doc.embedding is not None:
             meta = {"content": doc.content, "content_type": doc.content_type, **meta}
-            self.tair_indexes[index].tvs_hset(id, doc.embedding, **meta)
+            self.client.tvs_hset(index=index, key=id, vector=doc.embedding,
+                                 **{"meta": json.dumps(meta)}, **meta)
 
     def _tair_meta_format(self, meta: Dict[str, Any], labels: bool = False) -> Dict[str, Any]:
         """
-        Converts the meta extracted from Pinecone into a better format for Python.
+        Converts the meta extracted from Tair into a better format for Python.
         :param meta: Metadata dictionary to be converted.
         :param labels: Optional, used to indicate whether the metadata is being stored as a label or not. If True the
             the flattening of dictionaries is not required.
@@ -1109,22 +1087,15 @@ class TairDocumentStore(BaseDocumentStore):
         ids: List[str],
         metadata: List[dict],
         values: Optional[List[List[float]]] = None,
-        namespace: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
     ) -> List[Document]:
         if headers:
-            raise NotImplementedError("PineconeDocumentStore does not support headers.")
+            raise NotImplementedError("TairDocumentStore does not support headers.")
 
         if return_embedding is None:
             return_embedding = self.return_embedding
-
-        if namespace is None:
-            if self.get_embedding_count(index=index) > 0:
-                namespace = self.embedding_namespace
-            else:
-                namespace = self.document_namespace
 
         index = self._index_name(index)
 
@@ -1139,9 +1110,9 @@ class TairDocumentStore(BaseDocumentStore):
             documents.append(doc)
         if return_embedding:
             if values is None:
-                # If no embedding values are provided, we must request the embeddings from Pinecone
+                # If no embedding values are provided, we must request the embeddings from Tair
                 for doc in documents:
-                    self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
+                    self._attach_embedding_to_document(document=doc, index=index)
             else:
                 # If embedding values are given, we just add
                 for doc, embedding in zip(documents, values):
@@ -1202,7 +1173,7 @@ class TairDocumentStore(BaseDocumentStore):
                     meta["label-answer-offsets-in-context-start"] = None
                     meta["label-answer-offsets-in-context-end"] = None
             metadata[label.id] = meta
-        metadata = self._meta_for_pinecone(metadata, labels=True)
+        metadata = self._meta_for_tair(metadata, labels=True)
         return metadata
 
     def _meta_to_labels(self, documents: List[Document]) -> List[Label]:
@@ -1240,16 +1211,19 @@ class TairDocumentStore(BaseDocumentStore):
                     document_ids = [document_id] if document_id is not None else None
                 else:
                     document_ids = label_meta["label-answer-document-ids"]
+                if document_ids is not None:
+                    document_ids_split = document_ids.split(',')
+                else:
+                    document_ids_split = None
 
                 answer = Answer(
-                    answer=label_meta["label-answer-answer"]
-                    or "",  # If we leave as None a schema validation error will be thrown
+                    answer=label_meta["label-answer-answer"],  # If we leave as None a schema validation error will be thrown
                     type=label_meta["label-answer-type"],
                     score=label_meta["label-answer-score"],
                     context=label_meta["label-answer-context"],
                     offsets_in_document=offsets["document"],
                     offsets_in_context=offsets["context"],
-                    document_ids=document_ids,
+                    document_ids=document_ids_split,
                     meta=other_meta,
                 )
             # Extract Label metadata
@@ -1275,9 +1249,9 @@ class TairDocumentStore(BaseDocumentStore):
             labels.append(label)
         return labels
 
-    def _attach_embedding_to_document(self, document: Document, index: str, namespace: str):
+    def _attach_embedding_to_document(self, document: Document, index: str):
         """
-        Fetches the Document's embedding from the specified Pinecone index and attaches it to the Document's
+        Fetches the Document's embedding from the specified Tair index and attaches it to the Document's
         embedding field.
         """
         result = self.client.tvs_hgetall(index, [document.id])
@@ -1312,7 +1286,8 @@ class TairDocumentStore(BaseDocumentStore):
         tair_syntax_filter = LogicalFilterClause.parse(filters).convert_to_tair() if filters else None
 
         # Retrieve embeddings from Tair
-        res = self.client.tvs_knnsearch(index=index, k=batch_size, vector=self.dummy_query, filter_str=tair_syntax_filter)
+        res = self.client.tvs_knnsearch(index=index, k=batch_size,
+                                        vector=self.dummy_query, filter_str=tair_syntax_filter)
 
         ids = []
         for match in res:
