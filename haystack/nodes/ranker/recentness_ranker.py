@@ -132,7 +132,7 @@ class RecentnessRanker(BaseRanker):
     def _calculate_rrf(self, rank: int, k: int = 61) -> float:
         """
         Calculates the reciprocal rank fusion. The constant K is set to 61 (60 was suggested by the original paper,
-        plus 1 as python lists are 0-based and the paper used 1-based ranking).
+        plus 1 as python lists are 0-based and the paper [https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf] used 1-based ranking).
         """
         return 1 / (k + rank)
 
