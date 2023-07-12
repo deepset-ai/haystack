@@ -25,6 +25,9 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
+    - name: Install Haystack
+      run: pip install .[inference,elasticsearch7,faiss,weaviate,opensearch,dev]
+      
     - name: Cache HF models
       id: cache-hf-models
       uses: actions/cache@v3
@@ -33,7 +36,7 @@ jobs:
         key: hf-models
       env:
         SEGMENT_DOWNLOAD_TIMEOUT_MINS: 15
-
+      
     - name: Download models
       if: steps.cache-hf-models.outputs.cache-hit != 'true'
       run: |
@@ -49,9 +52,6 @@ jobs:
 
     - name: Run Weaviate
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.17.2
-
-    - name: Install Haystack
-      run: pip install .
 
     - name: Run tests
       env:
