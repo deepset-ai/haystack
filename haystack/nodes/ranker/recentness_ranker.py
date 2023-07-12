@@ -19,7 +19,7 @@ class RecentnessRanker(BaseRanker):
         date_identifier: str,
         weight: float = 0.5,
         top_k: Optional[int] = None,
-        method: str = "reciprocal_rank_fusion",
+        method: Literal["reciprocal_rank_fusion", "score"] = "reciprocal_rank_fusion",
     ):
         """
         This Node is used to rerank retrieved documents based on their age. Newer documents will rank higher.
@@ -45,7 +45,9 @@ class RecentnessRanker(BaseRanker):
         self.method = method
 
     # pylint: disable=arguments-differ
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Tuple[Dict, str]:  # type: ignore
+    def run(  # type: ignore
+        self, query: str, documents: List[Document], top_k: Optional[int] = None
+    ) -> Tuple[Dict, str]:
         # sort documents based on age, newest comes first
         try:
             sorted_by_date = sorted(documents, reverse=True, key=lambda x: parse(x.meta[self.date_identifier]))
@@ -74,7 +76,8 @@ class RecentnessRanker(BaseRanker):
             return output, "output_1"
 
         # merge scores for both documents sorted by content and date.
-        # We use reciprocal rank fusion (RRF) to have the same range of scores for both lists.
+        # If method is set to 'reciprocal_rank_fusion', then that is used to combine previous ranking with recency ranking.
+        # If method is set to 'score', then documents will be assigned a recency score in [0,1] and will be re-ranked based on both their recency score and their pre-existing relevance score.
         scores_map: Dict = defaultdict(int)
         document_map = {doc.id: doc for doc in documents}
         weight = self.weight
@@ -119,7 +122,13 @@ class RecentnessRanker(BaseRanker):
         return output, "output_1"
 
     # pylint: disable=arguments-differ
-    def run_batch(self, queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Tuple[Dict, str]:  # type: ignore
+    def run_batch(  # type: ignore
+        self,
+        queries: List[str],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ) -> Tuple[Dict, str]:
         if isinstance(documents[0], Document):
             return self.run("", documents=documents, top_k=top_k)  # type: ignore
         nested_docs = []
