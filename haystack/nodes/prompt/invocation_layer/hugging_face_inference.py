@@ -18,15 +18,12 @@ from haystack.nodes.prompt.invocation_layer import (
     DefaultTokenStreamingHandler,
 )
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
+from haystack.nodes.prompt.invocation_layer.utils import get_task
 from haystack.utils import request_with_retry
-from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 HF_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 HF_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
-
-with LazyImport() as transformers_import:
-    from haystack.nodes.prompt.invocation_layer.utils import get_task
 
 
 class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
@@ -52,7 +49,6 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         :param api_key: The Hugging Face API token. You’ll need to provide your user token which can
         be found in your Hugging Face account [settings](https://huggingface.co/settings/tokens)
         """
-        transformers_import.check()
 
         super().__init__(model_name_or_path)
         self.prompt_preprocessors: Dict[str, Callable] = {}
@@ -284,8 +280,6 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        if not transformers_import.is_successful():
-            return False
         if cls.is_inference_endpoint(model_name_or_path):
             return True
         else:
