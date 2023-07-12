@@ -23,7 +23,7 @@ def parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
     return connection, None
 
 
-def _type_is_compatible(sender, receiver):
+def _types_are_compatible(sender, receiver):
     """
     Checks whether the source type is equal or a subtype of the destination type. Used to validate pipeline connections.
 
@@ -45,18 +45,23 @@ def _type_is_compatible(sender, receiver):
     except TypeError:  # typing classes can't be used with issubclass, so we deal with them below
         pass
 
-    source_origin = get_origin(sender)
-    dest_origin = get_origin(receiver)
+    sender_origin = get_origin(sender)
+    receiver_origin = get_origin(receiver)
 
-    if source_origin is not Union and dest_origin is Union:
-        return any(_type_is_compatible(sender, union_arg) for union_arg in get_args(receiver))
+    if sender_origin is not Union and receiver_origin is Union:
+        return any(_types_are_compatible(sender, union_arg) for union_arg in get_args(receiver))
 
-    source_args = get_args(sender)
-    dest_args = get_args(receiver)
-    if not source_origin or not dest_origin or source_origin != dest_origin or len(source_args) > len(dest_args):
+    sender_args = get_args(sender)
+    receiver_args = get_args(receiver)
+    if (
+        not sender_origin
+        or not receiver_origin
+        or sender_origin != receiver_origin
+        or len(sender_args) > len(receiver_args)
+    ):
         return False
 
-    return all(_type_is_compatible(*args) for args in zip(source_args, dest_args))
+    return all(_types_are_compatible(*args) for args in zip(sender_args, receiver_args))
 
 
 def find_unambiguous_connection(
@@ -69,7 +74,7 @@ def find_unambiguous_connection(
     possible_connections = [
         (sender_sock, receiver_sock)
         for sender_sock, receiver_sock in itertools.product(sender_sockets, receiver_sockets)
-        if _type_is_compatible(sender_sock.type, receiver_sock.type)
+        if _types_are_compatible(sender_sock.type, receiver_sock.type)
     ]
 
     # No connections seem to be possible
@@ -141,7 +146,8 @@ def _connections_status(
     for receiver_socket in receiver_sockets:
         socket_types = get_socket_type_desc(receiver_socket.type)
         receiver_sockets_entries.append(
-            f" - {receiver_socket.name} ({socket_types}), {'sent by '+receiver_socket.sender if receiver_socket.sender else 'available'}"
+            f" - {receiver_socket.name} ({socket_types}), "
+            f"{'sent by '+receiver_socket.sender if receiver_socket.sender else 'available'}"
         )
     receiver_sockets_list = "\n".join(receiver_sockets_entries)
 
