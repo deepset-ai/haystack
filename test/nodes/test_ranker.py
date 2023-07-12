@@ -1,11 +1,12 @@
 import pytest
 import math
+import warnings
 from unittest.mock import patch
 
 import torch
 from haystack.schema import Document
 from haystack.nodes.ranker.base import BaseRanker
-from haystack.nodes.ranker import SentenceTransformersRanker, CohereRanker
+from haystack.nodes.ranker import SentenceTransformersRanker, CohereRanker, RecentnessRanker
 from haystack.errors import HaystackError
 
 
@@ -499,3 +500,20 @@ def test_cohere_ranker_batch_multiple_queries_multiple_doc_lists(docs, mock_cohe
     assert isinstance(results[0], list)
     assert results[0][0] == docs[4]
     assert results[1][0] == docs[4]
+
+
+@pytest.mark.unit
+def test_recentness_ranker_score_outside_limits(docs):
+    query = "Dummy query"
+    docs = [
+        Document(content="""ABC""", meta={"date": "2021-02-11"}, score=1.88, id="1"),
+        Document(content="""DEF""", meta={"date": "2024-02-11"}, score=1.06, id="2"),
+        Document(content="""GHI""", meta={"date": "2020-02-11"}, score=3, id="3"),
+    ]
+    ranker = RecentnessRanker(date_identifier="date", method="score", weight=0.5)
+    results = ranker.predict(query=query, documents=docs, top_k=2)
+
+    with warnings.catch_warnings(record=True) as warning_list:
+        assert "The score is outside the [0,1] range; defaulting to 0" in str(warning_list[-1].message)
+    assert isinstance(results, list)
+    assert results[0] == docs[1]
