@@ -45,7 +45,7 @@ class RecentnessRanker(BaseRanker):
         self.method = method
 
     # pylint: disable=arguments-differ
-    def run(  # type: ignore
+    def predict(  # type: ignore
         self, query: str, documents: List[Document], top_k: Optional[int] = None
     ) -> Tuple[Dict, str]:
         # sort documents based on age, newest comes first
@@ -117,12 +117,10 @@ class RecentnessRanker(BaseRanker):
             doc.score = score
             docs.append(doc)
 
-        output = {"documents": docs}
-
-        return output, "output_1"
+        return docs
 
     # pylint: disable=arguments-differ
-    def run_batch(  # type: ignore
+    def predict_batch(  # type: ignore
         self,
         queries: List[str],
         documents: Union[List[Document], List[List[Document]]],
@@ -135,8 +133,8 @@ class RecentnessRanker(BaseRanker):
         for docs in documents:
             temp = self.run("", documents=docs, top_k=top_k)  # type: ignore
             nested_docs.append(temp[0]["documents"])
-        output = {"documents": nested_docs}
-        return output, "output_1"
+
+        return nested_docs
 
     def _calculate_rrf(self, rank: int, k: int = 61) -> float:
         """
