@@ -62,8 +62,8 @@ class RecentnessRanker(BaseRanker):
                 self.date_identifier,
                 ",".join(list(documents[0].meta.keys())),
             )
-            output = {"documents": documents}
-            return output, "output_1"
+
+            return documents
         except ParserError:
             logger.error(
                 """
@@ -72,8 +72,8 @@ class RecentnessRanker(BaseRanker):
                 """,
                 " - ".join([x.meta.get(self.date_identifier, "identifier wrong") for x in documents]),
             )
-            output = {"documents": documents}
-            return output, "output_1"
+
+            return documents
 
         # merge scores for both documents sorted by content and date.
         # If method is set to 'reciprocal_rank_fusion', then that is used to combine previous ranking with recency ranking.
