@@ -6,8 +6,8 @@ from canals.component import ComponentInput, ComponentOutput
 from canals.pipeline import (
     Pipeline as CanalsPipeline,
     PipelineError,
-    load_pipelines as load_canals_pipelines,
-    save_pipelines as save_canals_pipelines,
+    marshal_pipelines as marshal_canals_pipelines,
+    unmarshal_pipelines as unmarshal_canals_pipelines,
 )
 from canals.pipeline.sockets import find_input_sockets
 
@@ -83,8 +83,28 @@ class Pipeline(CanalsPipeline):
 
 
 def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):
-    return load_canals_pipelines(path=path, _reader=_reader)
+    with open(path, "r", encoding="utf-8") as handle:
+        schema = _reader(handle)
+    return unmarshal_pipelines(schema=schema)
 
 
 def save_pipelines(pipelines: Dict[str, Pipeline], path: Path, _writer: Optional[Callable[..., Any]] = None):
-    save_canals_pipelines(pipelines=pipelines, path=path, _writer=_writer)
+    schema = marshal_pipelines(pipelines=pipelines)
+    with open(path, "w", encoding="utf-8") as handle:
+        _writer(schema, handle)
+
+
+def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:
+    return unmarshal_canals_pipelines(schema=schema)
+
+
+def marshal_pipelines(pipelines: Dict[str, Pipeline]) -> Dict[str, Any]:
+    marshalled = marshal_canals_pipelines(pipelines=pipelines)
+    for pipeline_name, pipeline in pipelines.items():
+        # TODO serialize store's init params
+        marshaled_stores = {
+            store_name: {"type": store.__class__.__name__, "init_parameters": {}}
+            for store_name, store in pipeline.stores.items()
+        }
+        marshalled["pipelines"][pipeline_name]["stores"] = marshaled_stores
+    return marshalled
