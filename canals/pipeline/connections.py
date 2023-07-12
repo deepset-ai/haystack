@@ -23,7 +23,7 @@ def parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
     return connection, None
 
 
-def type_is_compatible(source_type, dest_type):
+def _type_is_compatible(source_type, dest_type):
     """
     Checks whether the source type is equal or a subtype of the destination type. Used to validate pipeline connections.
 
@@ -52,7 +52,7 @@ def type_is_compatible(source_type, dest_type):
     if len(source_args) != len(dest_args):
         return False
 
-    return all(type_is_compatible(*args) for args in zip(source_args, dest_args))
+    return all(_type_is_compatible(*args) for args in zip(source_args, dest_args))
 
 
 def find_unambiguous_connection(
@@ -65,7 +65,7 @@ def find_unambiguous_connection(
     possible_connections = [
         (from_sock, to_sock)
         for from_sock, to_sock in itertools.product(from_sockets, to_sockets)
-        if all(type_is_compatible(*pair) for pair in zip(from_sock.types, to_sock.types))
+        if all(_type_is_compatible(*pair) for pair in zip(from_sock.types, to_sock.types))
     ]
 
     # No connections seem to be possible

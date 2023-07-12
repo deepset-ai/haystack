@@ -174,6 +174,8 @@ def test_connect_compatible_types(from_type, to_type):
         pytest.param(Any, int, id="any-to-primitive"),
         pytest.param(Any, TestClass2, id="any-to-class"),
         pytest.param(List[int], List[str], id="different-lists-of-primitives"),
+        pytest.param(List[int], List, id="list-of-primitive-to-bare-list"),  # is "correct", but we don't support it
+        pytest.param(List[int], list, id="list-of-primitive-to-list-object"),  # is "correct", but we don't support it
         pytest.param(List[TestClass1], List[TestClass2], id="different-lists-of-classes"),
         pytest.param(List[TestClass1], List[TestClass3], id="lists-of-classes-to-subclasses"),
         pytest.param(List[Any], List[str], id="list-of-any-to-list-of-primitives"),
