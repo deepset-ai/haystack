@@ -38,11 +38,11 @@ def pdf_content_handler(response: Response, raise_on_failure: bool = False) -> O
     return None
 
 
-class LinkContentRetriever(BaseComponent):
+class LinkContentFetcher(BaseComponent):
     """
-    LinkContentRetriever fetches content from a URL and converts it into a list of Document objects.
+    LinkContentFetcher fetches content from a URL and converts it into a list of Document objects.
 
-    LinkContentRetriever supports the following content types:
+    LinkContentFetcher supports the following content types:
     - HTML
 
     """
@@ -51,7 +51,7 @@ class LinkContentRetriever(BaseComponent):
 
     REQUEST_HEADERS = {
         "accept": "*/*",
-        "User-Agent": f"haystack/LinkContentRetriever/{__version__}",
+        "User-Agent": f"haystack/LinkContentFetcher/{__version__}",
         "Accept-Language": "en-US,en;q=0.9,it;q=0.8,es;q=0.7",
         "referer": "https://www.google.com/",
     }
@@ -59,7 +59,7 @@ class LinkContentRetriever(BaseComponent):
     def __init__(self, processor: Optional[PreProcessor] = None, raise_on_failure: Optional[bool] = False):
         """
 
-        Creates a LinkContentRetriever instance.
+        Creates a LinkContentFetcher instance.
         :param processor: PreProcessor to apply to the extracted text
         :param raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
                          during content extraction. If False, the error is simply logged and the program continues.
@@ -130,7 +130,7 @@ class LinkContentRetriever(BaseComponent):
         return: List of Document objects.
         """
         if not query:
-            raise ValueError("LinkContentRetriever run requires the `query` parameter")
+            raise ValueError("LinkContentFetcher run requires the `query` parameter")
         documents = self.fetch(url=query)
         return {"documents": documents}, "output_1"
 
@@ -165,7 +165,7 @@ class LinkContentRetriever(BaseComponent):
             queries = [queries]
         elif not isinstance(queries, list):
             raise ValueError(
-                "LinkContentRetriever run_batch requires the `queries` parameter to be Union[str, List[str]]"
+                "LinkContentFetcher run_batch requires the `queries` parameter to be Union[str, List[str]]"
             )
         for query in queries:
             results.append(self.fetch(url=query))
@@ -180,7 +180,7 @@ class LinkContentRetriever(BaseComponent):
         :return: A response object.
         """
         try:
-            response = requests.get(url, headers=LinkContentRetriever.REQUEST_HEADERS, timeout=timeout)
+            response = requests.get(url, headers=LinkContentFetcher.REQUEST_HEADERS, timeout=timeout)
             response.raise_for_status()
         except Exception as e:
             if self.raise_on_failure:

@@ -5,7 +5,7 @@ import requests
 from requests import Response
 
 from haystack import Document
-from haystack.nodes import LinkContentRetriever
+from haystack.nodes import LinkContentFetcher
 
 
 @pytest.fixture
@@ -27,9 +27,9 @@ def mocked_article_extractor():
 @pytest.mark.unit
 def test_init():
     """
-    Checks the initialization of the LinkContentRetriever without a preprocessor.
+    Checks the initialization of the LinkContentFetcher without a preprocessor.
     """
-    r = LinkContentRetriever()
+    r = LinkContentFetcher()
 
     assert r.processor is None
     assert isinstance(r.handlers, dict)
@@ -39,10 +39,10 @@ def test_init():
 @pytest.mark.unit
 def test_init_with_preprocessor():
     """
-    Checks the initialization of the LinkContentRetriever with a preprocessor.
+    Checks the initialization of the LinkContentFetcher with a preprocessor.
     """
     pre_processor_mock = Mock()
-    r = LinkContentRetriever(processor=pre_processor_mock)
+    r = LinkContentFetcher(processor=pre_processor_mock)
     assert r.processor == pre_processor_mock
     assert isinstance(r.handlers, dict)
     assert "html" in r.handlers
@@ -51,14 +51,14 @@ def test_init_with_preprocessor():
 @pytest.mark.unit
 def test_fetch(mocked_requests, mocked_article_extractor):
     """
-    Checks if the LinkContentRetriever is able to fetch content.
+    Checks if the LinkContentFetcher is able to fetch content.
     """
     url = "https://haystack.deepset.ai/"
 
     pre_processor_mock = Mock()
     pre_processor_mock.process.return_value = [Document("Sample content from webpage")]
 
-    r = LinkContentRetriever(pre_processor_mock)
+    r = LinkContentFetcher(pre_processor_mock)
     result = r.fetch(url=url, doc_kwargs={"text": "Sample content from webpage"})
 
     assert len(result) == 1
@@ -74,7 +74,7 @@ def test_fetch_no_url(mocked_requests, mocked_article_extractor):
     pre_processor_mock = Mock()
     pre_processor_mock.process.return_value = [Document("Sample content from webpage")]
 
-    retriever_no_url = LinkContentRetriever(processor=pre_processor_mock)
+    retriever_no_url = LinkContentFetcher(processor=pre_processor_mock)
     with pytest.raises(requests.exceptions.InvalidURL, match="Invalid or missing URL"):
         retriever_no_url.fetch(url="")
 
@@ -86,7 +86,7 @@ def test_fetch_invalid_url(caplog, mocked_requests, mocked_article_extractor):
     """
     url = "this-is-invalid-url"
 
-    r = LinkContentRetriever()
+    r = LinkContentFetcher()
     with pytest.raises(requests.exceptions.InvalidURL):
         r.fetch(url=url)
 
@@ -94,10 +94,10 @@ def test_fetch_invalid_url(caplog, mocked_requests, mocked_article_extractor):
 @pytest.mark.unit
 def test_fetch_no_preprocessor(mocked_requests, mocked_article_extractor):
     """
-    Checks if the LinkContentRetriever can fetch content without a preprocessor.
+    Checks if the LinkContentFetcher can fetch content without a preprocessor.
     """
     url = "https://www.example.com"
-    r = LinkContentRetriever()
+    r = LinkContentFetcher()
 
     result_no_preprocessor = r.fetch(url=url)
 
@@ -113,7 +113,7 @@ def test_fetch_correct_arguments(mocked_requests, mocked_article_extractor):
     """
     url = "https://www.example.com"
 
-    r = LinkContentRetriever()
+    r = LinkContentFetcher()
     r.fetch(url=url)
 
     # Check the arguments that requests.get was called with
@@ -140,7 +140,7 @@ def test_fetch_default_empty_content(mocked_requests):
     url = "https://www.example.com"
     timeout = 10
     content_text = ""
-    r = LinkContentRetriever()
+    r = LinkContentFetcher()
 
     with patch("boilerpy3.extractors.ArticleExtractor.get_content", return_value=content_text):
         result = r.fetch(url=url, timeout=timeout)
@@ -158,7 +158,7 @@ def test_fetch_exception_during_content_extraction_no_raise_on_failure(caplog, m
     """
     caplog.set_level(logging.DEBUG)
     url = "https://www.example.com"
-    r = LinkContentRetriever()
+    r = LinkContentFetcher()
 
     with patch("boilerpy3.extractors.ArticleExtractor.get_content", side_effect=Exception("Could not extract content")):
         result = r.fetch(url=url)
@@ -174,7 +174,7 @@ def test_fetch_exception_during_content_extraction_raise_on_failure(caplog, mock
     """
     caplog.set_level(logging.DEBUG)
     url = "https://www.example.com"
-    r = LinkContentRetriever(raise_on_failure=True)
+    r = LinkContentFetcher(raise_on_failure=True)
 
     with patch("boilerpy3.extractors.ArticleExtractor.get_content", side_effect=Exception("Could not extract content")):
         with pytest.raises(Exception, match="Could not extract content"):
@@ -188,7 +188,7 @@ def test_fetch_exception_during_request_get_no_raise_on_failure(caplog):
     """
     caplog.set_level(logging.DEBUG)
     url = "https://www.example.com"
-    r = LinkContentRetriever()
+    r = LinkContentFetcher()
 
     with patch("haystack.nodes.retriever.link_content.requests.get", side_effect=requests.RequestException()):
         r.fetch(url=url)
@@ -202,7 +202,7 @@ def test_fetch_exception_during_request_get_raise_on_failure(caplog):
     """
     caplog.set_level(logging.DEBUG)
     url = "https://www.example.com"
-    r = LinkContentRetriever(raise_on_failure=True)
+    r = LinkContentFetcher(raise_on_failure=True)
 
     with patch("haystack.nodes.retriever.link_content.requests.get", side_effect=requests.RequestException()):
         with pytest.raises(requests.RequestException):
@@ -225,7 +225,7 @@ def test_handle_various_response_errors(caplog, mocked_requests, error_code: int
     mock_response.status_code = error_code
     mocked_requests.get.return_value = mock_response
 
-    r = LinkContentRetriever()
+    r = LinkContentFetcher()
     docs = r.fetch(url=url)
 
     assert f"Couldn't retrieve content from {url}" in caplog.text
@@ -247,7 +247,7 @@ def test_handle_http_error(mocked_requests, error_code: int):
     mock_response.status_code = error_code
     mocked_requests.get.return_value = mock_response
 
-    r = LinkContentRetriever(raise_on_failure=True)
+    r = LinkContentFetcher(raise_on_failure=True)
     with pytest.raises(requests.HTTPError):
         r.fetch(url=url)
 
@@ -257,7 +257,7 @@ def test_is_valid_url():
     """
     Checks the _is_valid_url function with a set of valid URLs.
     """
-    retriever = LinkContentRetriever()
+    retriever = LinkContentFetcher()
 
     valid_urls = [
         "http://www.google.com",
@@ -285,7 +285,7 @@ def test_is_invalid_url():
     """
     Checks the _is_valid_url function with a set of invalid URLs.
     """
-    retriever = LinkContentRetriever()
+    retriever = LinkContentFetcher()
 
     invalid_urls = [
         "http://",
@@ -314,10 +314,10 @@ def test_is_invalid_url():
 @pytest.mark.integration
 def test_call_with_valid_url_on_live_web():
     """
-    Test that LinkContentRetriever can fetch content from a valid URL
+    Test that LinkContentFetcher can fetch content from a valid URL
     """
 
-    retriever = LinkContentRetriever()
+    retriever = LinkContentFetcher()
     docs = retriever.fetch(url="https://docs.haystack.deepset.ai/", timeout=2)
 
     assert len(docs) >= 1
@@ -328,10 +328,10 @@ def test_call_with_valid_url_on_live_web():
 @pytest.mark.integration
 def test_retrieve_with_valid_url_on_live_web():
     """
-    Test that LinkContentRetriever can fetch content from a valid URL using the run method
+    Test that LinkContentFetcher can fetch content from a valid URL using the run method
     """
 
-    retriever = LinkContentRetriever()
+    retriever = LinkContentFetcher()
     docs, _ = retriever.run(query="https://docs.haystack.deepset.ai/")
     docs = docs["documents"]
 
@@ -343,10 +343,10 @@ def test_retrieve_with_valid_url_on_live_web():
 @pytest.mark.integration
 def test_retrieve_with_invalid_url():
     """
-    Test that LinkContentRetriever raises ValueError when trying to fetch content from an invalid URL
+    Test that LinkContentFetcher raises ValueError when trying to fetch content from an invalid URL
     """
 
-    retriever = LinkContentRetriever()
+    retriever = LinkContentFetcher()
     with pytest.raises(ValueError):
         retriever.run(query="")
 
@@ -354,10 +354,10 @@ def test_retrieve_with_invalid_url():
 @pytest.mark.integration
 def test_retrieve_batch():
     """
-    Test that LinkContentRetriever can fetch content from a valid URL using the retrieve_batch method
+    Test that LinkContentFetcher can fetch content from a valid URL using the retrieve_batch method
     """
 
-    retriever = LinkContentRetriever()
+    retriever = LinkContentFetcher()
     docs, _ = retriever.run_batch(queries=["https://docs.haystack.deepset.ai/", "https://deepset.ai/"])
     assert docs
 

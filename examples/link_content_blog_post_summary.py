@@ -1,12 +1,12 @@
 import os
-from haystack.nodes import PromptNode, LinkContentRetriever, PromptTemplate
+from haystack.nodes import PromptNode, LinkContentFetcher, PromptTemplate
 from haystack import Pipeline
 
 openai_key = os.environ.get("OPENAI_API_KEY")
 if not openai_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable")
 
-retriever = LinkContentRetriever()
+retriever = LinkContentFetcher()
 pt = PromptTemplate(
     "Given the paragraphs of the blog post, "
     "provide the main learnings and the final conclusion using short bullet points format."
