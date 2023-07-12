@@ -41,12 +41,12 @@ class TestEnum(Enum):
         pytest.param(str, str, id="same-primitives"),
         pytest.param(str, Optional[str], id="receiving-primitive-is-optional"),
         pytest.param(Optional[str], str, id="sending-primitive-is-optional"),
-        # pytest.param(str, Any, id="primitive-to-any"),
+        pytest.param(str, Any, id="primitive-to-any"),
         pytest.param(TestClass1, TestClass1, id="same-class"),
         pytest.param(TestClass1, Optional[TestClass1], id="receiving-class-is-optional"),
         pytest.param(Optional[TestClass1], TestClass1, id="sending-class-is-optional"),
-        # pytest.param(TestClass1, TestClass1, id="class-to-any"),
-        # pytest.param(TestClass3, TestClass1, id="subclass-to-class"),
+        pytest.param(TestClass1, TestClass1, id="class-to-any"),
+        pytest.param(TestClass3, TestClass1, id="subclass-to-class"),
         pytest.param(List[int], List[int], id="same-lists"),
         pytest.param(List[int], Optional[List[int]], id="receiving-list-is-optional"),
         pytest.param(Optional[List[int]], List[int], id="sending-list-is-optional"),
@@ -301,7 +301,10 @@ def test_connect_non_compatible_types(output, input):
     pipe.add_component("c1", comp1)
     pipe.add_component("c2", comp2)
 
-    with pytest.raises(PipelineConnectError, match="Cannot connect 'c1' with 'c2': no matching connections available."):
+    with pytest.raises(
+        PipelineConnectError,
+        match="Cannot connect 'c1.value' with 'c2.value': their declared input and output types do not match.",
+    ):
         pipe.connect("c1", "c2")
 
 
@@ -362,63 +365,7 @@ def test_connect_many_outputs_to_the_same_input():
         pipe.connect("third.value", "second.value")
 
 
-def test_find_unambiguous_connection_no_connection_possible():
-    @component
-    class Component1:
-        @component.input
-        def input(self):
-            class Input:
-                input_value: int
-
-            return Input
-
-        @component.output
-        def output(self):
-            class Output:
-                output_value: int
-
-            return Output
-
-        def run(self, data):
-            return self.output(output_value=data.input_value)
-
-    @component
-    class Component2:
-        @component.input
-        def input(self):
-            class Input:
-                input_value: str
-
-            return Input
-
-        @component.output
-        def output(self):
-            class Output:
-                output_value: str
-
-            return Output
-
-        def run(self, data):
-            return self.output(output_value=data.input_value)
-
-    expected_message = re.escape(
-        """Cannot connect 'comp1' with 'comp2': no matching connections available.
-'comp1':
- - output_value (int)
-'comp2':
- - input_value (str), available"""
-    )
-
-    with pytest.raises(PipelineConnectError, match=expected_message):
-        find_unambiguous_connection(
-            from_node="comp1",
-            to_node="comp2",
-            from_sockets=find_output_sockets(Component1()).values(),
-            to_sockets=find_input_sockets(Component2()).values(),
-        )
-
-
-def test_find_unambiguous_connection_many_connections_possible_name_matches():
+def test_connect_many_connections_possible_name_matches():
     @component
     class Component1:
         @component.input
@@ -459,15 +406,11 @@ def test_find_unambiguous_connection_many_connections_possible_name_matches():
         def run(self, data):
             return self.output(value=data.value)
 
-    comp1 = Component1()
-    comp2 = Component2()
-    connection = find_unambiguous_connection(
-        from_node="comp1",
-        to_node="comp2",
-        from_sockets=find_output_sockets(comp1).values(),
-        to_sockets=find_input_sockets(comp2).values(),
-    )
-    assert connection == (find_output_sockets(comp1)["value"], find_input_sockets(comp2)["value"])
+    pipe = Pipeline()
+    pipe.add_component("c1", Component1())
+    pipe.add_component("c2", Component2())
+    pipe.connect("c1", "c2")
+    assert list(pipe.graph.edges) == [("c1", "c2", "value/value")]
 
 
 def test_find_unambiguous_connection_many_connections_possible_no_name_matches():

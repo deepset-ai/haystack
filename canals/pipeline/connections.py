@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Tuple, Optional, List, Any, get_args
+from typing import Tuple, Optional, List, Any, get_args, get_origin
 
 import logging
 import itertools
@@ -23,6 +23,34 @@ def parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
     return connection, None
 
 
+def type_is_compatible(source_type, dest_type):
+    """
+    Checks whether the source type is equal or a subtype of the destination type.
+
+    Used to validate pipeline connections.
+    """
+    if source_type == dest_type or dest_type is Any:
+        return True
+
+    if source_type is Any:
+        return False
+
+    try:
+        print(source_type, dest_type)
+        if issubclass(source_type, dest_type):
+            return True
+    except TypeError:
+        return False
+
+    source_origin = get_origin(source_type)
+    dest_origin = get_origin(dest_type)
+    if not source_origin or not dest_origin or source_origin != dest_origin:
+        return False
+
+    args_pairs = zip(get_args(source_type), get_args(dest_type))
+    return all(type_is_compatible(*args) for args in args_pairs)
+
+
 def find_unambiguous_connection(
     from_node: str, to_node: str, from_sockets: List[OutputSocket], to_sockets: List[InputSocket]
 ) -> Tuple[OutputSocket, InputSocket]:
@@ -33,11 +61,23 @@ def find_unambiguous_connection(
     possible_connections = [
         (out_sock, in_sock)
         for out_sock, in_sock in itertools.product(from_sockets, to_sockets)
-        if not in_sock.sender and (Any in in_sock.types or out_sock.types == in_sock.types)
+        if not in_sock.sender and all(type_is_compatible(*pair) for pair in zip(out_sock.types, in_sock.types))
     ]
 
     # No connections seem to be possible
     if not possible_connections:
+        connections_status_str = _connections_status(
+            from_node=from_node, from_sockets=from_sockets, to_node=to_node, to_sockets=to_sockets
+        )
+
+        # Both sockets were specified: explain why the types don't match
+        if len(from_sockets) == len(to_sockets) and len(from_sockets) == 1:
+            raise PipelineConnectError(
+                f"Cannot connect '{from_node}.{from_sockets[0].name}' with '{to_node}.{to_sockets[0].name}': "
+                f"their declared input and output types do not match.\n{connections_status_str}"
+            )
+
+        # Not both sockets were specified: explain there's no possible match on any pair
         connections_status_str = _connections_status(
             from_node=from_node, from_sockets=from_sockets, to_node=to_node, to_sockets=to_sockets
         )

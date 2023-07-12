@@ -190,31 +190,22 @@ class Pipeline:
                     )
                 )
 
-        # If either one of the two sockets is not specified, look for an unambiguous connection
+        # Look for an unambiguous connection among the possible ones.
         # Note that if there is more than one possible connection but two sockets match by name, they're paired.
-        if not to_socket_name or not from_socket_name:
-            from_sockets = [from_socket] if from_socket_name else from_sockets.values()
-            to_sockets = [to_socket] if to_socket_name else to_sockets.values()
-            from_socket, to_socket = find_unambiguous_connection(
-                from_node=from_node, from_sockets=from_sockets, to_node=to_node, to_sockets=to_sockets
-            )
+        from_sockets = [from_socket] if from_socket_name else list(from_sockets.values())
+        to_sockets = [to_socket] if to_socket_name else list(to_sockets.values())
+        from_socket, to_socket = find_unambiguous_connection(
+            from_node=from_node, from_sockets=from_sockets, to_node=to_node, to_sockets=to_sockets
+        )
 
         # Connect the components on these sockets
         self._direct_connect(from_node=from_node, from_socket=from_socket, to_node=to_node, to_socket=to_socket)
 
     def _direct_connect(self, from_node: str, from_socket: OutputSocket, to_node: str, to_socket: InputSocket) -> None:
         """
-        Directly connect socket to socket.
+        Directly connect socket to socket. This method does not type-check the connections: use 'Pipeline.connect()'
+        instead (which uses 'find_unambiguous_connection()' to validate types).
         """
-        # Verify that receiving socket can accept the output types it will receive
-        if Any not in to_socket.types and not from_socket.types & to_socket.types:
-            raise PipelineConnectError(
-                f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
-                f"their declared input and output types do not match.\n"
-                f" - {from_node}.{from_socket.name}: {[t.__name__ for t in from_socket.types]}\n"
-                f" - {to_node}.{to_socket.name}: {[t.__name__ for t in to_socket.types]}\n"
-            )
-
         # Make sure the receiving socket isn't already connected - sending sockets can be connected as many times as needed,
         # so they don't need this check
         if to_socket.sender:
