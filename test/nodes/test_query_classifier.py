@@ -1,5 +1,18 @@
 import pytest
-from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
+from pathlib import Path
+from urllib.error import URLError
+from haystack.nodes.query_classifier import TransformersQueryClassifier, SklearnQueryClassifier
+from ..conftest import fail_at_version
+
+
+@pytest.mark.unit
+@fail_at_version(1, 21)
+def test_sklearnqueryclassifier_deprecation():
+    with pytest.warns(DeprecationWarning):
+        try:
+            SklearnQueryClassifier(Path("fake_model"), Path("fake_vectorizer"))
+        except URLError:
+            pass
 
 
 @pytest.fixture
