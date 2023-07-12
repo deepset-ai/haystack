@@ -2,8 +2,6 @@ from typing import Optional, Union, List, Dict, Any
 import logging
 import os
 
-from transformers import TOKENIZER_MAPPING, AutoConfig, AutoTokenizer
-
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
 from haystack.lazy_imports import LazyImport
@@ -21,6 +19,9 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         PreTrainedTokenizerFast,
         GenerationConfig,
         Pipeline,
+        AutoTokenizer,
+        AutoConfig,
+        TOKENIZER_MAPPING,
     )
     from huggingface_hub import model_info
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
