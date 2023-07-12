@@ -56,15 +56,6 @@ class MemoryRetriever(StoreAwareMixin):
             raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.defaults = {"top_k": top_k, "scale_score": scale_score, "filters": filters or {}}
 
-    def warmup(self):
-        """
-        Double-checks that a store is present before running this component in a pipeline.
-        """
-        if not self.store:
-            raise ValueError(
-                "MemoryRetriever needs a store to run: use the 'store' parameter of 'add_component' to connect them."
-            )
-
     def run(self, data: Input) -> Output:
         """
         Run the MemoryRetriever on the given input data.

@@ -7,10 +7,13 @@ from haystack.preview.document_stores.protocols import Store
 class StoreAwareMixin:
     """
     Adds the capability of a component to use a single document store from the `self.store` property.
+
+    To use this mixin you must specify which document stores to support by setting a value to `supported_stores`.
+    To support any document store, set it to `[Store]`.
     """
 
     _store: Optional[Store] = None
-    supported_stores: List[Type[Store]] = [Store]  # type: ignore # (see https://github.com/python/mypy/issues/4717)
+    supported_stores: List[Type[Store]]  # type: ignore # (see https://github.com/python/mypy/issues/4717)
 
     @property
     def store(self) -> Optional[Store]:

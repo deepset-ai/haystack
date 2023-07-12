@@ -6,7 +6,7 @@ import pytest
 
 from haystack.preview import Pipeline, component, NoSuchStoreError, Document, ComponentInput, ComponentOutput
 from haystack.preview.pipeline import NotAStoreError
-from haystack.preview.document_stores import StoreAwareMixin, DuplicatePolicy
+from haystack.preview.document_stores import StoreAwareMixin, DuplicatePolicy, Store
 
 
 # Note: we're using a real class instead of a mock because mocks don't play too well with protocols.
@@ -91,6 +91,8 @@ def test_add_component_store_aware_component_receives_one_docstore():
 
     @component
     class MockComponent(StoreAwareMixin):
+        supported_stores = [Store]
+
         @dataclass
         class Input(ComponentInput):
             value: int
@@ -118,6 +120,8 @@ def test_add_component_store_aware_component_receives_no_docstore():
 
     @component
     class MockComponent(StoreAwareMixin):
+        supported_stores = [Store]
+
         @dataclass
         class Input(ComponentInput):
             value: int
@@ -144,6 +148,8 @@ def test_non_store_aware_component_receives_one_docstore():
 
     @component
     class MockComponent:
+        supported_stores = [Store]
+
         @dataclass
         class Input(ComponentInput):
             value: int
@@ -170,6 +176,8 @@ def test_add_component_store_aware_component_receives_wrong_docstore_name():
 
     @component
     class MockComponent(StoreAwareMixin):
+        supported_stores = [Store]
+
         @dataclass
         class Input(ComponentInput):
             value: int

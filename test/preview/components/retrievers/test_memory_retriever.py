@@ -23,7 +23,7 @@ def mock_docs():
     ]
 
 
-class Test_MemoryRetriever(BaseTestComponent):
+class TestMemoryRetriever(BaseTestComponent):
     @pytest.mark.unit
     def test_save_load(self, tmp_path):
         self.assert_can_be_saved_and_loaded_in_pipeline(MemoryRetriever(), tmp_path)
