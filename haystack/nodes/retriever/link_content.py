@@ -29,7 +29,6 @@ def html_content_handler(response: Response, raise_on_failure: bool = False) -> 
     except Exception as e:
         if raise_on_failure:
             raise e
-        logger.debug("Couldn't extract content from %s", response.url)
     return content
 
 
@@ -98,7 +97,7 @@ class LinkContentFetcher(BaseComponent):
                     extracted_doc["content"] = extracted_content
                     logger.debug("%s handler extracted content from %s", handler, url)
                 else:
-                    logger.debug("%s handler failed to extract content from %s", handler, url)
+                    logger.warning("%s handler failed to extract content from %s", handler, url)
                     text = extracted_doc.get("text", "")
                     extracted_doc["content"] = text
                 document = Document.from_dict(extracted_doc)
@@ -186,7 +185,7 @@ class LinkContentFetcher(BaseComponent):
             if self.raise_on_failure:
                 raise e
 
-            logger.debug("Couldn't retrieve content from %s", url)
+            logger.warning("Couldn't retrieve content from %s", url)
             response = requests.Response()
         return response
 

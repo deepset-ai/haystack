@@ -164,7 +164,7 @@ def test_fetch_exception_during_content_extraction_no_raise_on_failure(caplog, m
         result = r.fetch(url=url)
 
     assert "text" not in result
-    assert "Couldn't extract content from" in caplog.text
+    assert "failed to extract content from" in caplog.text
 
 
 @pytest.mark.unit
