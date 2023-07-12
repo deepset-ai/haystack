@@ -2,11 +2,11 @@ from typing import Optional, Union, List, Dict, Any
 import logging
 import os
 
+from transformers import TOKENIZER_MAPPING, AutoConfig, AutoTokenizer
+
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
 from haystack.lazy_imports import LazyImport
-
-from transformers import TOKENIZER_MAPPING, AutoConfig, AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
