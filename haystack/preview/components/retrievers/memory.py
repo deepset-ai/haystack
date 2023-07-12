@@ -37,11 +37,11 @@ class MemoryRetriever:
         documents: List[List[Document]]
 
     @component.input
-    def input(self):
+    def input(self):  # type: ignore
         return MemoryRetriever.Input
 
     @component.output
-    def output(self):
+    def output(self):  # type: ignore
         return MemoryRetriever.Output
 
     def __init__(
@@ -91,4 +91,4 @@ class MemoryRetriever:
                     query=query, filters=data.filters, top_k=data.top_k, scale_score=data.scale_score
                 )
             )
-        return MemoryRetriever.Output(documents=docs)
+        return self.output(documents=docs)

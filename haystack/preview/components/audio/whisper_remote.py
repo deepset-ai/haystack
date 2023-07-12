@@ -4,7 +4,6 @@ import os
 import json
 import logging
 from pathlib import Path
-from dataclasses import dataclass
 
 from haystack.utils import request_with_retry
 from haystack.preview import component, Document
@@ -37,11 +36,11 @@ class RemoteWhisperTranscriber:
         documents: List[Document]
 
     @component.input
-    def input(self):
+    def input(self):  # type: ignore
         return RemoteWhisperTranscriber.Input
 
     @component.output
-    def output(self):
+    def output(self):  # type: ignore
         return RemoteWhisperTranscriber.Output
 
     def __init__(
@@ -83,7 +82,7 @@ class RemoteWhisperTranscriber:
         if not data.whisper_params:
             data.whisper_params = {}
         documents = self.transcribe(data.audio_files, **data.whisper_params)
-        return RemoteWhisperTranscriber.Output(documents)
+        return self.output(documents=documents)
 
     def transcribe(self, audio_files: Sequence[Union[str, Path, BinaryIO]], **kwargs) -> List[Document]:
         """
