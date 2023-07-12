@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Tuple, Optional, List, Any, get_args, get_origin
+from typing import Tuple, Optional, Union, List, Any, get_args, get_origin
 
 import logging
 import itertools
@@ -47,12 +47,13 @@ def _type_is_compatible(source_type, dest_type):
 
     source_origin = get_origin(source_type)
     dest_origin = get_origin(dest_type)
-    if not source_origin or not dest_origin or source_origin != dest_origin:
-        return False
+
+    if source_origin is not Union and dest_origin is Union:
+        return any(_type_is_compatible(source_type, union_arg) for union_arg in get_args(dest_type))
 
     source_args = get_args(source_type)
     dest_args = get_args(dest_type)
-    if len(source_args) != len(dest_args):
+    if not source_origin or not dest_origin or source_origin != dest_origin or len(source_args) > len(dest_args):
         return False
 
     return all(_type_is_compatible(*args) for args in zip(source_args, dest_args))
@@ -68,7 +69,7 @@ def find_unambiguous_connection(
     possible_connections = [
         (from_sock, to_sock)
         for from_sock, to_sock in itertools.product(from_sockets, to_sockets)
-        if all(_type_is_compatible(*pair) for pair in zip(from_sock.types, to_sock.types))
+        if _type_is_compatible(from_sock.type, to_sock.type)
     ]
 
     # No connections seem to be possible
@@ -121,13 +122,13 @@ def _connections_status(from_node: str, to_node: str, from_sockets: List[OutputS
     """
     from_sockets_entries = []
     for from_socket in from_sockets:
-        socket_types = ", ".join([_get_socket_type_desc(t) for t in from_socket.types])
+        socket_types = get_socket_type_desc(from_socket.type)
         from_sockets_entries.append(f" - {from_socket.name} ({socket_types})")
     from_sockets_list = "\n".join(from_sockets_entries)
 
     to_sockets_entries = []
     for to_socket in to_sockets:
-        socket_types = ", ".join([_get_socket_type_desc(t) for t in to_socket.types])
+        socket_types = get_socket_type_desc(to_socket.type)
         to_sockets_entries.append(
             f" - {to_socket.name} ({socket_types}), {'sent by '+to_socket.sender if to_socket.sender else 'available'}"
         )
@@ -136,7 +137,7 @@ def _connections_status(from_node: str, to_node: str, from_sockets: List[OutputS
     return f"'{from_node}':\n{from_sockets_list}\n'{to_node}':\n{to_sockets_list}"
 
 
-def _get_socket_type_desc(type_):
+def get_socket_type_desc(type_):
     """
     Assembles a readable representation of the type of a connection. Can handle primitive types, classes, and
     arbitrarily nested structures of types from the typing module.
@@ -173,5 +174,5 @@ def _get_socket_type_desc(type_):
     else:
         type_name = type_.__name__
 
-    subtypes = ", ".join([_get_socket_type_desc(subtype) for subtype in args if subtype is not type(None)])
+    subtypes = ", ".join([get_socket_type_desc(subtype) for subtype in args if subtype is not type(None)])
     return f"{type_name}[{subtypes}]"

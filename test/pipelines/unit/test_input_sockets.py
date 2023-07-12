@@ -33,7 +33,7 @@ def test_find_input_sockets_one_regular_builtin_type_input():
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
-    expected = {"input_value": InputSocket(name="input_value", types={int})}
+    expected = {"input_value": InputSocket(name="input_value", type=int)}
     assert sockets == expected
 
 
@@ -62,9 +62,9 @@ def test_find_input_sockets_many_regular_builtin_type_inputs():
     comp = MockComponent()
     sockets = find_input_sockets(comp)
     expected = {
-        "int_value": InputSocket(name="int_value", types={int}),
-        "str_value": InputSocket(name="str_value", types={str}),
-        "bool_value": InputSocket(name="bool_value", types={bool}),
+        "int_value": InputSocket(name="int_value", type=int),
+        "str_value": InputSocket(name="str_value", type=str),
+        "bool_value": InputSocket(name="bool_value", type=bool),
     }
     assert sockets == expected
 
@@ -94,7 +94,7 @@ def test_find_input_sockets_one_regular_object_type_input():
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
-    expected = {"input_value": InputSocket(name="input_value", types={MyObject})}
+    expected = {"input_value": InputSocket(name="input_value", type=MyObject)}
     assert sockets == expected
 
 
@@ -120,7 +120,7 @@ def test_find_input_sockets_one_union_type_input():
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
-    expected = {"input_value": InputSocket(name="input_value", types={str, int})}
+    expected = {"input_value": InputSocket(name="input_value", type=Union[str, int])}
     assert sockets == expected
 
 
@@ -146,7 +146,7 @@ def test_find_input_sockets_one_optional_builtin_type_input():
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
-    expected = {"input_value": InputSocket(name="input_value", types={int})}
+    expected = {"input_value": InputSocket(name="input_value", type=Optional[int])}
     assert sockets == expected
 
 
@@ -175,7 +175,7 @@ def test_find_input_sockets_one_optional_object_type_input():
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
-    expected = {"input_value": InputSocket(name="input_value", types={MyObject})}
+    expected = {"input_value": InputSocket(name="input_value", type=Optional[MyObject])}
     assert sockets == expected
 
 
@@ -205,10 +205,10 @@ def test_find_input_sockets_sequences_of_builtin_type_input():
     comp = MockComponent()
     sockets = find_input_sockets(comp)
     expected = {
-        "list_value": InputSocket(name="list_value", types={typing.List[int]}),
-        "set_value": InputSocket(name="set_value", types={typing.Set[int]}),
-        "sequence_value": InputSocket(name="sequence_value", types={typing.Sequence[int]}),
-        "iterable_value": InputSocket(name="iterable_value", types={typing.Iterable[int]}),
+        "list_value": InputSocket(name="list_value", type=typing.List[int]),
+        "set_value": InputSocket(name="set_value", type=typing.Set[int]),
+        "sequence_value": InputSocket(name="sequence_value", type=typing.Sequence[int]),
+        "iterable_value": InputSocket(name="iterable_value", type=typing.Iterable[int]),
     }
     assert sockets == expected
 
@@ -242,10 +242,10 @@ def test_find_input_sockets_sequences_of_object_type_input():
     comp = MockComponent()
     sockets = find_input_sockets(comp)
     expected = {
-        "list_value": InputSocket(name="list_value", types={typing.List[MyObject]}),
-        "set_value": InputSocket(name="set_value", types={typing.Set[MyObject]}),
-        "sequence_value": InputSocket(name="sequence_value", types={typing.Sequence[MyObject]}),
-        "iterable_value": InputSocket(name="iterable_value", types={typing.Iterable[MyObject]}),
+        "list_value": InputSocket(name="list_value", type=typing.List[MyObject]),
+        "set_value": InputSocket(name="set_value", type=typing.Set[MyObject]),
+        "sequence_value": InputSocket(name="sequence_value", type=typing.Sequence[MyObject]),
+        "iterable_value": InputSocket(name="iterable_value", type=typing.Iterable[MyObject]),
     }
     assert sockets == expected
 
@@ -274,8 +274,8 @@ def test_find_input_sockets_mappings_of_builtin_type_input():
     comp = MockComponent()
     sockets = find_input_sockets(comp)
     expected = {
-        "dict_value": InputSocket(name="dict_value", types={typing.Dict[str, int]}),
-        "mapping_value": InputSocket(name="mapping_value", types={typing.Mapping[str, int]}),
+        "dict_value": InputSocket(name="dict_value", type=typing.Dict[str, int]),
+        "mapping_value": InputSocket(name="mapping_value", type=typing.Mapping[str, int]),
     }
     assert sockets == expected
 
@@ -307,8 +307,8 @@ def test_find_input_sockets_mappings_of_object_type_input():
     comp = MockComponent()
     sockets = find_input_sockets(comp)
     expected = {
-        "dict_value": InputSocket(name="dict_value", types={typing.Dict[str, MyObject]}),
-        "mapping_value": InputSocket(name="mapping_value", types={typing.Mapping[str, MyObject]}),
+        "dict_value": InputSocket(name="dict_value", type=typing.Dict[str, MyObject]),
+        "mapping_value": InputSocket(name="mapping_value", type=typing.Mapping[str, MyObject]),
     }
     assert sockets == expected
 
@@ -339,6 +339,6 @@ def test_find_input_sockets_tuple_type_input():
     comp = MockComponent()
     sockets = find_input_sockets(comp)
     expected = {
-        "tuple_value": InputSocket(name="tuple_value", types={typing.Tuple[str, MyObject]}),
+        "tuple_value": InputSocket(name="tuple_value", type=typing.Tuple[str, MyObject]),
     }
     assert sockets == expected

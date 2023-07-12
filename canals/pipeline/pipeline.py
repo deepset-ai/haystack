@@ -19,7 +19,7 @@ from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntim
 from canals.draw import draw, convert_for_debug, RenderingEngines
 from canals.pipeline.sockets import InputSocket, OutputSocket, find_input_sockets, find_output_sockets
 from canals.pipeline.validation import validate_pipeline_input
-from canals.pipeline.connections import parse_connection_name, find_unambiguous_connection
+from canals.pipeline.connections import parse_connection_name, find_unambiguous_connection, get_socket_type_desc
 
 
 logger = logging.getLogger(__name__)
@@ -176,7 +176,7 @@ class Pipeline:
                     f"'{from_node}.{from_socket_name} does not exist. "
                     f"Output connections of {from_node} are: "
                     + ", ".join(
-                        [f"{name} (type {[t.__name__ for t in socket.types]})" for name, socket in from_sockets.items()]
+                        [f"{name} (type {get_socket_type_desc(socket.type)})" for name, socket in from_sockets.items()]
                     )
                 )
         if to_socket_name:
@@ -186,7 +186,7 @@ class Pipeline:
                     f"'{to_node}.{to_socket_name} does not exist. "
                     f"Input connections of {to_node} are: "
                     + ", ".join(
-                        [f"{name} (type {[t.__name__ for t in socket.types]})" for name, socket in to_sockets.items()]
+                        [f"{name} (type {get_socket_type_desc(socket.type)})" for name, socket in to_sockets.items()]
                     )
                 )
 

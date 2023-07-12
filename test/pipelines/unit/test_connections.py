@@ -12,7 +12,7 @@ from canals.errors import PipelineConnectError
 from canals.pipeline import Pipeline, PipelineConnectError
 from canals.component import component
 from canals.pipeline.sockets import find_input_sockets, find_output_sockets
-from canals.pipeline.connections import find_unambiguous_connection, _get_socket_type_desc
+from canals.pipeline.connections import find_unambiguous_connection, get_socket_type_desc
 
 from test.sample_components import AddFixedValue, Greet
 from test._helpers import make_component
@@ -40,16 +40,18 @@ class TestEnum(Enum):
     [
         pytest.param(str, str, id="same-primitives"),
         pytest.param(str, Optional[str], id="receiving-primitive-is-optional"),
-        pytest.param(Optional[str], str, id="sending-primitive-is-optional"),
+        pytest.param(str, Union[int, str], id="receiving-type-is-union-of-primitives"),
+        pytest.param(Union[int, str], Union[int, str], id="identical-unions"),
+        pytest.param(Union[int, str], Union[int, str, bool], id="receiving-union-is-superset-of-sender"),
         pytest.param(str, Any, id="primitive-to-any"),
         pytest.param(TestClass1, TestClass1, id="same-class"),
         pytest.param(TestClass1, Optional[TestClass1], id="receiving-class-is-optional"),
-        pytest.param(Optional[TestClass1], TestClass1, id="sending-class-is-optional"),
         pytest.param(TestClass1, TestClass1, id="class-to-any"),
         pytest.param(TestClass3, TestClass1, id="subclass-to-class"),
+        pytest.param(TestClass1, Union[int, TestClass1], id="receiving-type-is-union-of-classes"),
+        pytest.param(TestClass3, Union[int, TestClass1], id="receiving-type-is-union-of-superclasses"),
         pytest.param(List[int], List[int], id="same-lists"),
         pytest.param(List[int], Optional[List[int]], id="receiving-list-is-optional"),
-        pytest.param(Optional[List[int]], List[int], id="sending-list-is-optional"),
         pytest.param(List[int], List[Any], id="list-of-primitive-to-list-of-any"),
         pytest.param(List[TestClass1], List[TestClass1], id="list-of-same-classes"),
         pytest.param(List[TestClass3], List[TestClass1], id="list-of-subclass-to-list-of-class"),
@@ -173,6 +175,13 @@ def test_connect_compatible_types(from_type, to_type):
         pytest.param(TestClass1, TestClass3, id="class-to-subclass"),
         pytest.param(Any, int, id="any-to-primitive"),
         pytest.param(Any, TestClass2, id="any-to-class"),
+        pytest.param(Optional[str], str, id="sending-primitive-is-optional"),
+        pytest.param(Optional[TestClass1], TestClass1, id="sending-class-is-optional"),
+        pytest.param(Optional[List[int]], List[int], id="sending-list-is-optional"),
+        pytest.param(Union[int, str], str, id="sending-type-is-union"),
+        pytest.param(Union[int, str, bool], Union[int, str], id="sending-union-is-superset-of-receiver"),
+        pytest.param(Union[int, bool], Union[int, str], id="partially-overlapping-unions-with-primitives"),
+        pytest.param(Union[int, TestClass1], Union[int, TestClass2], id="partially-overlapping-unions-with-classes"),
         pytest.param(List[int], List[str], id="different-lists-of-primitives"),
         pytest.param(List[int], List, id="list-of-primitive-to-bare-list"),  # is "correct", but we don't support it
         pytest.param(List[int], list, id="list-of-primitive-to-list-object"),  # is "correct", but we don't support it
@@ -545,4 +554,4 @@ def test_find_unambiguous_connection_many_connections_possible_no_name_matches()
     ],
 )
 def test_get_socket_type_desc(type_, repr):
-    assert _get_socket_type_desc(type_) == repr
+    assert get_socket_type_desc(type_) == repr
