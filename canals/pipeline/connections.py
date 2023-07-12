@@ -27,8 +27,11 @@ def _type_is_compatible(source_type, dest_type):
     """
     Checks whether the source type is equal or a subtype of the destination type. Used to validate pipeline connections.
 
-    NOTE: This method has no pretense to perform proper type matching. Consider simplifying the typing of your
-    components if you observe unexpected errors during component connection.
+    Note: this method has no pretense to perform proper type matching. It especially does not deal with aliasing of
+    typing classes such as `List` or `Dict` to their runtime counterparts `list` and `dict`. It also does not deal well
+    with "bare" types, so `List` is treated differently from `List[Any]`, even though they should be the same.
+
+    Consider simplifying the typing of your components if you observe unexpected errors during component connection.
     """
     if source_type == dest_type or dest_type is Any:
         return True
