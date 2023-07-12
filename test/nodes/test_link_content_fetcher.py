@@ -156,7 +156,7 @@ def test_fetch_exception_during_content_extraction_no_raise_on_failure(caplog, m
     """
     Checks the behavior when there's an exception during content extraction, and raise_on_failure is set to False.
     """
-    caplog.set_level(logging.DEBUG)
+    caplog.set_level(logging.WARNING)
     url = "https://www.example.com"
     r = LinkContentFetcher()
 
@@ -172,7 +172,7 @@ def test_fetch_exception_during_content_extraction_raise_on_failure(caplog, mock
     """
     Checks the behavior when there's an exception during content extraction, and raise_on_failure is set to True.
     """
-    caplog.set_level(logging.DEBUG)
+    caplog.set_level(logging.WARNING)
     url = "https://www.example.com"
     r = LinkContentFetcher(raise_on_failure=True)
 
@@ -186,7 +186,7 @@ def test_fetch_exception_during_request_get_no_raise_on_failure(caplog):
     """
     Checks the behavior when there's an exception during request.get, and raise_on_failure is set to False.
     """
-    caplog.set_level(logging.DEBUG)
+    caplog.set_level(logging.WARNING)
     url = "https://www.example.com"
     r = LinkContentFetcher()
 
@@ -200,7 +200,7 @@ def test_fetch_exception_during_request_get_raise_on_failure(caplog):
     """
     Checks the behavior when there's an exception during request.get, and raise_on_failure is set to True.
     """
-    caplog.set_level(logging.DEBUG)
+    caplog.set_level(logging.WARNING)
     url = "https://www.example.com"
     r = LinkContentFetcher(raise_on_failure=True)
 
@@ -215,7 +215,7 @@ def test_handle_various_response_errors(caplog, mocked_requests, error_code: int
     """
     Tests the handling of various HTTP error responses.
     """
-    caplog.set_level(logging.DEBUG)
+    caplog.set_level(logging.WARNING)
 
     url = "https://some-problematic-url.com"
 
