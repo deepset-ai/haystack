@@ -24,8 +24,8 @@ class Parity:
     @component.output  # type: ignore
     def output(self):
         class Output:
-            even: Optional[int] = None
-            odd: Optional[int] = None
+            even: int = None
+            odd: int = None
 
         return Output
 
