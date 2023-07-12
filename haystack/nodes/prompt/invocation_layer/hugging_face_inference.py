@@ -294,7 +294,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             is_inference_api = False
             try:
                 task_name = get_task(model_name_or_path, use_auth_token=kwargs.get("use_auth_token", None))
-                is_inference_api = "api_key" in kwargs
+                is_inference_api = bool(kwargs.get("api_key", None))
             except RuntimeError:
                 # This will fail for all non-HF models
                 return False
