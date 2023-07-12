@@ -23,7 +23,7 @@ def parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
     return connection, None
 
 
-def _type_is_compatible(sender_type, receiver_type):
+def _type_is_compatible(sender, receiver):
     """
     Checks whether the source type is equal or a subtype of the destination type. Used to validate pipeline connections.
 
@@ -33,26 +33,26 @@ def _type_is_compatible(sender_type, receiver_type):
 
     Consider simplifying the typing of your components if you observe unexpected errors during component connection.
     """
-    if sender_type == receiver_type or receiver_type is Any:
+    if sender == receiver or receiver is Any:
         return True
 
-    if sender_type is Any:
+    if sender is Any:
         return False
 
     try:
-        if issubclass(sender_type, receiver_type):
+        if issubclass(sender, receiver):
             return True
     except TypeError:  # typing classes can't be used with issubclass, so we deal with them below
         pass
 
-    source_origin = get_origin(sender_type)
-    dest_origin = get_origin(receiver_type)
+    source_origin = get_origin(sender)
+    dest_origin = get_origin(receiver)
 
     if source_origin is not Union and dest_origin is Union:
-        return any(_type_is_compatible(sender_type, union_arg) for union_arg in get_args(receiver_type))
+        return any(_type_is_compatible(sender, union_arg) for union_arg in get_args(receiver))
 
-    source_args = get_args(sender_type)
-    dest_args = get_args(receiver_type)
+    source_args = get_args(sender)
+    dest_args = get_args(receiver)
     if not source_origin or not dest_origin or source_origin != dest_origin or len(source_args) > len(dest_args):
         return False
 
@@ -60,37 +60,43 @@ def _type_is_compatible(sender_type, receiver_type):
 
 
 def find_unambiguous_connection(
-    from_node: str, to_node: str, from_sockets: List[OutputSocket], to_sockets: List[InputSocket]
+    sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
 ) -> Tuple[OutputSocket, InputSocket]:
     """
     Find one single possible connection between two lists of sockets.
     """
     # List all combinations of sockets that match by type
     possible_connections = [
-        (from_sock, to_sock)
-        for from_sock, to_sock in itertools.product(from_sockets, to_sockets)
-        if _type_is_compatible(from_sock.type, to_sock.type)
+        (sender_sock, receiver_sock)
+        for sender_sock, receiver_sock in itertools.product(sender_sockets, receiver_sockets)
+        if _type_is_compatible(sender_sock.type, receiver_sock.type)
     ]
 
     # No connections seem to be possible
     if not possible_connections:
         connections_status_str = _connections_status(
-            from_node=from_node, from_sockets=from_sockets, to_node=to_node, to_sockets=to_sockets
+            sender_node=sender_node,
+            sender_sockets=sender_sockets,
+            receiver_node=receiver_node,
+            receiver_sockets=receiver_sockets,
         )
 
         # Both sockets were specified: explain why the types don't match
-        if len(from_sockets) == len(to_sockets) and len(from_sockets) == 1:
+        if len(sender_sockets) == len(receiver_sockets) and len(sender_sockets) == 1:
             raise PipelineConnectError(
-                f"Cannot connect '{from_node}.{from_sockets[0].name}' with '{to_node}.{to_sockets[0].name}': "
+                f"Cannot connect '{sender_node}.{sender_sockets[0].name}' with '{receiver_node}.{receiver_sockets[0].name}': "
                 f"their declared input and output types do not match.\n{connections_status_str}"
             )
 
         # Not both sockets were specified: explain there's no possible match on any pair
         connections_status_str = _connections_status(
-            from_node=from_node, from_sockets=from_sockets, to_node=to_node, to_sockets=to_sockets
+            sender_node=sender_node,
+            sender_sockets=sender_sockets,
+            receiver_node=receiver_node,
+            receiver_sockets=receiver_sockets,
         )
         raise PipelineConnectError(
-            f"Cannot connect '{from_node}' with '{to_node}': "
+            f"Cannot connect '{sender_node}' with '{receiver_node}': "
             f"no matching connections available.\n{connections_status_str}"
         )
 
@@ -104,37 +110,42 @@ def find_unambiguous_connection(
             # TODO allow for multiple connections at once if there is no ambiguity?
             # TODO give priority to sockets that have no default values?
             connections_status_str = _connections_status(
-                from_node=from_node, from_sockets=from_sockets, to_node=to_node, to_sockets=to_sockets
+                sender_node=sender_node,
+                sender_sockets=sender_sockets,
+                receiver_node=receiver_node,
+                receiver_sockets=receiver_sockets,
             )
             raise PipelineConnectError(
-                f"Cannot connect '{from_node}' with '{to_node}': more than one connection is possible "
+                f"Cannot connect '{sender_node}' with '{receiver_node}': more than one connection is possible "
                 "between these components. Please specify the connection name, like: "
-                f"pipeline.connect('{from_node}.{possible_connections[0][0].name}', "
-                f"'{to_node}.{possible_connections[0][1].name}').\n{connections_status_str}"
+                f"pipeline.connect('{sender_node}.{possible_connections[0][0].name}', "
+                f"'{receiver_node}.{possible_connections[0][1].name}').\n{connections_status_str}"
             )
 
     return possible_connections[0]
 
 
-def _connections_status(from_node: str, to_node: str, from_sockets: List[OutputSocket], to_sockets: List[InputSocket]):
+def _connections_status(
+    sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
+):
     """
     Lists the status of the sockets, for error messages.
     """
-    from_sockets_entries = []
-    for from_socket in from_sockets:
-        socket_types = get_socket_type_desc(from_socket.type)
-        from_sockets_entries.append(f" - {from_socket.name} ({socket_types})")
-    from_sockets_list = "\n".join(from_sockets_entries)
+    sender_sockets_entries = []
+    for sender_socket in sender_sockets:
+        socket_types = get_socket_type_desc(sender_socket.type)
+        sender_sockets_entries.append(f" - {sender_socket.name} ({socket_types})")
+    sender_sockets_list = "\n".join(sender_sockets_entries)
 
-    to_sockets_entries = []
-    for to_socket in to_sockets:
-        socket_types = get_socket_type_desc(to_socket.type)
-        to_sockets_entries.append(
-            f" - {to_socket.name} ({socket_types}), {'sent by '+to_socket.sender if to_socket.sender else 'available'}"
+    receiver_sockets_entries = []
+    for receiver_socket in receiver_sockets:
+        socket_types = get_socket_type_desc(receiver_socket.type)
+        receiver_sockets_entries.append(
+            f" - {receiver_socket.name} ({socket_types}), {'sent by '+receiver_socket.sender if receiver_socket.sender else 'available'}"
         )
-    to_sockets_list = "\n".join(to_sockets_entries)
+    receiver_sockets_list = "\n".join(receiver_sockets_entries)
 
-    return f"'{from_node}':\n{from_sockets_list}\n'{to_node}':\n{to_sockets_list}"
+    return f"'{sender_node}':\n{sender_sockets_list}\n'{receiver_node}':\n{receiver_sockets_list}"
 
 
 def get_socket_type_desc(type_):

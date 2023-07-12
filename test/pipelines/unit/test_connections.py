@@ -481,10 +481,10 @@ def test_find_unambiguous_connection_many_connections_possible_no_name_matches()
     )
     with pytest.raises(PipelineConnectError, match=expected_message):
         find_unambiguous_connection(
-            from_node="comp1",
-            to_node="comp2",
-            from_sockets=find_output_sockets(Component1()).values(),
-            to_sockets=find_input_sockets(Component2()).values(),
+            sender_node="comp1",
+            receiver_node="comp2",
+            sender_sockets=find_output_sockets(Component1()).values(),
+            receiver_sockets=find_input_sockets(Component2()).values(),
         )
 
 

@@ -195,7 +195,7 @@ class Pipeline:
         from_sockets = [from_socket] if from_socket_name else list(from_sockets.values())
         to_sockets = [to_socket] if to_socket_name else list(to_sockets.values())
         from_socket, to_socket = find_unambiguous_connection(
-            from_node=from_node, from_sockets=from_sockets, to_node=to_node, to_sockets=to_sockets
+            sender_node=from_node, sender_sockets=from_sockets, receiver_node=to_node, receiver_sockets=to_sockets
         )
 
         # Connect the components on these sockets
