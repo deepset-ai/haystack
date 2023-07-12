@@ -23,7 +23,7 @@ def parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
     return connection, None
 
 
-def _types_are_compatible(sender, receiver):
+def _types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
     """
     Checks whether the source type is equal or a subtype of the destination type. Used to validate pipeline connections.
 
@@ -51,14 +51,12 @@ def _types_are_compatible(sender, receiver):
     if sender_origin is not Union and receiver_origin is Union:
         return any(_types_are_compatible(sender, union_arg) for union_arg in get_args(receiver))
 
+    if not sender_origin or not receiver_origin or sender_origin != receiver_origin:
+        return False
+
     sender_args = get_args(sender)
     receiver_args = get_args(receiver)
-    if (
-        not sender_origin
-        or not receiver_origin
-        or sender_origin != receiver_origin
-        or len(sender_args) > len(receiver_args)
-    ):
+    if len(sender_args) > len(receiver_args):
         return False
 
     return all(_types_are_compatible(*args) for args in zip(sender_args, receiver_args))
