@@ -36,7 +36,6 @@ jobs:
         key: hf-models
       env:
         SEGMENT_DOWNLOAD_TIMEOUT_MINS: 15
-      
     - name: Download models
       if: steps.cache-hf-models.outputs.cache-hit != 'true'
       run: |
