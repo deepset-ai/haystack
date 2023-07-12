@@ -36,7 +36,7 @@ class TestEnum(Enum):
 
 
 @pytest.mark.parametrize(
-    "output,input",
+    "from_type,to_type",
     [
         pytest.param(str, str, id="same-primitives"),
         pytest.param(str, Optional[str], id="receiving-primitive-is-optional"),
@@ -50,93 +50,93 @@ class TestEnum(Enum):
         pytest.param(List[int], List[int], id="same-lists"),
         pytest.param(List[int], Optional[List[int]], id="receiving-list-is-optional"),
         pytest.param(Optional[List[int]], List[int], id="sending-list-is-optional"),
-        # pytest.param(List[int], List[Any], id="list-of-primitive-to-list-of-any"),
+        pytest.param(List[int], List[Any], id="list-of-primitive-to-list-of-any"),
         pytest.param(List[TestClass1], List[TestClass1], id="list-of-same-classes"),
-        # pytest.param(List[TestClass3], List[TestClass1], id="list-of-subclass-to-list-of-class"),
-        # pytest.param(List[TestClass1], List[Any], id="list-of-classes-to-list-of-any"),
+        pytest.param(List[TestClass3], List[TestClass1], id="list-of-subclass-to-list-of-class"),
+        pytest.param(List[TestClass1], List[Any], id="list-of-classes-to-list-of-any"),
         pytest.param(List[Set[Sequence[bool]]], List[Set[Sequence[bool]]], id="nested-sequences-of-same-primitives"),
-        # pytest.param(
-        #     List[Set[Sequence[bool]]],
-        #     List[Set[Sequence[Any]]],
-        #     id="nested-sequences-of-primitives-to-nested-sequences-of-any",
-        # ),
+        pytest.param(
+            List[Set[Sequence[bool]]],
+            List[Set[Sequence[Any]]],
+            id="nested-sequences-of-primitives-to-nested-sequences-of-any",
+        ),
         pytest.param(
             List[Set[Sequence[TestClass1]]], List[Set[Sequence[TestClass1]]], id="nested-sequences-of-same-classes"
         ),
-        # pytest.param(
-        #     List[Set[Sequence[TestClass3]]],
-        #     List[Set[Sequence[TestClass1]]],
-        #     id="nested-sequences-of-subclasses-to-nested-sequences-of-classes",
-        # ),
-        # pytest.param(
-        #     List[Set[Sequence[TestClass1]]],
-        #     List[Set[Sequence[Any]]],
-        #     id="nested-sequences-of-classes-to-nested-sequences-of-any",
-        # ),
+        pytest.param(
+            List[Set[Sequence[TestClass3]]],
+            List[Set[Sequence[TestClass1]]],
+            id="nested-sequences-of-subclasses-to-nested-sequences-of-classes",
+        ),
+        pytest.param(
+            List[Set[Sequence[TestClass1]]],
+            List[Set[Sequence[Any]]],
+            id="nested-sequences-of-classes-to-nested-sequences-of-any",
+        ),
         pytest.param(Dict[str, int], Dict[str, int], id="same-dicts-of-primitives"),
-        # pytest.param(Dict[str, int], Dict[Any, int], id="dict-of-primitives-to-dict-of-any-keys"),
-        # pytest.param(Dict[str, int], Dict[str, Any], id="dict-of-primitives-to-dict-of-any-values"),
-        # pytest.param(Dict[str, int], Dict[Any, Any], id="dict-of-primitives-to-dict-of-any-key-and-values"),
+        pytest.param(Dict[str, int], Dict[Any, int], id="dict-of-primitives-to-dict-of-any-keys"),
+        pytest.param(Dict[str, int], Dict[str, Any], id="dict-of-primitives-to-dict-of-any-values"),
+        pytest.param(Dict[str, int], Dict[Any, Any], id="dict-of-primitives-to-dict-of-any-key-and-values"),
         pytest.param(Dict[str, TestClass1], Dict[str, TestClass1], id="same-dicts-of-classes-values"),
-        # pytest.param(Dict[str, TestClass3], Dict[str, TestClass1], id="dict-of-subclasses-to-dict-of-classes"),
-        # pytest.param(Dict[str, TestClass1], Dict[Any, TestClass1], id="dict-of-classes-to-dict-of-any-keys"),
-        # pytest.param(Dict[str, TestClass1], Dict[str, Any], id="dict-of-classes-to-dict-of-any-values"),
-        # pytest.param(Dict[str, TestClass1], Dict[Any, Any], id="dict-of-classes-to-dict-of-any-key-and-values"),
+        pytest.param(Dict[str, TestClass3], Dict[str, TestClass1], id="dict-of-subclasses-to-dict-of-classes"),
+        pytest.param(Dict[str, TestClass1], Dict[Any, TestClass1], id="dict-of-classes-to-dict-of-any-keys"),
+        pytest.param(Dict[str, TestClass1], Dict[str, Any], id="dict-of-classes-to-dict-of-any-values"),
+        pytest.param(Dict[str, TestClass1], Dict[Any, Any], id="dict-of-classes-to-dict-of-any-key-and-values"),
         pytest.param(
             Dict[str, Mapping[str, Dict[str, int]]],
             Dict[str, Mapping[str, Dict[str, int]]],
             id="nested-mappings-of-same-primitives",
         ),
-        # pytest.param(
-        #     Dict[str, Mapping[str, Dict[str, int]]],
-        #     Dict[str, Mapping[str, Dict[Any, int]]],
-        #     id="nested-mapping-of-primitives-to-nested-mapping-of-any-keys",
-        # ),
-        # pytest.param(
-        #     Dict[str, Mapping[str, Dict[str, int]]],
-        #     Dict[str, Mapping[Any, Dict[str, int]]],
-        #     id="nested-mapping-of-primitives-to-nested-mapping-of-higher-level-any-keys",
-        # ),
-        # pytest.param(
-        #     Dict[str, Mapping[str, Dict[str, int]]],
-        #     Dict[str, Mapping[str, Dict[str, Any]]],
-        #     id="nested-mapping-of-primitives-to-nested-mapping-of-any-values",
-        # ),
-        # pytest.param(
-        #     Dict[str, Mapping[str, Dict[str, int]]],
-        #     Dict[str, Mapping[Any, Dict[Any, Any]]],
-        #     id="nested-mapping-of-primitives-to-nested-mapping-of-any-keys-and-values",
-        # ),
+        pytest.param(
+            Dict[str, Mapping[str, Dict[str, int]]],
+            Dict[str, Mapping[str, Dict[Any, int]]],
+            id="nested-mapping-of-primitives-to-nested-mapping-of-any-keys",
+        ),
+        pytest.param(
+            Dict[str, Mapping[str, Dict[str, int]]],
+            Dict[str, Mapping[Any, Dict[str, int]]],
+            id="nested-mapping-of-primitives-to-nested-mapping-of-higher-level-any-keys",
+        ),
+        pytest.param(
+            Dict[str, Mapping[str, Dict[str, int]]],
+            Dict[str, Mapping[str, Dict[str, Any]]],
+            id="nested-mapping-of-primitives-to-nested-mapping-of-any-values",
+        ),
+        pytest.param(
+            Dict[str, Mapping[str, Dict[str, int]]],
+            Dict[str, Mapping[Any, Dict[Any, Any]]],
+            id="nested-mapping-of-primitives-to-nested-mapping-of-any-keys-and-values",
+        ),
         pytest.param(
             Dict[str, Mapping[str, Dict[str, TestClass1]]],
             Dict[str, Mapping[str, Dict[str, TestClass1]]],
             id="nested-mappings-of-same-classes",
         ),
-        # pytest.param(
-        #     Dict[str, Mapping[str, Dict[str, TestClass3]]],
-        #     Dict[str, Mapping[str, Dict[str, TestClass1]]],
-        #     id="nested-mapping-of-subclasses-to-nested-mapping-of-classes",
-        # ),
-        # pytest.param(
-        #     Dict[str, Mapping[str, Dict[str, TestClass1]]],
-        #     Dict[str, Mapping[str, Dict[Any, TestClass1]]],
-        #     id="nested-mapping-of-classes-to-nested-mapping-of-any-keys",
-        # ),
-        # pytest.param(
-        #     Dict[str, Mapping[str, Dict[str, TestClass1]]],
-        #     Dict[str, Mapping[Any, Dict[str, TestClass1]]],
-        #     id="nested-mapping-of-classes-to-nested-mapping-of-higher-level-any-keys",
-        # ),
-        # pytest.param(
-        #     Dict[str, Mapping[str, Dict[str, TestClass1]]],
-        #     Dict[str, Mapping[str, Dict[str, Any]]],
-        #     id="nested-mapping-of-classes-to-nested-mapping-of-any-values",
-        # ),
-        # pytest.param(
-        #     Dict[str, Mapping[str, Dict[str, TestClass1]]],
-        #     Dict[str, Mapping[Any, Dict[Any, Any]]],
-        #     id="nested-mapping-of-classes-to-nested-mapping-of-any-keys-and-values",
-        # ),
+        pytest.param(
+            Dict[str, Mapping[str, Dict[str, TestClass3]]],
+            Dict[str, Mapping[str, Dict[str, TestClass1]]],
+            id="nested-mapping-of-subclasses-to-nested-mapping-of-classes",
+        ),
+        pytest.param(
+            Dict[str, Mapping[str, Dict[str, TestClass1]]],
+            Dict[str, Mapping[str, Dict[Any, TestClass1]]],
+            id="nested-mapping-of-classes-to-nested-mapping-of-any-keys",
+        ),
+        pytest.param(
+            Dict[str, Mapping[str, Dict[str, TestClass1]]],
+            Dict[str, Mapping[Any, Dict[str, TestClass1]]],
+            id="nested-mapping-of-classes-to-nested-mapping-of-higher-level-any-keys",
+        ),
+        pytest.param(
+            Dict[str, Mapping[str, Dict[str, TestClass1]]],
+            Dict[str, Mapping[str, Dict[str, Any]]],
+            id="nested-mapping-of-classes-to-nested-mapping-of-any-values",
+        ),
+        pytest.param(
+            Dict[str, Mapping[str, Dict[str, TestClass1]]],
+            Dict[str, Mapping[Any, Dict[Any, Any]]],
+            id="nested-mapping-of-classes-to-nested-mapping-of-any-keys-and-values",
+        ),
         pytest.param(
             Literal["a", "b", "c"],
             Literal["a", "b", "c"],
@@ -154,9 +154,9 @@ class TestEnum(Enum):
         ),
     ],
 )
-def test_connect_compatible_types(output, input):
-    comp1 = make_component(output=output)
-    comp2 = make_component(input=input)
+def test_connect_compatible_types(from_type, to_type):
+    comp1 = make_component(output=from_type)
+    comp2 = make_component(input=to_type)
 
     pipe = Pipeline()
     pipe.add_component("c1", comp1)
@@ -166,13 +166,13 @@ def test_connect_compatible_types(output, input):
 
 
 @pytest.mark.parametrize(
-    "input,output",
+    "from_type, to_type",
     [
         pytest.param(int, bool, id="different-primitives"),
         pytest.param(TestClass1, TestClass2, id="different-classes"),
         pytest.param(TestClass1, TestClass3, id="class-to-subclass"),
-        # pytest.param(Any, int, id="any-to-primitive"),
-        # pytest.param(Any, TestClass2, id="any-to-class"),
+        pytest.param(Any, int, id="any-to-primitive"),
+        pytest.param(Any, TestClass2, id="any-to-class"),
         pytest.param(List[int], List[str], id="different-lists-of-primitives"),
         pytest.param(List[TestClass1], List[TestClass2], id="different-lists-of-classes"),
         pytest.param(List[TestClass1], List[TestClass3], id="lists-of-classes-to-subclasses"),
@@ -278,8 +278,13 @@ def test_connect_compatible_types(output, input):
         ),
         pytest.param(
             Literal["a", "b", "c"],
-            Literal["a", "b"],
+            Literal["x", "y"],
             id="different-literal-of-same-primitive",
+        ),
+        pytest.param(
+            Literal["a", "b", "c"],
+            Literal["a", "b"],
+            id="subset-literal",
         ),
         pytest.param(
             Literal[TestEnum.TEST1],
@@ -293,9 +298,9 @@ def test_connect_compatible_types(output, input):
         ),
     ],
 )
-def test_connect_non_compatible_types(output, input):
-    comp1 = make_component(output=output)
-    comp2 = make_component(input=input)
+def test_connect_non_compatible_types(from_type, to_type):
+    comp1 = make_component(output=from_type)
+    comp2 = make_component(input=to_type)
 
     pipe = Pipeline()
     pipe.add_component("c1", comp1)

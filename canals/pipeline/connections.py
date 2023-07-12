@@ -25,9 +25,10 @@ def parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
 
 def type_is_compatible(source_type, dest_type):
     """
-    Checks whether the source type is equal or a subtype of the destination type.
+    Checks whether the source type is equal or a subtype of the destination type. Used to validate pipeline connections.
 
-    Used to validate pipeline connections.
+    NOTE: This method has no pretense to perform proper type matching. Consider simplifying the typing of your
+    components if you observe unexpected errors during component connection.
     """
     if source_type == dest_type or dest_type is Any:
         return True
@@ -36,19 +37,22 @@ def type_is_compatible(source_type, dest_type):
         return False
 
     try:
-        print(source_type, dest_type)
         if issubclass(source_type, dest_type):
             return True
-    except TypeError:
-        return False
+    except TypeError:  # typing classes can't be used with issubclass, so we deal with them below
+        pass
 
     source_origin = get_origin(source_type)
     dest_origin = get_origin(dest_type)
     if not source_origin or not dest_origin or source_origin != dest_origin:
         return False
 
-    args_pairs = zip(get_args(source_type), get_args(dest_type))
-    return all(type_is_compatible(*args) for args in args_pairs)
+    source_args = get_args(source_type)
+    dest_args = get_args(dest_type)
+    if len(source_args) != len(dest_args):
+        return False
+
+    return all(type_is_compatible(*args) for args in zip(source_args, dest_args))
 
 
 def find_unambiguous_connection(
@@ -59,9 +63,9 @@ def find_unambiguous_connection(
     """
     # List all combinations of sockets that match by type
     possible_connections = [
-        (out_sock, in_sock)
-        for out_sock, in_sock in itertools.product(from_sockets, to_sockets)
-        if not in_sock.sender and all(type_is_compatible(*pair) for pair in zip(out_sock.types, in_sock.types))
+        (from_sock, to_sock)
+        for from_sock, to_sock in itertools.product(from_sockets, to_sockets)
+        if all(type_is_compatible(*pair) for pair in zip(from_sock.types, to_sock.types))
     ]
 
     # No connections seem to be possible
