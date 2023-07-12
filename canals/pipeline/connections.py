@@ -23,7 +23,7 @@ def parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
     return connection, None
 
 
-def _type_is_compatible(source_type, dest_type):
+def _type_is_compatible(sender_type, receiver_type):
     """
     Checks whether the source type is equal or a subtype of the destination type. Used to validate pipeline connections.
 
@@ -33,26 +33,26 @@ def _type_is_compatible(source_type, dest_type):
 
     Consider simplifying the typing of your components if you observe unexpected errors during component connection.
     """
-    if source_type == dest_type or dest_type is Any:
+    if sender_type == receiver_type or receiver_type is Any:
         return True
 
-    if source_type is Any:
+    if sender_type is Any:
         return False
 
     try:
-        if issubclass(source_type, dest_type):
+        if issubclass(sender_type, receiver_type):
             return True
     except TypeError:  # typing classes can't be used with issubclass, so we deal with them below
         pass
 
-    source_origin = get_origin(source_type)
-    dest_origin = get_origin(dest_type)
+    source_origin = get_origin(sender_type)
+    dest_origin = get_origin(receiver_type)
 
     if source_origin is not Union and dest_origin is Union:
-        return any(_type_is_compatible(source_type, union_arg) for union_arg in get_args(dest_type))
+        return any(_type_is_compatible(sender_type, union_arg) for union_arg in get_args(receiver_type))
 
-    source_args = get_args(source_type)
-    dest_args = get_args(dest_type)
+    source_args = get_args(sender_type)
+    dest_args = get_args(receiver_type)
     if not source_origin or not dest_origin or source_origin != dest_origin or len(source_args) > len(dest_args):
         return False
 

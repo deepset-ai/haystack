@@ -35,12 +35,3 @@ def find_output_sockets(component) -> Dict[str, OutputSocket]:
     Find a component's output sockets.
     """
     return {f.name: OutputSocket(name=f.name, type=f.type) for f in fields(component.__canals_output__)}
-
-
-# def _get_types(field: Field) -> Set[Any]:
-#     # if get_origin(field.type) is Union:
-#     #     return {t for t in get_args(field.type) if t is not type(None)}
-
-#     if get_origin(field.type) is Union:
-#         return {t for t in get_args(field.type) if t is not type(None)}
-#     return {field.type}
