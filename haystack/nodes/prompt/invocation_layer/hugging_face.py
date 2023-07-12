@@ -4,6 +4,7 @@ import os
 
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer.utils import get_task
 from haystack.lazy_imports import LazyImport
 
 
@@ -23,7 +24,6 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     )
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
     from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler
-    from haystack.nodes.prompt.invocation_layer.utils import get_task
 
     class StopWordsCriteria(StoppingCriteria):
         """
