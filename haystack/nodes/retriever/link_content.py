@@ -71,11 +71,13 @@ class LinkContentFetcher(BaseComponent):
 
     def fetch(self, url: str, timeout: Optional[int] = 3, doc_kwargs: Optional[dict] = None) -> List[Document]:
         """
-        Fetches content from a URL and converts it into a list of Document objects.
+        Fetches content from a URL and converts it into a list of Document objects. If no content is extracted,
+        an empty list is returned.
+
         :param url: URL to fetch content from.
         :param timeout: Timeout in seconds for the request.
         :param doc_kwargs: Optional kwargs to pass to the Document constructor.
-        :return: List of Document objects.
+        :return: List of Document objects or an empty list if no content is extracted.
         """
         if not url or not self._is_valid_url(url):
             raise InvalidURL("Invalid or missing URL: {}".format(url))
@@ -98,14 +100,18 @@ class LinkContentFetcher(BaseComponent):
                     logger.debug("%s handler extracted content from %s", handler, url)
                 else:
                     logger.warning("%s handler failed to extract content from %s", handler, url)
-                    text = extracted_doc.get("text", "")
-                    extracted_doc["content"] = text
-                document = Document.from_dict(extracted_doc)
+                    # perhaps we have a snippet from web search, if so, use it as content
+                    snippet_text = extracted_doc.get("snippet_text", "")
+                    if snippet_text:
+                        extracted_doc["content"] = snippet_text
 
-                if self.processor:
-                    fetched_documents = self.processor.process(documents=[document])
-                else:
-                    fetched_documents = [document]
+                if "content" in extracted_doc:
+                    document = Document.from_dict(extracted_doc)
+
+                    if self.processor:
+                        fetched_documents = self.processor.process(documents=[document])
+                    else:
+                        fetched_documents = [document]
         return fetched_documents
 
     def run(

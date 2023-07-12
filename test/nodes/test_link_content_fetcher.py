@@ -146,9 +146,7 @@ def test_fetch_default_empty_content(mocked_requests):
         result = r.fetch(url=url, timeout=timeout)
 
     assert "text" not in result
-    assert isinstance(result, list) and len(result) == 1
-    assert isinstance(result[0], Document)
-    assert result[0].content == content_text
+    assert isinstance(result, list) and len(result) == 0
 
 
 @pytest.mark.unit
