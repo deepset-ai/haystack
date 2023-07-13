@@ -45,12 +45,7 @@ class MemoryRetriever(StoreAwareMixin):
     def output(self):  # type: ignore
         return MemoryRetriever.Output
 
-    def __init__(
-        self,
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: int = 10,
-        scale_score: bool = True,
-    ):
+    def __init__(self, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = True):
         """
         Create a MemoryRetriever component.
 

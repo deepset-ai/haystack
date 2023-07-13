@@ -9,7 +9,6 @@ from haystack.preview.pipeline import NotAStoreError
 from haystack.preview.document_stores import StoreAwareMixin, DuplicatePolicy, Store
 
 
-
 # Note: we're using a real class instead of a mock because mocks don't play too well with protocols.
 class MockStore:
     def count_documents(self) -> int:
@@ -210,7 +209,7 @@ def test_add_component_store_aware_component_receives_wrong_docstore_name():
         @component.output
         def output(self):
             return MockComponent.Output
-          
+
         def run(self, data: Input) -> Output:
             return MockComponent.Output(value=data.value)
 
