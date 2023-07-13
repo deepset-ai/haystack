@@ -503,7 +503,7 @@ def test_cohere_ranker_batch_multiple_queries_multiple_doc_lists(docs, mock_cohe
 
 
 @pytest.mark.unit
-def test_recentness_ranker_score_outside_limits(docs):
+def test_recentness_ranker_score_outside_limits():
     query = "Dummy query"
     docs = [
         Document(content="""ABC""", meta={"date": "2021-02-11"}, score=1.88, id="1"),

@@ -47,7 +47,7 @@ class RecentnessRanker(BaseRanker):
     # pylint: disable=arguments-differ
     def predict(  # type: ignore
         self, query: str, documents: List[Document], top_k: Optional[int] = None
-    ) -> Tuple[Dict, str]:
+    ) -> List[Document]:
         # sort documents based on age, newest comes first
         try:
             sorted_by_date = sorted(documents, reverse=True, key=lambda x: parse(x.meta[self.date_identifier]))
@@ -126,7 +126,7 @@ class RecentnessRanker(BaseRanker):
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
-    ) -> Tuple[Dict, str]:
+    ) -> Union[List[Document], List[List[Document]]]:
         if isinstance(documents[0], Document):
             return self.run("", documents=documents, top_k=top_k)  # type: ignore
         nested_docs = []
