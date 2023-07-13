@@ -59,7 +59,7 @@ class WebRetriever(BaseRetriever):
         search_engine_provider: Union[str, SearchEngine] = "SerperDev",
         top_search_results: Optional[int] = 10,
         top_k: Optional[int] = 5,
-        mode: Literal["snippets", "raw_documents", "preprocessed_documents"] = "snippets",
+        mode: Literal["snippets", "raw_documents", "preprocessed_documents"] = "preprocessed_documents",
         preprocessor: Optional[PreProcessor] = None,
         cache_document_store: Optional[BaseDocumentStore] = None,
         cache_index: Optional[str] = None,
@@ -67,6 +67,9 @@ class WebRetriever(BaseRetriever):
         cache_time: int = 1 * 24 * 60 * 60,
     ):
         """
+        :param api_key: API key for the search engine provider.
+        :param search_engine_provider: Name of the search engine provider class, see `providers.py` for a list of supported providers.
+        :param top_search_results: Number of top search results to be retrieved.
         :param top_k: Top k documents to be returned by the retriever.
         :param mode: Whether to return snippets, raw documents, or preprocessed documents. Preprocessed documents are the default.
         :param preprocessor: Optional PreProcessor to be used to split documents into paragraphs. If not provided, the default PreProcessor is used.
