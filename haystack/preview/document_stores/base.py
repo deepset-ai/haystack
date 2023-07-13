@@ -1,7 +1,10 @@
-from typing import Protocol, Optional, Dict, Any, List, runtime_checkable
+from typing import Protocol, Optional, Dict, Any, List
 
 import logging
+from abc import ABC
 from enum import Enum
+
+from canals.component.component import save_init_params
 
 from haystack.preview.dataclasses import Document
 
@@ -15,8 +18,7 @@ class DuplicatePolicy(Enum):
     FAIL = "fail"
 
 
-@runtime_checkable
-class Store(Protocol):
+class Store(ABC):
     """
     Stores Documents to be used by the components of a Pipeline.
 
@@ -26,6 +28,18 @@ class Store(Protocol):
     In order to retrieve documents, consider using a Retriever that supports the document store implementation that
     you're using.
     """
+
+    init_parameters: Dict[str, Any]
+
+    def __init_subclass__(cls, **kwargs):
+        """
+        Automatically register all the init parameters in an instance attribute called `init_parameters`.
+        Used for serialization of the stores. See Canal's documentation to know more about this mechanism.
+
+        `__init_subclass__` is invoked when a subclass of Store is _imported_ (not instantiated), quite like `__new__`.
+        """
+        super().__init_subclass__(**kwargs)
+        cls.__init__ = save_init_params(cls.__init__)
 
     def count_documents(self) -> int:
         """

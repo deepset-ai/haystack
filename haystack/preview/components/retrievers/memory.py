@@ -1,18 +1,18 @@
-from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
 
-from haystack.preview import component, Document, ComponentInput, ComponentOutput
-from haystack.preview.document_stores import MemoryDocumentStore
+from haystack.preview import component, Document
+from haystack.preview.document_stores import MemoryDocumentStore, StoreAwareMixin
 
 
 @component
-class MemoryRetriever:
+class MemoryRetriever(StoreAwareMixin):
     """
     A component for retrieving documents from a MemoryDocumentStore using the BM25 algorithm.
+
+    Needs to be connected to a MemoryDocumentStore to run.
     """
 
-    @dataclass
-    class Input(ComponentInput):
+    class Input:
         """
         Input data for the MemoryRetriever component.
 
@@ -27,10 +27,8 @@ class MemoryRetriever:
         filters: Dict[str, Any]
         top_k: int
         scale_score: bool
-        stores: Dict[str, Any]
 
-    @dataclass
-    class Output(ComponentOutput):
+    class Output:
         """
         Output data from the MemoryRetriever component.
 
@@ -39,24 +37,24 @@ class MemoryRetriever:
 
         documents: List[List[Document]]
 
-    def __init__(
-        self,
-        document_store_name: str,
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: int = 10,
-        scale_score: bool = True,
-    ):
+    @component.input
+    def input(self):  # type: ignore
+        return MemoryRetriever.Input
+
+    @component.output
+    def output(self):  # type: ignore
+        return MemoryRetriever.Output
+
+    def __init__(self, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = True):
         """
         Create a MemoryRetriever component.
 
-        :param document_store_name: The name of the MemoryDocumentStore to retrieve documents from.
         :param filters: A dictionary with filters to narrow down the search space (default is None).
         :param top_k: The maximum number of documents to retrieve (default is 10).
         :param scale_score: Whether to scale the BM25 score or not (default is True).
 
         :raises ValueError: If the specified top_k is not > 0.
         """
-        self.document_store_name = document_store_name
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.defaults = {"top_k": top_k, "scale_score": scale_score, "filters": filters or {}}
@@ -70,20 +68,15 @@ class MemoryRetriever:
 
         :raises ValueError: If the specified document store is not found or is not a MemoryDocumentStore instance.
         """
-        if self.document_store_name not in data.stores:
-            raise ValueError(
-                f"MemoryRetriever's document store '{self.document_store_name}' not found "
-                f"in input stores {list(data.stores.keys())}"
-            )
-        document_store = data.stores[self.document_store_name]
-        if not isinstance(document_store, MemoryDocumentStore):
-            raise ValueError("MemoryRetriever can only be used with a MemoryDocumentStore instance.")
+        self.store: MemoryDocumentStore
 
+        if not self.store:
+            raise ValueError("MemoryRetriever needs a store to run: set the store instance to the self.store attribute")
         docs = []
         for query in data.queries:
             docs.append(
-                document_store.bm25_retrieval(
+                self.store.bm25_retrieval(
                     query=query, filters=data.filters, top_k=data.top_k, scale_score=data.scale_score
                 )
             )
-        return MemoryRetriever.Output(documents=docs)
+        return self.output(documents=docs)
