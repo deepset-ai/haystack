@@ -512,9 +512,9 @@ def test_recentness_ranker_score_outside_limits():
         Document(content="""GHI""", meta={"date": "2020-02-11"}, score=3, id="3"),
     ]
     ranker = RecentnessRanker(date_identifier="date", method="score", weight=0.5)
-    results = ranker.predict(query=query, documents=docs, top_k=2)
 
     with warnings.catch_warnings(record=True) as warning_list:
+        results = ranker.predict(query=query, documents=docs, top_k=2)
         assert "The score is outside the [0,1] range; defaulting to 0" in str(warning_list[-1].message)
     assert isinstance(results, list)
     assert results[0] == docs[1]
