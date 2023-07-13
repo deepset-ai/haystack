@@ -227,6 +227,42 @@ def test_add_component_store_aware_component_receives_correct_docstore_type():
 
 
 @pytest.mark.unit
+def test_add_component_store_aware_component_is_reused():
+    store_1 = MockStore()
+    store_2 = MockStore()
+
+    @component
+    class MockComponent(StoreAwareMixin):
+        supported_stores = [MockStore]
+
+        @dataclass
+        class Input(ComponentInput):
+            value: int
+
+        @dataclass
+        class Output(ComponentOutput):
+            value: int
+
+        def run(self, data: Input) -> Output:
+            return MockComponent.Output(value=data.value)
+
+    mock = MockComponent()
+    pipe = Pipeline()
+    pipe.add_store(name="first_store", store=store_1)
+    pipe.add_store(name="second_store", store=store_2)
+
+    pipe.add_component("component", mock, store="second_store")
+
+    with pytest.raises(ValueError, match="Reusing components with stores is not supported"):
+        pipe.add_component("component2", mock, store="second_store")
+
+    with pytest.raises(ValueError, match="Reusing components with stores is not supported"):
+        pipe.add_component("component2", mock, store="first_store")
+
+    assert mock.store == store_2
+
+
+@pytest.mark.unit
 def test_add_component_store_aware_component_receives_subclass_of_correct_docstore_type():
     class MockStoreSubclass(MockStore):
         ...
@@ -250,14 +286,15 @@ def test_add_component_store_aware_component_receives_subclass_of_correct_docsto
             return MockComponent.Output(value=data.value)
 
     mock = MockComponent()
+    mock2 = MockComponent()
     pipe = Pipeline()
     pipe.add_store(name="first_store", store=store_1)
     pipe.add_store(name="second_store", store=store_2)
 
     pipe.add_component("component", mock, store="first_store")
     assert mock.store == store_1
-    pipe.add_component("component2", mock, store="second_store")
-    assert mock.store == store_2
+    pipe.add_component("component2", mock2, store="second_store")
+    assert mock2.store == store_2
 
 
 @pytest.mark.unit
