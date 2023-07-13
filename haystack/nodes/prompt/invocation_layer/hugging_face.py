@@ -4,6 +4,7 @@ import os
 
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer.utils import get_task
 from haystack.lazy_imports import LazyImport
 
 
@@ -21,7 +22,6 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         GenerationConfig,
         Pipeline,
     )
-    from huggingface_hub import model_info
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
     from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler
 
@@ -42,15 +42,6 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
             stop_result = torch.isin(self.stop_words["input_ids"], input_ids[-1])
             return any(all(stop_word) for stop_word in stop_result)
-
-    def get_task(model: str, use_auth_token: Optional[Union[str, bool]] = None, timeout: float = 3.0) -> Optional[str]:
-        """
-        Simplified version of transformers.pipelines.get_task with support for timeouts
-        """
-        try:
-            return model_info(model, token=use_auth_token, timeout=timeout).pipeline_tag
-        except Exception as e:
-            raise RuntimeError(f"The task of {model} could not be checked because of the following error: {e}") from e
 
 
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
@@ -335,5 +326,5 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # This will fail for all non-HF models
             return False
         # if we are using an api_key it could be HF inference point
-        using_api_key = kwargs.get("api_key", None) is not None
+        using_api_key = bool(kwargs.get("api_key", None))
         return not using_api_key and task_name in ["text2text-generation", "text-generation"]
