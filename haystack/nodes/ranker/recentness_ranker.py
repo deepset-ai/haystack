@@ -135,8 +135,8 @@ class RecentnessRanker(BaseRanker):
             return self.predict("", documents=documents, top_k=top_k)  # type: ignore
         nested_docs = []
         for docs in documents:
-            temp = self.predict("", documents=docs, top_k=top_k)  # type: ignore
-            nested_docs.append(temp[0]["documents"])
+            results = self.predict("", documents=docs, top_k=top_k)  # type: ignore
+            nested_docs.append(results)
 
         return nested_docs
 
