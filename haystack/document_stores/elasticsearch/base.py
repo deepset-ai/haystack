@@ -282,6 +282,18 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                 mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
                 self._index_put_mapping(index=index_id, body=mapping, headers=headers)
 
+    def _validate_server_version(self, expected_version: int):
+        """
+        Validate that the Elasticsearch server version is compatible with the used ElasticsearchDocumentStore.
+        """
+        if self.server_version[0] != expected_version:
+            logger.warning(
+                "This ElasticsearchDocumentStore has been built for Elasticsearch %s, but the detected version of the "
+                "Elasticsearch server is %s. Unexpected behaviors or errors may occur due to version incompatibility.",
+                expected_version,
+                ".".join(map(str, self.server_version)),
+            )
+
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
         Generate Elasticsearch query for vector similarity.
@@ -302,12 +314,19 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
         if self.skip_missing_embeddings:
             script_score_query = {"bool": {"filter": {"bool": {"must": [{"exists": {"field": self.embedding_field}}]}}}}
 
+        # Elasticsearch 7.6 introduced a breaking change regarding the vector function signatures:
+        # https://www.elastic.co/guide/en/elasticsearch/reference/7.6/breaking-changes-7.6.html#_update_to_vector_function_signatures
+        if self.server_version[0] == 7 and self.server_version[1] < 6:
+            similarity_script_source = f"{similarity_fn_name}(params.query_vector,doc['{self.embedding_field}']) + 1000"
+        else:
+            similarity_script_source = f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000"
+
         query = {
             "script_score": {
                 "query": script_score_query,
                 "script": {
                     # offset score to ensure a positive range as required by Elasticsearch
-                    "source": f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000",
+                    "source": similarity_script_source,
                     "params": {"query_vector": query_emb.tolist()},
                 },
             }

@@ -2,7 +2,6 @@ from typing import List, Dict, Any, Optional, Callable
 
 from pathlib import Path
 
-from canals.component import ComponentInput, ComponentOutput
 from canals.pipeline import (
     Pipeline as CanalsPipeline,
     PipelineError,
@@ -57,7 +56,7 @@ class Pipeline(CanalsPipeline):
         except KeyError as e:
             raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
 
-    def run(self, data: Dict[str, ComponentInput], debug: bool = False) -> Dict[str, ComponentOutput]:
+    def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
         """
         Wrapper on top of Canals Pipeline.run(). Adds the `stores` parameter to all nodes.
 

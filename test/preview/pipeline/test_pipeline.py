@@ -1,9 +1,8 @@
 from typing import Dict, Any
-from dataclasses import dataclass
 
 import pytest
 
-from haystack.preview import Pipeline, component, NoSuchStoreError, ComponentInput, ComponentOutput
+from haystack.preview import Pipeline, component, NoSuchStoreError
 
 
 class MockStore:
@@ -34,14 +33,20 @@ def test_pipeline_stores_in_params():
 
     @component
     class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
+        class Input:
             value: int
             stores: Dict[str, Any]
 
-        @dataclass
-        class Output(ComponentOutput):
+        class Output:
             value: int
+
+        @component.input
+        def input(self):
+            return MockComponent.Input
+
+        @component.output
+        def output(self):
+            return MockComponent.Output
 
         def run(self, data: Input) -> Output:
             assert data.stores == {"first_store": store_1, "second_store": store_2}
