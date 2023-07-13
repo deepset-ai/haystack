@@ -1,6 +1,7 @@
 import pytest
 import math
 import warnings
+import logging
 from unittest.mock import patch
 
 import torch
@@ -518,3 +519,224 @@ def test_recentness_ranker_score_outside_limits():
         assert "The score is outside the [0,1] range; defaulting to 0" in str(warning_list[-1].message)
     assert isinstance(results, list)
     assert results[0] == docs[1]
+
+
+recency_tests_inputs = [
+    # Score method works as expected
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"date": "2021-02-11"}, "score": 0.3, "id": "1"},
+                {"meta": {"date": "2024-02-11"}, "score": 0.4, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_identifier": "date",
+            "top_k": 2,
+            "method": "score",
+            "expected_scores": {"1": 0.4833333333333333, "2": 0.7},
+            "expected_order": ["2", "1"],
+            "expected_exception": None,
+            "expected_logs": [],
+            "expected_warning": "",
+        },
+        id="Score method works as expected",
+    ),
+    # RRF method works as expected
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"date": "2021-02-11"}, "id": "1"},
+                {"meta": {"date": "2018-02-11"}, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_identifier": "date",
+            "top_k": 2,
+            "method": "reciprocal_rank_fusion",
+            "expected_scores": {"1": 0.01639344262295082, "2": 0.016001024065540194},
+            "expected_order": ["1", "2"],
+            "expected_exception": None,
+            "expected_logs": [],
+            "expected_warning": "",
+        },
+        id="RRF method works as expected",
+    ),
+    # Wrong field to find the date
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"data": "2021-02-11"}, "score": 0.3, "id": "1"},
+                {"meta": {"date": "2024-02-11"}, "score": 0.4, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_identifier": "date",
+            "expected_scores": {"1": 0.3, "2": 0.4, "3": 0.6},
+            "expected_order": ["1", "2", "3"],
+            "expected_logs": [
+                (
+                    "haystack.nodes.ranker.recentness_ranker",
+                    logging.ERROR,
+                    """
+                Param <date_identifier> seems wrong.\n
+                You supplied: 'date'.\n
+                Document[0] contains metadata with keys: data.\n
+                Continuing without sorting by date.
+                """,
+                )
+            ],
+            "top_k": 2,
+            "method": "score",
+        },
+        id="Wrong field to find the date",
+    ),
+    # Date unparsable
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"date": "abcd"}, "id": "1"},
+                {"meta": {"date": "2024-02-11"}, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_identifier": "date",
+            "expected_order": ["1", "2", "3"],
+            "expected_logs": [
+                (
+                    "haystack.nodes.ranker.recentness_ranker",
+                    logging.ERROR,
+                    """
+                Could not parse date information for dates: abcd - 2024-02-11 - 2020-02-11\n
+                Continuing without sorting by date.
+                """,
+                )
+            ],
+            "top_k": 2,
+            "method": "reciprocal_rank_fusion",
+        },
+        id="Date unparsable",
+    ),
+    # Wrong score, outside of bonds
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"date": "2021-02-11"}, "score": 1.3, "id": "1"},
+                {"meta": {"date": "2024-02-11"}, "score": 0.4, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_identifier": "date",
+            "top_k": 2,
+            "method": "score",
+            "expected_scores": {"1": 0.5, "2": 0.7, "3": 0.4666666666666667},
+            "expected_order": ["2", "3"],
+            "expected_warning": ["The score is outside the [0,1] range; defaulting to 0"],
+        },
+        id="Wrong score, outside of bonds",
+    ),
+    # Wrong score, not provided
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"date": "2021-02-11"}, "id": "1"},
+                {"meta": {"date": "2024-02-11"}, "score": 0.4, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_identifier": "date",
+            "top_k": 2,
+            "method": "score",
+            "expected_scores": {"1": 0.5, "2": 0.7, "3": 0.4666666666666667},
+            "expected_order": ["2", "3"],
+            "expected_warning": ["The score was not provided; defaulting to 0"],
+        },
+        id="Wrong score, not provided",
+    ),
+    # Wrong method provided
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"date": "2021-02-11"}, "id": "1"},
+                {"meta": {"date": "2024-02-11"}, "score": 0.4, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_identifier": "date",
+            "top_k": 2,
+            "method": "blablabla",
+            "expected_scores": {"1": 0.01626123744050767, "2": 0.01626123744050767},
+            "expected_order": ["1", "2"],
+            "expected_logs": [
+                (
+                    "haystack.nodes.ranker.recentness_ranker",
+                    logging.ERROR,
+                    """
+                    Param <method> seems wrong.\n
+                    You supplied: 'blablabla'.\n
+                    It should be 'reciprocal_rank_fusion' or 'score'.\n
+                    Defaulting to 'reciprocal_rank_fusion'.
+                    """,
+                )
+            ],
+        },
+        id="Wrong method provided",
+    ),
+]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("test_input", recency_tests_inputs)
+def test_recentness_ranker(caplog, test_input):
+    # Create a set of docs
+    docs = []
+    for doc in test_input["docs"]:
+        docs.append(Document(content="abc", **doc))
+
+    # catch warnings to check they are properly issued
+    with warnings.catch_warnings(record=True) as warnings_list:
+        # register any exception that may happen
+        thrown_exception = None
+        try:
+            # Initialize the ranker
+            ranker = RecentnessRanker(
+                date_identifier=test_input["date_identifier"], method=test_input["method"], weight=test_input["weight"]
+            )
+            results = ranker.predict(query="", documents=docs, top_k=test_input["top_k"])
+
+        except Exception as e:
+            thrown_exception = e
+
+        # No exception expected, verify no exception were thrown
+        if "expected_exception" not in test_input or test_input["expected_exception"] is None:
+            assert thrown_exception is None
+        # If exception is expected, verify the proper exception happened
+        else:
+            assert type(test_input["expected_exception"]) == type(thrown_exception)
+            return
+
+        # Check that no warnings were thrown, if we are not expecting any
+        if "expected_warning" not in test_input or test_input["expected_warning"] == []:
+            assert len(warnings_list) == 0
+        # Check that all expected warnings happened, and only those
+        else:
+            assert len(warnings_list) == len(test_input["expected_warning"])
+            for i in range(len(test_input["expected_warning"])):
+                assert test_input["expected_warning"][i] == str(warnings_list[i].message)
+
+    # If we expect logging, compare them one by one
+    if "expected_logs" in test_input:
+        assert len(test_input["expected_logs"]) == len(caplog.record_tuples)
+        for i in range(len(test_input["expected_logs"])):
+            assert test_input["expected_logs"][i] == caplog.record_tuples[i]
+    else:
+        assert len(caplog.record_tuples) == 0
+
+    # Verify the results, that the order and the score of the documents match
+    assert len(results) == len(test_input["expected_order"])
+    for i in range(len(test_input["expected_order"])):
+        assert test_input["expected_order"][i] == results[i].id
+        if "expected_scores" in test_input:
+            assert test_input["expected_scores"][test_input["expected_order"][i]] == results[i].score
+        else:
+            assert results[i].score is None

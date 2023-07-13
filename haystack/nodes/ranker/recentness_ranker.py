@@ -81,6 +81,18 @@ class RecentnessRanker(BaseRanker):
         scores_map: Dict = defaultdict(int)
         document_map = {doc.id: doc for doc in documents}
         weight = self.weight
+        if self.method not in ["reciprocal_rank_fusion", "score"]:
+            logger.error(
+                """
+                    Param <method> seems wrong.\n
+                    You supplied: '%s'.\n
+                    It should be 'reciprocal_rank_fusion' or 'score'.\n
+                    Defaulting to 'reciprocal_rank_fusion'.
+                    """,
+                self.method,
+            )
+            self.method = "reciprocal_rank_fusion"
+
         for i, doc in enumerate(documents):
             if self.method == "reciprocal_rank_fusion":
                 scores_map[doc.id] += self._calculate_rrf(rank=i) * (1 - weight)
@@ -94,15 +106,7 @@ class RecentnessRanker(BaseRanker):
                     score = doc.score
 
                 scores_map[doc.id] += score * (1 - weight)
-            else:
-                logger.error(
-                    """
-                    Param <method> seems wrong.\n
-                    You supplied: '%s'.\n
-                    It should be 'reciprocal_rank_fusion' or 'score'
-                    """,
-                    self.method,
-                )
+
         for i, doc in enumerate(sorted_by_date):
             if self.method == "reciprocal_rank_fusion":
                 scores_map[doc.id] += self._calculate_rrf(rank=i) * weight
@@ -128,10 +132,10 @@ class RecentnessRanker(BaseRanker):
         batch_size: Optional[int] = None,
     ) -> Union[List[Document], List[List[Document]]]:
         if isinstance(documents[0], Document):
-            return self.run("", documents=documents, top_k=top_k)  # type: ignore
+            return self.predict("", documents=documents, top_k=top_k)  # type: ignore
         nested_docs = []
         for docs in documents:
-            temp = self.run("", documents=docs, top_k=top_k)  # type: ignore
+            temp = self.predict("", documents=docs, top_k=top_k)  # type: ignore
             nested_docs.append(temp[0]["documents"])
 
         return nested_docs
