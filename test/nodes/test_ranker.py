@@ -519,7 +519,6 @@ recency_tests_inputs = [
             "method": "score",
             "expected_scores": {"1": 0.4833333333333333, "2": 0.7},
             "expected_order": ["2", "1"],
-            "expected_exception": None,
             "expected_logs": [],
             "expected_warning": "",
         },
@@ -539,7 +538,6 @@ recency_tests_inputs = [
             "method": "reciprocal_rank_fusion",
             "expected_scores": {"1": 0.01639344262295082, "2": 0.016001024065540194},
             "expected_order": ["1", "2"],
-            "expected_exception": None,
             "expected_logs": [],
             "expected_warning": "",
         },
@@ -678,25 +676,11 @@ def test_recentness_ranker(caplog, test_input):
 
     # catch warnings to check they are properly issued
     with warnings.catch_warnings(record=True) as warnings_list:
-        # register any exception that may happen
-        thrown_exception = None
-        try:
-            # Initialize the ranker
-            ranker = RecentnessRanker(
-                date_identifier=test_input["date_identifier"], method=test_input["method"], weight=test_input["weight"]
-            )
-            results = ranker.predict(query="", documents=docs, top_k=test_input["top_k"])
-
-        except Exception as e:
-            thrown_exception = e
-
-        # No exception expected, verify no exception were thrown
-        if "expected_exception" not in test_input or test_input["expected_exception"] is None:
-            assert thrown_exception is None
-        # If exception is expected, verify the proper exception happened
-        else:
-            assert type(test_input["expected_exception"]) == type(thrown_exception)
-            return
+        # Initialize the ranker
+        ranker = RecentnessRanker(
+            date_identifier=test_input["date_identifier"], method=test_input["method"], weight=test_input["weight"]
+        )
+        results = ranker.predict(query="", documents=docs, top_k=test_input["top_k"])
 
         # Check that no warnings were thrown, if we are not expecting any
         if "expected_warning" not in test_input or test_input["expected_warning"] == []:
@@ -708,18 +692,18 @@ def test_recentness_ranker(caplog, test_input):
                 assert test_input["expected_warning"][i] == str(warnings_list[i].message)
 
     # If we expect logging, compare them one by one
-    if "expected_logs" in test_input:
+    if "expected_logs" not in test_input or test_input["expected_logs"] == []:
+        assert len(caplog.record_tuples) == 0
+    else:
         assert len(test_input["expected_logs"]) == len(caplog.record_tuples)
         for i in range(len(test_input["expected_logs"])):
             assert test_input["expected_logs"][i] == caplog.record_tuples[i]
-    else:
-        assert len(caplog.record_tuples) == 0
 
     # Verify the results, that the order and the score of the documents match
     assert len(results) == len(test_input["expected_order"])
     for i in range(len(test_input["expected_order"])):
         assert test_input["expected_order"][i] == results[i].id
         if "expected_scores" in test_input:
-            assert test_input["expected_scores"][test_input["expected_order"][i]] == results[i].score
+            assert test_input["expected_scores"][results[i].id] == results[i].score
         else:
             assert results[i].score is None
