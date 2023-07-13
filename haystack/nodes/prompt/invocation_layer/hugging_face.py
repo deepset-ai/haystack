@@ -29,7 +29,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         """
         Stops text generation if any one of the stop words is generated.
 
-        Note: this class only examines the newly generated text. For LLMs, which is designed
+        Note: this class only examines the truly new-generated text. For LLMs, which is designed
         for dialogue generation and outputs the newly generated text together with the prompt
         like `mosaicml/mpt-7b-chat`, this class will stop generating new tokens after the first token.
         In this case, you need to make sure that your prompt template doesn't contain any stop word.
