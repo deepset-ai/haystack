@@ -42,10 +42,11 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
             device: Union[str, torch.device] = "cpu",
         ):
             super().__init__()
-            self.stop_words = tokenizer(stop_words, add_special_tokens=False, return_tensors="pt").to(device)
+            encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
+            self.stop_words = encoded_stop_words.input_ids.to(device)
 
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-            stop_result = torch.isin(self.stop_words["input_ids"], input_ids[-1])
+            stop_result = torch.isin(self.stop_words, input_ids[-1])
             return any(all(stop_word) for stop_word in stop_result)
 
     def get_task(model: str, use_auth_token: Optional[Union[str, bool]] = None, timeout: float = 3.0) -> Optional[str]:
