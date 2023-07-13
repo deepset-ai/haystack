@@ -21,8 +21,6 @@ class StoreAwareMixin:
 
     @store.setter
     def store(self, store: Store):
-        if not store:
-            raise ValueError("Can't set the value of the store to None.")
         if not isinstance(store, Store):
             raise ValueError("'store' does not respect the Store Protocol.")
         if not any(isinstance(store, type_) for type_ in type(self).supported_stores):
