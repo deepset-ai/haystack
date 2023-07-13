@@ -178,6 +178,8 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
             batch_size=batch_size,
         )
 
+        self._validate_server_version(expected_version=7)
+
     def _do_bulk(self, *args, **kwargs):
         """Override the base class method to use the Elasticsearch client"""
         return bulk(*args, **kwargs)

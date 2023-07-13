@@ -106,6 +106,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             raise DocumentStoreError(
                 f"Invalid value {similarity} for similarity, choose between 'cosine', 'l2' and 'dot_product'"
             )
+        client_info = self.client.info()
+        self.server_version = tuple(int(num) for num in client_info["version"]["number"].split("."))
 
         self._init_indices(
             index=index, label_index=label_index, create_index=create_index, recreate_index=recreate_index

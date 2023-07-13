@@ -9,6 +9,7 @@ from haystack.preview.pipeline import NotAStoreError
 from haystack.preview.document_stores import StoreAwareMixin, DuplicatePolicy, Store
 
 
+
 # Note: we're using a real class instead of a mock because mocks don't play too well with protocols.
 class MockStore:
     def count_documents(self) -> int:
@@ -93,13 +94,19 @@ def test_add_component_store_aware_component_receives_one_docstore():
     class MockComponent(StoreAwareMixin):
         supported_stores = [Store]
 
-        @dataclass
-        class Input(ComponentInput):
+        class Input:
             value: int
 
-        @dataclass
-        class Output(ComponentOutput):
+        class Output:
             value: int
+
+        @component.input
+        def input(self):
+            return MockComponent.Input
+
+        @component.output
+        def output(self):
+            return MockComponent.Output
 
         def run(self, data: Input) -> Output:
             return MockComponent.Output(value=data.value)
@@ -122,13 +129,19 @@ def test_add_component_store_aware_component_receives_no_docstore():
     class MockComponent(StoreAwareMixin):
         supported_stores = [Store]
 
-        @dataclass
-        class Input(ComponentInput):
+        class Input:
             value: int
 
-        @dataclass
-        class Output(ComponentOutput):
+        class Output:
             value: int
+
+        @component.input
+        def input(self):
+            return MockComponent.Input
+
+        @component.output
+        def output(self):
+            return MockComponent.Output
 
         def run(self, data: Input) -> Output:
             return MockComponent.Output(value=data.value)
@@ -150,13 +163,19 @@ def test_non_store_aware_component_receives_one_docstore():
     class MockComponent:
         supported_stores = [Store]
 
-        @dataclass
-        class Input(ComponentInput):
+        class Input:
             value: int
 
-        @dataclass
-        class Output(ComponentOutput):
+        class Output:
             value: int
+
+        @component.input
+        def input(self):
+            return MockComponent.Input
+
+        @component.output
+        def output(self):
+            return MockComponent.Output
 
         def run(self, data: Input) -> Output:
             return MockComponent.Output(value=data.value)
@@ -178,14 +197,20 @@ def test_add_component_store_aware_component_receives_wrong_docstore_name():
     class MockComponent(StoreAwareMixin):
         supported_stores = [Store]
 
-        @dataclass
-        class Input(ComponentInput):
+        class Input:
             value: int
 
-        @dataclass
-        class Output(ComponentOutput):
+        class Output:
             value: int
 
+        @component.input
+        def input(self):
+            return MockComponent.Input
+
+        @component.output
+        def output(self):
+            return MockComponent.Output
+          
         def run(self, data: Input) -> Output:
             return MockComponent.Output(value=data.value)
 
@@ -206,13 +231,19 @@ def test_add_component_store_aware_component_receives_correct_docstore_type():
     class MockComponent(StoreAwareMixin):
         supported_stores = [MockStore]
 
-        @dataclass
-        class Input(ComponentInput):
+        class Input:
             value: int
 
-        @dataclass
-        class Output(ComponentOutput):
+        class Output:
             value: int
+
+        @component.input
+        def input(self):
+            return MockComponent.Input
+
+        @component.output
+        def output(self):
+            return MockComponent.Output
 
         def run(self, data: Input) -> Output:
             return MockComponent.Output(value=data.value)
@@ -235,13 +266,19 @@ def test_add_component_store_aware_component_is_reused():
     class MockComponent(StoreAwareMixin):
         supported_stores = [MockStore]
 
-        @dataclass
-        class Input(ComponentInput):
+        class Input:
             value: int
 
-        @dataclass
-        class Output(ComponentOutput):
+        class Output:
             value: int
+
+        @component.input
+        def input(self):
+            return MockComponent.Input
+
+        @component.output
+        def output(self):
+            return MockComponent.Output
 
         def run(self, data: Input) -> Output:
             return MockComponent.Output(value=data.value)
@@ -274,13 +311,19 @@ def test_add_component_store_aware_component_receives_subclass_of_correct_docsto
     class MockComponent(StoreAwareMixin):
         supported_stores = [MockStore]
 
-        @dataclass
-        class Input(ComponentInput):
+        class Input:
             value: int
 
-        @dataclass
-        class Output(ComponentOutput):
+        class Output:
             value: int
+
+        @component.input
+        def input(self):
+            return MockComponent.Input
+
+        @component.output
+        def output(self):
+            return MockComponent.Output
 
         def run(self, data: Input) -> Output:
             return MockComponent.Output(value=data.value)
@@ -306,13 +349,19 @@ def test_add_component_store_aware_component_does_not_check_supported_stores():
     class MockComponent(StoreAwareMixin):
         supported_stores = [SomethingElse]
 
-        @dataclass
-        class Input(ComponentInput):
+        class Input:
             value: int
 
-        @dataclass
-        class Output(ComponentOutput):
+        class Output:
             value: int
+
+        @component.input
+        def input(self):
+            return MockComponent.Input
+
+        @component.output
+        def output(self):
+            return MockComponent.Output
 
         def run(self, data: Input) -> Output:
             return MockComponent.Output(value=data.value)
@@ -342,13 +391,19 @@ def test_add_component_store_aware_component_receives_wrong_docstore_type():
     class MockComponent(StoreAwareMixin):
         supported_stores = [MockStore2]
 
-        @dataclass
-        class Input(ComponentInput):
+        class Input:
             value: int
 
-        @dataclass
-        class Output(ComponentOutput):
+        class Output:
             value: int
+
+        @component.input
+        def input(self):
+            return MockComponent.Input
+
+        @component.output
+        def output(self):
+            return MockComponent.Output
 
         def run(self, data: Input) -> Output:
             return MockComponent.Output(value=data.value)

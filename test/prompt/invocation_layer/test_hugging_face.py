@@ -399,25 +399,36 @@ def test_streaming_stream_handler_param_in_constructor(mock_pipeline, mock_get_t
 
 
 @pytest.mark.unit
-def test_supports(tmp_path):
+def test_supports(tmp_path, mock_get_task):
     """
     Test that supports returns True correctly for HFLocalInvocationLayer
     """
-    # mock get_task to avoid remote calls to HF hub
-    mock_get_task = Mock(return_value="text2text-generation")
 
-    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
-        assert HFLocalInvocationLayer.supports("google/flan-t5-base")
-        assert HFLocalInvocationLayer.supports("mosaicml/mpt-7b")
-        assert HFLocalInvocationLayer.supports("CarperAI/stable-vicuna-13b-delta")
-        mock_get_task.side_effect = RuntimeError
-        assert not HFLocalInvocationLayer.supports("google/flan-t5-base")
-        assert mock_get_task.call_count == 4
+    assert HFLocalInvocationLayer.supports("google/flan-t5-base")
+    assert HFLocalInvocationLayer.supports("mosaicml/mpt-7b")
+    assert HFLocalInvocationLayer.supports("CarperAI/stable-vicuna-13b-delta")
+    mock_get_task.side_effect = RuntimeError
+    assert not HFLocalInvocationLayer.supports("google/flan-t5-base")
+    assert mock_get_task.call_count == 4
 
     # some HF local model directory, let's use the one from test/prompt/invocation_layer
     assert HFLocalInvocationLayer.supports(str(tmp_path))
 
-    # but not some non text2text-generation or non text-generation model
+    # we can also specify the task name to override the default
+    # short-circuit the get_task call
+    assert HFLocalInvocationLayer.supports(
+        "vblagoje/bert-english-uncased-finetuned-pos", task_name="text2text-generation"
+    )
+
+
+@pytest.mark.unit
+def test_supports_not(mock_get_task):
+    """
+    Test that supports returns False correctly for HFLocalInvocationLayer
+    """
+    assert not HFLocalInvocationLayer.supports("google/flan-t5-base", api_key="some_key")
+
+    # also not some non text2text-generation or non text-generation model
     # i.e image classification model
     mock_get_task = Mock(return_value="image-classification")
     with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
@@ -429,12 +440,6 @@ def test_supports(tmp_path):
     with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
         assert not HFLocalInvocationLayer.supports("vblagoje/bert-english-uncased-finetuned-pos")
         assert mock_get_task.call_count == 1
-
-    # unless we specify the task name to override the default
-    # short-circuit the get_task call
-    assert HFLocalInvocationLayer.supports(
-        "vblagoje/bert-english-uncased-finetuned-pos", task_name="text2text-generation"
-    )
 
 
 @pytest.mark.unit
