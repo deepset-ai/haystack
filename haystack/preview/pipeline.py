@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional, Callable
 
 from pathlib import Path
 
+from canals.component import ComponentInput
 from canals.pipeline import (
     Pipeline as CanalsPipeline,
     PipelineError,
@@ -29,6 +30,7 @@ class Pipeline(CanalsPipeline):
     def __init__(self):
         super().__init__()
         self._stores: Dict[str, Store] = {}
+        self._store_connections: Dict[str, str] = {}
 
     def add_store(self, name: str, store: Store) -> None:
         """
@@ -94,12 +96,41 @@ class Pipeline(CanalsPipeline):
                     f"Store named '{store}' not found. "
                     f"Add it with 'pipeline.add_store('{store}', <the docstore instance>)'."
                 )
-            instance.store = self._stores[store]
+
+            if not any(isinstance(self._stores[store], type_) for type_ in type(instance).supported_stores):
+                raise ValueError(
+                    f"Store type '{type(self._stores[store]).__name__}' is not compatible with this component. "
+                    f"Compatible store types: {[type_.__name__ for type_ in type(instance).supported_stores]}"
+                )
+
+            self._store_connections[name] = store
 
         elif store:
             raise ValueError(f"Component '{name}' doesn't support stores.")
 
         super().add_component(name, instance)
+
+    def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
+        """
+        Runs the pipeline.
+
+        Args:
+            data: the inputs to give to the input components of the Pipeline.
+            debug: whether to collect and return debug information.
+
+        Returns:
+            A dictionary with the outputs of the Pipeline.
+
+        Raises:
+            PipelineRuntimeError: if the any of the components fail or return unexpected output.
+        """
+        # Assigns the docstore to the input dataclasses of each component that requested it
+        for component_name, store_name in self._store_connections:
+            if not component_name in data:
+                data[component_name] = self.get_component(component_name).input()
+            data[component_name].store = self._stores[store_name]
+
+        super().run(data=data, debug=debug)
 
 
 def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):
