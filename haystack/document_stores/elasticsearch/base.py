@@ -282,6 +282,18 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                 mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
                 self._index_put_mapping(index=index_id, body=mapping, headers=headers)
 
+    def _validate_server_version(self, expected_version: int):
+        """
+        Validate that the Elasticsearch server version is compatible with the used ElasticsearchDocumentStore.
+        """
+        if self.server_version[0] != expected_version:
+            logger.warning(
+                "This ElasticsearchDocumentStore has been built for Elasticsearch %s, but the detected version of the "
+                "Elasticsearch server is %s. Unexpected behaviors or errors may occur due to version incompatibility.",
+                expected_version,
+                ".".join(map(str, self.server_version)),
+            )
+
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
         Generate Elasticsearch query for vector similarity.
