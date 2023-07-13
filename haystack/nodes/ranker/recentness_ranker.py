@@ -1,7 +1,7 @@
 import logging
 import warnings
 from collections import defaultdict
-from typing import List, Union, Optional, Tuple, Dict, Literal
+from typing import List, Union, Optional, Dict, Literal
 
 from dateutil.parser import parse, ParserError
 
