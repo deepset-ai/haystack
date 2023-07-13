@@ -94,6 +94,10 @@ class Pipeline(CanalsPipeline):
                     f"Store named '{store}' not found. "
                     f"Add it with 'pipeline.add_store('{store}', <the docstore instance>)'."
                 )
+
+            if instance.store:
+                raise ValueError(f"Reusing components with stores is not supported (yet). Create a separate instance.")
+
             instance.store = self._stores[store]
 
         elif store:
