@@ -6,8 +6,6 @@ from functools import wraps
 from time import perf_counter
 from copy import deepcopy
 
-import pandas as pd
-
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 
@@ -46,7 +44,10 @@ class BaseRanker(BaseComponent):
             reranking.
         :return: List of documents with metadata.
         """
-        linearized_docs = []
+        if not embed_meta_fields:
+            return docs
+
+        docs_with_meta = []
         for doc in docs:
             doc = deepcopy(doc)
             # Gather all relevant metadata fields
@@ -60,8 +61,8 @@ class BaseRanker(BaseComponent):
             # Convert to type string (e.g. for ints or floats)
             meta_data_fields = [str(field) for field in meta_data_fields]
             doc.content = "\n".join(meta_data_fields + [doc.content])
-            linearized_docs.append(doc)
-        return linearized_docs
+            docs_with_meta.append(doc)
+        return docs_with_meta
 
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore
         self.query_count += 1
