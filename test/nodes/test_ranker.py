@@ -109,6 +109,41 @@ def test_ranker_get_batches():
     assert next(batches) == (all_queries[0:1], all_docs[0:1])
 
 
+@pytest.mark.unit
+def test_add_meta_fields_to_docs():
+    docs = [
+        Document(
+            content="dummy doc 1",
+            meta={
+                "str_field": "test1",
+                "empty_str_field": "",
+                "numeric_field": 2.0,
+                "list_field": ["item0.1", "item0.2"],
+                "empty_list_field": [],
+            },
+        ),
+        Document(
+            content="dummy doc 2",
+            meta={
+                "str_field": "test2",
+                "empty_str_field": "",
+                "numeric_field": 5.0,
+                "list_field": ["item1.1", "item1.2"],
+                "empty_list_field": [],
+            },
+        ),
+    ]
+    with patch("haystack.nodes.ranker.sentence_transformers.SentenceTransformersRanker.__init__") as mock_ranker_init:
+        mock_ranker_init.return_value = None
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
+    docs_with_meta = ranker._add_meta_fields_to_docs(
+        documents=docs,
+        embed_meta_fields=["str_field", "empty_str_field", "numeric_field", "list_field", "empty_list_field"],
+    )
+    assert docs_with_meta[0].content.startswith("test1\n2.0\nitem0.1\nitem0.2\ndummy doc 1")
+    assert docs_with_meta[1].content.startswith("test2\n5.0\nitem1.1\nitem1.2\ndummy doc 2")
+
+
 def test_ranker(ranker, docs):
     query = "What is the most important building in King's Landing that has a religious background?"
     results = ranker.predict(query=query, documents=docs)

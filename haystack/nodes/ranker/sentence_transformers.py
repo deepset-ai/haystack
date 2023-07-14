@@ -128,7 +128,9 @@ class SentenceTransformersRanker(BaseRanker):
         if top_k is None:
             top_k = self.top_k
 
-        docs_with_meta_fields = self._add_meta_fields_to_docs(docs=documents, embed_meta_fields=self.embed_meta_fields)
+        docs_with_meta_fields = self._add_meta_fields_to_docs(
+            documents=documents, embed_meta_fields=self.embed_meta_fields
+        )
         docs = [doc.content for doc in docs_with_meta_fields]
         features = self.transformer_tokenizer(
             [query for _ in documents], docs, padding=True, truncation=True, return_tensors="pt"
@@ -217,7 +219,7 @@ class SentenceTransformersRanker(BaseRanker):
             queries=queries, documents=documents
         )
         all_docs_with_meta_fields = self._add_meta_fields_to_docs(
-            docs=all_docs, embed_meta_fields=self.embed_meta_fields
+            documents=all_docs, embed_meta_fields=self.embed_meta_fields
         )
 
         batches = self._get_batches(all_queries=all_queries, all_docs=all_docs_with_meta_fields, batch_size=batch_size)

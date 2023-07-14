@@ -147,7 +147,9 @@ class CohereRanker(BaseRanker):
             top_k = self.top_k
 
         # See https://docs.cohere.com/reference/rerank-1
-        docs_with_meta_fields = self._add_meta_fields_to_docs(docs=documents, embed_meta_fields=self.embed_meta_fields)
+        docs_with_meta_fields = self._add_meta_fields_to_docs(
+            documents=documents, embed_meta_fields=self.embed_meta_fields
+        )
         cohere_docs = [{"text": d.content} for d in docs_with_meta_fields]
         if len(cohere_docs) > 1000:
             logger.warning(
@@ -214,7 +216,7 @@ class CohereRanker(BaseRanker):
             # Docs case 1: single list of Documents -> rerank single list of Documents based on single query
             if len(queries) != 1:
                 raise HaystackError("Number of queries must be 1 if a single list of Documents is provided.")
-            docs = self._add_meta_fields_to_docs(docs=documents, embed_meta_fields=self.embed_meta_fields)
+            docs = self._add_meta_fields_to_docs(documents=documents, embed_meta_fields=self.embed_meta_fields)
             return self.predict(query=queries[0], documents=docs, top_k=top_k)  # type: ignore
         else:
             # Docs case 2: list of lists of Documents -> rerank each list of Documents based on corresponding query
@@ -227,6 +229,6 @@ class CohereRanker(BaseRanker):
             results = []
             for query, cur_docs in zip(queries, documents):
                 assert isinstance(cur_docs, list)
-                docs = self._add_meta_fields_to_docs(docs=cur_docs, embed_meta_fields=self.embed_meta_fields)
+                docs = self._add_meta_fields_to_docs(documents=cur_docs, embed_meta_fields=self.embed_meta_fields)
                 results.append(self.predict(query=query, documents=docs, top_k=top_k))  # type: ignore
             return results

@@ -34,21 +34,21 @@ class BaseRanker(BaseComponent):
         pass
 
     def _add_meta_fields_to_docs(
-        self, docs: List[Document], embed_meta_fields: Optional[List[str]] = None
+        self, documents: List[Document], embed_meta_fields: Optional[List[str]] = None
     ) -> List[Document]:
         """
         Concatenates specified metadata fields with the text representations.
 
-        :param docs: List of documents to add metadata to.
+        :param documents: List of documents to add metadata to.
         :param embed_meta_fields: Concatenate the provided meta fields and into the text passage that is then used in
             reranking.
         :return: List of documents with metadata.
         """
         if not embed_meta_fields:
-            return docs
+            return documents
 
         docs_with_meta = []
-        for doc in docs:
+        for doc in documents:
             doc = deepcopy(doc)
             # Gather all relevant metadata fields
             meta_data_fields = []
