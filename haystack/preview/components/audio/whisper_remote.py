@@ -4,10 +4,9 @@ import os
 import json
 import logging
 from pathlib import Path
-from dataclasses import dataclass
 
 from haystack.utils import request_with_retry
-from haystack.preview import component, ComponentInput, ComponentOutput, Document
+from haystack.preview import component, Document
 
 logger = logging.getLogger(__name__)
 
@@ -29,14 +28,20 @@ class RemoteWhisperTranscriber:
     [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text)
     """
 
-    @dataclass
-    class Input(ComponentInput):
+    class Input:
         audio_files: List[Path]
         whisper_params: Optional[Dict[str, Any]] = None
 
-    @dataclass
-    class Output(ComponentOutput):
+    class Output:
         documents: List[Document]
+
+    @component.input
+    def input(self):  # type: ignore
+        return RemoteWhisperTranscriber.Input
+
+    @component.output
+    def output(self):  # type: ignore
+        return RemoteWhisperTranscriber.Output
 
     def __init__(
         self, api_key: str, model_name: WhisperRemoteModel = "whisper-1", api_base: str = "https://api.openai.com/v1"
@@ -77,7 +82,7 @@ class RemoteWhisperTranscriber:
         if not data.whisper_params:
             data.whisper_params = {}
         documents = self.transcribe(data.audio_files, **data.whisper_params)
-        return RemoteWhisperTranscriber.Output(documents)
+        return self.output(documents=documents)
 
     def transcribe(self, audio_files: Sequence[Union[str, Path, BinaryIO]], **kwargs) -> List[Document]:
         """
