@@ -273,7 +273,7 @@ class WebRetriever(BaseRetriever):
             return []
 
         links: List[SearchResult] = [
-            SearchResult(r.meta["link"], r.content, r.meta.get("score"), r.meta.get("position"))
+            SearchResult(r.meta["link"], r.content, float(r.meta.get("score", 0.0)), r.meta.get("position"))
             for r in search_results
             if r.meta.get("link")
         ]
