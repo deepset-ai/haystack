@@ -29,6 +29,71 @@ def test_correct_declaration():
     assert component.registry["MockComponent"] == MockComponent
 
 
+def test_correct_declaration_with_additional_readonly_property():
+    @component
+    class MockComponent:
+        @component.input
+        def input(self):
+            class Input:
+                input_value: int
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        @property
+        def store(self):
+            return "test_store"
+
+        def run(self, data):
+            return self.output(output_value=1)
+
+    # Verifies that instantiation works with no issues
+    assert MockComponent()
+    assert component.registry["MockComponent"] == MockComponent
+    assert MockComponent().store == "test_store"
+
+
+def test_correct_declaration_with_additional_writable_property():
+    @component
+    class MockComponent:
+        @component.input
+        def input(self):
+            class Input:
+                input_value: int
+
+            return Input
+
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        @property
+        def store(self):
+            return self._store
+
+        @store.setter
+        def store(self, value):
+            self._store = value
+
+        def run(self, data):
+            return self.output(output_value=1)
+
+    # Verifies that instantiation works with no issues
+    assert component.registry["MockComponent"] == MockComponent
+    comp = MockComponent()
+    comp.store = "test_store"
+    assert comp.store == "test_store"
+
+
 def test_input_required():
     with pytest.raises(
         ComponentError,
