@@ -331,6 +331,31 @@ def test_cohere_ranker_batch_single_query_single_doc_list(docs, mock_cohere_post
 
 
 @pytest.mark.unit
+def test_cohere_ranker_batch_single_query_single_doc_list_with_embed_meta_fields(docs, mock_cohere_post):
+    query = "What is the most important building in King's Landing that has a religious background?"
+    ranker = CohereRanker(api_key="fake_key", model_name_or_path="rerank-english-v2.0", embed_meta_fields=["name"])
+    results = ranker.predict_batch(queries=[query], documents=docs)
+    documents = []
+    for d in docs:
+        meta = d.meta.get("name")
+        if meta:
+            documents.append({"text": d.meta["name"] + "\n" + d.content})
+        else:
+            documents.append({"text": d.content})
+    mock_cohere_post.assert_called_once_with(
+        {
+            "model": "rerank-english-v2.0",
+            "query": query,
+            "documents": documents,
+            "top_n": None,  # By passing None we return all documents and use top_k to truncate later
+            "return_documents": False,
+            "max_chunks_per_doc": None,
+        }
+    )
+    assert results[0] == docs[4]
+
+
+@pytest.mark.unit
 def test_cohere_ranker_batch_single_query_multiple_doc_lists(docs, mock_cohere_post):
     query = "What is the most important building in King's Landing that has a religious background?"
     ranker = CohereRanker(api_key="fake_key", model_name_or_path="rerank-english-v2.0")
