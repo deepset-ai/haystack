@@ -293,12 +293,13 @@ class WebRetriever(BaseRetriever):
         if not links:
             return []
 
+        fetcher = (
+            LinkContentFetcher(processor=preprocessor, raise_on_failure=True)
+            if self.mode == "preprocessed_documents" and preprocessor
+            else LinkContentFetcher(raise_on_failure=True)
+        )
+
         def scrape_direct(link: SearchResult) -> List[Document]:
-            fetcher = (
-                LinkContentFetcher(processor=preprocessor, raise_on_failure=True)
-                if self.mode == "preprocessed_documents" and preprocessor
-                else LinkContentFetcher(raise_on_failure=True)
-            )
             docs: List[Document] = []
             try:
                 docs = fetcher.fetch(
@@ -311,9 +312,9 @@ class WebRetriever(BaseRetriever):
                         "snippet_text": link.snippet,
                     },
                 )
-            except Exception:
-                #  ignore fetching and parsing errors
-                pass
+            except Exception as e:
+                # Log the exception for debugging
+                logging.debug(f"Error fetching documents from {link.url}: {str(e)}")
 
             return docs
 
