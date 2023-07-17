@@ -75,15 +75,15 @@ def mock_transformer_tokenizer():
 
 
 @pytest.fixture
-def mock_transformer_model():
+def mock_transformer_model(request):
     class Logits:
         def __init__(self, logits):
             self.logits = logits
 
     class Model:
-        def __init__(self, logits, num_labels):
-            self.logits = logits
-            self.num_labels = num_labels
+        def __init__(self):
+            self.logits = torch.tensor([[-9.7414], [-11.1572], [-11.1708], [-11.1515], [5.2571]])
+            self.num_labels = 1
 
         def __call__(self, *args, **kwargs):
             return Logits(logits=self.logits)
@@ -95,9 +95,7 @@ def mock_transformer_model():
             return self
 
     with patch("transformers.AutoModelForSequenceClassification.from_pretrained") as mock_model:
-        mock_model.return_value = Model(
-            logits=torch.tensor([[-9.7414], [-11.1572], [-11.1708], [-11.1515], [5.2571]]), num_labels=1
-        )
+        mock_model.return_value = Model()
         yield mock_model
 
 
@@ -241,7 +239,10 @@ def test_ranker_batch_single_query_single_doc_list(docs, mock_transformer_model,
     assert results[0] == docs[4]
 
 
-def test_ranker_batch_single_query_multiple_doc_lists(ranker, docs):
+@pytest.mark.unit
+def test_ranker_batch_single_query_multiple_doc_lists(docs, mock_transformer_model, mock_transformer_tokenizer):
+    with patch("torch.nn.DataParallel"):
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model", batch_size=5)
     query = "What is the most important building in King's Landing that has a religious background?"
     results = ranker.predict_batch(queries=[query], documents=[docs, docs])
     assert isinstance(results, list)
