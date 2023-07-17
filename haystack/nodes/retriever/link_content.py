@@ -19,7 +19,7 @@ from haystack.schema import Document, MultiLabel
 
 logger = logging.getLogger(__name__)
 
-with LazyImport() as fitz_import:
+with LazyImport("Run 'pip install farm-haystack[pdf]'") as fitz_import:
     import fitz
 
 
