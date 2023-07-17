@@ -2,6 +2,7 @@ import pytest
 import math
 from unittest.mock import patch
 
+import torch
 from haystack.schema import Document
 from haystack.nodes.ranker.base import BaseRanker
 from haystack.nodes.ranker import SentenceTransformersRanker, CohereRanker
@@ -50,6 +51,54 @@ def mock_cohere_post():
             text='{"id":"73701fd4-fe30-4007-9698-e960a51b19b4","results":[{"index":4,"relevance_score":0.9937345},{"index":3,"relevance_score":0.2232077},{"index":0,"relevance_score":0.006538825},{"index":2,"relevance_score":0.002278331},{"index":1,"relevance_score":0.000035633544}],"meta":{"api_version":{"version":"1"}}}'
         )
         yield cohere_post
+
+
+@pytest.fixture
+def mock_transformer_tokenizer():
+    class Features(dict):
+        def to(self, arg):
+            return self
+
+    class Tokenizer:
+        def __call__(self, *args, **kwargs):
+            return Features(
+                {
+                    "input_ids": torch.zeros([5, 162]),
+                    "token_type_ids": torch.zeros([5, 162], dtype=torch.long),
+                    "attention_mask": torch.zeros([5, 162], dtype=torch.long),
+                }
+            )
+
+    with patch("transformers.AutoTokenizer.from_pretrained") as mock_tokenizer:
+        mock_tokenizer.return_value = Tokenizer()
+        yield mock_tokenizer
+
+
+@pytest.fixture
+def mock_transformer_model():
+    class Logits:
+        def __init__(self, logits):
+            self.logits = logits
+
+    class Model:
+        def __init__(self, logits, num_labels):
+            self.logits = logits
+            self.num_labels = num_labels
+
+        def __call__(self, *args, **kwargs):
+            return Logits(logits=self.logits)
+
+        def eval(self):
+            return self
+
+        def to(self, arg):
+            return self
+
+    with patch("transformers.AutoModelForSequenceClassification.from_pretrained") as mock_model:
+        mock_model.return_value = Model(
+            logits=torch.tensor([[-9.7414], [-11.1572], [-11.1708], [-11.1515], [5.2571]]), num_labels=1
+        )
+        yield mock_model
 
 
 @pytest.mark.unit
@@ -174,13 +223,19 @@ def test_add_meta_fields_to_docs_empty_list():
     assert docs_with_meta == docs
 
 
-def test_ranker(ranker, docs):
+@pytest.mark.unit
+def test_ranker(docs, mock_transformer_model, mock_transformer_tokenizer):
+    with patch("torch.nn.DataParallel"):
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
     query = "What is the most important building in King's Landing that has a religious background?"
     results = ranker.predict(query=query, documents=docs)
     assert results[0] == docs[4]
 
 
-def test_ranker_batch_single_query_single_doc_list(ranker, docs):
+@pytest.mark.unit
+def test_ranker_batch_single_query_single_doc_list(docs, mock_transformer_model, mock_transformer_tokenizer):
+    with patch("torch.nn.DataParallel"):
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
     query = "What is the most important building in King's Landing that has a religious background?"
     results = ranker.predict_batch(queries=[query], documents=docs)
     assert results[0] == docs[4]
@@ -292,9 +347,7 @@ def test_ranker_returns_raw_score_for_two_logits(ranker_two_logits):
 
 def test_predict_batch_returns_correct_number_of_docs(ranker):
     docs = [Document(content=f"test {number}") for number in range(5)]
-
     assert len(ranker.predict("where is test 3?", docs, top_k=4)) == 4
-
     assert len(ranker.predict_batch(["where is test 3?"], docs, batch_size=2, top_k=4)) == 4
 
 
