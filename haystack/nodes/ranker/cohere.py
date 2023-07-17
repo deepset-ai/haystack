@@ -216,7 +216,7 @@ class CohereRanker(BaseRanker):
             # Docs case 1: single list of Documents -> rerank single list of Documents based on single query
             if len(queries) != 1:
                 raise HaystackError("Number of queries must be 1 if a single list of Documents is provided.")
-            docs = self._add_meta_fields_to_docs(documents=documents, embed_meta_fields=self.embed_meta_fields)
+            docs = self._add_meta_fields_to_docs(documents=documents, embed_meta_fields=self.embed_meta_fields)  # type: ignore
             return self.predict(query=queries[0], documents=docs, top_k=top_k)  # type: ignore
         else:
             # Docs case 2: list of lists of Documents -> rerank each list of Documents based on corresponding query
