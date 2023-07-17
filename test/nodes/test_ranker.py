@@ -75,7 +75,7 @@ def mock_transformer_tokenizer():
 
 
 @pytest.fixture
-def mock_transformer_model(request):
+def mock_transformer_model():
     class Logits:
         def __init__(self, logits):
             self.logits = logits
@@ -268,6 +268,15 @@ def test_ranker_batch_multiple_queries_multiple_doc_lists(ranker, docs):
     assert isinstance(results[0], list)
     assert results[0][0] == docs[4]
     assert results[1][0] == docs[1]
+
+
+@pytest.mark.unit
+def test_ranker_with_embed_meta_fields(docs, mock_transformer_model, mock_transformer_tokenizer):
+    with patch("torch.nn.DataParallel"):
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model", embed_meta_fields=["name"])
+    query = "What is the most important building in King's Landing that has a religious background?"
+    results = ranker.predict(query=query, documents=docs)
+    assert results[0] == docs[4]
 
 
 def test_ranker_two_logits(ranker_two_logits, docs):
