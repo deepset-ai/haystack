@@ -144,6 +144,26 @@ def test_add_meta_fields_to_docs():
     assert docs_with_meta[1].content.startswith("test2\n5.0\nitem1.1\nitem1.2\ndummy doc 2")
 
 
+@pytest.mark.unit
+def test_add_meta_fields_to_docs_none():
+    docs = [Document(content="dummy doc 1", meta={"none_field": None})]
+    with patch("haystack.nodes.ranker.sentence_transformers.SentenceTransformersRanker.__init__") as mock_ranker_init:
+        mock_ranker_init.return_value = None
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
+    docs_with_meta = ranker._add_meta_fields_to_docs(documents=docs, embed_meta_fields=["none_field"])
+    assert docs_with_meta == docs
+
+
+@pytest.mark.unit
+def test_add_meta_fields_to_docs_non_existent():
+    docs = [Document(content="dummy doc 1", meta={"test_field": "A string"})]
+    with patch("haystack.nodes.ranker.sentence_transformers.SentenceTransformersRanker.__init__") as mock_ranker_init:
+        mock_ranker_init.return_value = None
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
+    docs_with_meta = ranker._add_meta_fields_to_docs(documents=docs, embed_meta_fields=["wrong_field"])
+    assert docs_with_meta == docs
+
+
 def test_ranker(ranker, docs):
     query = "What is the most important building in King's Landing that has a religious background?"
     results = ranker.predict(query=query, documents=docs)
