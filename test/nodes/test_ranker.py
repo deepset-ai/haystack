@@ -231,6 +231,15 @@ def test_ranker(docs, mock_transformer_model, mock_transformer_tokenizer):
 
 
 @pytest.mark.unit
+def test_ranker_run(docs, mock_transformer_model, mock_transformer_tokenizer):
+    with patch("torch.nn.DataParallel"):
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
+    query = "What is the most important building in King's Landing that has a religious background?"
+    results = ranker.run(query=query, documents=docs)
+    assert results[0]["documents"][0] == docs[4]
+
+
+@pytest.mark.unit
 def test_ranker_batch_single_query_single_doc_list(docs, mock_transformer_model, mock_transformer_tokenizer):
     with patch("torch.nn.DataParallel"):
         ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
