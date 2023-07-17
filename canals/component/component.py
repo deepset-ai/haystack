@@ -276,7 +276,7 @@ def _find_input_output(class_):
     # Get all properties of class_
     properties = inspect.getmembers(class_, predicate=lambda m: isinstance(m, property))
     for _, prop in properties:
-        if not hasattr(prop, "fget") and not hasattr(prop.fget, "__canals_connection__"):
+        if not hasattr(prop, "fget") or not hasattr(prop.fget, "__canals_connection__"):
             continue
 
         # Field __canals_connection__ is set by _input and _output decorators
