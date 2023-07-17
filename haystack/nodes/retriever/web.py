@@ -314,7 +314,7 @@ class WebRetriever(BaseRetriever):
                 )
             except Exception as e:
                 # Log the exception for debugging
-                logging.debug(f"Error fetching documents from {link.url}: {str(e)}")
+                logging.debug("Error fetching documents from %s : %s", link.url, str(e))
 
             return docs
 
