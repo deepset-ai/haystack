@@ -135,9 +135,7 @@ Initially this ranker was implemented by Timo for a customer case where the date
 
 # Detailed design
 
-The ranker has already been implemented by Timo here: https://github.com/deepset-ai/deepset-cloud-custom-nodes/blob/main/deepset_cloud_custom_nodes/rankers/recentness_reranker.py & PR was reviewed at the time by Seb and Florian: https://github.com/deepset-ai/deepset-cloud-custom-nodes/pull/54.
-
-Additionally, you can see the code for this proposal here: https://github.com/deepset-ai/haystack/pull/5301/files. It is the same code as above, just with small naming changes (e.g. "rff" method got changed to "reciprocal_rank_fusion" to match the existing naming used in Haystack's JoinDocuments node)
+You can see the code for this proposal here: https://github.com/deepset-ai/haystack/pull/5301/files.
 
 As a general description, the ranker has the following parameters (date_identifier and method are required, the rest are optional):
 - date_identifier (string pointing to the date field in the metadata)
@@ -153,12 +151,14 @@ As a general description, the ranker has the following parameters (date_identifi
 
 The RecentnessRanker works by:
 1. Adjusting the relevance score based on the chosen weight.
-  For the "reciprocal_rank_fusion" the calculation is rrf * (1 - weight). The rrf is calculated as 1 / (k + rank) where k=61.
+  For the "reciprocal_rank_fusion" the calculation is rrf * (1 - weight). The rrf is calculated as 1 / (k + rank) where k=61 (see reasoning below).
   And the "score" method performs the calculation as relevance score * (1 - weight).
 2. Adding to the relevance score the recentness score by:
   For the "reciprocal_rank_fusion" - performing the rrf * weight calculation on the documents dictionary sorted by date where rrf is 1 / (k + rank), k=61.
   For the "score" method - performing the recentness score * weight calculation where recentness score is (amount of documents - rank) / amount of documents.
 3. Returning top-k documents in the documents dictionary sorted by final score (relevance score + recentness score both adjusted by weight).
+
+k is set to 61 in reciprocal rank fusion based on a University of Waterloo paper (co-authored with Google) called "Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods" [https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf] where k=60 was suggested, and 1 was added as python lists are 0-based and the paper used 1-based ranking.
 
 # Drawbacks
 
