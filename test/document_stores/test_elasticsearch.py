@@ -56,7 +56,13 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         ElasticsearchDocumentStore equipped with a mocked client
         """
 
-        with patch(f"{ElasticsearchDocumentStore.__module__}.ElasticsearchDocumentStore._init_elastic_client"):
+        with patch(
+            f"{ElasticsearchDocumentStore.__module__}.ElasticsearchDocumentStore._init_elastic_client"
+        ) as mocked_init_client:
+            if VERSION[0] == 7:
+                mocked_init_client().info.return_value = {"version": {"number": "7.17.6"}}
+            else:
+                mocked_init_client().info.return_value = {"version": {"number": "8.8.0"}}
 
             class DSMock(ElasticsearchDocumentStore):
                 # We mock a subclass to avoid messing up the actual class object
@@ -375,6 +381,31 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         with patch(f"{ElasticsearchDocumentStore.__module__}.bulk") as mocked_bulk:
             mocked_document_store.write_documents(documents)
             assert mocked_bulk.call_count == 5
+
+    @pytest.mark.unit
+    def test_get_vector_similarity_query(self, mocked_document_store):
+        """
+        Test that the source field of the vector similarity query is correctly formatted for ES 7.6 and above.
+        We test this to make sure we use the correct syntax for newer ES versions.
+        """
+        vec_sim_query = mocked_document_store._get_vector_similarity_query(np.random.rand(3).astype(np.float32), 10)
+        assert vec_sim_query["script_score"]["script"]["source"] == "dotProduct(params.query_vector,'embedding') + 1000"
+
+    @pytest.mark.unit
+    def test_get_vector_similarity_query_es_7_5_and_below(self, mocked_document_store):
+        """
+        Test that the source field of the vector similarity query is correctly formatter for ES 7.5 and below.
+        We test this to make sure we use the correct syntax for ES versions older than 7.6, as the syntax changed
+        in 7.6.
+        """
+        # Patch server version to be 7.5.0
+        mocked_document_store.server_version = (7, 5, 0)
+
+        vec_sim_query = mocked_document_store._get_vector_similarity_query(np.random.rand(3).astype(np.float32), 10)
+        assert (
+            vec_sim_query["script_score"]["script"]["source"]
+            == "dotProduct(params.query_vector,doc['embedding']) + 1000"
+        )
 
     # The following tests are overridden only to be able to skip them depending on ES version
 
