@@ -1,10 +1,8 @@
 from typing import Any, Optional, Dict, List
 
-from dataclasses import dataclass
-
 import pytest
 
-from haystack.preview import Pipeline, component, NoSuchStoreError, Document, ComponentInput, ComponentOutput
+from haystack.preview import Pipeline, component, NoSuchStoreError, Document
 from haystack.preview.pipeline import NotAStoreError
 from haystack.preview.document_stores import StoreAwareMixin, DuplicatePolicy, Store
 

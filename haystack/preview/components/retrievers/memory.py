@@ -12,38 +12,40 @@ class MemoryRetriever(StoreAwareMixin):
     Needs to be connected to a MemoryDocumentStore to run.
     """
 
-    class Input:
-        """
-        Input data for the MemoryRetriever component.
-
-        :param query: The query string for the retriever.
-        :param filters: A dictionary with filters to narrow down the search space.
-        :param top_k: The maximum number of documents to return.
-        :param scale_score: Whether to scale the BM25 scores or not.
-        :param stores: A dictionary mapping document store names to instances.
-        """
-
-        queries: List[str]
-        filters: Dict[str, Any]
-        top_k: int
-        scale_score: bool
-
-    class Output:
-        """
-        Output data from the MemoryRetriever component.
-
-        :param documents: The retrieved documents.
-        """
-
-        documents: List[List[Document]]
+    supported_stores = [MemoryDocumentStore]
 
     @component.input
     def input(self):  # type: ignore
-        return MemoryRetriever.Input
+        class Input:
+            """
+            Input data for the MemoryRetriever component.
+
+            :param query: The query string for the retriever.
+            :param filters: A dictionary with filters to narrow down the search space.
+            :param top_k: The maximum number of documents to return.
+            :param scale_score: Whether to scale the BM25 scores or not.
+            :param stores: A dictionary mapping document store names to instances.
+            """
+
+            queries: List[str]
+            filters: Dict[str, Any]
+            top_k: int
+            scale_score: bool
+
+        return Input
 
     @component.output
     def output(self):  # type: ignore
-        return MemoryRetriever.Output
+        class Output:
+            """
+            Output data from the MemoryRetriever component.
+
+            :param documents: The retrieved documents.
+            """
+
+            documents: List[List[Document]]
+
+        return Output
 
     def __init__(self, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = True):
         """
@@ -59,7 +61,7 @@ class MemoryRetriever(StoreAwareMixin):
             raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.defaults = {"top_k": top_k, "scale_score": scale_score, "filters": filters or {}}
 
-    def run(self, data: Input) -> Output:
+    def run(self, data):
         """
         Run the MemoryRetriever on the given input data.
 

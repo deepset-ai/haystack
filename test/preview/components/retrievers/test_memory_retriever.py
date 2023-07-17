@@ -55,7 +55,7 @@ class TestMemoryRetriever(BaseTestComponent):
 
         retriever = MemoryRetriever(top_k=top_k)
         retriever.store = ds
-        result = retriever.run(data=MemoryRetriever.Input(queries=["PHP", "Java"]))
+        result = retriever.run(data=retriever.input(queries=["PHP", "Java"]))
 
         assert getattr(result, "documents")
         assert len(result.documents) == 2
@@ -70,7 +70,7 @@ class TestMemoryRetriever(BaseTestComponent):
         with pytest.raises(
             ValueError, match="MemoryRetriever needs a store to run: set the store instance to the self.store attribute"
         ):
-            retriever.run(retriever.Input(queries=["test"]))
+            retriever.run(retriever.input(queries=["test"]))
 
     @pytest.mark.unit
     def test_invalid_run_not_a_store(self):
@@ -118,7 +118,7 @@ class TestMemoryRetriever(BaseTestComponent):
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
         pipeline.add_component("retriever", retriever, store="memory")
-        result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(queries=[query])})
+        result: Dict[str, Any] = pipeline.run(data={"retriever": retriever.input(queries=[query])})
 
         assert result
         assert "retriever" in result
@@ -143,7 +143,7 @@ class TestMemoryRetriever(BaseTestComponent):
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
         pipeline.add_component("retriever", retriever, store="memory")
-        result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(queries=[query], top_k=top_k)})
+        result: Dict[str, Any] = pipeline.run(data={"retriever": retriever.input(queries=[query], top_k=top_k)})
 
         assert result
         assert "retriever" in result
