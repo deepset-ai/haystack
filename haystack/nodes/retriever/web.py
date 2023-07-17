@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class SearchResult:
     url: str
     snippet: str
-    score: Optional[str]
+    score: float
     position: Optional[str]
 
 
@@ -323,6 +323,9 @@ class WebRetriever(BaseRetriever):
 
         # Flatten list of lists to a single list
         extracted_docs = [doc for doc_list in scraped_pages for doc in doc_list]
+
+        # Sort by score
+        extracted_docs = sorted(extracted_docs, key=lambda x: x.meta["search.score"], reverse=True)
 
         return extracted_docs
 
