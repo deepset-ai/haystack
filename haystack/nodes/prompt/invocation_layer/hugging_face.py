@@ -17,6 +17,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         StoppingCriteria,
         PreTrainedTokenizer,
         PreTrainedTokenizerFast,
+        PreTrainedModel,
         GenerationConfig,
         Pipeline,
         AutoTokenizer,
@@ -170,15 +171,17 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         torch_dtype = self._extract_torch_dtype(**kwargs)
         # and the model (prefer model instance over model_name_or_path str identifier)
         model = kwargs.get("model") or kwargs.get("model_name_or_path")
-        trust_remote_code = kwargs.get("trust_remote_code", False)
-
+        model_kwargs = kwargs.get("model_kwargs", {})
+        hub_kwargs = {
+            "revision": kwargs.get("revision", None),
+            "use_auth_token": kwargs.get("use_auth_token", None),
+            "trust_remote_code": kwargs.get("trust_remote_code", False),
+        }
         tokenizer = kwargs.get("tokenizer", None)
-
-        if isinstance(tokenizer, str):
-            model_config = AutoConfig.from_pretrained(model, trust_remote_code=trust_remote_code)
-            load_tokenizer = type(model_config) in TOKENIZER_MAPPING or model_config.tokenizer_class is not None
-            if not load_tokenizer:
-                tokenizer = AutoTokenizer.from_pretrained(model, trust_remote_code=trust_remote_code)
+        # for models that are currently not supported by the transformer library, we need to first load the
+        # tokenizer by ourselves and then pass the tokenizer object to the underlying transformers' pipeline.
+        # Otherwise, calling `self.pipe.tokenizer.model_max_length` will return an error
+        tokenizer = self._prepare_tokenizer(tokenizer, model, hub_kwargs)
 
         pipeline_kwargs = {
             "task": kwargs.get("task", None),
@@ -186,14 +189,12 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             "config": kwargs.get("config", None),
             "tokenizer": tokenizer,
             "feature_extractor": kwargs.get("feature_extractor", None),
-            "revision": kwargs.get("revision", None),
-            "use_auth_token": kwargs.get("use_auth_token", None),
             "device_map": device_map,
             "device": device,
             "torch_dtype": torch_dtype,
-            "trust_remote_code": trust_remote_code,
-            "model_kwargs": kwargs.get("model_kwargs", {}),
+            "model_kwargs": model_kwargs,
             "pipeline_class": kwargs.get("pipeline_class", None),
+            **hub_kwargs,
         }
         return pipeline_kwargs
 
@@ -333,6 +334,32 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             else:
                 raise ValueError(f"Invalid torch_dtype value {torch_dtype}")
         return torch_dtype_resolved
+
+    def _prepare_tokenizer(
+        self,
+        tokenizer: Optional[Union[str, PreTrainedTokenizer, PreTrainedTokenizerFast]],
+        model: Optional[Union[str, PreTrainedModel]],
+        hub_kwargs: Dict[str, Any],
+    ) -> Optional[Union[str, PreTrainedTokenizer, PreTrainedTokenizerFast, None]]:
+        """
+        this method prepares the tokenizer before passing it to transformers' pipeline, so that the instantiated pipeline
+        object has a working tokenizer.
+
+        It loads the tokenizer if it is passed as a string and its model is currently not supported by the transformer
+        library. Otherwise, the passed tokenizer is returned.
+
+        :param tokenizer: the tokenizer that will be used by the pipeline to encode data for the model.
+        :param model: the model that will be used by the pipeline to make predictions.
+        :hub_kwargs: keyword argument related to hugging face hub
+        """
+
+        if isinstance(tokenizer, str):
+            model_config = AutoConfig.from_pretrained(model, **hub_kwargs)
+            is_supported_tokenizer = type(model_config) in TOKENIZER_MAPPING or model_config.tokenizer_class is not None
+            if not is_supported_tokenizer:
+                tokenizer = AutoTokenizer.from_pretrained(tokenizer, **hub_kwargs)
+
+        return tokenizer
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:

@@ -67,14 +67,14 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
         "config",
         "tokenizer",
         "feature_extractor",
-        "revision",
-        "use_auth_token",
         "device_map",
         "device",
         "torch_dtype",
-        "trust_remote_code",
         "model_kwargs",
         "pipeline_class",
+        "revision",
+        "use_auth_token",
+        "trust_remote_code",
     ]
 
 
