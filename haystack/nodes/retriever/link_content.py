@@ -8,16 +8,19 @@ from urllib.parse import urlparse
 
 import requests
 from boilerpy3 import extractors
-import fitz
 from requests import Response
 from requests.exceptions import InvalidURL, HTTPError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryCallState
 
 from haystack import __version__
+from haystack.lazy_imports import LazyImport
 from haystack.nodes import PreProcessor, BaseComponent
 from haystack.schema import Document, MultiLabel
 
 logger = logging.getLogger(__name__)
+
+with LazyImport() as fitz_import:
+    import fitz
 
 
 def html_content_handler(response: Response, raise_on_failure: bool = False) -> Optional[str]:
@@ -86,7 +89,9 @@ class LinkContentFetcher(BaseComponent):
         self.user_agents = itertools.cycle(user_agents or [LinkContentFetcher.USER_AGENT])
         self.default_user_agent = next(self.user_agents)
         self.current_user_agent = self.default_user_agent
-        self.handlers: Dict[str, Callable] = {"text/html": html_content_handler, "application/pdf": pdf_content_handler}
+        self.handlers: Dict[str, Callable] = {"text/html": html_content_handler}
+        if fitz_import.is_successful():
+            self.handlers["application/pdf"] = pdf_content_handler
 
     def fetch(self, url: str, timeout: Optional[int] = 3, doc_kwargs: Optional[dict] = None) -> List[Document]:
         """
