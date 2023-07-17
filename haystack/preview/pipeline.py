@@ -8,9 +8,13 @@ from canals.pipeline import (
     load_pipelines as load_canals_pipelines,
     save_pipelines as save_canals_pipelines,
 )
-from canals.pipeline.sockets import find_input_sockets
 
 from haystack.preview.document_stores.protocols import Store
+from haystack.preview.document_stores.mixins import StoreAwareMixin
+
+
+class NotAStoreError(PipelineError):
+    pass
 
 
 class NoSuchStoreError(PipelineError):
@@ -24,7 +28,7 @@ class Pipeline(CanalsPipeline):
 
     def __init__(self):
         super().__init__()
-        self.stores: Dict[str, Store] = {}
+        self._stores: Dict[str, Store] = {}
 
     def add_store(self, name: str, store: Store) -> None:
         """
@@ -34,7 +38,12 @@ class Pipeline(CanalsPipeline):
         :param store: the store object.
         :returns: None
         """
-        self.stores[name] = store
+        if not isinstance(store, Store):
+            raise NotAStoreError(
+                f"This object ({store}) does not respect the Store Protocol, "
+                "so it can't be added to the pipeline with Pipeline.add_store()."
+            )
+        self._stores[name] = store
 
     def list_stores(self) -> List[str]:
         """
@@ -42,7 +51,7 @@ class Pipeline(CanalsPipeline):
 
         :returns: a dictionary with all the stores attached to this Pipeline.
         """
-        return list(self.stores.keys())
+        return list(self._stores.keys())
 
     def get_store(self, name: str) -> Store:
         """
@@ -52,33 +61,49 @@ class Pipeline(CanalsPipeline):
         :returns: the store
         """
         try:
-            return self.stores[name]
+            return self._stores[name]
         except KeyError as e:
             raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
 
-    def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
+    def add_component(self, name: str, instance: Any, store: Optional[str] = None) -> None:
         """
-        Wrapper on top of Canals Pipeline.run(). Adds the `stores` parameter to all nodes.
+        Make this component available to the pipeline. Components are not connected to anything by default:
+        use `Pipeline.connect()` to connect components together.
 
-        :params data: the inputs to give to the input components of the Pipeline.
-        :params parameters: a dictionary with all the parameters of all the components, namespaced by component.
-        :params debug: whether to collect and return debug information.
-        :returns A dictionary with the outputs of the output components of the Pipeline.
+        Component names must be unique, but component instances can be reused if needed.
+
+        If `store` has a value, the pipeline will also connect this component to the requested document store.
+        Note that only components that inherit from StoreAwareMixin can be connected to stores.
+
+        :param name: the name of the component.
+        :param instance: the component instance.
+        :param store: the store this component needs access to, if any.
+        :raises ValueError: if:
+            - a component with the same name already exists
+            - a component requiring a store didn't receive it
+            - a component that didn't expect a store received it
+        :raises PipelineValidationError: if the given instance is not a component
+        :raises NoSuchStoreError: if the given store name is not known to the pipeline
         """
-        # Get all nodes in this pipelines instance
-        for node_name in self.graph.nodes:
-            # Get node inputs
-            node = self.graph.nodes[node_name]["instance"]
-            input_params = find_input_sockets(node)
+        if isinstance(instance, StoreAwareMixin):
+            if not store:
+                raise ValueError(f"Component '{name}' needs a store.")
 
-            # If the node needs a store, adds the list of stores to its default inputs
-            if "stores" in input_params:
-                if not hasattr(node, "defaults"):
-                    setattr(node, "defaults", {})
-                node.defaults["stores"] = self.stores
+            if store not in self._stores:
+                raise NoSuchStoreError(
+                    f"Store named '{store}' not found. "
+                    f"Add it with 'pipeline.add_store('{store}', <the docstore instance>)'."
+                )
 
-        # Run the pipeline
-        return super().run(data=data, debug=debug)
+            if instance.store:
+                raise ValueError("Reusing components with stores is not supported (yet). Create a separate instance.")
+
+            instance.store = self._stores[store]
+
+        elif store:
+            raise ValueError(f"Component '{name}' doesn't support stores.")
+
+        super().add_component(name, instance)
 
 
 def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):
