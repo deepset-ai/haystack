@@ -1,7 +1,6 @@
-from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
 
-from haystack.preview import component, Document, ComponentInput, ComponentOutput
+from haystack.preview import component, Document
 from haystack.preview.document_stores import MemoryDocumentStore
 
 
@@ -11,8 +10,7 @@ class MemoryRetriever:
     A component for retrieving documents from a MemoryDocumentStore using the BM25 algorithm.
     """
 
-    @dataclass
-    class Input(ComponentInput):
+    class Input:
         """
         Input data for the MemoryRetriever component.
 
@@ -29,8 +27,7 @@ class MemoryRetriever:
         scale_score: bool
         stores: Dict[str, Any]
 
-    @dataclass
-    class Output(ComponentOutput):
+    class Output:
         """
         Output data from the MemoryRetriever component.
 
@@ -38,6 +35,14 @@ class MemoryRetriever:
         """
 
         documents: List[List[Document]]
+
+    @component.input
+    def input(self):  # type: ignore
+        return MemoryRetriever.Input
+
+    @component.output
+    def output(self):  # type: ignore
+        return MemoryRetriever.Output
 
     def __init__(
         self,
@@ -86,4 +91,4 @@ class MemoryRetriever:
                     query=query, filters=data.filters, top_k=data.top_k, scale_score=data.scale_score
                 )
             )
-        return MemoryRetriever.Output(documents=docs)
+        return self.output(documents=docs)

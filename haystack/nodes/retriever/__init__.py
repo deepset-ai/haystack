@@ -8,4 +8,5 @@ from haystack.nodes.retriever.dense import (
 )
 from haystack.nodes.retriever.multimodal import MultiModalRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
+from haystack.nodes.retriever.link_content import LinkContentFetcher
 from haystack.nodes.retriever.web import WebRetriever

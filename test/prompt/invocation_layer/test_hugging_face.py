@@ -1,3 +1,4 @@
+from typing import List
 from unittest.mock import MagicMock, patch, Mock
 
 import pytest
@@ -399,25 +400,36 @@ def test_streaming_stream_handler_param_in_constructor(mock_pipeline, mock_get_t
 
 
 @pytest.mark.unit
-def test_supports(tmp_path):
+def test_supports(tmp_path, mock_get_task):
     """
     Test that supports returns True correctly for HFLocalInvocationLayer
     """
-    # mock get_task to avoid remote calls to HF hub
-    mock_get_task = Mock(return_value="text2text-generation")
 
-    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
-        assert HFLocalInvocationLayer.supports("google/flan-t5-base")
-        assert HFLocalInvocationLayer.supports("mosaicml/mpt-7b")
-        assert HFLocalInvocationLayer.supports("CarperAI/stable-vicuna-13b-delta")
-        mock_get_task.side_effect = RuntimeError
-        assert not HFLocalInvocationLayer.supports("google/flan-t5-base")
-        assert mock_get_task.call_count == 4
+    assert HFLocalInvocationLayer.supports("google/flan-t5-base")
+    assert HFLocalInvocationLayer.supports("mosaicml/mpt-7b")
+    assert HFLocalInvocationLayer.supports("CarperAI/stable-vicuna-13b-delta")
+    mock_get_task.side_effect = RuntimeError
+    assert not HFLocalInvocationLayer.supports("google/flan-t5-base")
+    assert mock_get_task.call_count == 4
 
     # some HF local model directory, let's use the one from test/prompt/invocation_layer
     assert HFLocalInvocationLayer.supports(str(tmp_path))
 
-    # but not some non text2text-generation or non text-generation model
+    # we can also specify the task name to override the default
+    # short-circuit the get_task call
+    assert HFLocalInvocationLayer.supports(
+        "vblagoje/bert-english-uncased-finetuned-pos", task_name="text2text-generation"
+    )
+
+
+@pytest.mark.unit
+def test_supports_not(mock_get_task):
+    """
+    Test that supports returns False correctly for HFLocalInvocationLayer
+    """
+    assert not HFLocalInvocationLayer.supports("google/flan-t5-base", api_key="some_key")
+
+    # also not some non text2text-generation or non text-generation model
     # i.e image classification model
     mock_get_task = Mock(return_value="image-classification")
     with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
@@ -429,12 +441,6 @@ def test_supports(tmp_path):
     with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
         assert not HFLocalInvocationLayer.supports("vblagoje/bert-english-uncased-finetuned-pos")
         assert mock_get_task.call_count == 1
-
-    # unless we specify the task name to override the default
-    # short-circuit the get_task call
-    assert HFLocalInvocationLayer.supports(
-        "vblagoje/bert-english-uncased-finetuned-pos", task_name="text2text-generation"
-    )
 
 
 @pytest.mark.unit
@@ -456,8 +462,8 @@ def test_stop_words_criteria_set(mock_pipeline, mock_get_task):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("stop_words", [["good"], ["hello", "good"], ["hello", "good", "health"]])
-def test_stop_words_single_token(stop_words):
+@pytest.mark.parametrize("stop_words", [["good"], ["hello", "good"]])
+def test_stop_words_single_token(stop_words: List[str]):
     """
     Test that stop words criteria is used and that it works with single token stop words
     """
@@ -465,9 +471,10 @@ def test_stop_words_single_token(stop_words):
     # simple test with words not broken down into multiple tokens
     default_model = "google/flan-t5-base"
     tokenizer = AutoTokenizer.from_pretrained(default_model)
-    # each word is broken down into a single token
-    tokens = tokenizer.tokenize("good health wish")
-    assert len(tokens) == 3
+    for stop_word in stop_words:
+        # confirm we are dealing with single-token words
+        tokens = tokenizer.tokenize(stop_word)
+        assert len(tokens) == 1
 
     layer = HFLocalInvocationLayer(model_name_or_path=default_model)
     result = layer.invoke(prompt="Generate a sentence `I wish you a good health`", stop_words=stop_words)
@@ -478,21 +485,22 @@ def test_stop_words_single_token(stop_words):
 
 
 @pytest.mark.integration
-def test_stop_words_multiple_token():
+@pytest.mark.parametrize(
+    "stop_words", [["unambiguously"], ["unambiguously", "unrelated"], ["unambiguously", "hearted"]]
+)
+def test_stop_words_multiple_token(stop_words: List[str]):
     """
     Test that stop words criteria is used and that it works for multi-token words
     """
-    # complex test with words broken down into multiple tokens
     default_model = "google/flan-t5-base"
     tokenizer = AutoTokenizer.from_pretrained(default_model)
-    # single word unambiguously is broken down into 3 tokens
-    tokens = tokenizer.tokenize("unambiguously")
-    assert len(tokens) == 3
+    for stop_word in stop_words:
+        # confirm we are dealing with multi-token words
+        tokens = tokenizer.tokenize(stop_word)
+        assert len(tokens) > 1
 
     layer = HFLocalInvocationLayer(model_name_or_path=default_model)
-    result = layer.invoke(
-        prompt="Generate a sentence `I wish you unambiguously good health`", stop_words=["unambiguously"]
-    )
+    result = layer.invoke(prompt="Generate a sentence `I wish you unambiguously good health`", stop_words=stop_words)
     # yet the stop word is correctly stopped on and removed
     assert len(result) > 0
     assert result[0].startswith("I wish you")
@@ -502,10 +510,13 @@ def test_stop_words_multiple_token():
 
 
 @pytest.mark.integration
-def test_stop_words_not_being_found():
-    # simple test with words not broken down into multiple tokens
+@pytest.mark.parametrize("stop_words", [["Berlin"], ["Berlin", "Brandenburg"], ["Berlin", "Brandenburg", "Germany"]])
+def test_stop_words_not_being_found(stop_words: List[str]):
+    """
+    Test that stop works on tokens that are not found in the generated text, stop words are not found
+    """
     layer = HFLocalInvocationLayer()
-    result = layer.invoke(prompt="Generate a sentence `I wish you a good health`", stop_words=["Berlin"])
+    result = layer.invoke(prompt="Generate a sentence `I wish you a good health`", stop_words=stop_words)
     assert len(result) > 0
     for word in "I wish you a good health".split():
         assert word in result[0]
