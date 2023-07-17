@@ -2,6 +2,8 @@ from typing import Optional, Union, List, Dict, Any
 import logging
 import os
 
+from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, PreTrainedModel
+
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.utils import get_task
