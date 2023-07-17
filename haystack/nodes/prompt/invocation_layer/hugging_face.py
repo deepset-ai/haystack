@@ -20,7 +20,6 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         StoppingCriteria,
         PreTrainedTokenizer,
         PreTrainedTokenizerFast,
-        PreTrainedModel,
         GenerationConfig,
         Pipeline,
         AutoTokenizer,
