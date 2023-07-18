@@ -10,8 +10,8 @@ import pytest
 
 from canals.errors import PipelineConnectError
 from canals import Pipeline, component
-from canals.pipeline.sockets import find_input_sockets, find_output_sockets
-from canals.pipeline.connections import find_unambiguous_connection, get_socket_type_desc
+from canals.pipeline.sockets import _find_input_sockets, _find_output_sockets
+from canals.pipeline.connections import _find_unambiguous_connection, _get_socket_type_desc
 
 from test.sample_components import AddFixedValue, Greet
 from test._helpers import make_component
@@ -479,11 +479,11 @@ def test_find_unambiguous_connection_many_connections_possible_no_name_matches()
  - value3 (str), available"""
     )
     with pytest.raises(PipelineConnectError, match=expected_message):
-        find_unambiguous_connection(
+        _find_unambiguous_connection(
             sender_node="comp1",
             receiver_node="comp2",
-            sender_sockets=find_output_sockets(Component1()).values(),
-            receiver_sockets=find_input_sockets(Component2()).values(),
+            sender_sockets=_find_output_sockets(Component1()).values(),
+            receiver_sockets=_find_input_sockets(Component2()).values(),
         )
 
 
@@ -553,4 +553,4 @@ def test_find_unambiguous_connection_many_connections_possible_no_name_matches()
     ],
 )
 def test_get_socket_type_desc(type_, repr):
-    assert get_socket_type_desc(type_) == repr
+    assert _get_socket_type_desc(type_) == repr

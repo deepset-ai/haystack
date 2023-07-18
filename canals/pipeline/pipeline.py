@@ -16,10 +16,10 @@ import networkx
 
 from canals.component import Component
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
-from canals.draw import draw, convert_for_debug, RenderingEngines
-from canals.pipeline.sockets import InputSocket, OutputSocket, find_input_sockets, find_output_sockets
-from canals.pipeline.validation import validate_pipeline_input
-from canals.pipeline.connections import parse_connection_name, find_unambiguous_connection, get_socket_type_desc
+from canals.pipeline.draw import _draw, _convert_for_debug, RenderingEngines
+from canals.pipeline.sockets import InputSocket, OutputSocket, _find_input_sockets, _find_output_sockets
+from canals.pipeline.validation import _validate_pipeline_input
+from canals.pipeline.connections import _parse_connection_name, _find_unambiguous_connection, _get_socket_type_desc
 
 
 logger = logging.getLogger(__name__)
@@ -121,8 +121,8 @@ class Pipeline:
             )
 
         # Find inputs and outputs
-        input_sockets = find_input_sockets(instance)
-        output_sockets = find_output_sockets(instance)
+        input_sockets = _find_input_sockets(instance)
+        output_sockets = _find_output_sockets(instance)
 
         # Add component to the graph, disconnected
         logger.debug("Adding component '%s' (%s)", name, instance)
@@ -154,8 +154,8 @@ class Pipeline:
                 not present in the pipeline, or the connections don't match by type, and so on).
         """
         # Edges may be named explicitly by passing 'node_name.edge_name' to connect().
-        from_node, from_socket_name = parse_connection_name(connect_from)
-        to_node, to_socket_name = parse_connection_name(connect_to)
+        from_node, from_socket_name = _parse_connection_name(connect_from)
+        to_node, to_socket_name = _parse_connection_name(connect_to)
 
         # Get the nodes data.
         try:
@@ -176,7 +176,7 @@ class Pipeline:
                     f"'{from_node}.{from_socket_name} does not exist. "
                     f"Output connections of {from_node} are: "
                     + ", ".join(
-                        [f"{name} (type {get_socket_type_desc(socket.type)})" for name, socket in from_sockets.items()]
+                        [f"{name} (type {_get_socket_type_desc(socket.type)})" for name, socket in from_sockets.items()]
                     )
                 )
         if to_socket_name:
@@ -186,7 +186,7 @@ class Pipeline:
                     f"'{to_node}.{to_socket_name} does not exist. "
                     f"Input connections of {to_node} are: "
                     + ", ".join(
-                        [f"{name} (type {get_socket_type_desc(socket.type)})" for name, socket in to_sockets.items()]
+                        [f"{name} (type {_get_socket_type_desc(socket.type)})" for name, socket in to_sockets.items()]
                     )
                 )
 
@@ -194,7 +194,7 @@ class Pipeline:
         # Note that if there is more than one possible connection but two sockets match by name, they're paired.
         from_sockets = [from_socket] if from_socket_name else list(from_sockets.values())
         to_sockets = [to_socket] if to_socket_name else list(to_sockets.values())
-        from_socket, to_socket = find_unambiguous_connection(
+        from_socket, to_socket = _find_unambiguous_connection(
             sender_node=from_node, sender_sockets=from_sockets, receiver_node=to_node, receiver_sockets=to_sockets
         )
 
@@ -257,7 +257,7 @@ class Pipeline:
             ImportError: if `engine='graphviz'` and `pygraphviz` is not installed.
             HTTPConnectionError: (and similar) if the internet connection is down or other connection issues.
         """
-        draw(graph=deepcopy(self.graph), path=path, engine=engine)
+        _draw(graph=deepcopy(self.graph), path=path, engine=engine)
 
     def warm_up(self):
         """
@@ -314,7 +314,7 @@ class Pipeline:
         # if debug:
         #     os.makedirs("debug", exist_ok=True)
 
-        data = validate_pipeline_input(self.graph, input_values=data)
+        data = _validate_pipeline_input(self.graph, input_values=data)
         self._clear_visits_count()
         self.warm_up()
 
@@ -403,7 +403,7 @@ class Pipeline:
         """
         Stores a snapshot of this step into the self.debug dictionary of the pipeline.
         """
-        mermaid_graph = convert_for_debug(deepcopy(self.graph))
+        mermaid_graph = _convert_for_debug(deepcopy(self.graph))
         self.debug[step] = {
             "time": datetime.datetime.now(),
             "inputs_buffer": list(inputs_buffer.items()),

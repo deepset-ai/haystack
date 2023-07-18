@@ -11,7 +11,7 @@ from networkx.drawing.nx_agraph import to_agraph as nx_to_agraph
 logger = logging.getLogger(__name__)
 
 
-def to_agraph(graph: networkx.MultiDiGraph):
+def _to_agraph(graph: networkx.MultiDiGraph):
     """
     Renders a pipeline graph using PyGraphViz. You need to install it and all its system dependencies for it to work.
     """

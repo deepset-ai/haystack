@@ -13,7 +13,7 @@ from canals.pipeline.sockets import InputSocket, OutputSocket
 logger = logging.getLogger(__name__)
 
 
-def parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
+def _parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
     """
     Returns component-connection pairs from a connect_to/from string
     """
@@ -62,7 +62,7 @@ def _types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-
     return all(_types_are_compatible(*args) for args in zip(sender_args, receiver_args))
 
 
-def find_unambiguous_connection(
+def _find_unambiguous_connection(
     sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
 ) -> Tuple[OutputSocket, InputSocket]:
     """
@@ -136,13 +136,13 @@ def _connections_status(
     """
     sender_sockets_entries = []
     for sender_socket in sender_sockets:
-        socket_types = get_socket_type_desc(sender_socket.type)
+        socket_types = _get_socket_type_desc(sender_socket.type)
         sender_sockets_entries.append(f" - {sender_socket.name} ({socket_types})")
     sender_sockets_list = "\n".join(sender_sockets_entries)
 
     receiver_sockets_entries = []
     for receiver_socket in receiver_sockets:
-        socket_types = get_socket_type_desc(receiver_socket.type)
+        socket_types = _get_socket_type_desc(receiver_socket.type)
         receiver_sockets_entries.append(
             f" - {receiver_socket.name} ({socket_types}), "
             f"{'sent by '+receiver_socket.sender if receiver_socket.sender else 'available'}"
@@ -152,7 +152,7 @@ def _connections_status(
     return f"'{sender_node}':\n{sender_sockets_list}\n'{receiver_node}':\n{receiver_sockets_list}"
 
 
-def get_socket_type_desc(type_):
+def _get_socket_type_desc(type_):
     """
     Assembles a readable representation of the type of a connection. Can handle primitive types, classes, and
     arbitrarily nested structures of types from the typing module.
@@ -189,5 +189,5 @@ def get_socket_type_desc(type_):
     else:
         type_name = type_.__name__
 
-    subtypes = ", ".join([get_socket_type_desc(subtype) for subtype in args if subtype is not type(None)])
+    subtypes = ", ".join([_get_socket_type_desc(subtype) for subtype in args if subtype is not type(None)])
     return f"{type_name}[{subtypes}]"

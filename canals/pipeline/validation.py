@@ -14,7 +14,7 @@ from canals.pipeline.sockets import InputSocket, OutputSocket
 logger = logging.getLogger(__name__)
 
 
-def find_pipeline_inputs(graph: networkx.MultiDiGraph) -> Dict[str, List[InputSocket]]:
+def _find_pipeline_inputs(graph: networkx.MultiDiGraph) -> Dict[str, List[InputSocket]]:
     """
     Collect components that have disconnected input sockets. Note that this method returns *ALL* disconnected
     input sockets, including all such sockets with default values.
@@ -25,7 +25,7 @@ def find_pipeline_inputs(graph: networkx.MultiDiGraph) -> Dict[str, List[InputSo
     }
 
 
-def find_pipeline_outputs(graph) -> Dict[str, List[OutputSocket]]:
+def _find_pipeline_outputs(graph) -> Dict[str, List[OutputSocket]]:
     """
     Collect components that have disconnected output sockets. They define the pipeline output.
     """
@@ -36,12 +36,12 @@ def find_pipeline_outputs(graph) -> Dict[str, List[OutputSocket]]:
     }
 
 
-def validate_pipeline_input(graph: networkx.MultiDiGraph, input_values: Dict[str, Any]) -> Dict[str, Any]:
+def _validate_pipeline_input(graph: networkx.MultiDiGraph, input_values: Dict[str, Any]) -> Dict[str, Any]:
     """
     Make sure the pipeline is properly built and that the input received makes sense.
     Returns the input values, validated and updated at need.
     """
-    if not any(sockets for sockets in find_pipeline_inputs(graph).values()):
+    if not any(sockets for sockets in _find_pipeline_inputs(graph).values()):
         raise PipelineValidationError("This pipeline has no inputs.")
 
     # Make sure the input keys are all nodes of the pipeline
@@ -63,7 +63,7 @@ def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_va
     Make sure all the inputs nodes are receiving all the values they need, either from the Pipeline's input or from
     other nodes.
     """
-    valid_inputs = find_pipeline_inputs(graph)
+    valid_inputs = _find_pipeline_inputs(graph)
     for node, sockets in valid_inputs.items():
         for socket in sockets:
             node_instance = graph.nodes[node]["instance"]

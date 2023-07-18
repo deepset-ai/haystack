@@ -15,7 +15,7 @@ def mock_mermaid_request(test_files):
     """
     Prevents real requests to https://mermaid.ink/
     """
-    with patch("canals.draw.mermaid.requests.get") as mock_get:
+    with patch("canals.pipeline.draw.mermaid.requests.get") as mock_get:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = open(test_files / "mermaid_mock" / "test_response.png", "rb").read()

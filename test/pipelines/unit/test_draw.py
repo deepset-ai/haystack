@@ -10,7 +10,7 @@ import pytest
 import requests
 
 from canals.pipeline import Pipeline
-from canals.draw import draw, convert
+from canals.pipeline.draw import _draw, _convert
 from canals.errors import PipelineDrawingError
 
 from test.sample_components import Double
@@ -24,7 +24,7 @@ def test_draw_pygraphviz(tmp_path, test_files):
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
 
-    draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="graphviz")
+    _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="graphviz")
     assert os.path.exists(tmp_path / "test_pipe.jpg")
     assert filecmp.cmp(tmp_path / "test_pipe.jpg", test_files / "pipeline_draw" / "pygraphviz.jpg")
 
@@ -36,7 +36,7 @@ def test_draw_mermaid_img(tmp_path, test_files):
     pipe.connect("comp1", "comp2")
     pipe.connect("comp2", "comp1")
 
-    draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="mermaid-img")
+    _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="mermaid-img")
     assert os.path.exists(tmp_path / "test_pipe.jpg")
     assert filecmp.cmp(tmp_path / "test_pipe.jpg", test_files / "mermaid_mock" / "test_response.png")
 
@@ -48,7 +48,7 @@ def test_draw_mermaid_img_failing_request(tmp_path):
     pipe.connect("comp1", "comp2")
     pipe.connect("comp2", "comp1")
 
-    with patch("canals.draw.mermaid.requests.get") as mock_get:
+    with patch("canals.pipeline.draw.mermaid.requests.get") as mock_get:
 
         def raise_for_status(self):
             raise requests.HTTPError()
@@ -60,7 +60,7 @@ def test_draw_mermaid_img_failing_request(tmp_path):
         mock_get.return_value = mock_response
 
         with pytest.raises(PipelineDrawingError, match="There was an issue with https://mermaid.ink/"):
-            draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="mermaid-img")
+            _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="mermaid-img")
 
 
 def test_draw_mermaid_txt(tmp_path):
@@ -70,7 +70,7 @@ def test_draw_mermaid_txt(tmp_path):
     pipe.connect("comp1", "comp2")
     pipe.connect("comp2", "comp1")
 
-    draw(pipe.graph, tmp_path / "test_pipe.md", engine="mermaid-text")
+    _draw(pipe.graph, tmp_path / "test_pipe.md", engine="mermaid-text")
     assert os.path.exists(tmp_path / "test_pipe.md")
     assert (
         open(tmp_path / "test_pipe.md", "r").read()
@@ -88,7 +88,7 @@ def test_draw_unknown_engine(tmp_path):
     pipe.connect("comp2", "comp1")
 
     with pytest.raises(ValueError, match="Unknown rendering engine 'unknown'"):
-        draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="unknown")
+        _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="unknown")
 
 
 def test_convert_unknown_engine(tmp_path):
@@ -99,4 +99,4 @@ def test_convert_unknown_engine(tmp_path):
     pipe.connect("comp2", "comp1")
 
     with pytest.raises(ValueError, match="Unknown rendering engine 'unknown'"):
-        convert(pipe.graph, engine="unknown")
+        _convert(pipe.graph, engine="unknown")
