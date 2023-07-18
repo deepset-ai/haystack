@@ -65,7 +65,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
     def __init__(
         self,
         model_name_or_path: str = "google/flan-t5-base",
-        max_length: int = 100,
+        max_new_tokens: int = 100,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = True,
         devices: Optional[List[Union[str, "torch.device"]]] = None,
@@ -75,7 +75,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         Creates an instance of HFLocalInvocationLayer used to invoke local Hugging Face models.
 
         :param model_name_or_path: The name or path of the underlying model.
-        :param max_length: The maximum number of tokens the output text can have.
+        :param max_new_tokens: The maximum number of tokens the output text can have.
         :param use_auth_token: The token to use as HTTP bearer authorization for remote files.
         :param use_gpu: Whether to use GPU for inference.
         :param device: The device to use for inference.
@@ -139,21 +139,13 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         # This is how the default max_length is determined for Text2TextGenerationPipeline shown here
         # https://huggingface.co/transformers/v4.6.0/_modules/transformers/pipelines/text2text_generation.html
         # max_length must be set otherwise HFLocalInvocationLayer._ensure_token_limit will fail.
-        self.max_length = max_length or self.pipe.model.config.max_length
+        self.max_new_tokens = max_new_tokens
 
         model_max_length = kwargs.get("model_max_length", None)
         # we allow users to override the tokenizer's model_max_length because models like T5 have relative positional
         # embeddings and can accept sequences of more than 512 tokens
         if model_max_length is not None:
             self.pipe.tokenizer.model_max_length = model_max_length
-
-        if self.max_length > self.pipe.tokenizer.model_max_length:
-            logger.warning(
-                "The max_length %s is greater than model_max_length %s. This might result in truncation of the "
-                "generated text. Please lower the max_length (number of answer tokens) parameter!",
-                self.max_length,
-                self.pipe.tokenizer.model_max_length,
-            )
 
     def _prepare_pipeline_kwargs(self, **kwargs) -> Dict[str, Any]:
         """
@@ -236,7 +228,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # Thus only generated text is returned (excluding prompt)
             if is_text_generation and "return_full_text" not in model_input_kwargs:
                 model_input_kwargs["return_full_text"] = False
-                model_input_kwargs["max_new_tokens"] = self.max_length
             if stop_words:
                 sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words, device=self.pipe.device)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
@@ -257,9 +248,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
             # max_new_tokens is used for text-generation and max_length for text2text-generation
             if is_text_generation:
-                model_input_kwargs["max_new_tokens"] = model_input_kwargs.pop("max_length", self.max_length)
+                model_input_kwargs["max_new_tokens"] = model_input_kwargs.pop("max_new_tokens", self.max_new_tokens)
             else:
-                model_input_kwargs["max_length"] = self.max_length
+                model_input_kwargs["max_length"] = model_input_kwargs.pop("max_length", self.max_new_tokens)
 
             if stream:
                 stream_handler: TokenStreamingHandler = stream_handler or DefaultTokenStreamingHandler()
@@ -285,7 +276,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         model_max_length = self.pipe.tokenizer.model_max_length
         tokenized_prompt = self.pipe.tokenizer.tokenize(prompt)
         n_prompt_tokens = len(tokenized_prompt)
-        n_answer_tokens = self.max_length
+        n_answer_tokens = self.max_new_tokens
         if (n_prompt_tokens + n_answer_tokens) <= model_max_length:
             return prompt
 
