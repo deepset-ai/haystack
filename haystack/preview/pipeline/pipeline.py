@@ -1,13 +1,6 @@
-from typing import List, Dict, Any, Optional, Callable
+from typing import List, Dict, Any, Optional
 
-from pathlib import Path
-
-from canals.pipeline import (
-    Pipeline as CanalsPipeline,
-    PipelineError,
-    marshal_pipelines as marshal_canals_pipelines,
-    unmarshal_pipelines as unmarshal_canals_pipelines,
-)
+from canals.pipeline import Pipeline as CanalsPipeline, PipelineError
 
 from haystack.preview.document_stores.protocols import Store
 from haystack.preview.document_stores.mixins import StoreAwareMixin
@@ -24,11 +17,32 @@ class NoSuchStoreError(PipelineError):
 class Pipeline(CanalsPipeline):
     """
     Haystack Pipeline is a thin wrapper over Canals' Pipelines to add support for Stores.
+
+    See Canals' documentation for more information on Pipelines: https://deepset-ai.github.io/canals/
     """
 
     def __init__(self):
         super().__init__()
         self._stores: Dict[str, Store] = {}
+        self._store_connections: Dict[str, str] = {}
+
+    def __eq__(self, other) -> bool:
+        """
+        Equal pipelines share every metadata, store, component and connection, but they're not required to use the same
+        component or store instances: this allows pipeline saved and then loaded back to be equal to themselves.
+        """
+        super().__eq__(other)
+        if hasattr(other, "_store_connections") and self._store_connections != other._store_connections:
+            return False
+        return not all(
+            this_store_name == other_store_name
+            and type(this_store) == type(other_store)
+            and hasattr(other_store, "init_parameters")
+            and this_store.init_parameters == other_store.init_parameters
+            for (this_store_name, this_store), (other_store_name, other_store) in zip(
+                self._stores.items(), other._stores.items()
+            )
+        )
 
     def add_store(self, name: str, store: Store) -> None:
         """
@@ -99,36 +113,9 @@ class Pipeline(CanalsPipeline):
                 raise ValueError("Reusing components with stores is not supported (yet). Create a separate instance.")
 
             instance.store = self._stores[store]
+            self._store_connections[name] = store
 
         elif store:
             raise ValueError(f"Component '{name}' doesn't support stores.")
 
         super().add_component(name, instance)
-
-
-def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):
-    with open(path, "r", encoding="utf-8") as handle:
-        schema = _reader(handle)
-    return unmarshal_pipelines(schema=schema)
-
-
-def save_pipelines(pipelines: Dict[str, Pipeline], path: Path, _writer: Optional[Callable[..., Any]] = None):
-    schema = marshal_pipelines(pipelines=pipelines)
-    with open(path, "w", encoding="utf-8") as handle:
-        _writer(schema, handle)
-
-
-def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:
-    return unmarshal_canals_pipelines(schema=schema)
-
-
-def marshal_pipelines(pipelines: Dict[str, Pipeline]) -> Dict[str, Any]:
-    marshalled = marshal_canals_pipelines(pipelines=pipelines)
-    for pipeline_name, pipeline in pipelines.items():
-        # TODO serialize store's init params
-        marshaled_stores = {
-            store_name: {"type": store.__class__.__name__, "init_parameters": {}}
-            for store_name, store in pipeline.stores.items()
-        }
-        marshalled["pipelines"][pipeline_name]["stores"] = marshaled_stores
-    return marshalled

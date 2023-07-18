@@ -37,6 +37,11 @@ class MemoryDocumentStore:
         """
         Initializes the store.
         """
+        self.init_parameters = {
+            "bm25_tokenization_regex": bm25_tokenization_regex,
+            "bm25_algorithm": bm25_algorithm,
+            "bm25_parameters": bm25_parameters,
+        }
         self.storage: Dict[str, Document] = {}
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
         algorithm_class = getattr(rank_bm25, bm25_algorithm)

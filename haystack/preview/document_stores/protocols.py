@@ -1,6 +1,7 @@
-from typing import Protocol, Optional, Dict, Any, List, runtime_checkable
+from typing import Optional, Dict, Any, List, Protocol, runtime_checkable
 
 import logging
+from abc import ABC
 from enum import Enum
 
 from haystack.preview.dataclasses import Document
@@ -26,6 +27,8 @@ class Store(Protocol):
     In order to retrieve documents, consider using a Retriever that supports the document store implementation that
     you're using.
     """
+
+    init_parameters: Dict[str, Any] = {}
 
     def count_documents(self) -> int:
         """
