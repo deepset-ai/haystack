@@ -81,7 +81,8 @@ class RecentnessRanker(BaseRanker):
         scores_map: Dict = defaultdict(int)
         document_map = {doc.id: doc for doc in documents}
         weight = self.weight
-        if self.method not in ["reciprocal_rank_fusion", "score"]:
+        method = self.method
+        if method not in ["reciprocal_rank_fusion", "score"]:
             logger.error(
                 """
                     Param <method> seems wrong.\n
@@ -89,14 +90,14 @@ class RecentnessRanker(BaseRanker):
                     It should be 'reciprocal_rank_fusion' or 'score'.\n
                     Defaulting to 'reciprocal_rank_fusion'.
                     """,
-                self.method,
+                method,
             )
-            self.method = "reciprocal_rank_fusion"
+            method = "reciprocal_rank_fusion"
 
         for i, doc in enumerate(documents):
-            if self.method == "reciprocal_rank_fusion":
+            if method == "reciprocal_rank_fusion":
                 scores_map[doc.id] += self._calculate_rrf(rank=i) * (1 - weight)
-            elif self.method == "score":
+            elif method == "score":
                 score = float(0)
                 if doc.score is None:
                     warnings.warn("The score was not provided; defaulting to 0")
@@ -108,9 +109,9 @@ class RecentnessRanker(BaseRanker):
                 scores_map[doc.id] += score * (1 - weight)
 
         for i, doc in enumerate(sorted_by_date):
-            if self.method == "reciprocal_rank_fusion":
+            if method == "reciprocal_rank_fusion":
                 scores_map[doc.id] += self._calculate_rrf(rank=i) * weight
-            elif self.method == "score":
+            elif method == "score":
                 scores_map[doc.id] += self._calc_recentness_score(rank=i, amount=len(sorted_by_date)) * weight
         sorted_doc_ids = sorted(scores_map.items(), key=lambda d: d[1] if d[1] is not None else -1, reverse=True)
 

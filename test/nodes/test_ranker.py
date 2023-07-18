@@ -2,6 +2,7 @@ import pytest
 import math
 import warnings
 import logging
+import copy
 from unittest.mock import patch
 
 import torch
@@ -682,24 +683,80 @@ def test_recentness_ranker(caplog, test_input):
         )
         results = ranker.predict(query="", documents=docs, top_k=test_input["top_k"])
 
-        # Check that no warnings were thrown, if we are not expecting any
-        if "expected_warning" not in test_input or test_input["expected_warning"] == []:
-            assert len(warnings_list) == 0
-        # Check that all expected warnings happened, and only those
-        else:
-            assert len(warnings_list) == len(test_input["expected_warning"])
-            for i in range(len(test_input["expected_warning"])):
-                assert test_input["expected_warning"][i] == str(warnings_list[i].message)
+        check_results(results, test_input, warnings_list, caplog)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("test_input", recency_tests_inputs)
+def test_recentness_ranker_batch_L(caplog, test_input):
+    # Create a set of docs
+    docs = []
+    for doc in test_input["docs"]:
+        docs.append(Document(content="abc", **doc))
+
+    # catch warnings to check they are properly issued
+    with warnings.catch_warnings(record=True) as warnings_list:
+        # Initialize the ranker
+        ranker = RecentnessRanker(
+            date_identifier=test_input["date_identifier"], method=test_input["method"], weight=test_input["weight"]
+        )
+        # Run predict_batch with a list as input
+        results = ranker.predict_batch(queries="", documents=docs, top_k=test_input["top_k"])
+
+        check_results(results, test_input, warnings_list, caplog)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("test_input", recency_tests_inputs)
+def test_recentness_ranker_batch_LofL(caplog, test_input):
+    # Create a set of docs
+    docs = []
+    for doc in test_input["docs"]:
+        docs.append(Document(content="abc", **doc))
+
+    # catch warnings to check they are properly issued
+    with warnings.catch_warnings(record=True) as warnings_list:
+        # Initialize the ranker
+        ranker = RecentnessRanker(
+            date_identifier=test_input["date_identifier"], method=test_input["method"], weight=test_input["weight"]
+        )
+        # Run predict_batch with a list of lists as input
+        results = ranker.predict_batch(queries="", documents=[docs, copy.deepcopy(docs)], top_k=test_input["top_k"])
+
+        check_results(results, test_input, warnings_list, caplog, LofL=True)
+
+
+def check_results(results, test_input, warnings_list, caplog, LofL=False):
+    expected_logs_count = 1
+    if LofL:
+        expected_logs_count = 2
+
+    # Check that no warnings were thrown, if we are not expecting any
+    if "expected_warning" not in test_input or test_input["expected_warning"] == []:
+        assert len(warnings_list) == 0
+    # Check that all expected warnings happened, and only those
+    else:
+        assert len(warnings_list) == len(test_input["expected_warning"])
+        for i in range(len(warnings_list)):
+            assert test_input["expected_warning"][int(i)] == str(warnings_list[i].message)
 
     # If we expect logging, compare them one by one
     if "expected_logs" not in test_input or test_input["expected_logs"] == []:
         assert len(caplog.record_tuples) == 0
     else:
-        assert len(test_input["expected_logs"]) == len(caplog.record_tuples)
-        for i in range(len(test_input["expected_logs"])):
-            assert test_input["expected_logs"][i] == caplog.record_tuples[i]
+        assert expected_logs_count * len(test_input["expected_logs"]) == len(caplog.record_tuples)
+        for i in range(len(caplog.record_tuples)):
+            assert test_input["expected_logs"][int(i / expected_logs_count)] == caplog.record_tuples[i]
 
-    # Verify the results, that the order and the score of the documents match
+    if not LofL:
+        check_result_content(results, test_input)
+    else:
+        for i in results:
+            check_result_content(i, test_input)
+
+
+# Verify the results, that the order and the score of the documents match
+def check_result_content(results, test_input):
     assert len(results) == len(test_input["expected_order"])
     for i in range(len(test_input["expected_order"])):
         assert test_input["expected_order"][i] == results[i].id
