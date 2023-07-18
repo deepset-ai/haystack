@@ -9,8 +9,7 @@ from pathlib import Path
 import pytest
 
 from canals.errors import PipelineConnectError
-from canals.pipeline import Pipeline, PipelineConnectError
-from canals.component import component
+from canals import Pipeline, component
 from canals.pipeline.sockets import find_input_sockets, find_output_sockets
 from canals.pipeline.connections import find_unambiguous_connection, get_socket_type_desc
 

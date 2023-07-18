@@ -5,8 +5,8 @@ from typing import Optional
 import logging
 
 
+from canals import component
 from canals.testing import BaseTestComponent
-from canals.component import component
 
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from canals.component import component
+from canals import component
 from canals.testing import BaseTestComponent
 
 
