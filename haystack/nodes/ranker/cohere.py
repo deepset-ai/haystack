@@ -42,7 +42,12 @@ class CohereRanker(BaseRanker):
     """
 
     def __init__(
-        self, api_key: str, model_name_or_path: str, top_k: int = 10, max_chunks_per_doc: Optional[int] = None
+        self,
+        api_key: str,
+        model_name_or_path: str,
+        top_k: int = 10,
+        max_chunks_per_doc: Optional[int] = None,
+        embed_meta_fields: Optional[List[str]] = None,
     ):
         """
          Creates an instance of CohereInvocationLayer for the specified Cohere model.
@@ -54,6 +59,8 @@ class CohereRanker(BaseRanker):
             chunks a document can be split into. If None, the default of 10 is used.
             For example, if your document is 6000 tokens, with the default of 10, the document will be split into 10
             chunks each of 512 tokens and the last 880 tokens will be disregarded.
+        :param embed_meta_fields: Concatenate the provided meta fields and into the text passage that is then used in
+            reranking. The original documents are returned so the concatenated metadata is not included in the returned documents.
         """
         super().__init__()
         valid_api_key = isinstance(api_key, str) and api_key
@@ -71,6 +78,7 @@ class CohereRanker(BaseRanker):
         self.api_key = api_key
         self.top_k = top_k
         self.max_chunks_per_doc = max_chunks_per_doc
+        self.embed_meta_fields = embed_meta_fields
 
     @property
     def url(self) -> str:
@@ -139,7 +147,10 @@ class CohereRanker(BaseRanker):
             top_k = self.top_k
 
         # See https://docs.cohere.com/reference/rerank-1
-        cohere_docs = [{"text": d.content} for d in documents]
+        docs_with_meta_fields = self._add_meta_fields_to_docs(
+            documents=documents, embed_meta_fields=self.embed_meta_fields
+        )
+        cohere_docs = [{"text": d.content} for d in docs_with_meta_fields]
         if len(cohere_docs) > 1000:
             logger.warning(
                 "The Cohere reranking endpoint only supports 1000 documents. "
@@ -216,5 +227,6 @@ class CohereRanker(BaseRanker):
 
             results = []
             for query, cur_docs in zip(queries, documents):
+                assert isinstance(cur_docs, list)
                 results.append(self.predict(query=query, documents=cur_docs, top_k=top_k))  # type: ignore
             return results
