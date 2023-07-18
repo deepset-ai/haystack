@@ -2,13 +2,16 @@ from typing import Any, Optional, Dict, List
 
 import pytest
 
-from haystack.preview import Pipeline, component, NoSuchStoreError, Document
+from haystack.preview import component, Document
+from haystack.preview.pipeline import Pipeline, NoSuchStoreError
 from haystack.preview.pipeline.pipeline import NotAStoreError
 from haystack.preview.document_stores import StoreAwareMixin, DuplicatePolicy, Store
 
 
 # Note: we're using a real class instead of a mock because mocks don't play too well with protocols.
 class MockStore:
+    init_parameters = {}
+
     def count_documents(self) -> int:
         return 0
 

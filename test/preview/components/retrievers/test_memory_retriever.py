@@ -84,6 +84,8 @@ class TestMemoryRetriever(BaseTestComponent):
     @pytest.mark.unit
     def test_invalid_run_wrong_store_type(self):
         class MockStore:
+            init_parameters = {}
+
             def count_documents(self) -> int:
                 return 0
 
