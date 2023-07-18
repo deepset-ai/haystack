@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import pytest
 
-from canals.pipeline import Pipeline, marshal_pipelines, unmarshal_pipelines
+from canals import Pipeline, marshal_pipelines, unmarshal_pipelines
 from test.sample_components import AddFixedValue, Double
 
 import logging

@@ -4,8 +4,8 @@
 from typing import Optional
 
 
+from canals import component
 from canals.testing import BaseTestComponent
-from canals.component import component
 
 
 @component

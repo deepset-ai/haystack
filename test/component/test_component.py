@@ -1,6 +1,6 @@
 import pytest
 
-from canals.component import component
+from canals import component
 from canals.errors import ComponentError
 
 

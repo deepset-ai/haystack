@@ -5,8 +5,8 @@ from dataclasses import make_dataclass
 
 import pytest
 
+from canals import component
 from canals.testing import BaseTestComponent
-from canals.component import component
 
 
 @component

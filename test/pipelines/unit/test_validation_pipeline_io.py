@@ -2,7 +2,8 @@ from typing import Optional
 
 import pytest
 
-from canals.pipeline import Pipeline, PipelineValidationError
+from canals.pipeline import Pipeline
+from canals.errors import PipelineValidationError
 from canals.pipeline.sockets import InputSocket, OutputSocket
 from canals.pipeline.validation import find_pipeline_inputs, find_pipeline_outputs
 

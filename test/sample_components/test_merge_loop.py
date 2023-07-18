@@ -5,7 +5,7 @@ import builtins
 from typing import List, Union, Optional
 from dataclasses import make_dataclass, is_dataclass, asdict
 
-from canals.component import component
+from canals import component
 from canals.testing import BaseTestComponent
 
 

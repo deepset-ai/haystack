@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import List, Optional, Union, Set, Sequence, Iterable, Dict, Mapping, Tuple
 
-from canals.component import component
+from canals import component
 from canals.pipeline.sockets import (
     find_output_sockets,
     OutputSocket,

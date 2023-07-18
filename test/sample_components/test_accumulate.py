@@ -6,7 +6,7 @@ import sys
 import builtins
 from importlib import import_module
 
-from canals.component import component
+from canals import component
 from canals.testing import BaseTestComponent
 
 

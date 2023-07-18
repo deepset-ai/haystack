@@ -6,8 +6,8 @@ from typing import List
 from dataclasses import make_dataclass
 
 
+from canals import component
 from canals.testing import BaseTestComponent
-from canals.component import component
 
 
 @component

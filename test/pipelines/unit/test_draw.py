@@ -10,8 +10,8 @@ import pytest
 import requests
 
 from canals.pipeline import Pipeline
-from canals.errors import PipelineDrawingError
 from canals.draw import draw, convert
+from canals.errors import PipelineDrawingError
 
 from test.sample_components import Double
 

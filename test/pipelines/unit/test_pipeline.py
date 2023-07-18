@@ -5,7 +5,8 @@
 from typing import List
 import pytest
 
-from canals.pipeline import Pipeline, PipelineMaxLoops
+from canals import Pipeline
+from canals.errors import PipelineMaxLoops
 from test.sample_components import AddFixedValue, Threshold, MergeLoop
 
 import logging
