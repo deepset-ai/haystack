@@ -8,16 +8,16 @@ from pathlib import Path
 
 import networkx
 
-from canals.pipeline.validation import find_pipeline_inputs, find_pipeline_outputs
-from canals.draw.graphviz import to_agraph
-from canals.draw.mermaid import to_mermaid_image, to_mermaid_text
+from canals.pipeline.validation import _find_pipeline_inputs, _find_pipeline_outputs
+from canals.pipeline.draw.graphviz import _to_agraph
+from canals.pipeline.draw.mermaid import _to_mermaid_image, _to_mermaid_text
 
 
 logger = logging.getLogger(__name__)
 RenderingEngines = Literal["graphviz", "mermaid-img", "mermaid-text"]
 
 
-def draw(
+def _draw(
     graph: networkx.MultiDiGraph,
     path: Path,
     engine: RenderingEngines = "mermaid-img",
@@ -26,7 +26,7 @@ def draw(
     """
     Renders the pipeline graph and saves it to file.
     """
-    converted_graph = convert(graph=graph, engine=engine, style_map=style_map)
+    converted_graph = _convert(graph=graph, engine=engine, style_map=style_map)
 
     if engine == "graphviz":
         converted_graph.draw(path)
@@ -45,17 +45,17 @@ def draw(
     logger.debug("Pipeline diagram saved at %s", path)
 
 
-def convert_for_debug(
+def _convert_for_debug(
     graph: networkx.MultiDiGraph,
 ) -> Any:
     """
     Renders the pipeline graph with additional debug information into a text file that Mermaid can later render.
     """
     graph = _prepare_for_drawing(graph=graph, style_map={})
-    return to_mermaid_text(graph=graph)
+    return _to_mermaid_text(graph=graph)
 
 
-def convert(
+def _convert(
     graph: networkx.MultiDiGraph,
     engine: RenderingEngines = "mermaid-img",
     style_map: Optional[Dict[str, str]] = None,
@@ -66,13 +66,13 @@ def convert(
     graph = _prepare_for_drawing(graph=graph, style_map=style_map or {})
 
     if engine == "graphviz":
-        return to_agraph(graph=graph)
+        return _to_agraph(graph=graph)
 
     if engine == "mermaid-img":
-        return to_mermaid_image(graph=graph)
+        return _to_mermaid_image(graph=graph)
 
     if engine == "mermaid-text":
-        return to_mermaid_text(graph=graph)
+        return _to_mermaid_text(graph=graph)
 
     raise ValueError(f"Unknown rendering engine '{engine}'. Choose one from: {get_args(RenderingEngines)}.")
 
@@ -93,7 +93,7 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph, style_map: Dict[str, str]
 
     # Draw the inputs
     graph.add_node("input")
-    for node, in_sockets in find_pipeline_inputs(graph).items():
+    for node, in_sockets in _find_pipeline_inputs(graph).items():
         for in_socket in in_sockets:
             node_instance = graph.nodes[node]["instance"]
             socket_has_default = in_socket.name in node_instance.defaults
@@ -104,7 +104,7 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph, style_map: Dict[str, str]
 
     # Draw the outputs
     graph.add_node("output")
-    for node, out_sockets in find_pipeline_outputs(graph).items():
+    for node, out_sockets in _find_pipeline_outputs(graph).items():
         for out_socket in out_sockets:
             graph.add_edge(node, "output", label=out_socket.name)
 

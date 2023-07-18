@@ -25,11 +25,11 @@ linkStyle default stroke-width:2px,stroke-dasharray: 5 5;
 """
 
 
-def to_mermaid_image(graph: networkx.MultiDiGraph):
+def _to_mermaid_image(graph: networkx.MultiDiGraph):
     """
     Renders a pipeline using Mermaid (hosted version at 'https://mermaid.ink'). Requires Internet access.
     """
-    graph_as_text = to_mermaid_text(graph=graph)
+    graph_as_text = _to_mermaid_text(graph=graph)
     num_solid_arrows = len(graph.edges) - len(graph.in_edges("output")) - len(graph.out_edges("input"))
     solid_arrows = "\n".join([f"linkStyle {i} stroke-width:2px;" for i in range(num_solid_arrows)])
 
@@ -61,7 +61,7 @@ def to_mermaid_image(graph: networkx.MultiDiGraph):
     return resp.content
 
 
-def to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
+def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     """
     Converts a Networkx graph into Mermaid syntax. The output of this function can be used in the documentation
     with `mermaid` codeblocks and it will be automatically rendered.

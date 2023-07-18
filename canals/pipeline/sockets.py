@@ -23,14 +23,14 @@ class InputSocket:
     sender: Optional[str] = None
 
 
-def find_input_sockets(component) -> Dict[str, InputSocket]:
+def _find_input_sockets(component) -> Dict[str, InputSocket]:
     """
     Find a component's input sockets.
     """
     return {f.name: InputSocket(name=f.name, type=f.type) for f in fields(component.__canals_input__)}
 
 
-def find_output_sockets(component) -> Dict[str, OutputSocket]:
+def _find_output_sockets(component) -> Dict[str, OutputSocket]:
     """
     Find a component's output sockets.
     """
