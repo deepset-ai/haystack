@@ -12,7 +12,7 @@ import pandas as pd
 from haystack.pipelines import Pipeline
 
 
-def basic_faq_pipeline():
+def hybrid_search_faq_pipeline():
     document_store = ElasticsearchDocumentStore(
         host="localhost",
         username="",
@@ -82,4 +82,4 @@ def basic_faq_pipeline():
 
 if __name__ == "__main__":
     launch_es()
-    basic_faq_pipeline()
+    hybrid_search_faq_pipeline()
