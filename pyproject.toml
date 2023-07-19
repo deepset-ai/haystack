@@ -58,6 +58,9 @@ Source = "https://github.com/deepset-ai/canals"
 [tool.hatch.version]
 path = "canals/__about__.py"
 
+[tool.hatch.build]
+include = ["/canals/**/*.py"]
+
 [tool.hatch.envs.default]
 dependencies = ["pytest", "pytest-cov", "requests"]
 
