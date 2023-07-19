@@ -58,7 +58,7 @@ jobs:
       run: |
         from transformers import AutoModel
         with open("./e2e/models_to_cache.txt") as file:
-          AutoModel.from_pretrained(file.readline())
+          AutoModel.from_pretrained(file.readline().rstrip())
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
