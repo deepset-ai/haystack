@@ -95,7 +95,7 @@ def get_health_status():
             gpus.append(gpu_info)
 
     except pynvml.NVMLError as e:
-        logger.warning(f"Couldn't collect GPU stats: {str(e)}")
+        logger.warning("Couldn't collect GPU stats: %s", str(e))
     finally:
         pynvml.nvmlShutdown()
 
