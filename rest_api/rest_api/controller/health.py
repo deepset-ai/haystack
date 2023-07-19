@@ -71,33 +71,48 @@ def get_health_status():
     """
 
     gpus: List[GPUInfo] = []
-
     try:
         pynvml.nvmlInit()
-        gpu_count = pynvml.nvmlDeviceGetCount()
-        for i in range(gpu_count):
-            handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-            info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-            gpu_mem_total = float(info.total) / 1024 / 1024
-            gpu_mem_used = None
-            for proc in pynvml.nvmlDeviceGetComputeRunningProcesses(handle):
-                if proc.pid == os.getpid():
-                    gpu_mem_used = float(proc.usedGpuMemory) / 1024 / 1024
-                    break
-            gpu_info = GPUInfo(
-                index=i,
-                usage=GPUUsage(
-                    memory_total=round(gpu_mem_total),
-                    kernel_usage=pynvml.nvmlDeviceGetUtilizationRates(handle).gpu,
-                    memory_used=round(gpu_mem_used) if gpu_mem_used is not None else None,
-                ),
-            )
-            gpus.append(gpu_info)
+        try:
+            gpu_count = pynvml.nvmlDeviceGetCount()
+            for i in range(gpu_count):
+                handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+                info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                gpu_mem_total = float(info.total) / 1024 / 1024
+                gpu_mem_used = None
+                for proc in pynvml.nvmlDeviceGetComputeRunningProcesses(handle):
+                    if proc.pid == os.getpid():
+                        gpu_mem_used = float(proc.usedGpuMemory) / 1024 / 1024
+                        break
+                gpu_info = GPUInfo(
+                    index=i,
+                    usage=GPUUsage(
+                        memory_total=round(gpu_mem_total),
+                        kernel_usage=pynvml.nvmlDeviceGetUtilizationRates(handle).gpu,
+                        memory_used=round(gpu_mem_used) if gpu_mem_used is not None else None,
+                    ),
+                )
+                gpus.append(gpu_info)
 
-    except pynvml.NVMLError as e:
-        logger.warning("Couldn't collect GPU stats: %s", str(e))
-    finally:
-        pynvml.nvmlShutdown()
+        except pynvml.NVMLError as e:
+            logger.warning("Couldn't collect GPU stats: %s", str(e))
+        finally:
+            pynvml.nvmlShutdown()
+
+    except pynvml.NVMLError:
+        # Here we intentionally ignore errors that occur when NVML (NVIDIA Management Library) is not available
+        # or found.
+        # NVML provides the GPU performance counters that enable us to monitor GPU usage. However, there are
+        # certain scenarios where NVML may not be present or functioning correctly:
+        # 1. CPU deployments: In deployments that only use CPUs and do not involve any GPUs, NVML is not available.
+        # 2. GPU deployments without proper NVML installation: If the system has GPUs but NVML is not correctly
+        # installed, then attempting to initialize it will lead to an exception.
+        # 3. Broken communication with NVML bindings: If there's a problem with the communication between
+        # PyNVML (the Python bindings for NVML) and the underlying NVML library, it can also lead to exceptions.
+        # In these cases, it's acceptable to ignore the errors because GPU usage statistics are not applicable
+        # or cannot be retrieved due to the mentioned reasons. We let the API continue to provide other
+        # statistics, such as CPU and memory usage.
+        pass
 
     cpu_count = os.cpu_count() or 1
     p = psutil.Process()
