@@ -80,10 +80,15 @@ def get_health_status():
                 info = pynvml.nvmlDeviceGetMemoryInfo(handle)
                 gpu_mem_total = float(info.total) / 1024 / 1024
                 gpu_mem_used = None
-                for proc in pynvml.nvmlDeviceGetComputeRunningProcesses(handle):
-                    if proc.pid == os.getpid():
-                        gpu_mem_used = float(proc.usedGpuMemory) / 1024 / 1024
-                        break
+                try:
+                    for proc in pynvml.nvmlDeviceGetComputeRunningProcesses(handle):
+                        if proc.pid == os.getpid():
+                            gpu_mem_used = float(proc.usedGpuMemory) / 1024 / 1024
+                            break
+                except pynvml.NVMLError:
+                    # ignore if nvmlDeviceGetComputeRunningProcesses is not supported
+                    # this can happen for outdated drivers
+                    pass
                 gpu_info = GPUInfo(
                     index=i,
                     usage=GPUUsage(
