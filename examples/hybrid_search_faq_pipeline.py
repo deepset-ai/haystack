@@ -31,9 +31,8 @@ def hybrid_search_faq_pipeline():
         use_gpu=True,
         scale_score=False,
     )
-
     join_documents = JoinDocuments(join_mode="reciprocal_rank_fusion")
-    rerank = SentenceTransformersRanker("cross-encoder/ms-marco-MiniLM-L-6-v2")
+    rerank = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
 
     doc_to_answers = Docs2Answers()
 
