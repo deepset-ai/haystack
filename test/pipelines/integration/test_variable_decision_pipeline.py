@@ -5,7 +5,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.sample_components import AddFixedValue, Remainder, Double
+from sample_components import AddFixedValue, Remainder, Double
 
 import logging
 

@@ -6,8 +6,7 @@ from canals.pipeline import Pipeline
 from canals.errors import PipelineValidationError
 from canals.pipeline.sockets import InputSocket, OutputSocket
 from canals.pipeline.validation import _find_pipeline_inputs, _find_pipeline_outputs
-
-from test.sample_components import Double, AddFixedValue, Sum, Parity
+from sample_components import Double, AddFixedValue, Sum, Parity
 
 
 def test_find_pipeline_input_no_input():

@@ -7,7 +7,7 @@ import pytest
 
 from canals import Pipeline
 from canals.errors import PipelineMaxLoops
-from test.sample_components import AddFixedValue, Threshold, MergeLoop
+from sample_components import AddFixedValue, Threshold, MergeLoop
 
 import logging
 

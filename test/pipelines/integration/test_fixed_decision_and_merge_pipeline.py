@@ -6,7 +6,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.sample_components import AddFixedValue, Parity, Double, Subtract
+from sample_components import AddFixedValue, Parity, Double, Subtract
 
 logging.basicConfig(level=logging.DEBUG)
 

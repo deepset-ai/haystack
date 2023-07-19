@@ -12,8 +12,7 @@ import requests
 from canals.pipeline import Pipeline
 from canals.pipeline.draw import _draw, _convert
 from canals.errors import PipelineDrawingError
-
-from test.sample_components import Double
+from sample_components import Double
 
 
 @pytest.mark.skipif(sys.platform.lower().startswith("darwin"), reason="the available graphviz version is too recent")
