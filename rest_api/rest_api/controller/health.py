@@ -92,13 +92,13 @@ def get_health_status():
                     memory_used=round(gpu_mem_used) if gpu_mem_used is not None else None,
                 ),
             )
-
             gpus.append(gpu_info)
-    except pynvml.NVMLError:
-        logger.warning("No NVIDIA GPU found.")
 
-    p_cpu_usage = 0
-    p_memory_usage = 0
+    except pynvml.NVMLError as e:
+        logger.warning(f"Couldn't collect GPU stats: {str(e)}")
+    finally:
+        pynvml.nvmlShutdown()
+
     cpu_count = os.cpu_count() or 1
     p = psutil.Process()
     p_cpu_usage = p.cpu_percent() / cpu_count
