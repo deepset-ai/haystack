@@ -12,8 +12,8 @@ from canals.errors import PipelineConnectError
 from canals import Pipeline, component
 from canals.pipeline.sockets import _find_input_sockets, _find_output_sockets
 from canals.pipeline.connections import _find_unambiguous_connection, _get_socket_type_desc
+from sample_components import AddFixedValue
 
-from test.sample_components import AddFixedValue, Greet
 from test._helpers import make_component
 
 

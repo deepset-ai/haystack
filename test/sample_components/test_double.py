@@ -2,35 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from canals import component
 from canals.testing import BaseTestComponent
-
-
-@component
-class Double:
-    """
-    Doubles the input value.
-    """
-
-    @component.input  # type: ignore
-    def input(self):
-        class Input:
-            value: int
-
-        return Input
-
-    @component.output  # type: ignore
-    def output(self):
-        class Output:
-            value: int
-
-        return Output
-
-    def run(self, data):
-        """
-        Doubles the input value
-        """
-        return self.output(value=data.value * 2)
+from sample_components import Double
 
 
 class TestDouble(BaseTestComponent):

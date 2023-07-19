@@ -4,7 +4,7 @@
 import pytest
 
 from canals import Pipeline, marshal_pipelines, unmarshal_pipelines
-from test.sample_components import AddFixedValue, Double
+from sample_components import AddFixedValue, Double
 
 import logging
 
