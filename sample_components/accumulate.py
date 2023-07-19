@@ -19,20 +19,6 @@ class Accumulate:
     are not directly serializable.
     """
 
-    @component.input
-    def input(self):
-        class Input:
-            value: int
-
-        return Input
-
-    @component.output
-    def output(self):
-        class Output:
-            value: int
-
-        return Output
-
     def __init__(self, function: Optional[Union[Callable, str]] = None):
         """
         :param function: the function to use to accumulate the values.
@@ -50,9 +36,10 @@ class Accumulate:
             # 'function' is not serializable by default, so we serialize it manually.
             self.init_parameters = {"function": self._save_function(function)}
 
-    def run(self, data):
-        self.state = self.function(self.state, data.value)
-        return self.output(value=self.state)
+    @component.return_types(value=int)
+    def run(self, value: int):
+        self.state = self.function(self.state, value)
+        return {"value": self.state}
 
     def _load_function(self, function: Union[Callable, str]):
         """

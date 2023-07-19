@@ -10,26 +10,12 @@ class Parity:
     Redirects the value, unchanged, along the 'even' connection if even, or along the 'odd' one if odd.
     """
 
-    @component.input
-    def input(self):
-        class Input:
-            value: int
-
-        return Input
-
-    @component.output
-    def output(self):
-        class Output:
-            even: int = None
-            odd: int = None
-
-        return Output
-
-    def run(self, data):
+    @component.return_types(even=int, odd=int)
+    def run(self, value: int):
         """
         :param value: The value to check for parity
         """
-        remainder = data.value % 2
+        remainder = value % 2
         if remainder:
-            return self.output(odd=data.value)
-        return self.output(even=data.value)
+            return {"even": None, "odd": value}
+        return {"even": value, "odd": None}

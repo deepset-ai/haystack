@@ -12,29 +12,14 @@ class Concatenate:
     Concatenates two values
     """
 
-    @component.input
-    def input(self):
-        class Input:
-            first: Union[List[str], str]
-            second: Union[List[str], str]
-
-        return Input
-
-    @component.output
-    def output(self):
-        class Output:
-            value: List[str]
-
-        return Output
-
-    def run(self, data):
-        if type(data.first) is str and type(data.second) is str:
-            res = [data.first, data.second]
-        elif type(data.first) is list and type(data.second) is list:
-            res = data.first + data.second
-        elif type(data.first) is list and type(data.second) is str:
-            res = data.first + [data.second]
-        elif type(data.first) is str and type(data.second) is list:
-            res = [data.first] + data.second
-
-        return self.output(res)
+    @component.return_types(value=List[str])
+    def run(self, first: Union[List[str], str], second: Union[List[str], str]):
+        if type(first) is str and type(second) is str:
+            res = [first, second]
+        elif type(first) is list and type(second) is list:
+            res = first + second
+        elif type(first) is list and type(second) is str:
+            res = first + [second]
+        elif type(first) is str and type(second) is list:
+            res = [first] + second
+        return {"value": res}

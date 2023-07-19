@@ -8,28 +8,11 @@ from canals import component
 
 @component
 class AddFixedValue:
-    """
-    Adds the value of `add` to `value`. If not given, `add` defaults to 1.
-    """
+    def __init__(self, add: int = 1):
+        self.add = add
 
-    @component.input
-    def input(self):
-        class Input:
-            value: int
-            add: int
-
-        return Input
-
-    @component.output
-    def output(self):
-        class Output:
-            value: int
-
-        return Output
-
-    def __init__(self, add: Optional[int] = 1):
-        if add:
-            self.defaults = {"add": add}
-
-    def run(self, data):
-        return self.output(value=data.value + data.add)
+    @component.return_types(result=int)
+    def run(self, value: int, add: Optional[int] = None):
+        if add is None:
+            add = self.add
+        return {"result": value + add}
