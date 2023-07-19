@@ -2,7 +2,9 @@
 name: end-to-end
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Activate this workflow manually
+  schedule:
+    - cron: "0 0 * * *"
 
 env:
   PYTHON_VERSION: "3.8"
