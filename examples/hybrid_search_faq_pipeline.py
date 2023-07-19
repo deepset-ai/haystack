@@ -13,7 +13,6 @@ from haystack.pipelines import Pipeline
 
 
 def basic_faq_pipeline():
-    document_store = InMemoryDocumentStore(use_bm25=True)
     document_store = ElasticsearchDocumentStore(
         host="localhost",
         username="",
