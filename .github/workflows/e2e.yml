@@ -16,7 +16,7 @@ jobs:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix:
         folder:
-          - "document_stores"
+          - "document_search"
 
     runs-on: ubuntu-latest
 
