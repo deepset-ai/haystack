@@ -1,18 +1,11 @@
 import logging
 
-logging.basicConfig(
-    format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING
-)
+logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
 logging.getLogger("haystack").setLevel(logging.INFO)
 
 from haystack.document_stores import ElasticsearchDocumentStore
 
-from haystack.nodes import (
-    EmbeddingRetriever,
-    BM25Retriever,
-    JoinDocuments,
-    SentenceTransformersRanker,
-)
+from haystack.nodes import EmbeddingRetriever, BM25Retriever, JoinDocuments, SentenceTransformersRanker
 from haystack.nodes.other.docs2answers import Docs2Answers
 from haystack.utils import launch_es, print_answers, fetch_archive_from_http
 import pandas as pd
@@ -67,21 +60,11 @@ def basic_faq_pipeline():
 
     # Initialize a Pipeline (this time without a reader) and ask questions
     pipeline = Pipeline()
-    pipeline.add_node(
-        component=sparse_retriever, name="SparseRetriever", inputs=["Query"]
-    )
-    pipeline.add_node(
-        component=dense_retriever, name="DenseRetriever", inputs=["Query"]
-    )
-    pipeline.add_node(
-        component=join_documents,
-        name="JoinDocuments",
-        inputs=["SparseRetriever", "DenseRetriever"],
-    )
+    pipeline.add_node(component=sparse_retriever, name="SparseRetriever", inputs=["Query"])
+    pipeline.add_node(component=dense_retriever, name="DenseRetriever", inputs=["Query"])
+    pipeline.add_node(component=join_documents, name="JoinDocuments", inputs=["SparseRetriever", "DenseRetriever"])
     pipeline.add_node(component=rerank, name="ReRanker", inputs=["JoinDocuments"])
-    pipeline.add_node(
-        component=doc_to_answers, name="Docs2Answers", inputs=["ReRanker"]
-    )
+    pipeline.add_node(component=doc_to_answers, name="Docs2Answers", inputs=["ReRanker"])
 
     # Ask a question
     prediction = pipeline.run(
