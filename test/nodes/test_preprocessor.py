@@ -96,6 +96,10 @@ def mock_huggingface_tokenizer():
         def tokenize(text, **kwargs):
             return [text[i : i + 2] for i in range(0, len(text), 2)]
 
+        @staticmethod
+        def encode_plus(text, **kwargs):
+            return Mock(offset_mapping=[(i, min(len(text), i + 2)) for i in range(0, len(text), 2)])
+
     mock_tokenizer_instance = MockTokenizer()
 
     with mock.patch.object(AutoTokenizer, "from_pretrained", return_value=mock_tokenizer_instance):

@@ -11,11 +11,18 @@ from pickle import UnpicklingError
 
 from tqdm import tqdm
 from more_itertools import windowed
-from transformers import PreTrainedTokenizerBase
 
 from haystack.nodes.preprocessor.base import BasePreProcessor
 from haystack.errors import HaystackError
 from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install transformers'") as transformers_import:
+    from transformers import PreTrainedTokenizerBase
+    from transformers import AutoTokenizer
+
+with LazyImport("Run 'pip install tiktoken'") as tiktoken_import:
+    import tiktoken
 
 logger = logging.getLogger(__name__)
 
@@ -93,8 +100,6 @@ class PreProcessor(BasePreProcessor):
         :param tokenizer: Specifies the tokenizer to use if split_by="token". Supported options are "tiktoken"
                             (for OpenAI's GPT-3.5 and GPT-4) and any HuggingFace tokenizer (e.g. 'bert-base-uncased').
                             HuggingFace tokenizers can also be passed directly as an PreTrainedTokenizerBase object.
-                            Note that lossy tokenizers might change the content of the split documents
-                            (e.g. remove capitalization, special characters, whitespaces, etc.).
         :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
             Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt","ml"
         :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path. Leave empty otherwise.
@@ -392,10 +397,7 @@ class PreProcessor(BasePreProcessor):
         if split_respect_sentence_boundary and split_by in ["word", "token"]:
 
             def split_function(text):
-                if split_by == "token":
-                    return self._split_tokens(text, tokenizer=tokenizer)
-                else:
-                    return text.split()
+                return self._split_tokens(text, tokenizer=tokenizer) if split_by == "token" else text.split()
 
             text_splits, splits_pages, splits_start_idxs = self._split_into_units_respecting_sent_boundary(
                 text=text, split_length=split_length, split_overlap=split_overlap, split_function=split_function
@@ -605,7 +607,7 @@ class PreProcessor(BasePreProcessor):
             split_at = " "
         elif split_by == "token":
             elements = self._split_tokens(text, tokenizer)
-            split_at = "" if any(" " in e for e in elements) else " "
+            split_at = ""
         else:
             raise NotImplementedError(
                 "PreProcessor only supports 'passage', 'sentence', 'word' or 'token' split_by options."
@@ -857,24 +859,13 @@ class PreProcessor(BasePreProcessor):
 
     def _split_tokens(self, text: str, tokenizer: Any) -> List[str]:
         if tokenizer == "tiktoken":
-            try:
-                import tiktoken
-            except ImportError:
-                raise ImportError(
-                    "Tiktoken is needed in order to split documents by tokens. "
-                    "Please install it with `pip install tiktoken`."
-                )
-            enc = tiktoken.get_encoding("cl100k_base")
-            integer_tokens = enc.encode(text, allowed_special="all", disallowed_special=())
-            elements = [enc.decode_single_token_bytes(token).decode() for token in integer_tokens]
-        elif isinstance(tokenizer, str):
-            try:
-                from transformers import AutoTokenizer
-            except ImportError:
-                raise ImportError(
-                    "HuggingFace transformers is needed in order to split documents using HuggingFace tokenizers. "
-                    "Please install it with `pip install transformers`."
-                )
+            tiktoken_import.check()
+            enc = tiktoken.get_encoding("cl100k_base")  # tiktoken is reversible and lossless
+            integer_tokens = enc.encode(text, disallowed_special=())
+            elements = [enc.decode_single_token_bytes(token).decode(errors="ignore") for token in integer_tokens]
+            return elements
+        if isinstance(tokenizer, str):
+            transformers_import.check()
             try:
                 tokenizer = AutoTokenizer.from_pretrained(tokenizer)
             except Exception:
@@ -882,15 +873,18 @@ class PreProcessor(BasePreProcessor):
                     f"Could not load tokenizer '{tokenizer}' from HuggingFace model hub. "
                     f"Please make sure that the tokenizer is correct and exists."
                 )
-            elements = tokenizer.tokenize(text)
-        elif isinstance(tokenizer, PreTrainedTokenizerBase):
-            elements = tokenizer.tokenize(text)
-        else:
-            raise ValueError(
-                f"Unsupported tokenizer specification {tokenizer}. "
-                f"Please provide either the string 'tiktoken' or a HuggingFace tokenizer (PreTrainedTokenizerBase)."
-            )
-        return elements
+        if isinstance(tokenizer, PreTrainedTokenizerBase):
+            encoded = tokenizer.encode_plus(text, return_offsets_mapping=True, add_special_tokens=False)
+            elements = []
+            for i in range(l := len(encoded.offset_mapping)):
+                start_current = encoded.offset_mapping[i][0]
+                start_next = encoded.offset_mapping[i + 1][0] if i < l - 1 else len(text)
+                elements.append(text[start_current:start_next])
+            return elements
+        raise ValueError(
+            f"Unsupported tokenizer specification {tokenizer}. "
+            f"Please provide either the string 'tiktoken' or a HuggingFace tokenizer (PreTrainedTokenizerBase)."
+        )
 
     def _load_sentence_tokenizer(self, language_name: Optional[str]) -> "nltk.tokenize.punkt.PunktSentenceTokenizer":
         if not nltk:
