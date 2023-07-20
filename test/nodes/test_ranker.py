@@ -506,7 +506,7 @@ def test_cohere_ranker_batch_multiple_queries_multiple_doc_lists(docs, mock_cohe
 
 
 recency_tests_inputs = [
-    # Score ranking method works as expected
+    # Score ranking mode works as expected
     pytest.param(
         {
             "docs": [
@@ -515,17 +515,17 @@ recency_tests_inputs = [
                 {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
             ],
             "weight": 0.5,
-            "date_identifier": "date",
+            "date_meta_field": "date",
             "top_k": 2,
-            "ranking_method": "score",
+            "ranking_mode": "score",
             "expected_scores": {"1": 0.4833333333333333, "2": 0.7},
             "expected_order": ["2", "1"],
             "expected_logs": [],
             "expected_warning": "",
         },
-        id="Score ranking method works as expected",
+        id="Score ranking mode works as expected",
     ),
-    # RRF ranking method works as expected
+    # RRF ranking mode works as expected
     pytest.param(
         {
             "docs": [
@@ -534,15 +534,15 @@ recency_tests_inputs = [
                 {"meta": {"date": "2020-02-11"}, "id": "3"},
             ],
             "weight": 0.5,
-            "date_identifier": "date",
+            "date_meta_field": "date",
             "top_k": 2,
-            "ranking_method": "reciprocal_rank_fusion",
+            "ranking_mode": "reciprocal_rank_fusion",
             "expected_scores": {"1": 0.01639344262295082, "2": 0.016001024065540194},
             "expected_order": ["1", "2"],
             "expected_logs": [],
             "expected_warning": "",
         },
-        id="RRF ranking method works as expected",
+        id="RRF ranking mode works as expected",
     ),
     # Wrong field to find the date
     pytest.param(
@@ -553,18 +553,18 @@ recency_tests_inputs = [
                 {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
             ],
             "weight": 0.5,
-            "date_identifier": "date",
+            "date_meta_field": "date",
             "expected_scores": {"1": 0.3, "2": 0.4, "3": 0.6},
             "expected_order": ["1", "2", "3"],
             "expected_exception": NodeError(
                 """
-                Param <date_identifier> seems wrong.\n
-                You supplied: 'date'.\n
-                Document(s) 1 do not contain metadata key supplied.\n
+                Param <date_meta_field> was set to 'date', but document(s) 1 do not contain this metadata key.\n
+                Please double-check the names of existing metadata fields of your documents \n
+                and set <date_meta_field> to the name of the field that contains dates.
                 """
             ),
             "top_k": 2,
-            "ranking_method": "score",
+            "ranking_mode": "score",
         },
         id="Wrong field to find the date",
     ),
@@ -577,7 +577,7 @@ recency_tests_inputs = [
                 {"meta": {"date": "2020-02-11"}, "id": "3"},
             ],
             "weight": 0.5,
-            "date_identifier": "date",
+            "date_meta_field": "date",
             "expected_order": ["1", "2", "3"],
             "expected_logs": [
                 (
@@ -590,7 +590,7 @@ recency_tests_inputs = [
                 )
             ],
             "top_k": 2,
-            "ranking_method": "reciprocal_rank_fusion",
+            "ranking_mode": "reciprocal_rank_fusion",
         },
         id="Date unparsable",
     ),
@@ -603,9 +603,9 @@ recency_tests_inputs = [
                 {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
             ],
             "weight": 0.5,
-            "date_identifier": "date",
+            "date_meta_field": "date",
             "top_k": 2,
-            "ranking_method": "score",
+            "ranking_mode": "score",
             "expected_scores": {"1": 0.5, "2": 0.7, "3": 0.4666666666666667},
             "expected_order": ["2", "3"],
             "expected_warning": ["The score 1.3 for document 1 is outside the [0,1] range; defaulting to 0"],
@@ -621,16 +621,16 @@ recency_tests_inputs = [
                 {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
             ],
             "weight": 0.5,
-            "date_identifier": "date",
+            "date_meta_field": "date",
             "top_k": 2,
-            "ranking_method": "score",
+            "ranking_mode": "score",
             "expected_scores": {"1": 0.5, "2": 0.7, "3": 0.4666666666666667},
             "expected_order": ["2", "3"],
             "expected_warning": ["The score was not provided; defaulting to 0"],
         },
         id="Wrong score, not provided",
     ),
-    # Wrong ranking method provided
+    # Wrong ranking mode provided
     pytest.param(
         {
             "docs": [
@@ -639,25 +639,19 @@ recency_tests_inputs = [
                 {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
             ],
             "weight": 0.5,
-            "date_identifier": "date",
+            "date_meta_field": "date",
             "top_k": 2,
-            "ranking_method": "blablabla",
+            "ranking_mode": "blablabla",
             "expected_scores": {"1": 0.01626123744050767, "2": 0.01626123744050767},
             "expected_order": ["1", "2"],
-            "expected_logs": [
-                (
-                    "haystack.nodes.ranker.recentness_ranker",
-                    logging.ERROR,
-                    """
-                    Param <ranking_method> seems wrong.\n
-                    You supplied: 'blablabla'.\n
-                    It should be 'reciprocal_rank_fusion' or 'score'.\n
-                    Defaulting to 'reciprocal_rank_fusion'.
-                    """,
-                )
-            ],
+            "expected_exception": NodeError(
+                """
+                Param <ranking_mode> needs to be 'reciprocal_rank_fusion' or 'score' but was set to 'blablabla'. \n
+                Please change the <ranking_mode> when initializing the RecentnessRanker.
+                """
+            ),
         },
-        id="Wrong ranking method provided",
+        id="Wrong ranking mode provided",
     ),
 ]
 
@@ -674,8 +668,8 @@ def test_recentness_ranker(caplog, test_input):
     with warnings.catch_warnings(record=True) as warnings_list:
         # Initialize the ranker
         ranker = RecentnessRanker(
-            date_identifier=test_input["date_identifier"],
-            ranking_method=test_input["ranking_method"],
+            date_meta_field=test_input["date_meta_field"],
+            ranking_mode=test_input["ranking_mode"],
             weight=test_input["weight"],
         )
         predict_exception = None
@@ -700,8 +694,8 @@ def test_recentness_ranker_batch_list(caplog, test_input):
     with warnings.catch_warnings(record=True) as warnings_list:
         # Initialize the ranker
         ranker = RecentnessRanker(
-            date_identifier=test_input["date_identifier"],
-            ranking_method=test_input["ranking_method"],
+            date_meta_field=test_input["date_meta_field"],
+            ranking_mode=test_input["ranking_mode"],
             weight=test_input["weight"],
         )
         predict_exception = None
@@ -727,8 +721,8 @@ def test_recentness_ranker_batch_list_of_lists(caplog, test_input):
     with warnings.catch_warnings(record=True) as warnings_list:
         # Initialize the ranker
         ranker = RecentnessRanker(
-            date_identifier=test_input["date_identifier"],
-            ranking_method=test_input["ranking_method"],
+            date_meta_field=test_input["date_meta_field"],
+            ranking_mode=test_input["ranking_mode"],
             weight=test_input["weight"],
         )
 

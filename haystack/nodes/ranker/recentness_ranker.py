@@ -17,33 +17,43 @@ class RecentnessRanker(BaseRanker):
 
     def __init__(
         self,
-        date_identifier: str,
+        date_meta_field: str,
         weight: float = 0.5,
         top_k: Optional[int] = None,
-        ranking_method: Literal["reciprocal_rank_fusion", "score"] = "reciprocal_rank_fusion",
+        ranking_mode: Literal["reciprocal_rank_fusion", "score"] = "reciprocal_rank_fusion",
     ):
         """
         This Node is used to rerank retrieved documents based on their age. Newer documents will rank higher.
         The importance of recentness is parametrized through the weight parameter.
 
-        :param date_identifier: Identifier pointing to the date field in the metadata.
+        :param date_meta_field: Identifier pointing to the date field in the metadata.
                 This is a required parameter, since we need dates for sorting.
         :param weight: in range [0,1].
                 0 disables sorting by age.
-                0.5 content and age have the same impact
+                0.5 content and age have the same impact.
                 1 means sorting only by age, most recent comes first.
-        :param top_k: (optional) How many documents to return.
+        :param top_k: (optional) How many documents to return. If not provided, all documents will be returned.
                 It can make sense to have large top-k values from the initial retrievers and filter docs down in the
                 RecentnessRanker with this top_k parameter.
-        :param ranking_method: Method used to combine retriever and recentness. Possible values are 'reciprocal_rank_fusion' (default) and 'score'
-                Make sure to use 'score' method only with retrievers/rankers that give back OK score in range [0,1]
+        :param ranking_mode: The mode used to combine retriever and recentness. Possible values are 'reciprocal_rank_fusion' (default) and 'score'.
+                Make sure to use 'score' mode only with retrievers/rankers that give back OK score in range [0,1].
         """
 
         super().__init__()
-        self.date_identifier = date_identifier
+        self.date_meta_field = date_meta_field
         self.weight = weight
         self.top_k = top_k
-        self.ranking_method = ranking_method
+        self.ranking_mode = ranking_mode
+
+        if weight < 0 or weight > 1:
+            raise NodeError(
+                """
+                Param <weight> needs to be '0', '0.5' or '1' but was set to '{}'. \n
+                Please change param <weight> when initializing the RecentnessRanker.
+                """.format(
+                    weight
+                )
+            )
 
     # pylint: disable=arguments-differ
     def predict(  # type: ignore
@@ -61,19 +71,19 @@ class RecentnessRanker(BaseRanker):
         """
 
         try:
-            sorted_by_date = sorted(documents, reverse=True, key=lambda x: parse(x.meta[self.date_identifier]))
+            sorted_by_date = sorted(documents, reverse=True, key=lambda x: parse(x.meta[self.date_meta_field]))
         except KeyError:
             wrong_date = []
             for i in documents:
-                if self.date_identifier not in i.meta:
+                if self.date_meta_field not in i.meta:
                     wrong_date.append(i.id)
             raise NodeError(
                 """
-                Param <date_identifier> seems wrong.\n
-                You supplied: '{}'.\n
-                Document(s) {} do not contain metadata key supplied.\n
+                Param <date_meta_field> was set to '{}', but document(s) {} do not contain this metadata key.\n
+                Please double-check the names of existing metadata fields of your documents \n
+                and set <date_meta_field> to the name of the field that contains dates.
                 """.format(
-                    self.date_identifier, ",".join(wrong_date)
+                    self.date_meta_field, ",".join(wrong_date)
                 )
             )
 
@@ -83,34 +93,32 @@ class RecentnessRanker(BaseRanker):
                 Could not parse date information for dates: %s\n
                 Continuing without sorting by date.
                 """,
-                " - ".join([x.meta.get(self.date_identifier, "identifier wrong") for x in documents]),
+                " - ".join([x.meta.get(self.date_meta_field, "identifier wrong") for x in documents]),
             )
 
             return documents
 
         # merge scores for documents sorted both by content and by date.
-        # If ranking method is set to 'reciprocal_rank_fusion', then that is used to combine previous ranking with recency ranking.
-        # If ranking method is set to 'score', then documents will be assigned a recency score in [0,1] and will be re-ranked based on both their recency score and their pre-existing relevance score.
+        # If ranking mode is set to 'reciprocal_rank_fusion', then that is used to combine previous ranking with recency ranking.
+        # If ranking mode is set to 'score', then documents will be assigned a recency score in [0,1] and will be re-ranked based on both their recency score and their pre-existing relevance score.
         scores_map: Dict = defaultdict(int)
         document_map = {doc.id: doc for doc in documents}
         weight = self.weight
-        ranking_method = self.ranking_method
-        if ranking_method not in ["reciprocal_rank_fusion", "score"]:
-            logger.error(
+        ranking_mode = self.ranking_mode
+        if ranking_mode not in ["reciprocal_rank_fusion", "score"]:
+            raise NodeError(
                 """
-                    Param <ranking_method> seems wrong.\n
-                    You supplied: '%s'.\n
-                    It should be 'reciprocal_rank_fusion' or 'score'.\n
-                    Defaulting to 'reciprocal_rank_fusion'.
-                    """,
-                ranking_method,
+                Param <ranking_mode> needs to be 'reciprocal_rank_fusion' or 'score' but was set to '{}'. \n
+                Please change the <ranking_mode> when initializing the RecentnessRanker.
+                """.format(
+                    ranking_mode
+                )
             )
-            ranking_method = "reciprocal_rank_fusion"
 
         for i, doc in enumerate(documents):
-            if ranking_method == "reciprocal_rank_fusion":
+            if ranking_mode == "reciprocal_rank_fusion":
                 scores_map[doc.id] += self._calculate_rrf(rank=i) * (1 - weight)
-            elif ranking_method == "score":
+            elif ranking_mode == "score":
                 score = float(0)
                 if doc.score is None:
                     warnings.warn("The score was not provided; defaulting to 0")
@@ -126,9 +134,9 @@ class RecentnessRanker(BaseRanker):
                 scores_map[doc.id] += score * (1 - weight)
 
         for i, doc in enumerate(sorted_by_date):
-            if ranking_method == "reciprocal_rank_fusion":
+            if ranking_mode == "reciprocal_rank_fusion":
                 scores_map[doc.id] += self._calculate_rrf(rank=i) * weight
-            elif ranking_method == "score":
+            elif ranking_mode == "score":
                 scores_map[doc.id] += self._calc_recentness_score(rank=i, amount=len(sorted_by_date)) * weight
         sorted_doc_ids = sorted(scores_map.items(), key=lambda d: d[1] if d[1] is not None else -1, reverse=True)
 
@@ -182,6 +190,6 @@ class RecentnessRanker(BaseRanker):
         This linear scaling is useful to
           a) reduce the effect of outliers and
           b) create recentness scoress that are meaningfully distributed in [0,1],
-             similar to scores coming from a retriever/ranker
+             similar to scores coming from a retriever/ranker.
         """
         return (amount - rank) / amount
