@@ -6,36 +6,17 @@ from typing import List, Any
 from canals import component
 
 
-class MergeLoop:
-    @staticmethod
-    def create(expected_type: type, inputs: List[str]):
+@component
+class MergeLoop:  # pylint: disable=too-few-public-methods
+    def __init__(self, expected_type: Any, inputs: List[str]):
+        component.set_input_types(self, **{input_name: expected_type for input_name in inputs})
+        component.set_output_types(self, value=expected_type)
+
+    def run(self, **kwargs):
         """
-        Takes multiple inputs and returns the first one that is not None.
+        :param kwargs: find the first non-None value and return it.
         """
-
-        @component
-        class MergeLoopImpl:
-            """
-            Implementation of MergeLoop()
-            """
-
-            __name__ = __qualname__ = f"MergeLoop_{str(expected_type)}_{'_'.join(inputs)}"
-
-            def __init__(self, expected_type, inputs):
-                self.init_parameters = {"expected_type": expected_type, "inputs": inputs}
-
-            @component.return_types(value=expected_type)
-            @component.run_method_types(**{input_name: expected_type for input_name in inputs})
-            def run(self, **kwargs):
-                """
-                :param kwargs: find the first non-None value and return it.
-                """
-                for v in kwargs.values():
-                    if v is not None:
-                        return {"value": v}
-                return {"value": None}
-
-        return MergeLoopImpl(expected_type=expected_type, inputs=inputs)
-
-    def __init__(self):
-        raise NotImplementedError("use MergeLoop.create()")
+        for value in kwargs.values():
+            if value is not None:
+                return {"value": value}
+        return {"value": None}

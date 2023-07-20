@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Union, get_args, get_origin, Any
 
 import logging
 import inspect
@@ -22,12 +21,12 @@ def _prepare_init_params_and_sockets(init_func):
 
     @wraps(init_func)
     def wrapper(self, *args, **kwargs):
+        # Call the actual __init__ function with the arguments
+        init_func(self, *args, **kwargs)
+
         # Create the component's input and output sockets
         self.__input_sockets__ = {name: InputSocket(**data) for name, data in self.run.__run_method_types__.items()}
         self.__output_sockets__ = {name: OutputSocket(**data) for name, data in self.run.__return_types__.items()}
-
-        # Call the actual __init__ function with the arguments
-        init_func(self, *args, **kwargs)
 
         # Collect and store all the init parameters, preserving whatever the components might have already added there
         self.init_parameters = {**kwargs, **getattr(self, "init_parameters", {})}
@@ -108,6 +107,53 @@ class _Component:
     def __init__(self):
         self.registry = {}
 
+    def set_input_types(self, instance, **input_types):
+        """
+        TODO
+        """
+        unwrapped = instance.run
+
+        def wrapper(**kwargs):
+            for key, value in kwargs.items():
+                if key not in input_types:
+                    raise ComponentError(f"Input value '{key}' not declared in @run_method_types decorator")
+                if _types_are_compatible(value, input_types[key]):
+                    raise ComponentError(
+                        f"Input type {type(value)} for value '{key}' doesn't match the one declared in "
+                        f"@run_method_types decorator ({input_types[key]}))"
+                    )
+
+            return unwrapped(**kwargs)
+
+        if hasattr(instance.run, "__return_types__"):
+            wrapper.__return_types__ = instance.run.__return_types__
+        wrapper.__run_method_types__ = {name: {"name": name, "type": type_} for name, type_ in input_types.items()}
+        instance.run = wrapper
+
+    def set_output_types(self, instance, **output_types):
+        """
+        TODO
+        """
+        unwrapped = instance.run
+
+        def wrapper(*args, **kwargs):
+            result = unwrapped(*args, **kwargs)
+            # Check output types
+            for key in result:
+                if key not in output_types:
+                    raise ComponentError(f"Return value '{key}' not declared in @output_types decorator")
+                if _types_are_compatible(output_types[key], result[key]):
+                    raise ComponentError(
+                        f"Return type {type(result[key])} for value '{key}' doesn't match the one declared in "
+                        f"@return_types decorator ({output_types[key]}))"
+                    )
+            return result
+
+        if hasattr(instance.run, "__run_method_types__"):
+            wrapper.__run_method_types__ = instance.run.__run_method_types__
+        wrapper.__return_types__ = {name: {"name": name, "type": type_} for name, type_ in output_types.items()}
+        instance.run = wrapper
+
     def return_types(self, **return_types):
         """
         Decorator that checks the return types of the `run()` method.
@@ -136,34 +182,6 @@ class _Component:
 
         return return_types_decorator
 
-    def run_method_types(self, **run_method_types):
-        """
-        Decorator that checks the signature of the `run()` method.
-        """
-
-        def run_method_types_decorator(run_method):
-            run_method.__run_method_types__ = {
-                name: {"name": name, "type": type_} for name, type_ in run_method_types.items()
-            }
-
-            @wraps(run_method)
-            def run_method_types_impl(self, **kwargs):
-                # Check input types
-                for key in kwargs:
-                    if key not in run_method_types:
-                        raise ComponentError(f"Input value '{key}' not declared in @run_method_types decorator")
-                    if _types_are_compatible(kwargs[key], run_method_types[key]):
-                        raise ComponentError(
-                            f"Input type {type(kwargs[key])} for value '{key}' doesn't match the one declared in "
-                            f"@run_method_types decorator ({run_method_types[key]}))"
-                        )
-
-                return run_method(self, **kwargs)
-
-            return run_method_types_impl
-
-        return run_method_types_decorator
-
     def _decorator(self, class_):
         """
         Decorator validating the structure of the component and registering it in the components registry.
@@ -181,26 +199,26 @@ class _Component:
 
         if not hasattr(class_.run, "__run_method_types__"):
             # Check the run() signature for keyword variadic arguments
-            if any(
-                run_signature.parameters[param].kind
-                in (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
-                for param in run_signature.parameters
-            ):
-                raise ComponentError(
-                    f"{class_.__name__} can't have arguments like *args or **kwargs in its 'run()' method."
-                )
+            # if any(
+            #     run_signature.parameters[param].kind
+            #     in (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
+            #     for param in run_signature.parameters
+            # ):
+            #     raise ComponentError(
+            #         f"{class_.__name__} can't have arguments like *args or **kwargs in its 'run()' method."
+            #     )
 
             # Check the run() signature for missing types
-            missing_types = [
-                parameter
-                for parameter in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
-                if run_signature.parameters[parameter].annotation == inspect.Parameter.empty
-            ]
-            if missing_types:
-                raise ComponentError(
-                    f"{class_.__name__}.run() must declare types for all its parameters, "
-                    f"but these parameters are not typed: {', '.join(missing_types)}."
-                )
+            # missing_types = [
+            #     parameter
+            #     for parameter in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
+            #     if run_signature.parameters[parameter].annotation == inspect.Parameter.empty
+            # ]
+            # if missing_types:
+            #     raise ComponentError(
+            #         f"{class_.__name__}.run() must declare types for all its parameters, "
+            #         f"but these parameters are not typed: {', '.join(missing_types)}."
+            #     )
 
             # Create the input sockets
             class_.run.__run_method_types__ = {
@@ -215,10 +233,10 @@ class _Component:
             }
 
         # # Check the run() signature for the return_types wrapper
-        if not hasattr(class_.run, "__return_types__"):
-            raise ComponentError(
-                f"{class_.__name__}.run() must have a @return_types decorator. See the docs for more information."
-            )
+        # if not hasattr(class_.run, "__return_types__"):
+        #     raise ComponentError(
+        #         f"{class_.__name__}.run() must have a @return_types decorator. See the docs for more information."
+        #     )
 
         # Automatically registers all the init parameters in an instance attribute called `_init_parameters`.
         # See `save_init_parameters()`.

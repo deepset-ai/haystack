@@ -6,30 +6,14 @@ from typing import List
 from canals import component
 
 
-class Repeat:
-    @staticmethod
-    def create(outputs: List[str]):
+@component
+class Repeat:  # pylint: disable=too-few-public-methods
+    def __init__(self, outputs: List[str]):
+        self.outputs = outputs
+        component.set_output_types(self, **{k: int for k in outputs})
+
+    def run(self, value: int):
         """
-        Repeats the input value on all outputs.
+        :param value: the value to repeat.
         """
-
-        @component
-        class RepeatImpl:
-            """
-            Implementation of Repeat()
-            """
-
-            def __init__(self, outputs: List[str]):
-                self.outputs = outputs
-
-            @component.return_types(**{val: int for val in outputs})
-            def run(self, value: int):
-                """
-                :param value: the value to repeat.
-                """
-                return {val: value for val in self.outputs}
-
-        return RepeatImpl(outputs=outputs)
-
-    def __init__(self):
-        raise NotImplementedError("use Repeat.create()")
+        return {val: value for val in self.outputs}

@@ -1,39 +1,19 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-import types
-from typing import List, Any
+from typing import Any
 
 from canals import component
 
 
-class Sum:
-    @staticmethod
-    def create(inputs: List[str]):
+@component
+class Sum:  # pylint: disable=too-few-public-methods
+    def __init__(self, inputs):
+        component.set_input_types(self, **{input_name: int for input_name in inputs})
+
+    @component.return_types(total=int)
+    def run(self, **kwargs: Any):
         """
-        Sums the values of all the input connections together.
+        :param value: the value to check the remainder of.
         """
-
-        @component
-        class SumImpl:
-            """
-            Implementation of Sum()
-            """
-
-            __name__ = __qualname__ = f"Sum_{'_'.join(inputs)}"
-
-            def __init__(self, inputs: List[str]):
-                ...
-
-            @component.return_types(total=int)
-            @component.run_method_types(**{input_name: int for input_name in inputs})
-            def run(self, **kwargs):
-                """
-                :param value: the value to check the remainder of.
-                """
-                return {"total": sum(kwargs.values())}
-
-        return SumImpl(inputs=inputs)
-
-    def __init__(self):
-        raise NotImplementedError("use Sum.create()")
+        return {"total": sum(kwargs.values())}
