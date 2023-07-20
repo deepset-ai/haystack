@@ -1,6 +1,5 @@
 default_branch: main
 collapse_pre_releases: true
-no_show_source: true
 template: |
   ---
   prelude: >
