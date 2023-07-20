@@ -688,7 +688,7 @@ def test_recentness_ranker(caplog, test_input):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("test_input", recency_tests_inputs)
-def test_recentness_ranker_batch_L(caplog, test_input):
+def test_recentness_ranker_batch_list(caplog, test_input):
     # Create a set of docs
     docs = []
     for doc in test_input["docs"]:
@@ -708,7 +708,7 @@ def test_recentness_ranker_batch_L(caplog, test_input):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("test_input", recency_tests_inputs)
-def test_recentness_ranker_batch_LofL(caplog, test_input):
+def test_recentness_ranker_batch_list_of_lists(caplog, test_input):
     # Create a set of docs
     docs = []
     for doc in test_input["docs"]:
@@ -723,12 +723,12 @@ def test_recentness_ranker_batch_LofL(caplog, test_input):
         # Run predict_batch with a list of lists as input
         results = ranker.predict_batch(queries="", documents=[docs, copy.deepcopy(docs)], top_k=test_input["top_k"])
 
-        check_results(results, test_input, warnings_list, caplog, LofL=True)
+        check_results(results, test_input, warnings_list, caplog, list_of_lists=True)
 
 
-def check_results(results, test_input, warnings_list, caplog, LofL=False):
+def check_results(results, test_input, warnings_list, caplog, list_of_lists=False):
     expected_logs_count = 1
-    if LofL:
+    if list_of_lists:
         expected_logs_count = 2
 
     # Check that no warnings were thrown, if we are not expecting any
@@ -748,7 +748,7 @@ def check_results(results, test_input, warnings_list, caplog, LofL=False):
         for i in range(len(caplog.record_tuples)):
             assert test_input["expected_logs"][int(i / expected_logs_count)] == caplog.record_tuples[i]
 
-    if not LofL:
+    if not list_of_lists:
         check_result_content(results, test_input)
     else:
         for i in results:

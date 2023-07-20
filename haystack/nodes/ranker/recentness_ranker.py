@@ -48,7 +48,17 @@ class RecentnessRanker(BaseRanker):
     def predict(  # type: ignore
         self, query: str, documents: List[Document], top_k: Optional[int] = None
     ) -> List[Document]:
-        # sort documents based on age, newest comes first
+        """
+        This method is used to rank a list of documents based on their age and relevance by:
+        1. Adjusting the relevance score from the previous node (or, for RRF, calculating it from scratch, then adjusting) based on the chosen weight in initial parameters.
+        2. Sorting the documents based on their age in the metadata, calculating the recentness score, adjusting it by weight as well.
+        3. Returning top-k documents (or all, if top-k not provided) in the documents dictionary sorted by final score (relevance score + recentness score).
+
+        :param query: Not used in practice (so can be left blank), as this ranker does not perform sorting based on semantic closeness of documents to the query.
+        :param documents: Documents provided for ranking.
+        :param top_k: (optional) How many documents to return at the end. If not provided, all documents will be returned, sorted by relevance and recentness (adjusted by weight).
+        """
+
         try:
             sorted_by_date = sorted(documents, reverse=True, key=lambda x: parse(x.meta[self.date_identifier]))
         except KeyError:
@@ -75,7 +85,7 @@ class RecentnessRanker(BaseRanker):
 
             return documents
 
-        # merge scores for both documents sorted by content and date.
+        # merge scores for documents sorted both by content and by date.
         # If method is set to 'reciprocal_rank_fusion', then that is used to combine previous ranking with recency ranking.
         # If method is set to 'score', then documents will be assigned a recency score in [0,1] and will be re-ranked based on both their recency score and their pre-existing relevance score.
         scores_map: Dict = defaultdict(int)
@@ -132,6 +142,17 @@ class RecentnessRanker(BaseRanker):
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
     ) -> Union[List[Document], List[List[Document]]]:
+        """
+        This method is used to rank A) a list or B) a list of lists (in case the previous node is JoinDocuments) of documents based on their age and relevance.
+        In case A, the predict method defined earlier is applied to the provided list.
+        In case B, predict method is applied to each individual list in the list of lists provided, then the results are returned as list of lists.
+
+        :param queries: Not used in practice (so can be left blank), as this ranker does not perform sorting based on semantic closeness of documents to the query.
+        :param documents: Documents provided for ranking in a list or a list of lists.
+        :param top_k: (optional) How many documents to return at the end (per list). If not provided, all documents will be returned, sorted by relevance and recentness (adjusted by weight).
+        :param batch_size:  Not used in practice, so can be left blank.
+        """
+
         if isinstance(documents[0], Document):
             return self.predict("", documents=documents, top_k=top_k)  # type: ignore
         nested_docs = []
