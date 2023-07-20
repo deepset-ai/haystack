@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import List, Union, Optional, Dict, Literal
 
 from dateutil.parser import parse, ParserError
+from haystack.errors import NodeError
 
 from haystack.nodes.ranker.base import BaseRanker
 from haystack.schema import Document
@@ -19,7 +20,7 @@ class RecentnessRanker(BaseRanker):
         date_identifier: str,
         weight: float = 0.5,
         top_k: Optional[int] = None,
-        method: Literal["reciprocal_rank_fusion", "score"] = "reciprocal_rank_fusion",
+        ranking_method: Literal["reciprocal_rank_fusion", "score"] = "reciprocal_rank_fusion",
     ):
         """
         This Node is used to rerank retrieved documents based on their age. Newer documents will rank higher.
@@ -34,7 +35,7 @@ class RecentnessRanker(BaseRanker):
         :param top_k: (optional) How many documents to return.
                 It can make sense to have large top-k values from the initial retrievers and filter docs down in the
                 RecentnessRanker with this top_k parameter.
-        :param method: Method used to combine retriever and recentness. Possible values are 'reciprocal_rank_fusion' (default) and 'score'
+        :param ranking_method: Method used to combine retriever and recentness. Possible values are 'reciprocal_rank_fusion' (default) and 'score'
                 Make sure to use 'score' method only with retrievers/rankers that give back OK score in range [0,1]
         """
 
@@ -42,7 +43,7 @@ class RecentnessRanker(BaseRanker):
         self.date_identifier = date_identifier
         self.weight = weight
         self.top_k = top_k
-        self.method = method
+        self.ranking_method = ranking_method
 
     # pylint: disable=arguments-differ
     def predict(  # type: ignore
@@ -62,18 +63,20 @@ class RecentnessRanker(BaseRanker):
         try:
             sorted_by_date = sorted(documents, reverse=True, key=lambda x: parse(x.meta[self.date_identifier]))
         except KeyError:
-            logger.error(
+            wrong_date = []
+            for i in documents:
+                if self.date_identifier not in i.meta:
+                    wrong_date.append(i.id)
+            raise NodeError(
                 """
                 Param <date_identifier> seems wrong.\n
-                You supplied: '%s'.\n
-                Document[0] contains metadata with keys: %s.\n
-                Continuing without sorting by date.
-                """,
-                self.date_identifier,
-                ",".join(list(documents[0].meta.keys())),
+                You supplied: '{}'.\n
+                Document(s) {} do not contain metadata key supplied.\n
+                """.format(
+                    self.date_identifier, ",".join(wrong_date)
+                )
             )
 
-            return documents
         except ParserError:
             logger.error(
                 """
@@ -86,42 +89,46 @@ class RecentnessRanker(BaseRanker):
             return documents
 
         # merge scores for documents sorted both by content and by date.
-        # If method is set to 'reciprocal_rank_fusion', then that is used to combine previous ranking with recency ranking.
-        # If method is set to 'score', then documents will be assigned a recency score in [0,1] and will be re-ranked based on both their recency score and their pre-existing relevance score.
+        # If ranking method is set to 'reciprocal_rank_fusion', then that is used to combine previous ranking with recency ranking.
+        # If ranking method is set to 'score', then documents will be assigned a recency score in [0,1] and will be re-ranked based on both their recency score and their pre-existing relevance score.
         scores_map: Dict = defaultdict(int)
         document_map = {doc.id: doc for doc in documents}
         weight = self.weight
-        method = self.method
-        if method not in ["reciprocal_rank_fusion", "score"]:
+        ranking_method = self.ranking_method
+        if ranking_method not in ["reciprocal_rank_fusion", "score"]:
             logger.error(
                 """
-                    Param <method> seems wrong.\n
+                    Param <ranking_method> seems wrong.\n
                     You supplied: '%s'.\n
                     It should be 'reciprocal_rank_fusion' or 'score'.\n
                     Defaulting to 'reciprocal_rank_fusion'.
                     """,
-                method,
+                ranking_method,
             )
-            method = "reciprocal_rank_fusion"
+            ranking_method = "reciprocal_rank_fusion"
 
         for i, doc in enumerate(documents):
-            if method == "reciprocal_rank_fusion":
+            if ranking_method == "reciprocal_rank_fusion":
                 scores_map[doc.id] += self._calculate_rrf(rank=i) * (1 - weight)
-            elif method == "score":
+            elif ranking_method == "score":
                 score = float(0)
                 if doc.score is None:
                     warnings.warn("The score was not provided; defaulting to 0")
                 elif doc.score < 0 or doc.score > 1:
-                    warnings.warn("The score is outside the [0,1] range; defaulting to 0")
+                    warnings.warn(
+                        "The score {} for document {} is outside the [0,1] range; defaulting to 0".format(
+                            doc.score, doc.id
+                        )
+                    )
                 else:
                     score = doc.score
 
                 scores_map[doc.id] += score * (1 - weight)
 
         for i, doc in enumerate(sorted_by_date):
-            if method == "reciprocal_rank_fusion":
+            if ranking_method == "reciprocal_rank_fusion":
                 scores_map[doc.id] += self._calculate_rrf(rank=i) * weight
-            elif method == "score":
+            elif ranking_method == "score":
                 scores_map[doc.id] += self._calc_recentness_score(rank=i, amount=len(sorted_by_date)) * weight
         sorted_doc_ids = sorted(scores_map.items(), key=lambda d: d[1] if d[1] is not None else -1, reverse=True)
 

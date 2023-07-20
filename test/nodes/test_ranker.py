@@ -10,7 +10,7 @@ from haystack.schema import Document
 from haystack.nodes.ranker.base import BaseRanker
 from haystack.nodes.ranker import SentenceTransformersRanker, CohereRanker
 from haystack.nodes.ranker.recentness_ranker import RecentnessRanker
-from haystack.errors import HaystackError
+from haystack.errors import HaystackError, NodeError
 
 
 @pytest.fixture
@@ -506,7 +506,7 @@ def test_cohere_ranker_batch_multiple_queries_multiple_doc_lists(docs, mock_cohe
 
 
 recency_tests_inputs = [
-    # Score method works as expected
+    # Score ranking method works as expected
     pytest.param(
         {
             "docs": [
@@ -517,15 +517,15 @@ recency_tests_inputs = [
             "weight": 0.5,
             "date_identifier": "date",
             "top_k": 2,
-            "method": "score",
+            "ranking_method": "score",
             "expected_scores": {"1": 0.4833333333333333, "2": 0.7},
             "expected_order": ["2", "1"],
             "expected_logs": [],
             "expected_warning": "",
         },
-        id="Score method works as expected",
+        id="Score ranking method works as expected",
     ),
-    # RRF method works as expected
+    # RRF ranking method works as expected
     pytest.param(
         {
             "docs": [
@@ -536,13 +536,13 @@ recency_tests_inputs = [
             "weight": 0.5,
             "date_identifier": "date",
             "top_k": 2,
-            "method": "reciprocal_rank_fusion",
+            "ranking_method": "reciprocal_rank_fusion",
             "expected_scores": {"1": 0.01639344262295082, "2": 0.016001024065540194},
             "expected_order": ["1", "2"],
             "expected_logs": [],
             "expected_warning": "",
         },
-        id="RRF method works as expected",
+        id="RRF ranking method works as expected",
     ),
     # Wrong field to find the date
     pytest.param(
@@ -556,20 +556,15 @@ recency_tests_inputs = [
             "date_identifier": "date",
             "expected_scores": {"1": 0.3, "2": 0.4, "3": 0.6},
             "expected_order": ["1", "2", "3"],
-            "expected_logs": [
-                (
-                    "haystack.nodes.ranker.recentness_ranker",
-                    logging.ERROR,
-                    """
+            "expected_exception": NodeError(
+                """
                 Param <date_identifier> seems wrong.\n
                 You supplied: 'date'.\n
-                Document[0] contains metadata with keys: data.\n
-                Continuing without sorting by date.
-                """,
-                )
-            ],
+                Document(s) 1 do not contain metadata key supplied.\n
+                """
+            ),
             "top_k": 2,
-            "method": "score",
+            "ranking_method": "score",
         },
         id="Wrong field to find the date",
     ),
@@ -595,7 +590,7 @@ recency_tests_inputs = [
                 )
             ],
             "top_k": 2,
-            "method": "reciprocal_rank_fusion",
+            "ranking_method": "reciprocal_rank_fusion",
         },
         id="Date unparsable",
     ),
@@ -610,10 +605,10 @@ recency_tests_inputs = [
             "weight": 0.5,
             "date_identifier": "date",
             "top_k": 2,
-            "method": "score",
+            "ranking_method": "score",
             "expected_scores": {"1": 0.5, "2": 0.7, "3": 0.4666666666666667},
             "expected_order": ["2", "3"],
-            "expected_warning": ["The score is outside the [0,1] range; defaulting to 0"],
+            "expected_warning": ["The score 1.3 for document 1 is outside the [0,1] range; defaulting to 0"],
         },
         id="Wrong score, outside of bonds",
     ),
@@ -628,14 +623,14 @@ recency_tests_inputs = [
             "weight": 0.5,
             "date_identifier": "date",
             "top_k": 2,
-            "method": "score",
+            "ranking_method": "score",
             "expected_scores": {"1": 0.5, "2": 0.7, "3": 0.4666666666666667},
             "expected_order": ["2", "3"],
             "expected_warning": ["The score was not provided; defaulting to 0"],
         },
         id="Wrong score, not provided",
     ),
-    # Wrong method provided
+    # Wrong ranking method provided
     pytest.param(
         {
             "docs": [
@@ -646,7 +641,7 @@ recency_tests_inputs = [
             "weight": 0.5,
             "date_identifier": "date",
             "top_k": 2,
-            "method": "blablabla",
+            "ranking_method": "blablabla",
             "expected_scores": {"1": 0.01626123744050767, "2": 0.01626123744050767},
             "expected_order": ["1", "2"],
             "expected_logs": [
@@ -654,7 +649,7 @@ recency_tests_inputs = [
                     "haystack.nodes.ranker.recentness_ranker",
                     logging.ERROR,
                     """
-                    Param <method> seems wrong.\n
+                    Param <ranking_method> seems wrong.\n
                     You supplied: 'blablabla'.\n
                     It should be 'reciprocal_rank_fusion' or 'score'.\n
                     Defaulting to 'reciprocal_rank_fusion'.
@@ -662,7 +657,7 @@ recency_tests_inputs = [
                 )
             ],
         },
-        id="Wrong method provided",
+        id="Wrong ranking method provided",
     ),
 ]
 
@@ -679,11 +674,18 @@ def test_recentness_ranker(caplog, test_input):
     with warnings.catch_warnings(record=True) as warnings_list:
         # Initialize the ranker
         ranker = RecentnessRanker(
-            date_identifier=test_input["date_identifier"], method=test_input["method"], weight=test_input["weight"]
+            date_identifier=test_input["date_identifier"],
+            ranking_method=test_input["ranking_method"],
+            weight=test_input["weight"],
         )
-        results = ranker.predict(query="", documents=docs, top_k=test_input["top_k"])
+        predict_exception = None
+        results = []
+        try:
+            results = ranker.predict(query="", documents=docs, top_k=test_input["top_k"])
+        except Exception as e:
+            predict_exception = e
 
-        check_results(results, test_input, warnings_list, caplog)
+        check_results(results, test_input, warnings_list, caplog, predict_exception)
 
 
 @pytest.mark.unit
@@ -698,12 +700,19 @@ def test_recentness_ranker_batch_list(caplog, test_input):
     with warnings.catch_warnings(record=True) as warnings_list:
         # Initialize the ranker
         ranker = RecentnessRanker(
-            date_identifier=test_input["date_identifier"], method=test_input["method"], weight=test_input["weight"]
+            date_identifier=test_input["date_identifier"],
+            ranking_method=test_input["ranking_method"],
+            weight=test_input["weight"],
         )
-        # Run predict_batch with a list as input
-        results = ranker.predict_batch(queries="", documents=docs, top_k=test_input["top_k"])
+        predict_exception = None
+        results = []
+        try:
+            # Run predict_batch with a list as input
+            results = ranker.predict_batch(queries="", documents=docs, top_k=test_input["top_k"])
+        except Exception as e:
+            predict_exception = e
 
-        check_results(results, test_input, warnings_list, caplog)
+        check_results(results, test_input, warnings_list, caplog, predict_exception)
 
 
 @pytest.mark.unit
@@ -718,18 +727,33 @@ def test_recentness_ranker_batch_list_of_lists(caplog, test_input):
     with warnings.catch_warnings(record=True) as warnings_list:
         # Initialize the ranker
         ranker = RecentnessRanker(
-            date_identifier=test_input["date_identifier"], method=test_input["method"], weight=test_input["weight"]
+            date_identifier=test_input["date_identifier"],
+            ranking_method=test_input["ranking_method"],
+            weight=test_input["weight"],
         )
-        # Run predict_batch with a list of lists as input
-        results = ranker.predict_batch(queries="", documents=[docs, copy.deepcopy(docs)], top_k=test_input["top_k"])
 
-        check_results(results, test_input, warnings_list, caplog, list_of_lists=True)
+        predict_exception = None
+        results = []
+        try:
+            # Run predict_batch with a list of lists as input
+            results = ranker.predict_batch(queries="", documents=[docs, copy.deepcopy(docs)], top_k=test_input["top_k"])
+        except Exception as e:
+            predict_exception = e
+
+        check_results(results, test_input, warnings_list, caplog, predict_exception, list_of_lists=True)
 
 
-def check_results(results, test_input, warnings_list, caplog, list_of_lists=False):
+def check_results(results, test_input, warnings_list, caplog, exception, list_of_lists=False):
     expected_logs_count = 1
     if list_of_lists:
         expected_logs_count = 2
+
+    if "expected_exception" in test_input and test_input["expected_exception"] is not None:
+        assert exception.message == test_input["expected_exception"].message
+        assert type(exception) == type(test_input["expected_exception"])
+        return
+    else:
+        assert exception is None
 
     # Check that no warnings were thrown, if we are not expecting any
     if "expected_warning" not in test_input or test_input["expected_warning"] == []:
