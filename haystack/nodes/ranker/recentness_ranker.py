@@ -73,17 +73,14 @@ class RecentnessRanker(BaseRanker):
         try:
             sorted_by_date = sorted(documents, reverse=True, key=lambda x: parse(x.meta[self.date_meta_field]))
         except KeyError:
-            wrong_date = []
-            for doc in documents:
-                if self.date_meta_field not in doc.meta:
-                    wrong_date.append(doc.id)
             raise NodeError(
                 """
                 Param <date_meta_field> was set to '{}', but document(s) {} do not contain this metadata key.\n
                 Please double-check the names of existing metadata fields of your documents \n
                 and set <date_meta_field> to the name of the field that contains dates.
                 """.format(
-                    self.date_meta_field, ",".join(wrong_date)
+                    self.date_meta_field,
+                    ",".join([doc.id for doc in documents if self.date_meta_field not in doc.meta]),
                 )
             )
 
@@ -93,7 +90,7 @@ class RecentnessRanker(BaseRanker):
                 Could not parse date information for dates: %s\n
                 Continuing without sorting by date.
                 """,
-                " - ".join([x.meta.get(self.date_meta_field, "identifier wrong") for x in documents]),
+                " - ".join([doc.meta.get(self.date_meta_field, "identifier wrong") for doc in documents]),
             )
 
             return documents
@@ -102,7 +99,6 @@ class RecentnessRanker(BaseRanker):
         # If ranking mode is set to 'reciprocal_rank_fusion', then that is used to combine previous ranking with recency ranking.
         # If ranking mode is set to 'score', then documents will be assigned a recency score in [0,1] and will be re-ranked based on both their recency score and their pre-existing relevance score.
         scores_map: Dict = defaultdict(int)
-        document_map = {doc.id: doc for doc in documents}
         if self.ranking_mode not in ["reciprocal_rank_fusion", "score"]:
             raise NodeError(
                 """
@@ -138,11 +134,11 @@ class RecentnessRanker(BaseRanker):
                 scores_map[doc.id] += self._calc_recentness_score(rank=i, amount=len(sorted_by_date)) * self.weight
 
         top_k = top_k or self.top_k or len(documents)
-        for idx, score in scores_map.items():
-            doc = document_map[idx]
-            doc.score = score
 
-        return sorted(documents, key=lambda x: x.score if x.score is not None else -1, reverse=True)[:top_k]
+        for doc in documents:
+            doc.score = scores_map[doc.id]
+
+        return sorted(documents, key=lambda doc: doc.score, reverse=True)[:top_k]
 
     # pylint: disable=arguments-differ
     def predict_batch(  # type: ignore
@@ -172,14 +168,16 @@ class RecentnessRanker(BaseRanker):
 
         return nested_docs
 
-    def _calculate_rrf(self, rank: int, k: int = 61) -> float:
+    @staticmethod
+    def _calculate_rrf(rank: int, k: int = 61) -> float:
         """
         Calculates the reciprocal rank fusion. The constant K is set to 61 (60 was suggested by the original paper,
         plus 1 as python lists are 0-based and the paper [https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf] used 1-based ranking).
         """
         return 1 / (k + rank)
 
-    def _calc_recentness_score(self, rank: int, amount: int) -> float:
+    @staticmethod
+    def _calc_recentness_score(rank: int, amount: int) -> float:
         """
         Calculate recentness score as a linear score between most recent and oldest document.
         This linear scaling is useful to
