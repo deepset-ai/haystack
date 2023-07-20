@@ -11,6 +11,6 @@ class TestSubtract(BaseTestComponent):
 
     def test_subtract(self):
         component = Subtract()
-        results = component.run(component.input(first_value=10, second_value=7))
-        assert results == component.output(difference=3)
+        results = component.run(first_value=10, second_value=7)
+        assert results == {"difference": 3}
         assert component.init_parameters == {}

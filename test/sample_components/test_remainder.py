@@ -9,21 +9,23 @@ from sample_components import Remainder
 
 class TestRemainder(BaseTestComponent):
     def test_saveload_default(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Remainder(), tmp_path)
+        self.assert_can_be_saved_and_loaded_in_pipeline(Remainder.create(), tmp_path)
 
     def test_saveload_divisor(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Remainder(divisor=1), tmp_path)
+        self.assert_can_be_saved_and_loaded_in_pipeline(Remainder.create(divisor=10), tmp_path)
 
     def test_remainder_default(self):
-        component = Remainder()
-        results = component.run(component.input(value=3))
-        assert results == component.output(remainder_is_1=3)
+        component = Remainder.create()
+        results = component.run(value=4)
+        assert results == {"remainder_is_0": None, "remainder_is_1": 4, "remainder_is_2": None}
+        assert component.init_parameters == {"divisor": 3}
 
     def test_remainder_with_divisor(self):
-        component = Remainder(divisor=4)
-        results = component.run(component.input(value=3))
-        assert results == component.output(remainder_is_3=3)
+        component = Remainder.create(divisor=4)
+        results = component.run(value=4)
+        assert results == {"remainder_is_0": 4, "remainder_is_1": None, "remainder_is_2": None, "remainder_is_3": None}
+        assert component.init_parameters == {"divisor": 4}
 
     def test_remainder_zero(self):
         with pytest.raises(ValueError):
-            Remainder(divisor=0)
+            Remainder.create(divisor=0)

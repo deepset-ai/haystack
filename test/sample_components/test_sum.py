@@ -1,28 +1,51 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+import pytest
+
 from canals.testing import BaseTestComponent
+from canals.errors import ComponentError
 from sample_components import Sum
 
 
 class TestSum(BaseTestComponent):
     def test_saveload_default(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Sum(), tmp_path)
+        self.assert_can_be_saved_and_loaded_in_pipeline(Sum.create(inputs=["value_1", "value_1"]), tmp_path)
 
-    def test_sum_no_values(self):
-        component = Sum(inputs=[])
-        results = component.run(component.input())
-        assert results == component.output(total=0)
+    def test_sum_expects_no_values_receives_no_values(self):
+        component = Sum.create(inputs=[])
+        results = component.run()
+        assert results == {"total": 0}
         assert component.init_parameters == {"inputs": []}
 
-    def test_sum_one_value(self):
-        component = Sum()
-        results = component.run(component.input(10))
-        assert results == component.output(total=10)
-        assert component.init_parameters == {}
+    def test_sum_expects_no_values_receives_one_value(self):
+        component = Sum.create(inputs=[])
+        with pytest.raises(ComponentError):
+            component.run(value_1=10)
 
-    def test_sum_few_values(self):
-        component = Sum(inputs=["value_1", "value_2", "value_3"])
-        results = component.run(component.input(10, 11, 12))
-        assert results == component.output(total=33)
+    def test_sum_expects_one_value_receives_one_value(self):
+        component = Sum.create(inputs=["value_1"])
+        results = component.run(value_1=10)
+        assert results == {"total": 10}
+        assert component.init_parameters == {"inputs": ["value_1"]}
+
+    def test_sum_expects_one_value_receives_wrong_value(self):
+        component = Sum.create(inputs=["value_1"])
+        with pytest.raises(ComponentError):
+            component.run(something_else=10)
+
+    def test_sum_expects_one_value_receives_few_values(self):
+        component = Sum.create(inputs=["value_1"])
+        with pytest.raises(ComponentError):
+            component.run(value_1=10, value_2=2)
+
+    def test_sum_expects_few_values_receives_right_values(self):
+        component = Sum.create(inputs=["value_1", "value_2", "value_3"])
+        results = component.run(value_1=10, value_2=11, value_3=12)
+        assert results == {"total": 33}
         assert component.init_parameters == {"inputs": ["value_1", "value_2", "value_3"]}
+
+    def test_sum_expects_few_values_receives_some_wrong_values(self):
+        component = Sum.create(inputs=["value_1", "value_2", "value_3"])
+        with pytest.raises(ComponentError):
+            component.run(value_1=10, value_4=11, value_3=12)

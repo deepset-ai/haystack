@@ -23,12 +23,12 @@ class TestAccumulate(BaseTestComponent):
 
     def test_accumulate_default(self):
         component = Accumulate()
-        results = component.run(component.input(value=10))
-        assert results == component.output(value=10)
+        results = component.run(value=10)
+        assert results == {"value": 10}
         assert component.state == 10
 
-        results = component.run(component.input(value=1))
-        assert results == component.output(value=11)
+        results = component.run(value=1)
+        assert results == {"value": 11}
         assert component.state == 11
 
         assert component.init_parameters == {}
@@ -36,12 +36,12 @@ class TestAccumulate(BaseTestComponent):
     def test_accumulate_callable(self):
         component = Accumulate(function=my_subtract)
 
-        results = component.run(component.input(value=10))
-        assert results == component.output(value=-10)
+        results = component.run(value=10)
+        assert results == {"value": -10}
         assert component.state == -10
 
-        results = component.run(component.input(value=1))
-        assert results == component.output(value=-11)
+        results = component.run(value=1)
+        assert results == {"value": -11}
         assert component.state == -11
 
         assert component.init_parameters == {
@@ -51,12 +51,12 @@ class TestAccumulate(BaseTestComponent):
     def test_accumulate_string(self):
         component = Accumulate(function="test.sample_components.test_accumulate.my_subtract")
 
-        results = component.run(component.input(value=10))
-        assert results == component.output(value=-10)
+        results = component.run(value=10)
+        assert results == {"value": -10}
         assert component.state == -10
 
-        results = component.run(component.input(value=1))
-        assert results == component.output(value=-11)
+        results = component.run(value=1)
+        assert results == {"value": -11}
         assert component.state == -11
 
         assert component.init_parameters == {

@@ -1,12 +1,15 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+from typing import Union, get_args, get_origin, Any
+
 import logging
 import inspect
 from functools import wraps
 
 from canals.errors import ComponentError
-from canals.pipeline.connections import InputSocket, OutputSocket, _types_are_compatible
+from canals.type_checking import _types_are_compatible
+from canals.sockets import InputSocket, OutputSocket
 
 
 logger = logging.getLogger(__name__)

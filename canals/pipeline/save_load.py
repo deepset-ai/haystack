@@ -9,7 +9,7 @@ import json
 import logging
 from pathlib import Path
 
-from canals.component import component
+from canals.component.component import component
 from canals.pipeline.pipeline import Pipeline
 from canals.errors import PipelineUnmarshalError
 

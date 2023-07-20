@@ -14,6 +14,6 @@ class TestAddFixedValue(BaseTestComponent):
 
     def test_addvalue(self):
         component = AddFixedValue()
-        results = component.run(component.input(value=50, add=10))
-        assert results == component.output(value=60)
+        results = component.run(value=50, add=10)
+        assert results == {"result": 60}
         assert component.init_parameters == {}

@@ -4,7 +4,7 @@ import pytest
 
 from canals.pipeline import Pipeline
 from canals.errors import PipelineValidationError
-from canals.pipeline.sockets import InputSocket, OutputSocket
+from canals.sockets import InputSocket, OutputSocket
 from canals.pipeline.validation import _find_pipeline_inputs, _find_pipeline_outputs
 from sample_components import Double, AddFixedValue, Sum, Parity
 

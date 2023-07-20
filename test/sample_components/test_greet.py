@@ -25,6 +25,6 @@ class TestGreet(BaseTestComponent):
     def test_greet_message(self, caplog):
         caplog.set_level(logging.WARNING)
         component = Greet()
-        results = component.run(component.input(value=10, message="Hello, that's {value}", log_level="WARNING"))
-        assert results == component.output(value=10)
+        results = component.run(value=10, message="Hello, that's {value}", log_level="WARNING")
+        assert results == {"value": 10}
         assert "Hello, that's 10" in caplog.text

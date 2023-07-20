@@ -8,7 +8,7 @@ from dataclasses import fields
 import networkx
 
 from canals.errors import PipelineValidationError
-from canals.pipeline.sockets import InputSocket, OutputSocket
+from canals.sockets import InputSocket, OutputSocket
 
 
 logger = logging.getLogger(__name__)

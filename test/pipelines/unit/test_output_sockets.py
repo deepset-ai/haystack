@@ -4,7 +4,7 @@
 from typing import List, Optional, Union, Set, Sequence, Iterable, Dict, Mapping, Tuple
 
 from canals import component
-from canals.pipeline.sockets import (
+from canals.sockets import (
     _find_output_sockets,
     OutputSocket,
 )

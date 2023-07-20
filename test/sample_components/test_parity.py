@@ -11,7 +11,7 @@ class TestParity(BaseTestComponent):
 
     def test_parity(self):
         component = Parity()
-        results = component.run(component.input(value=1))
-        assert results == component.output(odd=1)
-        results = component.run(component.input(value=2))
-        assert results == component.output(even=2)
+        results = component.run(value=1)
+        assert results == {"odd": 1, "even": None}
+        results = component.run(value=2)
+        assert results == {"odd": None, "even": 2}
