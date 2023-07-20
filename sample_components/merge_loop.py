@@ -21,6 +21,9 @@ class MergeLoop:
 
             __name__ = __qualname__ = f"MergeLoop_{str(expected_type)}_{'_'.join(inputs)}"
 
+            def __init__(self, expected_type, inputs):
+                self.init_parameters = {"expected_type": expected_type, "inputs": inputs}
+
             @component.return_types(value=expected_type)
             @component.run_method_types(**{input_name: expected_type for input_name in inputs})
             def run(self, **kwargs):
@@ -32,7 +35,7 @@ class MergeLoop:
                         return {"value": v}
                 return {"value": None}
 
-        return MergeLoopImpl()
+        return MergeLoopImpl(expected_type=expected_type, inputs=inputs)
 
     def __init__(self):
         raise NotImplementedError("use MergeLoop.create()")

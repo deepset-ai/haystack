@@ -22,6 +22,9 @@ class Sum:
 
             __name__ = __qualname__ = f"Sum_{'_'.join(inputs)}"
 
+            def __init__(self, inputs: List[str]):
+                ...
+
             @component.return_types(total=int)
             @component.run_method_types(**{input_name: int for input_name in inputs})
             def run(self, **kwargs):
@@ -30,7 +33,7 @@ class Sum:
                 """
                 return {"total": sum(kwargs.values())}
 
-        return SumImpl()
+        return SumImpl(inputs=inputs)
 
     def __init__(self):
         raise NotImplementedError("use Sum.create()")

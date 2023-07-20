@@ -15,13 +15,17 @@ from canals.sockets import InputSocket, OutputSocket
 logger = logging.getLogger(__name__)
 
 
-def _prepare_for_serialization(init_func):
+def _prepare_init_params_and_sockets(init_func):
     """
     Decorator that saves the init parameters of a component in `self.init_parameters`
     """
 
     @wraps(init_func)
     def wrapper(self, *args, **kwargs):
+        # Create the component's input and output sockets
+        self.__input_sockets__ = {name: InputSocket(**data) for name, data in self.run.__run_method_types__.items()}
+        self.__output_sockets__ = {name: OutputSocket(**data) for name, data in self.run.__return_types__.items()}
+
         # Call the actual __init__ function with the arguments
         init_func(self, *args, **kwargs)
 
@@ -108,9 +112,10 @@ class _Component:
         """
         Decorator that checks the return types of the `run()` method.
         """
+        print(self)
 
         def return_types_decorator(run_method):
-            run_method.__return_types__ = [OutputSocket(name, type_) for name, type_ in return_types.items()]
+            run_method.__return_types__ = {name: {"name": name, "type": type_} for name, type_ in return_types.items()}
 
             @wraps(run_method)
             def return_types_impl(self, *args, **kwargs):
@@ -137,9 +142,9 @@ class _Component:
         """
 
         def run_method_types_decorator(run_method):
-            run_method.__run_method_types__ = [
-                InputSocket(name, type_, None) for name, type_ in run_method_types.items()
-            ]
+            run_method.__run_method_types__ = {
+                name: {"name": name, "type": type_} for name, type_ in run_method_types.items()
+            }
 
             @wraps(run_method)
             def run_method_types_impl(self, **kwargs):
@@ -182,7 +187,7 @@ class _Component:
                 for param in run_signature.parameters
             ):
                 raise ComponentError(
-                    f"{class_.__name__} can't have variadic keyword arguments like *args or **kwargs in its 'run()' method."
+                    f"{class_.__name__} can't have arguments like *args or **kwargs in its 'run()' method."
                 )
 
             # Check the run() signature for missing types
@@ -198,14 +203,16 @@ class _Component:
                 )
 
             # Create the input sockets
-            class_.run.__run_method_types__ = [
-                InputSocket(
-                    name=param,
-                    type=run_signature.parameters[param].annotation,
-                    default=run_signature.parameters[param].default,
-                )
+            class_.run.__run_method_types__ = {
+                param: {
+                    "name": param,
+                    "type": run_signature.parameters[param].annotation,
+                    "default": run_signature.parameters[param].default
+                    if run_signature.parameters[param].default is not inspect.Parameter.empty
+                    else None,
+                }
                 for param in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
-            ]
+            }
 
         # # Check the run() signature for the return_types wrapper
         if not hasattr(class_.run, "__return_types__"):
@@ -215,7 +222,7 @@ class _Component:
 
         # Automatically registers all the init parameters in an instance attribute called `_init_parameters`.
         # See `save_init_parameters()`.
-        class_.__init__ = _prepare_for_serialization(class_.__init__)
+        class_.__init__ = _prepare_init_params_and_sockets(class_.__init__)
 
         if class_.__name__ in self.registry:
             logger.error(

@@ -10,6 +10,9 @@ class Subtract:
     Compute the difference between two values.
     """
 
+    def __init__(self):
+        ...
+
     @component.return_types(difference=int)
     def run(self, first_value: int, second_value: int):
         """

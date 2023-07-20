@@ -124,8 +124,8 @@ class Pipeline:
         self.graph.add_node(
             name,
             instance=instance,
-            input_sockets=instance.run.__run_method_types__,
-            output_sockets=instance.run.__return_types__,
+            input_sockets=instance.__input_sockets__,
+            output_sockets=instance.__output_sockets__,
             visits=0,
         )
 
@@ -203,6 +203,7 @@ class Pipeline:
         """
         # Make sure the receiving socket isn't already connected - sending sockets can be connected as many times as needed,
         # so they don't need this check
+        print(to_node, to_socket)
         if to_socket.sender:
             raise PipelineConnectError(
                 f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
@@ -316,7 +317,7 @@ class Pipeline:
         logger.info("Pipeline execution started.")
         inputs_buffer = OrderedDict(
             {
-                node: {key: value for key, value in input_data.__dict__.items() if value is not None}
+                node: {key: value for key, value in input_data.items() if value is not None}
                 for node, input_data in data.items()
             }
         )
@@ -484,9 +485,13 @@ class Pipeline:
 
         # All components inputs, whether they're connected, default or pipeline inputs
         instance = self.graph.nodes[name]["instance"]
-        input_sockets = {f.name for f in fields(instance.__canals_input__)}
-        optional_input_sockets = set(instance.__canals_optional_inputs__)
-        mandatory_input_sockets = set(instance.__canals_mandatory_inputs__)
+        input_sockets = instance.__input_sockets__.keys()
+        optional_input_sockets = set(
+            [socket.name for socket in instance.__input_sockets__.values() if socket.default is None]
+        )
+        mandatory_input_sockets = set(
+            [socket.name for socket in instance.__input_sockets__.values() if socket.default is not None]
+        )
 
         # Components that are in the inputs buffer and have no inputs assigned are considered skipped
         skipped_components = {n for n, v in inputs_buffer.items() if not v}
@@ -616,18 +621,18 @@ class Pipeline:
             logger.info("* Running %s (visits: %s)", name, self.graph.nodes[name]["visits"])
             logger.debug("   '%s' inputs: %s", name, inputs)
 
-            # Optional fields are defaulted to None so creation of the input dataclass doesn't fail
-            # cause we're missing some argument
-            optionals = {field: None for field in instance.__canals_optional_inputs__}
+            # # Optional fields are defaulted to None so creation of the input dataclass doesn't fail
+            # # cause we're missing some argument
+            # optionals = {field: None for field in instance.__canals_optional_inputs__}
 
             # Pass the inputs as kwargs after adding the component's own defaults to them
-            inputs = {**optionals, **instance.defaults, **inputs}
-            input_dataclass = instance.input(**inputs)
+            # inputs = {**optionals, **instance.defaults, **inputs}
+            # input_dataclass = instance.input(**inputs)
 
-            output_dataclass = instance.run(input_dataclass)
+            outputs = instance.run(**inputs)
 
             # Unwrap the output
-            logger.debug("   '%s' outputs: %s\n", name, output_dataclass.__dict__)
+            logger.debug("   '%s' outputs: %s\n", name, outputs)
 
         except Exception as e:
             raise PipelineRuntimeError(
@@ -635,7 +640,7 @@ class Pipeline:
                 "See the stacktrace above for more information."
             ) from e
 
-        return output_dataclass
+        return outputs
 
     def _route_output(
         self,

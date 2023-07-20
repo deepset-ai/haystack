@@ -10,7 +10,6 @@ import pytest
 
 from canals.errors import PipelineConnectError
 from canals import Pipeline, component
-from canals.sockets import _find_input_sockets, _find_output_sockets
 from canals.pipeline.connections import _find_unambiguous_connection, _get_socket_type_desc
 from sample_components import AddFixedValue
 
@@ -375,51 +374,23 @@ def test_connect_many_outputs_to_the_same_input():
     pipe.add_component("first", add_1)
     pipe.add_component("second", add_2)
     pipe.add_component("third", add_2)
-    pipe.connect("first.value", "second.value")
+    pipe.connect("first.result", "second.value")
     with pytest.raises(PipelineConnectError, match="second.value is already connected to first"):
-        pipe.connect("third.value", "second.value")
+        pipe.connect("third.result", "second.value")
 
 
 def test_connect_many_connections_possible_name_matches():
     @component
     class Component1:
-        @component.input
-        def input(self):
-            class Input:
-                value: str
-
-            return Input
-
-        @component.output
-        def output(self):
-            class Output:
-                value: str
-
-            return Output
-
-        def run(self, data):
-            return self.output(value=data.value)
+        @component.return_types(value=str)
+        def run(self, value: str):
+            return {"value": value}
 
     @component
     class Component2:
-        @component.input
-        def input(self):
-            class Input:
-                value: str
-                othervalue: str
-                yetanothervalue: str
-
-            return Input
-
-        @component.output
-        def output(self):
-            class Output:
-                value: str
-
-            return Output
-
-        def run(self, data):
-            return self.output(value=data.value)
+        @component.return_types(value=str)
+        def run(self, value: str, othervalue: str, yetanothervalue: str):
+            return {"value": value}
 
     pipe = Pipeline()
     pipe.add_component("c1", Component1())
@@ -431,43 +402,15 @@ def test_connect_many_connections_possible_name_matches():
 def test_find_unambiguous_connection_many_connections_possible_no_name_matches():
     @component
     class Component1:
-        @component.input
-        def input(self):
-            class Input:
-                value: str
-
-            return Input
-
-        @component.output
-        def output(self):
-            class Output:
-                value: str
-
-            return Output
-
-        def run(self, data):
-            return self.output(value=data.value)
+        @component.return_types(value=str)
+        def run(self, value: str):
+            return {"value": value}
 
     @component
     class Component2:
-        @component.input
-        def input(self):
-            class Input:
-                value1: str
-                value2: str
-                value3: str
-
-            return Input
-
-        @component.output
-        def output(self):
-            class Output:
-                value: str
-
-            return Output
-
-        def run(self, data):
-            return self.output(value=data.value1)
+        @component.return_types(value=str)
+        def run(self, value1: str, value2: str, value3: str):
+            return {"value": value1}
 
     expected_message = re.escape(
         """Cannot connect 'comp1' with 'comp2': more than one connection is possible between these components. Please specify the connection name, like: pipeline.connect('comp1.value', 'comp2.value1').
@@ -482,8 +425,8 @@ def test_find_unambiguous_connection_many_connections_possible_no_name_matches()
         _find_unambiguous_connection(
             sender_node="comp1",
             receiver_node="comp2",
-            sender_sockets=_find_output_sockets(Component1()).values(),
-            receiver_sockets=_find_input_sockets(Component2()).values(),
+            sender_sockets=Component1().__output_sockets__.values(),
+            receiver_sockets=Component2().__input_sockets__.values(),
         )
 
 
