@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
     import torch
     from sentence_transformers import SentenceTransformer
-    from haystack.modeling.utils import initialize_device_settings
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class MostDiverseRanker(BaseRanker):
