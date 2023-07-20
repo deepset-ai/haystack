@@ -182,8 +182,8 @@ class _Component:
             run_method.__return_types__ = return_types
 
             @wraps(run_method)
-            def return_types_impl(*args, **kwargs):
-                result = run_method(*args, **kwargs)
+            def return_types_impl(self, *args, **kwargs):
+                result = run_method(self, *args, **kwargs)
 
                 # Check output types
                 for key in result:
@@ -200,6 +200,32 @@ class _Component:
 
         return return_types_decorator
 
+    def run_method_types(self, **run_method_types):
+        """
+        Decorator that checks the signature of the `run()` method.
+        """
+
+        def run_method_types_decorator(run_method):
+            run_method.__run_method_types__ = run_method_types
+
+            @wraps(run_method)
+            def run_method_types_impl(self, **kwargs):
+                # Check input types
+                for key in kwargs:
+                    if key not in run_method_types:
+                        raise ComponentError(f"Input value '{key}' not declared in @run_method_types decorator")
+                    if _types_are_compatible(kwargs[key], run_method_types[key]):
+                        raise ComponentError(
+                            f"Input type {type(kwargs[key])} for value '{key}' doesn't match the one declared in "
+                            f"@run_method_types decorator ({run_method_types[key]}))"
+                        )
+
+                return run_method(self, **kwargs)
+
+            return run_method_types_impl
+
+        return run_method_types_decorator
+
     def _decorator(self, class_):
         """
         Decorator validating the structure of the component and registering it in the components registry.
@@ -215,14 +241,14 @@ class _Component:
             raise ComponentError(f"{class_.__name__} must have a 'run()' method. See the docs for more information.")
         run_signature = inspect.signature(class_.run)
 
-        # Check the run() signature for keyword variadic arguments
-        if any(
-            run_signature.parameters[param].kind in (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
-            for param in run_signature.parameters
-        ):
-            raise ComponentError(
-                f"{class_.__name__} can't have variadic keyword arguments like *args or **kwargs in its 'run()' method."
-            )
+        # # Check the run() signature for keyword variadic arguments
+        # if not hasattr(class_.run, "__run_method_types___") and any(
+        #     run_signature.parameters[param].kind in (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
+        #     for param in run_signature.parameters
+        # ):
+        #     raise ComponentError(
+        #         f"{class_.__name__} can't have variadic keyword arguments like *args or **kwargs in its 'run()' method."
+        #     )
 
         # Check the run() signature for missing types
         missing_types = [
