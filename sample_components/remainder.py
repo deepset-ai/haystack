@@ -20,6 +20,8 @@ class Remainder:
             Implementation of Reminder()
             """
 
+            __name__ = __qualname__ = f"Remainder_{divisor}"
+
             def __init__(self, divisor):
                 if divisor == 0:
                     raise ValueError("Can't divide by zero")

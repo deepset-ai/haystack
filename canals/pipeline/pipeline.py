@@ -16,7 +16,7 @@ import networkx
 
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
 from canals.pipeline.draw import _draw, _convert_for_debug, RenderingEngines
-from canals.pipeline.sockets import InputSocket, OutputSocket, _find_input_sockets, _find_output_sockets
+from canals.pipeline.sockets import InputSocket, OutputSocket
 from canals.pipeline.validation import _validate_pipeline_input
 from canals.pipeline.connections import _parse_connection_name, _find_unambiguous_connection, _get_socket_type_desc
 
@@ -119,17 +119,13 @@ class Pipeline:
                 f"'{type(instance)}' doesn't seem to be a component. Is this class decorated with @component?"
             )
 
-        # Find inputs and outputs
-        input_sockets = _find_input_sockets(instance)
-        output_sockets = _find_output_sockets(instance)
-
         # Add component to the graph, disconnected
         logger.debug("Adding component '%s' (%s)", name, instance)
         self.graph.add_node(
             name,
             instance=instance,
-            input_sockets=input_sockets,
-            output_sockets=output_sockets,
+            input_sockets=instance.run.__run_method_types__,
+            output_sockets=instance.run.__return_types__,
             visits=0,
         )
 

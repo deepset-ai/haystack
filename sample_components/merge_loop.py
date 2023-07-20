@@ -19,9 +19,11 @@ class MergeLoop:
             Implementation of MergeLoop()
             """
 
+            __name__ = __qualname__ = f"MergeLoop_{str(expected_type)}_{'_'.join(inputs)}"
+
             @component.return_types(value=expected_type)
             @component.run_method_types(**{input_name: expected_type for input_name in inputs})
-            def run(self, **kwargs: Any):
+            def run(self, **kwargs):
                 """
                 :param kwargs: find the first non-None value and return it.
                 """

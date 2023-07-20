@@ -20,9 +20,11 @@ class Sum:
             Implementation of Sum()
             """
 
+            __name__ = __qualname__ = f"Sum_{'_'.join(inputs)}"
+
             @component.return_types(total=int)
             @component.run_method_types(**{input_name: int for input_name in inputs})
-            def run(self, **kwargs: Any):
+            def run(self, **kwargs):
                 """
                 :param value: the value to check the remainder of.
                 """
