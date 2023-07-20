@@ -59,6 +59,7 @@ def launch_document_store(document_store: str, n_docs: int = 0):
     elif document_store == "WeaviateDocumentStore":
         launch_weaviate(sleep=30, delete_existing=True)
 
+
 def file_previously_downloaded(url_path: Path, target_dir: Union[str, Path]) -> bool:
     name_of_file_to_download = os.path.split(url_path)[-1]
     logger.info(f"{name_of_file_to_download}")
@@ -67,13 +68,10 @@ def file_previously_downloaded(url_path: Path, target_dir: Union[str, Path]) -> 
         extracted_dir = name_of_file_to_download.split(".tar")[0]
         logger.info(f"{target_dir}/{extracted_dir}")
         return os.path.exists(f"{target_dir}/{extracted_dir}")
-    
+
     else:
         logger.info(f"{target_dir}/{name_of_file_to_download}")
         return os.path.exists(f"{target_dir}/{name_of_file_to_download}")
-
-            
-
 
 
 def download_from_url(url: str, target_dir: Union[str, Path]) -> None:
@@ -88,7 +86,7 @@ def download_from_url(url: str, target_dir: Union[str, Path]) -> None:
     if file_previously_downloaded(url_path, target_dir):
         logger.info(f"Skipping download of {url}, as a previous copy exists")
         return
-            
+
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
 
@@ -98,9 +96,8 @@ def download_from_url(url: str, target_dir: Union[str, Path]) -> None:
         temp_file.flush()
         temp_file.seek(0)
         if tarfile.is_tarfile(temp_file.name):
-            logger.info("extract files")
+            logger.info("Extracting files.")
             with tarfile.open(temp_file.name) as tar:
-                logger.info("extracting files")
                 tar.extractall(target_dir)
         else:
             with open(Path(target_dir) / url_path.name, "wb") as file:

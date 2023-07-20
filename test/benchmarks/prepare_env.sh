@@ -13,8 +13,7 @@ fi
 
 git pull
 cd ../../
-pip install .
-pip install .[metrics,elasticsearch,weaviate,opensearch,benchmarks]
+pip install .[metrics,elasticsearch,weaviate,opensearch,benchmarks,inference]
 cd test/benchmarks
 mkdir +p out
 
