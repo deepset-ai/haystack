@@ -64,12 +64,20 @@ class HealthResponse(BaseModel):
     gpus: List[GPUInfo] = Field(default_factory=list, description="GPU usage details")
 
 
-@router.get("/health", response_model=HealthResponse, status_code=200)
-def get_health_status():
-    """
-    This endpoint allows external systems to monitor the health of the Haystack REST API.
-    """
+def get_cpu_usage() -> CPUUsage:
+    cpu_count = os.cpu_count() or 1
+    p = psutil.Process()
+    p_cpu_usage = p.cpu_percent() / cpu_count
+    return CPUUsage(used=p_cpu_usage)
 
+
+def get_memory_usage() -> MemoryUsage:
+    p = psutil.Process()
+    p_memory_usage = p.memory_percent()
+    return MemoryUsage(used=p_memory_usage)
+
+
+def get_gpu_usage() -> List[GPUInfo]:
     gpus: List[GPUInfo] = []
     try:
         pynvml.nvmlInit()
@@ -98,33 +106,24 @@ def get_health_status():
                     ),
                 )
                 gpus.append(gpu_info)
-
         except pynvml.NVMLError as e:
             logger.warning("Couldn't collect GPU stats: %s", str(e))
         finally:
             pynvml.nvmlShutdown()
-
     except pynvml.NVMLError:
         # Here we intentionally ignore errors that occur when NVML (NVIDIA Management Library) is not available
-        # or found.
-        # NVML provides the GPU performance counters that enable us to monitor GPU usage. However, there are
-        # certain scenarios where NVML may not be present or functioning correctly:
-        # 1. CPU deployments: In deployments that only use CPUs and do not involve any GPUs, NVML is not available.
-        # 2. GPU deployments without proper NVML installation: If the system has GPUs but NVML is not correctly
-        # installed, then attempting to initialize it will lead to an exception.
-        # 3. Broken communication with NVML bindings: If there's a problem with the communication between
-        # PyNVML (the Python bindings for NVML) and the underlying NVML library, it can also lead to exceptions.
-        # In these cases, it's acceptable to ignore the errors because GPU usage statistics are not applicable
-        # or cannot be retrieved due to the mentioned reasons. We let the API continue to provide other
-        # statistics, such as CPU and memory usage.
+        # or found. See the original code's comment for more details.
         pass
 
-    cpu_count = os.cpu_count() or 1
-    p = psutil.Process()
-    p_cpu_usage = p.cpu_percent() / cpu_count
-    p_memory_usage = p.memory_percent()
+    return gpus
 
-    cpu_usage = CPUUsage(used=p_cpu_usage)
-    memory_usage = MemoryUsage(used=p_memory_usage)
 
-    return HealthResponse(version=haystack.__version__, cpu=cpu_usage, memory=memory_usage, gpus=gpus)
+@router.get("/health", response_model=HealthResponse, status_code=200)
+def get_health_status():
+    """
+    This endpoint allows external systems to monitor the health of the Haystack REST API.
+    """
+
+    return HealthResponse(
+        version=haystack.__version__, cpu=get_cpu_usage(), memory=get_memory_usage(), gpus=get_gpu_usage()
+    )
