@@ -138,7 +138,7 @@ class RecentnessRanker(BaseRanker):
         for doc in documents:
             doc.score = scores_map[doc.id]
 
-        return sorted(documents, key=lambda doc: doc.score, reverse=True)[:top_k]
+        return sorted(documents, key=lambda doc: doc.score if doc.score is not None else -1, reverse=True)[:top_k]
 
     # pylint: disable=arguments-differ
     def predict_batch(  # type: ignore
