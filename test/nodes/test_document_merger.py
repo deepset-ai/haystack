@@ -110,6 +110,7 @@ def test_document_merger_run_batch(documents, doc_dicts):
 
 @pytest.mark.unit
 def test_lost_in_the_middle_order_odd():
+    # tests that lost_in_the_middle order works with an odd number of documents
     docs = [
         Document("1"),
         Document("2"),
@@ -128,6 +129,7 @@ def test_lost_in_the_middle_order_odd():
 
 @pytest.mark.unit
 def test_batch_lost_in_the_middle_order_():
+    # tests that lost_in_the_middle order works with a batch of documents
     docs = [
         [Document("1"), Document("2"), Document("3"), Document("4")],
         [Document("5"), Document("6")],
@@ -143,6 +145,7 @@ def test_batch_lost_in_the_middle_order_():
 
 @pytest.mark.unit
 def test_lost_in_the_middle_order_even():
+    # tests that lost_in_the_middle order works with an even number of documents
     docs = [
         Document("1"),
         Document("2"),
@@ -162,6 +165,7 @@ def test_lost_in_the_middle_order_even():
 
 @pytest.mark.unit
 def test_lost_in_the_middle_order_corner():
+    # tests that lost_in_the_middle order works with some basic corner cases
     dm = DocumentMerger(order="lost_in_the_middle")
 
     # empty doc list
@@ -182,6 +186,7 @@ def test_lost_in_the_middle_order_corner():
 
 @pytest.mark.unit
 def test_document_merger_init():
+    # tests that DocumentMerger initializes with default values
     dm = DocumentMerger()
     assert dm.order == "default"
     assert dm.separator == " "
@@ -190,12 +195,14 @@ def test_document_merger_init():
 
 @pytest.mark.unit
 def test_document_merger_init_with_some_unknown_order():
+    # tests that DocumentMerger raises a ValueError when an unknown order is provided
     with pytest.raises(ValueError, match="Unknown DocumentMerger order"):
         DocumentMerger(order="some_unknown_order")
 
 
 @pytest.mark.unit
 def test_document_merger_with_word_count_threshold():
+    # tests that lost_in_the_middle with word_count_threshold produces a single document with truncated merged content
     dm = DocumentMerger(order="lost_in_the_middle", word_count_threshold=6)
     docs = [
         Document("word1"),
@@ -214,3 +221,64 @@ def test_document_merger_with_word_count_threshold():
     dm = DocumentMerger(order="lost_in_the_middle", word_count_threshold=9)
     result, _ = dm.run(docs)
     assert result["documents"][0].content == "word1 word3 word5 word7 word9 word8 word6 word4 word2"
+
+
+@pytest.mark.unit
+def test_lost_in_the_middle_order_merge_two_documents_custom_separator():
+    #  tests that merging two documents with lost_in_the_middle order and custom separator
+    #  produces a single document with merged content
+    merger = DocumentMerger(order="lost_in_the_middle", separator="|")
+    doc1 = Document(content="This is the first document.")
+    doc2 = Document(content="This is the second document.")
+    merged_doc = merger.merge([doc1, doc2])[0]
+    assert merged_doc.content == "This is the first document.|This is the second document."
+
+
+@pytest.mark.unit
+def test_default_order_merge_multiple_documents_word_count_threshold():
+    #  tests that merging multiple documents with default order and word count threshold produces a single
+    #  document with truncated merged content
+    merger = DocumentMerger(word_count_threshold=10)
+    doc1 = Document(content="This is the first document.")
+    doc2 = Document(content="This is the second document.")
+    doc3 = Document(content="This is the third document.")
+    merged_doc = merger.merge([doc1, doc2, doc3])[0]
+    assert merged_doc.content == "This is the first document. This is the second document."
+
+
+@pytest.mark.unit
+def test_merge_empty_list_of_documents():
+    #  tests that merging an empty list of documents raises a ValueError
+    merger = DocumentMerger()
+    with pytest.raises(ValueError):
+        merger.merge([])
+
+
+@pytest.mark.unit
+def test_merge_non_textual_documents():
+    #  tests that merging a list of non-textual documents raises a ValueError
+    merger = DocumentMerger()
+    doc1 = Document(content="This is a textual document.")
+    doc2 = Document(content_type="image", content="This is a non-textual document.")
+    with pytest.raises(ValueError):
+        merger.merge([doc1, doc2])
+
+
+@pytest.mark.unit
+def test_separator_and_word_count_threshold_edge_cases():
+    #  tests that the merge function handles edge cases for separator and word_count_threshold
+    merger = DocumentMerger()
+    documents = [
+        Document(content="This is the first document."),
+        Document(content="This is the second document."),
+        Document(content="This is the third document."),
+    ]
+    # Test with None separator and None word_count_threshold
+    result = merger.merge(documents=documents, separator=None)
+    assert len(result) == 1
+    assert result[0].content == "This is the first document. This is the second document. This is the third document."
+
+    # Test with empty separator and None word_count_threshold
+    result = merger.merge(documents=documents, separator="")
+    assert len(result) == 1
+    assert result[0].content == "This is the first document.This is the second document.This is the third document."

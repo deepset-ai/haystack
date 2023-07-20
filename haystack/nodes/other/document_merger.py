@@ -23,7 +23,7 @@ def truncate_document(
     :return: A string containing the truncated document. If the word count threshold is not
              specified or is less than 1, the original document is returned.
     """
-    separator = separator or " "
+    separator = separator if isinstance(separator, str) else " "  # we could have an empty string as separator
     return (
         separator.join(document.split()[:word_count_threshold])
         if word_count_threshold and word_count_threshold > 0
@@ -43,7 +43,7 @@ def default_order(
 
     :return: The merged document as a string.
     """
-    separator = separator or " "
+    separator = separator if isinstance(separator, str) else " "  # we could have an empty string as separator
     merged_doc_content = separator.join([doc.content for doc in documents])
     return truncate_document(merged_doc_content, separator, word_count_threshold)
 
@@ -72,7 +72,7 @@ def lost_in_the_middle_order(
     document_index = [i for i in range(len(documents))]
 
     merged_doc_content = ""
-    separator = separator or " "
+    separator = separator if isinstance(separator, str) else " "  # we could have an empty string as separator
     lost_in_the_middle_indices = [0]
     for doc in document_index[1:]:
         insertion_index = len(lost_in_the_middle_indices) // 2 + len(lost_in_the_middle_indices) % 2
