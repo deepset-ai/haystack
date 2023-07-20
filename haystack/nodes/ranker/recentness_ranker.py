@@ -45,13 +45,13 @@ class RecentnessRanker(BaseRanker):
         self.top_k = top_k
         self.ranking_mode = ranking_mode
 
-        if weight < 0 or weight > 1:
+        if self.weight < 0 or self.weight > 1:
             raise NodeError(
                 """
                 Param <weight> needs to be '0', '0.5' or '1' but was set to '{}'. \n
                 Please change param <weight> when initializing the RecentnessRanker.
                 """.format(
-                    weight
+                    self.weight
                 )
             )
 
@@ -103,22 +103,20 @@ class RecentnessRanker(BaseRanker):
         # If ranking mode is set to 'score', then documents will be assigned a recency score in [0,1] and will be re-ranked based on both their recency score and their pre-existing relevance score.
         scores_map: Dict = defaultdict(int)
         document_map = {doc.id: doc for doc in documents}
-        weight = self.weight
-        ranking_mode = self.ranking_mode
-        if ranking_mode not in ["reciprocal_rank_fusion", "score"]:
+        if self.ranking_mode not in ["reciprocal_rank_fusion", "score"]:
             raise NodeError(
                 """
                 Param <ranking_mode> needs to be 'reciprocal_rank_fusion' or 'score' but was set to '{}'. \n
                 Please change the <ranking_mode> when initializing the RecentnessRanker.
                 """.format(
-                    ranking_mode
+                    self.ranking_mode
                 )
             )
 
         for i, doc in enumerate(documents):
-            if ranking_mode == "reciprocal_rank_fusion":
-                scores_map[doc.id] += self._calculate_rrf(rank=i) * (1 - weight)
-            elif ranking_mode == "score":
+            if self.ranking_mode == "reciprocal_rank_fusion":
+                scores_map[doc.id] += self._calculate_rrf(rank=i) * (1 - self.weight)
+            elif self.ranking_mode == "score":
                 score = float(0)
                 if doc.score is None:
                     warnings.warn("The score was not provided; defaulting to 0")
@@ -131,23 +129,20 @@ class RecentnessRanker(BaseRanker):
                 else:
                     score = doc.score
 
-                scores_map[doc.id] += score * (1 - weight)
+                scores_map[doc.id] += score * (1 - self.weight)
 
         for i, doc in enumerate(sorted_by_date):
-            if ranking_mode == "reciprocal_rank_fusion":
-                scores_map[doc.id] += self._calculate_rrf(rank=i) * weight
-            elif ranking_mode == "score":
-                scores_map[doc.id] += self._calc_recentness_score(rank=i, amount=len(sorted_by_date)) * weight
-        sorted_doc_ids = sorted(scores_map.items(), key=lambda d: d[1] if d[1] is not None else -1, reverse=True)
+            if self.ranking_mode == "reciprocal_rank_fusion":
+                scores_map[doc.id] += self._calculate_rrf(rank=i) * self.weight
+            elif self.ranking_mode == "score":
+                scores_map[doc.id] += self._calc_recentness_score(rank=i, amount=len(sorted_by_date)) * self.weight
 
-        top_k = top_k or self.top_k or len(sorted_doc_ids)
-        docs = []
-        for idx, score in sorted_doc_ids[:top_k]:
+        top_k = top_k or self.top_k or len(documents)
+        for idx, score in scores_map.items():
             doc = document_map[idx]
             doc.score = score
-            docs.append(doc)
 
-        return docs
+        return sorted(documents, key=lambda x: x.score, reverse=True)[:top_k]
 
     # pylint: disable=arguments-differ
     def predict_batch(  # type: ignore
