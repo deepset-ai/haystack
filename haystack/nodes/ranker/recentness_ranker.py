@@ -74,9 +74,9 @@ class RecentnessRanker(BaseRanker):
             sorted_by_date = sorted(documents, reverse=True, key=lambda x: parse(x.meta[self.date_meta_field]))
         except KeyError:
             wrong_date = []
-            for i in documents:
-                if self.date_meta_field not in i.meta:
-                    wrong_date.append(i.id)
+            for doc in documents:
+                if self.date_meta_field not in doc.meta:
+                    wrong_date.append(doc.id)
             raise NodeError(
                 """
                 Param <date_meta_field> was set to '{}', but document(s) {} do not contain this metadata key.\n
@@ -142,7 +142,7 @@ class RecentnessRanker(BaseRanker):
             doc = document_map[idx]
             doc.score = score
 
-        return sorted(documents, key=lambda x: x.score, reverse=True)[:top_k]
+        return sorted(documents, key=lambda x: x.score if x.score is not None else -1, reverse=True)[:top_k]
 
     # pylint: disable=arguments-differ
     def predict_batch(  # type: ignore
