@@ -5,14 +5,14 @@
 
 # Summary
 
-As decided in previous proposals ([Embedding Retriever](3558-embedding_retriever.md) and [DocumentStores and Retrievers](4370-document_stores_and_retrievers.md)), in Haystack V2 we want to introduce a new component: the Embedder.
+As decided in the previous proposals ([Embedding Retriever](3558-embedding_retriever.md) and [DocumentStores and Retrievers](4370-document_stores_and_retrievers.md)), in Haystack V2 we want to introduce a new component: the Embedder.
 
 **Separation of concerns**
 - DocumentStores: store the Documents, their metadata and representations (vectors); they offer a CRUD API.
-- Retrievers: retrieve Documents from the DocumentStores; they are specific and aware of the used Store (MemoryRetriever for the MemoryDocumentStore...). They will be commonly used in query pipelines (not in indexing pipelines).
-- **Embedders**: encode a list of data points (strings, images…) into a list of vectors (=the embeddings), using a model. They are used both in indexing pipelines (to encode the Documents) and in query pipelines (to encode the query).
+- Retrievers: retrieve Documents from the DocumentStores; they are specific and aware of the used Store (e.g., MemoryRetriever for the MemoryDocumentStore). They will be commonly used in query pipelines (not in indexing pipelines).
+- **Embedders**: encode a list of data points (strings, images, etc.) into a list of vectors (i.e., the embeddings) using a model. They are used both in indexing pipelines (to encode the Documents) and query pipelines (to encode the query).
 
-*In the current implementation, the Embedder in part of Retriever. This is unintuitive and has several disadvantages (explained in the previous proposals).*
+*In the current implementation, the Embedder is part of Retriever, which is unintuitive and comes with several disadvantages (explained in the previous proposals).*
 
 **This proposal aims to define the Embedder design.**
 
@@ -57,23 +57,23 @@ results = query_pipe.run(...)
 
 - The `OpenAITextEmbedder` uses OpenAI models to convert a list of strings into a list of vectors. It is used in the query pipeline to embed the query.
 - The `OpenAIDocumentEmbedder` uses OpenAI models to enrich a list of Documents with the corresponding vectors (stored in the `embedding` field). It is used in the indexing pipeline to embed the Documents.
-- The Retriever is not needed anymore in the indexing pipeline.
+- The Retriever is no longer needed in the indexing pipeline.
 
 # Motivation
 
 The motivations behind this change were already provided in the previous proposals ([Embedding Retriever](3558-embedding_retriever.md) and [DocumentStores and Retrievers](4370-document_stores_and_retrievers.md)). Here is a summary:
 - Retrievers should't be responsible for embedding Documents.
 - Currently, Retrievers have many parameters just to support and configure different underlying Encoders(≈Embedders).
-- It is difficult to add support for new embedding models or strategies. It requires changing the Retriever code.
+- Adding support for new embedding providers or strategies is difficult. It requires changing the Retriever code.
 
 # Detailed design
 
 ## Handle queries and Documents
-This is the most important part of the design.
+This is the most critical aspect of the design.
 
-- When we embed queries, we expect the Embedder to transform a list of string into a list of vectors.
-- When we embed Documents, we expect the Embedder to enrich a list of Documents with the corresponding vectors (stored in the `embedding` field).
-- Documents: we may want to embed some meta fields in addition to the content. So the Embedder should also do this preparation work, which consists in joining all the relevant content into a string to be embedded.
+- When embedding queries, we expect the Embedder to transform a list of string into a list of vectors.
+- When embedding Documents, we expect the Embedder to enrich a list of Documents with the corresponding vectors (stored in the `embedding` field).
+- For Documents, we may want to embed some meta fields in addition to the content. Therefore, the Embedder should also handle this preparation work, which involves joining all the relevant content into a string to be embedded.
 
 There have been much discussion about this point.
 @ZanSara formulated the following implementation idea, that I like.
@@ -171,22 +171,22 @@ class HFDocumentEmbedder(HFTextEmbedder):
 
 ## Different providers/strategies
 
-- We can define different classes depending on the providers: `OpenAIEmbedder`, `CohereEmbedder`, `HuggingFaceEmbedder`, `SentenceTransformersEmbedder`…
-- We could also define different classes depending on the embedding strategy if necessary.
-This is not a prominent use case, but sometimes [new strategies](https://github.com/deepset-ai/haystack/issues/5242) are introduced that require different libraries (`InstructorEmbedder`) or involve a different string preparation (`E5Embedder`). It would be nice to be able to support them without too much effort.
+- We can define different classes depending on the providers: `OpenAIEmbedder`, `CohereEmbedder`, `HuggingFaceEmbedder`, `SentenceTransformersEmbedder`, etc.
+- Additionally, we could define different classes depending on the embedding strategy if necessary.
+While this is not a prominent use case, there are scenarios where [new strategies](https://github.com/deepset-ai/haystack/issues/5242) are introduced, requiring different libraries (`InstructorEmbedder`) or involving a different string preparation (`E5Embedder`). Supporting these scenarios with minimal effort would be nice.
 
 ## Different models in the same embedding/retrieval task
 
-As you can discover by looking at the [current implementation](https://github.com/deepset-ai/haystack/blob/main/haystack/nodes/retriever/dense.py), some embedding/retrieval tasks require the usage of different models.
+As you can observe from the [current implementation](https://github.com/deepset-ai/haystack/blob/main/haystack/nodes/retriever/dense.py), some embedding/retrieval tasks require the usage of different models.
 
-I think this is not the most popular approach today compared to what we call Embedding Retrieval (based on a single model), but has still some relevant applications.
+This is not the most popular approach today, compared to what we call Embedding Retrieval (based on a single model). But it still has some relevant applications.
 
 Some examples:
 - In Dense Passage Retrieval, you need a model to encode queries and another model to encode Documents
 - in the TableTextRetriever, we use 3 different models: one for queries, one for textual passages and one for tables
 - in Multimodal Retrieval, we can specify different models to encode queries and Documents
 
-Since the Embedder will not be included in the Retriever, it makes sense to me to have different Embedders, each one using a single model.
+Since the Embedder will not be included in the Retriever, it makes sense to have different Embedders, each one using a single model.
 
 ```python
 dpr_query_embedder = SentenceTransformersTextEmbedder(model_name="facebook/dpr-question_encoder-single-nq-base")
@@ -195,24 +195,24 @@ dpr_doc_embedder = SentenceTransformersDocumentEmbedder(model_name="facebook/dpr
 
 # Drawbacks
 
-The drawbacks of concept separation between Retrievers and Embedders were discussed in https://github.com/deepset-ai/haystack/blob/main/proposals/text/4370-documentstores-and-retrievers.md and consist mostly in **migration effort**.
+The drawbacks of concept separation between Retrievers and Embedders were discussed in [this proposal](https://github.com/deepset-ai/haystack/blob/main/proposals/text/4370-documentstores-and-retrievers.md) and mainly consist of **migration effort**.
 
-Several ideas were discussed (mostly to understand how to handle queries and Documents in the Embedders) and this seems the best, but there can be some cons:
-  - proliferation of classes (but they will be small and easy to maintain)
-  - the users have to properly understand which models are appropriate for a task or for embedding queries vs Documents (see [Different models in the same embedding/retrieval task](#different-models-in-the-same-embeddingretrieval-task)). On the other hand, this can contribute to make them more aware.
+Several ideas were discussed (mostly concerning how to handle queries and Documents in the Embedders) and this seems to be the best approach. However, there are some potential cons to consider:
+  - Proliferation of classes (though they will be small and easy to maintain).
+  - Users need to properly understand which models are appropriate for a task or for embedding queries vs. Documents (see [Different models in the same embedding/retrieval task](#different-models-in-the-same-embeddingretrieval-task)). On the other hand, this can help raise their awareness.
 
 # Alternatives
 
-Several alternatives to this design were considered. The main problem was handling the differences between queries and Documents.
+Several alternatives to this design were considered. The main challenge was handling the differences between queries and Documents.
 Some ideas:
-- Having a single Embedder component for text (HFEmbedder instead of HFEmbedder, HFTextEmbedder and HFDocumentEmbedder) and adapt Documents before and after that, using other Components. --> Many components.
+- Have a single Embedder component for text (HFEmbedder instead of HFEmbedder, HFTextEmbedder and HFDocumentEmbedder) and adapt Documents before and after that, using other Components. --> Many components.
 - Make Embedders only work on Documents and represent the query as a Document. --> Unintuitive and require changes in the Retriever.
-- Create another primitive like Data (content + embedding) and use it for both queries and Documents. --> We would need more conversion components like DataToDocument.
-- Having the DocumentEmbedder take a Basic Embedder as an input parameter. --> Less classes but serialization nightmares.
+- Create another primitive like Data (content + embedding) and use it for both queries and Documents. --> More conversion components like DataToDocument.
+- Have the DocumentEmbedder take a Basic Embedder as an input parameter. --> Fewer classes but serialization issues.
 
 # Adoption strategy
 
-This change will constitute an important part of Haystack v2.
+This change will constitute a part of Haystack v2.
 
 # How we teach this
 
@@ -222,5 +222,5 @@ Documentation and tutorials will be of fundamental importance.
 
 - Migration and refactoring of existing Encoders hidden in Retrievers.
 I prepared a table. Should it be shared here?
-- `TableTextRetriever` migration and refactoring require input and also ownership by people involved in TableQA.
+- The migration and refactoring of TableTextRetriever require input and ownership from people involved in TableQA.
 - How to approach MultiModal Embedding? How many classes? Take into consideration that a query could also be an Image or a Table.
