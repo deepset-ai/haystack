@@ -6,6 +6,7 @@ import inspect
 from functools import wraps
 
 from canals.errors import ComponentError
+from canals.pipeline.connections import _types_are_compatible
 
 
 logger = logging.getLogger(__name__)
@@ -188,7 +189,7 @@ class _Component:
                 for key in result:
                     if key not in return_types:
                         raise ComponentError(f"Return value '{key}' not declared in @return_types decorator")
-                    if isinstance(result[key], return_types[key]):
+                    if _types_are_compatible(return_types[key], result[key]):
                         raise ComponentError(
                             f"Return type {type(result[key])} for value '{key}' doesn't match the one declared in "
                             f"@return_types decorator ({return_types[key]}))"

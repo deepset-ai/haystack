@@ -8,41 +8,63 @@ from dataclasses import make_dataclass, is_dataclass, asdict
 from canals import component
 
 
-@component
 class MergeLoop:
-    """
-    Takes multiple inputs and returns the first one that is not None.
-    """
+    ...
 
-    def __init__(self, expected_type: Union[type, str], inputs: List[str] = ["value_1", "value_2"]):
-        if isinstance(expected_type, str):
-            self.expected_type = getattr(builtins, expected_type)
-        else:
-            self.expected_type = expected_type
-        self.init_parameters = {"expected_type": self.expected_type.__name__}
-        # mypy complains that we can't Optional is not a type, so we ignore the error
-        # cause we consider this to be correct
-        self._input = make_dataclass("Input", fields=[(f, Optional[self.expected_type]) for f in inputs])  # type: ignore
 
-    @component.input
-    def input(self):
-        return self._input
+# @component
+# class MergeLoop:
 
-    @component.output
-    def output(self):
-        class Output:
-            value: self.expected_type  # type: ignore
+#     """
+#     Takes multiple inputs and returns the first one that is not None.
+#     """
 
-        return Output
+#     def __new__(cls, *args, **kwargs):
+#         """
+#         Factory method for MergeLoop
+#         """
 
-    def run(self, data):
-        """
-        Takes some inputs and returns the first one that is not None.
-        """
-        values = []
-        if is_dataclass(data):
-            values = asdict(data).values()
-        for v in values:
-            if v is not None:
-                return self.output(value=v)
-        return self.output(value=None)
+#         @component.return_types(value=str)
+#         def run(self, values: List[Optional[str]]):
+#             """
+#             Takes some inputs and returns the first one that is not None.
+#             """
+#             for v in values:
+#                 if v is not None:
+#                     return {"value": v}
+#             return {"value": None}
+
+#         cls.run = run
+#         return super().__new__(cls)
+
+#     def __init__(self, expected_type: Union[type, str], inputs: List[str] = ["value_1", "value_2"]):
+#         self.expected_type = expected_type
+
+
+# def merge_loop_component(expected_type: Union[type, str], inputs: List[str] = ["value_1", "value_2"]):
+#     """
+#     Factory method for MergeLoop
+#     """
+
+#     @component
+#     class MergeLoop:
+
+#         """
+#         Takes multiple inputs and returns the first one that is not None.
+#         """
+
+#         def __init__(self):
+#             self.expected_type = expected_type
+
+#         @component.run_types(**{input: expected_type for input in inputs})
+#         @component.return_types(value=expected_type)
+#         def run(self, values: List[Optional[str]]):
+#             """
+#             Takes some inputs and returns the first one that is not None.
+#             """
+#             for v in values:
+#                 if v is not None:
+#                     return {"value": v}
+#             return {"value": None}
+
+#     return MergeLoop
