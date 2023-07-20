@@ -121,6 +121,10 @@ class MostDiverseRanker(BaseRanker):
 
         :return: A list (or a list of lists) of top_k documents ranked based on diversity.
         """
+        if queries is None or len(queries) == 0:
+            raise ValueError("No queries to choose from")
+        if documents is None or len(documents) == 0:
+            raise ValueError("No documents to choose from")
         if len(documents) > 0 and isinstance(documents[0], Document):
             # Docs case 1: single list of Documents -> rerank single list of Documents based on single query
             if len(queries) != 1:
