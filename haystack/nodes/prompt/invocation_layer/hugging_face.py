@@ -366,9 +366,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 "by the transformers library.",
                 model,
             )
-            tokenizer_kwargs = model_kwargs.copy()
-            tokenizer_kwargs.pop("torch_dtype", None)
-            tokenizer = AutoTokenizer.from_pretrained(model, **hub_kwargs, **tokenizer_kwargs)
+            tokenizer = AutoTokenizer.from_pretrained(model, **hub_kwargs, **model_kwargs)
         else:
             tokenizer = None
         return tokenizer
