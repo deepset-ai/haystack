@@ -23,7 +23,7 @@ class Threshold:
         """
         self.threshold = threshold
 
-    @component.return_types(above=int, below=int)
+    @component.output_types(above=int, below=int)
     def run(self, value: int, threshold: Optional[int] = None):
         if threshold is None:
             threshold = self.threshold

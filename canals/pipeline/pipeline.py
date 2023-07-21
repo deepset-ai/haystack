@@ -114,14 +114,18 @@ class Pipeline:
             raise ValueError("'_debug' is a reserved name for debug output. Choose another name.")
 
         # Component instances must be components
-        if not hasattr(instance, "__canals_component__"):
+        if not (hasattr(instance, "run") and hasattr(instance.run, "__canals_io__")):
             raise PipelineValidationError(
                 f"'{type(instance)}' doesn't seem to be a component. Is this class decorated with @component?"
             )
 
         # Create the component's input and output sockets
-        input_sockets = {name: InputSocket(**data) for name, data in instance.run.__run_method_types__.items()}
-        output_sockets = {name: OutputSocket(**data) for name, data in instance.run.__return_types__.items()}
+        input_sockets = {
+            name: InputSocket(**data) for name, data in instance.run.__canals_io__.get("input_types", {}).items()
+        }
+        output_sockets = {
+            name: OutputSocket(**data) for name, data in instance.run.__canals_io__.get("output_types", {}).items()
+        }
 
         # Add component to the graph, disconnected
         logger.debug("Adding component '%s' (%s)", name, instance)
@@ -499,7 +503,6 @@ class Pipeline:
         received_input_sockets = set(inputs.keys())
 
         # All components inputs, whether they're connected, default or pipeline inputs
-        instance = self.graph.nodes[name]["instance"]
         input_sockets: Dict[str, InputSocket] = self.graph.nodes[name]["input_sockets"].keys()
         optional_input_sockets = set(
             [
@@ -688,7 +691,7 @@ class Pipeline:
 
             # If this is a decision node and a loop is involved, we add to the input buffer only the nodes
             # that received their expected output and we leave the others out of the queue.
-            if is_decision_node_for_loop and getattr(node_results, from_socket.name) is None:
+            if is_decision_node_for_loop and node_results.get(from_socket.name, None) is None:
                 if networkx.has_path(self.graph, target_node, node_name):
                     # In case we're choosing to leave a loop, do not put the loop's node in the buffer.
                     logger.debug(

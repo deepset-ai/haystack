@@ -36,7 +36,7 @@ class Accumulate:
             # 'function' is not serializable by default, so we serialize it manually.
             self.init_parameters = {"function": self._save_function(function)}
 
-    @component.return_types(value=int)
+    @component.output_types(value=int)
     def run(self, value: int):
         self.state = self.function(self.state, value)
         return {"value": self.state}

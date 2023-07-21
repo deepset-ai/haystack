@@ -13,7 +13,7 @@ class Subtract:
     def __init__(self):
         ...
 
-    @component.return_types(difference=int)
+    @component.output_types(difference=int)
     def run(self, first_value: int, second_value: int):
         """
         :param first_value: name of the connection carrying the value to subtract from.

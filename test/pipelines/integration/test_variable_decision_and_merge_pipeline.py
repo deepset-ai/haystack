@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.DEBUG)
 def test_pipeline(tmp_path):
     pipeline = Pipeline()
     pipeline.add_component("add_one", AddFixedValue())
-    pipeline.add_component("parity", Remainder())
+    pipeline.add_component("parity", Remainder(divisor=2))
     pipeline.add_component("add_ten", AddFixedValue(add=10))
     pipeline.add_component("double", Double())
     pipeline.add_component("add_four", AddFixedValue(add=4))
@@ -35,11 +35,11 @@ def test_pipeline(tmp_path):
 
     results = pipeline.run({"add_one": {"value": 1}})
     pprint(results)
-    assert results == {"sum": {"value": 14}}
+    assert results == {"sum": {"total": 14}}
 
     results = pipeline.run({"add_one": {"value": 2}})
     pprint(results)
-    assert results == {"sum": {"value": 17}}
+    assert results == {"sum": {"total": 17}}
 
 
 if __name__ == "__main__":

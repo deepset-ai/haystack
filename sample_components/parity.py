@@ -10,7 +10,7 @@ class Parity:
     Redirects the value, unchanged, along the 'even' connection if even, or along the 'odd' one if odd.
     """
 
-    @component.return_types(even=int, odd=int)
+    @component.output_types(even=int, odd=int)
     def run(self, value: int):
         """
         :param value: The value to check for parity

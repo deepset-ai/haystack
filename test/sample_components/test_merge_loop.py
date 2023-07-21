@@ -23,28 +23,28 @@ class TestMergeLoop(BaseTestComponent):
         component = MergeLoop(expected_type=int, inputs=["in_1", "in_2"])
         results = component.run(in_1=5)
         assert results == {"value": 5}
-        assert component.init_parameters == {"expected_type": int, "inputs": ["in_1", "in_2"]}
+        assert component.init_parameters == {"expected_type": "<class 'int'>", "inputs": ["in_1", "in_2"]}
 
     def test_merge_second(self):
         component = MergeLoop(expected_type=int, inputs=["in_1", "in_2"])
         results = component.run(in_2=5)
         assert results == {"value": 5}
-        assert component.init_parameters == {"expected_type": int, "inputs": ["in_1", "in_2"]}
+        assert component.init_parameters == {"expected_type": "<class 'int'>", "inputs": ["in_1", "in_2"]}
 
     def test_merge_nones(self):
         component = MergeLoop(expected_type=int, inputs=["in_1", "in_2", "in_3"])
         results = component.run()
         assert results == {"value": None}
-        assert component.init_parameters == {"expected_type": int, "inputs": ["in_1", "in_2", "in_3"]}
+        assert component.init_parameters == {"expected_type": "<class 'int'>", "inputs": ["in_1", "in_2", "in_3"]}
 
     def test_merge_one(self):
         component = MergeLoop(expected_type=int, inputs=["in_1"])
         results = component.run(in_1=1)
         assert results == {"value": 1}
-        assert component.init_parameters == {"expected_type": int, "inputs": ["in_1"]}
+        assert component.init_parameters == {"expected_type": "<class 'int'>", "inputs": ["in_1"]}
 
     def test_merge_one_none(self):
         component = MergeLoop(expected_type=int, inputs=[])
         results = component.run()
         assert results == {"value": None}
-        assert component.init_parameters == {"expected_type": int, "inputs": []}
+        assert component.init_parameters == {"expected_type": "<class 'int'>", "inputs": []}

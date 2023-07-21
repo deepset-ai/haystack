@@ -11,6 +11,6 @@ class Double:
     Doubles the input value.
     """
 
-    @component.return_types(value=int)
+    @component.output_types(value=int)
     def run(self, value: int):
         return {"value": value * 2}

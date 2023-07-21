@@ -11,7 +11,7 @@ class AddFixedValue:
     def __init__(self, add: int = 1):
         self.add = add
 
-    @component.return_types(result=int)
+    @component.output_types(result=int)
     def run(self, value: int, add: Optional[int] = None):
         if add is None:
             add = self.add

@@ -21,17 +21,17 @@ def test_marshal():
     pipeline_1.add_component("second_addition", add_2)
     pipeline_1.add_component("third_addition", add_1)
 
-    pipeline_1.connect("first_addition", "double")
-    pipeline_1.connect("double", "second_addition")
-    pipeline_1.connect("second_addition", "third_addition")
+    pipeline_1.connect("first_addition.result", "double.value")
+    pipeline_1.connect("double.value", "second_addition.value")
+    pipeline_1.connect("second_addition.result", "third_addition.value")
 
     pipeline_2 = Pipeline(metadata={"type": "another test pipeline", "author": "you"})
     pipeline_2.add_component("first_addition", add_1)
     pipeline_2.add_component("double", Double())
     pipeline_2.add_component("second_addition", add_2)
 
-    pipeline_2.connect("first_addition", "double")
-    pipeline_2.connect("double", "second_addition")
+    pipeline_2.connect("first_addition.result", "double.value")
+    pipeline_2.connect("double.value", "second_addition.value")
 
     assert marshal_pipelines(pipelines={"pipe1": pipeline_1, "pipe2": pipeline_2}) == {
         "pipelines": {
@@ -51,9 +51,9 @@ def test_marshal():
                     "third_addition": {"refer_to": "pipe1.first_addition"},
                 },
                 "connections": [
-                    ("first_addition", "double", "value/value"),
+                    ("first_addition", "double", "result/value"),
                     ("double", "second_addition", "value/value"),
-                    ("second_addition", "third_addition", "value/value"),
+                    ("second_addition", "third_addition", "result/value"),
                 ],
             },
             "pipe2": {
@@ -65,7 +65,7 @@ def test_marshal():
                     "second_addition": {"refer_to": "pipe1.second_addition"},
                 },
                 "connections": [
-                    ("first_addition", "double", "value/value"),
+                    ("first_addition", "double", "result/value"),
                     ("double", "second_addition", "value/value"),
                 ],
             },
@@ -93,9 +93,9 @@ def test_unmarshal():
                         "third_addition": {"refer_to": "pipe1.first_addition"},
                     },
                     "connections": [
-                        ("first_addition", "double", "value/value"),
+                        ("first_addition", "double", "result/value"),
                         ("double", "second_addition", "value/value"),
-                        ("second_addition", "third_addition", "value/value"),
+                        ("second_addition", "third_addition", "result/value"),
                     ],
                 },
                 "pipe2": {
@@ -107,7 +107,7 @@ def test_unmarshal():
                         "second_addition": {"refer_to": "pipe1.second_addition"},
                     },
                     "connections": [
-                        ("first_addition", "double", "value/value"),
+                        ("first_addition", "double", "result/value"),
                         ("double", "second_addition", "value/value"),
                     ],
                 },
@@ -121,25 +121,25 @@ def test_unmarshal():
 
     first_addition = pipe1.get_component("first_addition")
     assert type(first_addition) == AddFixedValue
-    assert first_addition.defaults["add"] == 300
+    assert pipe1.graph.nodes["first_addition"]["instance"].add == 300
 
     second_addition = pipe1.get_component("second_addition")
     assert type(second_addition) == AddFixedValue
-    assert second_addition.defaults["add"] == 1
+    assert pipe1.graph.nodes["second_addition"]["instance"].add == 1
     assert second_addition != first_addition
 
     third_addition = pipe1.get_component("third_addition")
     assert type(third_addition) == AddFixedValue
-    assert third_addition.defaults["add"] == 300
+    assert pipe1.graph.nodes["third_addition"]["instance"].add == 300
     assert third_addition == first_addition
 
     double = pipe1.get_component("double")
     assert type(double) == Double
 
     assert list(pipe1.graph.edges) == [
-        ("first_addition", "double", "value/value"),
+        ("first_addition", "double", "result/value"),
         ("double", "second_addition", "value/value"),
-        ("second_addition", "third_addition", "value/value"),
+        ("second_addition", "third_addition", "result/value"),
     ]
 
     pipe2 = pipelines["pipe2"]
@@ -147,12 +147,12 @@ def test_unmarshal():
 
     first_addition_2 = pipe2.get_component("first_addition")
     assert type(first_addition_2) == AddFixedValue
-    assert first_addition_2.defaults["add"] == 300
+    assert pipe2.graph.nodes["first_addition"]["instance"].add == 300
     assert first_addition_2 == first_addition
 
     second_addition_2 = pipe2.get_component("second_addition")
     assert type(second_addition_2) == AddFixedValue
-    assert second_addition_2.defaults["add"] == 1
+    assert pipe2.graph.nodes["second_addition"]["instance"].add == 1
     assert second_addition_2 != first_addition_2
     assert second_addition_2 == second_addition
 
@@ -164,6 +164,6 @@ def test_unmarshal():
     assert double_2 != double
 
     assert list(pipe2.graph.edges) == [
-        ("first_addition", "double", "value/value"),
+        ("first_addition", "double", "result/value"),
         ("double", "second_addition", "value/value"),
     ]

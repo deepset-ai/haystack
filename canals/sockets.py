@@ -51,11 +51,11 @@ def get_socket_type_desc(type_):
         return str(type_)
 
     subtypes = ", ".join([get_socket_type_desc(subtype) for subtype in args if subtype is not type(None)])
-    type_name = _get_type_name(type_)
+    type_name = _get_type_name(type_, args)
     return f"{type_name}[{subtypes}]"
 
 
-def _get_type_name(type_):
+def _get_type_name(type_, args):
     """
     Type names differ across several Python versions. This method abstracts away the differences.
     """

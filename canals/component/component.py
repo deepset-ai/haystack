@@ -27,6 +27,9 @@ def _prepare_init_params_and_sockets(init_func):
         # Collect and store all the init parameters, preserving whatever the components might have already added there
         self.init_parameters = {**kwargs, **getattr(self, "init_parameters", {})}
 
+        if not hasattr(self.run, "__canals_io__"):
+            raise ComponentError("This component seems to have neither inputs nor outputs.")
+
     return wrapper
 
 
@@ -103,141 +106,212 @@ class _Component:
     def __init__(self):
         self.registry = {}
 
-    def set_input_types(self, instance, **input_types):
+    def set_input_types(self, instance, **types):
         """
-        TODO
+        Method that validates the input kwargs of the run method.
+
+        Use as:
+
+        ```python
+        @component
+        class MyComponent:
+
+            def __init__(self, value: int):
+                component.set_input_types(value_1=str, value_2=str)
+                ...
+
+            @component.output_types(output_1=int, output_2=str)
+            def run(self, **kwargs):
+                return {"output_1": kwargs["value_1"], "output_2": ""}
+        ```
         """
-        unwrapped = instance.run
+        run_method = instance.run
 
         def wrapper(**kwargs):
+            """
+            Adds a check that validates the input kwargs of the run method.
+            """
+            # Check input types
             for key, value in kwargs.items():
-                if key not in input_types:
-                    raise ComponentError(f"Input value '{key}' not declared in @run_method_types decorator")
-                if _types_are_compatible(value, input_types[key]):
+                if key not in types:
+                    raise ComponentError(f"Input value '{key}' not declared in component.set_input_types()")
+                if _types_are_compatible(value, types[key]):
                     raise ComponentError(
                         f"Input type {type(value)} for value '{key}' doesn't match the one declared in "
-                        f"@run_method_types decorator ({input_types[key]}))"
+                        f"component.set_input_types() ({types[key]}))"
                     )
+                if (
+                    key not in kwargs
+                    and key in wrapper.__canals_io__.get("input_types", {})
+                    and wrapper.__canals_io__["input_types"][key]["default"] is not inspect.Parameter.empty
+                ):
+                    kwargs[key] = wrapper.__canals_io__["input_types"][key]["default"]
+            return run_method(**kwargs)
 
-            return unwrapped(**kwargs)
-
-        if hasattr(instance.run, "__return_types__"):
-            wrapper.__return_types__ = instance.run.__return_types__
-        wrapper.__run_method_types__ = {
-            name: {"name": name, "type": type_, "default": inspect.Parameter.empty}
-            for name, type_ in input_types.items()
+        # Store the input types in the run method
+        wrapper.__canals_io__ = getattr(instance.run, "__canals_io__", {})
+        wrapper.__canals_io__["input_types"] = {
+            name: {"name": name, "type": type_, "default": inspect.Parameter.empty} for name, type_ in types.items()
         }
+
+        # Assigns the wrapped method to the instance's run()
         instance.run = wrapper
 
-    def set_output_types(self, instance, **output_types):
+    def set_input_defaults(self, instance, **defaults):
         """
-        TODO
+        Method that assigns default values to the kwargs of the run method.
+
+        Use as:
+
+        ```python
+        @component
+        class MyComponent:
+
+            def __init__(self, value: int):
+                component.set_input_types(value_1=str, value_2=str)  # You must call this one first.
+                component.set_input_defaults(value_1="hello", value_2="there")
+                ...
+
+            @component.output_types(output_1=int, output_2=str)
+            def run(self, **kwargs):
+                return {"output_1": kwargs["value_1"], "output_2": ""}
+        ```
         """
-        unwrapped = instance.run
+        if defaults and not (hasattr(instance.run, "__canals_io__") and instance.run.__canals_io__.get("input_types")):
+            raise ComponentError(
+                "You must call component.set_input_types() before component.set_input_defaults() "
+                f"in {instance.__class__.__name__}.__init__"
+            )
+
+        # Store the input defaults in the run method
+        for key, default in defaults.items():
+            if key in instance.run.__canals_io__["input_types"]:
+                instance.run.__canals_io__["input_types"][key]["default"] = default
+            else:
+                raise ComponentError(f"Input value '{key}' not declared in component.set_input_types()")
+
+    def set_output_types(self, instance, **types):
+        """
+        Method that validates the output dictionary of the run method.
+
+        Use as:
+
+        ```python
+        @component
+        class MyComponent:
+
+            def __init__(self, value: int):
+                component.set_output_types(output_1=int, output_2=str)
+                ...
+
+            def run(self, value: int):
+                return {"output_1": 1, "output_2": "2"}
+        ```
+        """
+        if not types:
+            return
+
+        run_method = instance.run
 
         def wrapper(*args, **kwargs):
-            result = unwrapped(*args, **kwargs)
+            """
+            Adds a check that validates the output dictionary of the run method.
+            """
+            result = run_method(*args, **kwargs)
             # Check output types
             for key in result:
-                if key not in output_types:
-                    raise ComponentError(f"Return value '{key}' not declared in @output_types decorator")
-                if _types_are_compatible(output_types[key], result[key]):
+                if key not in types:
+                    raise ComponentError(f"Return value '{key}' not declared in component.set_output_types()")
+                if _types_are_compatible(types[key], result[key]):
                     raise ComponentError(
                         f"Return type {type(result[key])} for value '{key}' doesn't match the one declared in "
-                        f"@return_types decorator ({output_types[key]}))"
+                        f"component.set_output_types() ({types[key]}))"
                     )
             return result
 
-        if hasattr(instance.run, "__run_method_types__"):
-            wrapper.__run_method_types__ = instance.run.__run_method_types__
-        wrapper.__return_types__ = {name: {"name": name, "type": type_} for name, type_ in output_types.items()}
+        # Store the output types in the run method
+        wrapper.__canals_io__ = getattr(instance.run, "__canals_io__", {})
+        wrapper.__canals_io__["output_types"] = {name: {"name": name, "type": type_} for name, type_ in types.items()}
+
+        # Assigns the wrapped method to the instance's run()
         instance.run = wrapper
 
-    def return_types(self, **return_types):
+    def output_types(self, **types):
         """
-        Decorator that checks the return types of the `run()` method.
+        Decorator factory that validates the output dictionary of the run method.
+
+        Use as:
+
+        ```python
+        @component
+        class MyComponent:
+            @component.output_types(output_1=int, output_2=str)
+            def run(self, value: int):
+                return {"output_1": 1, "output_2": "2"}
+        ```
         """
 
-        def return_types_decorator(run_method):
-            run_method.__return_types__ = {name: {"name": name, "type": type_} for name, type_ in return_types.items()}
+        def output_types_decorator(run_method):
+            """
+            Decorator that validates the output dictionary of the run method.
+            """
+            # Store the output types in the run method - used by the pipeline to build the sockets.
+            if not hasattr(run_method, "__canals_io__"):
+                run_method.__canals_io__ = {}
+            run_method.__canals_io__["output_types"] = {
+                name: {"name": name, "type": type_} for name, type_ in types.items()
+            }
 
             @wraps(run_method)
-            def return_types_impl(self, *args, **kwargs):
+            def output_types_impl(self, *args, **kwargs):
+                """
+                Adds a check that validates the output dictionary of the run method.
+                """
                 result = run_method(self, *args, **kwargs)
 
                 # Check output types
                 for key in result:
-                    if key not in return_types:
-                        raise ComponentError(f"Return value '{key}' not declared in @return_types decorator")
-                    if _types_are_compatible(return_types[key], result[key]):
+                    if key not in types:
+                        raise ComponentError(f"Return value '{key}' not declared in @output_types decorator")
+                    if _types_are_compatible(types[key], result[key]):
                         raise ComponentError(
                             f"Return type {type(result[key])} for value '{key}' doesn't match the one declared in "
-                            f"@return_types decorator ({return_types[key]}))"
+                            f"@output_types decorator ({types[key]}))"
                         )
                 return result
 
-            return return_types_impl
+            return output_types_impl
 
-        return return_types_decorator
+        return output_types_decorator
 
-    def _decorator(self, class_):
+    def _component(self, class_):
         """
         Decorator validating the structure of the component and registering it in the components registry.
         """
         logger.debug("Registering %s as a component", class_)
-
-        # '__canals_component__' is used to distinguish components from regular classes.
-        # Its value is set to the desired component name: normally it is the class name, but it can be customized.
-        class_.__canals_component__ = class_.__name__
 
         # Check for run()
         if not hasattr(class_, "run"):
             raise ComponentError(f"{class_.__name__} must have a 'run()' method. See the docs for more information.")
         run_signature = inspect.signature(class_.run)
 
-        if not hasattr(class_.run, "__run_method_types__"):
-            # Check the run() signature for keyword variadic arguments
-            # if any(
-            #     run_signature.parameters[param].kind
-            #     in (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
-            #     for param in run_signature.parameters
-            # ):
-            #     raise ComponentError(
-            #         f"{class_.__name__} can't have arguments like *args or **kwargs in its 'run()' method."
-            #     )
-
-            # Check the run() signature for missing types
-            # missing_types = [
-            #     parameter
-            #     for parameter in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
-            #     if run_signature.parameters[parameter].annotation == inspect.Parameter.empty
-            # ]
-            # if missing_types:
-            #     raise ComponentError(
-            #         f"{class_.__name__}.run() must declare types for all its parameters, "
-            #         f"but these parameters are not typed: {', '.join(missing_types)}."
-            #     )
-
-            # Create the input sockets
-            class_.run.__run_method_types__ = {
-                param: {
-                    "name": param,
-                    "type": run_signature.parameters[param].annotation,
-                    "default": run_signature.parameters[param].default,
-                }
-                for param in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
+        # Create the input sockets
+        if not hasattr(class_.run, "__canals_io__"):
+            class_.run.__canals_io__ = {}
+        class_.run.__canals_io__["input_types"] = {
+            param: {
+                "name": param,
+                "type": run_signature.parameters[param].annotation,
+                "default": run_signature.parameters[param].default,
             }
-
-        # # Check the run() signature for the return_types wrapper
-        # if not hasattr(class_.run, "__return_types__"):
-        #     raise ComponentError(
-        #         f"{class_.__name__}.run() must have a @return_types decorator. See the docs for more information."
-        #     )
+            for param in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
+        }
 
         # Automatically registers all the init parameters in an instance attribute called `_init_parameters`.
         # See `save_init_parameters()`.
         class_.__init__ = _prepare_init_params_and_sockets(class_.__init__)
 
+        # Save the component in the class registry (for deserialization)
         if class_.__name__ in self.registry:
             logger.error(
                 "Component %s is already registered. Previous imported from '%s', new imported from '%s'",
@@ -245,7 +319,6 @@ class _Component:
                 self.registry[class_.__name__],
                 class_,
             )
-
         self.registry[class_.__name__] = class_
         logger.debug("Registered Component %s", class_)
 
@@ -254,9 +327,9 @@ class _Component:
     def __call__(self, class_=None):
         """Allows us to use this decorator with parenthesis and without."""
         if class_:
-            return self._decorator(class_)
+            return self._component(class_)
 
-        return self._decorator
+        return self._component
 
 
 component = _Component()

@@ -15,14 +15,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def test_max_loops():
-    add = AddFixedValue()
-    threshold = Threshold(threshold=100)
-    merge = MergeLoop.create(expected_type=int, inputs=["value_1", "value_2"])
-
     pipe = Pipeline(max_loops_allowed=10)
-    pipe.add_component("add", add)
-    pipe.add_component("threshold", threshold)
-    pipe.add_component("merge", merge)
+    pipe.add_component("add", AddFixedValue())
+    pipe.add_component("threshold", Threshold(threshold=100))
+    pipe.add_component("merge", MergeLoop(expected_type=int, inputs=["value_1", "value_2"]))
     pipe.connect("threshold.below", "add.value")
     pipe.connect("add.result", "merge.value_1")
     pipe.connect("merge.value", "threshold.value")

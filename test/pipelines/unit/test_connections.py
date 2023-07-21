@@ -382,13 +382,13 @@ def test_connect_many_outputs_to_the_same_input():
 def test_connect_many_connections_possible_name_matches():
     @component
     class Component1:
-        @component.return_types(value=str)
+        @component.output_types(value=str)
         def run(self, value: str):
             return {"value": value}
 
     @component
     class Component2:
-        @component.return_types(value=str)
+        @component.output_types(value=str)
         def run(self, value: str, othervalue: str, yetanothervalue: str):
             return {"value": value}
 
@@ -402,13 +402,13 @@ def test_connect_many_connections_possible_name_matches():
 def test_connect_many_connections_possible_no_name_matches():
     @component
     class Component1:
-        @component.return_types(value=str)
+        @component.output_types(value=str)
         def run(self, value: str):
             return {"value": value}
 
     @component
     class Component2:
-        @component.return_types(value=str)
+        @component.output_types(value=str)
         def run(self, value1: str, value2: str, value3: str):
             return {"value": value1}
 

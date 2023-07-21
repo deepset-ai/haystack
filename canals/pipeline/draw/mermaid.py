@@ -26,7 +26,7 @@ stateDiagram-v2
 
 {notes}
 
-{transitions}
+{connections}
 
 classDef components text-align:center;
 """
@@ -36,10 +36,7 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     """
     Renders a pipeline using Mermaid (hosted version at 'https://mermaid.ink'). Requires Internet access.
     """
-    states, notes, transitions = _to_mermaid_text(graph=graph)
-
-    graph_styled = MERMAID_STYLED_TEMPLATE.format(states=states, notes=notes, transitions=transitions)
-    logger.debug("Mermaid diagram:\n%s", graph_styled)
+    graph_styled = _to_mermaid_text(graph=graph)
 
     graphbytes = graph_styled.encode("ascii")
     base64_bytes = base64.b64encode(graphbytes)
@@ -95,7 +92,7 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> Tuple[str, str, str]:
     }
     notes = "\n".join(
         [
-            f"note left of {comp}\n\t{sockets[comp]}\nend note"
+            f"note left of {comp}\n    {sockets[comp]}\nend note"
             for comp in graph.nodes
             if comp != "input" and comp != "output" and sockets[comp] != ""
         ]
@@ -116,5 +113,7 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> Tuple[str, str, str]:
     ]
     connections = "\n".join(connections_list + input_connections + output_connections)
 
-    # mermaid_graph = f"graph TD;\n{connections}"
-    return states, notes, connections
+    graph_styled = MERMAID_STYLED_TEMPLATE.format(states=states, notes=notes, connections=connections)
+    logger.debug("Mermaid diagram:\n%s", graph_styled)
+
+    return graph_styled

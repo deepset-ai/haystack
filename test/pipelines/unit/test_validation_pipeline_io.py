@@ -78,8 +78,8 @@ def test_find_pipeline_variable_input_nodes_in_the_pipeline():
         ],
         "comp2": [InputSocket(name="value", type=int, default=inspect.Parameter.empty)],
         "comp3": [
-            InputSocket(name="in_1", type=Optional[int], default=inspect.Parameter.empty),
-            InputSocket(name="in_2", type=Optional[int], default=inspect.Parameter.empty),
+            InputSocket(name="in_1", type=Optional[int], default=None),
+            InputSocket(name="in_2", type=Optional[int], default=None),
         ],
     }
 

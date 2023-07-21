@@ -12,7 +12,7 @@ class Concatenate:
     Concatenates two values
     """
 
-    @component.return_types(value=List[str])
+    @component.output_types(value=List[str])
     def run(self, first: Union[List[str], str], second: Union[List[str], str]):
         if type(first) is str and type(second) is str:
             res = [first, second]

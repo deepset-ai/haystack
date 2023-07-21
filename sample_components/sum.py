@@ -10,8 +10,9 @@ from canals import component
 class Sum:  # pylint: disable=too-few-public-methods
     def __init__(self, inputs):
         component.set_input_types(self, **{input_name: Optional[int] for input_name in inputs})
+        component.set_input_defaults(self, **{input_name: None for input_name in inputs})
 
-    @component.return_types(total=int)
+    @component.output_types(total=int)
     def run(self, **kwargs):
         """
         :param value: the value to check the remainder of.

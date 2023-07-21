@@ -9,7 +9,7 @@ from canals import component
 def make_component(input=Any, output=Any):
     @component
     class Component:
-        @component.return_types(value=output)
+        @component.output_types(value=output)
         def run(self, value: input):
             return {"value": value}
 
