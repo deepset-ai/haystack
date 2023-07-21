@@ -24,10 +24,6 @@ def _prepare_init_params_and_sockets(init_func):
         # Call the actual __init__ function with the arguments
         init_func(self, *args, **kwargs)
 
-        # Create the component's input and output sockets
-        self.__input_sockets__ = {name: InputSocket(**data) for name, data in self.run.__run_method_types__.items()}
-        self.__output_sockets__ = {name: OutputSocket(**data) for name, data in self.run.__return_types__.items()}
-
         # Collect and store all the init parameters, preserving whatever the components might have already added there
         self.init_parameters = {**kwargs, **getattr(self, "init_parameters", {})}
 
@@ -127,7 +123,10 @@ class _Component:
 
         if hasattr(instance.run, "__return_types__"):
             wrapper.__return_types__ = instance.run.__return_types__
-        wrapper.__run_method_types__ = {name: {"name": name, "type": type_} for name, type_ in input_types.items()}
+        wrapper.__run_method_types__ = {
+            name: {"name": name, "type": type_, "default": inspect.Parameter.empty}
+            for name, type_ in input_types.items()
+        }
         instance.run = wrapper
 
     def set_output_types(self, instance, **output_types):
@@ -158,7 +157,6 @@ class _Component:
         """
         Decorator that checks the return types of the `run()` method.
         """
-        print(self)
 
         def return_types_decorator(run_method):
             run_method.__return_types__ = {name: {"name": name, "type": type_} for name, type_ in return_types.items()}
@@ -225,9 +223,7 @@ class _Component:
                 param: {
                     "name": param,
                     "type": run_signature.parameters[param].annotation,
-                    "default": run_signature.parameters[param].default
-                    if run_signature.parameters[param].default is not inspect.Parameter.empty
-                    else None,
+                    "default": run_signature.parameters[param].default,
                 }
                 for param in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
             }

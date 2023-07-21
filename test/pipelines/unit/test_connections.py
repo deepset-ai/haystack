@@ -10,7 +10,7 @@ import pytest
 
 from canals.errors import PipelineConnectError
 from canals import Pipeline, component
-from canals.pipeline.connections import _find_unambiguous_connection, _get_socket_type_desc
+from canals.pipeline.connections import _find_unambiguous_connection, get_socket_type_desc
 from sample_components import AddFixedValue
 
 from test._helpers import make_component
@@ -399,7 +399,7 @@ def test_connect_many_connections_possible_name_matches():
     assert list(pipe.graph.edges) == [("c1", "c2", "value/value")]
 
 
-def test_find_unambiguous_connection_many_connections_possible_no_name_matches():
+def test_connect_many_connections_possible_no_name_matches():
     @component
     class Component1:
         @component.return_types(value=str)
@@ -413,21 +413,20 @@ def test_find_unambiguous_connection_many_connections_possible_no_name_matches()
             return {"value": value1}
 
     expected_message = re.escape(
-        """Cannot connect 'comp1' with 'comp2': more than one connection is possible between these components. Please specify the connection name, like: pipeline.connect('comp1.value', 'comp2.value1').
-'comp1':
+        """Cannot connect 'c1' with 'c2': more than one connection is possible between these components. Please specify the connection name, like: pipeline.connect('c1.value', 'c2.value1').
+'c1':
  - value (str)
-'comp2':
+'c2':
  - value1 (str), available
  - value2 (str), available
  - value3 (str), available"""
     )
+
+    pipe = Pipeline()
+    pipe.add_component("c1", Component1())
+    pipe.add_component("c2", Component2())
     with pytest.raises(PipelineConnectError, match=expected_message):
-        _find_unambiguous_connection(
-            sender_node="comp1",
-            receiver_node="comp2",
-            sender_sockets=Component1().__output_sockets__.values(),
-            receiver_sockets=Component2().__input_sockets__.values(),
-        )
+        pipe.connect("c1", "c2")
 
 
 @pytest.mark.parametrize(
@@ -496,4 +495,4 @@ def test_find_unambiguous_connection_many_connections_possible_no_name_matches()
     ],
 )
 def test_get_socket_type_desc(type_, repr):
-    assert _get_socket_type_desc(type_) == repr
+    assert get_socket_type_desc(type_) == repr

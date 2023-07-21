@@ -1,13 +1,16 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+from typing import Tuple
 import logging
 import base64
+import inspect
 
 import requests
 import networkx
 
 from canals.errors import PipelineDrawingError
+from canals.sockets import get_socket_type_desc
 
 
 logger = logging.getLogger(__name__)
@@ -16,12 +19,15 @@ logger = logging.getLogger(__name__)
 MERMAID_STYLED_TEMPLATE = """
 %%{{ init: {{'theme': 'neutral' }} }}%%
 
-{graph_as_text}
+stateDiagram
 
-style IN  fill:#fff,stroke:#fff,stroke-width:1px
-style OUT fill:#fff,stroke:#fff,stroke-width:1px
-linkStyle default stroke-width:2px,stroke-dasharray: 5 5;
-{solid_arrows}
+{states}
+
+{notes}
+
+{transitions}
+
+classDef components text-align:center;
 """
 
 
@@ -29,11 +35,9 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     """
     Renders a pipeline using Mermaid (hosted version at 'https://mermaid.ink'). Requires Internet access.
     """
-    graph_as_text = _to_mermaid_text(graph=graph)
-    num_solid_arrows = len(graph.edges) - len(graph.in_edges("output")) - len(graph.out_edges("input"))
-    solid_arrows = "\n".join([f"linkStyle {i} stroke-width:2px;" for i in range(num_solid_arrows)])
+    states, notes, transitions = _to_mermaid_text(graph=graph)
 
-    graph_styled = MERMAID_STYLED_TEMPLATE.format(graph_as_text=graph_as_text, solid_arrows=solid_arrows)
+    graph_styled = MERMAID_STYLED_TEMPLATE.format(states=states, notes=notes, transitions=transitions)
     logger.debug("Mermaid diagram:\n%s", graph_styled)
 
     graphbytes = graph_styled.encode("ascii")
@@ -61,29 +65,50 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     return resp.content
 
 
-def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
+def _to_mermaid_text(graph: networkx.MultiDiGraph) -> Tuple[str, str, str]:
     """
     Converts a Networkx graph into Mermaid syntax. The output of this function can be used in the documentation
     with `mermaid` codeblocks and it will be automatically rendered.
     """
-    components = {
-        comp: f"{comp}:::{graph.nodes[comp]['style']}" if "style" in graph.nodes[comp] else comp for comp in graph.nodes
+    states = "\n".join(
+        [
+            f"{comp}:::components: {comp}<br><small><i>{type(data['instance']).__name__}</i></small>"
+            for comp, data in graph.nodes(data=True)
+            if comp != "input" and comp != "output"
+        ]
+    )
+    sockets = {
+        comp: "\n".join(
+            [
+                f"{name} <small><i>{get_socket_type_desc(socket.type)}</i></small>"
+                for name, socket in data.get("input_sockets", {}).items()
+                if socket.default is not inspect.Parameter.empty
+            ]
+        )
+        for comp, data in graph.nodes(data=True)
     }
+    notes = "\n".join(
+        [
+            f"note left of {comp}\n\t{sockets[comp]}\nend note"
+            for comp in graph.nodes
+            if comp != "input" and comp != "output" and sockets[comp] != ""
+        ]
+    )
 
     connections_list = [
-        f"{components[from_comp]} -- {conn_data['label']} --> {components[to_comp]}"
+        f"{from_comp} --> {to_comp} : {conn_data['label']}  <small><i>({conn_data['conn_type']})</i></small>"
         for from_comp, to_comp, conn_data in graph.edges(data=True)
         if from_comp != "input" and to_comp != "output"
     ]
     input_connections = [
-        f"IN([input]) -- {conn_data['label']} --> {components[to_comp]}"
+        f"[*] --> {to_comp} : {conn_data['label']}  <small><i>({conn_data['conn_type']})</i></small>"
         for _, to_comp, conn_data in graph.out_edges("input", data=True)
     ]
     output_connections = [
-        f"{components[from_comp]} -- {conn_data['label']} --> OUT([output])"
+        f"{from_comp} --> [*]  : {conn_data['label']}  <small><i>({conn_data['conn_type']})</i></small>"
         for from_comp, _, conn_data in graph.in_edges("output", data=True)
     ]
     connections = "\n".join(connections_list + input_connections + output_connections)
 
-    mermaid_graph = f"graph TD;\n{connections}"
-    return mermaid_graph
+    # mermaid_graph = f"graph TD;\n{connections}"
+    return states, notes, connections

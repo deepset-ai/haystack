@@ -4,7 +4,6 @@
 from typing import List, Dict, Any
 import logging
 import inspect
-from dataclasses import fields
 
 import networkx
 
@@ -21,8 +20,8 @@ def _find_pipeline_inputs(graph: networkx.MultiDiGraph) -> Dict[str, List[InputS
     input sockets, including all such sockets with default values.
     """
     return {
-        node: [socket for socket in data.get("input_sockets", {}).values() if not socket.sender]
-        for node, data in graph.nodes(data=True)
+        name: [socket for socket in data.get("input_sockets", {}).values() if not socket.sender]
+        for name, data in graph.nodes(data=True)
     }
 
 
@@ -68,7 +67,7 @@ def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_va
     for node, sockets in valid_inputs.items():
         for socket in sockets:
             input_in_node_defaults = socket.default is not inspect.Parameter.empty
-            inputs_for_node = input_values.get(node)
+            inputs_for_node = input_values.get(node, {})
             missing_input_value = (
                 not inputs_for_node
                 or not socket.name in inputs_for_node.keys()

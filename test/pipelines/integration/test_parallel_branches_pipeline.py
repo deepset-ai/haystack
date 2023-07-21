@@ -13,31 +13,29 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def test_pipeline(tmp_path):
-    add_one = AddFixedValue(add=1)
-
     pipeline = Pipeline()
-    pipeline.add_component("add_one", add_one)
+    pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("repeat", Repeat(outputs=["first", "second"]))
     pipeline.add_component("add_ten", AddFixedValue(add=10))
     pipeline.add_component("double", Double())
     pipeline.add_component("add_three", AddFixedValue(add=3))
-    pipeline.add_component("add_one_again", add_one)
+    pipeline.add_component("add_one_again", AddFixedValue(add=1))
 
-    pipeline.connect("add_one.value", "repeat.value")
+    pipeline.connect("add_one.result", "repeat.value")
     pipeline.connect("repeat.first", "add_ten.value")
-    pipeline.connect("repeat.second", "double")
+    pipeline.connect("repeat.second", "double.value")
     pipeline.connect("repeat.second", "add_three.value")
-    pipeline.connect("add_three", "add_one_again")
+    pipeline.connect("add_three.result", "add_one_again.value")
 
     pipeline.draw(tmp_path / "parallel_branches_pipeline.png")
 
-    results = pipeline.run({"add_one": AddFixedValue().input(value=1)})
+    results = pipeline.run({"add_one": {"value": 1}})
     pprint(results)
 
     assert results == {
-        "add_one_again": AddFixedValue().output(value=6),
-        "add_ten": AddFixedValue().output(value=12),
-        "double": Double().output(value=4),
+        "add_one_again": {"result": 6},
+        "add_ten": {"result": 12},
+        "double": {"value": 4},
     }
 
 

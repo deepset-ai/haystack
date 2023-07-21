@@ -5,12 +5,12 @@ from typing import Optional, Any, Dict, List, Literal, Union
 
 import os
 import json
+import inspect
 import datetime
 import logging
 from pathlib import Path
 from copy import deepcopy
 from collections import OrderedDict
-from dataclasses import fields
 
 import networkx
 
@@ -18,7 +18,7 @@ from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntim
 from canals.pipeline.draw import _draw, _convert_for_debug, RenderingEngines
 from canals.sockets import InputSocket, OutputSocket
 from canals.pipeline.validation import _validate_pipeline_input
-from canals.pipeline.connections import _parse_connection_name, _find_unambiguous_connection, _get_socket_type_desc
+from canals.pipeline.connections import _parse_connection_name, _find_unambiguous_connection, get_socket_type_desc
 
 
 logger = logging.getLogger(__name__)
@@ -119,13 +119,17 @@ class Pipeline:
                 f"'{type(instance)}' doesn't seem to be a component. Is this class decorated with @component?"
             )
 
+        # Create the component's input and output sockets
+        input_sockets = {name: InputSocket(**data) for name, data in instance.run.__run_method_types__.items()}
+        output_sockets = {name: OutputSocket(**data) for name, data in instance.run.__return_types__.items()}
+
         # Add component to the graph, disconnected
         logger.debug("Adding component '%s' (%s)", name, instance)
         self.graph.add_node(
             name,
             instance=instance,
-            input_sockets=instance.__input_sockets__,
-            output_sockets=instance.__output_sockets__,
+            input_sockets=input_sockets,
+            output_sockets=output_sockets,
             visits=0,
         )
 
@@ -171,7 +175,7 @@ class Pipeline:
                     f"'{from_node}.{from_socket_name} does not exist. "
                     f"Output connections of {from_node} are: "
                     + ", ".join(
-                        [f"{name} (type {_get_socket_type_desc(socket.type)})" for name, socket in from_sockets.items()]
+                        [f"{name} (type {get_socket_type_desc(socket.type)})" for name, socket in from_sockets.items()]
                     )
                 )
         if to_socket_name:
@@ -181,7 +185,7 @@ class Pipeline:
                     f"'{to_node}.{to_socket_name} does not exist. "
                     f"Input connections of {to_node} are: "
                     + ", ".join(
-                        [f"{name} (type {_get_socket_type_desc(socket.type)})" for name, socket in to_sockets.items()]
+                        [f"{name} (type {get_socket_type_desc(socket.type)})" for name, socket in to_sockets.items()]
                     )
                 )
 
@@ -203,7 +207,6 @@ class Pipeline:
         """
         # Make sure the receiving socket isn't already connected - sending sockets can be connected as many times as needed,
         # so they don't need this check
-        print(to_node, to_socket)
         if to_socket.sender:
             raise PipelineConnectError(
                 f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
@@ -213,7 +216,14 @@ class Pipeline:
         # Create the connection
         logger.debug("Connecting '%s.%s' to '%s.%s'", from_node, from_socket.name, to_node, to_socket.name)
         edge_key = f"{from_socket.name}/{to_socket.name}"
-        self.graph.add_edge(from_node, to_node, key=edge_key, from_socket=from_socket, to_socket=to_socket)
+        self.graph.add_edge(
+            from_node,
+            to_node,
+            key=edge_key,
+            conn_type=get_socket_type_desc(from_socket.type),
+            from_socket=from_socket,
+            to_socket=to_socket,
+        )
 
         # Stores the name of the node that will send its output to this socket
         to_socket.sender = from_node
@@ -253,6 +263,11 @@ class Pipeline:
             ImportError: if `engine='graphviz'` and `pygraphviz` is not installed.
             HTTPConnectionError: (and similar) if the internet connection is down or other connection issues.
         """
+        sockets = {
+            comp: "\n".join([f"{name}: {socket}" for name, socket in data.get("input_sockets", {}).items()])
+            for comp, data in self.graph.nodes(data=True)
+        }
+        print(sockets)
         _draw(graph=deepcopy(self.graph), path=path, engine=engine)
 
     def warm_up(self):
@@ -485,12 +500,20 @@ class Pipeline:
 
         # All components inputs, whether they're connected, default or pipeline inputs
         instance = self.graph.nodes[name]["instance"]
-        input_sockets = instance.__input_sockets__.keys()
+        input_sockets: Dict[str, InputSocket] = self.graph.nodes[name]["input_sockets"].keys()
         optional_input_sockets = set(
-            [socket.name for socket in instance.__input_sockets__.values() if socket.default is None]
+            [
+                socket.name
+                for socket in self.graph.nodes[name]["input_sockets"].values()
+                if socket.default is not inspect.Parameter.empty
+            ]
         )
         mandatory_input_sockets = set(
-            [socket.name for socket in instance.__input_sockets__.values() if socket.default is not None]
+            [
+                socket.name
+                for socket in self.graph.nodes[name]["input_sockets"].values()
+                if socket.default is inspect.Parameter.empty
+            ]
         )
 
         # Components that are in the inputs buffer and have no inputs assigned are considered skipped
@@ -684,7 +707,7 @@ class Pipeline:
                 if target_node not in inputs_buffer:
                     inputs_buffer[target_node] = {}  # Create the buffer for the downstream node if it's not there yet
 
-                value_to_route = getattr(node_results, from_socket.name, None)
+                value_to_route = node_results.get(from_socket.name, None)
                 if value_to_route:
                     inputs_buffer[target_node][to_socket.name] = value_to_route
 
