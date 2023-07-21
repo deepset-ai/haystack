@@ -337,9 +337,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 raise ValueError(f"Invalid torch_dtype value {torch_dtype}")
         return torch_dtype_resolved
 
-    def _prepare_tokenizer(
-        self, model: str, hub_kwargs: Dict, model_kwargs: Optional[Dict]
-    ) -> Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast, None]]:
+    def _prepare_tokenizer(self, model: str, hub_kwargs: Dict, model_kwargs: Optional[Dict]):
         """
         this method prepares the tokenizer before passing it to transformers' pipeline, so that the instantiated pipeline
         object has a working tokenizer.
