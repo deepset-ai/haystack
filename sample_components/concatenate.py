@@ -7,19 +7,22 @@ from canals import component
 
 
 @component
-class Concatenate:
+class Concatenate:  # pylint: disable=too-few-public-methods
     """
     Concatenates two values
     """
 
     @component.output_types(value=List[str])
     def run(self, first: Union[List[str], str], second: Union[List[str], str]):
-        if type(first) is str and type(second) is str:
+        """
+        Concatenates two values
+        """
+        if isinstance(first, str) and isinstance(second, str):
             res = [first, second]
-        elif type(first) is list and type(second) is list:
+        elif isinstance(first, list) and isinstance(second, list):
             res = first + second
-        elif type(first) is list and type(second) is str:
+        elif isinstance(first, list) and isinstance(second, str):
             res = first + [second]
-        elif type(first) is str and type(second) is list:
+        elif isinstance(first, str) and isinstance(second, list):
             res = [first] + second
         return {"value": res}

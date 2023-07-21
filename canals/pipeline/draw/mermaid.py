@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Tuple
 import logging
 import base64
 import inspect
@@ -63,7 +62,7 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     return resp.content
 
 
-def _to_mermaid_text(graph: networkx.MultiDiGraph) -> Tuple[str, str, str]:
+def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     """
     Converts a Networkx graph into Mermaid syntax. The output of this function can be used in the documentation
     with `mermaid` codeblocks and it will be automatically rendered.
@@ -71,13 +70,13 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> Tuple[str, str, str]:
     init_params = {
         comp: ",<br>".join([f"{key}={json.dumps(value)}" for key, value in data["instance"].init_parameters.items()])
         for comp, data in graph.nodes(data=True)
-        if comp != "input" and comp != "output"
+        if comp not in ["input", "output"]
     }
     states = "\n".join(
         [
             f"{comp}:::components: <b>{comp}</b><br><small><i>{type(data['instance']).__name__}({init_params[comp]})</i></small>"
             for comp, data in graph.nodes(data=True)
-            if comp != "input" and comp != "output"
+            if comp not in ["input", "output"]
         ]
     )
     sockets = {
@@ -94,7 +93,7 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> Tuple[str, str, str]:
         [
             f"note left of {comp}\n    {sockets[comp]}\nend note"
             for comp in graph.nodes
-            if comp != "input" and comp != "output" and sockets[comp] != ""
+            if comp not in ["input", "output"] and sockets[comp] != ""
         ]
     )
 

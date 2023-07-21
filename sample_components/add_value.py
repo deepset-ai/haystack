@@ -7,12 +7,19 @@ from canals import component
 
 
 @component
-class AddFixedValue:
+class AddFixedValue:  # pylint: disable=too-few-public-methods
+    """
+    Adds two values together.
+    """
+
     def __init__(self, add: int = 1):
         self.add = add
 
     @component.output_types(result=int)
     def run(self, value: int, add: Optional[int] = None):
+        """
+        Adds two values together.
+        """
         if add is None:
             add = self.add
         return {"result": value + add}

@@ -7,12 +7,10 @@ from canals import component
 
 
 @component
-class Threshold:
+class Threshold:  # pylint: disable=too-few-public-methods
     """
     Redirects the value, unchanged, along a different connection whether the value is above
     or below the given threshold.
-
-    Single input, double output decision component.
 
     :param threshold: the number to compare the input value against. This is also a parameter.
     """
@@ -25,6 +23,12 @@ class Threshold:
 
     @component.output_types(above=int, below=int)
     def run(self, value: int, threshold: Optional[int] = None):
+        """
+        Redirects the value, unchanged, along a different connection whether the value is above
+        or below the given threshold.
+
+        :param threshold: the number to compare the input value against. This is also a parameter.
+        """
         if threshold is None:
             threshold = self.threshold
 

@@ -8,7 +8,6 @@ from functools import wraps
 
 from canals.errors import ComponentError
 from canals.type_checking import _types_are_compatible
-from canals.sockets import InputSocket, OutputSocket
 
 
 logger = logging.getLogger(__name__)

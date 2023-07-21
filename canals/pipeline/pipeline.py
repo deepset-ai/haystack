@@ -504,20 +504,16 @@ class Pipeline:
 
         # All components inputs, whether they're connected, default or pipeline inputs
         input_sockets: Dict[str, InputSocket] = self.graph.nodes[name]["input_sockets"].keys()
-        optional_input_sockets = set(
-            [
-                socket.name
-                for socket in self.graph.nodes[name]["input_sockets"].values()
-                if socket.default is not inspect.Parameter.empty
-            ]
-        )
-        mandatory_input_sockets = set(
-            [
-                socket.name
-                for socket in self.graph.nodes[name]["input_sockets"].values()
-                if socket.default is inspect.Parameter.empty
-            ]
-        )
+        optional_input_sockets = {
+            socket.name
+            for socket in self.graph.nodes[name]["input_sockets"].values()
+            if socket.default is not inspect.Parameter.empty
+        }
+        mandatory_input_sockets = {
+            socket.name
+            for socket in self.graph.nodes[name]["input_sockets"].values()
+            if socket.default is inspect.Parameter.empty
+        }
 
         # Components that are in the inputs buffer and have no inputs assigned are considered skipped
         skipped_components = {n for n, v in inputs_buffer.items() if not v}

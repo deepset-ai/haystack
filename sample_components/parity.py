@@ -5,7 +5,7 @@ from canals import component
 
 
 @component
-class Parity:
+class Parity:  # pylint: disable=too-few-public-methods
     """
     Redirects the value, unchanged, along the 'even' connection if even, or along the 'odd' one if odd.
     """

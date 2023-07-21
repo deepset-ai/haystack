@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class Greet:
+class Greet:  # pylint: disable=too-few-public-methods
     """
     Logs a greeting message without affecting the value passing on the connection.
     """

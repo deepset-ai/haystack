@@ -10,7 +10,7 @@ from canals import component
 
 
 @component
-class Accumulate:
+class Accumulate:  # pylint: disable=too-few-public-methods
     """
     Accumulates the value flowing through the connection into an internal attribute.
     The sum function can be customized.
@@ -38,6 +38,11 @@ class Accumulate:
 
     @component.output_types(value=int)
     def run(self, value: int):
+        """
+        Accumulates the value flowing through the connection into an internal attribute.
+        The sum function can be customized.
+        """
+
         self.state = self.function(self.state, value)
         return {"value": self.state}
 

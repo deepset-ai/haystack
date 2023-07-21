@@ -5,7 +5,7 @@ from canals import component
 
 
 @component
-class Subtract:
+class Subtract:  # pylint: disable=too-few-public-methods
     """
     Compute the difference between two values.
     """
