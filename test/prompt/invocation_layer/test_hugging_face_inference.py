@@ -353,9 +353,6 @@ def test_supports(mock_get_task):
     # supports google/flan-t5-xxl with api_key
     assert HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl", api_key="fake_key")
 
-    # doesn't support google/flan-t5-xxl without api_key
-    assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl")
-
     # supports HF Inference Endpoint with api_key
     assert HFInferenceEndpointInvocationLayer.supports(
         "https://<your-unique-deployment-id>.us-east-1.aws.endpoints.huggingface.cloud", api_key="fake_key"
@@ -365,3 +362,14 @@ def test_supports(mock_get_task):
 @pytest.mark.unit
 def test_supports_not(mock_get_task_invalid):
     assert not HFInferenceEndpointInvocationLayer.supports("fake_model", api_key="fake_key")
+
+    # doesn't support google/flan-t5-xxl without api_key
+    assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl")
+
+    # doesn't support HF Inference Endpoint without proper api_key
+    assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl", api_key="")
+    assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl", api_key=None)
+
+    # doesn't support model if hf server timeout
+    mock_get_task.side_effect = RuntimeError
+    assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl", api_key="fake_key")

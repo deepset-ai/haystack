@@ -67,8 +67,11 @@ class WebRetriever(BaseRetriever):
         cache_time: int = 1 * 24 * 60 * 60,
     ):
         """
+        :param api_key: API key for the search engine provider.
+        :param search_engine_provider: Name of the search engine provider class, see `providers.py` for a list of supported providers.
+        :param top_search_results: Number of top search results to be retrieved.
         :param top_k: Top k documents to be returned by the retriever.
-        :param mode: Whether to return snippets, raw documents, or preprocessed documents. Preprocessed documents are the default.
+        :param mode: Whether to return snippets, raw documents, or preprocessed documents. Snippets are the default.
         :param preprocessor: Optional PreProcessor to be used to split documents into paragraphs. If not provided, the default PreProcessor is used.
         :param cache_document_store: DocumentStore to be used to cache search results.
         :param cache_index: Index name to be used to cache search results.
