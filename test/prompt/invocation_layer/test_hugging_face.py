@@ -599,7 +599,7 @@ def test_ensure_token_limit_negative_mock(mock_pipeline, mock_get_task, mock_aut
 @pytest.mark.integration
 @pytest.mark.parametrize(
     "model_name, pass_init_model, expected",
-    [("mosaicml/mpt-7b-chat", True, "GPTNeoXTokenizerFast"), ("mosaicml/mpt-7b-chat", False, "GPTNeoXTokenizerFast")],
+    [("syzymon/long_llama_3b", True, "LlamaTokenizerFast"), ("syzymon/long_llama_3b", False, "LlamaTokenizerFast")],
 )
 def test_prepare_tokenizer_load_tokenizer(model_name, pass_init_model, expected, caplog):
     """
@@ -617,7 +617,7 @@ def test_prepare_tokenizer_load_tokenizer(model_name, pass_init_model, expected,
 
     expected_message = (
         "The transformers library doesn't know which tokenizer class should be "
-        "loaded for the model mosaicml/mpt-7b-chat. Therefore, the tokenizer will be loaded in Haystack's "
+        "loaded for the model syzymon/long_llama_3b. Therefore, the tokenizer will be loaded in Haystack's "
         "invocation layer and then passed to the underlying pipeline. Alternatively, you could "
         "pass `tokenizer_class` to `model_kwargs` to workaround this, if your tokenizer is supported "
         "by the transformers library."
