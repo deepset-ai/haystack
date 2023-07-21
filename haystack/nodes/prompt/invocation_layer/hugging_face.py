@@ -19,6 +19,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         GenerationConfig,
         PreTrainedTokenizer,
         PreTrainedTokenizerFast,
+        PreTrainedModel,
         Pipeline,
         AutoTokenizer,
         AutoConfig,
@@ -338,7 +339,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         return torch_dtype_resolved
 
     def _prepare_tokenizer(
-        self, model: str, hub_kwargs: Dict, model_kwargs: Optional[Dict]
+        self, model: Optional[Union[str, "PreTrainedModel"]], hub_kwargs: Dict, model_kwargs: Optional[Dict]
     ) -> Optional[Union["PreTrainedTokenizer", "PreTrainedTokenizerFast", None]]:
         """
         this method prepares the tokenizer before passing it to transformers' pipeline, so that the instantiated pipeline
@@ -353,8 +354,12 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         :model_kwargs: keyword arguments passed to the underlying model
         """
 
-        model_config = AutoConfig.from_pretrained(model, **hub_kwargs, **model_kwargs)
-        # this logic corresponds to this line in transformers library
+        if isinstance(model, str):
+            model_config = AutoConfig.from_pretrained(model, **hub_kwargs, **model_kwargs)
+        else:
+            model_config = model.config
+            model = model_config._name_or_path
+        # the will_load_tokenizer logic corresponds to this line in transformers library
         # https://github.com/huggingface/transformers/blob/main/src/transformers/pipelines/__init__.py#L800
         will_load_tokenizer = type(model_config) in TOKENIZER_MAPPING or model_config.tokenizer_class is not None
         if not will_load_tokenizer:
