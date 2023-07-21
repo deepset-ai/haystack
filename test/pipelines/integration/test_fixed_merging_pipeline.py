@@ -27,7 +27,7 @@ def test_pipeline(tmp_path):
     pipeline.connect("third_addition.result", "diff.second_value")
     pipeline.connect("diff", "fourth_addition.value")
 
-    # pipeline.draw(tmp_path / "fixed_merging_pipeline.png")
+    pipeline.draw(tmp_path / "fixed_merging_pipeline.png")
 
     results = pipeline.run(
         {

@@ -5,6 +5,7 @@ from typing import Tuple
 import logging
 import base64
 import inspect
+import json
 
 import requests
 import networkx
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 MERMAID_STYLED_TEMPLATE = """
 %%{{ init: {{'theme': 'neutral' }} }}%%
 
-stateDiagram
+stateDiagram-v2
 
 {states}
 
@@ -70,9 +71,14 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> Tuple[str, str, str]:
     Converts a Networkx graph into Mermaid syntax. The output of this function can be used in the documentation
     with `mermaid` codeblocks and it will be automatically rendered.
     """
+    init_params = {
+        comp: ",<br>".join([f"{key}={json.dumps(value)}" for key, value in data["instance"].init_parameters.items()])
+        for comp, data in graph.nodes(data=True)
+        if comp != "input" and comp != "output"
+    }
     states = "\n".join(
         [
-            f"{comp}:::components: {comp}<br><small><i>{type(data['instance']).__name__}</i></small>"
+            f"{comp}:::components: <b>{comp}</b><br><small><i>{type(data['instance']).__name__}({init_params[comp]})</i></small>"
             for comp, data in graph.nodes(data=True)
             if comp != "input" and comp != "output"
         ]

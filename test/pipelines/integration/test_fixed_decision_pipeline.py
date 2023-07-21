@@ -25,7 +25,7 @@ def test_pipeline(tmp_path):
     pipeline.connect("parity.odd", "double.value")
     pipeline.connect("add_ten.result", "add_three.value")
 
-    # pipeline.draw(tmp_path / "fixed_decision_pipeline.png")
+    pipeline.draw(tmp_path / "fixed_decision_pipeline.png")
 
     results = pipeline.run({"add_one": {"value": 1}})
     pprint(results)

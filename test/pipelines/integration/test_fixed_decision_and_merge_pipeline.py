@@ -29,7 +29,7 @@ def test_pipeline(tmp_path):
     pipeline.connect("parity.odd", "add_ten.value")
     pipeline.connect("add_four.result", "add_two.value")
 
-    # pipeline.draw(tmp_path / "fixed_decision_and_merge_pipeline.png")
+    pipeline.draw(tmp_path / "fixed_decision_and_merge_pipeline.png")
 
     results = pipeline.run(
         {
