@@ -229,7 +229,7 @@ class WebRetriever(BaseRetriever):
 
         # If query is not cached, fetch from web
         if not extracted_docs:
-            extracted_docs = self._retrieve_from_web(query_norm, preprocessor, top_k)
+            extracted_docs = self._retrieve_from_web(query_norm, preprocessor)
 
         # Save results to cache
         if cache_document_store and extracted_docs:
@@ -241,26 +241,23 @@ class WebRetriever(BaseRetriever):
                 )
         return extracted_docs[:top_k]
 
-    def _retrieve_from_web(
-        self, query_norm: str, preprocessor: Optional[PreProcessor], top_k: Optional[int]
-    ) -> List[Document]:
+    def _retrieve_from_web(self, query_norm: str, preprocessor: Optional[PreProcessor]) -> List[Document]:
         """
         Retrieve documents from the web based on the query.
 
         :param query_norm: The normalized query string.
         :param preprocessor: The PreProcessor to be used to split documents into paragraphs.
-        :param top_k: The number of documents to be returned by the retriever. If None, the default value is used.
         :return: List of Document objects.
         """
 
         search_results, _ = self.web_search.run(query=query_norm)
         search_results_docs = search_results["documents"]
         if self.mode == "snippets":
-            return search_results_docs[:top_k]  # type: ignore
-
-        links: List[SearchResult] = self._prepare_links(search_results_docs)
-        logger.debug("Starting to fetch %d links from WebSearch results", len(links))
-        return self._scrape_links(links, query_norm, preprocessor)
+            return search_results_docs
+        else:
+            links: List[SearchResult] = self._prepare_links(search_results_docs)
+            logger.debug("Starting to fetch %d links from WebSearch results", len(links))
+            return self._scrape_links(links, query_norm, preprocessor)
 
     def _prepare_links(self, search_results: List[Document]) -> List[SearchResult]:
         """

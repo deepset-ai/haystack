@@ -70,40 +70,11 @@ def test_init_custom_parameters():
 
 @pytest.mark.unit
 def test_retrieve_from_web_all_params(mock_web_search):
-    # tests that we get top_k results even if PreProcessor is provided
-    top_k = 7
     wr = WebRetriever(api_key="fake_key")
 
     preprocessor = PreProcessor()
 
-    result = wr._retrieve_from_web("Who is the boyfriend of Olivia Wilde?", preprocessor, top_k)
-
-    assert isinstance(result, list)
-    assert all(isinstance(doc, Document) for doc in result)
-    # If top_k was provided and positive, we expect no more than that many documents in the result.
-    assert len(result) == top_k
-
-
-@pytest.mark.unit
-def test_retrieve_from_web_no_preprocessor(mock_web_search):
-    # tests that we get top_k results when no PreProcessor is provided
-    top_k = 7
-    wr = WebRetriever(api_key="fake_key")
-    result = wr._retrieve_from_web("query", None, top_k)
-
-    assert isinstance(result, list)
-    assert all(isinstance(doc, Document) for doc in result)
-    assert len(result) == top_k
-
-
-@pytest.mark.unit
-def test_retrieve_from_web_no_top_k(mock_web_search):
-    # tests that when top_k is None, we get all results
-    # even if PreProcessor is provided
-    wr = WebRetriever(api_key="fake_key")
-    preprocessor = PreProcessor()
-
-    result = wr._retrieve_from_web("query", preprocessor, None)
+    result = wr._retrieve_from_web("Who is the boyfriend of Olivia Wilde?", preprocessor)
 
     assert isinstance(result, list)
     assert all(isinstance(doc, Document) for doc in result)
@@ -111,10 +82,10 @@ def test_retrieve_from_web_no_top_k(mock_web_search):
 
 
 @pytest.mark.unit
-def test_retrieve_from_web_no_preprocessor_no_top_k(mock_web_search):
-    # tests that when no PreProcessor and top_k is None, we get all results
+def test_retrieve_from_web_no_preprocessor(mock_web_search):
+    # tests that we get top_k results when no PreProcessor is provided
     wr = WebRetriever(api_key="fake_key")
-    result = wr._retrieve_from_web("query", None, None)
+    result = wr._retrieve_from_web("query", None)
 
     assert isinstance(result, list)
     assert all(isinstance(doc, Document) for doc in result)
@@ -126,10 +97,10 @@ def test_retrieve_from_web_invalid_query(mock_web_search):
     # however, if query is None or empty, we expect an error
     wr = WebRetriever(api_key="fake_key")
     with pytest.raises(ValueError, match="WebSearch run requires"):
-        wr._retrieve_from_web("", None, None)
+        wr._retrieve_from_web("", None)
 
     with pytest.raises(ValueError, match="WebSearch run requires"):
-        wr._retrieve_from_web(None, None, None)
+        wr._retrieve_from_web(None, None)
 
 
 @pytest.mark.unit
@@ -194,7 +165,7 @@ def test_retrieve_uses_defaults():
     mock_check_cache.assert_called_with(
         "query", cache_index=wr.cache_index, cache_headers=wr.cache_headers, cache_time=wr.cache_time
     )
-    mock_retrieve_from_web.assert_called_with("query", wr.preprocessor, wr.top_k)
+    mock_retrieve_from_web.assert_called_with("query", wr.preprocessor)
 
 
 @pytest.mark.unit
