@@ -22,10 +22,7 @@ logger = logging.getLogger(__name__)
 # Taken from:
 # https://github.com/anthropics/anthropic-sdk-python/blob/main/anthropic/tokenizer.py#L7
 # This is a JSON config to load the tokenizer used for Anthropic Claude.
-CLAUDE_TOKENIZER_REMOTE_FILE = "https://public-json-tokenization-0d8763e8-0d7e-441b-a1e2-1c73b8e79dc3.storage.googleapis.com/claude-v1-tokenization.json"
-
-# these seem identical, but we keep both in case the first one is deprecated
-CLAUDE_TOKENIZER_REMOTE_FILE_2 = (
+CLAUDE_TOKENIZER_REMOTE_FILE = (
     "https://raw.githubusercontent.com/anthropics/anthropic-sdk-python/main/src/anthropic/tokenizer.json"
 )
 
@@ -70,20 +67,11 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
     def _init_tokenizer(self) -> Tokenizer:
         # Expire cache after a day
         expire_after = 60 * 60 * 60 * 24
-        urls = [CLAUDE_TOKENIZER_REMOTE_FILE, CLAUDE_TOKENIZER_REMOTE_FILE_2]
-
-        for url in urls:
-            try:
-                # Cache the JSON config to avoid downloading it each time as it's a big file
-                with requests_cache.enabled(expire_after=expire_after):
-                    res = request_with_retry(method="GET", url=url)
-                    res.raise_for_status()
-                return Tokenizer.from_str(res.text)
-            except Exception as e:
-                logger.warning("Failed to initialize tokenizer from URL %s: %s", url, e)
-
-        # If we've exhausted all URLs without a successful initialization, raise an exception
-        raise Exception(f"Failed to initialize Claude tokenizer from all provided URLs: {', '.join(urls)}")
+        # Cache the JSON config to avoid downloading it each time as it's a big file
+        with requests_cache.enabled(expire_after=expire_after):
+            res = request_with_retry(method="GET", url=CLAUDE_TOKENIZER_REMOTE_FILE)
+            res.raise_for_status()
+        return Tokenizer.from_str(res.text)
 
     def invoke(self, *args, **kwargs):
         """
