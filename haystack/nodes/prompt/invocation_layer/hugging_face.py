@@ -339,7 +339,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         return torch_dtype_resolved
 
     def _prepare_tokenizer(
-        self, model: Union[str, "PreTrainedModel"], hub_kwargs: Dict, model_kwargs: Optional[Dict]
+        self, model: Union[str, "PreTrainedModel"], hub_kwargs: Dict, model_kwargs: Optional[Dict] = {}
     ) -> Union["PreTrainedTokenizer", "PreTrainedTokenizerFast", None]:
         """
         this method prepares the tokenizer before passing it to transformers' pipeline, so that the instantiated pipeline

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch, Mock
 import pytest
 import torch
 from torch import device
-from transformers import AutoTokenizer, BloomForCausalLM, StoppingCriteriaList, GenerationConfig
+from transformers import AutoTokenizer, BloomForCausalLM, StoppingCriteriaList, GenerationConfig, AutoModelForCausalLM
 
 from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler, DefaultTokenStreamingHandler
@@ -594,3 +594,36 @@ def test_ensure_token_limit_negative_mock(mock_pipeline, mock_get_task, mock_aut
     result = layer._ensure_token_limit("I am a tokenized prompt of length eight")
 
     assert result == correct_result
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "model_name, pass_init_model, expected",
+    [("mosaicml/mpt-7b-chat", True, "GPTNeoXTokenizerFast"), ("mosaicml/mpt-7b-chat", False, "GPTNeoXTokenizerFast")],
+)
+def test_prepare_tokenizer_load_tokenizer(model_name, pass_init_model, expected, caplog):
+    """
+    Test _preprare_tokenizer method will load tokenizer for models that won't be
+    loaded by the transformers library. Since the model can either be passed as a string
+    or a model object, we have 2 test cases here.
+    """
+
+    if pass_init_model:
+        init_model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True, low_cpu_mem_usage=True)
+    else:
+        init_model = model_name
+
+    layer = HFLocalInvocationLayer(model=init_model, task_name="text-generation", trust_remote_code=True)
+
+    expected_message = (
+        "The transformers library doesn't know which tokenizer class should be "
+        "loaded for the model mosaicml/mpt-7b-chat. Therefore, the tokenizer will be loaded in Haystack's "
+        "invocation layer and then passed to the underlying pipeline. Alternatively, you could "
+        "pass `tokenizer_class` to `model_kwargs` to workaround this, if your tokenizer is supported "
+        "by the transformers library."
+    )
+    # check that the warning is logged
+    assert caplog.records[0].message == expected_message
+
+    # check the tokenizer is loaded by
+    assert layer.pipe.tokenizer.__class__.__name__ == expected
