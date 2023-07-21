@@ -24,10 +24,10 @@ template: |
       considered a new feature, or remove this section.
   issues:
     - |
-      List known issues here, or remove this section.
+      List known issues here, or remove this section. For example, if some change is experimental or known to not work in some cases, it should be mentioned here.
   deprecations:
     - |
-      List deprecations notes here, or remove this section.
+      List deprecations notes here, or remove this section. Deprecations should not be used for something that is removed in the release, use upgrade section instead. Deprecation should allow time for users to make necessary changes for the removal to happen in a future release.
   security:
     - |
       Add security notes here, or remove this section.
