@@ -2,8 +2,6 @@ from typing import Optional, Union, List, Dict, Any
 import logging
 import os
 
-from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, PreTrainedModel
-
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.utils import get_task
@@ -19,6 +17,8 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         StoppingCriteriaList,
         StoppingCriteria,
         GenerationConfig,
+        PreTrainedTokenizer,
+        PreTrainedTokenizerFast,
         Pipeline,
         AutoTokenizer,
         AutoConfig,
@@ -169,17 +169,22 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         torch_dtype = self._extract_torch_dtype(**kwargs)
         # and the model (prefer model instance over model_name_or_path str identifier)
         model = kwargs.get("model") or kwargs.get("model_name_or_path")
-        model_kwargs = kwargs.get("model_kwargs", {})
+        trust_remote_code = kwargs.get("trust_remote_code", False)
         hub_kwargs = {
-            "revision": kwargs.get("revision", None),
             "use_auth_token": kwargs.get("use_auth_token", None),
-            "trust_remote_code": kwargs.get("trust_remote_code", False),
+            "revision": kwargs.get("revision", None),
+            "trust_remote_code": trust_remote_code,
         }
+        model_kwargs = kwargs.get("model_kwargs", {})
         tokenizer = kwargs.get("tokenizer", None)
-        # for models that are currently not supported by the transformer library, we need to first load the
-        # tokenizer by ourselves and then pass the tokenizer object to the underlying transformers' pipeline.
-        # Otherwise, calling `self.pipe.tokenizer.model_max_length` will return an error
-        tokenizer = self._prepare_tokenizer(tokenizer, model, hub_kwargs)
+
+        if tokenizer is None and trust_remote_code:
+            # for models that are currently not supported by the transformers library, we need to
+            # pass `trust_remote_code=True` to the underlying pipeline so that the model can be
+            # loaded by the transformers library. But it doesn't necessarily mean that the transformers
+            # library will load the tokenizer as well. So we need to add an additional logic here.
+            # Otherwise, calling `self.pipe.tokenizer.model_max_length` will return an error
+            tokenizer = self._prepare_tokenizer(model, hub_kwargs, model_kwargs)
 
         pipeline_kwargs = {
             "task": kwargs.get("task", None),
@@ -333,29 +338,39 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         return torch_dtype_resolved
 
     def _prepare_tokenizer(
-        self,
-        tokenizer: Optional[Union[str, PreTrainedTokenizer, PreTrainedTokenizerFast]],
-        model: Optional[Union[str, PreTrainedModel]],
-        hub_kwargs: Dict[str, Any],
+        self, model: str, hub_kwargs: Dict, model_kwargs: Optional[Dict]
     ) -> Optional[Union[str, PreTrainedTokenizer, PreTrainedTokenizerFast, None]]:
         """
         this method prepares the tokenizer before passing it to transformers' pipeline, so that the instantiated pipeline
         object has a working tokenizer.
 
-        It loads the tokenizer if it is passed as a string and its model is currently not supported by the transformer
-        library. Otherwise, the passed tokenizer is returned.
+        It basically check whether the pipeline method in the transformers library will load the tokenizer.
+        - If yes, None will be returned, because in this case, the pipeline is intelligent enough to load the tokenizer by itself
+        - If not, we will load the tokenizer
 
-        :param tokenizer: the tokenizer that will be used by the pipeline to encode data for the model.
-        :param model: the model that will be used by the pipeline to make predictions.
-        :hub_kwargs: keyword argument related to hugging face hub
+        :param model: the name or path of the underlying model
+        :hub_kwargs: keyword argument related to hugging face hub, including revision, trust_remote_code and use_auth_token
+        :model_kwargs: keyword arguments passed to the underlying model
         """
 
-        if isinstance(tokenizer, str):
-            model_config = AutoConfig.from_pretrained(model, **hub_kwargs)
-            is_supported_tokenizer = type(model_config) in TOKENIZER_MAPPING or model_config.tokenizer_class is not None
-            if not is_supported_tokenizer:
-                tokenizer = AutoTokenizer.from_pretrained(tokenizer, **hub_kwargs)
-
+        model_config = AutoConfig.from_pretrained(model, **hub_kwargs, **model_kwargs)
+        # this logic corresponds to this line in transformers library
+        # https://github.com/huggingface/transformers/blob/main/src/transformers/pipelines/__init__.py#L800
+        load_tokenizer = type(model_config) in TOKENIZER_MAPPING or model_config.tokenizer_class is not None
+        if not load_tokenizer:
+            logger.warning(
+                "The transformers library doesn't know which tokenizer class should be "
+                "loaded for the model %s. Therefore, the tokenizer will be loaded in Haystack's "
+                "invocation layer and then passed to the underlying pipeline. Alternatively, you could "
+                "pass `tokenizer_class` to `model_kwargs` to workaround this, if your tokenizer is supported "
+                "by the transformers library.",
+                model,
+            )
+            tokenizer_kwargs = model_kwargs.copy()
+            tokenizer_kwargs.pop("torch_dtype", None)
+            tokenizer = AutoTokenizer.from_pretrained(model, **hub_kwargs, **tokenizer_kwargs)
+        else:
+            tokenizer = None
         return tokenizer
 
     @classmethod
