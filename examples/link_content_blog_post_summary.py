@@ -2,9 +2,9 @@ import os
 from haystack.nodes import PromptNode, LinkContentFetcher, PromptTemplate
 from haystack import Pipeline
 
-claude_key = os.environ.get("CLAUDE_API_KEY")
-if not claude_key:
-    raise ValueError("Please set the CLAUDE_API_KEY environment variable")
+anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+if not anthropic_key:
+    raise ValueError("Please set the ANTHROPIC_API_KEY environment variable")
 
 retriever = LinkContentFetcher()
 pt = PromptTemplate(
@@ -14,7 +14,7 @@ pt = PromptTemplate(
 )
 
 prompt_node = PromptNode(
-    "claude-instant-1", api_key=claude_key, max_length=512, default_prompt_template=pt, model_kwargs={"stream": True}
+    "claude-instant-1", api_key=anthropic_key, max_length=512, default_prompt_template=pt, model_kwargs={"stream": True}
 )
 
 pipeline = Pipeline()
