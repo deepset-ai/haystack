@@ -63,7 +63,7 @@ class PromptNode(BaseComponent):
         stop_words: Optional[List[str]] = None,
         top_k: int = 1,
         debug: Optional[bool] = False,
-        model_kwargs: Optional[Dict] = None,
+        invocation_kwargs: Optional[Dict] = None,
     ):
         """
         Creates a PromptNode instance.
@@ -79,13 +79,13 @@ class PromptNode(BaseComponent):
         :param devices: The devices to use for the model.
         :param top_k: The number of independently generated texts to return per prompt. For example, if you set top_k=3, the model will generate three answers to the query.
         :param stop_words: Stops text generation if any of the stop words is generated.
-        :param model_kwargs: Additional keyword arguments passed when loading the model specified in `model_name_or_path`.
+        :param invocation_kwargs: Additional keyword arguments passed when loading the model specified in `model_name_or_path`.
         :param debug: Whether to include the used prompts as debug information in the output under the key _debug.
 
         Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (the URL for the
         Azure OpenAI API endpoint, usually in the form `https://<your-endpoint>.openai.azure.com') and
         azure_deployment_name (the name of the Azure OpenAI API deployment).
-        You should specify these parameters in the `model_kwargs` dictionary.
+        You should specify these parameters in the `invocation_kwargs` dictionary.
 
         """
         send_event(
@@ -116,7 +116,7 @@ class PromptNode(BaseComponent):
                 use_auth_token=use_auth_token,
                 use_gpu=use_gpu,
                 devices=devices,
-                model_kwargs=model_kwargs,
+                invocation_kwargs=invocation_kwargs,
             )
         elif isinstance(model_name_or_path, PromptModel):
             self.prompt_model = model_name_or_path

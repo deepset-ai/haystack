@@ -216,10 +216,10 @@ def test_azure_vs_open_ai_invocation_layer_selection():
         "azure_deployment_name": "https://some_unimportant_url.azurewebsites.net/api/prompt",
     }
 
-    node = PromptNode("gpt-4", api_key="some_key", model_kwargs=azure_model_kwargs)
+    node = PromptNode("gpt-4", api_key="some_key", invocation_kwargs=azure_model_kwargs)
     assert isinstance(node.prompt_model.model_invocation_layer, AzureChatGPTInvocationLayer)
 
-    node = PromptNode("text-davinci-003", api_key="some_key", model_kwargs=azure_model_kwargs)
+    node = PromptNode("text-davinci-003", api_key="some_key", invocation_kwargs=azure_model_kwargs)
     assert isinstance(node.prompt_model.model_invocation_layer, AzureOpenAIInvocationLayer)
 
     node = PromptNode("gpt-4", api_key="some_key")
@@ -583,7 +583,7 @@ def test_simple_pipeline_yaml_with_default_params(tmp_path):
               type: PromptNode
               params:
                 default_prompt_template: sentiment-analysis
-                model_kwargs:
+                invocation_kwargs:
                   torch_dtype: torch.bfloat16
             pipelines:
             - name: query
@@ -594,7 +594,7 @@ def test_simple_pipeline_yaml_with_default_params(tmp_path):
         """
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-    assert pipeline.graph.nodes["p1"]["component"].prompt_model.model_kwargs == {"torch_dtype": "torch.bfloat16"}
+    assert pipeline.graph.nodes["p1"]["component"].prompt_model.invocation_kwargs == {"torch_dtype": "torch.bfloat16"}
 
     result = pipeline.run(query=None, documents=[Document("Berlin is an amazing city.")])
     assert result["results"][0] == "positive"
@@ -694,7 +694,7 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
               type: PromptModel
               params:
                 model_name_or_path: google/flan-t5-small
-                model_kwargs:
+                invocation_kwargs:
                   torch_dtype: auto
             - name: question_generation_template
               type: PromptTemplate
@@ -773,7 +773,7 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
               type: PromptModel
               params:
                 model_name_or_path: google/flan-t5-small
-                model_kwargs:
+                invocation_kwargs:
                   torch_dtype: torch.bfloat16
             - name: question_generation_template
               type: PromptTemplate
@@ -837,13 +837,13 @@ def test_complex_pipeline_with_all_features(tmp_path, haystack_openai_config):
               type: PromptModel
               params:
                 model_name_or_path: google/flan-t5-small
-                model_kwargs:
+                invocation_kwargs:
                   torch_dtype: torch.bfloat16
             - name: pmodel_openai
               type: PromptModel
               params:
                 model_name_or_path: text-davinci-003
-                model_kwargs:
+                invocation_kwargs:
                   temperature: 0.9
                   max_tokens: 64
                   {azure_conf_yaml_snippet}
@@ -1044,10 +1044,10 @@ def test_content_moderation_gpt_3_and_gpt_3_5():
     for both ChatGPTInvocationLayer and OpenAIInvocationLayer.
     """
     prompt_node_gpt_3_5 = PromptNode(
-        model_name_or_path="gpt-3.5-turbo", api_key="key", model_kwargs={"moderate_content": True}
+        model_name_or_path="gpt-3.5-turbo", api_key="key", invocation_kwargs={"moderate_content": True}
     )
     prompt_node_gpt_3 = PromptNode(
-        model_name_or_path="text-davinci-003", api_key="key", model_kwargs={"moderate_content": True}
+        model_name_or_path="text-davinci-003", api_key="key", invocation_kwargs={"moderate_content": True}
     )
     with patch("haystack.nodes.prompt.invocation_layer.open_ai.check_openai_policy_violation") as mock_check, patch(
         "haystack.nodes.prompt.invocation_layer.chatgpt.ChatGPTInvocationLayer._execute_openai_request"

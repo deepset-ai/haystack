@@ -40,7 +40,7 @@ class PromptModel(BaseComponent):
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, "torch.device"]]] = None,
         invocation_layer_class: Optional[Type[PromptModelInvocationLayer]] = None,
-        model_kwargs: Optional[Dict] = None,
+        invocation_kwargs: Optional[Dict] = None,
     ):
         """
         Creates an instance of PromptModel.
@@ -52,12 +52,12 @@ class PromptModel(BaseComponent):
         :param use_gpu: Whether to use GPU or not.
         :param devices: The devices to use where the model is loaded.
         :param invocation_layer_class: The custom invocation layer class to use. If None, known invocation layers are used.
-        :param model_kwargs: Additional keyword arguments passed to the underlying model.
+        :param invocation_kwargs: Additional keyword arguments passed to the underlying model.
 
         Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The URL for the
         Azure OpenAI API endpoint, usually in the form `https://<your-endpoint>.openai.azure.com') and
         azure_deployment_name (the name of the Azure OpenAI API deployment). You should add these parameters
-        in the `model_kwargs` dictionary.
+        in the `invocation_kwargs` dictionary.
         """
         super().__init__()
         self.model_name_or_path = model_name_or_path
@@ -67,7 +67,7 @@ class PromptModel(BaseComponent):
         self.use_gpu = use_gpu
         self.devices = devices
 
-        self.model_kwargs = model_kwargs if model_kwargs else {}
+        self.invocation_kwargs = invocation_kwargs if invocation_kwargs else {}
         self.model_invocation_layer = self.create_invocation_layer(invocation_layer_class=invocation_layer_class)
 
     def create_invocation_layer(
@@ -79,7 +79,7 @@ class PromptModel(BaseComponent):
             "use_gpu": self.use_gpu,
             "devices": self.devices,
         }
-        all_kwargs = {**self.model_kwargs, **kwargs}
+        all_kwargs = {**self.invocation_kwargs, **kwargs}
 
         if invocation_layer_class:
             return invocation_layer_class(
