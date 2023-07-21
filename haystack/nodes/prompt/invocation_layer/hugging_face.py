@@ -171,8 +171,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         model = kwargs.get("model") or kwargs.get("model_name_or_path")
         trust_remote_code = kwargs.get("trust_remote_code", False)
         hub_kwargs = {
-            "use_auth_token": kwargs.get("use_auth_token", None),
             "revision": kwargs.get("revision", None),
+            "use_auth_token": kwargs.get("use_auth_token", None),
             "trust_remote_code": trust_remote_code,
         }
         model_kwargs = kwargs.get("model_kwargs", {})
@@ -339,14 +339,14 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     def _prepare_tokenizer(
         self, model: str, hub_kwargs: Dict, model_kwargs: Optional[Dict]
-    ) -> Optional[Union[str, PreTrainedTokenizer, PreTrainedTokenizerFast, None]]:
+    ) -> Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast, None]]:
         """
         this method prepares the tokenizer before passing it to transformers' pipeline, so that the instantiated pipeline
         object has a working tokenizer.
 
         It basically check whether the pipeline method in the transformers library will load the tokenizer.
         - If yes, None will be returned, because in this case, the pipeline is intelligent enough to load the tokenizer by itself
-        - If not, we will load the tokenizer
+        - If not, we will load the tokenizer and an tokenizer instance is returned
 
         :param model: the name or path of the underlying model
         :hub_kwargs: keyword argument related to hugging face hub, including revision, trust_remote_code and use_auth_token
@@ -356,8 +356,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         model_config = AutoConfig.from_pretrained(model, **hub_kwargs, **model_kwargs)
         # this logic corresponds to this line in transformers library
         # https://github.com/huggingface/transformers/blob/main/src/transformers/pipelines/__init__.py#L800
-        load_tokenizer = type(model_config) in TOKENIZER_MAPPING or model_config.tokenizer_class is not None
-        if not load_tokenizer:
+        will_load_tokenizer = type(model_config) in TOKENIZER_MAPPING or model_config.tokenizer_class is not None
+        if not will_load_tokenizer:
             logger.warning(
                 "The transformers library doesn't know which tokenizer class should be "
                 "loaded for the model %s. Therefore, the tokenizer will be loaded in Haystack's "
