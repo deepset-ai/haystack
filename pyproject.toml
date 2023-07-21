@@ -48,7 +48,7 @@ classifiers = [
 dependencies = [
   "requests",
   "pydantic<2",
-  "transformers==4.30.1",
+  "transformers==4.31.0",
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.3.0", # TF-IDF, SklearnQueryClassifier and metrics
@@ -89,7 +89,7 @@ dependencies = [
 
 [project.optional-dependencies]
 inference = [
-  "transformers[torch,sentencepiece]==4.30.1",
+  "transformers[torch,sentencepiece]==4.31.0",
   "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "huggingface-hub>=0.5.0",
 ]
