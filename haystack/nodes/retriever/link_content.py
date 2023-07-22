@@ -24,22 +24,22 @@ with LazyImport("Run 'pip install farm-haystack[pdf]'") as fitz_import:
     import fitz
 
 
-def html_content_handler(response: Response, raise_on_failure: bool = False) -> Optional[str]:
+def html_content_handler(response: Response) -> Optional[str]:
     """
     Extracts text from HTML response text using the boilerpy3 extractor.
     :param response: Response object from the request.
-    :param raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
+    :return: The extracted text.
     """
-    extractor = extractors.ArticleExtractor(raise_on_failure=raise_on_failure)
+    extractor = extractors.ArticleExtractor(raise_on_failure=False)
     return extractor.get_content(response.text)
 
 
-def pdf_content_handler(response: Response, raise_on_failure: bool = False) -> Optional[str]:
+def pdf_content_handler(response: Response) -> Optional[str]:
     """
     Extracts text from PDF response stream using the PyMuPDF library.
 
     :param response: Response object from the request.
-    :param raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
+    :return: The extracted text.
     """
     file_path = io.BytesIO(response.content)
     with fitz.open(stream=file_path, filetype="pdf") as doc:
@@ -108,8 +108,8 @@ class LinkContentFetcher(BaseComponent):
             raise ValueError(f"handler must be a callable, but got {type(handler).__name__}")
 
         params = inspect.signature(handler).parameters
-        if len(params) != 2 or list(params.keys()) != ["response", "raise_on_failure"]:
-            raise ValueError("handler must accept exactly two parameters: 'response' and 'raise_on_failure'")
+        if len(params) != 1 or list(params.keys()) != ["response"]:
+            raise ValueError("handler must accept 'response: requests.Response' as a single parameter")
 
         self.handlers[content_type] = handler
 
@@ -138,7 +138,7 @@ class LinkContentFetcher(BaseComponent):
             extracted_content: str = ""
             handler: Callable = self._get_content_type_handler(response.headers.get("Content-Type", ""))
             try:
-                extracted_content = handler(response, self.raise_on_failure)
+                extracted_content = handler(response)
             except Exception as e:
                 if self.raise_on_failure:
                     raise e
