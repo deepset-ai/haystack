@@ -1,3 +1,4 @@
+import inspect
 import io
 import itertools
 import logging
@@ -89,9 +90,28 @@ class LinkContentFetcher(BaseComponent):
         self.user_agents = itertools.cycle(user_agents or [LinkContentFetcher.USER_AGENT])
         self.default_user_agent = next(self.user_agents)
         self.current_user_agent = self.default_user_agent
-        self.handlers: Dict[str, Callable] = {"text/html": html_content_handler}
+        self.handlers: Dict[str, Callable] = {}
+        self.register_content_handler("text/html", html_content_handler)
         if fitz_import.is_successful():
-            self.handlers["application/pdf"] = pdf_content_handler
+            self.register_content_handler("application/pdf", pdf_content_handler)
+
+    def register_content_handler(self, content_type: str, handler: Callable):
+        """
+        Register a new content handler for a specific content type.
+        If a handler for the given content type already exists, it will be overridden.
+
+        :param content_type: The content type for which the handler should be used.
+        :param handler: The handler function. This function should accept a requests.Response object and a boolean
+                        `raise_on_failure` parameter, and return the extracted text (or None).
+        """
+        if not callable(handler):
+            raise ValueError(f"handler must be a callable, but got {type(handler).__name__}")
+
+        params = inspect.signature(handler).parameters
+        if len(params) != 2 or list(params.keys()) != ["response", "raise_on_failure"]:
+            raise ValueError("handler must accept exactly two parameters: 'response' and 'raise_on_failure'")
+
+        self.handlers[content_type] = handler
 
     def fetch(self, url: str, timeout: Optional[int] = 3, doc_kwargs: Optional[dict] = None) -> List[Document]:
         """
