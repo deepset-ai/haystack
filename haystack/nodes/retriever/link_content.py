@@ -101,8 +101,8 @@ class LinkContentFetcher(BaseComponent):
         If a handler for the given content type already exists, it will be overridden.
 
         :param content_type: The content type for which the handler should be used.
-        :param handler: The handler function. This function should accept a requests.Response object and a boolean
-                        `raise_on_failure` parameter, and return the extracted text (or None).
+        :param handler: The handler function. This function should accept a requests.Response object parameter,
+        and return the extracted text (or None).
         """
         if not callable(handler):
             raise ValueError(f"handler must be a callable, but got {type(handler).__name__}")
