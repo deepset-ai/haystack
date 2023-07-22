@@ -143,20 +143,16 @@ class LinkContentFetcher(BaseComponent):
                 if self.raise_on_failure:
                     raise e
                 logger.warning("failed to extract content from %s", response.url)
+            content = extracted_content or extracted_doc.get("snippet_text", "")
+            if not content:
+                return []
             if extracted_content:
-                extracted_doc["content"] = extracted_content
                 logger.debug("%s handler extracted content from %s", handler, url)
-            else:
-                snippet_text = extracted_doc.get("snippet_text", "")
-                if snippet_text:
-                    extracted_doc["content"] = snippet_text
-            if "content" in extracted_doc:
-                document = Document.from_dict(extracted_doc)
 
-                if self.processor:
-                    fetched_documents = self.processor.process(documents=[document])
-                else:
-                    fetched_documents = [document]
+            extracted_doc["content"] = content
+            document = Document.from_dict(extracted_doc)
+            fetched_documents = self.processor.process(documents=[document]) if self.processor else [document]
+
         return fetched_documents
 
     def run(
