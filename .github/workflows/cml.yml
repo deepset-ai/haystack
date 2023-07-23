@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: get-configs
     strategy:
+      fail-fast: false
       matrix:
         config: ${{ fromJson(needs.get-configs.outputs.matrix) }}
 
@@ -50,6 +51,7 @@ jobs:
       - get-configs
       - deploy-runners
     strategy:
+      fail-fast: false
       matrix:
         config: ${{ fromJson(needs.get-configs.outputs.matrix) }}
     runs-on: ${{ matrix.config }}
