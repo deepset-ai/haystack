@@ -48,7 +48,8 @@ class RecentnessRanker(BaseRanker):
         if self.weight < 0 or self.weight > 1:
             raise NodeError(
                 """
-                Param <weight> needs to be '0', '0.5' or '1' but was set to '{}'. \n
+                Param <weight> needs to be in range [0,1] but was set to '{}'.\n
+                '0' disables sorting by recency, '0.5' gives equal weight to previous relevance scores and recency, and '1' ranks by recency only.\n
                 Please change param <weight> when initializing the RecentnessRanker.
                 """.format(
                     self.weight
