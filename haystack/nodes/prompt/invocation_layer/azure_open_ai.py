@@ -1,6 +1,7 @@
 from typing import Dict, Optional
 
 from haystack.nodes.prompt.invocation_layer.open_ai import OpenAIInvocationLayer
+from haystack.nodes.prompt.invocation_layer.utils import has_azure_parameters
 
 
 class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
@@ -42,6 +43,4 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
         addition to a list of supported models.
         """
         valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
-        return (
-            valid_model and kwargs.get("azure_base_url") is not None and kwargs.get("azure_deployment_name") is not None
-        )
+        return valid_model and has_azure_parameters(**kwargs)

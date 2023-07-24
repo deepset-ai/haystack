@@ -4,6 +4,7 @@ import os
 
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer.utils import get_task
 from haystack.lazy_imports import LazyImport
 
 
@@ -21,13 +22,19 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         GenerationConfig,
         Pipeline,
     )
-    from transformers.pipelines import get_task
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
     from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler
 
     class StopWordsCriteria(StoppingCriteria):
         """
         Stops text generation if any one of the stop words is generated.
+
+        Note: When a stop word is encountered, the generation of new text is stopped.
+        However, if the stop word is in the prompt itself, it can stop generating new text
+        prematurely after the first token. This is particularly important for LLMs designed
+        for dialogue generation. For these models, like for example mosaicml/mpt-7b-chat,
+        the output includes both the new text and the original prompt. Therefore, it's important
+        to make sure your prompt has no stop words.
         """
 
         def __init__(
@@ -37,10 +44,11 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
             device: Union[str, torch.device] = "cpu",
         ):
             super().__init__()
-            self.stop_words = tokenizer(stop_words, add_special_tokens=False, return_tensors="pt").to(device)
+            encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
+            self.stop_words = encoded_stop_words.input_ids.to(device)
 
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-            stop_result = torch.isin(self.stop_words["input_ids"], input_ids[-1])
+            stop_result = torch.isin(self.stop_words, input_ids[-1])
             return any(all(stop_word) for stop_word in stop_result)
 
 
@@ -187,7 +195,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         """
         output: List[Dict[str, str]] = []
         stop_words = kwargs.pop("stop_words", None)
-        top_k = kwargs.pop("top_k", None)
         # either stream is True (will use default handler) or stream_handler is provided for custom handler
         stream = kwargs.get("stream", self.stream)
         stream_handler = kwargs.get("stream_handler", self.stream_handler)
@@ -228,16 +235,24 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # Thus only generated text is returned (excluding prompt)
             if is_text_generation and "return_full_text" not in model_input_kwargs:
                 model_input_kwargs["return_full_text"] = False
-                model_input_kwargs["max_new_tokens"] = self.max_length
             if stop_words:
                 sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words, device=self.pipe.device)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
-            if top_k:
-                model_input_kwargs["num_return_sequences"] = top_k
-                if "num_beams" not in model_input_kwargs or model_input_kwargs["num_beams"] < top_k:
-                    if "num_beams" in model_input_kwargs:
-                        logger.warning("num_beams should not be less than top_k, hence setting it to %s", top_k)
-                    model_input_kwargs["num_beams"] = top_k
+
+            if "num_beams" in model_input_kwargs:
+                num_beams = model_input_kwargs["num_beams"]
+                if (
+                    "num_return_sequences" in model_input_kwargs
+                    and model_input_kwargs["num_return_sequences"] > num_beams
+                ):
+                    num_return_sequences = model_input_kwargs["num_return_sequences"]
+                    logger.warning(
+                        "num_return_sequences %s should not be larger than num_beams %s, hence setting it equal to num_beams",
+                        num_return_sequences,
+                        num_beams,
+                    )
+                    model_input_kwargs["num_return_sequences"] = num_beams
+
             # max_new_tokens is used for text-generation and max_length for text2text-generation
             if is_text_generation:
                 model_input_kwargs["max_new_tokens"] = model_input_kwargs.pop("max_length", self.max_length)
@@ -318,5 +333,5 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # This will fail for all non-HF models
             return False
         # if we are using an api_key it could be HF inference point
-        using_api_key = kwargs.get("api_key", None) is not None
+        using_api_key = bool(kwargs.get("api_key", None))
         return not using_api_key and task_name in ["text2text-generation", "text-generation"]

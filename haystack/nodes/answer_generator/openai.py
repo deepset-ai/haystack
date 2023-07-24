@@ -48,6 +48,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         context_join_str: str = " ",
         moderate_content: bool = False,
         api_base: str = "https://api.openai.com/v1",
+        openai_organization: Optional[str] = None,
     ):
         """
         :param api_key: Your API key from OpenAI. It is required for this node to work.
@@ -105,6 +106,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
             using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation). If the input or
             answers are flagged, an empty list is returned in place of the answers.
         :param api_base: The base URL for the OpenAI API, defaults to `"https://api.openai.com/v1"`.
+        :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see see OpenAI
+        [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         """
         super().__init__(progress_bar=progress_bar)
         if (examples is None and examples_context is not None) or (examples is not None and examples_context is None):
@@ -165,6 +168,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.context_join_str = context_join_str
         self.using_azure = self.azure_deployment_name is not None and self.azure_base_url is not None
         self.moderate_content = moderate_content
+        self.openai_organization = openai_organization
 
         tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name=self.model)
 
@@ -233,6 +237,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
             headers["api-key"] = self.api_key
         else:
             headers["Authorization"] = f"Bearer {self.api_key}"
+            if self.openai_organization:
+                headers["OpenAI-Organization"] = self.openai_organization
 
         if self.moderate_content and check_openai_policy_violation(input=prompt, headers=headers):
             logger.info("Prompt '%s' will not be sent to OpenAI due to potential policy violation.", prompt)
