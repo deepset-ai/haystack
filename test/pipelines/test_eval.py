@@ -152,7 +152,6 @@ def test_eval_pipeline(document_store, reader, retriever, samples_path):
     assert metrics_sas_cross_encoder["Reader"]["sas"] == pytest.approx(0.71063, 1e-4)
 
 
-@pytest.mark.unit
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 def test_eval_data_split_word(document_store, samples_path):
     # splitting by word
@@ -178,7 +177,6 @@ def test_eval_data_split_word(document_store, samples_path):
     assert len(set(labels[0].document_ids)) == 2
 
 
-@pytest.mark.unit
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 def test_eval_data_split_passage(document_store, samples_path):
     # splitting by passage
