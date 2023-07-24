@@ -158,9 +158,9 @@ loaded configuration file ./releasenotes/config.yaml
 Created new notes file in releasenotes/notes/bump-transformers-to-4-31-a645334d57eab673.yaml
 ```
 `reno` will create the file appending a unique id to the name of the release note you provided (in this case,
-`bump-transformers-to-4-31`), so you don't need to worry about duplicated entries, but be sure to use meaningful names
-so it's easier to find the file later. You can now edit the file to add the release note; you will find multiple
-sections along with an explanation of what they're for - normally you would need only one section, in this case you
+`bump-transformers-to-4-31`). You don't need to worry about duplicated entries, but be sure to use meaningful names
+so it's easier to find the file later. You can now edit the file to add the release note. In the file, you will find multiple
+sections along with an explanation of what they're for. Normally, you only need to fill one section; in this case, you
 would fill the `enhancements` section to describe the change:
 ```yaml
 enhancements:
