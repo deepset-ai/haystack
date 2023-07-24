@@ -85,7 +85,7 @@ def lost_in_the_middle_order(
         # concurrently with their arrangement in the "lost in the middle" order, as this dynamic layout process
         # determines the correct sequencing of the documents while respecting the word count threshold.
         if word_count_threshold and len(merged_doc_content.split()) >= word_count_threshold:
-            merged_doc_content = truncate_document(merged_doc_content, separator, word_count_threshold)
+            merged_doc_content = truncate_document(merged_doc_content, " ", word_count_threshold)
             break
 
     return merged_doc_content.strip()

@@ -185,6 +185,31 @@ def test_lost_in_the_middle_order_corner():
 
 
 @pytest.mark.unit
+def test_lost_in_the_middle_order_with_separator():
+    # tests that lost_in_the_middle order works with separator
+    dm = DocumentMerger(order="lost_in_the_middle")
+
+    docs = [Document("Hello, I have multiple words"), Document("so do I"), Document("and I as well")]
+    result, _ = dm.run(docs, separator="|")
+    assert result["documents"][0].content == "Hello, I have multiple words|and I as well|so do I"
+
+
+@pytest.mark.unit
+def test_lost_in_the_middle_order_with_separator_and_threshold():
+    # tests that lost_in_the_middle order works with separator and word_count_threshold
+    dm = DocumentMerger(order="lost_in_the_middle", word_count_threshold=4)
+
+    docs = [Document("Hello I have multiple words"), Document("so do I"), Document("and I as well")]
+    result, _ = dm.run(docs, separator="|")
+    assert result["documents"][0].content == "Hello I have multiple"
+
+    # tests that lost_in_the_middle order works with separator and word_count_threshold with joined content
+    docs = [Document("Hello"), Document("from here"), Document("as well")]
+    result, _ = dm.run(docs, separator="|")
+    assert result["documents"][0].content == "Hello|as well|from here"
+
+
+@pytest.mark.unit
 def test_document_merger_init():
     # tests that DocumentMerger initializes with default values
     dm = DocumentMerger()
