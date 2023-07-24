@@ -1,7 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../haystack/nodes/ranker]
-    modules: ["base", "sentence_transformers"]
+    modules: ["base", "sentence_transformers", "recentness_ranker"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
