@@ -419,6 +419,8 @@ EVAL_TABLE_LABELS = [
 ]
 
 
+@pytest.mark.skip(reason="Should be an end-to-end test since it uses model inferencing")
+@pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small"], indirect=True)
