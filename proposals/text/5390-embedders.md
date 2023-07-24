@@ -18,6 +18,9 @@ As decided in the previous proposals ([Embedding Retriever](3558-embedding_retri
 
 # Basic example
 
+*This code snippet is merely an example and may not be completely up-to-date.*
+
+
 ```python
 from haystack import Pipeline
 from haystack.components import (
@@ -80,9 +83,9 @@ There have been much discussion about this point.
 
 We make three classes:
 
-- A `BasicEmbedder`, which is NOT a component, handling raw data + a factory method to reuse instances
+- A `_BasicEmbedder`, which is NOT a component, handling raw data + a factory method to reuse instances. **This class is for internal use only. It will never be user-facing.**
 ```python
-class HFBasicEmbedder:
+class _HFBasicEmbedder:
     """
     NOT A COMPONENT!
     """
@@ -114,7 +117,7 @@ class HFBasicEmbedder:
         return embedding
 
 
-class OpenAIEmbedder:
+class _OpenAIEmbedder:
     ... same as above ...
 ```
 
@@ -122,7 +125,8 @@ Given that Embedders are created through a factory method, when you request an i
 
 This makes model reusability automatic in all cases, which can save lots of memory without asking the user to think about it.
 
-- A `(Text/Table/Image/Audio)Embedder` component that does nothing but “wrapping” an Embedder
+- A `(Text/Table/Image/Audio)Embedder` component that does nothing but “wrapping” an _Embedder.
+**Part of the public API**.
 ```python
 @component
 class HFTextEmbedder:
@@ -138,13 +142,14 @@ class HFTextEmbedder:
         self.model_params = ... params ...
 
     def warm_up(self):
-        self.embedder = HFBasicEmbedder(self.model_name, **self.model_params)
+        self.embedder = _HFBasicEmbedder(self.model_name, **self.model_params)
 
     def run(self, data):
         return self.output(self.embedder.embed(data.data))
 ```
 
-- A DocumentEmbedder component that handles the documents and the offloads the computation to an embedder
+- A DocumentEmbedder component that handles the documents and the offloads the computation to an embedder.
+**Part of the public API**.
 
 ```python
 @component
