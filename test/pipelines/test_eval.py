@@ -63,6 +63,53 @@ def test_summarizer_calculate_metrics(
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+@pytest.mark.parametrize("batch_size", [None, 20])
+def test_add_eval_data(document_store, batch_size, samples_path):
+    # add eval data (SQUAD format)
+    document_store.add_eval_data(
+        filename=samples_path / "squad" / "small.json",
+        doc_index=document_store.index,
+        label_index=document_store.label_index,
+        batch_size=batch_size,
+    )
+
+    assert document_store.get_document_count() == 87
+    assert document_store.get_label_count() == 1214
+
+    # test documents
+    docs = document_store.get_all_documents(filters={"name": ["Normans"]})
+    assert docs[0].meta["name"] == "Normans"
+    assert len(docs[0].meta.keys()) == 1
+
+    # test labels
+    labels = document_store.get_all_labels()
+    label = None
+    for l in labels:
+        if l.query == "In what country is Normandy located?":
+            label = l
+            break
+    assert label.answer.answer == "France"
+    assert label.no_answer == False
+    assert label.is_correct_answer == True
+    assert label.is_correct_document == True
+    assert label.query == "In what country is Normandy located?"
+    assert label.origin == "gold-label"
+    assert label.answer.offsets_in_document[0].start == 159
+    assert (
+        label.answer.context[label.answer.offsets_in_context[0].start : label.answer.offsets_in_context[0].end]
+        == "France"
+    )
+    assert label.answer.document_ids == [label.document.id]
+
+    # check combination
+    doc = document_store.get_document_by_id(label.document.id)
+    start = label.answer.offsets_in_document[0].start
+    end = label.answer.offsets_in_document[0].end
+    assert end == start + len(label.answer.answer)
+    assert doc.content[start:end] == "France"
+
+
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
 def test_eval_reader(reader, document_store, use_confidence_scores, samples_path):
