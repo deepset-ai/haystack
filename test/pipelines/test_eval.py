@@ -2141,8 +2141,43 @@ def test_load_evaluation_result(tmp_path):
         )
 
     eval_result = EvaluationResult.load(tmp_path)
+    known_result = {
+        "multilabel_id": {0: "ddc1562602f2d6d895b91e53f83e4c16"},
+        "query": {0: "who is written in the book of life"},
+        "filters": {0: b"null"},
+        "gold_answers": {
+            0: [
+                "every person who is destined for Heaven or the World to Come",
+                "all people considered righteous before God",
+            ]
+        },
+        "answer": {0: None},
+        "context": {0: None},
+        "exact_match": {0: 0.0},
+        "f1": {0: 0.0},
+        "exact_match_context_scope": {0: 0.0},
+        "f1_context_scope": {0: 0.0},
+        "exact_match_document_id_scope": {0: 0.0},
+        "f1_document_id_scope": {0: 0.0},
+        "exact_match_document_id_and_context_scope": {0: 0.0},
+        "f1_document_id_and_context_scope": {0: 0.0},
+        "gold_contexts": {0: ["Book of Life - wikipedia Book of Life Jump to: navigation, search..."]},
+        "rank": {0: 1.0},
+        "document_ids": {0: None},
+        "gold_document_ids": {0: ["de2fd2f109e11213af1ea189fd1488a3-0", "de2fd2f109e11213af1ea189fd1488a3-0"]},
+        "offsets_in_document": {0: [{"start": 0, "end": 0}]},
+        "gold_offsets_in_documents": {0: [{"start": 374, "end": 434}, {"start": 1107, "end": 1149}]},
+        "offsets_in_context": {0: [{"start": 0, "end": 0}]},
+        "gold_offsets_in_contexts": {0: [{"start": 374, "end": 434}, {"start": 1107, "end": 1149}]},
+        "gold_answers_exact_match": {0: [0, 0]},
+        "gold_answers_f1": {0: [0, 0]},
+        "gold_documents_id_match": {0: [0.0, 0.0]},
+        "gold_contexts_similarity": {0: [0.0, 0.0]},
+        "type": {0: "answer"},
+        "node": {0: "Reader"},
+        "eval_mode": {0: "integrated"},
+        "index": {0: None},
+    }
     assert "Reader" in eval_result
     assert len(eval_result) == 1
-    assert eval_result["Reader"].iloc[0].answer is None
-    assert eval_result["Reader"].iloc[0].context is None
-    assert eval_result["Reader"].iloc[0].document_ids is None
+    assert eval_result["Reader"].to_dict() == known_result
