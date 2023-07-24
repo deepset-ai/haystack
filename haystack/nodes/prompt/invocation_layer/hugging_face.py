@@ -221,10 +221,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                     "num_return_sequences",
                     "max_length",
                     "temperature",
-                    "eos_token_id",
-                    "pad_token_id",
-                    "stopping_criteria",
-                    "use_cache",
                     "top_p",
                     "top_k",
                 ]
