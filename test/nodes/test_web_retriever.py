@@ -205,7 +205,7 @@ def test_retrieve_uses_cache():
     # checking cache is always called
     mock_check_cache.assert_called()
 
-    # not called because we found docs in cache
+    # these methods are not called because we found docs in cache
     mock_retrieve_from_web.assert_not_called()
     mock_save_cache.assert_not_called()
 
