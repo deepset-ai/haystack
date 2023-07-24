@@ -4,6 +4,7 @@
 
 import logging
 import inspect
+from typing import Union, get_origin, get_args
 from functools import wraps
 
 from canals.errors import ComponentError
@@ -139,55 +140,16 @@ class _Component:
                         f"Input type {type(value)} for value '{key}' doesn't match the one declared in "
                         f"component.set_input_types() ({types[key]}))"
                     )
-                if (
-                    key not in kwargs
-                    and key in wrapper.__canals_io__.get("input_types", {})
-                    and wrapper.__canals_io__["input_types"][key]["default"] is not inspect.Parameter.empty
-                ):
-                    kwargs[key] = wrapper.__canals_io__["input_types"][key]["default"]
             return run_method(**kwargs)
 
         # Store the input types in the run method
         wrapper.__canals_io__ = getattr(instance.run, "__canals_io__", {})
         wrapper.__canals_io__["input_types"] = {
-            name: {"name": name, "type": type_, "default": inspect.Parameter.empty} for name, type_ in types.items()
+            name: {"name": name, "type": type_, "is_optional": _is_optional(type_)} for name, type_ in types.items()
         }
 
         # Assigns the wrapped method to the instance's run()
         instance.run = wrapper
-
-    def set_input_defaults(self, instance, **defaults):
-        """
-        Method that assigns default values to the kwargs of the run method.
-
-        Use as:
-
-        ```python
-        @component
-        class MyComponent:
-
-            def __init__(self, value: int):
-                component.set_input_types(value_1=str, value_2=str)  # You must call this one first.
-                component.set_input_defaults(value_1="hello", value_2="there")
-                ...
-
-            @component.output_types(output_1=int, output_2=str)
-            def run(self, **kwargs):
-                return {"output_1": kwargs["value_1"], "output_2": ""}
-        ```
-        """
-        if defaults and not (hasattr(instance.run, "__canals_io__") and instance.run.__canals_io__.get("input_types")):
-            raise ComponentError(
-                "You must call component.set_input_types() before component.set_input_defaults() "
-                f"in {instance.__class__.__name__}.__init__"
-            )
-
-        # Store the input defaults in the run method
-        for key, default in defaults.items():
-            if key in instance.run.__canals_io__["input_types"]:
-                instance.run.__canals_io__["input_types"][key]["default"] = default
-            else:
-                raise ComponentError(f"Input value '{key}' not declared in component.set_input_types()")
 
     def set_output_types(self, instance, **types):
         """
@@ -301,7 +263,7 @@ class _Component:
             param: {
                 "name": param,
                 "type": run_signature.parameters[param].annotation,
-                "default": run_signature.parameters[param].default,
+                "is_optional": _is_optional(run_signature.parameters[param].annotation),
             }
             for param in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
         }
@@ -332,3 +294,10 @@ class _Component:
 
 
 component = _Component()
+
+
+def _is_optional(type_: type) -> bool:
+    """
+    Utility method that returns whether a type is Optional.
+    """
+    return get_origin(type_) is Union and type(None) in get_args(type_)

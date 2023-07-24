@@ -4,7 +4,6 @@
 from typing import Literal, Optional, Dict, get_args, Any
 
 import logging
-import inspect
 from pathlib import Path
 
 import networkx
@@ -97,10 +96,11 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph, style_map: Dict[str, str]
     graph.add_node("input")
     for node, in_sockets in _find_pipeline_inputs(graph).items():
         for in_socket in in_sockets:
-            socket_has_default = in_socket.default is not inspect.Parameter.empty
-            if not socket_has_default and in_socket.sender is None:
-                # If this socket has no defaults and no other component sends anything to it
-                # it must be a socket that receives input directly when running the Pipeline
+            if in_socket.is_optional and in_socket.sender is None:
+                # If this socket is optional and no other component sends anything to it
+                # it could be a socket that receives input directly when running the Pipeline.
+                # Even if it will receive input from another component, we still draw it as receiving
+                # input directly, because we don't know if the other component will be connected to it.
                 graph.add_edge("input", node, label=in_socket.name, conn_type=get_socket_type_desc(in_socket.type))
 
     # Draw the outputs

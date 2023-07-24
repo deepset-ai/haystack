@@ -5,7 +5,6 @@ from typing import Optional, Any, Dict, List, Literal, Union
 
 import os
 import json
-import inspect
 import datetime
 import logging
 from pathlib import Path
@@ -505,14 +504,10 @@ class Pipeline:
         # All components inputs, whether they're connected, default or pipeline inputs
         input_sockets: Dict[str, InputSocket] = self.graph.nodes[name]["input_sockets"].keys()
         optional_input_sockets = {
-            socket.name
-            for socket in self.graph.nodes[name]["input_sockets"].values()
-            if socket.default is not inspect.Parameter.empty
+            socket.name for socket in self.graph.nodes[name]["input_sockets"].values() if socket.is_optional
         }
         mandatory_input_sockets = {
-            socket.name
-            for socket in self.graph.nodes[name]["input_sockets"].values()
-            if socket.default is inspect.Parameter.empty
+            socket.name for socket in self.graph.nodes[name]["input_sockets"].values() if not socket.is_optional
         }
 
         # Components that are in the inputs buffer and have no inputs assigned are considered skipped

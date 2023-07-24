@@ -87,6 +87,7 @@ end note
 
 comp1 --> comp2 : result -> value  <small><i>(int)</i></small>
 comp2 --> comp1 : value -> value  <small><i>(int)</i></small>
+[*] --> comp1 : add  <small><i>(Optional[int])</i></small>
 
 classDef components text-align:center;
 """

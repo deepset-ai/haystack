@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 import base64
-import inspect
 import json
 
 import requests
@@ -84,7 +83,7 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
             [
                 f"{name} <small><i>{get_socket_type_desc(socket.type)}</i></small>"
                 for name, socket in data.get("input_sockets", {}).items()
-                if socket.default is not inspect.Parameter.empty
+                if socket.is_optional and socket.sender is None
             ]
         )
         for comp, data in graph.nodes(data=True)

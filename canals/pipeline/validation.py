@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import List, Dict, Any
 import logging
-import inspect
 
 import networkx
 
@@ -66,14 +65,13 @@ def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_va
     valid_inputs = _find_pipeline_inputs(graph)
     for node, sockets in valid_inputs.items():
         for socket in sockets:
-            input_in_node_defaults = socket.default is not inspect.Parameter.empty
             inputs_for_node = input_values.get(node, {})
             missing_input_value = (
                 not inputs_for_node
                 or not socket.name in inputs_for_node.keys()
                 or not inputs_for_node.get(socket.name, None)
             )
-            if missing_input_value and not input_in_node_defaults:
+            if missing_input_value and not socket.is_optional:
                 raise ValueError(f"Missing input: {node}.{socket.name}")
 
 
