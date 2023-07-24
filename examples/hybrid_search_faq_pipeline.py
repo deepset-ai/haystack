@@ -1,4 +1,4 @@
-import logging
+# import logging
 
 import pandas as pd
 
@@ -8,8 +8,8 @@ from haystack.nodes.other.docs2answers import Docs2Answers
 from haystack.utils import launch_es, print_answers, fetch_archive_from_http
 from haystack.pipelines import Pipeline
 
-logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
-logging.getLogger("haystack").setLevel(logging.INFO)
+# logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+# logging.getLogger("haystack").setLevel(logging.INFO)
 
 
 def hybrid_search_faq_pipeline():
