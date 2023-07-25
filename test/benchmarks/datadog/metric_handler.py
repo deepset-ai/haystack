@@ -3,7 +3,7 @@ import os
 from time import time
 from typing import Dict, List, Optional
 
-from datadog import api, initialize
+import datadog
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_fixed
 import logging
 
@@ -137,10 +137,10 @@ class MetricsAPI:
             "api_host": os.getenv("DD_HOST"),
         }
 
-        initialize(**options)
+        datadog.initialize(**options)
         tags: List[str] = list(map(lambda t: str(t.value), metric.tags))
 
-        post_metric_response: Dict = api.Metric.send(
+        post_metric_response: Dict = datadog.api.Metric.send(
             metric=metric.name, points=[metric.timestamp, metric.value], tags=tags
         )
 
