@@ -1077,12 +1077,13 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
         # Retrieval via custom query
-        elif custom_query:  # substitute placeholder for query and filters for the custom_query template string
+        elif custom_query:
             template = Template(custom_query)
-            # replace all "${query}" placeholder(s) with query
-            substitutions = {"query": json.dumps(query)}
-            if filters:
-                substitutions["filters"] = json.dumps(LogicalFilterClause.parse(filters).convert_to_elasticsearch())
+            # substitute placeholder for query and filters for the custom_query template string
+            substitutions = {
+                "query": json.dumps(query),
+                "filters": json.dumps(LogicalFilterClause.parse(filters or {}).convert_to_elasticsearch()),
+            }
             custom_query_json = template.substitute(**substitutions)
             body = json.loads(custom_query_json)
             # add top_k

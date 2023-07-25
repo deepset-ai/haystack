@@ -217,12 +217,19 @@ class SearchEngineDocumentStoreTestAbstract:
         ds.write_documents(documents)
         custom_query = """
             {
-                "size": 10,
                 "query": {
                     "bool": {
                         "should": [{
                             "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
-                            "filter": ${filters}}}}"""
+                        "filter": ${filters}
+                    }
+                }
+            }
+        """
+
+        results = ds.query(query="test", custom_query=custom_query)
+        assert len(results) == 5
+
         results = ds.query(query="test", filters={"year": ["2020", "2021"]}, custom_query=custom_query)
         assert len(results) == 4
 
