@@ -3,6 +3,9 @@ name: benchmarks
 on:
   workflow_dispatch:
 
+env:
+  AWS_REGION: eu-central-1
+
 jobs:
   deploy-runner:
     runs-on: ubuntu-latest
@@ -12,18 +15,20 @@ jobs:
 
       - uses: iterative/setup-cml@v1
 
+      - name: AWS authentication
+        uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
+          
       - name: deploy
         env:
           repo_token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_CI_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_SECRET_ACCESS_KEY }}
-          AWS_CML_SECURITY_GROUP: ${{ secrets.AWS_CML_SECURITY_GROUP }}
         run: |
           cml runner launch \
           --cloud aws \
-          --cloud-region eu-central-1 \
+          --cloud-region ${{ env.AWS_REGION }} \
           --cloud-type=p3.2xlarge \
-          --cloud-aws-security-group="$AWS_CML_SECURITY_GROUP" \
           --labels=cml
 
   run-benchmarks:
