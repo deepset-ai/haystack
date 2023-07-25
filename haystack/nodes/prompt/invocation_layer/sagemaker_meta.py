@@ -224,10 +224,11 @@ class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
         generated_texts = self._post(prompt=prompt, params=params)
         return generated_texts
 
-    def _post(self, prompt: str, params: Optional[Dict[str, Any]] = None) -> List[str]:
+    def _post(self, prompt: Any, params: Optional[Dict[str, Any]] = None) -> List[str]:
         """
-        Post data to the SageMaker inference model. It takes in a prompt and returns a list of responses using model invocation.
-        :param prompt: The prompt text to be sent to the model.
+        Post data to the SageMaker inference model. It takes in a prompt and returns a list of responses using model
+        invocation.
+        :param prompt: The prompt text/messages to be sent to the model.
         :param params: The parameters to be sent to the Meta model.
         :return: The generated responses as a list of strings.
         """
