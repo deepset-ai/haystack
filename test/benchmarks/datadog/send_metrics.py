@@ -1,6 +1,22 @@
 import os
 import json
-from metric_handler import *
+
+from metric_handler import (
+    ReaderModelTags,
+    NoneTag,
+    RetrieverModelTags,
+    DocumentStoreModelTags,
+    BenchmarkType,
+    LOGGER,
+    DatasetSizeTags,
+    IndexingDocsPerSecond,
+    QueryingExactMatchMetric,
+    QueryingF1Metric,
+    QueryingRecallMetric,
+    QueryingSecondsPerQueryMetric,
+    QueryingMapMetric,
+    MetricsAPI,
+)
 
 
 def parse_benchmark_files(folder_path):
@@ -15,11 +31,6 @@ def parse_benchmark_files(folder_path):
                 if indexing_metrics.get("error") is None and querying_metrics.get("error") is None:
                     metrics[filename.split(".json")[0]] = {"indexing": indexing_metrics, "querying": querying_metrics}
     return metrics
-
-
-# Usage example
-folder_path = "out"
-benchmark_metrics = parse_benchmark_files(folder_path)
 
 
 def get_model_tag(querying_metrics):
@@ -80,8 +91,9 @@ def get_benchmark_type_tag(model_tag, retriever_tag, document_store_tag):
     return NoneTag.none
 
 
+folder_path = "out"
+benchmark_metrics = parse_benchmark_files(folder_path)
 metrics_to_send_to_dd = []
-
 for benchmark_name, metrics in benchmark_metrics.items():
     indexing_metrics = metrics["indexing"]
     querying_metrics = metrics["querying"]
