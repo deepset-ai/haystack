@@ -2,7 +2,41 @@
 upgrade:
   - |
     The old filter placeholders for ``custom_query`` are no longer supported.
-    Replace your custom filter expressions with the new ``${filters}`` placeholder.
+    Replace your custom filter expressions with the new ``${filters}`` placeholder:
+    **Old:**
+    ```python
+      {
+          "query": {
+              "bool": {
+                  "should": [{"multi_match": {
+                      "query": ${query},                 // mandatory query placeholder
+                      "type": "most_fields",
+                      "fields": ["content", "title"]}}
+                  ],
+                  "filter": [                                 // optional custom filters
+                      {"terms": {"year": ${years}}},
+                      {"terms": {"quarter": ${quarters}}},
+                      {"range": {"date": {"gte": ${date}}}}
+                  ]
+              }
+          },
+      }
+    ```
+    **New:**
+    ```python
+      {
+          "query": {
+              "bool": {
+                  "should": [{"multi_match": {
+                      "query": ${query},                 // mandatory query placeholder
+                      "type": "most_fields",
+                      "fields": ["content", "title"]}}
+                  ],
+                  "filter": ${filters}                 // optional filters placeholder
+              }
+          },
+      }
+    ```
 features:
   - |
     When using ``custom_query`` in ``BM25Retriever`` along with one of ``OpenSearch``
@@ -13,16 +47,16 @@ features:
     your ``custom_query``.
     **For example:**
     ```python
-    {
-        "query": {
-            "bool": {
-                "should": [{"multi_match": {
-                    "query": ${query},                 // mandatory query placeholder
-                    "type": "most_fields",
-                    "fields": ["content", "title"]}}
-                ],
-                "filter": ${filters}                 // optional filters placeholder
-            }
-        },
-    }
+      {
+          "query": {
+              "bool": {
+                  "should": [{"multi_match": {
+                      "query": ${query},                 // mandatory query placeholder
+                      "type": "most_fields",
+                      "fields": ["content", "title"]}}
+                  ],
+                  "filter": ${filters}                 // optional filters placeholder
+              }
+          },
+      }
     ```
