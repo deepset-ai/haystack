@@ -1,31 +1,11 @@
 name: benchmarks
 
 on:
-  schedule:
-    - cron: '0 0 * * 0' # Run every Sunday at 00:00
   workflow_dispatch:
 
 jobs:
-  get-configs:
+  deploy-runner:
     runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - id: set-matrix
-        run: |
-          CONFIGS=$(find test/benchmarks/configs -type f -name "*.yml" | sed 's/test\/benchmarks\/configs\///' | jq -R -s -c 'split("\n")[:-1]')
-          echo "matrix=$CONFIGS" >> "$GITHUB_OUTPUT"
-
-  deploy-runners:
-    runs-on: ubuntu-latest
-    needs: get-configs
-    strategy:
-      fail-fast: false
-      matrix:
-        config: ${{ fromJson(needs.get-configs.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v3
@@ -41,20 +21,14 @@ jobs:
         run: |
           cml runner launch \
           --cloud aws \
-          --cloud-region us-east-1 \
+          --cloud-region eu-central-1 \
           --cloud-type=p3.2xlarge \
           --cloud-aws-security-group="$AWS_CML_SECURITY_GROUP" \
-          --labels=${{ matrix.config }}
+          --labels=cml
 
   run-benchmarks:
-    needs:
-      - get-configs
-      - deploy-runners
-    strategy:
-      fail-fast: false
-      matrix:
-        config: ${{ fromJson(needs.get-configs.outputs.matrix) }}
-    runs-on: ${{ matrix.config }}
+    needs: deploy-runner
+    runs-on: [self-hosted, cml]
     container:
       image: docker://iterativeai/cml:0-dvc2-base1-gpu
       options: --gpus all
@@ -66,8 +40,17 @@ jobs:
 
       - name: Run benchmarks
         run: |
+          cd tests/benchmarks
           mkdir +p out
-          python run_benchmark.py --config ${{ matrix.config }} --output out/${{ matrix.config }}.json
+          for f in ./configs/**/*.yml; do
+            echo "kill docker containers"
+            docker kill "$(docker ps -q)"
+            name="${f%.*}"
+            echo "=== Running benchmarks for $name ===";
+            config_name="$(basename "$name")"
+            python run.py --output "out/$config_name.json" "$f";
+            echo "=== Benchmarks done for $name (or failed) ===";
+          done
 
       - name: Send Benchmark results to Datadog
         run: |
