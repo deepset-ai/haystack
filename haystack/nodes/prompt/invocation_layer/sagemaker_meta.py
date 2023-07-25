@@ -166,22 +166,18 @@ class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
     def invoke(self, *args, **kwargs) -> List[str]:
         """
         Sends the prompt to the remote model and returns the generated response(s).
-        You can pass all parameters supported by the Huggingface Transformers `generate` method
-        here via **kwargs (e.g. "temperature", ...).
 
         :return: The generated responses from the model as a list of strings.
         """
         prompt: Any = kwargs.get("prompt")
-        if not prompt:
+        if not prompt or not isinstance(prompt, (str, list)):
             raise ValueError(
                 f"No prompt provided. Model {self.model_name_or_path} requires prompt."
                 f"Make sure to provide a prompt in the format that the model expects."
             )
 
-        # this is the format for chat model variants
-        allowed_roles = {"user", "assistant", "system"}
-
         def is_proper_format(chat):
+            allowed_roles = {"user", "assistant", "system"}
             return all([isinstance(chat, dict), "role" in chat, "content" in chat, chat["role"] in allowed_roles])
 
         proper_chat_format = all(
@@ -194,11 +190,8 @@ class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
                 ),
             ]
         )
-        # this is the format for instruction following model variants
-        proper_instruction_format = isinstance(prompt, str)
 
-        proper_prompt_format = proper_chat_format or proper_instruction_format
-        if not proper_prompt_format:
+        if not (proper_chat_format or isinstance(prompt, str)):
             raise ValueError(
                 f"The prompt format is different than what the model expects. "
                 f"The model {self.model_name_or_path} requires either a string or messages in the specific chat format. "

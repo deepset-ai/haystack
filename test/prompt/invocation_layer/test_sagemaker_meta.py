@@ -86,7 +86,7 @@ def test_invoke_with_stop_words(mock_auto_tokenizer, mock_boto3_session):
     SageMakerMetaInvocationLayer does not support stop words, they'll be ignored
     """
     stop_words = ["but", "not", "bye"]
-    layer = SageMakerMetaInvocationLayer(model_name_or_path="some_model", api_key="fake_key")
+    layer = SageMakerMetaInvocationLayer(model_name_or_path="some_model")
     with patch("haystack.nodes.prompt.invocation_layer.SageMakerMetaInvocationLayer._post") as mock_post:
         # Mock the response, need to return a list of dicts
         mock_post.return_value = MagicMock(text='[{"generated_text": "Hello"}]')
@@ -340,6 +340,63 @@ def test_format_custom_attributes_with_int_value():
     attributes = {"key1": 1, "key2": 2}
     expected_output = "key1=1;key2=2"
     assert SageMakerMetaInvocationLayer.format_custom_attributes(attributes) == expected_output
+
+
+@pytest.mark.unit
+def test_invoke_chat_format(mock_auto_tokenizer, mock_boto3_session):
+    # test the format of the chat, no exception should be raised
+    layer = SageMakerMetaInvocationLayer(model_name_or_path="some_fake_model")
+    prompt = [[{"role": "user", "content": "Hello"}]]
+    expected_response = [[{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hello there"}]]
+
+    with patch("haystack.nodes.prompt.invocation_layer.sagemaker_meta.SageMakerMetaInvocationLayer._post") as mock_post:
+        mock_post.return_value = expected_response
+        layer.invoke(prompt=prompt)
+
+
+@pytest.mark.unit
+def test_invoke_invalid_chat_format(mock_auto_tokenizer, mock_boto3_session):
+    # test the invalid format of the chat, should raise an exception
+    layer = SageMakerMetaInvocationLayer(model_name_or_path="some_fake_model")
+    prompt = [{"roe": "user", "cotent": "Hello"}]
+    expected_response = [[{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hello there"}]]
+
+    with patch("haystack.nodes.prompt.invocation_layer.sagemaker_meta.SageMakerMetaInvocationLayer._post") as mock_post:
+        mock_post.return_value = expected_response
+        with pytest.raises(ValueError, match="The prompt format is different than what the model expects"):
+            layer.invoke(prompt=prompt)
+
+
+@pytest.mark.unit
+def test_invoke_instruction_format(mock_auto_tokenizer, mock_boto3_session):
+    # test the format of the prompt instruction, no exception should be raised
+    layer = SageMakerMetaInvocationLayer(model_name_or_path="some_fake_model")
+    with patch("haystack.nodes.prompt.invocation_layer.sagemaker_meta.SageMakerMetaInvocationLayer._post") as mock_post:
+        mock_post.return_value = ["Hello there"]
+        layer.invoke(prompt="Hello")
+
+
+@pytest.mark.unit
+def test_invoke_empty_prompt(mock_auto_tokenizer, mock_boto3_session):
+    layer = SageMakerMetaInvocationLayer(model_name_or_path="some_fake_model")
+    with pytest.raises(ValueError):
+        layer.invoke(prompt="")
+
+
+@pytest.mark.unit
+def test_invoke_improper_chat_format(mock_auto_tokenizer, mock_boto3_session):
+    layer = SageMakerMetaInvocationLayer(model_name_or_path="some_fake_model")
+    prompt = [[{"role": "user", "conten": "Hello"}]]
+    with pytest.raises(ValueError, match="The prompt format is different than what the model expects"):
+        layer.invoke(prompt=prompt)
+
+
+@pytest.mark.unit
+def test_invoke_improper_instruction_format(mock_auto_tokenizer, mock_boto3_session):
+    layer = SageMakerMetaInvocationLayer(model_name_or_path="some_fake_model")
+    prompt = 123
+    with pytest.raises(ValueError):
+        layer.invoke(prompt=prompt)
 
 
 @pytest.mark.skipif(
