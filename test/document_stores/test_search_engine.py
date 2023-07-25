@@ -205,6 +205,35 @@ class SearchEngineDocumentStoreTestAbstract:
         labels = ds.get_all_labels()
         assert labels[0].meta["version"] == "2023.1"
 
+    @pytest.mark.integration
+    def test_custom_query(self, ds: SearchEngineDocumentStore):
+        documents = [
+            {"content": "test_1", "meta": {"year": "2019"}},
+            {"content": "test_2", "meta": {"year": "2020"}},
+            {"content": "test_3", "meta": {"year": "2021"}},
+            {"content": "test_4", "meta": {"year": "2021"}},
+            {"content": "test_5", "meta": {"year": "2021"}},
+        ]
+        ds.write_documents(documents)
+        custom_query = """
+            {
+                "size": 10,
+                "query": {
+                    "bool": {
+                        "should": [{
+                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
+                            "filter": ${filters}}}}"""
+        results = ds.query(query="test", filters={"year": ["2020", "2021"]}, custom_query=custom_query)
+        assert len(results) == 4
+
+        # test linefeeds in query
+        results = ds.query(query="test\n", filters={"year": ["2021"]}, custom_query=custom_query)
+        assert len(results) == 3
+
+        # test double quote in query
+        results = ds.query(query='test"', filters={"year": ["2021"]}, custom_query=custom_query)
+        assert len(results) == 3
+
 
 @pytest.mark.document_store
 class TestSearchEngineDocumentStore:

@@ -21,7 +21,7 @@ except (ImportError, ModuleNotFoundError) as ie:
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
 
-from haystack.document_stores.base import BaseDocumentStore, FilterType
+from haystack.document_stores.base import BaseDocumentStore, FilterType, KeywordDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
@@ -268,59 +268,25 @@ def test_embed_meta_fields_list_with_one_item():
     assert docs_with_embedded_meta[0].content == "one_item\nMy name is Matteo and I live in Rome"
 
 
-@pytest.mark.elasticsearch
-def test_elasticsearch_custom_query():
-    client = Elasticsearch()
-    client.indices.delete(index="haystack_test_custom", ignore=[404])
-    document_store = ElasticsearchDocumentStore(
-        index="haystack_test_custom", content_field="custom_text_field", embedding_field="custom_embedding_field"
-    )
-    documents = [
-        {"content": "test_1", "meta": {"year": "2019"}},
-        {"content": "test_2", "meta": {"year": "2020"}},
-        {"content": "test_3", "meta": {"year": "2021"}},
-        {"content": "test_4", "meta": {"year": "2021"}},
-        {"content": "test_5", "meta": {"year": "2021"}},
-    ]
-    document_store.write_documents(documents)
+@pytest.mark.unit
+def test_custom_query():
+    mock_document_store = Mock(spec=KeywordDocumentStore)
+    mock_document_store.index = "test"
 
-    # test custom "terms" query
-    retriever = BM25Retriever(
-        document_store=document_store,
-        custom_query="""
+    custom_query = """
             {
                 "size": 10,
                 "query": {
                     "bool": {
                         "should": [{
-                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
-                            "filter": [{"terms": {"year": ${years}}}]}}}""",
-    )
-    results = retriever.retrieve(query="test", filters={"years": ["2020", "2021"]})
-    assert len(results) == 4
+                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["custom_text_field"]}}],
+                            "filter": ${filters}}}}"""
 
-    # test linefeeds in query
-    results = retriever.retrieve(query="test\n", filters={"years": ["2020", "2021"]})
-    assert len(results) == 3
-
-    # test double quote in query
-    results = retriever.retrieve(query='test"', filters={"years": ["2020", "2021"]})
-    assert len(results) == 3
-
-    # test custom "term" query
-    retriever = BM25Retriever(
-        document_store=document_store,
-        custom_query="""
-                {
-                    "size": 10,
-                    "query": {
-                        "bool": {
-                            "should": [{
-                                "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
-                                "filter": [{"term": {"year": ${years}}}]}}}""",
-    )
-    results = retriever.retrieve(query="test", filters={"years": "2021"})
-    assert len(results) == 3
+    retriever = BM25Retriever(document_store=mock_document_store, custom_query=custom_query)
+    retriever.retrieve(query="test", filters={"year": ["2020", "2021"]})
+    assert mock_document_store.query.call_args.kwargs["custom_query"] == custom_query
+    assert mock_document_store.query.call_args.kwargs["filters"] == {"year": ["2020", "2021"]}
+    assert mock_document_store.query.call_args.kwargs["query"] == "test"
 
 
 @pytest.mark.integration
