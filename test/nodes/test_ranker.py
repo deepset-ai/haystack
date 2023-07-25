@@ -1,11 +1,16 @@
 import pytest
 import math
+import warnings
+import logging
+import copy
 from unittest.mock import patch
 
+import torch
 from haystack.schema import Document
 from haystack.nodes.ranker.base import BaseRanker
 from haystack.nodes.ranker import SentenceTransformersRanker, CohereRanker
-from haystack.errors import HaystackError
+from haystack.nodes.ranker.recentness_ranker import RecentnessRanker
+from haystack.errors import HaystackError, NodeError
 
 
 @pytest.fixture
@@ -50,6 +55,52 @@ def mock_cohere_post():
             text='{"id":"73701fd4-fe30-4007-9698-e960a51b19b4","results":[{"index":4,"relevance_score":0.9937345},{"index":3,"relevance_score":0.2232077},{"index":0,"relevance_score":0.006538825},{"index":2,"relevance_score":0.002278331},{"index":1,"relevance_score":0.000035633544}],"meta":{"api_version":{"version":"1"}}}'
         )
         yield cohere_post
+
+
+@pytest.fixture
+def mock_transformer_tokenizer():
+    class Features(dict):
+        def to(self, arg):
+            return self
+
+    class Tokenizer:
+        def __call__(self, *args, **kwargs):
+            return Features(
+                {
+                    "input_ids": torch.zeros([5, 162]),
+                    "token_type_ids": torch.zeros([5, 162], dtype=torch.long),
+                    "attention_mask": torch.zeros([5, 162], dtype=torch.long),
+                }
+            )
+
+    with patch("transformers.AutoTokenizer.from_pretrained") as mock_tokenizer:
+        mock_tokenizer.return_value = Tokenizer()
+        yield mock_tokenizer
+
+
+@pytest.fixture
+def mock_transformer_model():
+    class Logits:
+        def __init__(self, logits):
+            self.logits = logits
+
+    class Model:
+        def __init__(self):
+            self.logits = torch.tensor([[-9.7414], [-11.1572], [-11.1708], [-11.1515], [5.2571]])
+            self.num_labels = 1
+
+        def __call__(self, *args, **kwargs):
+            return Logits(logits=self.logits)
+
+        def eval(self):
+            return self
+
+        def to(self, arg):
+            return self
+
+    with patch("transformers.AutoModelForSequenceClassification.from_pretrained") as mock_model:
+        mock_model.return_value = Model()
+        yield mock_model
 
 
 @pytest.mark.unit
@@ -109,19 +160,102 @@ def test_ranker_get_batches():
     assert next(batches) == (all_queries[0:1], all_docs[0:1])
 
 
-def test_ranker(ranker, docs):
+@pytest.mark.unit
+def test_add_meta_fields_to_docs():
+    docs = [
+        Document(
+            content="dummy doc 1",
+            meta={
+                "str_field": "test1",
+                "empty_str_field": "",
+                "numeric_field": 2.0,
+                "list_field": ["item0.1", "item0.2"],
+                "empty_list_field": [],
+            },
+        ),
+        Document(
+            content="dummy doc 2",
+            meta={
+                "str_field": "test2",
+                "empty_str_field": "",
+                "numeric_field": 5.0,
+                "list_field": ["item1.1", "item1.2"],
+                "empty_list_field": [],
+            },
+        ),
+    ]
+    with patch("haystack.nodes.ranker.sentence_transformers.SentenceTransformersRanker.__init__") as mock_ranker_init:
+        mock_ranker_init.return_value = None
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
+    docs_with_meta = ranker._add_meta_fields_to_docs(
+        documents=docs,
+        embed_meta_fields=["str_field", "empty_str_field", "numeric_field", "list_field", "empty_list_field"],
+    )
+    assert docs_with_meta[0].content.startswith("test1\n2.0\nitem0.1\nitem0.2\ndummy doc 1")
+    assert docs_with_meta[1].content.startswith("test2\n5.0\nitem1.1\nitem1.2\ndummy doc 2")
+
+
+@pytest.mark.unit
+def test_add_meta_fields_to_docs_none():
+    docs = [Document(content="dummy doc 1", meta={"none_field": None})]
+    with patch("haystack.nodes.ranker.sentence_transformers.SentenceTransformersRanker.__init__") as mock_ranker_init:
+        mock_ranker_init.return_value = None
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
+    docs_with_meta = ranker._add_meta_fields_to_docs(documents=docs, embed_meta_fields=["none_field"])
+    assert docs_with_meta == docs
+
+
+@pytest.mark.unit
+def test_add_meta_fields_to_docs_non_existent():
+    docs = [Document(content="dummy doc 1", meta={"test_field": "A string"})]
+    with patch("haystack.nodes.ranker.sentence_transformers.SentenceTransformersRanker.__init__") as mock_ranker_init:
+        mock_ranker_init.return_value = None
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
+    docs_with_meta = ranker._add_meta_fields_to_docs(documents=docs, embed_meta_fields=["wrong_field"])
+    assert docs_with_meta == docs
+
+
+@pytest.mark.unit
+def test_add_meta_fields_to_docs_empty_list():
+    docs = [Document(content="dummy doc 1", meta={"test_field": "A string"})]
+    with patch("haystack.nodes.ranker.sentence_transformers.SentenceTransformersRanker.__init__") as mock_ranker_init:
+        mock_ranker_init.return_value = None
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
+    docs_with_meta = ranker._add_meta_fields_to_docs(documents=docs, embed_meta_fields=[])
+    assert docs_with_meta == docs
+
+
+@pytest.mark.unit
+def test_ranker(docs, mock_transformer_model, mock_transformer_tokenizer):
+    with patch("torch.nn.DataParallel"):
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
     query = "What is the most important building in King's Landing that has a religious background?"
     results = ranker.predict(query=query, documents=docs)
     assert results[0] == docs[4]
 
 
-def test_ranker_batch_single_query_single_doc_list(ranker, docs):
+@pytest.mark.unit
+def test_ranker_run(docs, mock_transformer_model, mock_transformer_tokenizer):
+    with patch("torch.nn.DataParallel"):
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
+    query = "What is the most important building in King's Landing that has a religious background?"
+    results = ranker.run(query=query, documents=docs)
+    assert results[0]["documents"][0] == docs[4]
+
+
+@pytest.mark.unit
+def test_ranker_batch_single_query_single_doc_list(docs, mock_transformer_model, mock_transformer_tokenizer):
+    with patch("torch.nn.DataParallel"):
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
     query = "What is the most important building in King's Landing that has a religious background?"
     results = ranker.predict_batch(queries=[query], documents=docs)
     assert results[0] == docs[4]
 
 
-def test_ranker_batch_single_query_multiple_doc_lists(ranker, docs):
+@pytest.mark.unit
+def test_ranker_batch_single_query_multiple_doc_lists(docs, mock_transformer_model, mock_transformer_tokenizer):
+    with patch("torch.nn.DataParallel"):
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model", batch_size=5)
     query = "What is the most important building in King's Landing that has a religious background?"
     results = ranker.predict_batch(queries=[query], documents=[docs, docs])
     assert isinstance(results, list)
@@ -138,6 +272,15 @@ def test_ranker_batch_multiple_queries_multiple_doc_lists(ranker, docs):
     assert isinstance(results[0], list)
     assert results[0][0] == docs[4]
     assert results[1][0] == docs[1]
+
+
+@pytest.mark.unit
+def test_ranker_with_embed_meta_fields(docs, mock_transformer_model, mock_transformer_tokenizer):
+    with patch("torch.nn.DataParallel"):
+        ranker = SentenceTransformersRanker(model_name_or_path="fake_model", embed_meta_fields=["name"])
+    query = "What is the most important building in King's Landing that has a religious background?"
+    results = ranker.predict(query=query, documents=docs)
+    assert results[0] == docs[4]
 
 
 def test_ranker_two_logits(ranker_two_logits, docs):
@@ -227,9 +370,7 @@ def test_ranker_returns_raw_score_for_two_logits(ranker_two_logits):
 
 def test_predict_batch_returns_correct_number_of_docs(ranker):
     docs = [Document(content=f"test {number}") for number in range(5)]
-
     assert len(ranker.predict("where is test 3?", docs, top_k=4)) == 4
-
     assert len(ranker.predict_batch(["where is test 3?"], docs, batch_size=2, top_k=4)) == 4
 
 
@@ -252,6 +393,32 @@ def test_cohere_ranker(docs, mock_cohere_post):
 
 
 @pytest.mark.unit
+def test_cohere_ranker_with_embed_meta_fields(docs, mock_cohere_post):
+    query = "What is the most important building in King's Landing that has a religious background?"
+    ranker = CohereRanker(api_key="fake_key", model_name_or_path="rerank-english-v2.0", embed_meta_fields=["name"])
+    results = ranker.predict(query=query, documents=docs)
+    # Prep expected input
+    documents = []
+    for d in docs:
+        meta = d.meta.get("name")
+        if meta:
+            documents.append({"text": d.meta["name"] + "\n" + d.content})
+        else:
+            documents.append({"text": d.content})
+    mock_cohere_post.assert_called_once_with(
+        {
+            "model": "rerank-english-v2.0",
+            "query": query,
+            "documents": documents,
+            "top_n": None,  # By passing None we return all documents and use top_k to truncate later
+            "return_documents": False,
+            "max_chunks_per_doc": None,
+        }
+    )
+    assert results[0] == docs[4]
+
+
+@pytest.mark.unit
 def test_cohere_ranker_batch_single_query_single_doc_list(docs, mock_cohere_post):
     query = "What is the most important building in King's Landing that has a religious background?"
     ranker = CohereRanker(api_key="fake_key", model_name_or_path="rerank-english-v2.0")
@@ -261,6 +428,31 @@ def test_cohere_ranker_batch_single_query_single_doc_list(docs, mock_cohere_post
             "model": "rerank-english-v2.0",
             "query": query,
             "documents": [{"text": d.content} for d in docs],
+            "top_n": None,  # By passing None we return all documents and use top_k to truncate later
+            "return_documents": False,
+            "max_chunks_per_doc": None,
+        }
+    )
+    assert results[0] == docs[4]
+
+
+@pytest.mark.unit
+def test_cohere_ranker_batch_single_query_single_doc_list_with_embed_meta_fields(docs, mock_cohere_post):
+    query = "What is the most important building in King's Landing that has a religious background?"
+    ranker = CohereRanker(api_key="fake_key", model_name_or_path="rerank-english-v2.0", embed_meta_fields=["name"])
+    results = ranker.predict_batch(queries=[query], documents=docs)
+    documents = []
+    for d in docs:
+        meta = d.meta.get("name")
+        if meta:
+            documents.append({"text": d.meta["name"] + "\n" + d.content})
+        else:
+            documents.append({"text": d.content})
+    mock_cohere_post.assert_called_once_with(
+        {
+            "model": "rerank-english-v2.0",
+            "query": query,
+            "documents": documents,
             "top_n": None,  # By passing None we return all documents and use top_k to truncate later
             "return_documents": False,
             "max_chunks_per_doc": None,
@@ -311,3 +503,282 @@ def test_cohere_ranker_batch_multiple_queries_multiple_doc_lists(docs, mock_cohe
     assert isinstance(results[0], list)
     assert results[0][0] == docs[4]
     assert results[1][0] == docs[4]
+
+
+recency_tests_inputs = [
+    # Score ranking mode works as expected
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"date": "2021-02-11"}, "score": 0.3, "id": "1"},
+                {"meta": {"date": "2024-02-11"}, "score": 0.4, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_meta_field": "date",
+            "top_k": 2,
+            "ranking_mode": "score",
+            "expected_scores": {"1": 0.4833333333333333, "2": 0.7},
+            "expected_order": ["2", "1"],
+            "expected_logs": [],
+            "expected_warning": "",
+        },
+        id="Score ranking mode works as expected",
+    ),
+    # RRF ranking mode works as expected
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"date": "2021-02-11"}, "id": "1"},
+                {"meta": {"date": "2018-02-11"}, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_meta_field": "date",
+            "top_k": 2,
+            "ranking_mode": "reciprocal_rank_fusion",
+            "expected_scores": {"1": 0.01639344262295082, "2": 0.016001024065540194},
+            "expected_order": ["1", "2"],
+            "expected_logs": [],
+            "expected_warning": "",
+        },
+        id="RRF ranking mode works as expected",
+    ),
+    # Wrong field to find the date
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"data": "2021-02-11"}, "score": 0.3, "id": "1"},
+                {"meta": {"date": "2024-02-11"}, "score": 0.4, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_meta_field": "date",
+            "expected_scores": {"1": 0.3, "2": 0.4, "3": 0.6},
+            "expected_order": ["1", "2", "3"],
+            "expected_exception": NodeError(
+                """
+                Param <date_meta_field> was set to 'date', but document(s) 1 do not contain this metadata key.\n
+                Please double-check the names of existing metadata fields of your documents \n
+                and set <date_meta_field> to the name of the field that contains dates.
+                """
+            ),
+            "top_k": 2,
+            "ranking_mode": "score",
+        },
+        id="Wrong field to find the date",
+    ),
+    # Date unparsable
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"date": "abcd"}, "id": "1"},
+                {"meta": {"date": "2024-02-11"}, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_meta_field": "date",
+            "expected_order": ["1", "2", "3"],
+            "expected_logs": [
+                (
+                    "haystack.nodes.ranker.recentness_ranker",
+                    logging.ERROR,
+                    """
+                Could not parse date information for dates: abcd - 2024-02-11 - 2020-02-11\n
+                Continuing without sorting by date.
+                """,
+                )
+            ],
+            "top_k": 2,
+            "ranking_mode": "reciprocal_rank_fusion",
+        },
+        id="Date unparsable",
+    ),
+    # Wrong score, outside of bonds
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"date": "2021-02-11"}, "score": 1.3, "id": "1"},
+                {"meta": {"date": "2024-02-11"}, "score": 0.4, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_meta_field": "date",
+            "top_k": 2,
+            "ranking_mode": "score",
+            "expected_scores": {"1": 0.5, "2": 0.7, "3": 0.4666666666666667},
+            "expected_order": ["2", "3"],
+            "expected_warning": ["The score 1.3 for document 1 is outside the [0,1] range; defaulting to 0"],
+        },
+        id="Wrong score, outside of bonds",
+    ),
+    # Wrong score, not provided
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"date": "2021-02-11"}, "id": "1"},
+                {"meta": {"date": "2024-02-11"}, "score": 0.4, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_meta_field": "date",
+            "top_k": 2,
+            "ranking_mode": "score",
+            "expected_scores": {"1": 0.5, "2": 0.7, "3": 0.4666666666666667},
+            "expected_order": ["2", "3"],
+            "expected_warning": ["The score was not provided; defaulting to 0"],
+        },
+        id="Wrong score, not provided",
+    ),
+    # Wrong ranking mode provided
+    pytest.param(
+        {
+            "docs": [
+                {"meta": {"date": "2021-02-11"}, "id": "1"},
+                {"meta": {"date": "2024-02-11"}, "score": 0.4, "id": "2"},
+                {"meta": {"date": "2020-02-11"}, "score": 0.6, "id": "3"},
+            ],
+            "weight": 0.5,
+            "date_meta_field": "date",
+            "top_k": 2,
+            "ranking_mode": "blablabla",
+            "expected_scores": {"1": 0.01626123744050767, "2": 0.01626123744050767},
+            "expected_order": ["1", "2"],
+            "expected_exception": NodeError(
+                """
+                Param <ranking_mode> needs to be 'reciprocal_rank_fusion' or 'score' but was set to 'blablabla'. \n
+                Please change the <ranking_mode> when initializing the RecentnessRanker.
+                """
+            ),
+        },
+        id="Wrong ranking mode provided",
+    ),
+]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("test_input", recency_tests_inputs)
+def test_recentness_ranker(caplog, test_input):
+    # Create a set of docs
+    docs = []
+    for doc in test_input["docs"]:
+        docs.append(Document(content="abc", **doc))
+
+    # catch warnings to check they are properly issued
+    with warnings.catch_warnings(record=True) as warnings_list:
+        # Initialize the ranker
+        ranker = RecentnessRanker(
+            date_meta_field=test_input["date_meta_field"],
+            ranking_mode=test_input["ranking_mode"],
+            weight=test_input["weight"],
+        )
+        predict_exception = None
+        results = []
+        try:
+            results = ranker.predict(query="", documents=docs, top_k=test_input["top_k"])
+        except Exception as e:
+            predict_exception = e
+
+        check_results(results, test_input, warnings_list, caplog, predict_exception)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("test_input", recency_tests_inputs)
+def test_recentness_ranker_batch_list(caplog, test_input):
+    # Create a set of docs
+    docs = []
+    for doc in test_input["docs"]:
+        docs.append(Document(content="abc", **doc))
+
+    # catch warnings to check they are properly issued
+    with warnings.catch_warnings(record=True) as warnings_list:
+        # Initialize the ranker
+        ranker = RecentnessRanker(
+            date_meta_field=test_input["date_meta_field"],
+            ranking_mode=test_input["ranking_mode"],
+            weight=test_input["weight"],
+        )
+        predict_exception = None
+        results = []
+        try:
+            # Run predict_batch with a list as input
+            results = ranker.predict_batch(queries="", documents=docs, top_k=test_input["top_k"])
+        except Exception as e:
+            predict_exception = e
+
+        check_results(results, test_input, warnings_list, caplog, predict_exception)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("test_input", recency_tests_inputs)
+def test_recentness_ranker_batch_list_of_lists(caplog, test_input):
+    # Create a set of docs
+    docs = []
+    for doc in test_input["docs"]:
+        docs.append(Document(content="abc", **doc))
+
+    # catch warnings to check they are properly issued
+    with warnings.catch_warnings(record=True) as warnings_list:
+        # Initialize the ranker
+        ranker = RecentnessRanker(
+            date_meta_field=test_input["date_meta_field"],
+            ranking_mode=test_input["ranking_mode"],
+            weight=test_input["weight"],
+        )
+
+        predict_exception = None
+        results = []
+        try:
+            # Run predict_batch with a list of lists as input
+            results = ranker.predict_batch(queries="", documents=[docs, copy.deepcopy(docs)], top_k=test_input["top_k"])
+        except Exception as e:
+            predict_exception = e
+
+        check_results(results, test_input, warnings_list, caplog, predict_exception, list_of_lists=True)
+
+
+def check_results(results, test_input, warnings_list, caplog, exception, list_of_lists=False):
+    expected_logs_count = 1
+    if list_of_lists:
+        expected_logs_count = 2
+
+    if "expected_exception" in test_input and test_input["expected_exception"] is not None:
+        assert exception.message == test_input["expected_exception"].message
+        assert type(exception) == type(test_input["expected_exception"])
+        return
+    else:
+        assert exception is None
+
+    # Check that no warnings were thrown, if we are not expecting any
+    if "expected_warning" not in test_input or test_input["expected_warning"] == []:
+        assert len(warnings_list) == 0
+    # Check that all expected warnings happened, and only those
+    else:
+        assert len(warnings_list) == len(test_input["expected_warning"])
+        for i in range(len(warnings_list)):
+            assert test_input["expected_warning"][int(i)] == str(warnings_list[i].message)
+
+    # If we expect logging, compare them one by one
+    if "expected_logs" not in test_input or test_input["expected_logs"] == []:
+        assert len(caplog.record_tuples) == 0
+    else:
+        assert expected_logs_count * len(test_input["expected_logs"]) == len(caplog.record_tuples)
+        for i in range(len(caplog.record_tuples)):
+            assert test_input["expected_logs"][int(i / expected_logs_count)] == caplog.record_tuples[i]
+
+    if not list_of_lists:
+        check_result_content(results, test_input)
+    else:
+        for i in results:
+            check_result_content(i, test_input)
+
+
+# Verify the results, that the order and the score of the documents match
+def check_result_content(results, test_input):
+    assert len(results) == len(test_input["expected_order"])
+    for i in range(len(test_input["expected_order"])):
+        assert test_input["expected_order"][i] == results[i].id
+        if "expected_scores" in test_input:
+            assert test_input["expected_scores"][results[i].id] == results[i].score
+        else:
+            assert results[i].score is None

@@ -1857,7 +1857,16 @@ class EmbeddingRetriever(DenseRetriever):
                     doc.content = doc.content.to_csv(index=False)
                 else:
                     raise HaystackError("Documents of type 'table' need to have a pd.DataFrame as content field")
-            meta_data_fields = [doc.meta[key] for key in self.embed_meta_fields if key in doc.meta and doc.meta[key]]
+            # Gather all relevant metadata fields
+            meta_data_fields = []
+            for key in self.embed_meta_fields:
+                if key in doc.meta and doc.meta[key]:
+                    if isinstance(doc.meta[key], list):
+                        meta_data_fields.extend([item for item in doc.meta[key]])
+                    else:
+                        meta_data_fields.append(doc.meta[key])
+            # Convert to type string (e.g. for ints or floats)
+            meta_data_fields = [str(field) for field in meta_data_fields]
             doc.content = "\n".join(meta_data_fields + [doc.content])
             linearized_docs.append(doc)
         return linearized_docs

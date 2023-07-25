@@ -2,11 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from haystack.nodes.prompt.invocation_layer.handlers import (
-    DefaultTokenStreamingHandler,
-    DefaultPromptHandler,
-    AnthropicTokenStreamingHandler,
-)
+from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
 
 
 @pytest.mark.unit
@@ -140,29 +136,3 @@ def test_flan_prompt_handler_none():
         "model_max_length": 20,
         "new_prompt_length": 0,
     }
-
-
-@pytest.mark.unit
-@patch("builtins.print")
-def test_anthropic_token_streaming_handler(mock_print):
-    handler = AnthropicTokenStreamingHandler(DefaultTokenStreamingHandler())
-
-    res = handler(" This")
-    assert res == " This"
-    mock_print.assert_called_with(" This", flush=True, end="")
-
-    res = handler(" This is a new")
-    assert res == " is a new"
-    mock_print.assert_called_with(" is a new", flush=True, end="")
-
-    res = handler(" This is a new token")
-    assert res == " token"
-    mock_print.assert_called_with(" token", flush=True, end="")
-
-    res = handler("And now")
-    assert res == "And now"
-    mock_print.assert_called_with("And now", flush=True, end="")
-
-    res = handler("And now something completely different")
-    assert res == " something completely different"
-    mock_print.assert_called_with(" something completely different", flush=True, end="")
