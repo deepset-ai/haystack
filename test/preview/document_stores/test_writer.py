@@ -2,10 +2,10 @@ import pytest
 
 from haystack.preview import Document
 from haystack.preview.document_stores import MemoryDocumentStore
-from haystack.preview.document_stores.writer import WriteToStore
+from haystack.preview.components.writers.writer import WriteToStore
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_writer_returns_list_of_documents(self):
     docstore = MemoryDocumentStore()
     writer = WriteToStore()

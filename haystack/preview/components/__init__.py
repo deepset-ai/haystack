@@ -2,3 +2,5 @@ from haystack.preview.components.audio.whisper_local import LocalWhisperTranscri
 from haystack.preview.components.audio.whisper_remote import RemoteWhisperTranscriber
 from haystack.preview.components.file_converters import TextFileToDocument
 from haystack.preview.components.classifiers import FileExtensionClassifier
+from haystack.preview.components.retrievers.memory import MemoryRetriever
+from haystack.preview.components.writers.document_writer import DocumentWriter
