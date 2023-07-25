@@ -3,7 +3,9 @@ upgrade:
   - |
     The old filter placeholders for ``custom_query`` are no longer supported.
     Replace your custom filter expressions with the new ``${filters}`` placeholder:
+
     **Old:**
+    ``custom_query``:
     ```python
       {
           "query": {
@@ -22,7 +24,16 @@ upgrade:
           },
       }
     ```
+    query:
+    ```python
+      retriever.retrieve(
+          query="What is the meaning of life?",
+          filters={"years": [2019, 2020], "quarters": [1, 2, 3], "date": "2019-03-01"}
+      )
+    ```
+
     **New:**
+    ``custom_query``:
     ```python
       {
           "query": {
@@ -36,6 +47,13 @@ upgrade:
               }
           },
       }
+    ```
+    query:
+    ```python
+      retriever.retrieve(
+          query="What is the meaning of life?",
+          filters={"year": [2019, 2020], "quarter": [1, 2, 3], "date": {"$gte": "2019-03-01"}}
+      )
     ```
 features:
   - |
