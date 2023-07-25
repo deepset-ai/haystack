@@ -11,3 +11,18 @@ features:
     Instead of defining filter expressions and field placeholders, all you have to do,
     is setting the ``${filters}`` placeholder analogous to the ``${query}`` placeholder into
     your ``custom_query``.
+    **For example:**
+    ```python
+    {
+        "query": {
+            "bool": {
+                "should": [{"multi_match": {
+                    "query": ${query},                 // mandatory query placeholder
+                    "type": "most_fields",
+                    "fields": ["content", "title"]}}
+                ],
+                "filter": ${filters}                 // optional filters placeholder
+            }
+        },
+    }
+    ```
