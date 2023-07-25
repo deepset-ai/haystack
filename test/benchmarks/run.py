@@ -1,21 +1,15 @@
 from pathlib import Path
-import sys
 from typing import Dict
 import argparse
 import json
 
 from haystack import Pipeline
-from haystack.nodes import BaseRetriever, BaseReader
 from haystack.pipelines.config import read_pipeline_config_from_yaml
 
 from utils import prepare_environment, contains_reader, contains_retriever
 from reader import benchmark_reader
 from retriever import benchmark_retriever
 from retriever_reader import benchmark_retriever_reader
-import logging
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 def run_benchmark(pipeline_yaml: Path) -> Dict:
@@ -77,14 +71,6 @@ if __name__ == "__main__":
 
     config_file = Path(args.config)
     output_file = f"{config_file.stem}_results.json" if args.output is None else args.output
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
-
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    root.addHandler(handler)
     results = run_benchmark(config_file)
     with open(output_file, "w") as f:
         json.dump(results, f, indent=2)
