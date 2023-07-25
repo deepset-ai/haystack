@@ -32,6 +32,7 @@ jobs:
     container:
       image: docker://iterativeai/cml:0-dvc2-base1-gpu
       options: --gpus all
+    timeout-minutes: 2880
     steps:
       - uses: actions/checkout@v3
 
