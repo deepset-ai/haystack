@@ -1088,12 +1088,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             template = Template(custom_query)
             # replace all "${query}" placeholder(s) with query
             substitutions = {"query": json.dumps(query)}
-            # For each filter we got passed, we'll try to find & replace the corresponding placeholder in the template
-            # Example: filters={"years":[2018]} => replaces {$years} in custom_query with '[2018]'
             if filters:
-                for key, values in filters.items():
-                    values_str = json.dumps(values)
-                    substitutions[key] = values_str
+                substitutions["filters"] = json.dumps(LogicalFilterClause.parse(filters).convert_to_elasticsearch())
             custom_query_json = template.substitute(**substitutions)
             body = json.loads(custom_query_json)
             # add top_k
