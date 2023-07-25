@@ -156,5 +156,3 @@ haystack/json-schemas
 
 # http cache (requests-cache)
 **/http_cache.sqlite
-
-test/benchmarks/out
