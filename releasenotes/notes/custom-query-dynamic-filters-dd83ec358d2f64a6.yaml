@@ -1,0 +1,13 @@
+---
+upgrade:
+  - |
+    The old filter placeholders for ``custom_query`` are no longer supported.
+    Replace your custom filter expressions with the new ``${filters}`` placeholder.
+features:
+  - |
+    When using ``custom_query`` in ``BM25Retriever`` along with one of ``OpenSearch``
+    or ``elasticsearch``, we added support for dynamic ``filters`` like in normal queries.
+    This allows for changing filters at query-time without having to change ``custom_query``:
+    Instead of defining filter expressions and field placeholders, all you have to do,
+    is setting the ``${filters}`` placeholder analogous to the ``${query}`` placeholder into
+    your ``custom_query``.
