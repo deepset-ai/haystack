@@ -5,27 +5,28 @@ upgrade:
     Replace your custom filter expressions with the new ``${filters}`` placeholder:
 
     **Old:**
-    ``custom_query``:
     ```python
-      {
-          "query": {
-              "bool": {
-                  "should": [{"multi_match": {
-                      "query": ${query},                 // mandatory query placeholder
-                      "type": "most_fields",
-                      "fields": ["content", "title"]}}
-                  ],
-                  "filter": [                                 // optional custom filters
-                      {"terms": {"year": ${years}}},
-                      {"terms": {"quarter": ${quarters}}},
-                      {"range": {"date": {"gte": ${date}}}}
-                  ]
+      retriever = BM25Retriever(
+        custom_query="""
+          {
+              "query": {
+                  "bool": {
+                      "should": [{"multi_match": {
+                          "query": ${query},
+                          "type": "most_fields",
+                          "fields": ["content", "title"]}}
+                      ],
+                      "filter": [
+                          {"terms": {"year": ${years}}},
+                          {"terms": {"quarter": ${quarters}}},
+                          {"range": {"date": {"gte": ${date}}}}
+                      ]
+                  }
               }
-          },
-      }
-    ```
-    query:
-    ```python
+          }
+        """
+      )
+
       retriever.retrieve(
           query="What is the meaning of life?",
           filters={"years": [2019, 2020], "quarters": [1, 2, 3], "date": "2019-03-01"}
@@ -33,23 +34,24 @@ upgrade:
     ```
 
     **New:**
-    ``custom_query``:
     ```python
-      {
-          "query": {
-              "bool": {
-                  "should": [{"multi_match": {
-                      "query": ${query},                 // mandatory query placeholder
-                      "type": "most_fields",
-                      "fields": ["content", "title"]}}
-                  ],
-                  "filter": ${filters}                 // optional filters placeholder
+      retriever = BM25Retriever(
+        custom_query="""
+          {
+              "query": {
+                  "bool": {
+                      "should": [{"multi_match": {
+                          "query": ${query},
+                          "type": "most_fields",
+                          "fields": ["content", "title"]}}
+                      ],
+                      "filter": ${filters}
+                  }
               }
-          },
-      }
-    ```
-    query:
-    ```python
+          }
+        """
+      )
+
       retriever.retrieve(
           query="What is the meaning of life?",
           filters={"year": [2019, 2020], "quarter": [1, 2, 3], "date": {"$gte": "2019-03-01"}}
@@ -75,6 +77,6 @@ features:
                   ],
                   "filter": ${filters}                 // optional filters placeholder
               }
-          },
+          }
       }
     ```
