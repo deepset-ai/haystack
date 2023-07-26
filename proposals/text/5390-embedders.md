@@ -138,19 +138,23 @@ dpr_doc_embedder = SentenceTransformersDocumentEmbedder(model_name="facebook/dpr
 
 ## Implementation details
 
-There have been much discussion about this point.
+There have been much discussion on how to effectively implement this proposal.
+The most important aspects to consider:
+- we want different Embedders for queries and Documents as they require a different treatment
+- if the same model is internally used for different Embedders, we want to reuse the same instance in order to save memory
+-
 @ZanSara formulated the following implementation idea, that I like.
 
 We make three classes:
 
-- A `_BasicEmbedder`, which is NOT a component, handling raw data + a factory method to reuse instances. **This class is for internal use only. It will never be user-facing.**
+- An `EmbeddingService`, which is NOT a component, handling raw data + a factory method to reuse instances. It will live in a different package, **is for internal use only and will never be user-facing.** The name of this class can be changed (feel free to propose better alternatives).
 ```python
-class _HFBasicEmbedder:
+class HFEmbeddingService:
     """
     NOT A COMPONENT!
     """
 
-    instances: List[HFEmbedder] = []
+    instances: List[HFEmbeddingService] = []
 
     def __new__(cls, *args, **kwargs):
 		"""
@@ -158,12 +162,12 @@ class _HFBasicEmbedder:
 		If an instance with the same identical params was already created,
         return that instance instead of initializing a new one.
         """
-        if <hash of name and init params> in Embedder.instances:
-          return HFBasicEmbedder.instances[<hash of name and init params>]
+        if <hash of name and init params> in HFEmbeddingService.instances:
+          return HFEmbeddingService.instances[<hash of name and init params>]
 
-        embedder = cls(*args, **kwargs)
-        HFBasicEmbedder.instances[<hash of name and init params>] = embedder
-        return embedder
+        embedding_service = cls(*args, **kwargs)
+        HFEmbeddingService.instances[<hash of name and init params>] = embedding_service
+        return embedding_service
 
     def __init__(self, model_name: str, ... init params ...):
         """
@@ -177,15 +181,15 @@ class _HFBasicEmbedder:
         return embedding
 
 
-class _OpenAIEmbedder:
+class OpenAIEmbeddingService:
     ... same as above ...
 ```
 
-Given that Embedders are created through a factory method, when you request an instance, if another identical exists, the method returns that instance instead of a new one.
+Given that EmbeddingServices are created through a factory method, when you request an instance, if another identical exists, the method returns that instance instead of a new one.
 
 This makes model reusability automatic in all cases, which can save lots of memory without asking the user to think about it.
 
-- A `(Text/Table/Image/Audio)Embedder` component that does nothing but “wrapping” an _Embedder.
+- A `(Text/Table/Image/Audio)Embedder` component that does nothing but “wrapping” an EmbeddingService.
 **Part of the public API**.
 ```python
 @component
@@ -202,10 +206,10 @@ class HFTextEmbedder:
         self.model_params = ... params ...
 
     def warm_up(self):
-        self.embedder = _HFBasicEmbedder(self.model_name, **self.model_params)
+        self.embedding_service = HFEmbeddingService(self.model_name, **self.model_params)
 
     def run(self, data):
-        return self.output(self.embedder.embed(data.data))
+        return self.output(self.embedding_service.embed(data.data))
 ```
 
 - A DocumentEmbedder component that handles the documents and the offloads the computation to an embedder.
@@ -229,7 +233,7 @@ class HFDocumentEmbedder(HFTextEmbedder):
 
     def run(self, data):
         text_strings = [document.content for document in data.documents]
-        embeddings = self.embedder.embed(text_strings)
+        embeddings = self.embedding_service.embed(text_strings)
         documents_with_embeddings = [Document.from_dict(**doc.to_dict, "embedding": emb) for doc, emb in zip(documents, embeddings)]
         return self.output(documents = documents_with_embeddings)
 
