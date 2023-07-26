@@ -104,7 +104,7 @@ def test_invoke_with_no_kwargs(mock_auto_tokenizer, mock_boto3_session):
 @pytest.mark.unit
 def test_invoke_with_stop_words(mock_auto_tokenizer, mock_boto3_session):
     """
-    Tests that SageMakerMetaInvocationLayer does not support stop words, they'll be ignored
+    SageMakerMetaInvocationLayer does not support stop words. Tests that they'll be ignored
     """
     stop_words = ["but", "not", "bye"]
     layer = SageMakerMetaInvocationLayer(model_name_or_path="some_model")
