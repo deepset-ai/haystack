@@ -78,6 +78,66 @@ This is the most critical aspect of the design.
 - When embedding Documents, we expect the Embedder to enrich a list of Documents with the corresponding vectors (stored in the `embedding` field).
 - For Documents, we may want to embed some meta fields in addition to the content. Therefore, the Embedder should also handle this preparation work, which involves joining all the relevant content into a string to be embedded.
 
+**Below, I will focus on the public API. The internal implementation is discussed in [Implementation details](#implementation-details).**
+
+```python
+@component
+class HFTextEmbedder:
+
+    class Input:
+        data: List[str]
+
+    class Output
+        embeddings: List[np.ndarray]
+
+    ...
+
+    def run(self, data):
+        return self.output(self.embedder.embed(data.data))
+
+
+@component
+class HFDocumentEmbedder(HFTextEmbedder):
+
+    class Input:
+        documents: List[Document]
+
+    class Output
+        documents: List[np.ndarray]
+
+    def run(self, data):
+        text_strings = [document.content for document in data.documents]
+        embeddings = self.embedder.embed(text_strings)
+        documents_with_embeddings = [Document.from_dict(**doc.to_dict, "embedding": emb) for doc, emb in zip(documents, embeddings)]
+        return self.output(documents = documents_with_embeddings)
+```
+
+## Different providers/strategies
+
+- We can define different classes depending on the providers: `OpenAIEmbedder`, `CohereEmbedder`, `HuggingFaceEmbedder`, `SentenceTransformersEmbedder`, etc.
+- Additionally, we could define different classes depending on the embedding strategy if necessary.
+While this is not a prominent use case, there are scenarios where [new strategies](https://github.com/deepset-ai/haystack/issues/5242) are introduced, requiring different libraries (`InstructorEmbedder`) or involving a different string preparation (`E5Embedder`). Supporting these scenarios with minimal effort would be nice.
+
+## Different models in the same embedding/retrieval task
+
+As you can observe from the [current implementation](https://github.com/deepset-ai/haystack/blob/main/haystack/nodes/retriever/dense.py), some embedding/retrieval tasks require the usage of different models.
+
+This is not the most popular approach today, compared to what we call Embedding Retrieval (based on a single model). But it still has some relevant applications.
+
+Some examples:
+- In Dense Passage Retrieval, you need a model to encode queries and another model to encode Documents
+- in the TableTextRetriever, we use 3 different models: one for queries, one for textual passages and one for tables
+- in Multimodal Retrieval, we can specify different models to encode queries and Documents
+
+Since the Embedder will not be included in the Retriever, it makes sense to have different Embedders, each one using a single model.
+
+```python
+dpr_query_embedder = SentenceTransformersTextEmbedder(model_name="facebook/dpr-question_encoder-single-nq-base")
+dpr_doc_embedder = SentenceTransformersDocumentEmbedder(model_name="facebook/dpr-ctx_encoder-single-nq-base")
+```
+
+## Implementation details
+
 There have been much discussion about this point.
 @ZanSara formulated the following implementation idea, that I like.
 
@@ -172,31 +232,6 @@ class HFDocumentEmbedder(HFTextEmbedder):
         embeddings = self.embedder.embed(text_strings)
         documents_with_embeddings = [Document.from_dict(**doc.to_dict, "embedding": emb) for doc, emb in zip(documents, embeddings)]
         return self.output(documents = documents_with_embeddings)
-```
-
-## Different providers/strategies
-
-- We can define different classes depending on the providers: `OpenAIEmbedder`, `CohereEmbedder`, `HuggingFaceEmbedder`, `SentenceTransformersEmbedder`, etc.
-- Additionally, we could define different classes depending on the embedding strategy if necessary.
-While this is not a prominent use case, there are scenarios where [new strategies](https://github.com/deepset-ai/haystack/issues/5242) are introduced, requiring different libraries (`InstructorEmbedder`) or involving a different string preparation (`E5Embedder`). Supporting these scenarios with minimal effort would be nice.
-
-## Different models in the same embedding/retrieval task
-
-As you can observe from the [current implementation](https://github.com/deepset-ai/haystack/blob/main/haystack/nodes/retriever/dense.py), some embedding/retrieval tasks require the usage of different models.
-
-This is not the most popular approach today, compared to what we call Embedding Retrieval (based on a single model). But it still has some relevant applications.
-
-Some examples:
-- In Dense Passage Retrieval, you need a model to encode queries and another model to encode Documents
-- in the TableTextRetriever, we use 3 different models: one for queries, one for textual passages and one for tables
-- in Multimodal Retrieval, we can specify different models to encode queries and Documents
-
-Since the Embedder will not be included in the Retriever, it makes sense to have different Embedders, each one using a single model.
-
-```python
-dpr_query_embedder = SentenceTransformersTextEmbedder(model_name="facebook/dpr-question_encoder-single-nq-base")
-dpr_doc_embedder = SentenceTransformersDocumentEmbedder(model_name="facebook/dpr-ctx_encoder-single-nq-base")
-```
 
 # Drawbacks
 
