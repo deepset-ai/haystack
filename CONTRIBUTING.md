@@ -92,6 +92,7 @@ Note: pre-commit hooks might fail. If that happens to you and you can't understa
 - In case of further issues pushing your changes, please uninstall the hook with `pre-commit uninstall -t pre-commit -t pre-push` and review your Git setup.
 
 ## Proposing "Substantial" Changes
+
 Most of the changes to Haystack, including bug fixes and small improvements, are implemented through the normal Pull Request workflow, according to these  contribution guidelines.
 
 Some changes, though, are "substantial", and these are the ones we want to put through a bit of a design process to make sure we're all on the same page before we invest the time into the actual implementation of a new feature or a deep refactoring.
@@ -104,7 +105,9 @@ Please check the [Proposals design process](/proposals) if you think your contri
 - A deep refactoring that would require new tests or introduce new dependencies.
 - A change that's complex enough to require multiple steps to be delivered.
 
-## Formatting of Pull Requests
+## Requirements for Pull Requests
+
+To ease the review process, please follow the instructions in this paragraph when creating a Pull Request.
 
 ### PR Title
 We use elements from the [conventional commit convention](https://www.conventionalcommits.org/en/v1.0.0/) for our
@@ -140,6 +143,32 @@ for describing and documenting your changes:
 - What are limitations?
 - Breaking changes (Example of before vs. after)
 - How did you test the change?
+
+### Release notes
+Each PR should include a file under the `releasenotes/notes` path created with `reno`, unless the PR doesn't have any
+impact on Haystack behavior, for example: tests and documentation updates, changes in code comments or docstrings,
+changes to the CI/CD systems. PRs that don't require a release note file must be labeled with `ignore-for-release-notes`
+by a maintainer in order to bypass the CI check.
+
+Say your PR is for bumping the `transformers` version in the `pyproject.toml` file. To create the corresponding release
+note, from the root of the repo run:
+```
+$ reno new bump-transformers-to-4-31
+loaded configuration file ./releasenotes/config.yaml
+Created new notes file in releasenotes/notes/bump-transformers-to-4-31-a645334d57eab673.yaml
+```
+`reno` will create the file appending a unique id to the name of the release note you provided (in this case,
+`bump-transformers-to-4-31`). You don't need to worry about duplicated entries, but be sure to use meaningful names
+so it's easier to find the file later. You can now edit the file to add the release note. In the file, you will find multiple
+sections along with an explanation of what they're for. Normally, you only need to fill one section; in this case, you
+would fill the `enhancements` section to describe the change:
+```yaml
+enhancements:
+  - |
+    Upgrade transformers to the latest version 4.31.0 so that Haystack can support the new LLama2 models.
+```
+You can now add the file to the git repo and commit your changes. Your release note will be reviewed along with the
+code you changed.
 
 ## CI (Continuous Integration)
 
@@ -178,7 +207,6 @@ root folder would also execute the ui and rest API tests, that require specific 
 You can control which tests to run using Pytest markers, let's see how.
 
 ### Running a subset of tests (recommended)
-
 In most cases you rather want to run a **subset of tests** locally that are related to your dev, and the most important
 option to reduce the number of tests in a meaningful way, is to run tests only for a list of **selected document stores**.
 This is possible by adding the `--document_store_type` arg to your `pytest` command (possible values are: `"elasticsearch, faiss, memory, weaviate, pinecone"`).
@@ -224,7 +252,6 @@ pytest -m not slow
 ```
 
 ### Running all the tests
-
 **Important**: If you want to run **all** the tests locally, you'll need **all** document stores running in the background
 before you run the tests. Many of the tests will then be executed multiple times with different document stores.
 
@@ -291,7 +318,6 @@ def test_write_with_duplicate_doc_ids(document_store):
 ```
 
 ### Option 2: The test is only compatible with certain document stores:
-
 Some tests you don't want to run on all possible document stores. Either because the test is specific to one/few doc store(s) or the test is not really document store related and it's enough to test it on one document store and speed up the execution time.
 
 Example:
@@ -304,7 +330,6 @@ def test_update_meta(document_store):
 ```
 
 ### Option 3: The test is not using a `document_store`/ fixture, but still has a hard requirement for a certain document store:
-
 Example:
 ```
 @pytest.mark.elasticsearch
@@ -315,7 +340,6 @@ def test_elasticsearch_custom_fields(elasticsearch_fixture):
                                                 embedding_field="custom_embedding_field")
 ```
 
-
 ## Code format and style
 
 We use [Black](https://github.com/psf/black) to ensure consistent code style, [mypy](http://mypy-lang.org/) for static type checking and
@@ -325,19 +349,16 @@ All checks and autoformatting happen on the CI, so in general you don't need to 
 However, should you prefer to execute them locally, here are a few details about the setup.
 
 ### Black
-
 Black runs with no other configuration than increasing line length to 120 characters. Its configuration can be found in `pyproject.toml`.
 
 You can run it with `python -m black .` from the root folder.
 
 ### Mypy
-
 Mypy currently runs with limited configuration options that can be found at the bottom of `pyproject.toml`.
 
 You can run it with `python -m mypy haystack/ rest_api/ ui/` from the root folder.
 
 ### Pylint
-
 Pylint is still being integrated in Haystack. The current exclusion list is very long, and can be found in `pyproject.toml`.
 
 You can run it with `python -m pylint haystack/ rest_api/ ui/ -ry` from the root folder.
