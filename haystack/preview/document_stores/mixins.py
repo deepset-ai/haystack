@@ -21,11 +21,16 @@ class StoreAwareMixin:
 
     @store.setter
     def store(self, store: Store):
-        if not isinstance(store, Store):
-            raise ValueError("'store' does not respect the Store Protocol.")
-        if not any(isinstance(store, type_) for type_ in type(self).supported_stores):
+        if not getattr(store, "__haystack_store__", False):
+            raise ValueError(f"'{type(store).__name__}' is not decorate with @store.")
+        if not self._is_supported(store):
             raise ValueError(
                 f"Store type '{type(store).__name__}' is not compatible with this component. "
                 f"Compatible store types: {[type_.__name__ for type_ in type(self).supported_stores]}"
             )
         self._store = store
+
+    def _is_supported(self, store: Store):
+        if Store in self.supported_stores:
+            return True
+        return any(isinstance(store, type_) for type_ in self.supported_stores)
