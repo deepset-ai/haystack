@@ -90,14 +90,16 @@ class MostDiverseRanker(BaseRanker):
             # Indices of unselected documents
             unselected: List[int] = [i for i in range(n) if i not in selected]
 
-            # Compute selected and unselected similarity matrix
-            selected_unselected_sim_matrix = doc_sim_matrix[unselected, :][:, selected]
+            # Compute unselected/selected similarity matrix
+            # First iteration through the loop it's shape is (len(unselected), 1)
+            # and then it's (len(unselected), 2) and so on until (1, len(selected)) in the last iteration
+            unselected_selected_sim_matrix = doc_sim_matrix[unselected, :][:, selected]
 
-            # Compute the average similarity score of each unselected document to the selected documents
-            avg_sim_selected: torch.Tensor = torch.mean(selected_unselected_sim_matrix, dim=-1)
+            # Compute the average similarity score of each unselected document to the selected group of documents
+            avg_sim_unselected: torch.Tensor = torch.mean(unselected_selected_sim_matrix, dim=-1)
 
-            # Select the document with the lowest average similarity
-            index_unselected = int(torch.argmin(avg_sim_selected).item())
+            # Select the document with the lowest average similarity score
+            index_unselected = int(torch.argmin(avg_sim_unselected).item())
             selected.append(unselected[index_unselected])
 
         ranked_docs: List[Document] = [documents[i] for i in selected]
