@@ -48,6 +48,9 @@ jobs:
       - name: Install Haystack
         run: pip install .[metrics,elasticsearch,weaviate,opensearch,benchmarks,inference]
 
+      - name: Check Docker
+        run: docker info
+
       - name: Run benchmarks
         run: |
           cd test/benchmarks
