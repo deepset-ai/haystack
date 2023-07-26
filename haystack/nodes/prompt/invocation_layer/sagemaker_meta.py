@@ -10,7 +10,6 @@ from haystack.nodes.prompt.invocation_layer.sagemaker_base import SageMakerBaseI
 
 logger = logging.getLogger(__name__)
 
-
 with LazyImport(message="Run 'pip install farm-haystack[aws]'") as boto3_import:
     pass
 
@@ -172,31 +171,15 @@ class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
         prompt: Any = kwargs.get("prompt")
         if not prompt or not isinstance(prompt, (str, list)):
             raise ValueError(
-                f"No prompt provided. Model {self.model_name_or_path} requires prompt."
+                f"No valid prompt provided. Model {self.model_name_or_path} requires a valid prompt."
                 f"Make sure to provide a prompt in the format that the model expects."
             )
 
-        def is_proper_format(chat):
-            allowed_roles = {"user", "assistant", "system"}
-            return all([isinstance(chat, dict), "role" in chat, "content" in chat, chat["role"] in allowed_roles])
-
-        proper_chat_format = all(
-            [
-                isinstance(prompt, list),
-                len(prompt) > 0,
-                all(
-                    isinstance(inner_list, list) and all(is_proper_format(chat) for chat in inner_list)
-                    for inner_list in prompt
-                ),
-            ]
-        )
-
-        if not (proper_chat_format or isinstance(prompt, str)):
+        if not (isinstance(prompt, str) or self.is_proper_chat_conversation_format(prompt)):
             raise ValueError(
                 f"The prompt format is different than what the model expects. "
                 f"The model {self.model_name_or_path} requires either a string or messages in the specific chat format. "
-                f"For more details, see "
-                f"[Meta client](https://github.com/facebookresearch/llama/blob/main/llama/generation.py#L213)."
+                f"For more details, see https://github.com/facebookresearch/llama/blob/main/llama/generation.py#L213)."
             )
 
         stream = kwargs.get("stream", self.stream)
@@ -265,6 +248,30 @@ class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
             # TODO: implement truncation for the chat format
             return prompt
 
+    def _is_proper_chat_message_format(self, chat_message: Dict[str, str]) -> bool:
+        allowed_roles = {"user", "assistant", "system"}
+        return all(
+            [
+                isinstance(chat_message, dict),
+                "role" in chat_message,
+                "content" in chat_message,
+                chat_message["role"] in allowed_roles,
+            ]
+        )
+
+    def is_proper_chat_conversation_format(self, prompt: List[Any]) -> bool:
+        return all(
+            [
+                isinstance(prompt, list),
+                len(prompt) > 0,
+                all(
+                    isinstance(message_list, list)
+                    and all(self._is_proper_chat_message_format(chat_message) for chat_message in message_list)
+                    for message_list in prompt
+                ),
+            ]
+        )
+
     @classmethod
     def get_test_payload(cls) -> Dict[str, Any]:
         """
@@ -320,5 +327,4 @@ class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
             }
             supported = cls.check_model_input_format(session, model_name_or_path, chat_test_payload, **kwargs)
             return supported
-        else:
-            return False
+        return False

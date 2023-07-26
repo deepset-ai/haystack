@@ -79,6 +79,7 @@ def test_constructor_with_model_kwargs(mock_auto_tokenizer, mock_boto3_session):
 
     layer = SageMakerMetaInvocationLayer(model_name_or_path="some_fake_model", **model_kwargs)
     assert "temperature" in layer.model_input_kwargs
+    assert layer.model_input_kwargs["temperature"] == 0.7
 
 
 @pytest.mark.unit
