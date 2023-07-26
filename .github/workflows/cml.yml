@@ -6,7 +6,7 @@ on:
 permissions:
   id-token: write
   contents: read
-  
+
 env:
   AWS_REGION: eu-central-1
 
@@ -24,7 +24,7 @@ jobs:
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
-          
+
       - name: deploy
         env:
           repo_token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
@@ -50,7 +50,7 @@ jobs:
 
       - name: Run benchmarks
         run: |
-          cd tests/benchmarks
+          cd test/benchmarks
           mkdir +p out
           for f in ./configs/**/*.yml; do
             echo "kill docker containers"
