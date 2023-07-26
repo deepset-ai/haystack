@@ -1,0 +1,1 @@
+sentence-transformers/paraphrase-MiniLM-L3-v2
