@@ -1,7 +1,7 @@
 - Title: Embedders
 - Decision driver: @anakin87
 - Start Date: 2023-07-19
-- Proposal PR: (fill in after opening the PR)
+- Proposal PR: https://github.com/deepset-ai/haystack/pull/5390
 
 # Summary
 
@@ -142,12 +142,12 @@ There have been much discussion on how to effectively implement this proposal.
 The most important aspects to consider:
 - we want different Embedders for queries and Documents as they require a different treatment
 - if the same model is internally used for different Embedders, we want to reuse the same instance in order to save memory
--
+
 @ZanSara formulated the following implementation idea, that I like.
 
 We make three classes:
 
-- An `EmbeddingService`, which is NOT a component, handling raw data + a factory method to reuse instances. It will live in a different package, **is for internal use only and will never be user-facing.** The name of this class can be changed (feel free to propose better alternatives).
+- An `EmbeddingService`, which is NOT a component, handling raw data + a factory method to reuse instances. It will live in a different package, **is for internal use only and will never be user-facing.** (The name of this class can be changed; feel free to propose better alternatives)
 ```python
 class HFEmbeddingService:
     """
@@ -236,6 +236,7 @@ class HFDocumentEmbedder(HFTextEmbedder):
         embeddings = self.embedding_service.embed(text_strings)
         documents_with_embeddings = [Document.from_dict(**doc.to_dict, "embedding": emb) for doc, emb in zip(documents, embeddings)]
         return self.output(documents = documents_with_embeddings)
+```
 
 # Drawbacks
 
