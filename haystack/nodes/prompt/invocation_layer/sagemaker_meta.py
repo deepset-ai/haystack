@@ -249,6 +249,11 @@ class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
             return prompt
 
     def _is_proper_chat_message_format(self, chat_message: Dict[str, str]) -> bool:
+        """
+        Checks whether a chat message is in the proper format.
+        :param chat_message: The chat message to be checked.
+        :return: True if the chat message is in the proper format, False otherwise.
+        """
         allowed_roles = {"user", "assistant", "system"}
         return all(
             [
@@ -260,6 +265,11 @@ class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
         )
 
     def is_proper_chat_conversation_format(self, prompt: List[Any]) -> bool:
+        """
+        Checks whether a chat conversation is in the proper format.
+        :param prompt: The chat conversation to be checked.
+        :return: True if the chat conversation is in the proper format, False otherwise.
+        """
         return all(
             [
                 isinstance(prompt, list),

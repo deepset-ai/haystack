@@ -138,6 +138,11 @@ class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
 
     @classmethod
     def format_custom_attributes(cls, attributes: dict) -> str:
+        """
+        Formats the custom attributes for the SageMaker endpoint.
+        :param attributes: The custom attributes to format.
+        :return: The formatted custom attributes.
+        """
         if attributes:
             return ";".join(f"{k}={str(v).lower() if isinstance(v, bool) else str(v)}" for k, v in attributes.items())
         return ""
