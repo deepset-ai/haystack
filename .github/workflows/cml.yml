@@ -76,8 +76,6 @@ jobs:
           cd test/benchmarks
           mkdir +p out
           for f in ./configs/**/*.yml; do
-            echo "kill docker containers"
-            docker kill "$(docker ps -q)"
             name="${f%.*}"
             echo "=== Running benchmarks for $name ===";
             config_name="$(basename "$name")"
