@@ -7,6 +7,7 @@ components:
       batch_size: 5000
       similarity: dot_product
       embedding_dim: 768
+      port: 9201
   - name: TextConverter
     type: TextConverter
   - name: Retriever
