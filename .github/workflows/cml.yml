@@ -3,6 +3,10 @@ name: benchmarks
 on:
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+  
 env:
   AWS_REGION: eu-central-1
 
@@ -16,7 +20,7 @@ jobs:
       - uses: iterative/setup-cml@v1
 
       - name: AWS authentication
-        uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838
+        uses: aws-actions/configure-aws-credentials@5fd3084fc36e372ff1fff382a39b10d03659f355
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
