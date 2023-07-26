@@ -40,7 +40,7 @@ jobs:
     runs-on: [self-hosted, cml]
     container:
       image: docker://iterativeai/cml:0-dvc2-base1-gpu
-      options: --gpus all -v /var/run/docker.sock:/var/run/docker.sock
+      options: --gpus all -v /var/run/docker.sock:/var/run/docker.sock --privileged
     timeout-minutes: 2880
     steps:
       - uses: actions/checkout@v3
