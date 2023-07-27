@@ -4,7 +4,7 @@
 
 import logging
 import inspect
-from typing import Union, get_origin, get_args
+from typing import Protocol, Union, Dict, Any, get_origin, get_args
 from functools import wraps
 
 from canals.errors import ComponentError
@@ -12,6 +12,24 @@ from canals.type_checking import _types_are_compatible
 
 
 logger = logging.getLogger(__name__)
+
+
+# We ignore too-few-public-methods Pylint error as this is only meant to be
+# the definition of the Component interface.
+class Component(Protocol):  # pylint: disable=too-few-public-methods
+    """
+    Abstract interface of a Component.
+    This is only used by type checking tools.
+    If you want to create a new Component use the @component decorator.
+    """
+
+    def run(self, **kwargs) -> Dict[str, Any]:
+        """
+        Takes the Component input and returns its output.
+        Inputs are defined explicitly by the run method's signature or with `component.set_input_types()` if dynamic.
+        Outputs are defined by decorating the run method with `@component.output_types()`
+        or with `component.set_output_types()` if dynamic.
+        """
 
 
 def _prepare_init_params_and_sockets(init_func):
