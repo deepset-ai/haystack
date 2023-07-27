@@ -6,6 +6,7 @@ components:
     params:
       timeout_config: [5, 300]
       batch_size: 5000
+      host: weaviate
   - name: TextConverter
     type: TextConverter
   - name: Retriever

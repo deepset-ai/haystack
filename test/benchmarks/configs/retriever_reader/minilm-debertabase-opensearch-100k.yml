@@ -4,6 +4,7 @@ components:
   - name: DocumentStore
     type: OpenSearchDocumentStore
     params:
+      host: opensearch
       batch_size: 5000
       similarity: cosine
       embedding_dim: 384

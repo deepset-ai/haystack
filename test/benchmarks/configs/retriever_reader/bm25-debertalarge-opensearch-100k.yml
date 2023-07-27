@@ -4,6 +4,7 @@ components:
   - name: DocumentStore
     type: OpenSearchDocumentStore
     params:
+      host: opensearch
       batch_size: 5000
   - name: TextConverter
     type: TextConverter

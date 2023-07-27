@@ -8,6 +8,7 @@ components:
       similarity: cosine
       embedding_dim: 384
       batch_size: 5000
+      host: weaviate
   - name: TextConverter
     type: TextConverter
   - name: Retriever
