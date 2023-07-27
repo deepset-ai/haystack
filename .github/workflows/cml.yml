@@ -62,7 +62,7 @@ jobs:
           sudo apt-get install -y docker-ce
 
       - name: Check Cluster health
-        run: curl -f http://localhost:9201/_cluster/health
+        run: curl -f http://172.17.0.2:9200/_cluster/health
 
       - name: Run benchmarks
         run: |
