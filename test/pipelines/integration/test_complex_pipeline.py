@@ -84,13 +84,11 @@ def test_complex_pipeline(tmp_path):
 
     pipeline.draw(tmp_path / "complex_pipeline.png")
 
-    results = pipeline.run({"greet_first": Greet().input(value=1), "greet_enumerator": Greet().input(value=1)})
+    results = pipeline.run({"greet_first": {"value": 1}, "greet_enumerator": {"value": 1}})
     pprint(results)
     print("accumulated: ", accumulate.state)
 
-    assert len(results) == 2
-    assert results["accumulate_3"].value == 9
-    assert results["add_five"].value == -7
+    assert results == {"accumulate_3": {"value": 9}, "add_five": {"result": -7}}
     assert accumulate.state == 9
 
 

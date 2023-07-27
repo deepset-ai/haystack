@@ -12,31 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class Greet:
+class Greet:  # pylint: disable=too-few-public-methods
     """
     Logs a greeting message without affecting the value passing on the connection.
     """
 
-    @component.input
-    def input(self):
-        class Input:
-            value: int
-            message: str
-            log_level: str
-
-        return Input
-
-    @component.output
-    def output(self):
-        class Output:
-            value: int
-
-        return Output
-
     def __init__(
         self,
-        message: Optional[str] = "\nGreeting component says: Hi! The value is {value}\n",
-        log_level: Optional[str] = "INFO",
+        message: str = "\nGreeting component says: Hi! The value is {value}\n",
+        log_level: str = "INFO",
     ):
         """
         :param message: the message to log. Can use `{value}` to embed the value.
@@ -44,16 +28,22 @@ class Greet:
         """
         if log_level and not getattr(logging, log_level):
             raise ValueError(f"This log level does not exist: {log_level}")
-        self.defaults = {"message": message, "log_level": log_level}
+        self.message = message
+        self.log_level = log_level
 
-    def run(self, data):
+    @component.output_types(value=int)
+    def run(self, value: int, message: Optional[str] = None, log_level: Optional[str] = None):
         """
         Logs a greeting message without affecting the value passing on the connection.
         """
-        print(data.log_level)
-        level = getattr(logging, data.log_level, None)
-        if not level:
-            raise ValueError(f"This log level does not exist: {data.log_level}")
+        if not message:
+            message = self.message
+        if not log_level:
+            log_level = self.log_level
 
-        logger.log(level=level, msg=data.message.format(value=data.value))
-        return self.output(value=data.value)
+        level = getattr(logging, log_level, None)
+        if not level:
+            raise ValueError(f"This log level does not exist: {log_level}")
+
+        logger.log(level=level, msg=message.format(value=value))
+        return {"value": value}

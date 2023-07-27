@@ -5,29 +5,18 @@ from canals import component
 
 
 @component
-class Subtract:
+class Subtract:  # pylint: disable=too-few-public-methods
     """
     Compute the difference between two values.
     """
 
-    @component.input
-    def input(self):
-        class Input:
-            first_value: int
-            second_value: int
+    def __init__(self):
+        ...
 
-        return Input
-
-    @component.output
-    def output(self):
-        class Output:
-            difference: int
-
-        return Output
-
-    def run(self, data):
+    @component.output_types(difference=int)
+    def run(self, first_value: int, second_value: int):
         """
         :param first_value: name of the connection carrying the value to subtract from.
         :param second_value: name of the connection carrying the value to subtract.
         """
-        return self.output(difference=data.first_value - data.second_value)
+        return {"difference": first_value - second_value}

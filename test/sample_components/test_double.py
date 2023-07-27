@@ -12,6 +12,6 @@ class TestDouble(BaseTestComponent):
 
     def test_double_default(self):
         component = Double()
-        results = component.run(component.input(value=10))
-        assert results == component.output(value=20)
+        results = component.run(value=10)
+        assert results == {"value": 20}
         assert component.init_parameters == {}

@@ -12,7 +12,7 @@ import requests
 from canals.pipeline import Pipeline
 from canals.pipeline.draw import _draw, _convert
 from canals.errors import PipelineDrawingError
-from sample_components import Double
+from sample_components import Double, AddFixedValue
 
 
 @pytest.mark.skipif(sys.platform.lower().startswith("darwin"), reason="the available graphviz version is too recent")
@@ -64,18 +64,33 @@ def test_draw_mermaid_img_failing_request(tmp_path):
 
 def test_draw_mermaid_txt(tmp_path):
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
+    pipe.add_component("comp1", AddFixedValue(add=3))
     pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
-    pipe.connect("comp2", "comp1")
+    pipe.connect("comp1.result", "comp2.value")
+    pipe.connect("comp2.value", "comp1.value")
 
     _draw(pipe.graph, tmp_path / "test_pipe.md", engine="mermaid-text")
     assert os.path.exists(tmp_path / "test_pipe.md")
     assert (
         open(tmp_path / "test_pipe.md", "r").read()
-        == """graph TD;
-comp1 -- value -> value --> comp2
-comp2 -- value -> value --> comp1"""
+        == """
+%%{ init: {'theme': 'neutral' } }%%
+
+stateDiagram-v2
+
+comp1:::components: <b>comp1</b><br><small><i>AddFixedValue(add=3)</i></small>
+comp2:::components: <b>comp2</b><br><small><i>Double()</i></small>
+
+note left of comp1
+    add <small><i>Optional[int]</i></small>
+end note
+
+comp1 --> comp2 : result -> value  <small><i>(int)</i></small>
+comp2 --> comp1 : value -> value  <small><i>(int)</i></small>
+[*] --> comp1 : add  <small><i>(Optional[int])</i></small>
+
+classDef components text-align:center;
+"""
     )
 
 

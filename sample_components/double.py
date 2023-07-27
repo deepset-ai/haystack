@@ -6,27 +6,14 @@ from canals import component
 
 
 @component
-class Double:
+class Double:  # pylint: disable=too-few-public-methods
     """
     Doubles the input value.
     """
 
-    @component.input
-    def input(self):
-        class Input:
-            value: int
-
-        return Input
-
-    @component.output
-    def output(self):
-        class Output:
-            value: int
-
-        return Output
-
-    def run(self, data):
+    @component.output_types(value=int)
+    def run(self, value: int):
         """
-        Doubles the input value
+        Doubles the input value.
         """
-        return self.output(value=data.value * 2)
+        return {"value": value * 2}

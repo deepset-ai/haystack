@@ -9,21 +9,8 @@ from canals import component
 def make_component(input=Any, output=Any):
     @component
     class Component:
-        @component.input
-        def input(self):
-            class Input:
-                value: input
-
-            return Input
-
-        @component.output
-        def output(self):
-            class Output:
-                value: output
-
-            return Output
-
-        def run(self, data):
-            return self.output()
+        @component.output_types(value=output)
+        def run(self, value: input):
+            return {"value": value}
 
     return Component()

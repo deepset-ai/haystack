@@ -95,17 +95,16 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph, style_map: Dict[str, str]
     graph.add_node("input")
     for node, in_sockets in _find_pipeline_inputs(graph).items():
         for in_socket in in_sockets:
-            node_instance = graph.nodes[node]["instance"]
-            socket_has_default = in_socket.name in node_instance.defaults
-            if not socket_has_default and in_socket.sender is None:
-                # If this socket has no defaults and no other component sends anything to it
-                # it must be a socket that receives input directly when running the Pipeline
-                graph.add_edge("input", node, label=in_socket.name)
+            if in_socket.sender is None:
+                # If this socket has no sender it could be a socket that receives input
+                # directly when running the Pipeline. We can't know that for sure, in doubt
+                # we draw it as receiving input directly.
+                graph.add_edge("input", node, label=in_socket.name, conn_type=str(in_socket))
 
     # Draw the outputs
     graph.add_node("output")
     for node, out_sockets in _find_pipeline_outputs(graph).items():
         for out_socket in out_sockets:
-            graph.add_edge(node, "output", label=out_socket.name)
+            graph.add_edge(node, "output", label=out_socket.name, conn_type=str(out_socket))
 
     return graph

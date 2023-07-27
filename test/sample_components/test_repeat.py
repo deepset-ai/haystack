@@ -6,20 +6,11 @@ from sample_components import Repeat
 
 
 class TestRepeat(BaseTestComponent):
-    def test_saveload_default(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Repeat(), tmp_path)
-
-    def test_saveload_outputs(self, tmp_path):
+    def test_saveload(self, tmp_path):
         self.assert_can_be_saved_and_loaded_in_pipeline(Repeat(outputs=["one", "two"]), tmp_path)
 
     def test_repeat_default(self):
-        component = Repeat()
-        results = component.run(component.input(value=10))
-        assert results == component.output(output_1=10, output_2=10, output_3=10)
-        assert component.init_parameters == {}
-
-    def test_repeat_init(self):
         component = Repeat(outputs=["one", "two"])
-        results = component.run(component.input(value=10))
-        assert results == component.output(one=10, two=10)
+        results = component.run(value=10)
+        assert results == {"one": 10, "two": 10}
         assert component.init_parameters == {"outputs": ["one", "two"]}

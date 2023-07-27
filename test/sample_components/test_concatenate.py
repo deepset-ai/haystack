@@ -11,20 +11,20 @@ class TestConcatenate(BaseTestComponent):
 
     def test_input_lists(self):
         component = Concatenate()
-        res = component.run(component.input(["This"], ["That"]))
-        assert res == component.output(["This", "That"])
+        res = component.run(first=["This"], second=["That"])
+        assert res == {"value": ["This", "That"]}
 
     def test_input_strings(self):
         component = Concatenate()
-        res = component.run(component.input("This", "That"))
-        assert res == component.output(["This", "That"])
+        res = component.run(first="This", second="That")
+        assert res == {"value": ["This", "That"]}
 
     def test_input_first_list_second_string(self):
         component = Concatenate()
-        res = component.run(component.input(["This"], "That"))
-        assert res == component.output(["This", "That"])
+        res = component.run(first=["This"], second="That")
+        assert res == {"value": ["This", "That"]}
 
     def test_input_first_string_second_list(self):
         component = Concatenate()
-        res = component.run(component.input("This", ["That"]))
-        assert res == component.output(["This", "That"])
+        res = component.run(first="This", second=["That"])
+        assert res == {"value": ["This", "That"]}

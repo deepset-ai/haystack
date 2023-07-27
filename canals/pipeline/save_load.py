@@ -9,7 +9,7 @@ import json
 import logging
 from pathlib import Path
 
-from canals.component import component, Component
+from canals.component.component import component
 from canals.pipeline.pipeline import Pipeline
 from canals.errors import PipelineUnmarshalError
 
@@ -70,7 +70,7 @@ def marshal_pipelines(pipelines: Dict[str, Pipeline]) -> Dict[str, Any]:
     schema: Dict[str, Any] = {}
 
     # Summarize pipeline configuration
-    components: List[Tuple[str, str, Component]] = []
+    components: List[Tuple[str, str, Any]] = []
     schema["pipelines"] = {}
     for pipeline_name, pipeline in pipelines.items():
         pipeline_repr: Dict[str, Any] = {}
@@ -122,7 +122,7 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:  # pylin
 
     """
     pipelines = {}
-    component_instances: Dict[str, Component] = {}
+    component_instances: Dict[str, Any] = {}
     for pipeline_name, pipeline_schema in schema["pipelines"].items():
         # Create the Pipeline object
         pipe_args = {"metadata": pipeline_schema.get("metadata", None)}

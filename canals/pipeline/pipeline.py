@@ -10,16 +10,15 @@ import logging
 from pathlib import Path
 from copy import deepcopy
 from collections import OrderedDict
-from dataclasses import fields
 
 import networkx
 
 from canals.component import Component
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
 from canals.pipeline.draw import _draw, _convert_for_debug, RenderingEngines
-from canals.pipeline.sockets import InputSocket, OutputSocket, _find_input_sockets, _find_output_sockets
+from canals.pipeline.sockets import InputSocket, OutputSocket
 from canals.pipeline.validation import _validate_pipeline_input
-from canals.pipeline.connections import _parse_connection_name, _find_unambiguous_connection, _get_socket_type_desc
+from canals.pipeline.connections import _parse_connection_name, _find_unambiguous_connection
 
 
 logger = logging.getLogger(__name__)
@@ -115,14 +114,18 @@ class Pipeline:
             raise ValueError("'_debug' is a reserved name for debug output. Choose another name.")
 
         # Component instances must be components
-        if not hasattr(instance, "__canals_component__"):
+        if not (hasattr(instance, "run") and hasattr(instance.run, "__canals_io__")):
             raise PipelineValidationError(
                 f"'{type(instance)}' doesn't seem to be a component. Is this class decorated with @component?"
             )
 
-        # Find inputs and outputs
-        input_sockets = _find_input_sockets(instance)
-        output_sockets = _find_output_sockets(instance)
+        # Create the component's input and output sockets
+        input_sockets = {
+            name: InputSocket(**data) for name, data in instance.run.__canals_io__.get("input_types", {}).items()
+        }
+        output_sockets = {
+            name: OutputSocket(**data) for name, data in instance.run.__canals_io__.get("output_types", {}).items()
+        }
 
         # Add component to the graph, disconnected
         logger.debug("Adding component '%s' (%s)", name, instance)
@@ -175,9 +178,7 @@ class Pipeline:
                 raise PipelineConnectError(
                     f"'{from_node}.{from_socket_name} does not exist. "
                     f"Output connections of {from_node} are: "
-                    + ", ".join(
-                        [f"{name} (type {_get_socket_type_desc(socket.type)})" for name, socket in from_sockets.items()]
-                    )
+                    + ", ".join([f"{name} (type {socket})" for name, socket in from_sockets.items()])
                 )
         if to_socket_name:
             to_socket = to_sockets.get(to_socket_name, None)
@@ -185,9 +186,7 @@ class Pipeline:
                 raise PipelineConnectError(
                     f"'{to_node}.{to_socket_name} does not exist. "
                     f"Input connections of {to_node} are: "
-                    + ", ".join(
-                        [f"{name} (type {_get_socket_type_desc(socket.type)})" for name, socket in to_sockets.items()]
-                    )
+                    + ", ".join([f"{name} (type {socket})" for name, socket in to_sockets.items()])
                 )
 
         # Look for an unambiguous connection among the possible ones.
@@ -217,7 +216,14 @@ class Pipeline:
         # Create the connection
         logger.debug("Connecting '%s.%s' to '%s.%s'", from_node, from_socket.name, to_node, to_socket.name)
         edge_key = f"{from_socket.name}/{to_socket.name}"
-        self.graph.add_edge(from_node, to_node, key=edge_key, from_socket=from_socket, to_socket=to_socket)
+        self.graph.add_edge(
+            from_node,
+            to_node,
+            key=edge_key,
+            conn_type=str(from_socket),
+            from_socket=from_socket,
+            to_socket=to_socket,
+        )
 
         # Stores the name of the node that will send its output to this socket
         to_socket.sender = from_node
@@ -257,6 +263,11 @@ class Pipeline:
             ImportError: if `engine='graphviz'` and `pygraphviz` is not installed.
             HTTPConnectionError: (and similar) if the internet connection is down or other connection issues.
         """
+        sockets = {
+            comp: "\n".join([f"{name}: {socket}" for name, socket in data.get("input_sockets", {}).items()])
+            for comp, data in self.graph.nodes(data=True)
+        }
+        print(sockets)
         _draw(graph=deepcopy(self.graph), path=path, engine=engine)
 
     def warm_up(self):
@@ -321,7 +332,7 @@ class Pipeline:
         logger.info("Pipeline execution started.")
         inputs_buffer = OrderedDict(
             {
-                node: {key: value for key, value in input_data.__dict__.items() if value is not None}
+                node: {key: value for key, value in input_data.items() if value is not None}
                 for node, input_data in data.items()
             }
         )
@@ -488,10 +499,13 @@ class Pipeline:
         received_input_sockets = set(inputs.keys())
 
         # All components inputs, whether they're connected, default or pipeline inputs
-        instance = self.graph.nodes[name]["instance"]
-        input_sockets = {f.name for f in fields(instance.__canals_input__)}
-        optional_input_sockets = set(instance.__canals_optional_inputs__)
-        mandatory_input_sockets = set(instance.__canals_mandatory_inputs__)
+        input_sockets: Dict[str, InputSocket] = self.graph.nodes[name]["input_sockets"].keys()
+        optional_input_sockets = {
+            socket.name for socket in self.graph.nodes[name]["input_sockets"].values() if socket.is_optional
+        }
+        mandatory_input_sockets = {
+            socket.name for socket in self.graph.nodes[name]["input_sockets"].values() if not socket.is_optional
+        }
 
         # Components that are in the inputs buffer and have no inputs assigned are considered skipped
         skipped_components = {n for n, v in inputs_buffer.items() if not v}
@@ -621,18 +635,18 @@ class Pipeline:
             logger.info("* Running %s (visits: %s)", name, self.graph.nodes[name]["visits"])
             logger.debug("   '%s' inputs: %s", name, inputs)
 
-            # Optional fields are defaulted to None so creation of the input dataclass doesn't fail
-            # cause we're missing some argument
-            optionals = {field: None for field in instance.__canals_optional_inputs__}
+            # # Optional fields are defaulted to None so creation of the input dataclass doesn't fail
+            # # cause we're missing some argument
+            # optionals = {field: None for field in instance.__canals_optional_inputs__}
 
             # Pass the inputs as kwargs after adding the component's own defaults to them
-            inputs = {**optionals, **instance.defaults, **inputs}
-            input_dataclass = instance.input(**inputs)
+            # inputs = {**optionals, **instance.defaults, **inputs}
+            # input_dataclass = instance.input(**inputs)
 
-            output_dataclass = instance.run(input_dataclass)
+            outputs = instance.run(**inputs)
 
             # Unwrap the output
-            logger.debug("   '%s' outputs: %s\n", name, output_dataclass.__dict__)
+            logger.debug("   '%s' outputs: %s\n", name, outputs)
 
         except Exception as e:
             raise PipelineRuntimeError(
@@ -640,7 +654,7 @@ class Pipeline:
                 "See the stacktrace above for more information."
             ) from e
 
-        return output_dataclass
+        return outputs
 
     def _route_output(
         self,
@@ -665,7 +679,7 @@ class Pipeline:
 
             # If this is a decision node and a loop is involved, we add to the input buffer only the nodes
             # that received their expected output and we leave the others out of the queue.
-            if is_decision_node_for_loop and getattr(node_results, from_socket.name) is None:
+            if is_decision_node_for_loop and node_results.get(from_socket.name, None) is None:
                 if networkx.has_path(self.graph, target_node, node_name):
                     # In case we're choosing to leave a loop, do not put the loop's node in the buffer.
                     logger.debug(
@@ -684,7 +698,7 @@ class Pipeline:
                 if target_node not in inputs_buffer:
                     inputs_buffer[target_node] = {}  # Create the buffer for the downstream node if it's not there yet
 
-                value_to_route = getattr(node_results, from_socket.name, None)
+                value_to_route = node_results.get(from_socket.name, None)
                 if value_to_route:
                     inputs_buffer[target_node][to_socket.name] = value_to_route
 

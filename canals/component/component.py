@@ -1,14 +1,14 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import logging
 import inspect
-from typing import Protocol, Union, List, Any, get_origin, get_args
-from dataclasses import fields, Field
+from typing import Protocol, Union, Dict, Any, get_origin, get_args
 from functools import wraps
 
 from canals.errors import ComponentError
-from canals.component.input_output import Connection, _input, _output
+from canals.type_checking import _types_are_compatible
 
 
 logger = logging.getLogger(__name__)
@@ -16,39 +16,39 @@ logger = logging.getLogger(__name__)
 
 # We ignore too-few-public-methods Pylint error as this is only meant to be
 # the definition of the Component interface.
-# A concrete Component will have more than method in any case.
 class Component(Protocol):  # pylint: disable=too-few-public-methods
     """
     Abstract interface of a Component.
     This is only used by type checking tools.
-
     If you want to create a new Component use the @component decorator.
     """
 
-    def run(self, data: Any) -> Any:
+    def run(self, **kwargs) -> Dict[str, Any]:
         """
         Takes the Component input and returns its output.
-        Input and output dataclasses types must be defined in separate methods
-        decorated with @component.input and @component.output respectively.
-
-        We use Any both as data and return types since dataclasses don't have a specific type.
+        Inputs are defined explicitly by the run method's signature or with `component.set_input_types()` if dynamic.
+        Outputs are defined by decorating the run method with `@component.output_types()`
+        or with `component.set_output_types()` if dynamic.
         """
 
-    @property
-    def __canals_input__(self) -> type:
-        pass
 
-    @property
-    def __canals_output__(self) -> type:
-        pass
+def _prepare_init_params_and_sockets(init_func):
+    """
+    Decorator that saves the init parameters of a component in `self.init_parameters`
+    """
 
-    @property
-    def __canals_optional_inputs__(self) -> List[str]:
-        pass
+    @wraps(init_func)
+    def wrapper(self, *args, **kwargs):
+        # Call the actual __init__ function with the arguments
+        init_func(self, *args, **kwargs)
 
-    @property
-    def __canals_mandatory_inputs__(self) -> List[str]:
-        pass
+        # Collect and store all the init parameters, preserving whatever the components might have already added there
+        self.init_parameters = {**kwargs, **getattr(self, "init_parameters", {})}
+
+        if not hasattr(self.run, "__canals_io__"):
+            raise ComponentError("This component seems to have neither inputs nor outputs.")
+
+    return wrapper
 
 
 class _Component:
@@ -61,83 +61,11 @@ class _Component:
 
     All component classes must be decorated with the `@component` decorator. This allows Canals to discover them.
 
-    ### `@component.input`
-
-    All components must decorate one single method with the `@component.input` decorator. This method must return a
-    dataclass, which will be used as structure of the input of the component.
-
-    For example, if the node is expecting a list of Documents, the fields of the returned dataclass should be
-    `documents: List[Document]`. Note that you don't need to decorate the dataclass youself: `@component.input` will
-    add the decorator for you.
-
-    Here is an example of such method:
-
-    ```python
-    @component.input
-    def input(self):
-        class Input:
-            value: int
-            add: int
-
-        return Input
-    ```
-
-    Defaults are allowed, as much as default factories and other dataclass properties.
-
-    By default `@component.input` sets `None` as default for all fields, regardless of their definition: this gives you
-    the possibility of passing a part of the input to the pipeline without defining every field of the component.
-    For example, using the above definition, you can create an Input dataclass as:
-
-    ```python
-    self.input(add=3)
-    ```
-
-    and the resulting dataclass will look like `Input(value=None, add=3)`.
-
-    However, if you don't explicitly define them as Optionals, Pipeline will make sure to collect all the values of
-    this dataclass before calling the `run()` method, making them in practice non-optional.
-
-    If you instead define a specific field as Optional in the dataclass, then Pipeline will **not** wait for them, and
-    will run the component as soon as all the non-optional fields have received a value or, if all fields are optional,
-    if at least one of them received it.
-
-    This behavior allows Canals to define loops by not waiting on both incoming inputs of the entry component of the
-    loop, and instead running as soon as at least one of them receives a value.
-
-    ### `@component.output`
-
-    All components must decorate one single method with the `@component.output` decorator. This method must return a
-    dataclass, which will be used as structure of the output of the component.
-
-    For example, if the node is producing a list of Documents, the fields of the returned dataclass should be
-    `documents: List[Document]`. Note that you don't need to decorate the dataclass youself: `@component.output` will
-    add the decorator for you.
-
-    Here is an example of such method:
-
-    ```python
-    @component.output
-    def output(self):
-        class Output:
-            value: int
-
-        return Output
-    ```
-
-    Defaults are allowed, as much as default factories and other dataclass properties.
-
     ### `__init__(self, **kwargs)`
 
     Optional method.
 
     Components may have an `__init__` method where they define:
-
-    - `self.defaults = {parameter_name: parameter_default_value, ...}`:
-        All values defined here will be sent to the `run()` method when the Pipeline calls it.
-        If any of these parameters is also receiving input from other components, those have precedence.
-        This collection of values is supposed to replace the need for default values in `run()` and make them
-        dynamically configurable. Keep in mind that only these defaults will count at runtime: defaults given to
-        the `Input` dataclass (see above) will be ignored.
 
     - `self.init_parameters = {same parameters that the __init__ method received}`:
         In this dictionary you can store any state the components wish to be persisted when they are saved.
@@ -196,50 +124,173 @@ class _Component:
     def __init__(self):
         self.registry = {}
 
-    @property
-    def input(self):
+    def set_input_types(self, instance, **types):
         """
-        TODO: Documentation
+        Method that validates the input kwargs of the run method.
+
+        Use as:
+
+        ```python
+        @component
+        class MyComponent:
+
+            def __init__(self, value: int):
+                component.set_input_types(value_1=str, value_2=str)
+                ...
+
+            @component.output_types(output_1=int, output_2=str)
+            def run(self, **kwargs):
+                return {"output_1": kwargs["value_1"], "output_2": ""}
+        ```
         """
-        return _input
+        run_method = instance.run
 
-    @property
-    def output(self):
+        def wrapper(**kwargs):
+            """
+            Adds a check that validates the input kwargs of the run method.
+            """
+            # Check input types
+            for key, value in kwargs.items():
+                if key not in types:
+                    raise ComponentError(f"Input value '{key}' not declared in component.set_input_types()")
+                if _types_are_compatible(value, types[key]):
+                    raise ComponentError(
+                        f"Input type {type(value)} for value '{key}' doesn't match the one declared in "
+                        f"component.set_input_types() ({types[key]}))"
+                    )
+            return run_method(**kwargs)
+
+        # Store the input types in the run method
+        wrapper.__canals_io__ = getattr(instance.run, "__canals_io__", {})
+        wrapper.__canals_io__["input_types"] = {
+            name: {"name": name, "type": type_, "is_optional": _is_optional(type_)} for name, type_ in types.items()
+        }
+
+        # Assigns the wrapped method to the instance's run()
+        instance.run = wrapper
+
+    def set_output_types(self, instance, **types):
         """
-        TODO: Documentation
+        Method that validates the output dictionary of the run method.
+
+        Use as:
+
+        ```python
+        @component
+        class MyComponent:
+
+            def __init__(self, value: int):
+                component.set_output_types(output_1=int, output_2=str)
+                ...
+
+            def run(self, value: int):
+                return {"output_1": 1, "output_2": "2"}
+        ```
         """
-        return _output
+        if not types:
+            return
 
-    def _decorate(self, class_):
-        # '__canals_component__' is used to distinguish components from regular classes.
-        # Its value is set to the desired component name: normally it is the class name, but it can technically be customized.
-        class_.__canals_component__ = class_.__name__
+        run_method = instance.run
 
-        # Find input and output properties
-        (input_, output) = _find_input_output(class_)
+        def wrapper(*args, **kwargs):
+            """
+            Adds a check that validates the output dictionary of the run method.
+            """
+            result = run_method(*args, **kwargs)
+            # Check output types
+            for key in result:
+                if key not in types:
+                    raise ComponentError(f"Return value '{key}' not declared in component.set_output_types()")
+                if _types_are_compatible(types[key], result[key]):
+                    raise ComponentError(
+                        f"Return type {type(result[key])} for value '{key}' doesn't match the one declared in "
+                        f"component.set_output_types() ({types[key]}))"
+                    )
+            return result
 
-        # Save the input and output properties so it's easier to find them when running the Component since we won't
-        # need to search the exact property name each time
-        class_.__canals_input__ = input_
-        class_.__canals_output__ = output
+        # Store the output types in the run method
+        wrapper.__canals_io__ = getattr(instance.run, "__canals_io__", {})
+        wrapper.__canals_io__["output_types"] = {name: {"name": name, "type": type_} for name, type_ in types.items()}
 
-        # Save optional inputs, optionals inputs are those fields for the __canals_input__ dataclass
-        # that have an Optional type.
-        # Those are necessary to implement Components that can run with partial input, this gives us
-        # the possibility to have cycles in Pipelines.
-        class_.__canals_optional_inputs__ = property(_optional_inputs)
-        class_.__canals_mandatory_inputs__ = property(_mandatory_inputs)
+        # Assigns the wrapped method to the instance's run()
+        instance.run = wrapper
 
-        # Check that the run method respects all constraints
-        _check_run_signature(class_)
+    def output_types(self, **types):
+        """
+        Decorator factory that validates the output dictionary of the run method.
 
-        # Makes sure the self.defaults and self.init_parameters dictionaries are always present
-        class_.init_parameters = {}
-        class_.defaults = {}
+        Use as:
 
-        # Automatically registers all the init parameters in an instance attribute called `init_parameters`.
-        class_.__init__ = _save_init_params(class_.__init__)
+        ```python
+        @component
+        class MyComponent:
+            @component.output_types(output_1=int, output_2=str)
+            def run(self, value: int):
+                return {"output_1": 1, "output_2": "2"}
+        ```
+        """
 
+        def output_types_decorator(run_method):
+            """
+            Decorator that validates the output dictionary of the run method.
+            """
+            # Store the output types in the run method - used by the pipeline to build the sockets.
+            if not hasattr(run_method, "__canals_io__"):
+                run_method.__canals_io__ = {}
+            run_method.__canals_io__["output_types"] = {
+                name: {"name": name, "type": type_} for name, type_ in types.items()
+            }
+
+            @wraps(run_method)
+            def output_types_impl(self, *args, **kwargs):
+                """
+                Adds a check that validates the output dictionary of the run method.
+                """
+                result = run_method(self, *args, **kwargs)
+
+                # Check output types
+                for key in result:
+                    if key not in types:
+                        raise ComponentError(f"Return value '{key}' not declared in @output_types decorator")
+                    if _types_are_compatible(types[key], result[key]):
+                        raise ComponentError(
+                            f"Return type {type(result[key])} for value '{key}' doesn't match the one declared in "
+                            f"@output_types decorator ({types[key]}))"
+                        )
+                return result
+
+            return output_types_impl
+
+        return output_types_decorator
+
+    def _component(self, class_):
+        """
+        Decorator validating the structure of the component and registering it in the components registry.
+        """
+        logger.debug("Registering %s as a component", class_)
+
+        # Check for run()
+        if not hasattr(class_, "run"):
+            raise ComponentError(f"{class_.__name__} must have a 'run()' method. See the docs for more information.")
+        run_signature = inspect.signature(class_.run)
+
+        # Create the input sockets
+        if not hasattr(class_.run, "__canals_io__"):
+            class_.run.__canals_io__ = {}
+        class_.run.__canals_io__["input_types"] = {
+            param: {
+                "name": param,
+                "type": run_signature.parameters[param].annotation,
+                "is_optional": _is_optional(run_signature.parameters[param].annotation),
+            }
+            for param in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
+        }
+
+        # Automatically registers all the init parameters in an instance attribute called `_init_parameters`.
+        # See `save_init_parameters()`.
+        class_.__init__ = _prepare_init_params_and_sockets(class_.__init__)
+
+        # Save the component in the class registry (for deserialization)
         if class_.__name__ in self.registry:
             logger.error(
                 "Component %s is already registered. Previous imported from '%s', new imported from '%s'",
@@ -247,119 +298,24 @@ class _Component:
                 self.registry[class_.__name__],
                 class_,
             )
-
         self.registry[class_.__name__] = class_
         logger.debug("Registered Component %s", class_)
 
         return class_
 
     def __call__(self, class_=None):
+        """Allows us to use this decorator with parenthesis and without."""
         if class_:
-            return self._decorate(class_)
+            return self._component(class_)
 
-        return self._decorate
+        return self._component
 
 
 component = _Component()
 
 
-def _find_input_output(class_):
+def _is_optional(type_: type) -> bool:
     """
-    Finds the input and the output definitions for class_ and returns them.
-
-    There must be only a single definition of input and output for class_, if either
-    none or more than one are found raise ConnectionError.
+    Utility method that returns whether a type is Optional.
     """
-    inputs_found = []
-    outputs_found = []
-
-    # Get all properties of class_
-    properties = inspect.getmembers(class_, predicate=lambda m: isinstance(m, property))
-    for _, prop in properties:
-        if not hasattr(prop, "fget") or not hasattr(prop.fget, "__canals_connection__"):
-            continue
-
-        # Field __canals_connection__ is set by _input and _output decorators
-        if prop.fget.__canals_connection__ == Connection.INPUT:
-            inputs_found.append(prop)
-        elif prop.fget.__canals_connection__ == Connection.OUTPUT:
-            outputs_found.append(prop)
-
-    if (in_len := len(inputs_found)) != 1:
-        # Raise if we don't find only a single input definition
-        if in_len == 0:
-            raise ComponentError(
-                f"No input definition found in Component {class_.__name__}. "
-                "Create a method that returns a dataclass defining the input and "
-                "decorate it with @component.input() to fix the error."
-            )
-        raise ComponentError(f"Multiple input definitions found for Component {class_.__name__}.")
-
-    if (in_len := len(outputs_found)) != 1:
-        # Raise if we don't find only a single output definition
-        if in_len == 0:
-            raise ComponentError(
-                f"No output definition found in Component {class_.__name__}. "
-                "Create a method that returns a dataclass defining the output and "
-                "decorate it with @component.output() to fix the error."
-            )
-        raise ComponentError(f"Multiple output definitions found for Component {class_.__name__}.")
-
-    return (inputs_found[0], outputs_found[0])
-
-
-def _check_run_signature(class_):
-    """
-    Check that the component's run() method exists and respects all constraints
-    """
-    # Check for run()
-    if not hasattr(class_, "run"):
-        raise ComponentError(f"{class_.__name__} must have a 'run()' method. See the docs for more information.")
-    run_signature = inspect.signature(class_.run)
-
-    # run() must take a single input param
-    if len(run_signature.parameters) != 2:
-        raise ComponentError("run() must accept only a single parameter called 'data'.")
-
-    # The input param must be called data
-    if not "data" in run_signature.parameters:
-        raise ComponentError("run() must accept a parameter called 'data'.")
-
-
-def _is_optional(field: Field) -> bool:
-    """
-    Utility method that returns whether a field has an Optional type or not.
-    """
-    return get_origin(field.type) is Union and type(None) in get_args(field.type)
-
-
-def _optional_inputs(self) -> List[str]:
-    """
-    Return all field names of self that have an Optional type.
-    This is meant to be set as a property in a Component.
-    """
-    return [f.name for f in fields(self.__canals_input__) if _is_optional(f)]
-
-
-def _mandatory_inputs(self) -> List[str]:
-    """
-    Return all field names of self that don't have an Optional type.
-    This is meant to be set as a property in a Component.
-    """
-    return [f.name for f in fields(self.__canals_input__) if not _is_optional(f)]
-
-
-def _save_init_params(init_func):
-    """
-    Decorator that saves the init parameters of a component in `self.init_parameters`
-    """
-
-    @wraps(init_func)
-    def wrapper(self, *args, **kwargs):
-        # Call the actual __init__ function with the arguments
-        init_func(self, *args, **kwargs)
-
-        # Collect and store all the init parameters, preserving whatever the components might have already added there
-        self.init_parameters = {**kwargs, **self.init_parameters}
-
-    return wrapper
+    return get_origin(type_) is Union and type(None) in get_args(type_)

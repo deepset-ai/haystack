@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import List, Dict, Any
 import logging
-from dataclasses import fields
 
 import networkx
 
@@ -20,8 +19,8 @@ def _find_pipeline_inputs(graph: networkx.MultiDiGraph) -> Dict[str, List[InputS
     input sockets, including all such sockets with default values.
     """
     return {
-        node: [socket for socket in data.get("input_sockets", {}).values() if not socket.sender]
-        for node, data in graph.nodes(data=True)
+        name: [socket for socket in data.get("input_sockets", {}).values() if not socket.sender]
+        for name, data in graph.nodes(data=True)
     }
 
 
@@ -66,15 +65,13 @@ def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_va
     valid_inputs = _find_pipeline_inputs(graph)
     for node, sockets in valid_inputs.items():
         for socket in sockets:
-            node_instance = graph.nodes[node]["instance"]
-            input_in_node_defaults = hasattr(node_instance, "defaults") and socket.name in node_instance.defaults
-            inputs_for_node = input_values.get(node)
+            inputs_for_node = input_values.get(node, {})
             missing_input_value = (
                 not inputs_for_node
-                or not socket.name in [f.name for f in fields(inputs_for_node)]
-                or not getattr(inputs_for_node, socket.name)
+                or not socket.name in inputs_for_node.keys()
+                or not inputs_for_node.get(socket.name, None)
             )
-            if missing_input_value and not input_in_node_defaults:
+            if missing_input_value and not socket.is_optional:
                 raise ValueError(f"Missing input: {node}.{socket.name}")
 
 
@@ -84,8 +81,8 @@ def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, in
     but never from both.
     """
     for node, input_data in input_values.items():
-        for socket_name in [f.name for f in fields(input_data)]:
-            if not getattr(input_data, socket_name):
+        for socket_name in input_data.keys():
+            if not input_data.get(socket_name, None):
                 continue
             if not socket_name in graph.nodes[node]["input_sockets"].keys():
                 raise ValueError(

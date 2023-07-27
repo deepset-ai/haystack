@@ -12,17 +12,19 @@ class TestRemainder(BaseTestComponent):
         self.assert_can_be_saved_and_loaded_in_pipeline(Remainder(), tmp_path)
 
     def test_saveload_divisor(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Remainder(divisor=1), tmp_path)
+        self.assert_can_be_saved_and_loaded_in_pipeline(Remainder(divisor=10), tmp_path)
 
     def test_remainder_default(self):
         component = Remainder()
-        results = component.run(component.input(value=3))
-        assert results == component.output(remainder_is_1=3)
+        results = component.run(value=4)
+        assert results == {"remainder_is_0": None, "remainder_is_1": 4, "remainder_is_2": None}
+        assert component.init_parameters == {}
 
     def test_remainder_with_divisor(self):
         component = Remainder(divisor=4)
-        results = component.run(component.input(value=3))
-        assert results == component.output(remainder_is_3=3)
+        results = component.run(value=4)
+        assert results == {"remainder_is_0": 4, "remainder_is_1": None, "remainder_is_2": None, "remainder_is_3": None}
+        assert component.init_parameters == {"divisor": 4}
 
     def test_remainder_zero(self):
         with pytest.raises(ValueError):

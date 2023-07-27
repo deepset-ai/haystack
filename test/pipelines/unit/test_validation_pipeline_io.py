@@ -1,6 +1,7 @@
 from typing import Optional
 
 import pytest
+import inspect
 
 from canals.pipeline import Pipeline
 from canals.errors import PipelineValidationError
@@ -26,7 +27,7 @@ def test_find_pipeline_input_one_input():
     pipe.connect("comp1", "comp2")
 
     assert _find_pipeline_inputs(pipe.graph) == {
-        "comp1": [InputSocket(name="value", type=int)],
+        "comp1": [InputSocket(name="value", type=int, is_optional=False)],
         "comp2": [],
     }
 
@@ -39,8 +40,8 @@ def test_find_pipeline_input_two_inputs_same_component():
 
     assert _find_pipeline_inputs(pipe.graph) == {
         "comp1": [
-            InputSocket(name="value", type=int),
-            InputSocket(name="add", type=int),
+            InputSocket(name="value", type=int, is_optional=False),
+            InputSocket(name="add", type=Optional[int], is_optional=True),
         ],
         "comp2": [],
     }
@@ -51,15 +52,15 @@ def test_find_pipeline_input_some_inputs_different_components():
     pipe.add_component("comp1", AddFixedValue())
     pipe.add_component("comp2", Double())
     pipe.add_component("comp3", AddFixedValue())
-    pipe.connect("comp1", "comp3")
-    pipe.connect("comp2", "comp3.add")
+    pipe.connect("comp1.result", "comp3.value")
+    pipe.connect("comp2.value", "comp3.add")
 
     assert _find_pipeline_inputs(pipe.graph) == {
         "comp1": [
-            InputSocket(name="value", type=int),
-            InputSocket(name="add", type=int),
+            InputSocket(name="value", type=int, is_optional=False),
+            InputSocket(name="add", type=Optional[int], is_optional=True),
         ],
-        "comp2": [InputSocket(name="value", type=int)],
+        "comp2": [InputSocket(name="value", type=int, is_optional=False)],
         "comp3": [],
     }
 
@@ -72,11 +73,14 @@ def test_find_pipeline_variable_input_nodes_in_the_pipeline():
 
     assert _find_pipeline_inputs(pipe.graph) == {
         "comp1": [
-            InputSocket(name="value", type=int),
-            InputSocket(name="add", type=int),
+            InputSocket(name="value", type=int, is_optional=False),
+            InputSocket(name="add", type=Optional[int], is_optional=True),
         ],
-        "comp2": [InputSocket(name="value", type=int)],
-        "comp3": [InputSocket(name="in_1", type=Optional[int]), InputSocket(name="in_2", type=Optional[int])],
+        "comp2": [InputSocket(name="value", type=int, is_optional=False)],
+        "comp3": [
+            InputSocket(name="in_1", type=Optional[int], is_optional=True),
+            InputSocket(name="in_2", type=Optional[int], is_optional=True),
+        ],
     }
 
 
@@ -142,7 +146,7 @@ def test_validate_pipeline_input_unknown_component():
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
     with pytest.raises(ValueError, match="Pipeline received data for unknown component\(s\): test_component"):
-        pipe.run({"test_component": Double().input(value=1)})
+        pipe.run({"test_component": {"value": 1}})
 
 
 def test_validate_pipeline_input_all_necessary_input_is_present():
@@ -159,10 +163,10 @@ def test_validate_pipeline_input_all_necessary_input_is_present_considering_defa
     pipe.add_component("comp1", AddFixedValue())
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
-    pipe.run({"comp1": AddFixedValue().input(value=1)})
-    pipe.run({"comp1": AddFixedValue().input(value=1, add=1)})
+    pipe.run({"comp1": {"value": 1}})
+    pipe.run({"comp1": {"value": 1, "add": 2}})
     with pytest.raises(ValueError, match="Missing input: comp1.value"):
-        pipe.run({"comp1": AddFixedValue().input(add=1)})
+        pipe.run({"comp1": {"add": 3}})
 
 
 def test_validate_pipeline_input_only_expected_input_is_present():
@@ -171,7 +175,7 @@ def test_validate_pipeline_input_only_expected_input_is_present():
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
     with pytest.raises(ValueError, match="The input value of comp2 is already sent by node comp1"):
-        pipe.run({"comp1": Double().input(value=1), "comp2": Double().input(value=1)})
+        pipe.run({"comp1": {"value": 1}, "comp2": {"value": 2}})
 
 
 def test_validate_pipeline_input_only_expected_input_is_present_including_unknown_names():
@@ -181,7 +185,7 @@ def test_validate_pipeline_input_only_expected_input_is_present_including_unknow
     pipe.connect("comp1", "comp2")
 
     with pytest.raises(ValueError, match="Component comp1 is not expecting any input value called add"):
-        pipe.run({"comp1": AddFixedValue().input(value=1, add=3)})
+        pipe.run({"comp1": {"value": 1, "add": 2}})
 
 
 def test_validate_pipeline_input_only_expected_input_is_present_and_defaults_dont_interfere():
@@ -189,4 +193,4 @@ def test_validate_pipeline_input_only_expected_input_is_present_and_defaults_don
     pipe.add_component("comp1", AddFixedValue(add=10))
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
-    pipe.run({"comp1": AddFixedValue().input(value=1, add=5)})
+    assert pipe.run({"comp1": {"value": 1, "add": 5}}) == {"comp2": {"value": 12}}
