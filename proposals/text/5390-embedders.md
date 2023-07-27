@@ -87,7 +87,7 @@ class HFTextEmbedder:
     class Input:
         data: List[str]
 
-    class Output
+    class Output:
         embeddings: List[np.ndarray]
 
     ...
@@ -102,7 +102,7 @@ class HFDocumentEmbedder(HFTextEmbedder):
     class Input:
         documents: List[Document]
 
-    class Output
+    class Output:
         documents: List[np.ndarray]
 
     def run(self, data):
@@ -200,7 +200,7 @@ class HFTextEmbedder:
     class Input:
         data: List[str]
 
-    class Output
+    class Output:
         embeddings: List[np.ndarray]
 
     def __init__(self, model_name: str, ... init params ...):
@@ -230,7 +230,7 @@ class HFDocumentEmbedder(HFTextEmbedder):
     class Input:
         documents: List[Document]
 
-    class Output
+    class Output:
         documents: List[np.ndarray]
 
     def run(self, data):
