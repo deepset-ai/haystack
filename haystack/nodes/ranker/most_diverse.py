@@ -77,30 +77,25 @@ class MostDiverseRanker(BaseRanker):
         n = len(documents)
         selected: List[int] = []
 
-        # Compute the similarity matrix between documents
-        doc_sim_matrix: torch.Tensor = doc_embeddings @ doc_embeddings.T
-
         # Compute the similarity vector between the query and documents
         query_doc_sim: torch.Tensor = query_embedding @ doc_embeddings.T
 
         # Start with the document with the highest similarity to the query
         selected.append(int(torch.argmax(query_doc_sim).item()))
 
+        selected_sum = doc_embeddings[selected[0]]
+
         while len(selected) < n:
-            # Indices of unselected documents
-            unselected: List[int] = [i for i in range(n) if i not in selected]
+            # Compute sum of dot products of all selected documents and all other documents
+            similarities = selected_sum @ doc_embeddings.T
+            # Mask documents that are already selected
+            similarities[selected] = torch.inf
+            # Select the document with the lowest total similarity score
+            index_unselected = int(torch.argmin(similarities).item())
 
-            # Compute unselected/selected similarity matrix
-            # First iteration through the loop it's shape is (len(unselected), 1)
-            # and then it's (len(unselected), 2) and so on until (1, len(selected)) in the last iteration
-            unselected_selected_sim_matrix = doc_sim_matrix[unselected, :][:, selected]
-
-            # Compute the average similarity score of each unselected document to the selected group of documents
-            avg_sim_unselected: torch.Tensor = torch.mean(unselected_selected_sim_matrix, dim=-1)
-
-            # Select the document with the lowest average similarity score
-            index_unselected = int(torch.argmin(avg_sim_unselected).item())
-            selected.append(unselected[index_unselected])
+            selected.append(index_unselected)
+            # It's enough just to add to the selected vectors because dot product is distributive
+            selected_sum += doc_embeddings[index_unselected]
 
         ranked_docs: List[Document] = [documents[i] for i in selected]
 
