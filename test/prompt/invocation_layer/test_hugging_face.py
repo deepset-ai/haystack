@@ -548,7 +548,7 @@ def test_max_length_from_invoke(mock_auto_tokenizer, mock_pipeline, mock_get_tas
     for call in mock_pipeline.mock_calls:
         # find the call to pipeline invocation, and check that the kwargs are correct
         if the_question in call.args:
-            found_kwargs = call.kwargs == {"max_length":235}
+            found_kwargs = call.kwargs == {"max_length": 235}
             if found_kwargs:
                 invocation_found = True
                 break
