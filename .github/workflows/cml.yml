@@ -52,6 +52,15 @@ jobs:
       - name: Install Haystack
         run: pip install .[metrics,elasticsearch,weaviate,opensearch,benchmarks,inference]
 
+      - name: Install Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+          sudo apt-get update
+          sudo apt-get install -y docker-ce
+
       - name: Run benchmarks
         run: |
           cd test/benchmarks
@@ -63,6 +72,10 @@ jobs:
             python run.py --output "out/$config_name.json" "$f";
             echo "=== Benchmarks done for $name (or failed) ===";
           done
+
+      - name: Dump docker logs on failure
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
 
       - name: Send Benchmark results to Datadog
         run: |
