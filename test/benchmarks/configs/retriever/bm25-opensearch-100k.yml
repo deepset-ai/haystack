@@ -4,6 +4,7 @@ components:
   - name: DocumentStore
     type: OpenSearchDocumentStore
     params:
+      host: opensearch
   - name: TextConverter
     type: TextConverter
   - name: Retriever
