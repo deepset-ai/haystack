@@ -30,6 +30,10 @@ class DocumentWriter(StoreAwareMixin):
     @component.output
     def output(self):
         class Output:
+            """
+            Output data of the DocumentWriter component.
+            """
+
             ...
 
         return Output
