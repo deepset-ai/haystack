@@ -74,9 +74,9 @@ The motivations behind this change were already provided in the previous proposa
 ## Handle queries and Documents
 This is the most critical aspect of the design.
 
-- When embedding queries, we expect the Embedder to transform a list of string into a list of vectors.
-- When embedding Documents, we expect the Embedder to enrich a list of Documents with the corresponding vectors (stored in the `embedding` field).
-- For Documents, we may want to embed some meta fields in addition to the content. Therefore, the Embedder should also handle this preparation work, which involves joining all the relevant content into a string to be embedded.
+- When embedding queries, the Embedder component receives a list of strings in input that are transformed into a list of vectors returned as output.
+- When embedding documents, the Embedder component receives a list of `Document` objects in input; for each item in the list, the corresponding vectors are computed and stored in the `embedding` field of the item itself. The list is then returned as the component output.
+- When working with documents, there's the possibility to compute embeddings also for document's metadata. In this case, the Embedder will be responsible for performing any text-manipulation work needed in preparation of the actual embedding process.
 
 **Below, I will focus on the public API. The internal implementation is discussed in [Implementation details](#implementation-details).**
 
@@ -93,7 +93,7 @@ class HFTextEmbedder:
     ...
 
     def run(self, data):
-        return self.output(self.embedding_service.embed(data.data))
+        return self.output(list_of_computed_embeddings)
 
 
 @component
@@ -106,15 +106,12 @@ class HFDocumentEmbedder(HFTextEmbedder):
         documents: List[np.ndarray]
 
     def run(self, data):
-        text_strings = [document.content for document in data.documents]
-        embeddings = self.embedding_service.embed(text_strings)
-        documents_with_embeddings = [Document.from_dict(**doc.to_dict, "embedding": emb) for doc, emb in zip(documents, embeddings)]
-        return self.output(documents = documents_with_embeddings)
+        return self.output(list_of_documents_with_embeddings)
 ```
 
 ## Different providers/strategies
 
-- We can define different classes depending on the providers: `OpenAIEmbedder`, `CohereEmbedder`, `HuggingFaceEmbedder`, `SentenceTransformersEmbedder`, etc.
+- We can define different embedder components depending on the models or services providing the actual embeddings: `OpenAIEmbedder`, `CohereEmbedder`, `HuggingFaceEmbedder`, `SentenceTransformersEmbedder`, etc.
 - Additionally, we could define different classes depending on the embedding strategy if necessary.
 While this is not a prominent use case, there are scenarios where [new strategies](https://github.com/deepset-ai/haystack/issues/5242) are introduced, requiring different libraries (`InstructorEmbedder`) or involving a different string preparation (`E5Embedder`). Supporting these scenarios with minimal effort would be nice.
 
@@ -147,29 +144,16 @@ The most important aspects to consider:
 
 @ZanSara formulated the following implementation idea, that I like.
 
-We make three classes:
+On top of the embedder components we already discussed, we introduce one additional abstraction:
 
-- An `EmbeddingService`, which is NOT a component, handling raw data + a factory method to reuse instances. It will live in a different package, **is for internal use only and will never be user-facing.** (The name of this class can be changed; feel free to propose better alternatives)
+- An `EmbeddingService`, which is NOT a component, responsible for performing the actual embedding computation, implemented as a singleton class in order to reuse instances. It will live in a different package and will be hidden from the public API.
 ```python
+@singleton  # implementation is out of scope
 class HFEmbeddingService:
     """
     NOT A COMPONENT!
     """
 
-    instances: List[HFEmbeddingService] = []
-
-    def __new__(cls, *args, **kwargs):
-		"""
-        Factory method.
-		If an instance with the same identical params was already created,
-        return that instance instead of initializing a new one.
-        """
-        if <hash of name and init params> in HFEmbeddingService.instances:
-          return HFEmbeddingService.instances[<hash of name and init params>]
-
-        embedding_service = cls(*args, **kwargs)
-        HFEmbeddingService.instances[<hash of name and init params>] = embedding_service
-        return embedding_service
 
     def __init__(self, model_name: str, ... init params ...):
         """
@@ -187,11 +171,9 @@ class OpenAIEmbeddingService:
     ... same as above ...
 ```
 
-Given that EmbeddingServices are created through a factory method, when you request an instance, if another identical exists, the method returns that instance instead of a new one.
+Implemented as singletons, when instantiating an EmbeddingService class, if another identical one exists, the existing one will be returned without allocating additional resources for a new one. This makes model reusability transparent, saving lots of memory without any user intervention.
 
-This makes model reusability automatic in all cases, which can save lots of memory without asking the user to think about it.
-
-- A `(Text/Table/Image/Audio)Embedder` component that does nothing but “wrapping” an EmbeddingService.
+This is how an EmbeddingService would be used by a text embedder component:
 **Part of the public API**.
 ```python
 @component
@@ -214,12 +196,12 @@ class HFTextEmbedder:
         return self.output(self.embedding_service.embed(data.data))
 ```
 
-- A DocumentEmbedder component that handles the documents and the offloads the computation to an embedder.
+Another example, using an embedder component expecting documents:
 **Part of the public API**.
 
 ```python
 @component
-class HFDocumentEmbedder(HFTextEmbedder):
+class HFDocumentEmbedder:
   """
   Note: in this toy example inheritance from HFTextEmbedder makes sense because
   init and warm_up are identical. If they would differ significantly, let's remove
@@ -242,11 +224,11 @@ class HFDocumentEmbedder(HFTextEmbedder):
 
 # Drawbacks
 
-The drawbacks of concept separation between Retrievers and Embedders were discussed in [this proposal](https://github.com/deepset-ai/haystack/blob/main/proposals/text/4370-documentstores-and-retrievers.md) and mainly consist of **migration effort**.
+The drawbacks of separating Retrievers and Embedders were already discussed in [this proposal](https://github.com/deepset-ai/haystack/blob/main/proposals/text/4370-documentstores-and-retrievers.md) and mainly consist of **migration effort**.
 
-Several ideas were discussed (mostly concerning how to handle queries and Documents in the Embedders) and this seems to be the best approach. However, there are some potential cons to consider:
+Regarding the design proposed in this document, there are some potential drawbacks to consider:
   - Proliferation of classes (though they will be small and easy to maintain).
-  - Users need to properly understand which models are appropriate for a task or for embedding queries vs. Documents (see [Different models in the same embedding/retrieval task](#different-models-in-the-same-embeddingretrieval-task)). On the other hand, this can help raise their awareness.
+  - Users need to know which models are appropriate for which task (e.g. embedding queries rather than embedding documents, see [Different models in the same embedding/retrieval task](#different-models-in-the-same-embeddingretrieval-task)). On the other hand, this approach is more explicit and will help making users aware of problems and tradeoffs related to the topic.
 
 # Alternatives
 
