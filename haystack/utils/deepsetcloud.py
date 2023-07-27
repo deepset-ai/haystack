@@ -381,7 +381,6 @@ class IndexClient:
         scale_score: bool = True,
         headers: Optional[dict] = None,
         use_prefiltering: Optional[bool] = None,
-        search_fields: Optional[Union[str, list]] = None,
     ) -> List[dict]:
         index_url = self._build_index_url(workspace=workspace, index=index)
         query_url = f"{index_url}/documents-query"
@@ -395,7 +394,6 @@ class IndexClient:
             "all_terms_must_match": all_terms_must_match,
             "scale_score": scale_score,
             "use_prefiltering": use_prefiltering,
-            "search_fields": search_fields,
         }
         response = self.client.post(url=query_url, json=request, headers=headers)
         return response.json()
