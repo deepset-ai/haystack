@@ -75,7 +75,7 @@ jobs:
         run: |
           cd test/benchmarks
           mkdir +p out
-          for f in ./configs/retriever/*.yml; do
+          for f in ./configs/retriever/bm25-opensearch*.yml; do
             name="${f%.*}"
             echo "=== Running benchmarks for $name ===";
             config_name="$(basename "$name")"
