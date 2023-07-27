@@ -83,10 +83,10 @@ class MostDiverseRanker(BaseRanker):
         # Start with the document with the highest similarity to the query
         selected.append(int(torch.argmax(query_doc_sim).item()))
 
-        selected_sum = doc_embeddings[selected[0]]
+        selected_sum = doc_embeddings[selected[0]] / n
 
         while len(selected) < n:
-            # Compute sum of dot products of all selected documents and all other documents
+            # Compute mean of dot products of all selected documents and all other documents
             similarities = selected_sum @ doc_embeddings.T
             # Mask documents that are already selected
             similarities[selected] = torch.inf
@@ -95,7 +95,8 @@ class MostDiverseRanker(BaseRanker):
 
             selected.append(index_unselected)
             # It's enough just to add to the selected vectors because dot product is distributive
-            selected_sum += doc_embeddings[index_unselected]
+            # It's divided by n for numerical stability
+            selected_sum += doc_embeddings[index_unselected] / n
 
         ranked_docs: List[Document] = [documents[i] for i in selected]
 
