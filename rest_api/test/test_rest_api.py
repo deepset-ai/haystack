@@ -240,14 +240,16 @@ def feedback():
 
 
 @pytest.fixture
-def client():
+def client(tmp_path):
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.haystack-pipeline.yml"
     os.environ["PIPELINE_YAML_PATH"] = str(yaml_pipeline_path)
     os.environ["INDEXING_PIPELINE_NAME"] = "test-indexing"
     os.environ["QUERY_PIPELINE_NAME"] = "test-query"
+    os.environ["FILE_UPLOAD_PATH"] = str(tmp_path)
 
     app = get_app()
     client = TestClient(app)
+    client.tmp_path = tmp_path
 
     MockDocumentStore.mocker.reset_mock()
     MockPDFToTextConverter.mocker.reset_mock()
@@ -322,6 +324,22 @@ def test_file_upload_with_wrong_meta(client):
     assert 500 == response.status_code
     # Ensure the `convert` method was never called
     MockPDFToTextConverter.mocker.convert.assert_not_called()
+
+
+def test_file_upload_cleanup_after_indexing(client):
+    file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
+    response = client.post(url="/file-upload", files=file_to_upload, data={})
+    assert 200 == response.status_code
+    # ensure upload folder is empty
+    assert len(os.listdir(client.tmp_path)) == 0
+
+
+def test_file_upload_keep_files_after_indexing(client):
+    file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
+    response = client.post(url="/file-upload", files=file_to_upload, params={"keep_files": "true"})
+    assert 200 == response.status_code
+    # ensure original file was kept
+    assert len(os.listdir(client.tmp_path)) == 1
 
 
 def test_query_with_no_filter(client):
