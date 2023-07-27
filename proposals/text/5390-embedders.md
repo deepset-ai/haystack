@@ -93,7 +93,7 @@ class HFTextEmbedder:
     ...
 
     def run(self, data):
-        return self.output(self.embedder.embed(data.data))
+        return self.output(self.embedding_service.embed(data.data))
 
 
 @component
@@ -107,7 +107,7 @@ class HFDocumentEmbedder(HFTextEmbedder):
 
     def run(self, data):
         text_strings = [document.content for document in data.documents]
-        embeddings = self.embedder.embed(text_strings)
+        embeddings = self.embedding_service.embed(text_strings)
         documents_with_embeddings = [Document.from_dict(**doc.to_dict, "embedding": emb) for doc, emb in zip(documents, embeddings)]
         return self.output(documents = documents_with_embeddings)
 ```
@@ -137,6 +137,8 @@ dpr_doc_embedder = SentenceTransformersDocumentEmbedder(model_name="facebook/dpr
 ```
 
 ## Implementation details
+
+*You can skip this section if you are primarily interested in user experience.*
 
 There have been much discussion on how to effectively implement this proposal.
 The most important aspects to consider:
@@ -250,10 +252,10 @@ Several ideas were discussed (mostly concerning how to handle queries and Docume
 
 Several alternatives to this design were considered. The main challenge was handling the differences between queries and Documents.
 Some ideas:
-- Have a single Embedder component for text (HFEmbedder instead of HFEmbedder, HFTextEmbedder and HFDocumentEmbedder) and adapt Documents before and after that, using other Components. --> Many components.
+- Have a single Embedder component for text (HFTextEmbedder instead of HFEmbeddingService, HFTextEmbedder and HFDocumentEmbedder) and adapt Documents before and after that, using other Components. --> Many components.
 - Make Embedders only work on Documents and represent the query as a Document. --> Unintuitive and require changes in the Retriever.
 - Create another primitive like Data (content + embedding) and use it for both queries and Documents. --> More conversion components like DataToDocument.
-- Have the DocumentEmbedder take a Basic Embedder as an input parameter. --> Fewer classes but serialization issues.
+- Have the DocumentEmbedder take a TextEmbedder as an input parameter. --> Fewer classes but serialization issues.
 
 # Adoption strategy
 
