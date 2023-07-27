@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from canals.pipeline.sockets import _type_to_string
+from canals.utils import _type_name
 
 
 class TestClass1:
@@ -89,5 +89,5 @@ class TestEnum(Enum):
         ),
     ],
 )
-def test_get_socket_type_desc(type_, repr):
-    assert _type_to_string(type_) == repr
+def test_type_name(type_, repr):
+    assert _type_name(type_) == repr
