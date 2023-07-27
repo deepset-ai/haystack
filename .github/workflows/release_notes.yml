@@ -1,0 +1,39 @@
+name: Check Release Notes
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - labeled
+      - unlabeled
+    paths:
+      - "**.py"
+      - "pyproject.toml"
+      - "!.github/**/*.py"
+      - "!rest_api/**/*.py"
+
+jobs:
+  reno:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+            # With the default value of 1, there are corner cases where tj-actions/changed-files
+            # fails with a `no merge base` error
+            fetch-depth: 0
+
+      - name: Get release note files
+        id: changed-files
+        uses: tj-actions/changed-files@v37
+        with:
+          files: releasenotes/notes/*.yaml
+
+      - name: Check release notes
+        if: steps.changed-files.outputs.any_changed == 'false' && !contains( github.event.pull_request.labels.*.name, 'ignore-for-release-notes')
+        run: |
+            echo "::error::The release notes file is missing, please add one or attach the label 'ignore-for-release-notes' to this PR."
+            exit 1
