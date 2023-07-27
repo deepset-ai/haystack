@@ -48,7 +48,7 @@ jobs:
         env:
           discovery.type: "single-node"
         ports:
-          - 9200:9200
+          - 9201:9200
     timeout-minutes: 2880
 
     steps:
@@ -68,6 +68,10 @@ jobs:
 
       - name: Check Cluster health
         run: curl -f http://elasticsearch:9200/_cluster/health
+
+      - name: Check Cluster health
+        if: failure()
+        run: curl -f http://localhost:9200/_cluster/health
 
       - name: Run benchmarks
         run: |
