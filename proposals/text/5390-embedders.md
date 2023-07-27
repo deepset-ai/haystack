@@ -83,30 +83,22 @@ This is the most critical aspect of the design.
 ```python
 @component
 class HFTextEmbedder:
-
-    class Input:
-        data: List[str]
-
-    class Output:
-        embeddings: List[np.ndarray]
-
     ...
 
-    def run(self, data):
-        return self.output(list_of_computed_embeddings)
+    @component.output_types(result=List[np.ndarray])
+    def run(self, strings: List[str]):
+        ...
+        return {"result": list_of_computed_embeddings}
 
 
 @component
 class HFDocumentEmbedder(HFTextEmbedder):
+    ...
 
-    class Input:
-        documents: List[Document]
-
-    class Output:
-        documents: List[np.ndarray]
-
-    def run(self, data):
-        return self.output(list_of_documents_with_embeddings)
+    @component.output_types(result=List[Document])
+    def run(self, documents: List[Document]):
+        ...
+        return {"result": list_of_documents_with_embeddings}
 ```
 
 ## Different providers/strategies
@@ -142,19 +134,14 @@ The most important aspects to consider:
 - we want different Embedders for queries and Documents as they require a different treatment
 - if the same model is internally used for different Embedders, we want to reuse the same instance in order to save memory
 
-@ZanSara formulated the following implementation idea, that I like.
-
 On top of the embedder components we already discussed, we introduce one additional abstraction:
-
-- An `EmbeddingService`, which is NOT a component, responsible for performing the actual embedding computation, implemented as a singleton class in order to reuse instances. It will live in a different package and will be hidden from the public API.
+an `EmbeddingService`, which is NOT a component, responsible for performing the actual embedding computation, implemented as a singleton class in order to reuse instances. It will live in a different package and will be hidden from the public API.
 ```python
 @singleton  # implementation is out of scope
 class HFEmbeddingService:
     """
     NOT A COMPONENT!
     """
-
-
     def __init__(self, model_name: str, ... init params ...):
         """
         init takes the minimum parameters needed at init time, not
@@ -179,11 +166,24 @@ This is how an EmbeddingService would be used by a text embedder component:
 @component
 class HFTextEmbedder:
 
-    class Input:
-        data: List[str]
+    def __init__(self, model_name: str, ... init params ...):
+        self.model_name = model_name
+        self.model_params = ... params ...
 
-    class Output:
-        embeddings: List[np.ndarray]
+    def warm_up(self):
+        self.embedding_service = HFEmbeddingService(self.model_name, **self.model_params)
+
+    @component.output_types(result=List[np.ndarray])
+    def run(self, strings: List[str]):
+        return {"result": self.embedding_service.embed(data)}
+```
+
+Another example, using an embedder component expecting Documents:
+**Part of the public API**.
+
+```python
+@component
+class HFDocumentEmbedder:
 
     def __init__(self, model_name: str, ... init params ...):
         self.model_name = model_name
@@ -192,34 +192,12 @@ class HFTextEmbedder:
     def warm_up(self):
         self.embedding_service = HFEmbeddingService(self.model_name, **self.model_params)
 
-    def run(self, data):
-        return self.output(self.embedding_service.embed(data.data))
-```
-
-Another example, using an embedder component expecting documents:
-**Part of the public API**.
-
-```python
-@component
-class HFDocumentEmbedder:
-  """
-  Note: in this toy example inheritance from HFTextEmbedder makes sense because
-  init and warm_up are identical. If they would differ significantly, let's remove
-  the inheritance to simplify the architecture: it's not mandatory for the rest
-  of the system to work.
-  """
-
-    class Input:
-        documents: List[Document]
-
-    class Output:
-        documents: List[np.ndarray]
-
-    def run(self, data):
-        text_strings = [document.content for document in data.documents]
+    @component.output_types(result=List[Document])
+    def run(self, documents: List[Document]):
+        text_strings = [document.content for document in data]
         embeddings = self.embedding_service.embed(text_strings)
         documents_with_embeddings = [Document.from_dict(**doc.to_dict, "embedding": emb) for doc, emb in zip(documents, embeddings)]
-        return self.output(documents = documents_with_embeddings)
+        return {"result": documents_with_embeddings}
 ```
 
 # Drawbacks
