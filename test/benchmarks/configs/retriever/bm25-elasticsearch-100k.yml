@@ -4,7 +4,7 @@ components:
   - name: DocumentStore
     type: ElasticsearchDocumentStore
     params:
-      port: 9200
+      port: 9201
   - name: TextConverter
     type: TextConverter
   - name: Retriever
