@@ -30,12 +30,10 @@ jobs:
           repo_token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
         run: |
           cd test/benchmarks
-          startup_script=$(base64 -w 0 startup.sh)
           cml runner launch \
           --cloud aws \
           --cloud-region ${{ env.AWS_REGION }} \
           --cloud-type=p3.2xlarge \
-          --cloud-startup-script="$startup_script" \
           --labels=cml
 
   run-benchmarks:
@@ -44,6 +42,13 @@ jobs:
     container:
       image: docker://iterativeai/cml:0-dvc2-base1-gpu
       options: --gpus all
+    services:
+      elasticsearch:
+        image: elasticsearch:7.17.6
+        env:
+          discovery.type: "single-node"
+        ports:
+          - 9200:9200
     timeout-minutes: 2880
 
     steps:
@@ -62,7 +67,7 @@ jobs:
           sudo apt-get install -y docker-ce
 
       - name: Check Cluster health
-        run: curl -f http://172.17.0.2:9200/_cluster/health
+        run: curl -f http://elasticsearch:9200/_cluster/health
 
       - name: Run benchmarks
         run: |
