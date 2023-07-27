@@ -15,9 +15,9 @@ import networkx
 
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
 from canals.pipeline.draw import _draw, _convert_for_debug, RenderingEngines
-from canals.sockets import InputSocket, OutputSocket
+from canals.pipeline.sockets import InputSocket, OutputSocket
 from canals.pipeline.validation import _validate_pipeline_input
-from canals.pipeline.connections import _parse_connection_name, _find_unambiguous_connection, get_socket_type_desc
+from canals.pipeline.connections import _parse_connection_name, _find_unambiguous_connection
 
 
 logger = logging.getLogger(__name__)
@@ -177,9 +177,7 @@ class Pipeline:
                 raise PipelineConnectError(
                     f"'{from_node}.{from_socket_name} does not exist. "
                     f"Output connections of {from_node} are: "
-                    + ", ".join(
-                        [f"{name} (type {get_socket_type_desc(socket.type)})" for name, socket in from_sockets.items()]
-                    )
+                    + ", ".join([f"{name} (type {socket})" for name, socket in from_sockets.items()])
                 )
         if to_socket_name:
             to_socket = to_sockets.get(to_socket_name, None)
@@ -187,9 +185,7 @@ class Pipeline:
                 raise PipelineConnectError(
                     f"'{to_node}.{to_socket_name} does not exist. "
                     f"Input connections of {to_node} are: "
-                    + ", ".join(
-                        [f"{name} (type {get_socket_type_desc(socket.type)})" for name, socket in to_sockets.items()]
-                    )
+                    + ", ".join([f"{name} (type {socket})" for name, socket in to_sockets.items()])
                 )
 
         # Look for an unambiguous connection among the possible ones.
@@ -223,7 +219,7 @@ class Pipeline:
             from_node,
             to_node,
             key=edge_key,
-            conn_type=get_socket_type_desc(from_socket.type),
+            conn_type=str(from_socket),
             from_socket=from_socket,
             to_socket=to_socket,
         )

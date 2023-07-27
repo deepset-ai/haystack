@@ -8,7 +8,7 @@ import itertools
 
 from canals.errors import PipelineConnectError
 from canals.type_checking import _types_are_compatible
-from canals.sockets import InputSocket, OutputSocket, get_socket_type_desc
+from canals.pipeline.sockets import InputSocket, OutputSocket
 
 
 logger = logging.getLogger(__name__)
@@ -98,15 +98,13 @@ def _connections_status(
     """
     sender_sockets_entries = []
     for sender_socket in sender_sockets:
-        socket_types = get_socket_type_desc(sender_socket.type)
-        sender_sockets_entries.append(f" - {sender_socket.name} ({socket_types})")
+        sender_sockets_entries.append(f" - {sender_socket.name} ({sender_socket})")
     sender_sockets_list = "\n".join(sender_sockets_entries)
 
     receiver_sockets_entries = []
     for receiver_socket in receiver_sockets:
-        socket_types = get_socket_type_desc(receiver_socket.type)
         receiver_sockets_entries.append(
-            f" - {receiver_socket.name} ({socket_types}), "
+            f" - {receiver_socket.name} ({receiver_socket}), "
             f"{'sent by '+receiver_socket.sender if receiver_socket.sender else 'available'}"
         )
     receiver_sockets_list = "\n".join(receiver_sockets_entries)

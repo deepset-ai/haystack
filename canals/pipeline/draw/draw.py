@@ -8,7 +8,6 @@ from pathlib import Path
 
 import networkx
 
-from canals.sockets import get_socket_type_desc
 from canals.pipeline.validation import _find_pipeline_inputs, _find_pipeline_outputs
 from canals.pipeline.draw.graphviz import _to_agraph
 from canals.pipeline.draw.mermaid import _to_mermaid_image, _to_mermaid_text
@@ -100,12 +99,12 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph, style_map: Dict[str, str]
                 # If this socket has no sender it could be a socket that receives input
                 # directly when running the Pipeline. We can't know that for sure, in doubt
                 # we draw it as receiving input directly.
-                graph.add_edge("input", node, label=in_socket.name, conn_type=get_socket_type_desc(in_socket.type))
+                graph.add_edge("input", node, label=in_socket.name, conn_type=str(in_socket))
 
     # Draw the outputs
     graph.add_node("output")
     for node, out_sockets in _find_pipeline_outputs(graph).items():
         for out_socket in out_sockets:
-            graph.add_edge(node, "output", label=out_socket.name, conn_type=get_socket_type_desc(out_socket.type))
+            graph.add_edge(node, "output", label=out_socket.name, conn_type=str(out_socket))
 
     return graph

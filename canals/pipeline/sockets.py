@@ -17,14 +17,20 @@ class InputSocket:
     is_optional: bool
     sender: Optional[str] = None
 
+    def __str__(self):
+        return _type_to_string(self.type)
+
 
 @dataclass
 class OutputSocket:
     name: str
     type: type
 
+    def __str__(self):
+        return _type_to_string(self.type)
 
-def get_socket_type_desc(type_):
+
+def _type_to_string(type_):
     """
     Assembles a readable representation of a type. Can handle primitive types, classes, and arbitrarily nested
     structures of types from the typing module.
@@ -45,12 +51,12 @@ def get_socket_type_desc(type_):
             return str(type_)[len("typing.") :]
         return str(type_)
 
-    subtypes = ", ".join([get_socket_type_desc(subtype) for subtype in args if subtype is not type(None)])
-    type_name = _get_type_name(type_, args)
+    subtypes = ", ".join([_type_to_string(subtype) for subtype in args if subtype is not type(None)])
+    type_name = _type_name(type_, args)
     return f"{type_name}[{subtypes}]"
 
 
-def _get_type_name(type_, args):
+def _type_name(type_, args):
     """
     Type names differ across several Python versions. This method abstracts away the differences.
     """
