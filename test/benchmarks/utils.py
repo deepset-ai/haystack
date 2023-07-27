@@ -36,11 +36,10 @@ def prepare_environment(pipeline_config: Dict, benchmark_config: Dict):
         )
 
     # Launch DocumentStore Docker container if needed
-    if "launch_document_store" in benchmark_config and benchmark_config["launch_document_store"]:
-        for comp in pipeline_config["components"]:
-            if comp["type"].endswith("DocumentStore"):
-                launch_document_store(comp["type"], n_docs=n_docs)
-                break
+    for comp in pipeline_config["components"]:
+        if comp["type"].endswith("DocumentStore"):
+            launch_document_store(comp["type"], n_docs=n_docs)
+            break
 
 
 def launch_document_store(document_store: str, n_docs: int = 0):
