@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    `DeepsetCloudDocumentStore` supports searching multiple fields in sparse queries.
