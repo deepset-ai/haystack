@@ -52,6 +52,9 @@ jobs:
       - name: Install Haystack
         run: pip install .[metrics,elasticsearch,weaviate,opensearch,benchmarks,inference]
 
+      - name: Check Cluster health
+        run: curl -f http://localhost:9201/_cluster/health
+
       - name: Install Docker
         run: |
           sudo apt-get update
