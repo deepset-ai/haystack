@@ -8,11 +8,10 @@ from pathlib import Path
 
 import pytest
 
-from canals.errors import PipelineConnectError
 from canals import Pipeline, component
+from canals.errors import PipelineConnectError
+from canals.testing import factory
 from sample_components import AddFixedValue
-
-from test._helpers import make_component
 
 
 class TestClass1:
@@ -154,8 +153,8 @@ class TestEnum(Enum):
     ],
 )
 def test_connect_compatible_types(from_type, to_type):
-    comp1 = make_component(output=from_type)
-    comp2 = make_component(input=to_type)
+    comp1 = factory.component_class("Comp1", output_types={"value": from_type})()
+    comp2 = factory.component_class("Comp2", input_types={"value": to_type})()
 
     pipe = Pipeline()
     pipe.add_component("c1", comp1)
@@ -307,8 +306,8 @@ def test_connect_compatible_types(from_type, to_type):
     ],
 )
 def test_connect_non_compatible_types(from_type, to_type):
-    comp1 = make_component(output=from_type)
-    comp2 = make_component(input=to_type)
+    comp1 = factory.component_class("Comp1", output_types={"value": from_type})()
+    comp2 = factory.component_class("Comp2", input_types={"value": to_type})()
 
     pipe = Pipeline()
     pipe.add_component("c1", comp1)
