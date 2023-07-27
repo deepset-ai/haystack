@@ -83,10 +83,6 @@ jobs:
             echo "=== Benchmarks done for $name (or failed) ===";
           done
 
-      - name: Dump docker logs on failure
-        if: failure()
-        uses: jwalton/gh-docker-logs@v2
-
       - name: Send Benchmark results to Datadog
         run: |
           python datadog/send_metrics.py
