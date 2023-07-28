@@ -1,10 +1,8 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-import pytest
 
 from canals.testing import BaseTestComponent
-from canals.errors import ComponentError
 from sample_components import Sum
 
 
@@ -20,8 +18,7 @@ class TestSum(BaseTestComponent):
 
     def test_sum_expects_no_values_receives_one_value(self):
         component = Sum(inputs=[])
-        with pytest.raises(ComponentError):
-            component.run(value_1=10)
+        assert component.run(value_1=10) == {"total": 10}
 
     def test_sum_expects_one_value_receives_one_value(self):
         component = Sum(inputs=["value_1"])
@@ -31,13 +28,11 @@ class TestSum(BaseTestComponent):
 
     def test_sum_expects_one_value_receives_wrong_value(self):
         component = Sum(inputs=["value_1"])
-        with pytest.raises(ComponentError):
-            component.run(something_else=10)
+        assert component.run(something_else=10) == {"total": 10}
 
     def test_sum_expects_one_value_receives_few_values(self):
         component = Sum(inputs=["value_1"])
-        with pytest.raises(ComponentError):
-            component.run(value_1=10, value_2=2)
+        assert component.run(value_1=10, value_2=2) == {"total": 12}
 
     def test_sum_expects_few_values_receives_right_values(self):
         component = Sum(inputs=["value_1", "value_2", "value_3"])
@@ -47,5 +42,4 @@ class TestSum(BaseTestComponent):
 
     def test_sum_expects_few_values_receives_some_wrong_values(self):
         component = Sum(inputs=["value_1", "value_2", "value_3"])
-        with pytest.raises(ComponentError):
-            component.run(value_1=10, value_4=11, value_3=12)
+        assert component.run(value_1=10, value_4=11, value_3=12) == {"total": 33}

@@ -8,7 +8,6 @@ from typing import Protocol, Union, Dict, Any, get_origin, get_args
 from functools import wraps
 
 from canals.errors import ComponentError
-from canals.type_checking import _types_are_compatible
 
 
 logger = logging.getLogger(__name__)
@@ -146,18 +145,6 @@ class _Component:
         run_method = instance.run
 
         def wrapper(**kwargs):
-            """
-            Adds a check that validates the input kwargs of the run method.
-            """
-            # Check input types
-            for key, value in kwargs.items():
-                if key not in types:
-                    raise ComponentError(f"Input value '{key}' not declared in component.set_input_types()")
-                if _types_are_compatible(value, types[key]):
-                    raise ComponentError(
-                        f"Input type {type(value)} for value '{key}' doesn't match the one declared in "
-                        f"component.set_input_types() ({types[key]}))"
-                    )
             return run_method(**kwargs)
 
         # Store the input types in the run method
@@ -193,20 +180,7 @@ class _Component:
         run_method = instance.run
 
         def wrapper(*args, **kwargs):
-            """
-            Adds a check that validates the output dictionary of the run method.
-            """
-            result = run_method(*args, **kwargs)
-            # Check output types
-            for key in result:
-                if key not in types:
-                    raise ComponentError(f"Return value '{key}' not declared in component.set_output_types()")
-                if _types_are_compatible(types[key], result[key]):
-                    raise ComponentError(
-                        f"Return type {type(result[key])} for value '{key}' doesn't match the one declared in "
-                        f"component.set_output_types() ({types[key]}))"
-                    )
-            return result
+            return run_method(*args, **kwargs)
 
         # Store the output types in the run method
         wrapper.__canals_io__ = getattr(instance.run, "__canals_io__", {})
@@ -243,21 +217,7 @@ class _Component:
 
             @wraps(run_method)
             def output_types_impl(self, *args, **kwargs):
-                """
-                Adds a check that validates the output dictionary of the run method.
-                """
-                result = run_method(self, *args, **kwargs)
-
-                # Check output types
-                for key in result:
-                    if key not in types:
-                        raise ComponentError(f"Return value '{key}' not declared in @output_types decorator")
-                    if _types_are_compatible(types[key], result[key]):
-                        raise ComponentError(
-                            f"Return type {type(result[key])} for value '{key}' doesn't match the one declared in "
-                            f"@output_types decorator ({types[key]}))"
-                        )
-                return result
+                return run_method(self, *args, **kwargs)
 
             return output_types_impl
 
