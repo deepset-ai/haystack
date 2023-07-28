@@ -32,19 +32,19 @@ def test_predict_returns_correct_number_of_documents():
 @pytest.mark.integration
 def test_predict_returns_documents_in_correct_order():
     ranker = MostDiverseRanker()
-    query = "Sarajevo"
+    query = "city"
     documents = [
-        Document(content="Bosnia"),
-        Document(content="Germany"),
-        Document(content="cars"),
-        Document("Herzegovina"),
+        Document("France"),
+        Document("Germany"),
+        Document("Eiffel Tower"),
+        Document("Berlin"),
+        Document("bananas"),
+        Document("Silicon Valley"),
+        Document("Brandenburg Gate"),
     ]
     result = ranker.predict(query=query, documents=documents)
-    # the correct most diverse order is: Bosnia, [Germany|cars], Herzegovina,
-    assert result[0].content == "Bosnia"
-    assert result[1].content == "Germany" or result[1].content == "cars"
-    assert result[2].content == "Germany" or result[2].content == "cars"
-    assert result[3].content == "Herzegovina"
+    expected_order = "Berlin, bananas, Eiffel Tower, Silicon Valley, France, Brandenburg Gate, Germany"
+    assert ", ".join([doc.content for doc in result]) == expected_order
 
 
 #  Tests that predict_batch method returns a list of lists of Document objects
@@ -87,17 +87,13 @@ def test_predict_batch_returns_documents_in_correct_order():
         [Document(content="France"), Document(content="Space exploration"), Document(content="Eiffel Tower")],
     ]
     result: List[List[Document]] = ranker.predict_batch(queries=queries, documents=documents)
-    most_diverse0 = result[0]
-    most_diverse1 = result[1]
+    assert len(result) == 2
 
     # check the correct most diverse order are in batches
-    assert most_diverse0[0].content == "Germany"
-    assert most_diverse0[1].content == "agriculture"
-    assert most_diverse0[2].content == "Munich"
-
-    assert most_diverse1[0].content == "France"
-    assert most_diverse1[1].content == "Space exploration"
-    assert most_diverse1[2].content == "Eiffel Tower"
+    expected_order_0 = "Germany, agriculture, Munich"
+    expected_order_1 = "France, Space exploration, Eiffel Tower"
+    assert ", ".join([doc.content for doc in result[0]]) == expected_order_0
+    assert ", ".join([doc.content for doc in result[1]]) == expected_order_1
 
 
 #  Tests that predict method raises ValueError if query is empty
@@ -211,21 +207,5 @@ def test_predict_real_world_use_case():
 
     documents = [doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8]
     result = ranker.predict(query=query, documents=documents)
-
-    # The document 5 is the most relevant to the query, most likely due to the last sentence.
-    # The document 7 is the most diverse from document 5, it's about plane crash.
-    # The document 3 is the most diverse from document 5 and 7, it's about gas prices.
-    # The document 1 is the most diverse from document 5, 7 and 3, it's about Russian-Polish history in middle ages.
-    # The document 4 is the most diverse from document 5, 7, 3 and 1, it's about historical revisionism.
-    # The document 2 is about Soviet era issues, most diverse from previous documents
-    # The document 6 is also about Soviet era issues, the most similar to document 2, so it's second to last.
-    # The document 8 is another document about Soviet era issues, the most similar to document 2 and 6, so it's last.
-
-    assert result[0] == doc5
-    assert result[1] == doc7
-    assert result[2] == doc3
-    assert result[3] == doc1
-    assert result[4] == doc4
-    assert result[5] == doc2
-    assert result[6] == doc6
-    assert result[7] == doc8
+    expected_order = [doc5, doc7, doc3, doc1, doc4, doc2, doc6, doc8]
+    assert result == expected_order
