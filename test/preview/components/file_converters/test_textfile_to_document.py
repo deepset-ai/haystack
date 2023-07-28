@@ -55,7 +55,7 @@ class TestTextfileToDocument(BaseTestComponent):
         )
         assert len(meta) == 2
         assert meta[0]["file_path"] == "data/sample_path_1.txt"
-        assert meta[1]["file_path"] == "data/sample_path_2.txt"
+        assert meta[1]["file_path"] == str(Path("data/sample_path_2.txt"))
 
     @pytest.mark.unit
     def test_prepare_metadata_single_dict(self):
@@ -68,7 +68,7 @@ class TestTextfileToDocument(BaseTestComponent):
         )
         assert len(meta) == 2
         assert meta[0]["file_path"] == "data/sample_path_1.txt"
-        assert meta[1]["file_path"] == "data/sample_path_2.txt"
+        assert meta[1]["file_path"] == str(Path("data/sample_path_2.txt"))
         assert meta[0]["name"] == "test"
         assert meta[1]["name"] == "test"
 
@@ -84,7 +84,7 @@ class TestTextfileToDocument(BaseTestComponent):
         )
         assert len(meta) == 2
         assert meta[0]["file_path"] == "data/sample_path_1.txt"
-        assert meta[1]["file_path"] == "data/sample_path_2.txt"
+        assert meta[1]["file_path"] == str(Path("data/sample_path_2.txt"))
         assert meta[0]["name"] == "test1"
         assert meta[1]["name"] == "test2"
 
