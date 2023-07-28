@@ -8,7 +8,7 @@ components:
       similarity: cosine
       embedding_dim: 384
       host: elasticsearch
-      port: 9201
+      port: 9200
   - name: TextConverter
     type: TextConverter
   - name: Retriever

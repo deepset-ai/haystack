@@ -5,6 +5,7 @@ components:
     type: OpenSearchDocumentStore
     params:
       host: opensearch
+      port: 9200
   - name: TextConverter
     type: TextConverter
   - name: Retriever

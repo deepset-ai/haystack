@@ -5,6 +5,7 @@ components:
     type: OpenSearchDocumentStore
     params:
       host: opensearch
+      port: 9200
       batch_size: 5000
       similarity: cosine
       embedding_dim: 384

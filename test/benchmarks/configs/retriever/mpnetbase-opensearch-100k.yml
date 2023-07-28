@@ -8,6 +8,7 @@ components:
       similarity: dot_product
       embedding_dim: 768
       host: opensearch
+      port: 9200
   - name: TextConverter
     type: TextConverter
   - name: Retriever
