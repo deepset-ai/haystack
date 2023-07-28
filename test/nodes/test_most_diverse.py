@@ -96,6 +96,16 @@ def test_predict_batch_returns_documents_in_correct_order():
     assert ", ".join([doc.content for doc in result[1]]) == expected_order_1
 
 
+# Tests that predict method returns the correct number of documents for a single document
+@pytest.mark.integration
+def test_predict_single_document_corner_case():
+    ranker = MostDiverseRanker()
+    query = "test"
+    documents = [Document(content="doc1")]
+    result = ranker.predict(query=query, documents=documents)
+    assert len(result) == 1
+
+
 #  Tests that predict method raises ValueError if query is empty
 @pytest.mark.integration
 def test_predict_raises_value_error_if_query_is_empty():
