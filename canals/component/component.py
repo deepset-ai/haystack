@@ -44,9 +44,6 @@ def _prepare_init_params_and_sockets(init_func):
         # Collect and store all the init parameters, preserving whatever the components might have already added there
         self.init_parameters = {**kwargs, **getattr(self, "init_parameters", {})}
 
-        if not hasattr(self.run, "__canals_io__"):
-            raise ComponentError("This component seems to have neither inputs nor outputs.")
-
     return wrapper
 
 
