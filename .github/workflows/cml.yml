@@ -74,7 +74,7 @@ jobs:
         run: |
           cd test/benchmarks
           mkdir +p out
-          for f in ./configs/retriever/bm25-weaviate*.yml; do
+          for f in ./configs/**/*.yml; do
             name="${f%.*}"
             echo "=== Running benchmarks for $name ===";
             config_name="$(basename "$name")"
@@ -85,3 +85,9 @@ jobs:
       - name: Send Benchmark results to Datadog
         run: |
           python datadog/send_metrics.py
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: out/
