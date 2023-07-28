@@ -1,14 +1,13 @@
-from typing import List
-
-import json
-from pathlib import Path
-import re
 import hashlib
+import json
 import os
+import re
+from pathlib import Path
+from typing import List
 from unittest.mock import patch
 
 import pytest
-
+from selenium.webdriver import Chrome
 from selenium.webdriver.common.by import By
 
 from haystack.nodes.connector.crawler import Crawler
@@ -259,3 +258,13 @@ def test_crawler_depth_2_multiple_urls(test_url, tmp_path):
     assert content_in_results(crawler, test_url + "/page1_subpage1.html", paths)
     assert content_in_results(crawler, test_url + "/page1_subpage2.html", paths)
     assert content_in_results(crawler, test_url + "/page2_subpage1.html", paths)
+
+
+@pytest.mark.integration
+def test_crawler_custom_webdriver(tmp_path):
+    tmp_dir = tmp_path
+
+    webdriver = Chrome()
+    crawler = Crawler(output_dir=tmp_dir, file_path_meta_field_name="file_path", webdriver=webdriver)
+
+    assert webdriver is crawler.driver
