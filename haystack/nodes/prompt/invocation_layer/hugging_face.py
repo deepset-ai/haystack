@@ -46,8 +46,15 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
             super().__init__()
             encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
             self.stop_words = encoded_stop_words.input_ids.to(device)
+            self.callback_count = 0
+            self.new_token_start = 0
 
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+            self.callback_count += 1
+            if self.callback_count == 1:
+                self.new_token_start = input_ids.shape[1] - 1
+            input_ids = input_ids[:, self.new_token_start :]
+
             stop_result = torch.isin(self.stop_words, input_ids[-1])
             return any(all(stop_word) for stop_word in stop_result)
 
