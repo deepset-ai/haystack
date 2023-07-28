@@ -114,18 +114,16 @@ class Pipeline:
             raise ValueError("'_debug' is a reserved name for debug output. Choose another name.")
 
         # Component instances must be components
-        if not (hasattr(instance, "run") and hasattr(instance.run, "__canals_io__")):
+        if not hasattr(instance, "__canals_component__"):
             raise PipelineValidationError(
                 f"'{type(instance)}' doesn't seem to be a component. Is this class decorated with @component?"
             )
 
         # Create the component's input and output sockets
-        input_sockets = {
-            name: InputSocket(**data) for name, data in instance.run.__canals_io__.get("input_types", {}).items()
-        }
-        output_sockets = {
-            name: OutputSocket(**data) for name, data in instance.run.__canals_io__.get("output_types", {}).items()
-        }
+        inputs = getattr(instance.run, "__canals_input__", {})
+        outputs = getattr(instance.run, "__canals_output__", {})
+        input_sockets = {name: InputSocket(**data) for name, data in inputs.items()}
+        output_sockets = {name: OutputSocket(**data) for name, data in outputs.items()}
 
         # Add component to the graph, disconnected
         logger.debug("Adding component '%s' (%s)", name, instance)

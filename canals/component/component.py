@@ -139,16 +139,17 @@ class _Component:
                 return {"output_1": kwargs["value_1"], "output_2": ""}
         ```
         """
+
         run_method = instance.run
 
         def wrapper(**kwargs):
             return run_method(**kwargs)
 
         # Store the input types in the run method
-        wrapper.__canals_io__ = getattr(instance.run, "__canals_io__", {})
-        wrapper.__canals_io__["input_types"] = {
+        wrapper.__canals_input__ = {
             name: {"name": name, "type": type_, "is_optional": _is_optional(type_)} for name, type_ in types.items()
         }
+        wrapper.__canals_output__ = getattr(run_method, "__canals_output__", {})
 
         # Assigns the wrapped method to the instance's run()
         instance.run = wrapper
@@ -180,8 +181,8 @@ class _Component:
             return run_method(*args, **kwargs)
 
         # Store the output types in the run method
-        wrapper.__canals_io__ = getattr(instance.run, "__canals_io__", {})
-        wrapper.__canals_io__["output_types"] = {name: {"name": name, "type": type_} for name, type_ in types.items()}
+        wrapper.__canals_output__ = {name: {"name": name, "type": type_} for name, type_ in types.items()}
+        wrapper.__canals_input__ = getattr(run_method, "__canals_input__", {})
 
         # Assigns the wrapped method to the instance's run()
         instance.run = wrapper
@@ -206,17 +207,15 @@ class _Component:
             Decorator that validates the output dictionary of the run method.
             """
             # Store the output types in the run method - used by the pipeline to build the sockets.
-            if not hasattr(run_method, "__canals_io__"):
-                run_method.__canals_io__ = {}
-            run_method.__canals_io__["output_types"] = {
-                name: {"name": name, "type": type_} for name, type_ in types.items()
-            }
 
             @wraps(run_method)
-            def output_types_impl(self, *args, **kwargs):
+            def wrapper(self, *args, **kwargs):
                 return run_method(self, *args, **kwargs)
 
-            return output_types_impl
+            wrapper.__canals_output__ = {name: {"name": name, "type": type_} for name, type_ in types.items()}
+            wrapper.__canals_input__ = getattr(run_method, "__canals_input__", {})
+
+            return wrapper
 
         return output_types_decorator
 
@@ -232,9 +231,7 @@ class _Component:
         run_signature = inspect.signature(class_.run)
 
         # Create the input sockets
-        if not hasattr(class_.run, "__canals_io__"):
-            class_.run.__canals_io__ = {}
-        class_.run.__canals_io__["input_types"] = {
+        class_.run.__canals_input__ = {
             param: {
                 "name": param,
                 "type": run_signature.parameters[param].annotation,
@@ -257,6 +254,8 @@ class _Component:
             )
         self.registry[class_.__name__] = class_
         logger.debug("Registered Component %s", class_)
+
+        setattr(class_, "__canals_component__", True)
 
         return class_
 
