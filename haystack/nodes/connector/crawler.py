@@ -6,20 +6,21 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 from urllib.parse import urlparse
 
 from haystack.errors import NodeError
+from haystack.lazy_imports import LazyImport
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install farm-haystack[crawler]'") as selenium_import:
-    from selenium import webdriver
+    from selenium import webdriver as selenium_webdriver
     from selenium.common.exceptions import StaleElementReferenceException, WebDriverException
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.common.by import By
+    from selenium.webdriver.remote.webdriver import WebDriver
     from webdriver_manager.chrome import ChromeDriverManager
 
 
@@ -56,6 +57,7 @@ class Crawler(BaseComponent):
         file_path_meta_field_name: Optional[str] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         webdriver_options: Optional[List[str]] = None,
+        webdriver: Optional[WebDriver] = None,
     ):
         """
         Init object with basic params for crawling (can be overwritten later).
@@ -97,6 +99,8 @@ class Crawler(BaseComponent):
                     This option enables remote debug over HTTP.
             See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
             If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
+        :param webdriver: A pre-configured Selenium WebDriver
+            When webdriver_options is not sufficient, use this parameter to override the whole web driver. This lets you use different engines than the default Chrome.
         """
         selenium_import.check()
         super().__init__()
@@ -118,9 +122,11 @@ class Crawler(BaseComponent):
         for option in set(webdriver_options):
             options.add_argument(option)
 
-        if IN_COLAB:
+        if webdriver is not None:
+            self.driver = webdriver
+        elif IN_COLAB:
             try:
-                self.driver = webdriver.Chrome(service=Service("chromedriver"), options=options)
+                self.driver = selenium_webdriver.Chrome(service=Service("chromedriver"), options=options)
             except WebDriverException as exc:
                 raise NodeError(
                     """
@@ -161,7 +167,8 @@ class Crawler(BaseComponent):
                 ) from exc
         else:
             logger.info("'chrome-driver' will be automatically installed.")
-            self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            self.driver = selenium_webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
         self.urls = urls
         self.crawler_depth = crawler_depth
         self.filter_urls = filter_urls
