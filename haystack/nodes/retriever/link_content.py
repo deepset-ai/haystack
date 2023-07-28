@@ -6,9 +6,9 @@ from collections import defaultdict
 from datetime import datetime
 from http import HTTPStatus
 from typing import Optional, Dict, List, Union, Callable, Any, Tuple
+from urllib.parse import urlparse
 
 import requests
-import validators
 from boilerpy3 import extractors
 from requests import Response
 from requests.exceptions import InvalidURL, HTTPError
@@ -277,6 +277,7 @@ class LinkContentFetcher(BaseComponent):
         :param url: The URL to check.
         :return: True if the URL is valid, False otherwise.
         """
-        if not url:
-            return False
-        return validators.url(url)
+
+        result = urlparse(url)
+        # schema is http or https and netloc is not empty
+        return all([result.scheme in ["http", "https"], result.netloc])
