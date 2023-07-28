@@ -5,7 +5,7 @@ import pytest
 from haystack.preview import Pipeline
 from haystack.preview.components.retrievers.memory import MemoryRetriever
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores import Store, MemoryDocumentStore
+from haystack.preview.document_stores import MemoryDocumentStore
 
 from test.preview.components.base import BaseTestComponent
 
@@ -78,7 +78,7 @@ class TestMemoryRetriever(BaseTestComponent):
             ...
 
         retriever = MemoryRetriever()
-        with pytest.raises(ValueError, match="does not respect the Store Protocol"):
+        with pytest.raises(ValueError, match="'MockStore' is not decorate with @store."):
             retriever.store = MockStore()
 
     @pytest.mark.unit
@@ -99,7 +99,7 @@ class TestMemoryRetriever(BaseTestComponent):
                 return None
 
         retriever = MemoryRetriever()
-        with pytest.raises(ValueError, match="is not compatible with this component"):
+        with pytest.raises(ValueError, match="'MockStore' is not decorate with @store."):
             retriever.store = MockStore()
 
     @pytest.mark.integration
