@@ -153,7 +153,7 @@ class TextfileToDocument:
         :param file_paths: The paths to the text files.
         """
         if meta is None:
-            return [{"file_path": path} for path in file_paths]
+            return [{"file_path": str(path)} for path in file_paths]
 
         if isinstance(meta, dict):
             meta = [meta] * len(file_paths)
@@ -164,7 +164,7 @@ class TextfileToDocument:
                 f"Number of paths: {len(file_paths)}, number of meta entries: {len(meta)}"
             )
 
-        return [{**m, "file_path": m.get("file_path", path)} for m, path in zip(meta, file_paths)]
+        return [{**m, "file_path": m.get("file_path", str(path))} for m, path in zip(meta, file_paths)]
 
     @staticmethod
     def _read_and_clean_file(path: Union[str, Path], encoding: str, remove_numeric_tables: bool) -> str:
