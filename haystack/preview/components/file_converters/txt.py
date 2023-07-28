@@ -9,7 +9,7 @@ from haystack import Document
 from haystack.lazy_imports import LazyImport
 from haystack.preview import component
 
-with LazyImport("Run 'pip install farm-haystack[elasticsearch8]'") as langdetect_import:
+with LazyImport("Run 'pip install farm-haystack[preprocessing]'") as langdetect_import:
     import langdetect
 
 
