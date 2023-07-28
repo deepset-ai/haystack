@@ -138,8 +138,10 @@ class TextfileToDocument:
             if data.valid_languages is not None:
                 if not TextfileToDocument._validate_language(text, data.valid_languages):
                     logger.warning(
-                        f"Text from file {path} is not in one of the valid languages: {data.valid_languages}. "
-                        f"The file may have been decoded incorrectly."
+                        f"Text from file %s is not in one of the valid languages: %s. "
+                        f"The file may have been decoded incorrectly.",
+                        path,
+                        data.valid_languages,
                     )
 
             document = Document(content=text, meta=meta, id_hash_keys=data.id_hash_keys)
