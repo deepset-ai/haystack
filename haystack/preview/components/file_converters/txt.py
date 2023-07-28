@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional, List, Union, Dict
 
 from canals.errors import PipelineRuntimeError
+from tqdm import tqdm
 
 from haystack import Document
 from haystack.lazy_imports import LazyImport
@@ -127,7 +128,9 @@ class TextfileToDocument:
         metas = TextfileToDocument._prepare_metadata(data.meta, file_paths)
 
         documents = []
-        for path, meta in zip(file_paths, metas):
+        for path, meta in tqdm(
+            zip(file_paths, metas), total=len(file_paths), desc="Converting text files", disable=not data.progress_bar
+        ):
             text = TextfileToDocument._read_and_clean_file(
                 path=path, encoding=data.encoding, remove_numeric_tables=data.remove_numeric_tables
             )
