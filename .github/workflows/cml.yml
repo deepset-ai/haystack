@@ -60,8 +60,6 @@ jobs:
         env:
           AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
           PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
-          ENABLE_EXPERIMENTAL_BM25: "true"
-          DISK_USE_READONLY_PERCENTAGE: 95
         ports:
           - 8080:8080
     timeout-minutes: 2880
@@ -76,7 +74,7 @@ jobs:
         run: |
           cd test/benchmarks
           mkdir +p out
-          for f in ./configs/retriever/bm25-*.yml; do
+          for f in ./configs/retriever/bm25-weaviate*.yml; do
             name="${f%.*}"
             echo "=== Running benchmarks for $name ===";
             config_name="$(basename "$name")"
