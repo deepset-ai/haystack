@@ -312,6 +312,44 @@ def test_is_invalid_url():
         assert not retriever._is_valid_url(url), f"Expected {url} to be invalid"
 
 
+@pytest.mark.unit
+def test_switch_user_agent_on_failed_request():
+    """
+    Test that LinkContentFetcher switches user agents on failed requests
+    """
+    url = "http://fakeurl.com"
+    retry_attempts = 2
+    lc = LinkContentFetcher(user_agents=["ua1", "ua2"], retry_attempts=retry_attempts)
+    with patch("haystack.nodes.retriever.link_content.requests.get") as mocked_get:
+        mocked_get.return_value.raise_for_status.side_effect = requests.HTTPError()
+        lc._get_response(url)
+
+    assert mocked_get.call_count == retry_attempts
+    assert mocked_get.call_args_list[0][1]["headers"]["User-Agent"] == "ua1"
+    assert mocked_get.call_args_list[1][1]["headers"]["User-Agent"] == "ua2"
+
+
+@pytest.mark.unit
+def test_valid_requests_dont_switch_agent(mocked_requests):
+    """
+    Test that LinkContentFetcher doesn't switch user agents on valid requests
+    """
+    lcf = LinkContentFetcher()
+
+    # Make first valid request
+    lcf._get_response("http://example.com")
+
+    # Make second valid request
+    lcf._get_response("http://example.com")
+
+    # Assert that requests.get was called twice with the same default user agents
+    assert mocked_requests.get.call_count == 2
+    assert (
+        mocked_requests.get.call_args_list[0][1]["headers"]["User-Agent"]
+        == mocked_requests.get.call_args_list[1][1]["headers"]["User-Agent"]
+    )
+
+
 @pytest.mark.integration
 def test_call_with_valid_url_on_live_web():
     """

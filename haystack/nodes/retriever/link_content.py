@@ -2,12 +2,13 @@ import inspect
 import io
 import itertools
 import logging
+from collections import defaultdict
 from datetime import datetime
 from http import HTTPStatus
 from typing import Optional, Dict, List, Union, Callable, Any, Tuple
-from urllib.parse import urlparse
 
 import requests
+import validators
 from boilerpy3 import extractors
 from requests import Response
 from requests.exceptions import InvalidURL, HTTPError
@@ -74,6 +75,7 @@ class LinkContentFetcher(BaseComponent):
         processor: Optional[PreProcessor] = None,
         raise_on_failure: Optional[bool] = False,
         user_agents: Optional[List[str]] = None,
+        retry_attempts: Optional[int] = None,
     ):
         """
 
@@ -83,6 +85,7 @@ class LinkContentFetcher(BaseComponent):
                          during content extraction. If False, the error is simply logged and the program continues.
                          Defaults to False.
         :param user_agents: A list of user agents to use when fetching content. Defaults to None.
+        :param retry_attempts: The number of times to retry fetching content. Defaults to 2.
         """
         super().__init__()
         self.processor = processor
@@ -90,7 +93,8 @@ class LinkContentFetcher(BaseComponent):
         self.user_agents = itertools.cycle(user_agents or [LinkContentFetcher.USER_AGENT])
         self.default_user_agent = next(self.user_agents)
         self.current_user_agent = self.default_user_agent
-        self.handlers: Dict[str, Callable] = {}
+        self.retry_attempts = retry_attempts or 2
+        self.handlers: Dict[str, Callable] = defaultdict(lambda: html_content_handler)
         self.register_content_handler("text/html", html_content_handler)
         if fitz_import.is_successful():
             self.register_content_handler("application/pdf", pdf_content_handler)
@@ -123,7 +127,7 @@ class LinkContentFetcher(BaseComponent):
         :param doc_kwargs: Optional kwargs to pass to the Document constructor.
         :return: List of Document objects or an empty list if no content is extracted.
         """
-        if not url or not self._is_valid_url(url):
+        if not self._is_valid_url(url):
             raise InvalidURL("Invalid or missing URL: {}".format(url))
 
         doc_kwargs = doc_kwargs or {}
@@ -131,7 +135,7 @@ class LinkContentFetcher(BaseComponent):
             "meta": {"url": url, "timestamp": int(datetime.utcnow().timestamp())}
         }
         extracted_doc.update(doc_kwargs)
-        response = self._get_response(url, timeout=timeout)
+        response = self._get_response(url, timeout=timeout or 3)
         has_content = response.status_code == HTTPStatus.OK and (response.text or response.content)
         fetched_documents = []
         if has_content:
@@ -193,7 +197,6 @@ class LinkContentFetcher(BaseComponent):
         Takes a list of queries, where each query is expected to be a URL. For each query, the method
         fetches content from the specified URL and transforms it into a list of Document objects. The output is a list
         of these document lists, where each individual list of Document objects corresponds to the content retrieved
-        from a specific query URL.
 
         param queries: List of queries - URLs to fetch content from.
         param file_paths: Not used.
@@ -217,25 +220,25 @@ class LinkContentFetcher(BaseComponent):
 
         return {"documents": results}, "output_1"
 
-    def _get_response(self, url: str, timeout: Optional[int]) -> requests.Response:
+    def _get_response(self, url: str, timeout: Optional[int] = None) -> requests.Response:
         """
         Fetches content from a URL. Returns a response object.
         :param url: The URL to fetch content from.
         :param timeout: The timeout in seconds.
         :return: A response object.
         """
-        headers = self.REQUEST_HEADERS.copy()
 
         @retry(
             reraise=True,
-            stop=stop_after_attempt(2),
+            stop=stop_after_attempt(self.retry_attempts),
             wait=wait_exponential(multiplier=1, min=2, max=10),
             retry=(retry_if_exception_type((HTTPError, requests.RequestException))),
             after=self._switch_user_agent,
         )
         def _request():
+            headers = self.REQUEST_HEADERS.copy()
             headers["User-Agent"] = self.current_user_agent
-            r = requests.get(url, headers=headers, timeout=timeout)
+            r = requests.get(url, headers=headers, timeout=timeout or 3)
             r.raise_for_status()
             return r
 
@@ -257,8 +260,8 @@ class LinkContentFetcher(BaseComponent):
         :param content_type: The content type of the response.
         :return: The matching content handler callable or the default html_content_handler if no match is found.
         """
-        mime_type = (content_type or "").split(";")[0]
-        return self.handlers.get(mime_type, html_content_handler)
+        mime_type: str = (content_type or "").split(";")[0]
+        return self.handlers[mime_type]
 
     def _switch_user_agent(self, retry_state: RetryCallState) -> None:
         """
@@ -274,7 +277,6 @@ class LinkContentFetcher(BaseComponent):
         :param url: The URL to check.
         :return: True if the URL is valid, False otherwise.
         """
-
-        result = urlparse(url)
-        # schema is http or https and netloc is not empty
-        return all([result.scheme in ["http", "https"], result.netloc])
+        if not url:
+            return False
+        return validators.url(url)
