@@ -32,7 +32,7 @@ def benchmark_retriever_reader(
     results = {"indexing": indexing_results, "querying": querying_results}
 
     doc_store = indexing_pipeline.get_document_store()
-    doc_store.delete_all_documents()
+    doc_store.delete_index(index="documents")
     return results
 
 
