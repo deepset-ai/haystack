@@ -249,7 +249,6 @@ def client(tmp_path):
 
     app = get_app()
     client = TestClient(app)
-    client.tmp_path = tmp_path
 
     MockDocumentStore.mocker.reset_mock()
     MockPDFToTextConverter.mocker.reset_mock()
@@ -327,19 +326,25 @@ def test_file_upload_with_wrong_meta(client):
 
 
 def test_file_upload_cleanup_after_indexing(client):
-    file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
-    response = client.post(url="/file-upload", files=file_to_upload, data={})
-    assert 200 == response.status_code
-    # ensure upload folder is empty
-    assert len(os.listdir(client.tmp_path)) == 0
+    # mock the upload path to use a dedicated temp folder
+    with mock.patch("rest_api.controller.file_upload.FILE_UPLOAD_PATH", os.environ.get("FILE_UPLOAD_PATH")):
+        file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
+        response = client.post(url="/file-upload", files=file_to_upload, data={})
+        assert 200 == response.status_code
+        # ensure upload folder is empty
+        uploaded_files = os.listdir(os.environ.get("FILE_UPLOAD_PATH"))
+        assert len(uploaded_files) == 0
 
 
 def test_file_upload_keep_files_after_indexing(client):
-    file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
-    response = client.post(url="/file-upload", files=file_to_upload, params={"keep_files": "true"})
-    assert 200 == response.status_code
-    # ensure original file was kept
-    assert len(os.listdir(client.tmp_path)) == 1
+    # mock the upload path to use a dedicated temp folder
+    with mock.patch("rest_api.controller.file_upload.FILE_UPLOAD_PATH", os.environ.get("FILE_UPLOAD_PATH")):
+        file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
+        response = client.post(url="/file-upload", files=file_to_upload, params={"keep_files": "true"})
+        assert 200 == response.status_code
+        # ensure original file was kept
+        uploaded_files = os.listdir(os.environ.get("FILE_UPLOAD_PATH"))
+        assert len(uploaded_files) == 1
 
 
 def test_query_with_no_filter(client):
