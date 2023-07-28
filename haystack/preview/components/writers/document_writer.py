@@ -34,8 +34,6 @@ class DocumentWriter(StoreAwareMixin):
             Output data of the DocumentWriter component.
             """
 
-            ...
-
         return Output
 
     def __init__(self, policy: DuplicatePolicy = DuplicatePolicy.FAIL):
