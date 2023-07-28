@@ -91,7 +91,10 @@ def get_feedback_metrics(filters: Optional[FilterRequest] = None, index: Optiona
 
 @router.get("/export-feedback")
 def export_feedback(
-    context_size: int = 100_000, full_document_context: bool = True, only_positive_labels: bool = False, index: Optional[str] = None
+    context_size: int = 100_000,
+    full_document_context: bool = True,
+    only_positive_labels: bool = False,
+    index: Optional[str] = None,
 ):
     """
     This endpoint returns JSON output in the SQuAD format for question/answer pairs that were marked as "relevant" by user feedback through the `POST /feedback` endpoint.
@@ -99,7 +102,9 @@ def export_feedback(
     The context_size param can be used to limit response size for large documents.
     """
     if only_positive_labels:
-        labels = document_store.get_all_labels(filters={"is_correct_answer": [True], "origin": ["user-feedback"]}, index=index)
+        labels = document_store.get_all_labels(
+            filters={"is_correct_answer": [True], "origin": ["user-feedback"]}, index=index
+        )
     else:
         labels = document_store.get_all_labels(filters={"origin": ["user-feedback"]}, index=index)
         # Filter out the labels where the passage is correct but answer is wrong (in SQuAD this matches
