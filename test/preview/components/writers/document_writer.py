@@ -16,21 +16,21 @@ class TestDocumentWriter(BaseTestComponent):
             Document(content="This is the text of a document."),
             Document(content="This is the text of another document."),
         ]
-        with pytest.raises(
-            ValueError,
-            match="DocumentWriter needs a store to run: set the store instance to the " "self.store attribute",
-        ):
-            writer.run(DocumentWriter.Input(documents=documents))
 
-        writer.store = MagicMock()
-        writer.run(DocumentWriter.Input(documents=documents))
-        writer.store.write_documents.assert_called_once_with(documents, DuplicatePolicy.FAIL)
+        mocked_store = MagicMock()
+        mocked_store.__haystack_store__ = True
+        writer.store = mocked_store
+        writer.run(writer.input(documents=documents))
+
+        # TODO check for default value DuplicatePolicy instead of None with new canals release
+        writer.store.write_documents.assert_called_once_with(documents=documents, policy=None)
 
     @pytest.mark.unit
     def test_writer_fails_without_store(self):
         writer = DocumentWriter()
+        documents = [Document(content="test")]
         with pytest.raises(
             ValueError,
             match="DocumentWriter needs a store to run: set the store instance to the " "self.store attribute",
         ):
-            writer.run(data={"component": DocumentWriter.Input(documents=[Document(content="test")])})
+            writer.run(writer.input(documents=documents))

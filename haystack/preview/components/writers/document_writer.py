@@ -10,7 +10,7 @@ class DocumentWriter(StoreAwareMixin):
     A component for writing documents to a DocumentStore.
     """
 
-    supported_stores = [Store]
+    supported_stores = [Store]  # type: ignore
 
     @component.input
     def input(self):
@@ -60,5 +60,5 @@ class DocumentWriter(StoreAwareMixin):
         if not self.store:
             raise ValueError("DocumentWriter needs a store to run: set the store instance to the self.store attribute")
 
-        self.store.write_documents(data.documents, data.policy)
+        self.store.write_documents(documents=data.documents, policy=data.policy)
         return self.output()
