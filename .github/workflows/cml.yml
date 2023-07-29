@@ -54,6 +54,7 @@ jobs:
         image: elasticsearch:7.17.6
         env:
           discovery.type: "single-node"
+          OPENSEARCH_JAVA_OPTS: "-Xms4096m -Xmx4096m"
         ports:
           - 9201:9200
       weaviate:
@@ -84,7 +85,7 @@ jobs:
         run: |
           cd test/benchmarks
           mkdir +p out
-          for f in ./configs/**/*.yml; do
+          for f in ./configs/retriever_reader/bm25-debertabase-opensearch-*.yml; do
             name="${f%.*}"
             echo "=== Running benchmarks for $name ===";
             config_name="$(basename "$name")"
