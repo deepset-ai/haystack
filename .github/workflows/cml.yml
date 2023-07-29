@@ -47,6 +47,7 @@ jobs:
         image: opensearchproject/opensearch:1.3.5
         env:
           discovery.type: "single-node"
+          OPENSEARCH_JAVA_OPTS: "-Xms4096m -Xmx4096m"
         ports:
           - 9200:9200
       elasticsearch:
