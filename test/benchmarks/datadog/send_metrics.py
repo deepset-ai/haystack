@@ -26,8 +26,8 @@ def parse_benchmark_files(folder_path):
             file_path = os.path.join(folder_path, filename)
             with open(file_path, "r") as file:
                 data = json.load(file)
-                indexing_metrics = data["indexing"]
-                querying_metrics = data["querying"]
+                indexing_metrics = data.get("indexing", {})
+                querying_metrics = data.get("querying")
                 if indexing_metrics.get("error") is None and querying_metrics.get("error") is None:
                     metrics[filename.split(".json")[0]] = {"indexing": indexing_metrics, "querying": querying_metrics}
     return metrics
