@@ -74,7 +74,9 @@ jobs:
           path: out/
 
   run-opensearch-benchmarks:
-    needs: deploy-runner
+    needs:
+      - deploy-runner
+      - run-reader-benchmarks
     runs-on: [self-hosted, cml]
     container:
       image: docker://iterativeai/cml:0-dvc2-base1-gpu
@@ -117,7 +119,9 @@ jobs:
           path: out/
 
   run-elasticsearch-benchmarks:
-    needs: deploy-runner
+    needs:
+      - deploy-runner
+      - run-opensearch-benchmarks
     runs-on: [self-hosted, cml]
     container:
       image: docker://iterativeai/cml:0-dvc2-base1-gpu
@@ -160,7 +164,9 @@ jobs:
           path: out/
 
   run-weaviate-benchmarks:
-    needs: deploy-runner
+    needs:
+      - deploy-runner
+      - run-elasticsearch-benchmarks
     runs-on: [self-hosted, cml]
     container:
       image: docker://iterativeai/cml:0-dvc2-base1-gpu
