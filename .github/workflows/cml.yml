@@ -37,7 +37,43 @@ jobs:
           --cloud-hdd-size=64 \
           --labels=cml
 
-  run-benchmarks:
+  run-reader-benchmarks:
+    needs: deploy-runner
+    runs-on: [self-hosted, cml]
+    container:
+      image: docker://iterativeai/cml:0-dvc2-base1-gpu
+      options: --gpus all
+    timeout-minutes: 2880
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Haystack
+        run: pip install .[metrics,benchmarks,inference]
+
+      - name: Run benchmarks
+        run: |
+          cd test/benchmarks
+          mkdir +p out
+          for f in ./configs/reader/*.yml; do
+            name="${f%.*}"
+            echo "=== Running benchmarks for $name ===";
+            config_name="$(basename "$name")"
+            python run.py --output "out/$config_name.json" "$f";
+            echo "=== Benchmarks done for $name (or failed) ===";
+          done
+
+      - name: Send Benchmark results to Datadog
+        run: |
+          python datadog/send_metrics.py
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: out/
+
+  run-opensearch-benchmarks:
     needs: deploy-runner
     runs-on: [self-hosted, cml]
     container:
@@ -50,33 +86,106 @@ jobs:
           discovery.type: "single-node"
         ports:
           - 9200:9200
-#      elasticsearch:
-#        image: elasticsearch:7.17.6
-#        env:
-#          discovery.type: "single-node"
-#          OPENSEARCH_JAVA_OPTS: "-Xms4096m -Xmx4096m"
-#        ports:
-#          - 9201:9200
-#      weaviate:
-#        image: semitechnologies/weaviate:1.17.2
-#        env:
-#          AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
-#          PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
-#        ports:
-#          - 8080:8080
     timeout-minutes: 2880
 
     steps:
       - uses: actions/checkout@v3
 
       - name: Install Haystack
-        run: pip install .[metrics,elasticsearch,weaviate,opensearch,benchmarks,inference]
+        run: pip install .[metrics,opensearch,benchmarks,inference]
 
       - name: Run benchmarks
         run: |
           cd test/benchmarks
           mkdir +p out
-          for f in ./configs/retriever_reader/bm25-debertabase-opensearch-*.yml; do
+          for f in ./configs/**/*-opensearch-*.yml; do
+            name="${f%.*}"
+            echo "=== Running benchmarks for $name ===";
+            config_name="$(basename "$name")"
+            python run.py --output "out/$config_name.json" "$f";
+            echo "=== Benchmarks done for $name (or failed) ===";
+          done
+
+      - name: Send Benchmark results to Datadog
+        run: |
+          python datadog/send_metrics.py
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: out/
+
+  run-elasticsearch-benchmarks:
+    needs: deploy-runner
+    runs-on: [self-hosted, cml]
+    container:
+      image: docker://iterativeai/cml:0-dvc2-base1-gpu
+      options: --gpus all
+    services:
+      elasticsearch:
+        image: elasticsearch:7.17.6
+        env:
+          discovery.type: "single-node"
+        ports:
+          - 9201:9200
+    timeout-minutes: 2880
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Haystack
+        run: pip install .[metrics,elasticsearch,benchmarks,inference]
+
+      - name: Run benchmarks
+        run: |
+          cd test/benchmarks
+          mkdir +p out
+          for f in ./configs/**/-elasticsearch-*.yml; do
+            name="${f%.*}"
+            echo "=== Running benchmarks for $name ===";
+            config_name="$(basename "$name")"
+            python run.py --output "out/$config_name.json" "$f";
+            echo "=== Benchmarks done for $name (or failed) ===";
+          done
+
+      - name: Send Benchmark results to Datadog
+        run: |
+          python datadog/send_metrics.py
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: out/
+
+  run-weaviate-benchmarks:
+    needs: deploy-runner
+    runs-on: [self-hosted, cml]
+    container:
+      image: docker://iterativeai/cml:0-dvc2-base1-gpu
+      options: --gpus all
+    services:
+      weaviate:
+        image: semitechnologies/weaviate:1.17.2
+        env:
+          AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+          PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+        ports:
+          - 8080:8080
+    timeout-minutes: 2880
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Haystack
+        run: pip install .[metrics,weaviate,benchmarks,inference]
+
+      - name: Run benchmarks
+        run: |
+          cd test/benchmarks
+          mkdir +p out
+          for f in ./configs/**/*-weaviate-*.yml; do
             name="${f%.*}"
             echo "=== Running benchmarks for $name ===";
             config_name="$(basename "$name")"
