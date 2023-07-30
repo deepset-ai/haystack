@@ -34,7 +34,7 @@ def benchmark_reader(pipeline: Pipeline, labels_file: Path) -> Dict:
 
         reader_type, reader_model, reader_top_k = get_reader_config(pipeline)
         results = {
-            "reader": {
+            "querying": {
                 "exact_match": metrics["exact_match"],
                 "f1": metrics["f1"],
                 "n_queries": len(eval_labels),
