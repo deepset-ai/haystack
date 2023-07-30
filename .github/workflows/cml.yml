@@ -50,20 +50,20 @@ jobs:
           discovery.type: "single-node"
         ports:
           - 9200:9200
-      elasticsearch:
-        image: elasticsearch:7.17.6
-        env:
-          discovery.type: "single-node"
-          OPENSEARCH_JAVA_OPTS: "-Xms4096m -Xmx4096m"
-        ports:
-          - 9201:9200
-      weaviate:
-        image: semitechnologies/weaviate:1.17.2
-        env:
-          AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
-          PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
-        ports:
-          - 8080:8080
+#      elasticsearch:
+#        image: elasticsearch:7.17.6
+#        env:
+#          discovery.type: "single-node"
+#          OPENSEARCH_JAVA_OPTS: "-Xms4096m -Xmx4096m"
+#        ports:
+#          - 9201:9200
+#      weaviate:
+#        image: semitechnologies/weaviate:1.17.2
+#        env:
+#          AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+#          PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+#        ports:
+#          - 8080:8080
     timeout-minutes: 2880
 
     steps:
@@ -71,15 +71,6 @@ jobs:
 
       - name: Install Haystack
         run: pip install .[metrics,elasticsearch,weaviate,opensearch,benchmarks,inference]
-
-      - name: Install Docker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-          sudo apt-get update
-          sudo apt-get install -y docker-ce
 
       - name: Run benchmarks
         run: |
@@ -92,10 +83,6 @@ jobs:
             python run.py --output "out/$config_name.json" "$f";
             echo "=== Benchmarks done for $name (or failed) ===";
           done
-
-      - name: Dump docker logs on failure
-        if: failure()
-        uses: jwalton/gh-docker-logs@v2
 
       - name: Send Benchmark results to Datadog
         run: |
