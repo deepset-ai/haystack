@@ -52,8 +52,8 @@ jobs:
         run: pip install .[metrics,benchmarks,inference]
 
       - name: Run benchmarks
+        working-directory: test/benchmarks
         run: |
-          cd test/benchmarks
           mkdir +p out
           for f in ./configs/reader/*.yml; do
             name="${f%.*}"
@@ -64,14 +64,15 @@ jobs:
           done
 
       - name: Send Benchmark results to Datadog
+        working-directory: test/benchmarks
         run: |
           python datadog/send_metrics.py
 
       - name: Archive benchmark results
         uses: actions/upload-artifact@v3
         with:
-          name: benchmark-results
-          path: out/
+          name: benchmark-results-reader
+          path: test/benchmarks/out/
 
   run-opensearch-benchmarks:
     needs:
@@ -97,8 +98,8 @@ jobs:
         run: pip install .[metrics,opensearch,benchmarks,inference]
 
       - name: Run benchmarks
+        working-directory: test/benchmarks
         run: |
-          cd test/benchmarks
           mkdir +p out
           for f in ./configs/**/*-opensearch-*.yml; do
             name="${f%.*}"
@@ -109,14 +110,15 @@ jobs:
           done
 
       - name: Send Benchmark results to Datadog
+        working-directory: test/benchmarks
         run: |
           python datadog/send_metrics.py
 
       - name: Archive benchmark results
         uses: actions/upload-artifact@v3
         with:
-          name: benchmark-results
-          path: out/
+          name: benchmark-results-opensearch
+          path: test/benchmarks/out/
 
   run-elasticsearch-benchmarks:
     needs:
@@ -142,8 +144,8 @@ jobs:
         run: pip install .[metrics,elasticsearch,benchmarks,inference]
 
       - name: Run benchmarks
+        working-directory: test/benchmarks
         run: |
-          cd test/benchmarks
           mkdir +p out
           for f in ./configs/**/-elasticsearch-*.yml; do
             name="${f%.*}"
@@ -154,14 +156,15 @@ jobs:
           done
 
       - name: Send Benchmark results to Datadog
+        working-directory: test/benchmarks
         run: |
           python datadog/send_metrics.py
 
       - name: Archive benchmark results
         uses: actions/upload-artifact@v3
         with:
-          name: benchmark-results
-          path: out/
+          name: benchmark-results-elasticsearch
+          path: test/benchmarks/out/
 
   run-weaviate-benchmarks:
     needs:
@@ -188,8 +191,8 @@ jobs:
         run: pip install .[metrics,weaviate,benchmarks,inference]
 
       - name: Run benchmarks
+        working-directory: test/benchmarks
         run: |
-          cd test/benchmarks
           mkdir +p out
           for f in ./configs/**/*-weaviate-*.yml; do
             name="${f%.*}"
@@ -200,11 +203,12 @@ jobs:
           done
 
       - name: Send Benchmark results to Datadog
+        working-directory: test/benchmarks
         run: |
           python datadog/send_metrics.py
 
       - name: Archive benchmark results
         uses: actions/upload-artifact@v3
         with:
-          name: benchmark-results
-          path: out/
+          name: benchmark-results-weaviate
+          path: test/benchmarks/out/
