@@ -38,9 +38,9 @@ class Pipeline(CanalsPipeline):
         :param store: the store object.
         :returns: None
         """
-        if not isinstance(store, Store):
+        if not getattr(store, "__haystack_store__", False):
             raise NotAStoreError(
-                f"This object ({store}) does not respect the Store Protocol, "
+                f"'{type(store).__name__}' is not decorated with @store, "
                 "so it can't be added to the pipeline with Pipeline.add_store()."
             )
         self._stores[name] = store
