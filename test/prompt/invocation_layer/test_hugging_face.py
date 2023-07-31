@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch, Mock
 
 import pytest
 import torch
+import logging
 from torch import device
 from transformers import AutoTokenizer, BloomForCausalLM, StoppingCriteriaList, GenerationConfig, AutoModelForCausalLM
 
@@ -596,34 +597,63 @@ def test_ensure_token_limit_negative_mock(mock_pipeline, mock_get_task, mock_aut
     assert result == correct_result
 
 
-@pytest.mark.integration
-@pytest.mark.parametrize(
-    "model_name, pass_init_model, expected",
-    [("syzymon/long_llama_3b", True, "LlamaTokenizerFast"), ("syzymon/long_llama_3b", False, "LlamaTokenizerFast")],
-)
-def test_prepare_tokenizer_load_tokenizer(model_name, pass_init_model, expected, caplog):
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoConfig.from_pretrained")
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoTokenizer.from_pretrained")
+def test_tokenizer_loading_unsupported_model(mock_tokenizer, mock_config, mock_pipeline, mock_get_task, caplog):
     """
-    Test _preprare_tokenizer method will load tokenizer for models that won't be
-    loaded by the transformers library. Since the model can either be passed as a string
-    or a model object, we have 2 test cases here.
+    Test loading of tokenizers for models that are not natively supported by the transformers library.
     """
+    mock_config.return_value = Mock(tokenizer_class=None)
 
-    if pass_init_model:
-        init_model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True, low_cpu_mem_usage=True)
-    else:
-        init_model = model_name
+    with caplog.at_level(logging.WARNING):
+        invocation_layer = HFLocalInvocationLayer("unsupported_model", trust_remote_code=True)
+        assert (
+            "The transformers library doesn't know which tokenizer class should be "
+            "loaded for the model unsupported_model. Therefore, the tokenizer will be loaded in Haystack's "
+            "invocation layer and then passed to the underlying pipeline. Alternatively, you could "
+            "pass `tokenizer_class` to `model_kwargs` to workaround this, if your tokenizer is supported "
+            "by the transformers library."
+        ) in caplog.text
+        assert mock_tokenizer.called
 
-    layer = HFLocalInvocationLayer(model=init_model, task_name="text-generation", trust_remote_code=True)
 
-    expected_message = (
-        "The transformers library doesn't know which tokenizer class should be "
-        "loaded for the model syzymon/long_llama_3b. Therefore, the tokenizer will be loaded in Haystack's "
-        "invocation layer and then passed to the underlying pipeline. Alternatively, you could "
-        "pass `tokenizer_class` to `model_kwargs` to workaround this, if your tokenizer is supported "
-        "by the transformers library."
-    )
-    # check that the warning is logged
-    assert caplog.records[0].message == expected_message
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoTokenizer.from_pretrained")
+def test_tokenizer_loading_unsupported_model_with_initialized_model(
+    mock_tokenizer, mock_pipeline, mock_get_task, caplog
+):
+    """
+    Test loading of tokenizers for models that are not natively supported by the transformers library. In this case,
+    the model is already initialized and the model config is loaded from the model.
+    """
+    model = Mock()
+    model.config = Mock(tokenizer_class=None, _name_or_path="unsupported_model")
 
-    # check the tokenizer is loaded by
-    assert layer.pipe.tokenizer.__class__.__name__ == expected
+    with caplog.at_level(logging.WARNING):
+        invocation_layer = HFLocalInvocationLayer(model_name_or_path="unsupported", model=model, trust_remote_code=True)
+        assert (
+            "The transformers library doesn't know which tokenizer class should be "
+            "loaded for the model unsupported_model. Therefore, the tokenizer will be loaded in Haystack's "
+            "invocation layer and then passed to the underlying pipeline. Alternatively, you could "
+            "pass `tokenizer_class` to `model_kwargs` to workaround this, if your tokenizer is supported "
+            "by the transformers library."
+        ) in caplog.text
+        assert mock_tokenizer.called
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoConfig.from_pretrained")
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoTokenizer.from_pretrained")
+def test_tokenizer_loading_unsupported_model_with_tokenizer_class_in_config(
+    mock_tokenizer, mock_config, mock_pipeline, mock_get_task, caplog
+):
+    """
+    Test that tokenizer is not loaded if tokenizer_class is set in model config.
+    """
+    mock_config.return_value = Mock(tokenizer_class="Some-Supported-Tokenizer")
+
+    with caplog.at_level(logging.WARNING):
+        invocation_layer = HFLocalInvocationLayer(model_name_or_path="unsupported_model", trust_remote_code=True)
+        assert not mock_tokenizer.called
+        assert not caplog.text
