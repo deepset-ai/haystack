@@ -202,10 +202,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         stream = stream or stream_handler is not None
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
-
-            # Consider only Text2TextGenerationPipeline and TextGenerationPipeline relevant, ignore others
-            # For more details refer to Hugging Face Text2TextGenerationPipeline and TextGenerationPipeline
-            # documentation
             model_input_kwargs = kwargs.copy()
             generation_kwargs = model_input_kwargs.pop("generation_kwargs", self.generation_kwargs)
             if isinstance(generation_kwargs, dict):
