@@ -18,6 +18,7 @@ title: {title}
 excerpt: {excerpt}
 category: {category}
 slug: {slug}
+parentDocSlug: {parent_doc_slug}
 order: {order}
 hidden: false
 ---
@@ -39,6 +40,7 @@ class ReadmeRenderer(Renderer):
     excerpt: str
     slug: str
     order: int
+    parent_doc_slug: str = ""
     # Docs categories fetched from Readme.io
     categories: t.Dict[str, str] = dataclasses.field(init=False)
     # This exposes a special `markdown` settings value that can be used to pass
@@ -95,6 +97,7 @@ class ReadmeRenderer(Renderer):
         return README_FRONTMATTER.format(
             title=self.title,
             category=self.categories[self.category_slug],
+            parent_doc_slug=self.parent_doc_slug,
             excerpt=self.excerpt,
             slug=self.slug,
             order=self.order,

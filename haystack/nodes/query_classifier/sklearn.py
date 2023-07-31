@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union, Any, List, Optional, Iterator, Dict
 import pickle
 import urllib
+import warnings
 
 from tqdm import tqdm
 from sklearn.ensemble._gb_losses import BinomialDeviance
@@ -16,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 class SklearnQueryClassifier(BaseQueryClassifier):
     """
+    This component is now deprecated and will be removed in future versions. Use `TransformersQueryClassifier` instead of `SklearnQueryClassifier`.
+
     A node to classify an incoming query into one of two categories using a lightweight sklearn model. Depending on the result, the query flows to a different branch in your pipeline
     and the further processing can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2` from this node.
 
@@ -75,6 +78,11 @@ class SklearnQueryClassifier(BaseQueryClassifier):
         :param batch_size: Number of queries to process at a time.
         :param progress_bar: Whether to show a progress bar.
         """
+        warnings.warn(
+            "`SklearnQueryClassifier` component is deprecated and will be removed in future versions. Use `TransformersQueryClassifier` "
+            "instead of `SklearnQueryClassifier`.",
+            category=DeprecationWarning,
+        )
         if ((not isinstance(model_name_or_path, Path)) and (not isinstance(model_name_or_path, str))) or (
             (not isinstance(vectorizer_name_or_path, Path)) and (not isinstance(vectorizer_name_or_path, str))
         ):
