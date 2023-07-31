@@ -360,7 +360,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             model_config = model.config
             model = model_config._name_or_path
         # the will_load_tokenizer logic corresponds to this line in transformers library
-        # https://github.com/huggingface/transformers/blob/main/src/transformers/pipelines/__init__.py#L800
+        # https://github.com/huggingface/transformers/blob/05cda5df3405e6a2ee4ecf8f7e1b2300ebda472e/src/transformers/pipelines/__init__.py#L805
         will_load_tokenizer = type(model_config) in TOKENIZER_MAPPING or model_config.tokenizer_class is not None
         if not will_load_tokenizer:
             logger.warning(
