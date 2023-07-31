@@ -8,8 +8,8 @@ from haystack.nodes.ranker.lost_in_the_middle import LostInTheMiddleRanker
 def test_lost_in_the_middle_order_odd():
     # tests that lost_in_the_middle order works with an odd number of documents
     docs = [Document(str(i)) for i in range(1, 10)]
-    litm = LostInTheMiddleRanker()
-    result, _ = litm.run(query="", documents=docs)
+    ranker = LostInTheMiddleRanker()
+    result, _ = ranker.run(query="", documents=docs)
     assert result["documents"]
     expected_order = "1 3 5 7 9 8 6 4 2".split()
     assert all(doc.content == expected_order[idx] for idx, doc in enumerate(result["documents"]))
@@ -23,8 +23,8 @@ def test_batch_lost_in_the_middle_order():
         [Document("5"), Document("6")],
         [Document("7"), Document("8"), Document("9")],
     ]
-    litm = LostInTheMiddleRanker()
-    result, _ = litm.run_batch(queries=[""], documents=docs)
+    ranker = LostInTheMiddleRanker()
+    result, _ = ranker.run_batch(queries=[""], documents=docs)
 
     assert " ".join(doc.content for doc in result["documents"][0]) == "1 3 4 2"
     assert " ".join(doc.content for doc in result["documents"][1]) == "5 6"
@@ -35,8 +35,8 @@ def test_batch_lost_in_the_middle_order():
 def test_lost_in_the_middle_order_even():
     # tests that lost_in_the_middle order works with an even number of documents
     docs = [Document(str(i)) for i in range(1, 11)]
-    litm = LostInTheMiddleRanker()
-    result, _ = litm.run(query="", documents=docs)
+    ranker = LostInTheMiddleRanker()
+    result, _ = ranker.run(query="", documents=docs)
     expected_order = "1 3 5 7 9 10 8 6 4 2".split()
     assert all(doc.content == expected_order[idx] for idx, doc in enumerate(result["documents"]))
 
@@ -44,21 +44,21 @@ def test_lost_in_the_middle_order_even():
 @pytest.mark.unit
 def test_lost_in_the_middle_order_corner():
     # tests that lost_in_the_middle order works with some basic corner cases
-    litm = LostInTheMiddleRanker()
+    ranker = LostInTheMiddleRanker()
 
     # empty doc list
     docs = []
-    result, _ = litm.run(query="", documents=docs)
+    result, _ = ranker.run(query="", documents=docs)
     assert len(result["documents"]) == 0
 
     # single doc
     docs = [Document("1")]
-    result, _ = litm.run(query="", documents=docs)
+    result, _ = ranker.run(query="", documents=docs)
     assert result["documents"][0].content == "1"
 
     # two docs
     docs = [Document("1"), Document("2")]
-    result, _ = litm.run(query="", documents=docs)
+    result, _ = ranker.run(query="", documents=docs)
     assert result["documents"][0].content == "1"
     assert result["documents"][1].content == "2"
 
@@ -66,13 +66,13 @@ def test_lost_in_the_middle_order_corner():
 @pytest.mark.unit
 def test_lost_in_the_middle_init():
     # tests that LostInTheMiddleRanker initializes with default values
-    litm = LostInTheMiddleRanker()
-    assert litm.word_count_threshold is None
-    assert litm.truncate_document is False
+    ranker = LostInTheMiddleRanker()
+    assert ranker.word_count_threshold is None
+    assert ranker.truncate_document is False
 
-    litm = LostInTheMiddleRanker(word_count_threshold=10, truncate_document=True)
-    assert litm.word_count_threshold == 10
-    assert litm.truncate_document is True
+    ranker = LostInTheMiddleRanker(word_count_threshold=10, truncate_document=True)
+    assert ranker.word_count_threshold == 10
+    assert ranker.truncate_document is True
 
     with pytest.raises(
         ValueError, match="If truncate_document is set to True, you must specify a word_count_threshold"
@@ -83,14 +83,14 @@ def test_lost_in_the_middle_init():
 @pytest.mark.unit
 def test_lost_in_the_middle_with_word_count_threshold():
     # tests that lost_in_the_middle with word_count_threshold works as expected
-    litm = LostInTheMiddleRanker(word_count_threshold=6)
+    ranker = LostInTheMiddleRanker(word_count_threshold=6)
     docs = [Document("word" + str(i)) for i in range(1, 10)]
-    result, _ = litm.run(query="", documents=docs)
+    result, _ = ranker.run(query="", documents=docs)
     expected_order = "word1 word3 word5 word6 word4 word2".split()
     assert all(doc.content == expected_order[idx] for idx, doc in enumerate(result["documents"]))
 
-    litm = LostInTheMiddleRanker(word_count_threshold=9)
-    result, _ = litm.run(query="", documents=docs)
+    ranker = LostInTheMiddleRanker(word_count_threshold=9)
+    result, _ = ranker.run(query="", documents=docs)
     expected_order = "word1 word3 word5 word7 word9 word8 word6 word4 word2".split()
     assert all(doc.content == expected_order[idx] for idx, doc in enumerate(result["documents"]))
 
@@ -108,7 +108,7 @@ def test_word_count_threshold_greater_than_total_number_of_words_returns_all_doc
 @pytest.mark.unit
 def test_truncation_with_threshold():
     # tests that truncation works as expected
-    litm = LostInTheMiddleRanker(word_count_threshold=9, truncate_document=True)
+    ranker = LostInTheMiddleRanker(word_count_threshold=9, truncate_document=True)
     docs = [
         Document("word1 word1"),
         Document("word2 word2"),
@@ -120,7 +120,7 @@ def test_truncation_with_threshold():
         Document("word8 word8"),
         Document("word9 word9"),
     ]
-    result, _ = litm.run(query="", documents=docs)
+    result, _ = ranker.run(query="", documents=docs)
     expected_order = "word1 word1 word3 word3 word5 word4 word4 word2 word2"
     assert expected_order == " ".join(doc.content for doc in result["documents"])
 
@@ -141,11 +141,11 @@ def test_list_of_one_document_returns_same_document():
 @pytest.mark.unit
 def test_non_textual_documents():
     #  tests that merging a list of non-textual documents raises a ValueError
-    litm = LostInTheMiddleRanker()
+    ranker = LostInTheMiddleRanker()
     doc1 = Document(content="This is a textual document.")
     doc2 = Document(content_type="image", content="This is a non-textual document.")
     with pytest.raises(ValueError):
-        litm.reorder_documents([doc1, doc2])
+        ranker.reorder_documents([doc1, doc2])
 
 
 @pytest.mark.unit
@@ -153,8 +153,8 @@ def test_non_textual_documents():
 def test_lost_in_the_middle_order_odd_with_top_k(top_k: int):
     # tests that lost_in_the_middle order works with an odd number of documents and a top_k parameter
     docs = [Document(str(i)) for i in range(1, 10)]
-    litm = LostInTheMiddleRanker()
-    result = litm._exclude_middle_elements(docs, top_k=top_k)
+    ranker = LostInTheMiddleRanker()
+    result = ranker._exclude_middle_elements(docs, top_k=top_k)
     assert len(result) == top_k
 
     reverse_top_k = len(docs) - top_k
@@ -168,8 +168,8 @@ def test_lost_in_the_middle_order_odd_with_top_k(top_k: int):
 def test_lost_in_the_middle_order_even_with_top_k(top_k: int):
     # tests that lost_in_the_middle order works with an even number of documents and a top_k parameter
     docs = [Document(str(i)) for i in range(1, 9)]
-    litm = LostInTheMiddleRanker()
-    result = litm._exclude_middle_elements(docs, top_k=top_k)
+    ranker = LostInTheMiddleRanker()
+    result = ranker._exclude_middle_elements(docs, top_k=top_k)
     assert len(result) == top_k
 
     reverse_top_k = len(docs) - top_k
