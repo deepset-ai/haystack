@@ -260,7 +260,6 @@ def test_crawler_depth_2_multiple_urls(test_url, tmp_path):
     assert content_in_results(crawler, test_url + "/page2_subpage1.html", paths)
 
 
-@pytest.mark.integration
 def test_crawler_custom_webdriver(tmp_path):
     tmp_dir = tmp_path
 
