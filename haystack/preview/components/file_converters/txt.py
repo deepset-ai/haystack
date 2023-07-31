@@ -172,7 +172,7 @@ class TextFileToDocument:
         if len(meta) != len(file_paths):
             raise PipelineRuntimeError(
                 f"The number of meta entries must match the number of paths if meta is a list. "
-                f"Number of paths: {len(file_paths)}, number of meta entries: {len(meta)}"
+                f"Number of paths: {len(file_paths)}, number of meta entries: {len(meta)}."
             )
 
         return [{**m, "file_path": m.get("file_path", str(path))} for m, path in zip(meta, file_paths)]
