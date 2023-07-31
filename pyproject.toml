@@ -200,7 +200,6 @@ ray = [
 colab = [
   "pillow<=9.0.0",
 ]
-
 dev = [
   "pre-commit",
   # Type check
