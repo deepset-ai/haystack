@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch, Mock
 import pytest
 import torch
 import logging
+
 from torch import device
 from transformers import AutoTokenizer, BloomForCausalLM, StoppingCriteriaList, GenerationConfig
 
