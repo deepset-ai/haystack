@@ -3,7 +3,7 @@ import os
 
 from haystack import Pipeline
 from haystack.nodes import PromptNode, PromptTemplate, TopPSampler, DocumentMerger
-from haystack.nodes.ranker.most_diverse import MostDiverseRanker
+from haystack.nodes.ranker.diversity import DiversityRanker
 from haystack.nodes.retriever.web import WebRetriever
 
 search_key = os.environ.get("SERPERDEV_API_KEY")
@@ -28,7 +28,7 @@ prompt_node = PromptNode(
 web_retriever = WebRetriever(api_key=search_key, top_search_results=10, mode="preprocessed_documents", top_k=25)
 
 sampler = TopPSampler(top_p=0.95)
-ranker = MostDiverseRanker()
+ranker = DiversityRanker()
 merger = DocumentMerger(separator="\n\n")
 
 pipeline = Pipeline()

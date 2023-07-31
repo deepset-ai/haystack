@@ -14,7 +14,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
-class MostDiverseRanker(BaseRanker):
+class DiversityRanker(BaseRanker):
     """
     Implements a document ranking algorithm that orders documents in such a way as to maximize the overall diversity
     of the documents.
@@ -28,7 +28,7 @@ class MostDiverseRanker(BaseRanker):
         similarity: Literal["dot_product", "cosine"] = "dot_product",
     ):
         """
-        Initialize a MostDiverseRanker.
+        Initialize a DiversityRanker.
 
         :param model_name_or_path: Path to a pretrained sentence-transformers model.
         :param use_gpu: Whether to use GPU (if available). If no GPUs are available, it falls back on a CPU.
@@ -56,10 +56,10 @@ class MostDiverseRanker(BaseRanker):
         if documents is None or len(documents) == 0:
             raise ValueError("No documents to choose from")
 
-        diversity_sorted = self.most_diverse_order(query=query, documents=documents)
+        diversity_sorted = self.greedy_diversity_order(query=query, documents=documents)
         return diversity_sorted[:top_k]
 
-    def most_diverse_order(self, query: str, documents: List[Document]) -> List[Document]:
+    def greedy_diversity_order(self, query: str, documents: List[Document]) -> List[Document]:
         """
         Orders the given list of documents to maximize diversity. The algorithm first calculates embeddings for
         each document and the query. It starts by selecting the document that is semantically closest to the query.
