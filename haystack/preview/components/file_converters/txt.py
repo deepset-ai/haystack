@@ -22,8 +22,6 @@ class TextFileToDocument:
     A component for converting a text file to a Document.
     """
 
-    numeric_row_threshold = 0.4
-
     @component.input
     def input(self):
         class Input:
@@ -83,6 +81,7 @@ class TextFileToDocument:
         self,
         encoding: str = "utf-8",
         remove_numeric_tables: bool = False,
+        numeric_row_threshold: float = 0.4,
         valid_languages: Optional[List[str]] = None,
         id_hash_keys: Optional[List[str]] = None,
         progress_bar: bool = True,
@@ -97,6 +96,9 @@ class TextFileToDocument:
                                       may also have long strings that could be possible candidates for answers.
                                       The rows containing strings are thus retained in this option.
                                       Default: `False`
+        :param numeric_row_threshold: Applicable if `remove_numeric_tables` is set to `True`. This is the threshold to
+                                      determine if a line in the provided text file is a numeric table row or not.
+                                      The value is the ratio of numeric words to the total number of words in a line.
         :param valid_languages: Validate languages from a list of languages specified in the [ISO 639-1 format]((https://en.wikipedia.org/wiki/ISO_639-1)).
                                 This option can be used to add a test for encoding errors. If the extracted text is
                                 not one of the valid languages, then there might be an encoding error resulting
@@ -119,6 +121,7 @@ class TextFileToDocument:
             "id_hash_keys": id_hash_keys,
             "progress_bar": progress_bar,
         }
+        self.numeric_row_threshold = numeric_row_threshold
 
     def run(self, data):
         """
