@@ -4,7 +4,6 @@ import logging
 
 import pytest
 import torch
-
 from torch import device
 from transformers import AutoTokenizer, BloomForCausalLM, StoppingCriteriaList, GenerationConfig
 
