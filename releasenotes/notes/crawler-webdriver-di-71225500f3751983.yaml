@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add optional webdriver parameter to Crawler in order to allow DI of a pre-configured webdriver instead of creating a new one in the constructor

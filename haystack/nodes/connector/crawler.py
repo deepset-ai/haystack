@@ -14,6 +14,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 
+WebDriver = object
 with LazyImport("Run 'pip install farm-haystack[crawler]'") as selenium_import:
     from selenium import webdriver as selenium_webdriver
     from selenium.common.exceptions import StaleElementReferenceException, WebDriverException
