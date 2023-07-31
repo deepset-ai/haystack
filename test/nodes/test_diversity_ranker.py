@@ -8,8 +8,9 @@ from haystack.nodes.ranker.diversity import DiversityRanker
 
 # Tests that predict method returns a list of Document objects
 @pytest.mark.integration
-def test_predict_returns_list_of_documents():
-    ranker = DiversityRanker()
+@pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+def test_predict_returns_list_of_documents(similarity: str):
+    ranker = DiversityRanker(similarity=similarity)  # type: ignore
     query = "test query"
     documents = [Document(content="doc1"), Document(content="doc2")]
     result = ranker.predict(query=query, documents=documents)
@@ -20,8 +21,9 @@ def test_predict_returns_list_of_documents():
 
 #  Tests that predict method returns the correct number of documents
 @pytest.mark.integration
-def test_predict_returns_correct_number_of_documents():
-    ranker = DiversityRanker()
+@pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+def test_predict_returns_correct_number_of_documents(similarity: str):
+    ranker = DiversityRanker(similarity=similarity)  # type: ignore
     query = "test query"
     documents = [Document(content="doc1"), Document(content="doc2")]
     result = ranker.predict(query=query, documents=documents, top_k=1)
@@ -30,8 +32,9 @@ def test_predict_returns_correct_number_of_documents():
 
 #  Tests that predict method returns documents in the correct order
 @pytest.mark.integration
-def test_predict_returns_documents_in_correct_order():
-    ranker = DiversityRanker()
+@pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+def test_predict_returns_documents_in_correct_order(similarity: str):
+    ranker = DiversityRanker(similarity=similarity)  # type: ignore
     query = "city"
     documents = [
         Document("France"),
@@ -49,8 +52,9 @@ def test_predict_returns_documents_in_correct_order():
 
 #  Tests that predict_batch method returns a list of lists of Document objects
 @pytest.mark.integration
-def test_predict_batch_returns_list_of_lists_of_documents():
-    ranker = DiversityRanker()
+@pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+def test_predict_batch_returns_list_of_lists_of_documents(similarity: str):
+    ranker = DiversityRanker(similarity=similarity)  # type: ignore
     queries = ["test query 1", "test query 2"]
     documents = [
         [Document(content="doc1"), Document(content="doc2")],
@@ -64,8 +68,9 @@ def test_predict_batch_returns_list_of_lists_of_documents():
 
 #  Tests that predict_batch method returns the correct number of documents
 @pytest.mark.integration
-def test_predict_batch_returns_correct_number_of_documents():
-    ranker = DiversityRanker()
+@pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+def test_predict_batch_returns_correct_number_of_documents(similarity: str):
+    ranker = DiversityRanker(similarity=similarity)  # type: ignore
     queries = ["test query 1", "test query 2"]
     documents = [
         [Document(content="doc1"), Document(content="doc2")],
@@ -79,8 +84,9 @@ def test_predict_batch_returns_correct_number_of_documents():
 
 #  Tests that predict_batch method returns documents in the correct order
 @pytest.mark.integration
-def test_predict_batch_returns_documents_in_correct_order():
-    ranker = DiversityRanker()
+@pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+def test_predict_batch_returns_documents_in_correct_order(similarity: str):
+    ranker = DiversityRanker(similarity=similarity)  # type: ignore
     queries = ["Berlin", "Paris"]
     documents = [
         [Document(content="Germany"), Document(content="Munich"), Document(content="agriculture")],
@@ -98,8 +104,9 @@ def test_predict_batch_returns_documents_in_correct_order():
 
 # Tests that predict method returns the correct number of documents for a single document
 @pytest.mark.integration
-def test_predict_single_document_corner_case():
-    ranker = DiversityRanker()
+@pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+def test_predict_single_document_corner_case(similarity: str):
+    ranker = DiversityRanker(similarity=similarity)  # type: ignore
     query = "test"
     documents = [Document(content="doc1")]
     result = ranker.predict(query=query, documents=documents)
@@ -108,8 +115,9 @@ def test_predict_single_document_corner_case():
 
 #  Tests that predict method raises ValueError if query is empty
 @pytest.mark.integration
-def test_predict_raises_value_error_if_query_is_empty():
-    ranker = DiversityRanker()
+@pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+def test_predict_raises_value_error_if_query_is_empty(similarity: str):
+    ranker = DiversityRanker(similarity=similarity)  # type: ignore
     query = ""
     documents = [Document(content="doc1"), Document(content="doc2")]
     with pytest.raises(ValueError):
@@ -118,8 +126,9 @@ def test_predict_raises_value_error_if_query_is_empty():
 
 #  Tests that predict method raises ValueError if documents is empty
 @pytest.mark.integration
-def test_predict_raises_value_error_if_documents_is_empty():
-    ranker = DiversityRanker()
+@pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+def test_predict_raises_value_error_if_documents_is_empty(similarity: str):
+    ranker = DiversityRanker(similarity=similarity)  # type: ignore
     query = "test query"
     documents = []
     with pytest.raises(ValueError):
@@ -128,8 +137,9 @@ def test_predict_raises_value_error_if_documents_is_empty():
 
 #  Tests that predict_batch method raises ValueError if queries is empty
 @pytest.mark.integration
-def test_predict_batch_raises_value_error_if_queries_is_empty():
-    ranker = DiversityRanker()
+@pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+def test_predict_batch_raises_value_error_if_queries_is_empty(similarity: str):
+    ranker = DiversityRanker(similarity=similarity)  # type: ignore
     queries = []
     documents = [
         [Document(content="doc1"), Document(content="doc2")],
@@ -141,8 +151,9 @@ def test_predict_batch_raises_value_error_if_queries_is_empty():
 
 #  Tests that predict_batch method raises ValueError if documents is empty
 @pytest.mark.integration
-def test_predict_batch_raises_value_error_if_documents_is_empty():
-    ranker = DiversityRanker()
+@pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+def test_predict_batch_raises_value_error_if_documents_is_empty(similarity: str):
+    ranker = DiversityRanker(similarity=similarity)  # type: ignore
     queries = ["test query 1", "test query 2"]
     documents = []
     with pytest.raises(ValueError):
@@ -150,8 +161,9 @@ def test_predict_batch_raises_value_error_if_documents_is_empty():
 
 
 @pytest.mark.integration
-def test_predict_real_world_use_case():
-    ranker = DiversityRanker()
+@pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+def test_predict_real_world_use_case(similarity: str):
+    ranker = DiversityRanker(similarity=similarity)  # type: ignore
     query = "What are the reasons for long-standing animosities between Russia and Poland?"
 
     doc1 = Document(
