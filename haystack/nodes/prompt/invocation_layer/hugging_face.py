@@ -206,26 +206,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # Consider only Text2TextGenerationPipeline and TextGenerationPipeline relevant, ignore others
             # For more details refer to Hugging Face Text2TextGenerationPipeline and TextGenerationPipeline
             # documentation
-            model_input_kwargs = {
-                key: kwargs[key]
-                for key in [
-                    "return_tensors",
-                    "return_text",
-                    "return_full_text",
-                    "clean_up_tokenization_spaces",
-                    "truncation",
-                    "generation_kwargs",
-                    "max_new_tokens",
-                    "num_beams",
-                    "do_sample",
-                    "num_return_sequences",
-                    "max_length",
-                    "temperature",
-                    "top_p",
-                    "top_k",
-                ]
-                if key in kwargs
-            }
+            model_input_kwargs = kwargs.copy()
             generation_kwargs = model_input_kwargs.pop("generation_kwargs", self.generation_kwargs)
             if isinstance(generation_kwargs, dict):
                 model_input_kwargs.update(generation_kwargs)
@@ -258,6 +239,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 stream_handler: TokenStreamingHandler = stream_handler or DefaultTokenStreamingHandler()
                 model_input_kwargs["streamer"] = HFTokenStreamingHandler(self.pipe.tokenizer, stream_handler)
 
+            print("______________")
+            print(model_input_kwargs)
             output = self.pipe(prompt, **model_input_kwargs)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
 
