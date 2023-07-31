@@ -7,6 +7,7 @@ import numpy as np
 import rank_bm25
 from tqdm.auto import tqdm
 
+from haystack.preview.document_stores.decorator import store
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.protocols import DuplicatePolicy
 from haystack.preview.document_stores.memory._filters import match
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 SCALING_FACTOR = 8
 
 
+@store
 class MemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.

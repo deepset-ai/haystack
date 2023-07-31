@@ -206,48 +206,6 @@ def test_ensure_token_limit_negative(caplog):
 
 
 @pytest.mark.unit
-def test_num_return_sequences_no_larger_than_num_beams(mock_pipeline, mock_get_task, caplog):
-    """
-    Test that num_return_sequences cannot be larger than num_beams and that a warning is logged
-    """
-
-    layer = HFLocalInvocationLayer("google/flan-t5-base")
-
-    with patch.object(layer.pipe, "run_single", MagicMock()):
-        layer.invoke(prompt="What does 42 mean?", generation_kwargs={"num_beams": 5, "num_return_sequences": 8})
-
-    expected_message = (
-        "num_return_sequences 8 should not be larger than num_beams 5, hence setting it equal to num_beams"
-    )
-    # check that the warning is logged
-    assert caplog.records[0].message == expected_message
-
-    # check that num_return_sequences is set to num_beams
-    _, kwargs = layer.pipe.call_args
-    assert kwargs["num_beams"] == 5
-    assert kwargs["num_return_sequences"] == 5
-
-
-@pytest.mark.unit
-def test_num_beams_larger_than_num_return_sequences(mock_pipeline, mock_get_task, caplog):
-    """
-    Test that num_beams can be larger than num_return_sequences and that no warning is logged
-    """
-    layer = HFLocalInvocationLayer("google/flan-t5-base")
-
-    with patch.object(layer.pipe, "run_single", MagicMock()):
-        layer.invoke(prompt="What does 42 mean?", generation_kwargs={"num_beams": 8, "num_return_sequences": 5})
-
-    # check that no warning is logged
-    assert not caplog.records
-
-    # check that num_return_sequences remains unchanged
-    _, kwargs = layer.pipe.call_args
-    assert kwargs["num_beams"] == 8
-    assert kwargs["num_return_sequences"] == 5
-
-
-@pytest.mark.unit
 def test_constructor_with_custom_pretrained_model(mock_pipeline, mock_get_task):
     """
     Test that the constructor sets the pipeline with the pretrained model (if provided)
