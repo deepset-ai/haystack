@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Literal, Optional, Union
 
 from haystack.nodes import BaseRanker
 from haystack.schema import Document
@@ -25,6 +25,7 @@ class MostDiverseRanker(BaseRanker):
         model_name_or_path: Union[str, Path] = "all-MiniLM-L6-v2",
         use_gpu: Optional[bool] = True,
         devices: Optional[List[Union[str, "torch.device"]]] = None,
+        similarity: Literal["dot_product", "cosine"] = "dot_product",
     ):
         """
         Initialize a MostDiverseRanker.
@@ -32,11 +33,13 @@ class MostDiverseRanker(BaseRanker):
         :param model_name_or_path: Path to a pretrained sentence-transformers model.
         :param use_gpu: Whether to use GPU (if available). If no GPUs are available, it falls back on a CPU.
         :param devices: List of torch devices (for example, cuda:0, cpu, mps) to limit inference to specific devices.
+        :param similarity: Whether to use dot product or cosine similarity. Can be set to "dot_product" (default) or "cosine".
         """
         torch_and_transformers_import.check()
         super().__init__()
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
         self.model = SentenceTransformer(model_name_or_path, device=str(self.devices[0]))
+        self.similarity = similarity
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
         """
@@ -73,6 +76,10 @@ class MostDiverseRanker(BaseRanker):
         # Calculate embeddings
         doc_embeddings: torch.Tensor = self.model.encode([d.content for d in documents], convert_to_tensor=True)
         query_embedding: torch.Tensor = self.model.encode([query], convert_to_tensor=True)
+
+        if self.similarity == "dot_product":
+            doc_embeddings /= torch.norm(doc_embeddings, p=2, dim=-1).unsqueeze(-1)
+            query_embedding /= torch.norm(query_embedding, p=2, dim=-1).unsqueeze(-1)
 
         n = len(documents)
         selected: List[int] = []
