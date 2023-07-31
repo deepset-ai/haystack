@@ -2,4 +2,4 @@
 fixes:
   - |
     Restricts the criteria for identifying an OpenAI model in the PromptNode and in the EmbeddingRetriever.
-    Previously, the criteria was quite loose, leading to more false positives.
+    Previously, the criteria were quite loose, leading to more false positives.
