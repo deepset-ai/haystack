@@ -92,7 +92,7 @@ class HFTextEmbedder:
 
 
 @component
-class HFDocumentEmbedder(HFTextEmbedder):
+class HFDocumentEmbedder:
     ...
 
     @component.output_types(result=List[Document])
