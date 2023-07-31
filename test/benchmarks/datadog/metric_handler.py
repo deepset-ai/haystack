@@ -1,10 +1,10 @@
 from enum import Enum
-import os
+from itertools import chain
 from time import time
 from typing import Dict, List, Optional
 
 import datadog
-from tenacity import retry, retry_if_exception, stop_after_attempt, wait_fixed
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 import logging
 
 LOGGER = logging.getLogger(__name__)
@@ -58,31 +58,18 @@ class CustomDatadogMetric:
         self.timestamp = time()
         self.name = name
         self.value = value
-        self.tags = self.validate_tags(tags)
+        self.tags = self.validate_tags(tags) if tags is not None else []
 
-    def validate_tags(self, tags: Optional[List[Tag]]) -> List[Tag]:
-        valid_tags = []
-        if tags is not None:
-            for tag in tags:
-                is_dataset_size_tag = tag.value in DatasetSizeTags.values()
-                is_reader_model_tag = tag.value in ReaderModelTags.values()
-                is_retriever_model_tag = tag.value in RetrieverModelTags.values()
-                is_document_store_tag = tag.value in DocumentStoreModelTags.values()
-                is_benchmark_type_tag = tag.value in BenchmarkType.values()
-
-                if (
-                    is_dataset_size_tag
-                    or is_reader_model_tag
-                    or is_retriever_model_tag
-                    or is_document_store_tag
-                    or is_benchmark_type_tag
-                ):
-                    valid_tags.append(tag)
-                elif tag == NoneTag.none:
-                    pass
-                else:
-                    # Log invalid tags as errors
-                    LOGGER.error(f"Tag is not a valid dataset or environment tag: tag={tag}")
+    def validate_tags(self, tags: List[Tag]) -> List[Tag]:
+        valid_tags: List[Tag] = []
+        for tag in tags:
+            if isinstance(
+                tag, (DatasetSizeTags, ReaderModelTags, RetrieverModelTags, DocumentStoreModelTags, BenchmarkType)
+            ):
+                valid_tags.append(tag)
+            elif tag != NoneTag.none:
+                # Log invalid tags as errors
+                LOGGER.error(f"Tag is not a valid dataset or environment tag: tag={tag}")
 
         return valid_tags
 
@@ -124,44 +111,43 @@ class QueryingSecondsPerQueryMetric(CustomDatadogMetric):
 
 
 class MetricsAPI:
-    @retry(
-        retry=retry_if_exception(AssertionError),  # type: ignore
-        wait=wait_fixed(5),
-        stop=stop_after_attempt(3),
-        reraise=True,
-    )
+    def __init__(self, datadog_api_key: str, datadog_host: str):
+        self.datadog_api_key = datadog_api_key
+        self.datadog_host = datadog_host
+
+    @retry(retry=retry_if_exception_type(ConnectionError), wait=wait_fixed(5), stop=stop_after_attempt(3), reraise=True)
     def send_custom_dd_metric(self, metric: CustomDatadogMetric) -> dict:
-        options = {
-            "api_key": os.getenv("DD_API_KEY"),
-            "app_key": os.getenv("DD_APP_KEY"),
-            "api_host": os.getenv("DD_HOST"),
-        }
+        datadog.initialize(api_key=self.datadog_api_key, host_name=self.datadog_host)
 
-        datadog.initialize(**options)
         tags: List[str] = list(map(lambda t: str(t.value), metric.tags))
-
         post_metric_response: Dict = datadog.api.Metric.send(
             metric=metric.name, points=[metric.timestamp, metric.value], tags=tags
         )
 
         if post_metric_response.get("status") != "ok":
             LOGGER.error(
-                f"Could not send custom metric. metric_name={metric.name}, metric_value={metric.value}, status={post_metric_response.get('status')}, error={post_metric_response.get('errors')}, {post_metric_response}"
+                f"Could not send custom metric. Retrying. metric_name={metric.name}, metric_value={metric.value}, "
+                f"status={post_metric_response.get('status')}, error={post_metric_response.get('errors')}, "
+                f"{post_metric_response}"
             )
+            raise ConnectionError(f"Could not send custom metric. {post_metric_response}")
         else:
             LOGGER.info(
-                f"Sent custom metric. metric_name={metric.name}, metric_value={metric.value}, status={post_metric_response.get('status')}"
+                f"Sent custom metric. metric_name={metric.name}, metric_value={metric.value}, "
+                f"status={post_metric_response.get('status')}"
             )
-
-        assert (
-            post_metric_response.get("status") == "ok"
-        ), f"Could not send custom metric: metric_name={metric.name}, value={metric.value}"
 
         return post_metric_response
 
     def send_custom_dd_metrics(self, metrics: List[CustomDatadogMetric]) -> List[Dict]:
         responses = []
         for metric in metrics:
-            response = self.send_custom_dd_metric(metric)
-            responses.append(response)
+            try:
+                response = self.send_custom_dd_metric(metric)
+                responses.append(response)
+            except ConnectionError as e:
+                LOGGER.error(
+                    f"Could not send custom metric even after retrying. "
+                    f"metric_name={metric.name}, metric_value={metric.value}"
+                )
         return responses

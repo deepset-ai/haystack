@@ -201,10 +201,6 @@ colab = [
   "pillow<=9.0.0",
 ]
 
-benchmarks = [
-  "datadog==0.45.0"
-]
-
 dev = [
   "pre-commit",
   # Type check
