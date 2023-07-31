@@ -80,10 +80,10 @@ class LostInTheMiddleRanker(BaseRanker):
         :param documents: List of Documents to reorder.
         :param top_k: The number of documents to return.
 
-        :return: The reranked documents.
+        :return: The re-ranked documents.
         """
         ordered_docs = self.reorder_documents(documents=documents)
-        return ordered_docs[:top_k] if top_k else ordered_docs
+        return self._exclude_middle_elements(ordered_docs, top_k) if top_k else ordered_docs
 
     def predict_batch(
         self,
@@ -111,6 +111,17 @@ class LostInTheMiddleRanker(BaseRanker):
                 assert isinstance(cur_docs, list)
                 results.append(self.predict(query="", documents=cur_docs, top_k=top_k))
             return results
+
+    def _exclude_middle_elements(self, ordered_docs: List[Document], top_k: int):
+        exclude_count = len(ordered_docs) - top_k
+        middle_index = len(ordered_docs) // 2
+        half_top_k = exclude_count // 2
+
+        start_index = middle_index - half_top_k + len(ordered_docs) % 2
+        end_index = start_index + exclude_count
+        remaining_elements = ordered_docs[:start_index] + ordered_docs[end_index:]
+
+        return remaining_elements
 
     def _truncate(self, document: Document, word_count_threshold: int) -> Document:
         """

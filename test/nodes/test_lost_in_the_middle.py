@@ -7,34 +7,24 @@ from haystack.nodes.ranker.lost_in_the_middle import LostInTheMiddleRanker
 @pytest.mark.unit
 def test_lost_in_the_middle_order_odd():
     # tests that lost_in_the_middle order works with an odd number of documents
-    docs = [
-        Document("1"),
-        Document("2"),
-        Document("3"),
-        Document("4"),
-        Document("5"),
-        Document("6"),
-        Document("7"),
-        Document("8"),
-        Document("9"),
-    ]
-    dm = LostInTheMiddleRanker()
-    result, _ = dm.run(query="", documents=docs)
+    docs = [Document(str(i)) for i in range(1, 10)]
+    litm = LostInTheMiddleRanker()
+    result, _ = litm.run(query="", documents=docs)
     assert result["documents"]
     expected_order = "1 3 5 7 9 8 6 4 2".split()
     assert all(doc.content == expected_order[idx] for idx, doc in enumerate(result["documents"]))
 
 
 @pytest.mark.unit
-def test_batch_lost_in_the_middle_order_():
+def test_batch_lost_in_the_middle_order():
     # tests that lost_in_the_middle order works with a batch of documents
     docs = [
         [Document("1"), Document("2"), Document("3"), Document("4")],
         [Document("5"), Document("6")],
         [Document("7"), Document("8"), Document("9")],
     ]
-    dm = LostInTheMiddleRanker()
-    result, _ = dm.run_batch(queries=[""], documents=docs)
+    litm = LostInTheMiddleRanker()
+    result, _ = litm.run_batch(queries=[""], documents=docs)
 
     assert " ".join(doc.content for doc in result["documents"][0]) == "1 3 4 2"
     assert " ".join(doc.content for doc in result["documents"][1]) == "5 6"
@@ -44,20 +34,9 @@ def test_batch_lost_in_the_middle_order_():
 @pytest.mark.unit
 def test_lost_in_the_middle_order_even():
     # tests that lost_in_the_middle order works with an even number of documents
-    docs = [
-        Document("1"),
-        Document("2"),
-        Document("3"),
-        Document("4"),
-        Document("5"),
-        Document("6"),
-        Document("7"),
-        Document("8"),
-        Document("9"),
-        Document("10"),
-    ]
-    dm = LostInTheMiddleRanker()
-    result, _ = dm.run(query="", documents=docs)
+    docs = [Document(str(i)) for i in range(1, 11)]
+    litm = LostInTheMiddleRanker()
+    result, _ = litm.run(query="", documents=docs)
     expected_order = "1 3 5 7 9 10 8 6 4 2".split()
     assert all(doc.content == expected_order[idx] for idx, doc in enumerate(result["documents"]))
 
@@ -65,21 +44,21 @@ def test_lost_in_the_middle_order_even():
 @pytest.mark.unit
 def test_lost_in_the_middle_order_corner():
     # tests that lost_in_the_middle order works with some basic corner cases
-    dm = LostInTheMiddleRanker()
+    litm = LostInTheMiddleRanker()
 
     # empty doc list
     docs = []
-    result, _ = dm.run(query="", documents=docs)
+    result, _ = litm.run(query="", documents=docs)
     assert len(result["documents"]) == 0
 
     # single doc
     docs = [Document("1")]
-    result, _ = dm.run(query="", documents=docs)
+    result, _ = litm.run(query="", documents=docs)
     assert result["documents"][0].content == "1"
 
     # two docs
     docs = [Document("1"), Document("2")]
-    result, _ = dm.run(query="", documents=docs)
+    result, _ = litm.run(query="", documents=docs)
     assert result["documents"][0].content == "1"
     assert result["documents"][1].content == "2"
 
@@ -105,17 +84,7 @@ def test_lost_in_the_middle_init():
 def test_lost_in_the_middle_with_word_count_threshold():
     # tests that lost_in_the_middle with word_count_threshold works as expected
     litm = LostInTheMiddleRanker(word_count_threshold=6)
-    docs = [
-        Document("word1"),
-        Document("word2"),
-        Document("word3"),
-        Document("word4"),
-        Document("word5"),
-        Document("word6"),
-        Document("word7"),
-        Document("word8"),
-        Document("word9"),
-    ]
+    docs = [Document("word" + str(i)) for i in range(1, 10)]
     result, _ = litm.run(query="", documents=docs)
     expected_order = "word1 word3 word5 word6 word4 word2".split()
     assert all(doc.content == expected_order[idx] for idx, doc in enumerate(result["documents"]))
@@ -129,17 +98,7 @@ def test_lost_in_the_middle_with_word_count_threshold():
 @pytest.mark.unit
 def test_word_count_threshold_greater_than_total_number_of_words_returns_all_documents():
     ranker = LostInTheMiddleRanker(word_count_threshold=100)
-    docs = [
-        Document("word1"),
-        Document("word2"),
-        Document("word3"),
-        Document("word4"),
-        Document("word5"),
-        Document("word6"),
-        Document("word7"),
-        Document("word8"),
-        Document("word9"),
-    ]
+    docs = [Document("word" + str(i)) for i in range(1, 10)]
     ordered_docs = ranker.predict(query="test", documents=docs)
     assert len(ordered_docs) == len(docs)
     expected_order = "word1 word3 word5 word7 word9 word8 word6 word4 word2".split()
@@ -187,3 +146,33 @@ def test_non_textual_documents():
     doc2 = Document(content_type="image", content="This is a non-textual document.")
     with pytest.raises(ValueError):
         litm.reorder_documents([doc1, doc2])
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("top_k", [1, 2, 3, 4, 5, 6, 7, 8])
+def test_lost_in_the_middle_order_odd_with_top_k(top_k: int):
+    # tests that lost_in_the_middle order works with an odd number of documents and a top_k parameter
+    docs = [Document(str(i)) for i in range(1, 10)]
+    litm = LostInTheMiddleRanker()
+    result = litm._exclude_middle_elements(docs, top_k=top_k)
+    assert len(result) == top_k
+
+    reverse_top_k = len(docs) - top_k
+    middle = len(docs) // 2 + 1
+    expected_docs = docs[: middle - reverse_top_k // 2] + docs[middle + reverse_top_k // 2 + reverse_top_k % 2 :]
+    assert result == expected_docs
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("top_k", [1, 2, 3, 4, 5, 6, 7, 8])
+def test_lost_in_the_middle_order_even_with_top_k(top_k: int):
+    # tests that lost_in_the_middle order works with an even number of documents and a top_k parameter
+    docs = [Document(str(i)) for i in range(1, 9)]
+    litm = LostInTheMiddleRanker()
+    result = litm._exclude_middle_elements(docs, top_k=top_k)
+    assert len(result) == top_k
+
+    reverse_top_k = len(docs) - top_k
+    middle = len(docs) // 2
+    expected_docs = docs[: middle - reverse_top_k // 2] + docs[middle + reverse_top_k // 2 + reverse_top_k % 2 :]
+    assert result == expected_docs
