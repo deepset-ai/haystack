@@ -5,7 +5,7 @@ import pytest
 import torch
 import logging
 from torch import device
-from transformers import AutoTokenizer, BloomForCausalLM, StoppingCriteriaList, GenerationConfig, AutoModelForCausalLM
+from transformers import AutoTokenizer, BloomForCausalLM, StoppingCriteriaList, GenerationConfig
 
 from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler, DefaultTokenStreamingHandler
