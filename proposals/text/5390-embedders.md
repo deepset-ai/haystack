@@ -5,7 +5,7 @@
 
 # Summary
 
-As decided in the previous proposals ([Embedding Retriever](3558-embedding_retriever.md) and [DocumentStores and Retrievers](4370-document_stores_and_retrievers.md)), in Haystack V2 we want to introduce a new component: the Embedder.
+As decided in the previous proposals ([Embedding Retriever](3558-embedding_retriever.md) and [DocumentStores and Retrievers](4370-documentstores-and-retrievers.md)), in Haystack V2 we want to introduce a new component: the Embedder.
 
 **Separation of concerns**
 - DocumentStores: store the Documents, their metadata and representations (vectors); they offer a CRUD API.
