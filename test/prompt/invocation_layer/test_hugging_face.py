@@ -1,9 +1,9 @@
 from typing import List
 from unittest.mock import MagicMock, patch, Mock
+import logging
 
 import pytest
 import torch
-import logging
 
 from torch import device
 from transformers import AutoTokenizer, BloomForCausalLM, StoppingCriteriaList, GenerationConfig
