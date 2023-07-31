@@ -180,11 +180,11 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         tokenizer = kwargs.get("tokenizer", None)
 
         if tokenizer is None and trust_remote_code:
-            # for models that are currently not supported by the transformers library, we need to
-            # pass `trust_remote_code=True` to the underlying pipeline so that the model can be
-            # loaded by the transformers library. But it doesn't necessarily mean that the transformers
-            # library will load the tokenizer as well. So we need to add an additional logic here.
-            # Otherwise, calling `self.pipe.tokenizer.model_max_length` will return an error
+            # For models not yet supported by the transformers library, we must set `trust_remote_code=True` within
+            # the underlying pipeline to ensure the model's successful loading. However, this does not guarantee the
+            # tokenizer will be loaded alongside. Therefore, we need to add additional logic here to manually load the
+            # tokenizer and pass it to transformers' pipleine.
+            # Otherwise, calling `self.pipe.tokenizer.model_max_length` will return an error.
             tokenizer = self._prepare_tokenizer(model, hub_kwargs, model_kwargs)
 
         pipeline_kwargs = {
