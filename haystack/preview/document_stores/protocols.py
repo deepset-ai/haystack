@@ -1,5 +1,4 @@
-from typing import Protocol, Optional, Dict, Any, List, runtime_checkable
-
+from typing import Protocol, Optional, Dict, Any, List
 import logging
 from enum import Enum
 
@@ -15,7 +14,6 @@ class DuplicatePolicy(Enum):
     FAIL = "fail"
 
 
-@runtime_checkable
 class Store(Protocol):
     """
     Stores Documents to be used by the components of a Pipeline.
