@@ -2,12 +2,11 @@ from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal, get_args
 
 import logging
 from pathlib import Path
-from dataclasses import dataclass
 
 import torch
 import whisper
 
-from haystack.preview import component, ComponentInput, ComponentOutput, Document
+from haystack.preview import component, Document
 
 
 logger = logging.getLogger(__name__)
@@ -24,14 +23,20 @@ class LocalWhisperTranscriber:
     [github repo](https://github.com/openai/whisper).
     """
 
-    @dataclass
-    class Input(ComponentInput):
+    class Input:
         audio_files: List[Path]
         whisper_params: Optional[Dict[str, Any]] = None
 
-    @dataclass
-    class Output(ComponentOutput):
+    class Output:
         documents: List[Document]
+
+    @component.input
+    def input(self):  # type: ignore
+        return LocalWhisperTranscriber.Input
+
+    @component.output
+    def output(self):  # type: ignore
+        return LocalWhisperTranscriber.Output
 
     def __init__(self, model_name_or_path: WhisperLocalModel = "large", device: Optional[str] = None):
         """
@@ -76,7 +81,7 @@ class LocalWhisperTranscriber:
         if not data.whisper_params:
             data.whisper_params = {}
         documents = self.transcribe(data.audio_files, **data.whisper_params)
-        return LocalWhisperTranscriber.Output(documents)
+        return self.output(documents=documents)
 
     def transcribe(self, audio_files: Sequence[Union[str, Path, BinaryIO]], **kwargs) -> List[Document]:
         """
