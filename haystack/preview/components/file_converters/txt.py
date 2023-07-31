@@ -17,10 +17,12 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class TextfileToDocument:
+class TextFileToDocument:
     """
     A component for converting a text file to a Document.
     """
+
+    numeric_row_threshold = 0.4
 
     @component.input
     def input(self):
@@ -125,24 +127,25 @@ class TextfileToDocument:
         :param data: Input data for the TextfileToDocument component.
         """
         file_paths = data.paths
-        metas = TextfileToDocument._prepare_metadata(data.meta, file_paths)
+        metas = TextFileToDocument._prepare_metadata(data.meta, file_paths)
 
         documents = []
         for path, meta in tqdm(
             zip(file_paths, metas), total=len(file_paths), desc="Converting text files", disable=not data.progress_bar
         ):
-            text = TextfileToDocument._read_and_clean_file(
+            text = self._read_and_clean_file(
                 path=path, encoding=data.encoding, remove_numeric_tables=data.remove_numeric_tables
             )
 
-            if data.valid_languages is not None:
-                if not TextfileToDocument._validate_language(text, data.valid_languages):
-                    logger.warning(
-                        "Text from file %s is not in one of the valid languages: %s. "
-                        "The file may have been decoded incorrectly.",
-                        path,
-                        data.valid_languages,
-                    )
+            if data.valid_languages is not None and not TextFileToDocument._validate_language(
+                text, data.valid_languages
+            ):
+                logger.warning(
+                    "Text from file %s is not in one of the valid languages: %s. "
+                    "The file may have been decoded incorrectly.",
+                    path,
+                    data.valid_languages,
+                )
 
             document = Document(content=text, meta=meta, id_hash_keys=data.id_hash_keys)
             documents.append(document)
@@ -171,14 +174,15 @@ class TextfileToDocument:
 
         return [{**m, "file_path": m.get("file_path", str(path))} for m, path in zip(meta, file_paths)]
 
-    @staticmethod
-    def _read_and_clean_file(path: Union[str, Path], encoding: str, remove_numeric_tables: bool) -> str:
+    def _read_and_clean_file(self, path: Union[str, Path], encoding: str, remove_numeric_tables: bool) -> str:
         """
         Read and clean the text file.
 
         :param path: The path to the text file.
         :param encoding: The encoding of the text file.
         :param remove_numeric_tables: Whether to remove numeric tables.
+
+        :return: The text of the file cleaned from numeric tables if `remove_numeric_tables` is `True`.
         """
         if not Path(path).exists():
             raise PipelineRuntimeError(f"File at path {path} does not exist.")
@@ -186,34 +190,34 @@ class TextfileToDocument:
         with open(path, encoding=encoding) as file:
             text = file.read()
             pages = text.split("\f")
-            cleaned_pages = [TextfileToDocument._clean_page(page, remove_numeric_tables) for page in pages]
+            cleaned_pages = [self._clean_page(page, remove_numeric_tables) for page in pages]
             return "\f".join(cleaned_pages)
 
-    @staticmethod
-    def _clean_page(page: str, remove_numeric_tables: bool) -> str:
+    def _clean_page(self, page: str, remove_numeric_tables: bool) -> str:
         """
         Clean a page of text from numeric tables if `remove_numeric_tables` is `True`.
 
-        :param page: The page of text.
+        :param page: The content of a page of a text file.
         :param remove_numeric_tables: Whether to remove numeric tables.
+
+        :return: The text from the page cleaned from numeric tables if `remove_numeric_tables` is `True`.
         """
         cleaned_lines = page.splitlines()
         if remove_numeric_tables:
-            cleaned_lines = [line for line in cleaned_lines if not TextfileToDocument._is_numeric_row(line)]
+            cleaned_lines = [line for line in cleaned_lines if not self._is_numeric_row(line)]
 
         return "\n".join(cleaned_lines)
 
-    @staticmethod
-    def _is_numeric_row(line: str) -> bool:
+    def _is_numeric_row(self, line: str) -> bool:
         """
-        Check if a line is a numeric row. A line is considered a numeric row if it contains more than 40% digits and
-        does not end with a period.
+        Check if a line of a text file is a numeric row. A line is considered a numeric row if it contains more
+        than 40% digits and does not end with a period.
 
-        :param line: The line to check.
+        :param line: The content of a line of a text file.
         """
         words = line.split()
         digits = [word for word in words if any(char.isdigit() for char in word)]
-        return len(digits) / len(words) > 0.4 and not line.strip().endswith(".")
+        return len(digits) / len(words) > self.numeric_row_threshold and not line.strip().endswith(".")
 
     @staticmethod
     def _validate_language(text: str, valid_languages: List[str]) -> bool:

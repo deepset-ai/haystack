@@ -1,3 +1,3 @@
 from haystack.preview.components.audio.whisper_local import LocalWhisperTranscriber
 from haystack.preview.components.audio.whisper_remote import RemoteWhisperTranscriber
-from haystack.preview.components.file_converters import TextfileToDocument
+from haystack.preview.components.file_converters import TextFileToDocument

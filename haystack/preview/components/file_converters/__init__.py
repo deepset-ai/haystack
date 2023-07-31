@@ -1,1 +1,1 @@
-from haystack.preview.components.file_converters.txt import TextfileToDocument
+from haystack.preview.components.file_converters.txt import TextFileToDocument

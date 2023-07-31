@@ -7,7 +7,7 @@ from pathlib import Path
 from canals.errors import PipelineRuntimeError
 from langdetect import LangDetectException
 
-from haystack.preview.components.file_converters.txt import TextfileToDocument
+from haystack.preview.components.file_converters.txt import TextFileToDocument
 from test.preview.components.base import BaseTestComponent
 from test.conftest import preview_samples_path
 
@@ -19,7 +19,7 @@ class TestTextfileToDocument(BaseTestComponent):
         Test if the component runs correctly.
         """
         file_paths = [preview_samples_path / "txt" / "doc_1.txt", preview_samples_path / "txt" / "doc_2.txt"]
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         output = converter.run(data=converter.input(paths=file_paths))
         docs = output.documents
         assert len(docs) == 2
@@ -31,7 +31,7 @@ class TestTextfileToDocument(BaseTestComponent):
     @pytest.mark.unit
     def test_run_warning_for_unvalid_language(self, caplog, preview_samples_path):
         file_path = preview_samples_path / "txt" / "doc_1.txt"
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         with patch("haystack.preview.components.file_converters.txt.langdetect.detect", return_value="en"):
             with caplog.at_level(logging.WARNING):
                 output = converter.run(data=converter.input(paths=[file_path], valid_languages=["de"]))
@@ -49,7 +49,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the metadata is correctly prepared when no custom metadata is provided.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         meta = converter._prepare_metadata(
             meta=None, file_paths=["data/sample_path_1.txt", Path("data/sample_path_2.txt")]
         )
@@ -62,7 +62,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the metadata is correctly prepared when a single dict is provided.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         meta = converter._prepare_metadata(
             meta={"name": "test"}, file_paths=["data/sample_path_1.txt", Path("data/sample_path_2.txt")]
         )
@@ -77,7 +77,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the metadata is correctly prepared when a list of dicts is provided.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         meta = converter._prepare_metadata(
             meta=[{"name": "test1"}, {"name": "test2"}],
             file_paths=["data/sample_path_1.txt", Path("data/sample_path_2.txt")],
@@ -94,7 +94,7 @@ class TestTextfileToDocument(BaseTestComponent):
         Test if an error is raised when the number of metadata dicts is not equal to the number of
         file paths.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         with pytest.raises(
             PipelineRuntimeError, match="The number of meta entries must match the number of paths if meta is a list."
         ):
@@ -109,7 +109,7 @@ class TestTextfileToDocument(BaseTestComponent):
         Test if the file is correctly read.
         """
         file_path = preview_samples_path / "txt" / "doc_1.txt"
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         text = converter._read_and_clean_file(path=file_path, encoding="utf-8", remove_numeric_tables=False)
         assert text == "Some text for testing.\nTwo lines in here."
 
@@ -118,7 +118,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if an error is raised when the file does not exist.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         file_path = "non_existing_file.txt"
         with pytest.raises(PipelineRuntimeError, match=f"File at path {file_path} does not exist."):
             converter._read_and_clean_file(path=file_path, encoding="utf-8", remove_numeric_tables=False)
@@ -129,7 +129,7 @@ class TestTextfileToDocument(BaseTestComponent):
         Test if the file is correctly read and numeric tables are removed.
         """
         file_path = preview_samples_path / "txt" / "doc_2.txt"
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         text = converter._read_and_clean_file(path=file_path, encoding="utf-8", remove_numeric_tables=True)
         assert text == "This is a test line.\n987 654 321."
 
@@ -138,7 +138,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the page is not changed when remove_numeric_tables is False.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         page = "This is a test line.\n123 456 789"
         cleaned_page = converter._clean_page(page=page, remove_numeric_tables=False)
         assert cleaned_page == page
@@ -148,7 +148,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the page is correctly cleaned when remove_numeric_tables is True.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         page = "This is a test line.\n123 456 789"
         cleaned_page = converter._clean_page(page=page, remove_numeric_tables=True)
         assert cleaned_page == "This is a test line."
@@ -158,7 +158,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the line is correctly identified as a numeric row when it only contains numbers.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         line = "123 456 789"
         assert converter._is_numeric_row(line=line)
 
@@ -167,7 +167,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the line is correctly identified as a non-numeric row when it only contains text.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         line = "This is a test line."
         assert not converter._is_numeric_row(line=line)
 
@@ -177,7 +177,7 @@ class TestTextfileToDocument(BaseTestComponent):
         Test if the line is correctly identified as a non-numeric row when it only contains numbers and a period at
         the end.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         line = "123 456 789."
         assert not converter._is_numeric_row(line=line)
 
@@ -186,7 +186,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the line is correctly identified as a numeric row when it consists of more than 40% of numbers than.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         line = "123 456 789 This is a test"
         assert converter._is_numeric_row(line=line)
 
@@ -195,7 +195,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the line is correctly identified as a non-numeric row when it consists of less than 40% of numbers than.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         line = "123 456 789 This is a test line"
         assert not converter._is_numeric_row(line=line)
 
@@ -204,7 +204,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the line is correctly identified as a numeric row when the words consist of numbers and text.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         line = "123eur 456usd"
         assert converter._is_numeric_row(line=line)
 
@@ -213,7 +213,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the language is correctly validated.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         with patch("haystack.preview.components.file_converters.txt.langdetect.detect", return_value="en"):
             assert converter._validate_language(text="This is an english text.", valid_languages=["en"])
             assert not converter._validate_language(text="This is an english text.", valid_languages=["de"])
@@ -223,7 +223,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if _validate_languages returns True when no languages are specified.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         assert converter._validate_language(text="This is an english test.", valid_languages=[])
 
     @pytest.mark.unit
@@ -231,7 +231,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if _validate_languages returns False when langdetect throws an exception.
         """
-        converter = TextfileToDocument()
+        converter = TextFileToDocument()
         with patch(
             "haystack.preview.components.file_converters.txt.langdetect.detect",
             side_effect=LangDetectException(code=0, message="Test"),
