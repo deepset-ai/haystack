@@ -202,8 +202,24 @@ class HFDocumentEmbedder:
 
 # Drawbacks
 
+## Migration
 The drawbacks of separating Retrievers and Embedders were already discussed in [this proposal](https://github.com/deepset-ai/haystack/blob/main/proposals/text/4370-documentstores-and-retrievers.md) and mainly consist of **migration effort**.
 
+For example, if a user has indexed documents in the store and wants to update the embeddings using a different model instead, with the current Haystack implementation the user would run `document_store.update_embeddings(retriever)`.
+
+With the new Embedder design, I can imagine something similar (based on the MemoryDocumentStore v2 implementation):
+```python
+# get all the documents
+docs = memory_document_store.filter_documents()
+
+# compute the embedding with the new model
+new_embedder = HFDocumentEmbedder(model_name="new-model")
+docs_with_embeddings = new_embedder.run(documents=docs)
+
+# overwrite the documents
+memory_document_store.write_documents(documents=docs_with_embeddings, policy=DuplicatePolicy.OVERWRITE)
+```
+## Other aspects
 Regarding the design proposed in this document, there are some potential drawbacks to consider:
   - Proliferation of classes (though they will be small and easy to maintain).
   - Users need to know which models are appropriate for which task (e.g. embedding queries rather than embedding documents, see [Different models in the same embedding/retrieval task](#different-models-in-the-same-embeddingretrieval-task)). On the other hand, this approach is more explicit and will help making users aware of problems and tradeoffs related to the topic.
