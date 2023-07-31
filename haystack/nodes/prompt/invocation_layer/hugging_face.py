@@ -203,8 +203,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
             # remove arguments that are not accepted by the transformers library, e.g. `documents` and `query`
-            kwargs.pop('documents', None)
-            kwargs.pop('query', None)
+            kwargs.pop("documents", None)
+            kwargs.pop("query", None)
 
             model_input_kwargs = kwargs.copy()
             generation_kwargs = model_input_kwargs.pop("generation_kwargs", self.generation_kwargs)
