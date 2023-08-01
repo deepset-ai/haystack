@@ -29,7 +29,7 @@ class TestTextfileToDocument(BaseTestComponent):
         assert docs[1].meta["file_path"] == str(file_paths[1])
 
     @pytest.mark.unit
-    def test_run_warning_for_invalid_language(self, preview_samples_path):
+    def test_run_warning_for_invalid_language(self, preview_samples_path, caplog):
         file_path = preview_samples_path / "txt" / "doc_1.txt"
         converter = TextFileToDocument()
         with patch("haystack.preview.components.file_converters.txt.langdetect.detect", return_value="en"):
