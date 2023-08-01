@@ -48,8 +48,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Haystack
-        run: pip install .[metrics,benchmarks,inference]
+      - name: Install Haystack + Datadog requirements
+        run: |
+          pip install .[metrics,benchmarks,inference]
+          pip install -r test/benchmarks/datadog/requirements.txt
 
       - name: Run benchmarks
         working-directory: test/benchmarks
@@ -94,8 +96,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Haystack
-        run: pip install .[metrics,opensearch,benchmarks,inference]
+      - name: Install Haystack + Datadog requirements
+        run: |
+          pip install .[metrics,opensearch,benchmarks,inference]
+          pip install -r test/benchmarks/datadog/requirements.txt
 
       - name: Run benchmarks
         working-directory: test/benchmarks
@@ -140,8 +144,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Haystack
-        run: pip install .[metrics,elasticsearch,benchmarks,inference]
+      - name: Install Haystack + Datadog requirements
+        run: |
+          pip install .[metrics,elasticsearch,benchmarks,inference]
+          pip install -r test/benchmarks/datadog/requirements.txt
 
       - name: Run benchmarks
         working-directory: test/benchmarks
@@ -187,8 +193,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Haystack
-        run: pip install .[metrics,weaviate,benchmarks,inference]
+      - name: Install Haystack + Datadog requirements
+        run: |
+          pip install .[metrics,weaviate,benchmarks,inference]
+          pip install -r test/benchmarks/datadog/requirements.txt
 
       - name: Run benchmarks
         working-directory: test/benchmarks
