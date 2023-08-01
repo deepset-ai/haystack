@@ -150,6 +150,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     #
     #  Tests
     #
+
     @pytest.mark.integration
     def test_doc_store_wrong_init(self):
         """
@@ -545,7 +546,8 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         assert doc_store_with_docs.get_document_count() == initial_document_count + 2
 
         # remove one of the documents with embedding
-        all_embedding_docs = doc_store_with_docs.get_all_documents(namespace="vectors")
+        all_embedding_docs = doc_store_with_docs.get_all_documents(type_metadata=doc_store_with_docs.document_with_embedding_metadata)
+        
         doc_store_with_docs.delete_documents(ids=[all_embedding_docs[0].id])
 
         # since we deleted one doc, we expect initial_document_count + 1 documents in total
@@ -656,6 +658,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         mocked_ds.write_documents([doc])
         call_args = mocked_ds.pinecone_indexes["document"].upsert.call_args.kwargs
         assert list(call_args["vectors"])[0][2] == {
+            "doc_type": "no-vector",
             "content": "test",
             "content_type": "text",
             "_split_overlap": '[{"doc_id": "test_id", "range": [0, 10]}]',
