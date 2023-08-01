@@ -30,4 +30,4 @@ security:
     Add security notes here, or remove this section.
 fixes:
   - |
-    fix the bug that the hf-model-based agent's response contains the prompt text 
+    fix the bug that the hf-model-based agent's response contains the prompt text
