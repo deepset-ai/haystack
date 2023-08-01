@@ -17,8 +17,8 @@ features:
     List new features here, or remove this section.
 enhancements:
   - |
-    enable users to set `max_length` value when calling the model for text2text-generation task 
-     
+    enable users to set `max_length` value when calling the model for text2text-generation task
+
 issues:
   - |
     List known issues here, or remove this section. For example, if some change is experimental or known to not work in some cases, it should be mentioned here.
