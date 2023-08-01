@@ -6,7 +6,7 @@ components:
     params:
       host: opensearch
       port: 9200
-      batch_size: 100
+      batch_size: 1000
   - name: TextConverter
     type: TextConverter
   - name: Retriever
