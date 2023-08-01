@@ -29,7 +29,7 @@ class TestTextfileToDocument(BaseTestComponent):
         assert docs[1].meta["file_path"] == str(file_paths[1])
 
     @pytest.mark.unit
-    def test_run_warning_for_unvalid_language(self, caplog, preview_samples_path):
+    def test_run_warning_for_invalid_language(self, preview_samples_path):
         file_path = preview_samples_path / "txt" / "doc_1.txt"
         converter = TextFileToDocument()
         with patch("haystack.preview.components.file_converters.txt.langdetect.detect", return_value="en"):
@@ -43,6 +43,23 @@ class TestTextfileToDocument(BaseTestComponent):
         docs = output.documents
         assert len(docs) == 1
         assert docs[0].content == "Some text for testing.\nTwo lines in here."
+
+    @pytest.mark.unit
+    def test_run_error_handling(self, preview_samples_path, caplog):
+        """
+        Test if the component correctly handles errors.
+        """
+        file_paths = [preview_samples_path / "txt" / "doc_1.txt", "non_existing_file.txt"]
+        converter = TextFileToDocument()
+        with caplog.at_level(logging.WARNING):
+            output = converter.run(data=converter.input(paths=file_paths))
+            assert (
+                "Could not read file non_existing_file.txt. Skipping it. Error message: File at path non_existing_file.txt does not exist."
+                in caplog.text
+            )
+        docs = output.documents
+        assert len(docs) == 1
+        assert docs[0].meta["file_path"] == str(file_paths[0])
 
     @pytest.mark.unit
     def test_prepare_metadata_no_metadata(self):
