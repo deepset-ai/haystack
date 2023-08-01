@@ -100,8 +100,8 @@ class Crawler(BaseComponent):
                     This option enables remote debug over HTTP.
             See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
             If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
-        :param webdriver: A pre-configured Selenium WebDriver
-            When webdriver_options is not sufficient, use this parameter to override the whole web driver. This lets you use different engines than the default Chrome.
+        :param webdriver: A pre-configured Selenium WebDriver.
+            When webdriver_options is not sufficient, use this parameter to override the whole web driver. This lets you use different engines other than the default Chrome.
         """
         selenium_import.check()
         super().__init__()
