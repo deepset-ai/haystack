@@ -18,6 +18,7 @@ components:
     type: FARMReader
     params:
       model_name_or_path: deepset/deberta-v3-base-squad2
+      preprocessing_batch_size: 1000
       top_k: 10
 
 pipelines:
