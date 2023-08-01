@@ -42,5 +42,7 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
         Ensures Azure OpenAI Invocation Layer is selected when `azure_base_url` and `azure_deployment_name` are provided in
         addition to a list of supported models.
         """
-        valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
+        valid_model = model_name_or_path in ["ada", "babbage", "davinci", "curie"] or any(
+            m in model_name_or_path for m in ["-ada-", "-babbage-", "-davinci-", "-curie-"]
+        )
         return valid_model and has_azure_parameters(**kwargs)
