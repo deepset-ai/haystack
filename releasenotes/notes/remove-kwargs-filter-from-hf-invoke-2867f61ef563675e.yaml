@@ -17,7 +17,7 @@ features:
     List new features here, or remove this section.
 enhancements:
   - |
-    remove the original `kwargs` filter and pop out `documents` and `query` which are already part of the prompt 
+    remove the original `kwargs` filter and pop out `documents` and `query` which are already part of the prompt
 issues:
   - |
     List known issues here, or remove this section. For example, if some change is experimental or known to not work in some cases, it should be mentioned here.
