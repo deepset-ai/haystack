@@ -91,7 +91,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param use_prefiltering: By default, DeepsetCloudDocumentStore uses post-filtering when querying with filters.
                                  To use pre-filtering instead, set this parameter to `True`. Note that pre-filtering
                                  comes at the cost of higher latency.
-        :param search_fields: Names of fields BM25Retriever uses to find matches to the incoming query in the documents, for example: ["title", "full_text"].
+        :param search_fields: Names of fields BM25Retriever uses to find matches to the incoming query in the documents, for example: ["content", "title"].
         """
         self.index = index
         self.label_index = label_index
