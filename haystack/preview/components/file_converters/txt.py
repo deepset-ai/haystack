@@ -26,7 +26,7 @@ class TextFileToDocument:
     def input(self):
         class Input:
             """
-            Input data for the TextfileToDocument component.
+            Input data for the TextFileToDocument component.
 
             :param paths: A list of paths to text files.
             :param meta: Optional metadata to attach to the Documents. If a list is provided, the length of the list
@@ -68,7 +68,7 @@ class TextFileToDocument:
     def output(self):
         class Output:
             """
-            Output data from the TextfileToDocument component.
+            Output data from the TextFileToDocument component.
 
             :param documents: The converted documents.
             """
@@ -87,7 +87,7 @@ class TextFileToDocument:
         progress_bar: bool = True,
     ):
         """
-        Create a TextfileToDocument component.
+        Create a TextFileToDocument component.
 
         :param encoding: The encoding of the text files. Default: `"utf-8"`
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
@@ -127,7 +127,7 @@ class TextFileToDocument:
         """
         Convert text files to Documents.
 
-        :param data: Input data for the TextfileToDocument component.
+        :param data: Input data for the TextFileToDocument component.
         """
         file_paths = data.paths
         metas = TextFileToDocument._prepare_metadata(data.meta, file_paths)
