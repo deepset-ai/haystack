@@ -306,8 +306,6 @@ class PineconeDocumentStore(BaseDocumentStore):
                     new_type_filter = {self.type_metadata_field: {"$in": type_values}}
                 filters["$and"].update(new_type_filter)
             else:
-                # if not filters:
-                #     filters = {}
                 # extend filters with new `doc_type` filter and add $and operator
                 filters.update(new_type_filter)
                 all_filters = filters
