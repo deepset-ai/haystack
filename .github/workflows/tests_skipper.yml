@@ -13,6 +13,7 @@ on:
       - "pyproject.toml"
       - "!.github/**/*.py"
       - "!rest_api/**/*.py"
+      - "!docs/**/*.py"
 
 jobs:
   catch-all:
