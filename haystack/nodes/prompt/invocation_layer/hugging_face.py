@@ -55,7 +55,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
             if self.callback_count == 1:
                 self.new_token_start = input_ids.shape[1] - 1
 
-            stop_result = torch.isin(self.stop_words, input_ids = input_ids[-1, self.new_token_start :])
+            stop_result = torch.isin(self.stop_words, input_ids=input_ids[-1, self.new_token_start :])
             return any(all(stop_word) for stop_word in stop_result)
 
 
