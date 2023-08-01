@@ -83,7 +83,8 @@ class LostInTheMiddleRanker(BaseRanker):
         :return: The re-ranked documents.
         """
         ordered_docs = self.reorder_documents(documents=documents)
-        return self._exclude_middle_elements(ordered_docs, top_k) if top_k else ordered_docs
+        valid_top_k = isinstance(top_k, int) and 0 < top_k < len(ordered_docs)
+        return self._exclude_middle_elements(ordered_docs, top_k) if valid_top_k else ordered_docs  # type: ignore
 
     def predict_batch(
         self,
@@ -113,6 +114,8 @@ class LostInTheMiddleRanker(BaseRanker):
             return results
 
     def _exclude_middle_elements(self, ordered_docs: List[Document], top_k: int):
+        if top_k < 1 or top_k > len(ordered_docs):
+            raise ValueError(f"top_k must be between 1 and {len(ordered_docs)}")
         exclude_count = len(ordered_docs) - top_k
         middle_index = len(ordered_docs) // 2
         half_top_k = exclude_count // 2

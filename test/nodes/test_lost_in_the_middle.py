@@ -176,3 +176,23 @@ def test_lost_in_the_middle_order_even_with_top_k(top_k: int):
     middle = len(docs) // 2
     expected_docs = docs[: middle - reverse_top_k // 2] + docs[middle + reverse_top_k // 2 + reverse_top_k % 2 :]
     assert result == expected_docs
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("top_k", [-5, 15])
+def test_lost_in_the_middle_order_odd_with_invalid_top_k(top_k: int):
+    # tests that lost_in_the_middle order works with an odd number of documents and a top_k parameter
+    docs = [Document(str(i)) for i in range(1, 10)]
+    ranker = LostInTheMiddleRanker()
+    with pytest.raises(ValueError):
+        ranker._exclude_middle_elements(docs, top_k=top_k)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("top_k", [-5, 15])
+def test_lost_in_the_middle_order_even_with_invalid_top_k(top_k: int):
+    # tests that lost_in_the_middle order works with an even number of documents and a top_k parameter
+    docs = [Document(str(i)) for i in range(1, 9)]
+    ranker = LostInTheMiddleRanker()
+    with pytest.raises(ValueError):
+        ranker._exclude_middle_elements(docs, top_k=top_k)
