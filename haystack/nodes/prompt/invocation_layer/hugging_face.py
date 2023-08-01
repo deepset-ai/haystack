@@ -56,7 +56,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
                 self.new_token_start = input_ids.shape[1] - 1
 
             total_length = input_ids.shape[1]
-            indices = torch.LongTensor(np.arange(self.new_token_start, total_length-self.new_token_start+1))
+            indices = torch.LongTensor(np.arange(self.new_token_start, total_length - self.new_token_start + 1))
             input_ids = torch.index_select(input_ids, 1, indices)
 
             stop_result = torch.isin(self.stop_words, input_ids[-1])
