@@ -182,7 +182,7 @@ class Crawler(BaseComponent):
         self.file_path_meta_field_name = file_path_meta_field_name
 
     def __del__(self):
-        self.driver.quit()
+        self.driver.quit()  #  type: ignore[attr-defined]
 
     def crawl(
         self,
@@ -381,10 +381,11 @@ class Crawler(BaseComponent):
         documents: List[Document] = []
         for link in urls:
             logger.info("Scraping contents from '%s'", link)
-            self.driver.get(link)
+            self.driver.get(link)  #  type: ignore[attr-defined]
             if loading_wait_time is not None:
                 time.sleep(loading_wait_time)
-            el = self.driver.find_element(by=By.TAG_NAME, value="body")
+            el = self.driver.find_element(by=By.TAG_NAME, value="body")  #  type: ignore[attr-defined]
+
             if extract_hidden_text:
                 text = el.get_attribute("textContent")
             else:
@@ -514,10 +515,12 @@ class Crawler(BaseComponent):
         already_found_links: Optional[List] = None,
         loading_wait_time: Optional[int] = None,
     ) -> Set[str]:
-        self.driver.get(base_url)
+        self.driver.get(base_url)  #  type: ignore[attr-defined]
+
         if loading_wait_time is not None:
             time.sleep(loading_wait_time)
-        a_elements = self.driver.find_elements(by=By.XPATH, value="//a[@href]")
+        a_elements = self.driver.find_elements(by=By.XPATH, value="//a[@href]")  #  type: ignore[attr-defined]
+
         sub_links = set()
 
         filter_pattern = re.compile("|".join(filter_urls)) if filter_urls is not None else None
