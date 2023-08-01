@@ -41,37 +41,54 @@ class LostInTheMiddleRanker(BaseRanker):
         :param documents: List of Documents to merge.
         :return: Documents in the lost in the middle order.
         """
+
+        # Return empty list if no documents are provided
         if not documents:
             return []
+
+        # If there's only one document, return it as is
         if len(documents) == 1:
             return documents
 
+        # Raise an error if any document is not textual
         if any(not doc.content_type == "text" for doc in documents):
             raise ValueError("Some provided documents are not textual; LostInTheMiddleRanker can process only text.")
 
+        # Initialize word count and indices for the "lost in the middle" order
         word_count = 0
         document_index = list(range(len(documents)))
         lost_in_the_middle_indices = [0]
+
+        # If word count threshold is set, calculate word count for the first document
         if self.word_count_threshold:
             word_count = len(documents[0].content.split())
+
+            # If the first document already meets the word count threshold, return it
             if word_count >= self.word_count_threshold:
                 return [documents[0]]
 
+        # Start from the second document and create "lost in the middle" order
         for doc_idx in document_index[1:]:
+            # Calculate the index at which the current document should be inserted
             insertion_index = len(lost_in_the_middle_indices) // 2 + len(lost_in_the_middle_indices) % 2
+
+            # Insert the document index at the calculated position
             lost_in_the_middle_indices.insert(insertion_index, doc_idx)
+
+            # If word count threshold is set, calculate the total word count
             if self.word_count_threshold:
                 word_count += len(documents[doc_idx].content.split())
-                # if threshold is specified, check if we have enough words in all selected documents
-                # if yes, we can stop adding documents
+
+                # If the total word count meets the threshold, stop processing further documents
                 if word_count >= self.word_count_threshold:
+                    # If truncation is allowed, truncate the last document to meet the word count threshold
                     if self.truncate_document:
-                        # truncate the last document that overflows the word count threshold
                         last_docs_length = len(documents[doc_idx].content.split())
                         truncate_last_doc_length = last_docs_length - (word_count - self.word_count_threshold)
                         documents[doc_idx] = self._truncate(documents[doc_idx], truncate_last_doc_length)
                     break
 
+        # Return the documents in the "lost in the middle" order
         return [documents[idx] for idx in lost_in_the_middle_indices]
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
