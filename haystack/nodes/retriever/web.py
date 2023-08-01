@@ -44,6 +44,7 @@ class WebRetriever(BaseRetriever):
 
     - Preprocessed Documents Mode: This mode is similar to the Raw Documents Mode but includes an additional step -
     the raw text from each retrieved web page is divided into smaller Document instances using a specified PreProcessor.
+    If no PreProcessor is specified, the default PreProcessor is used.
     """
 
     def __init__(
@@ -192,7 +193,7 @@ class WebRetriever(BaseRetriever):
         **kwargs,
     ) -> List[Document]:
         """
-        Retrieve documents in real-time from the web based on the URLs provided by the WebSearch.
+        Retrieve Documents in real-time from the web based on the URLs provided by the WebSearch.
 
         This method takes a search query as input, retrieves the corresponding web documents, and
         returns them in a structured format suitable for further processing or analysis. The documents
@@ -203,7 +204,7 @@ class WebRetriever(BaseRetriever):
         for frequently accessed information.
 
         :param query: The query string.
-        :param top_k: The number of documents to be returned by the retriever.
+        :param top_k: The number of Documents to be returned by the retriever.
         :param preprocessor: The PreProcessor to be used to split documents into paragraphs.
         :param cache_document_store: The DocumentStore to cache the documents to.
         :param cache_index: The index name to save the documents to.
@@ -236,14 +237,14 @@ class WebRetriever(BaseRetriever):
             cached = self._save_cache(query_norm, extracted_docs, cache_index=cache_index, cache_headers=cache_headers)
             if not cached:
                 logger.warning(
-                    "Could not save retrieved documents to the DocumentStore cache. "
-                    "Check your document store configuration."
+                    "Could not save retrieved Documents to the DocumentStore cache. "
+                    "Check your DocumentStore configuration."
                 )
         return extracted_docs[:top_k]
 
     def _retrieve_from_web(self, query_norm: str, preprocessor: Optional[PreProcessor]) -> List[Document]:
         """
-        Retrieve documents from the web based on the query.
+        Retrieve Documents from the web based on the query.
 
         :param query_norm: The normalized query string.
         :param preprocessor: The PreProcessor to be used to split documents into paragraphs.
@@ -296,7 +297,10 @@ class WebRetriever(BaseRetriever):
             else LinkContentFetcher(raise_on_failure=True)
         )
 
-        def scrape_direct(link: SearchResult) -> List[Document]:
+        def scrape_link_content(link: SearchResult) -> List[Document]:
+            """
+            Encapsulate the link scraping logic in a function to be used in a ThreadPoolExecutor.
+            """
             docs: List[Document] = []
             try:
                 docs = fetcher.fetch(
@@ -317,7 +321,7 @@ class WebRetriever(BaseRetriever):
 
         thread_count = cpu_count() if len(links) > cpu_count() else len(links)
         with ThreadPoolExecutor(max_workers=thread_count) as executor:
-            scraped_pages: Iterator[List[Document]] = executor.map(scrape_direct, links)
+            scraped_pages: Iterator[List[Document]] = executor.map(scrape_link_content, links)
 
         # Flatten list of lists to a single list
         extracted_docs = [doc for doc_list in scraped_pages for doc in doc_list]
