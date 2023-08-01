@@ -135,10 +135,10 @@ The most important aspects to consider:
 - if the same model is internally used for different Embedders, we want to reuse the same instance in order to save memory
 
 On top of the embedder components we already discussed, we introduce one additional abstraction:
-an `EmbeddingService`, which is NOT a component, responsible for performing the actual embedding computation, implemented as a singleton class in order to reuse instances. It will live in a different package and will be hidden from the public API.
+an `EmbeddingBackend`, which is NOT a component, responsible for performing the actual embedding computation, implemented as a singleton class in order to reuse instances. It will live in a different package and will be hidden from the public API.
 ```python
 @singleton  # implementation is out of scope
-class HFEmbeddingService:
+class HFEmbeddingBackend:
     """
     NOT A COMPONENT!
     """
@@ -154,13 +154,13 @@ class HFEmbeddingService:
         return embedding
 
 
-class OpenAIEmbeddingService:
+class OpenAIEmbeddingBackend:
     ... same as above ...
 ```
 
-Implemented as singletons, when instantiating an EmbeddingService class, if another identical one exists, the existing one will be returned without allocating additional resources for a new one. This makes model reusability transparent, saving lots of memory without any user intervention.
+Implemented as singletons, when instantiating an EmbeddingBackend class, if another identical one exists, the existing one will be returned without allocating additional resources for a new one. This makes model reusability transparent, saving lots of memory without any user intervention.
 
-This is how an EmbeddingService would be used by a text embedder component:
+This is how an EmbeddingBackend would be used by a text embedder component:
 **Part of the public API**.
 ```python
 @component
@@ -171,11 +171,11 @@ class HFTextEmbedder:
         self.model_params = ... params ...
 
     def warm_up(self):
-        self.embedding_service = HFEmbeddingService(self.model_name, **self.model_params)
+        self.embedding_backend = HFEmbeddingBackend(self.model_name, **self.model_params)
 
     @component.output_types(result=List[np.ndarray])
     def run(self, strings: List[str]):
-        return {"result": self.embedding_service.embed(data)}
+        return {"result": self.embedding_backend.embed(data)}
 ```
 
 Another example, using an embedder component expecting Documents:
@@ -190,12 +190,12 @@ class HFDocumentEmbedder:
         self.model_params = ... params ...
 
     def warm_up(self):
-        self.embedding_service = HFEmbeddingService(self.model_name, **self.model_params)
+        self.embedding_backend = HFEmbeddingBackend(self.model_name, **self.model_params)
 
     @component.output_types(result=List[Document])
     def run(self, documents: List[Document]):
         text_strings = [document.content for document in data]
-        embeddings = self.embedding_service.embed(text_strings)
+        embeddings = self.embedding_backend.embed(text_strings)
         documents_with_embeddings = [Document.from_dict(**doc.to_dict, "embedding": emb) for doc, emb in zip(documents, embeddings)]
         return {"result": documents_with_embeddings}
 ```
@@ -228,7 +228,7 @@ Regarding the design proposed in this document, there are some potential drawbac
 
 Several alternatives to this design were considered. The main challenge was handling the differences between queries and Documents.
 Some ideas:
-- Have a single Embedder component for text (HFTextEmbedder instead of HFEmbeddingService, HFTextEmbedder and HFDocumentEmbedder) and adapt Documents before and after that, using other Components. --> Many components.
+- Have a single Embedder component for text (HFTextEmbedder instead of HFEmbeddingBackend, HFTextEmbedder and HFDocumentEmbedder) and adapt Documents before and after that, using other Components. --> Many components.
 - Make Embedders only work on Documents and represent the query as a Document. --> Unintuitive and require changes in the Retriever.
 - Create another primitive like Data (content + embedding) and use it for both queries and Documents. --> More conversion components like DataToDocument.
 - Have the DocumentEmbedder take a TextEmbedder as an input parameter. --> Fewer classes but serialization issues.
