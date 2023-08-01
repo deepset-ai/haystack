@@ -74,7 +74,7 @@ def test_retrieve_from_web_all_params(mock_web_search):
 
     preprocessor = PreProcessor()
 
-    result = wr._retrieve_from_web(query="Who is the boyfriend of Olivia Wilde?", preprocessor=preprocessor)
+    result = wr._retrieve_from_web(query_norm="who is the boyfriend of olivia wilde?", preprocessor=preprocessor)
 
     assert isinstance(result, list)
     assert all(isinstance(doc, Document) for doc in result)
