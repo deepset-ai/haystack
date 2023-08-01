@@ -21,7 +21,9 @@ class LostInTheMiddleRanker(BaseRanker):
         """
         Creates an instance of LostInTheMiddleRanker.
 
-        If truncate_document is set to True, you must specify a word_count_threshold as well.
+        If truncate_document is True, you must specify a word_count_threshold as well. If truncate_document is False
+        and word_count_threshold is specified, the word_count_threshold will be used as a soft limit. The last document
+        breaching the word_count_threshold will be included in the resulting list of Documents but won't be truncated.
 
         :param word_count_threshold: The maximum number of words in all ordered documents.
         :param truncate_document: Whether to truncate the last document that overflows the word count threshold.
@@ -34,7 +36,7 @@ class LostInTheMiddleRanker(BaseRanker):
 
     def reorder_documents(self, documents: List[Document]) -> List[Document]:
         """
-        Orders documents based on the lost in the middle order.
+        Orders documents based on the lost in the middle order. Assumes that all documents are ordered by relevance.
 
         :param documents: List of Documents to merge.
         :return: Documents in the lost in the middle order.

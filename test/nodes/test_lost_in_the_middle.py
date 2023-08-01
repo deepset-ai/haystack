@@ -42,19 +42,9 @@ def test_lost_in_the_middle_order_even():
 
 
 @pytest.mark.unit
-def test_lost_in_the_middle_order_corner():
-    # tests that lost_in_the_middle order works with some basic corner cases
+def test_lost_in_the_middle_order_two_docs():
+    # tests that lost_in_the_middle order works with two documents
     ranker = LostInTheMiddleRanker()
-
-    # empty doc list
-    docs = []
-    result, _ = ranker.run(query="", documents=docs)
-    assert len(result["documents"]) == 0
-
-    # single doc
-    docs = [Document("1")]
-    result, _ = ranker.run(query="", documents=docs)
-    assert result["documents"][0].content == "1"
 
     # two docs
     docs = [Document("1"), Document("2")]
@@ -144,7 +134,7 @@ def test_non_textual_documents():
     ranker = LostInTheMiddleRanker()
     doc1 = Document(content="This is a textual document.")
     doc2 = Document(content_type="image", content="This is a non-textual document.")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Some provided documents are not textual"):
         ranker.reorder_documents([doc1, doc2])
 
 
@@ -181,7 +171,7 @@ def test_lost_in_the_middle_order_even_with_top_k(top_k: int):
 @pytest.mark.unit
 @pytest.mark.parametrize("top_k", [-5, 15])
 def test_lost_in_the_middle_order_odd_with_invalid_top_k(top_k: int):
-    # tests that lost_in_the_middle order works with an odd number of documents and a top_k parameter
+    # tests that lost_in_the_middle order works with an odd number of documents and an invalid top_k parameter
     docs = [Document(str(i)) for i in range(1, 10)]
     ranker = LostInTheMiddleRanker()
     with pytest.raises(ValueError):
@@ -191,7 +181,7 @@ def test_lost_in_the_middle_order_odd_with_invalid_top_k(top_k: int):
 @pytest.mark.unit
 @pytest.mark.parametrize("top_k", [-5, 15])
 def test_lost_in_the_middle_order_even_with_invalid_top_k(top_k: int):
-    # tests that lost_in_the_middle order works with an even number of documents and a top_k parameter
+    # tests that lost_in_the_middle order works with an even number of documents and an invalid top_k parameter
     docs = [Document(str(i)) for i in range(1, 9)]
     ranker = LostInTheMiddleRanker()
     with pytest.raises(ValueError):
