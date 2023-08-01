@@ -1,6 +1,7 @@
 from typing import Optional, Union, List, Dict, Any
 import logging
 import os
+import numpy as np 
 
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
@@ -53,9 +54,12 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
             self.callback_count += 1
             if self.callback_count == 1:
                 self.new_token_start = input_ids.shape[1] - 1
-            input_ids = input_ids[-1][self.new_token_start :]
+            
+            total_length = input_ids.shape[1]
+            indices = torch.LongTensor(np.arange(self.new_token_start, total_length-self.new_token_start+1))
+            input_ids = torch.index_select(input_ids, 1, indices)
 
-            stop_result = torch.isin(self.stop_words, input_ids)
+            stop_result = torch.isin(self.stop_words, input_ids[-1])
             return any(all(stop_word) for stop_word in stop_result)
 
 
