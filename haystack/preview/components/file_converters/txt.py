@@ -136,9 +136,13 @@ class TextFileToDocument:
         for path, meta in tqdm(
             zip(file_paths, metas), total=len(file_paths), desc="Converting text files", disable=not data.progress_bar
         ):
-            text = self._read_and_clean_file(
-                path=path, encoding=data.encoding, remove_numeric_tables=data.remove_numeric_tables
-            )
+            try:
+                text = self._read_and_clean_file(
+                    path=path, encoding=data.encoding, remove_numeric_tables=data.remove_numeric_tables
+                )
+            except Exception as e:
+                logger.warning("Could not read file %s. Skipping it. Error message: %s", path, e)
+                continue
 
             if data.valid_languages is not None and not TextFileToDocument._validate_language(
                 text, data.valid_languages
