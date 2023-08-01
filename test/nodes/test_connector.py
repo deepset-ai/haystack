@@ -260,10 +260,9 @@ def test_crawler_depth_2_multiple_urls(test_url, tmp_path):
     assert content_in_results(crawler, test_url + "/page2_subpage1.html", paths)
 
 
-def test_crawler_custom_webdriver(tmp_path):
-    tmp_dir = tmp_path
-
+@pytest.mark.unit
+def test_crawler_custom_webdriver():
     webdriver = Chrome()
-    crawler = Crawler(output_dir=tmp_dir, file_path_meta_field_name="file_path", webdriver=webdriver)
+    crawler = Crawler(webdriver=webdriver)
 
     assert webdriver is crawler.driver
