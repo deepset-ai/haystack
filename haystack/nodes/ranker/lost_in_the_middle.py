@@ -131,12 +131,14 @@ class LostInTheMiddleRanker(BaseRanker):
     def _truncate(self, document: Document, word_count_threshold: int) -> Document:
         """
         Shortens a document by cutting off the content after a specified number of words.
-
         :param document: Document to truncate.
         :param word_count_threshold: integer representing the maximum number of words
                                      allowed in the truncated document.
-
         :return: Document with truncated content.
         """
-        document.content = " ".join(document.content.split()[:word_count_threshold])
+        words = document.content.split()
+        if len(words) > word_count_threshold:
+            # -1 to remove trailing whitespace
+            cut_off = sum(len(word) + 1 for word in words[:word_count_threshold]) - 1
+            document.content = document.content[:cut_off]
         return document
