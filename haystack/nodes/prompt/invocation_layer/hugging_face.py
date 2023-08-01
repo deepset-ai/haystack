@@ -1,7 +1,6 @@
 from typing import Optional, Union, List, Dict, Any
 import logging
 import os
-import numpy as np
 
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
