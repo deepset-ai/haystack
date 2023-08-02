@@ -9,7 +9,7 @@ import requests
 import networkx
 
 from canals.errors import PipelineDrawingError
-
+from canals.utils import _type_name
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     sockets = {
         comp: "\n".join(
             [
-                f"{name} <small><i>{socket}</i></small>"
+                f"{name} <small><i>{_type_name(socket.type)}</i></small>"
                 for name, socket in data.get("input_sockets", {}).items()
                 if socket.is_optional and socket.sender is None
             ]

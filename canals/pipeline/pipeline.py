@@ -19,7 +19,7 @@ from canals.pipeline.draw import _draw, _convert_for_debug, RenderingEngines
 from canals.pipeline.sockets import InputSocket, OutputSocket
 from canals.pipeline.validation import _validate_pipeline_input
 from canals.pipeline.connections import _parse_connection_name, _find_unambiguous_connection
-
+from canals.utils import _type_name
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +178,7 @@ class Pipeline:
                 raise PipelineConnectError(
                     f"'{from_node}.{from_socket_name} does not exist. "
                     f"Output connections of {from_node} are: "
-                    + ", ".join([f"{name} (type {socket})" for name, socket in from_sockets.items()])
+                    + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in from_sockets.items()])
                 )
         if to_socket_name:
             to_socket = to_sockets.get(to_socket_name, None)
@@ -186,7 +186,7 @@ class Pipeline:
                 raise PipelineConnectError(
                     f"'{to_node}.{to_socket_name} does not exist. "
                     f"Input connections of {to_node} are: "
-                    + ", ".join([f"{name} (type {socket})" for name, socket in to_sockets.items()])
+                    + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in to_sockets.items()])
                 )
 
         # Look for an unambiguous connection among the possible ones.
@@ -220,7 +220,7 @@ class Pipeline:
             from_node,
             to_node,
             key=edge_key,
-            conn_type=str(from_socket),
+            conn_type=_type_name(from_socket.type),
             from_socket=from_socket,
             to_socket=to_socket,
         )
