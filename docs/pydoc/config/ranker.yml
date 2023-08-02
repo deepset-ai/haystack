@@ -1,5 +1,5 @@
 loaders:
-  - type: python
+  - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/nodes/ranker]
     modules: ["base", "sentence_transformers", "recentness_ranker", "diversity", "lost_in_the_middle"]
     ignore_when_discovered: ["__init__"]
