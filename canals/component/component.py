@@ -181,8 +181,8 @@ class _Component:
             return run_method(*args, **kwargs)
 
         # Store the output types in the run method
-        wrapper.__canals_output__ = {name: {"name": name, "type": type_} for name, type_ in types.items()}
         wrapper.__canals_input__ = getattr(run_method, "__canals_input__", {})
+        wrapper.__canals_output__ = {name: {"name": name, "type": type_} for name, type_ in types.items()}
 
         # Assigns the wrapped method to the instance's run()
         instance.run = wrapper
@@ -212,8 +212,8 @@ class _Component:
             def wrapper(self, *args, **kwargs):
                 return run_method(self, *args, **kwargs)
 
-            wrapper.__canals_output__ = {name: {"name": name, "type": type_} for name, type_ in types.items()}
             wrapper.__canals_input__ = getattr(run_method, "__canals_input__", {})
+            wrapper.__canals_output__ = {name: {"name": name, "type": type_} for name, type_ in types.items()}
 
             return wrapper
 
