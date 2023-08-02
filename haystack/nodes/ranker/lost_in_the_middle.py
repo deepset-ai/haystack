@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 class LostInTheMiddleRanker(BaseRanker):
     """
-    The LostInTheMiddleRanker implements a ranker that reorders documents based on the lost in the middle order.
-    "Lost in the Middle: How Language Models Use Long Contexts" by Liu et al. aims to layout paragraphs into LLM
-    context so that relevant paragraphs are at the beginning or end of the input context, while the least relevant
+    The LostInTheMiddleRanker implements a ranker that reorders documents based on the "lost in the middle" order.
+    "Lost in the Middle: How Language Models Use Long Contexts" paper by Liu et al. aims to lay out paragraphs into LLM
+    context so that the relevant paragraphs are at the beginning or end of the input context, while the least relevant
     information is in the middle of the context.
 
     See https://arxiv.org/abs/2307.03172 for more details.
@@ -36,10 +36,10 @@ class LostInTheMiddleRanker(BaseRanker):
 
     def reorder_documents(self, documents: List[Document]) -> List[Document]:
         """
-        Orders documents based on the lost in the middle order. Assumes that all documents are ordered by relevance.
+        Ranks documents based on the "lost in the middle" order. Assumes that all documents are ordered by relevance.
 
         :param documents: List of Documents to merge.
-        :return: Documents in the lost in the middle order.
+        :return: Documents in the "lost in the middle" order.
         """
 
         # Return empty list if no documents are provided
@@ -93,13 +93,13 @@ class LostInTheMiddleRanker(BaseRanker):
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
         """
-        Reorders documents based on the lost in the middle order.
+        Reranks documents based on the "lost in the middle" order.
 
-        :param query: The query to rerank documents for.
+        :param query: The query to reorder documents for.
         :param documents: List of Documents to reorder.
         :param top_k: The number of documents to return.
 
-        :return: The re-ranked documents.
+        :return: The reordered documents.
         """
         ordered_docs = self.reorder_documents(documents=documents)
         valid_top_k = isinstance(top_k, int) and 0 < top_k < len(ordered_docs)
@@ -113,9 +113,9 @@ class LostInTheMiddleRanker(BaseRanker):
         batch_size: Optional[int] = None,
     ) -> Union[List[Document], List[List[Document]]]:
         """
-        Reorders batch of documents based on the lost in the middle order.
+        Reranks batch of documents based on the "lost in the middle" order.
 
-        :param queries: The queries to rerank documents for (ignored).
+        :param queries: The queries to reorder documents for (ignored).
         :param documents: List of Documents to reorder.
         :param top_k: The number of documents to return.
         :param batch_size: The number of queries to process in one batch.
@@ -148,8 +148,9 @@ class LostInTheMiddleRanker(BaseRanker):
     def _truncate(self, document: Document, word_count_threshold: int) -> Document:
         """
         Shortens a document by cutting off the content after a specified number of words.
+
         :param document: Document to truncate.
-        :param word_count_threshold: integer representing the maximum number of words
+        :param word_count_threshold: An integer representing the maximum number of words
                                      allowed in the truncated document.
         :return: Document with truncated content.
         """
