@@ -6,6 +6,8 @@ loaders:
 processors:
   - type: filter
     expression: "name not in ['print_text']"
+  - type: filter
+    expression:
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
