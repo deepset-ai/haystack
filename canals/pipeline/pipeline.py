@@ -13,8 +13,14 @@ from collections import OrderedDict
 
 import networkx
 
-from canals.component import Component
-from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
+from canals.component import component, Component
+from canals.errors import (
+    PipelineError,
+    PipelineConnectError,
+    PipelineMaxLoops,
+    PipelineRuntimeError,
+    PipelineValidationError,
+)
 from canals.pipeline.draw import _draw, _convert_for_debug, RenderingEngines
 from canals.pipeline.sockets import InputSocket, OutputSocket
 from canals.pipeline.validation import _validate_pipeline_input
@@ -72,6 +78,95 @@ class Pipeline:
             and self._comparable_nodes_list(self.graph) == self._comparable_nodes_list(other.graph)
             and self.graph.graph == other.graph.graph
         )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Returns this Pipeline instance as a dictionary.
+        This is meant to be an intermediate representation but it can be also used to save a pipeline to file.
+        """
+        components = {name: instance.to_dict() for name, instance in self.graph.nodes(data="instance")}
+        connections = []
+        for sender, receiver, sockets in self.graph.edges:
+            (sender_socket, receiver_socket) = sockets.split("/")
+            connections.append(
+                {
+                    "sender": f"{sender}.{sender_socket}",
+                    "receiver": f"{receiver}.{receiver_socket}",
+                }
+            )
+        return {
+            "metadata": self.metadata,
+            "max_loops_allowed": self.max_loops_allowed,
+            "components": components,
+            "connections": connections,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], **kwargs) -> "Pipeline":
+        """
+        Creates a Pipeline instance from a dictionary.
+        A sample `data` dictionary could be formatted like so:
+        ```
+        {
+            "metadata": {"test": "test"},
+            "max_loops_allowed": 100,
+            "components": {
+                "add_two": {
+                    "type": "AddFixedValue",
+                    "hash": "123",
+                    "init_parameters": {"add": 2},
+                },
+                "add_default": {
+                    "type": "AddFixedValue",
+                    "hash": "456",
+                    "init_parameters": {},
+                },
+                "double": {
+                    "type": "Double",
+                    "hash": "789",
+                    "init_parameters": {},
+                },
+            },
+            "connections": [
+                {"sender": "add_two.result", "receiver": "double.value"},
+                {"sender": "double.value", "receiver": "add_default.value"},
+            ],
+        }
+        ```
+
+        Supported kwargs:
+        `components`: a dictionary of {name: instance} to reuse instances of components instead of creating new ones.
+        """
+        metadata = data.get("metadata", {})
+        max_loops_allowed = data.get("max_loops_allowed", 100)
+        debug_path = Path(data.get("debug_path", ".canals_debug/"))
+        pipe = cls(
+            metadata=metadata,
+            max_loops_allowed=max_loops_allowed,
+            debug_path=debug_path,
+        )
+        components_to_reuse = kwargs.get("components", {})
+        for name, component_data in data.get("components", {}).items():
+            if name in components_to_reuse:
+                # Reuse an instance
+                instance = components_to_reuse[name]
+            else:
+                if "type" not in component_data:
+                    raise PipelineError(f"Missing 'type' in component: {component_data}")
+                if component_data["type"] not in component.registry:
+                    raise PipelineError(f"Component '{component_data['type']}' not found imported.")
+                # Create a new one
+                instance = component.registry[component_data["type"]].from_dict(component_data)
+            pipe.add_component(name=name, instance=instance)
+
+        for connection in data.get("connections", []):
+            if "sender" not in connection:
+                raise PipelineError(f"Missing sender in connection: {connection}")
+            if "receiver" not in connection:
+                raise PipelineError(f"Missing receiver in connection: {connection}")
+            pipe.connect(connect_from=connection["sender"], connect_to=connection["receiver"])
+
+        return pipe
 
     def _comparable_nodes_list(self, graph: networkx.MultiDiGraph) -> List[Dict[str, Any]]:
         """
@@ -349,31 +444,33 @@ class Pipeline:
                 self._record_pipeline_step(step, inputs_buffer, pipeline_output)
             logger.debug("> Queue at step %s: %s", step, {k: list(v.keys()) for k, v in inputs_buffer.items()})
 
-            component, inputs = inputs_buffer.popitem(last=False)  # FIFO
+            component_name, inputs = inputs_buffer.popitem(last=False)  # FIFO
 
             # Make sure it didn't run too many times already
-            self._check_max_loops(component)
+            self._check_max_loops(component_name)
 
             # **** IS IT MY TURN YET? ****
             # Check if the component should be run or not
-            action = self._calculate_action(name=component, inputs=inputs, inputs_buffer=inputs_buffer)
+            action = self._calculate_action(name=component_name, inputs=inputs, inputs_buffer=inputs_buffer)
 
             # This component is missing data: let's put it back in the queue and wait.
             if action == "wait":
                 if not inputs_buffer:
                     # What if there are no components to wait for?
                     raise PipelineRuntimeError(
-                        f"'{component}' is stuck waiting for input, but there are no other components to run. "
+                        f"'{component_name}' is stuck waiting for input, but there are no other components to run. "
                         "This is likely a Canals bug. Open an issue at https://github.com/deepset-ai/canals."
                     )
 
-                inputs_buffer[component] = inputs
+                inputs_buffer[component_name] = inputs
                 continue
 
             # This component did not receive the input it needs: it must be on a skipped branch. Let's not run it.
             if action == "skip":
-                self.graph.nodes[component]["visits"] += 1
-                inputs_buffer = self._skip_downstream_unvisited_nodes(component=component, inputs_buffer=inputs_buffer)
+                self.graph.nodes[component_name]["visits"] += 1
+                inputs_buffer = self._skip_downstream_unvisited_nodes(
+                    component_name=component_name, inputs_buffer=inputs_buffer
+                )
                 continue
 
             if action == "remove":
@@ -382,16 +479,16 @@ class Pipeline:
 
             # **** RUN THE NODE ****
             # It is our turn! The node is ready to run and all necessary inputs are present
-            output = self._run_component(name=component, inputs=inputs)
+            output = self._run_component(name=component_name, inputs=inputs)
 
             # **** PROCESS THE OUTPUT ****
             # The node run successfully. Let's store or distribute the output it produced, if it's valid.
-            if not self.graph.out_edges(component):
+            if not self.graph.out_edges(component_name):
                 # Note: if a node outputs many times (like in loops), the output will be overwritten
-                pipeline_output[component] = output
+                pipeline_output[component_name] = output
             else:
                 inputs_buffer = self._route_output(
-                    node_results=output, node_name=component, inputs_buffer=inputs_buffer
+                    node_results=output, node_name=component_name, inputs_buffer=inputs_buffer
                 )
 
         if debug:
@@ -609,12 +706,12 @@ class Pipeline:
             f"This is likely a Canals bug. Please open an issue at https://github.com/deepset-ai/canals.",
         )
 
-    def _skip_downstream_unvisited_nodes(self, component: str, inputs_buffer: OrderedDict) -> OrderedDict:
+    def _skip_downstream_unvisited_nodes(self, component_name: str, inputs_buffer: OrderedDict) -> OrderedDict:
         """
         When a component is skipped, put all downstream nodes in the inputs buffer too: the might be skipped too,
         unless they are merge nodes. They will be evaluated later by the pipeline execution loop.
         """
-        downstream_nodes = [e[1] for e in self.graph.out_edges(component)]
+        downstream_nodes = [e[1] for e in self.graph.out_edges(component_name)]
         for downstream_node in downstream_nodes:
             if downstream_node in inputs_buffer:
                 continue
