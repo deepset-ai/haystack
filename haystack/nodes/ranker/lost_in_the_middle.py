@@ -17,22 +17,21 @@ class LostInTheMiddleRanker(BaseRanker):
     See https://arxiv.org/abs/2307.03172 for more details.
     """
 
-    def __init__(self, word_count_threshold: Optional[int] = None, truncate_document: Optional[bool] = False):
+    def __init__(self, word_count_threshold: Optional[int] = None, top_k: Optional[int] = None):
         """
         Creates an instance of LostInTheMiddleRanker.
 
-        If truncate_document is True, you must specify a word_count_threshold as well. If truncate_document is False
-        and word_count_threshold is specified, the word_count_threshold will be used as a soft limit. The last document
-        breaching the word_count_threshold will be included in the resulting list of Documents but won't be truncated.
+        If 'word_count_threshold' is specified, this ranker includes all documents up until the point where adding
+        another document would exceed the 'word_count_threshold'. The last document that causes the threshold to
+        be breached will be included in the resulting list of documents, but all subsequent documents will be
+        discarded.
 
-        :param word_count_threshold: The maximum number of words in all ordered documents.
-        :param truncate_document: Whether to truncate the last document that overflows the word count threshold.
+        :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.
+        :param top_k: The maximum number of documents to return.
         """
         super().__init__()
-        if truncate_document and not word_count_threshold:
-            raise ValueError("If truncate_document is set to True, you must specify a word_count_threshold as well.")
         self.word_count_threshold = word_count_threshold
-        self.truncate_document = truncate_document
+        self.top_k = top_k
 
     def reorder_documents(self, documents: List[Document]) -> List[Document]:
         """
@@ -81,11 +80,6 @@ class LostInTheMiddleRanker(BaseRanker):
 
                 # If the total word count meets the threshold, stop processing further documents
                 if word_count >= self.word_count_threshold:
-                    # If truncation is allowed, truncate the last document to meet the word count threshold
-                    if self.truncate_document:
-                        last_docs_length = len(documents[doc_idx].content.split())
-                        truncate_last_doc_length = last_docs_length - (word_count - self.word_count_threshold)
-                        documents[doc_idx] = self._truncate(documents[doc_idx], truncate_last_doc_length)
                     break
 
         # Return the documents in the "lost in the middle" order
@@ -95,15 +89,16 @@ class LostInTheMiddleRanker(BaseRanker):
         """
         Reranks documents based on the "lost in the middle" order.
 
-        :param query: The query to reorder documents for.
+        :param query: The query to rerank documents for (ignored).
         :param documents: List of Documents to reorder.
         :param top_k: The number of documents to return.
 
         :return: The reordered documents.
         """
-        ordered_docs = self.reorder_documents(documents=documents)
-        valid_top_k = isinstance(top_k, int) and 0 < top_k < len(ordered_docs)
-        return self._exclude_middle_elements(ordered_docs, top_k) if valid_top_k else ordered_docs  # type: ignore
+        top_k = top_k or self.top_k
+        documents_to_reorder = documents[:top_k] if top_k else documents
+        ranked_docs = self.reorder_documents(documents=documents_to_reorder)
+        return ranked_docs
 
     def predict_batch(
         self,
@@ -118,7 +113,7 @@ class LostInTheMiddleRanker(BaseRanker):
         :param queries: The queries to reorder documents for (ignored).
         :param documents: List of Documents to reorder.
         :param top_k: The number of documents to return.
-        :param batch_size: The number of queries to process in one batch.
+        :param batch_size: The number of queries to process in one batch (ignored).
 
         :return: The reordered documents.
         """
@@ -131,19 +126,6 @@ class LostInTheMiddleRanker(BaseRanker):
                 assert isinstance(cur_docs, list)
                 results.append(self.predict(query="", documents=cur_docs, top_k=top_k))
             return results
-
-    def _exclude_middle_elements(self, ordered_docs: List[Document], top_k: int):
-        if top_k < 1 or top_k > len(ordered_docs):
-            raise ValueError(f"top_k must be between 1 and {len(ordered_docs)}")
-        exclude_count = len(ordered_docs) - top_k
-        middle_index = len(ordered_docs) // 2
-        half_top_k = exclude_count // 2
-
-        start_index = middle_index - half_top_k + len(ordered_docs) % 2
-        end_index = start_index + exclude_count
-        remaining_elements = ordered_docs[:start_index] + ordered_docs[end_index:]
-
-        return remaining_elements
 
     def _truncate(self, document: Document, word_count_threshold: int) -> Document:
         """

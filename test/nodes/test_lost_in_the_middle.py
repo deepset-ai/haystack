@@ -58,16 +58,9 @@ def test_lost_in_the_middle_init():
     # tests that LostInTheMiddleRanker initializes with default values
     ranker = LostInTheMiddleRanker()
     assert ranker.word_count_threshold is None
-    assert ranker.truncate_document is False
 
-    ranker = LostInTheMiddleRanker(word_count_threshold=10, truncate_document=True)
+    ranker = LostInTheMiddleRanker(word_count_threshold=10)
     assert ranker.word_count_threshold == 10
-    assert ranker.truncate_document is True
-
-    with pytest.raises(
-        ValueError, match="If truncate_document is set to True, you must specify a word_count_threshold"
-    ):
-        LostInTheMiddleRanker(truncate_document=True)
 
 
 @pytest.mark.unit
@@ -96,26 +89,6 @@ def test_word_count_threshold_greater_than_total_number_of_words_returns_all_doc
 
 
 @pytest.mark.unit
-def test_truncation_with_threshold():
-    # tests that truncation works as expected
-    ranker = LostInTheMiddleRanker(word_count_threshold=9, truncate_document=True)
-    docs = [
-        Document("word1 word1"),
-        Document("word2 word2"),
-        Document("word3 word3"),
-        Document("word4 word4"),
-        Document("word5 word5"),
-        Document("word6 word6"),
-        Document("word7 word7"),
-        Document("word8 word8"),
-        Document("word9 word9"),
-    ]
-    result, _ = ranker.run(query="", documents=docs)
-    expected_order = "word1 word1 word3 word3 word5 word4 word4 word2 word2"
-    assert expected_order == " ".join(doc.content for doc in result["documents"])
-
-
-@pytest.mark.unit
 def test_empty_documents_returns_empty_list():
     ranker = LostInTheMiddleRanker()
     assert ranker.predict(query="test", documents=[]) == []
@@ -139,50 +112,33 @@ def test_non_textual_documents():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("top_k", [1, 2, 3, 4, 5, 6, 7, 8])
-def test_lost_in_the_middle_order_odd_with_top_k(top_k: int):
+@pytest.mark.parametrize("top_k", [1, 2, 3, 4, 5, 6, 7, 8, 12, 20])
+def test_lost_in_the_middle_order_with_postive_top_k(top_k: int):
     # tests that lost_in_the_middle order works with an odd number of documents and a top_k parameter
     docs = [Document(str(i)) for i in range(1, 10)]
     ranker = LostInTheMiddleRanker()
-    result = ranker._exclude_middle_elements(docs, top_k=top_k)
-    assert len(result) == top_k
-
-    reverse_top_k = len(docs) - top_k
-    middle = len(docs) // 2 + 1
-    expected_docs = docs[: middle - reverse_top_k // 2] + docs[middle + reverse_top_k // 2 + reverse_top_k % 2 :]
-    assert result == expected_docs
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("top_k", [1, 2, 3, 4, 5, 6, 7, 8])
-def test_lost_in_the_middle_order_even_with_top_k(top_k: int):
-    # tests that lost_in_the_middle order works with an even number of documents and a top_k parameter
-    docs = [Document(str(i)) for i in range(1, 9)]
-    ranker = LostInTheMiddleRanker()
-    result = ranker._exclude_middle_elements(docs, top_k=top_k)
-    assert len(result) == top_k
-
-    reverse_top_k = len(docs) - top_k
-    middle = len(docs) // 2
-    expected_docs = docs[: middle - reverse_top_k // 2] + docs[middle + reverse_top_k // 2 + reverse_top_k % 2 :]
-    assert result == expected_docs
+    result = ranker.predict(query="irrelevant", documents=docs, top_k=top_k)
+    if top_k < len(docs):
+        # top_k is less than the number of documents, so only the top_k documents should be returned in LITM order
+        assert len(result) == top_k
+        expected_order = ranker.predict(query="irrelevant", documents=[Document(str(i)) for i in range(1, top_k + 1)])
+        assert result == expected_order
+    else:
+        # top_k is greater than the number of documents, so all documents should be returned in LITM order
+        assert len(result) == len(docs)
+        assert result == ranker.predict(query="irrelevant", documents=docs)
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("top_k", [-5, 15])
-def test_lost_in_the_middle_order_odd_with_invalid_top_k(top_k: int):
+@pytest.mark.parametrize("top_k", [-20, -10, -5, -1])
+def test_lost_in_the_middle_order_with_negative_top_k(top_k: int):
     # tests that lost_in_the_middle order works with an odd number of documents and an invalid top_k parameter
     docs = [Document(str(i)) for i in range(1, 10)]
     ranker = LostInTheMiddleRanker()
-    with pytest.raises(ValueError):
-        ranker._exclude_middle_elements(docs, top_k=top_k)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("top_k", [-5, 15])
-def test_lost_in_the_middle_order_even_with_invalid_top_k(top_k: int):
-    # tests that lost_in_the_middle order works with an even number of documents and an invalid top_k parameter
-    docs = [Document(str(i)) for i in range(1, 9)]
-    ranker = LostInTheMiddleRanker()
-    with pytest.raises(ValueError):
-        ranker._exclude_middle_elements(docs, top_k=top_k)
+    result = ranker.predict(query="irrelevant", documents=docs, top_k=top_k)
+    if top_k < len(docs) * -1:
+        assert len(result) == 0  # top_k is too negative, so no documents should be returned
+    else:
+        # top_k is negative, subtract it from the total number of documents to get the expected number of documents
+        expected_docs = ranker.predict(query="irrelevant", documents=docs, top_k=len(docs) + top_k)
+        assert result == expected_docs
