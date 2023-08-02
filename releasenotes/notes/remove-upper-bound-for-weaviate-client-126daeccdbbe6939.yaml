@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Remove upper bound for the version of the Weaviate client.
