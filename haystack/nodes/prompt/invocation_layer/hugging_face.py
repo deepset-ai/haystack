@@ -253,9 +253,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
             if stream:
                 stream_handler: TokenStreamingHandler = stream_handler or DefaultTokenStreamingHandler()
-                model_input_kwargs["streamer"] = HFTokenStreamingHandler(
-                    self.pipe.tokenizer, stream_handler, skip_prompt=True
-                )
+                model_input_kwargs["streamer"] = HFTokenStreamingHandler(self.pipe.tokenizer, stream_handler)
 
             output = self.pipe(prompt, **model_input_kwargs)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
