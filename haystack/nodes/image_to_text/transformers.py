@@ -155,10 +155,19 @@ class TransformersImageToText(BaseImageToText):
         generation_kwargs = generation_kwargs or self.generation_kwargs
         batch_size = batch_size or self.batch_size
 
+    
         if len(image_file_paths) == 0:
             raise ImageToTextError("ImageToText needs at least one file path to produce a caption.")
+        
+        #Handling the case where the user passes a String instead of a List as "image_file_paths"
+        image_file_paths = []
+        if type(image_file_paths) is str:
+            #optional: logger.warning("Expected List, got String instead")
+            image_file_paths2.append(image_file_paths)
+        else: 
+            image_file_paths2 = image_file_paths
 
-        images_dataset = ListDataset(image_file_paths)
+        images_dataset = ListDataset(image_file_paths2)
 
         captions: List[str] = []
 
