@@ -76,7 +76,7 @@ def test_set_input_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.run.__canals_io__["input_types"] == {
+    assert comp.run.__canals_input__ == {
         "value": {
             "name": "value",
             "type": Any,
@@ -96,7 +96,7 @@ def test_set_output_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.run.__canals_io__["output_types"] == {
+    assert comp.run.__canals_output__ == {
         "value": {
             "name": "value",
             "type": int,
@@ -112,9 +112,20 @@ def test_output_types_decorator_with_compatible_type():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.run.__canals_io__["output_types"] == {
+    assert comp.run.__canals_output__ == {
         "value": {
             "name": "value",
             "type": int,
         }
     }
+
+
+def test_component_decorator_set_it_as_component():
+    @component
+    class MockComponent:
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": 1}
+
+    comp = MockComponent()
+    assert comp.__canals_component__
