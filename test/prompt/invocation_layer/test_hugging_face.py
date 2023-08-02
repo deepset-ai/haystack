@@ -527,10 +527,10 @@ def test_max_length_from_invoke(mock_auto_tokenizer, mock_pipeline, mock_get_tas
     """
     Test that max_length passed to invoke are passed to the underlying HF model
     """
-    the_question = "What does 42 mean?"
+    query = "What does 42 mean?"
     # test that generation_kwargs are passed to the underlying HF model
     layer = HFLocalInvocationLayer()
-    layer.invoke(prompt=the_question, generation_kwargs={"max_length": 200})
+    layer.invoke(prompt=query, generation_kwargs={"max_length": 200})
     invocation_found = False
     for call in mock_pipeline.mock_calls:
         # find the call to pipeline invocation, and check that the kwargs are correct
