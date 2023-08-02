@@ -532,7 +532,7 @@ def test_max_length_from_invoke(mock_auto_tokenizer, mock_pipeline, mock_get_tas
     layer = HFLocalInvocationLayer()
     layer.invoke(prompt=query, generation_kwargs={"max_length": 200})
     # find the call to pipeline invocation, and check that the kwargs are correct
-    assert any((call.kwargs == {"max_length": 100}) and (query in call.args) for call in mock_pipeline.mock_calls)
+    assert any((call.kwargs == {"max_length": 200}) and (query in call.args) for call in mock_pipeline.mock_calls)
 
     layer = HFLocalInvocationLayer()
     layer.invoke(prompt=the_question, generation_kwargs=GenerationConfig(max_length=235))
