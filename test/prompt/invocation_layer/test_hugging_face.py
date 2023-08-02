@@ -552,3 +552,17 @@ def test_ensure_token_limit_negative_mock(mock_pipeline, mock_get_task, mock_aut
     result = layer._ensure_token_limit("I am a tokenized prompt of length eight")
 
     assert result == correct_result
+
+
+@pytest.mark.unit
+def test_skip_prompt_is_set_in_hf_text_streamer(mock_pipeline, mock_get_task):
+    """
+    Test that skip_prompt is set in HFTextStreamingHandler. Otherwise, we will output prompt text.
+    """
+    layer = HFLocalInvocationLayer(stream=True)
+
+    layer.invoke(prompt="Tell me hello")
+
+    _, kwargs = layer.pipe.call_args
+    assert "streamer" in kwargs and isinstance(kwargs["streamer"], HFTokenStreamingHandler)
+    assert kwargs["streamer"].skip_prompt
