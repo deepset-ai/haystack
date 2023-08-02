@@ -12,7 +12,7 @@ class LostInTheMiddleRanker(BaseRanker):
     The LostInTheMiddleRanker implements a ranker that reorders documents based on the lost in the middle order.
     "Lost in the Middle: How Language Models Use Long Contexts" by Liu et al. aims to layout paragraphs into LLM
     context so that relevant paragraphs are at the beginning or end of the input context, while the least relevant
-    information should be in the middle of a context.
+    information is in the middle of the context.
 
     See https://arxiv.org/abs/2307.03172 for more details.
     """
