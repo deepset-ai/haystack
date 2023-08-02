@@ -45,7 +45,6 @@ class HFTokenStreamingHandler(TextStreamer):  # pylint: disable=useless-object-i
         self,
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
         stream_handler: "TokenStreamingHandler",
-        skip_prompt: bool,
     ):
         transformers_import.check()
         super().__init__(tokenizer=tokenizer, skip_prompt=skip_prompt)  # type: ignore
