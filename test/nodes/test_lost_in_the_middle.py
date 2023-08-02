@@ -64,6 +64,16 @@ def test_lost_in_the_middle_init():
 
 
 @pytest.mark.unit
+def test_lost_in_the_middle_init_invalid_word_count_threshold():
+    # tests that LostInTheMiddleRanker raises an error when word_count_threshold is <= 0
+    with pytest.raises(ValueError, match="Invalid value for word_count_threshold"):
+        LostInTheMiddleRanker(word_count_threshold=0)
+
+    with pytest.raises(ValueError, match="Invalid value for word_count_threshold"):
+        LostInTheMiddleRanker(word_count_threshold=-5)
+
+
+@pytest.mark.unit
 def test_lost_in_the_middle_with_word_count_threshold():
     # tests that lost_in_the_middle with word_count_threshold works as expected
     ranker = LostInTheMiddleRanker(word_count_threshold=6)

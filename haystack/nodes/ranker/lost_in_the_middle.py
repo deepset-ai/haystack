@@ -30,6 +30,11 @@ class LostInTheMiddleRanker(BaseRanker):
         :param top_k: The maximum number of documents to return.
         """
         super().__init__()
+        if isinstance(word_count_threshold, int) and word_count_threshold <= 0:
+            raise ValueError(
+                f"Invalid value for word_count_threshold: {word_count_threshold}. "
+                f"word_count_threshold must be a positive integer."
+            )
         self.word_count_threshold = word_count_threshold
         self.top_k = top_k
 
@@ -89,7 +94,7 @@ class LostInTheMiddleRanker(BaseRanker):
         """
         Reranks documents based on the "lost in the middle" order.
 
-        :param query: The query to rerank documents for (ignored).
+        :param query: The query to reorder documents for (ignored).
         :param documents: List of Documents to reorder.
         :param top_k: The number of documents to return.
 
