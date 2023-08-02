@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 class AgentStep:
     """
     The AgentStep class represents a single step in the execution of an agent.
-
     """
 
     def __init__(
