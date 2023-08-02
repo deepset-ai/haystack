@@ -118,3 +118,14 @@ def test_output_types_decorator_with_compatible_type():
             "type": int,
         }
     }
+
+
+def test_component_decorator_set_it_as_component():
+    @component
+    class MockComponent:
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": 1}
+
+    comp = MockComponent()
+    assert comp.__canals_component__
