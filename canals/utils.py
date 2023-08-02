@@ -14,9 +14,9 @@ def _type_name(type_):
 
     if name.startswith("typing."):
         name = name[7:]
-    args = get_args(type_)
     if "[" in name:
         name = name.split("[")[0]
+    args = get_args(type_)
     if name == "Union" and type(None) in args and len(args) == 2:
         # Optional is technically a Union of type and None
         # but we want to display it as Optional
