@@ -1,4 +1,3 @@
 enhancements:
   - |
     remove the original `kwargs` filter and pop out `documents` and `query`, which are already part of the prompt.
-
