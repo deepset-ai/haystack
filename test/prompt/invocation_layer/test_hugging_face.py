@@ -524,6 +524,23 @@ def test_generation_kwargs_from_invoke():
 
 
 @pytest.mark.unit
+def test_max_length_from_invoke(mock_auto_tokenizer, mock_pipeline, mock_get_task):
+    """
+    Test that max_length passed to invoke are passed to the underlying HF model
+    """
+    query = "What does 42 mean?"
+    # test that generation_kwargs are passed to the underlying HF model
+    layer = HFLocalInvocationLayer()
+    layer.invoke(prompt=query, generation_kwargs={"max_length": 200})
+    # find the call to pipeline invocation, and check that the kwargs are correct
+    assert any((call.kwargs == {"max_length": 200}) and (query in call.args) for call in mock_pipeline.mock_calls)
+
+    layer = HFLocalInvocationLayer()
+    layer.invoke(prompt=query, generation_kwargs=GenerationConfig(max_length=235))
+    assert any((call.kwargs == {"max_length": 235}) and (query in call.args) for call in mock_pipeline.mock_calls)
+
+
+@pytest.mark.unit
 def test_ensure_token_limit_positive_mock(mock_pipeline, mock_get_task, mock_auto_tokenizer):
     # prompt of length 5 + max_length of 3 = 8, which is less than model_max_length of 10, so no resize
     mock_tokens = ["I", "am", "a", "tokenized", "prompt"]

@@ -266,7 +266,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             if is_text_generation:
                 model_input_kwargs["max_new_tokens"] = model_input_kwargs.pop("max_length", self.max_length)
             else:
-                model_input_kwargs["max_length"] = self.max_length
+                model_input_kwargs["max_length"] = model_input_kwargs.pop("max_length", self.max_length)
 
             if stream:
                 stream_handler: TokenStreamingHandler = stream_handler or DefaultTokenStreamingHandler()
