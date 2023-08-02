@@ -40,6 +40,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
             self.url = f"{retriever.api_base}/embeddings"
 
         self.api_key = retriever.api_key
+        self.openai_organization = retriever.openai_organization
         self.batch_size = min(64, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
         model_class: str = next(
@@ -113,6 +114,8 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         else:
             payload: Dict[str, Union[List[str], str]] = {"model": model, "input": text}
             headers["Authorization"] = f"Bearer {self.api_key}"
+            if self.openai_organization:
+                headers["OpenAI-Organization"] = self.openai_organization
 
             res = openai_request(url=self.url, headers=headers, payload=payload, timeout=OPENAI_TIMEOUT)
 

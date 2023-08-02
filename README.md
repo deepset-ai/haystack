@@ -72,11 +72,11 @@ Use [pip](https://github.com/pypa/pip) to install a basic version of Haystack's 
 pip install farm-haystack
 ```
 
-This command installs everything needed for basic Pipelines that use an in-memory DocumentStore.
+This command installs everything needed for basic Pipelines that use an in-memory DocumentStore and external LLM provider (e.g. OpenAI).
 
 **Full Installation**
 
-To use more advanced features, like certain DocumentStores, FileConverters, OCR, local inference with pytorch, or Ray,
+To use more advanced features, like certain DocumentStores, inference with local transformer models, FileConverters, OCR, or Ray,
 you need to install further dependencies. The following command installs the [latest release](https://github.com/deepset-ai/haystack/releases) of Haystack and all its dependencies:
 
 ```sh

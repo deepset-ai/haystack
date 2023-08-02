@@ -26,7 +26,7 @@ def test_default_constructor(mock_claude_tokenizer, mock_claude_request):
 
     assert layer.api_key == "some_fake_key"
     assert layer.max_length == 200
-    assert layer.max_tokens_limit == 9000
+    assert layer.max_tokens_limit == 100000
     assert layer.model_input_kwargs == {}
 
 
@@ -90,7 +90,7 @@ def test_invoke_with_kwargs(mock_claude_tokenizer, mock_claude_request):
     assert res[0] == "some_result"
 
     expected_data = {
-        "model": "claude-v1",
+        "model": "claude-2",
         "prompt": "\n\nHuman: Some prompt\n\nAssistant: ",
         "max_tokens_to_sample": 300,
         "temperature": 1,
@@ -116,7 +116,7 @@ def test_invoke_with_none_stop_words(mock_claude_tokenizer, mock_claude_request)
     assert res[0] == "some_result"
 
     expected_data = {
-        "model": "claude-v1",
+        "model": "claude-2",
         "prompt": "\n\nHuman: Some prompt\n\nAssistant: ",
         "max_tokens_to_sample": 300,
         "temperature": 1,
@@ -137,11 +137,12 @@ def test_invoke_with_stream(mock_claude_tokenizer, mock_claude_request):
     def mock_iter(self):
         fake_data = json.dumps({"completion": " The sky appears"})
         yield f"data: {fake_data}\n\n".encode()
-        fake_data = json.dumps({"completion": " The sky appears blue to"})
+        fake_data = json.dumps({"completion": " blue to"})
         yield f"data: {fake_data}\n\n".encode()
-        fake_data = json.dumps({"completion": " The sky appears blue to us due to how"})
+        fake_data = json.dumps({"completion": " us due to how"})
         yield f"data: {fake_data}\n\n".encode()
-        yield "data: [DONE]\n\n".encode()
+        # Done was removed from the stream
+        # https://docs.anthropic.com/claude/reference/versioning
 
     mock_response = Mock(**{"__iter__": mock_iter})
 
@@ -156,9 +157,16 @@ def test_invoke_with_stream(mock_claude_tokenizer, mock_claude_request):
 
 @pytest.mark.unit
 def test_invoke_with_custom_stream_handler(mock_claude_tokenizer, mock_claude_request):
-    # Create a mock stream handler that always return the same token when called
-    mock_stream_handler = Mock()
-    mock_stream_handler.return_value = "token"
+    # Create a generator that will yield the expected return values in order
+    def mock_handler_responses():
+        yield " The sky appears"
+        yield " blue to"
+        yield " us due to how"
+
+    handler_responses = mock_handler_responses()
+
+    # Create a mock stream handler that will return the next value from the generator when called
+    mock_stream_handler = Mock(side_effect=lambda x: next(handler_responses))
 
     # Create a layer with a mocked stream handler
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", stream_handler=mock_stream_handler)
@@ -167,11 +175,12 @@ def test_invoke_with_custom_stream_handler(mock_claude_tokenizer, mock_claude_re
     def mock_iter(self):
         fake_data = json.dumps({"completion": " The sky appears"})
         yield f"data: {fake_data}\n\n".encode()
-        fake_data = json.dumps({"completion": " The sky appears blue to"})
+        fake_data = json.dumps({"completion": " blue to"})
         yield f"data: {fake_data}\n\n".encode()
-        fake_data = json.dumps({"completion": " The sky appears blue to us due to how"})
+        fake_data = json.dumps({"completion": " us due to how"})
         yield f"data: {fake_data}\n\n".encode()
-        yield "data: [DONE]\n\n".encode()
+        # Done was removed from the stream
+        # https://docs.anthropic.com/claude/reference/versioning
 
     mock_response = Mock(**{"__iter__": mock_iter})
 
@@ -211,18 +220,18 @@ def test_ensure_token_limit_with_small_max_length(caplog):
 
 @pytest.mark.integration
 def test_ensure_token_limit_with_huge_max_length(caplog):
-    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", max_length=8990)
+    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", max_length=(100000 - 5))
     res = layer._ensure_token_limit(prompt="Short prompt")
 
     assert res == "Short prompt"
     assert not caplog.records
 
     res = layer._ensure_token_limit(prompt="This is a very very very very very much longer prompt")
-    assert res == "This is a very very very very very much longer"
+    assert res == "This is a very very"
     assert len(caplog.records) == 1
     expected_message_log = (
-        "The prompt has been truncated from 11 tokens to 10 tokens so that the prompt length and "
-        "answer length (8990 tokens) fits within the max token limit (9000 tokens). "
+        "The prompt has been truncated from 7 tokens to 5 tokens so that the prompt length and "
+        "answer length (99995 tokens) fits within the max token limit (100000 tokens). "
         "Reduce the length of the prompt to prevent it from being cut off."
     )
     assert caplog.records[0].message == expected_message_log
@@ -238,11 +247,10 @@ def test_supports(mock_claude_tokenizer, mock_claude_request):
     assert layer.supports("claude-v1.0")
     assert layer.supports("claude-v1.2")
     assert layer.supports("claude-v1.3")
-    assert not layer.supports("claude-v2.0")
+    assert layer.supports("claude-v2.0")
     assert layer.supports("claude-instant-v1")
     assert layer.supports("claude-instant-v1.0")
     assert layer.supports("claude-instant-v1.1")
-    assert not layer.supports("claude-instant-v2.0")
 
 
 @pytest.mark.integration

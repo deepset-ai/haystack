@@ -116,7 +116,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
         )
 
         try:
-            result = self.client.search(index=index, **body, headers=headers)["hits"]["hits"]
+            result = self._search(index=index, **body, headers=headers)["hits"]["hits"]
             if len(result) == 0:
                 count_documents = self.get_document_count(index=index, headers=headers)
                 if count_documents == 0:
@@ -197,7 +197,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                 }
 
         try:
-            self.client.indices.create(index=index_name, **mapping, headers=headers)
+            self._index_create(index=index_name, **mapping, headers=headers)
         except self._RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
@@ -226,7 +226,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
             }
         }
         try:
-            self.client.indices.create(index=index_name, **mapping, headers=headers)
+            self._index_create(index=index_name, **mapping, headers=headers)
         except self._RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
@@ -239,7 +239,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
         """
         Validates an existing document index. If there's no embedding field, we'll add it.
         """
-        indices = self.client.indices.get(index=index_name, headers=headers)
+        indices = self._index_get(index=index_name, headers=headers)
 
         if not any(indices):
             logger.warning(
@@ -267,7 +267,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                         mapping["properties"][search_field] = (
                             {"type": "text", "analyzer": "synonym"} if self.synonyms else {"type": "text"}
                         )
-                        self.client.indices.put_mapping(index=index_id, body=mapping, headers=headers)
+                        self._index_put_mapping(index=index_id, body=mapping, headers=headers)
 
             if self.embedding_field:
                 if (
@@ -280,7 +280,19 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                         f"of type '{mapping['properties'][self.embedding_field]['type']}'."
                     )
                 mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
-                self.client.indices.put_mapping(index=index_id, body=mapping, headers=headers)
+                self._index_put_mapping(index=index_id, body=mapping, headers=headers)
+
+    def _validate_server_version(self, expected_version: int):
+        """
+        Validate that the Elasticsearch server version is compatible with the used ElasticsearchDocumentStore.
+        """
+        if self.server_version[0] != expected_version:
+            logger.warning(
+                "This ElasticsearchDocumentStore has been built for Elasticsearch %s, but the detected version of the "
+                "Elasticsearch server is %s. Unexpected behaviors or errors may occur due to version incompatibility.",
+                expected_version,
+                ".".join(map(str, self.server_version)),
+            )
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
@@ -302,12 +314,19 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
         if self.skip_missing_embeddings:
             script_score_query = {"bool": {"filter": {"bool": {"must": [{"exists": {"field": self.embedding_field}}]}}}}
 
+        # Elasticsearch 7.6 introduced a breaking change regarding the vector function signatures:
+        # https://www.elastic.co/guide/en/elasticsearch/reference/7.6/breaking-changes-7.6.html#_update_to_vector_function_signatures
+        if self.server_version[0] == 7 and self.server_version[1] < 6:
+            similarity_script_source = f"{similarity_fn_name}(params.query_vector,doc['{self.embedding_field}']) + 1000"
+        else:
+            similarity_script_source = f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000"
+
         query = {
             "script_score": {
                 "query": script_score_query,
                 "script": {
                     # offset score to ensure a positive range as required by Elasticsearch
-                    "source": f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000",
+                    "source": similarity_script_source,
                     "params": {"query_vector": query_emb.tolist()},
                 },
             }
