@@ -23,6 +23,7 @@ class DiversityRanker(BaseRanker):
     def __init__(
         self,
         model_name_or_path: Union[str, Path] = "all-MiniLM-L6-v2",
+        top_k: Optional[int] = None,
         use_gpu: Optional[bool] = True,
         devices: Optional[List[Union[str, "torch.device"]]] = None,
         similarity: Literal["dot_product", "cosine"] = "dot_product",
@@ -31,12 +32,14 @@ class DiversityRanker(BaseRanker):
         Initialize a DiversityRanker.
 
         :param model_name_or_path: Path to a pretrained sentence-transformers model.
+        :param top_k: The maximum number of documents to return.
         :param use_gpu: Whether to use GPU (if available). If no GPUs are available, it falls back on a CPU.
         :param devices: List of torch devices (for example, cuda:0, cpu, mps) to limit inference to specific devices.
         :param similarity: Whether to use dot product or cosine similarity. Can be set to "dot_product" (default) or "cosine".
         """
         torch_and_transformers_import.check()
         super().__init__()
+        self.top_k = top_k
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
         self.model = SentenceTransformer(model_name_or_path, device=str(self.devices[0]))
         self.similarity = similarity
@@ -56,6 +59,7 @@ class DiversityRanker(BaseRanker):
         if documents is None or len(documents) == 0:
             raise ValueError("No documents to choose from")
 
+        top_k = top_k or self.top_k
         diversity_sorted = self.greedy_diversity_order(query=query, documents=documents)
         return diversity_sorted[:top_k]
 
