@@ -139,7 +139,6 @@ class _Component:
                 return {"output_1": kwargs["value_1"], "output_2": ""}
         ```
         """
-
         run_method = instance.run
 
         def wrapper(**kwargs):
