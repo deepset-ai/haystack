@@ -260,7 +260,7 @@ def test_get_all_documents(client):
     response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
     assert 200 == response.status_code
     # Ensure `get_all_documents` was called with the expected `filters` param
-    MockDocumentStore.mocker.get_all_documents.assert_called_with(filters={})
+    MockDocumentStore.mocker.get_all_documents.assert_called_with(filters={}, index=None)
     # Ensure results are part of the response body
     response_json = response.json()
     assert len(response_json) == 2
@@ -270,21 +270,21 @@ def test_get_documents_with_filters(client):
     response = client.post(url="/documents/get_by_filters", data='{"filters": {"test_index": ["2"]}}')
     assert 200 == response.status_code
     # Ensure `get_all_documents` was called with the expected `filters` param
-    MockDocumentStore.mocker.get_all_documents.assert_called_with(filters={"test_index": ["2"]})
+    MockDocumentStore.mocker.get_all_documents.assert_called_with(filters={"test_index": ["2"]}, index=None)
 
 
 def test_delete_all_documents(client):
     response = client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
     assert 200 == response.status_code
     # Ensure `delete_documents` was called on the Document Store instance
-    MockDocumentStore.mocker.delete_documents.assert_called_with(filters={})
+    MockDocumentStore.mocker.delete_documents.assert_called_with(filters={}, index=None)
 
 
 def test_delete_documents_with_filters(client):
     response = client.post(url="/documents/delete_by_filters", data='{"filters": {"test_index": ["1"]}}')
     assert 200 == response.status_code
     # Ensure `delete_documents` was called on the Document Store instance with the same params
-    MockDocumentStore.mocker.delete_documents.assert_called_with(filters={"test_index": ["1"]})
+    MockDocumentStore.mocker.delete_documents.assert_called_with(filters={"test_index": ["1"]}, index=None)
 
 
 def test_file_upload(client):
@@ -564,7 +564,7 @@ def test_delete_feedback(client, monkeypatch, feedback):
     # Call the API and ensure `delete_labels` was called only on the label with id=123
     response = client.delete(url="/feedback")
     assert 200 == response.status_code
-    MockDocumentStore.mocker.delete_labels.assert_called_with(ids=["123"])
+    MockDocumentStore.mocker.delete_labels.assert_called_with(ids=["123"], index=None)
 
 
 def test_export_feedback(client, monkeypatch, feedback):
