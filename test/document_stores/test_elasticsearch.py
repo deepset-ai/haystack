@@ -56,7 +56,13 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         ElasticsearchDocumentStore equipped with a mocked client
         """
 
-        with patch(f"{ElasticsearchDocumentStore.__module__}.ElasticsearchDocumentStore._init_elastic_client"):
+        with patch(
+            f"{ElasticsearchDocumentStore.__module__}.ElasticsearchDocumentStore._init_elastic_client"
+        ) as mocked_init_client:
+            if VERSION[0] == 7:
+                mocked_init_client().info.return_value = {"version": {"number": "7.17.6"}}
+            else:
+                mocked_init_client().info.return_value = {"version": {"number": "8.8.0"}}
 
             class DSMock(ElasticsearchDocumentStore):
                 # We mock a subclass to avoid messing up the actual class object
@@ -331,23 +337,42 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
             )
         assert len(caplog.records) == 0
 
-    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 uses a different client call")
     @pytest.mark.unit
-    def test_get_document_by_id_return_embedding_false(self, mocked_document_store):
+    def test_get_document_by_id_return_embedding_false_es7(self, mocked_document_store):
         mocked_document_store.return_embedding = False
         mocked_document_store.get_document_by_id("123")
         # assert the resulting body is consistent with the `excluded_meta_data` value
         _, kwargs = mocked_document_store.client.search.call_args
         assert kwargs["_source"] == {"excludes": ["embedding"]}
 
-    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 uses a different client call")
     @pytest.mark.unit
-    def test_get_document_by_id_excluded_meta_data_has_no_influence(self, mocked_document_store):
+    def test_get_document_by_id_return_embedding_false_es8(self, mocked_document_store):
+        mocked_document_store.return_embedding = False
+        mocked_document_store.get_document_by_id("123")
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.options().search.call_args
+        assert kwargs["_source"] == {"excludes": ["embedding"]}
+
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 uses a different client call")
+    @pytest.mark.unit
+    def test_get_document_by_id_excluded_meta_data_has_no_influence_es7(self, mocked_document_store):
         mocked_document_store.excluded_meta_data = ["foo"]
         mocked_document_store.return_embedding = False
         mocked_document_store.get_document_by_id("123")
         # assert the resulting body is not affected by the `excluded_meta_data` value
         _, kwargs = mocked_document_store.client.search.call_args
+        assert kwargs["_source"] == {"excludes": ["embedding"]}
+
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 uses a different client call")
+    @pytest.mark.unit
+    def test_get_document_by_id_excluded_meta_data_has_no_influence_es8(self, mocked_document_store):
+        mocked_document_store.excluded_meta_data = ["foo"]
+        mocked_document_store.return_embedding = False
+        mocked_document_store.get_document_by_id("123")
+        # assert the resulting body is not affected by the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.options().search.call_args
         assert kwargs["_source"] == {"excludes": ["embedding"]}
 
     @pytest.mark.unit
@@ -357,19 +382,148 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
             mocked_document_store.write_documents(documents)
             assert mocked_bulk.call_count == 5
 
+    @pytest.mark.unit
+    def test_get_vector_similarity_query(self, mocked_document_store):
+        """
+        Test that the source field of the vector similarity query is correctly formatted for ES 7.6 and above.
+        We test this to make sure we use the correct syntax for newer ES versions.
+        """
+        vec_sim_query = mocked_document_store._get_vector_similarity_query(np.random.rand(3).astype(np.float32), 10)
+        assert vec_sim_query["script_score"]["script"]["source"] == "dotProduct(params.query_vector,'embedding') + 1000"
+
+    @pytest.mark.unit
+    def test_get_vector_similarity_query_es_7_5_and_below(self, mocked_document_store):
+        """
+        Test that the source field of the vector similarity query is correctly formatter for ES 7.5 and below.
+        We test this to make sure we use the correct syntax for ES versions older than 7.6, as the syntax changed
+        in 7.6.
+        """
+        # Patch server version to be 7.5.0
+        mocked_document_store.server_version = (7, 5, 0)
+
+        vec_sim_query = mocked_document_store._get_vector_similarity_query(np.random.rand(3).astype(np.float32), 10)
+        assert (
+            vec_sim_query["script_score"]["script"]["source"]
+            == "dotProduct(params.query_vector,doc['embedding']) + 1000"
+        )
+
     # The following tests are overridden only to be able to skip them depending on ES version
 
-    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 uses a different client call")
     @pytest.mark.unit
     def test_get_all_documents_return_embedding_true(self, mocked_document_store):
         super().test_get_all_documents_return_embedding_true(mocked_document_store)
 
-    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 uses a different client call")
+    @pytest.mark.unit
+    def test_get_all_documents_return_embedding_true_es8(self, mocked_document_store):
+        mocked_document_store.return_embedding = False
+        mocked_document_store.client.options().search.return_value = {}
+        mocked_document_store.get_all_documents(return_embedding=True)
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.options().search.call_args
+        assert "_source" not in kwargs
+
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 uses a different client call")
     @pytest.mark.unit
     def test_get_all_documents_return_embedding_false(self, mocked_document_store):
         super().test_get_all_documents_return_embedding_false(mocked_document_store)
 
-    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 uses a different client call")
+    @pytest.mark.unit
+    def test_get_all_documents_return_embedding_false_es8(self, mocked_document_store):
+        mocked_document_store.return_embedding = True
+        mocked_document_store.client.options().search.return_value = {}
+        mocked_document_store.get_all_documents(return_embedding=False)
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.options().search.call_args
+        body = kwargs.get("body", kwargs)
+        assert body["_source"] == {"excludes": ["embedding"]}
+
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 uses a different client call")
     @pytest.mark.unit
     def test_get_all_documents_excluded_meta_data_has_no_influence(self, mocked_document_store):
         super().test_get_all_documents_excluded_meta_data_has_no_influence(mocked_document_store)
+
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 uses a different client call")
+    @pytest.mark.unit
+    def test_get_all_documents_excluded_meta_data_has_no_influence_es8(self, mocked_document_store):
+        mocked_document_store.excluded_meta_data = ["foo"]
+        mocked_document_store.client.options().search.return_value = {}
+        mocked_document_store.get_all_documents(return_embedding=False)
+        # assert the resulting body is not affected by the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.options().search.call_args
+        body = kwargs.get("body", kwargs)
+        assert body["_source"] == {"excludes": ["embedding"]}
+
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 uses a different client call")
+    @pytest.mark.unit
+    def test_query_return_embedding_true(self, mocked_document_store):
+        super().test_query_return_embedding_true(mocked_document_store)
+
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 uses a different client call")
+    @pytest.mark.unit
+    def test_query_return_embedding_true_es8(self, mocked_document_store):
+        mocked_document_store.return_embedding = True
+        mocked_document_store.query(self.query)
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.options().search.call_args
+        assert "_source" not in kwargs
+
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 uses a different client call")
+    @pytest.mark.unit
+    def test_query_return_embedding_false(self, mocked_document_store):
+        super().test_query_return_embedding_false(mocked_document_store)
+
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 uses a different client call")
+    @pytest.mark.unit
+    def test_query_return_embedding_false_es8(self, mocked_document_store):
+        mocked_document_store.return_embedding = False
+        mocked_document_store.query(self.query)
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.options().search.call_args
+        assert kwargs["_source"] == {"excludes": ["embedding"]}
+
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 uses a different client call")
+    @pytest.mark.unit
+    def test_query_excluded_meta_data_return_embedding_true(self, mocked_document_store):
+        super().test_query_excluded_meta_data_return_embedding_true(mocked_document_store)
+
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 uses a different client call")
+    @pytest.mark.unit
+    def test_query_excluded_meta_data_return_embedding_true_es8(self, mocked_document_store):
+        mocked_document_store.return_embedding = True
+        mocked_document_store.excluded_meta_data = ["foo", "embedding"]
+        mocked_document_store.query(self.query)
+        _, kwargs = mocked_document_store.client.options().search.call_args
+        # we expect "embedding" was removed from the final query
+        assert kwargs["_source"] == {"excludes": ["foo"]}
+
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 uses a different client call")
+    @pytest.mark.unit
+    def test_query_excluded_meta_data_return_embedding_false(self, mocked_document_store):
+        super().test_query_excluded_meta_data_return_embedding_false(mocked_document_store)
+
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 uses a different client call")
+    @pytest.mark.unit
+    def test_query_excluded_meta_data_return_embedding_false_es8(self, mocked_document_store):
+        mocked_document_store.return_embedding = False
+        mocked_document_store.excluded_meta_data = ["foo"]
+        mocked_document_store.query(self.query)
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.options().search.call_args
+        assert kwargs["_source"] == {"excludes": ["foo", "embedding"]}
+
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 uses a different client call")
+    @pytest.mark.unit
+    def test_get_document_by_id_return_embedding_true(self, mocked_document_store):
+        super().test_get_document_by_id_return_embedding_true(mocked_document_store)
+
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 uses a different client call")
+    @pytest.mark.unit
+    def test_get_document_by_id_return_embedding_true_es8(self, mocked_document_store):
+        mocked_document_store.return_embedding = True
+        mocked_document_store.get_document_by_id("123")
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.options().search.call_args
+        assert "_source" not in kwargs

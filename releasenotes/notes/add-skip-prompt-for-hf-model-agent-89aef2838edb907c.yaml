@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix the bug that the responses of Agents using local HF models contain the prompt text.
