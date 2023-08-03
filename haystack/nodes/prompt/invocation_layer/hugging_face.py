@@ -51,7 +51,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
             self.stop_words = encoded_stop_words.input_ids.to(device)
 
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-            stop_result = []
+            stop_result: List[List[bool]] = []
             for stop_word in self.stop_words:
                 stop_result.append([])
                 stop_word_len = len(stop_word)
@@ -60,7 +60,6 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
                     stop_result[-1].append(False)
                 else:
                     stop_result[-1].append(all(stop_word == input_id[-stop_word_len:]))
-
             return any(all(stop_word) for stop_word in stop_result)
 
 
