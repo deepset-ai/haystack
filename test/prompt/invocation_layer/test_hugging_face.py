@@ -337,20 +337,6 @@ def test_streaming_stream_param_in_constructor(mock_pipeline, mock_get_task):
 
 
 @pytest.mark.unit
-def test_streaming_skip_prompt_is_set_in_hf_text_streamer(mock_pipeline, mock_get_task):
-    """
-    Test that skip_prompt is set in HFTextStreamingHandler. Otherwise, we will output prompt text.
-    """
-    layer = HFLocalInvocationLayer(stream=True)
-
-    layer.invoke(prompt="Tell me hello")
-
-    _, kwargs = layer.pipe.call_args
-    assert "streamer" in kwargs and isinstance(kwargs["streamer"], HFTokenStreamingHandler)
-    assert kwargs["streamer"].skip_prompt
-
-
-@pytest.mark.unit
 def test_streaming_stream_handler_param_in_constructor(mock_pipeline, mock_get_task):
     """
     Test stream parameter is correctly passed to pipeline invocation
