@@ -1,5 +1,5 @@
 loaders:
-  - type: python
+  - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/document_stores, ../../../haystack/document_stores/elasticsearch]
     modules:
       [
