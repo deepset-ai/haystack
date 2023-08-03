@@ -99,7 +99,14 @@ class Tool:
         # Recursive case: process the result based on its type and return the result
         else:
             if isinstance(result, (tuple, list)):
-                return self._process_result(result[0] if result else [])
+                if isinstance(result[0], Document):
+                    joined_documents = ""
+                    for doc in result:
+                        content = doc.content
+                        joined_documents = joined_documents + "" + content
+                    return self._process_result(joined_documents)
+                else:
+                    return self._process_result(result[0] if result else [])
             elif isinstance(result, dict):
                 if self.output_variable not in result:
                     raise ValueError(
