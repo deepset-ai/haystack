@@ -18,7 +18,7 @@ renderer:
   title: BaseImageToText API
   slug: base-image-to-text-api
   order: 187
-  parent_doc_slug: base-image-to-text-api
+  parent_doc_slug: transformers-image-to-text-api
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
