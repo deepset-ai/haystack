@@ -105,7 +105,7 @@ jobs:
         working-directory: test/benchmarks
         run: |
           mkdir +p out
-          for f in ./configs/**/-elasticsearch-*.yml; do
+          for f in ./configs/**/*-elasticsearch-*.yml; do
             name="${f%.*}"
             echo "=== Running benchmarks for $name ===";
             config_name="$(basename "$name")"
