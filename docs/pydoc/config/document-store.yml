@@ -3,7 +3,6 @@ loaders:
     search_path: [../../../haystack/document_stores, ../../../haystack/document_stores/elasticsearch]
     modules:
       [
-        "base",
         "es7",
         "es8",
         "opensearch",
