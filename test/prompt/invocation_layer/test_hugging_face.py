@@ -484,12 +484,12 @@ def test_stop_words_not_being_found(stop_words: List[str]):
 @pytest.mark.integration
 def test_stop_word_can_exist_in_prompt_text():
     """
-    Test the case when stop words are included in the prompt text, the generation won't stop after the first token   
+    Test the case when stop words are included in the prompt text, the generation won't stop after the first token
     """
     stop_word = "."
     prompt = "Hello. I'm a language model,"
-    assert stop_word in prompt 
-    
+    assert stop_word in prompt
+
     # since the problem only exists for text-generation task, only the text-generation model is tested here
     # we choose `gpt2`, because it only contains 137M parameters, even smaller as the default `google/flan-t5-base`
     model='gpt2'
@@ -502,9 +502,9 @@ def test_stop_word_can_exist_in_prompt_text():
     result = layer.invoke(prompt=prompt, do_sample=False)
     assert "and I'm not a programmer." in result[0]
 
-    # ensure that the case with a stop_word will continue generating text until the stop_word 
+    # ensure that the case with a stop_word will continue generating text until the stop_word
     result = layer.invoke(prompt=prompt, do_sample=False, stop_words=[stop_word])
-    assert len(result) > 0 
+    assert len(result) > 0
     assert "and I'm not a programmer" in result[0]
 
 
