@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix the bug that StopWordsCriteria doesn't check the stop word tokens in a sequential order
