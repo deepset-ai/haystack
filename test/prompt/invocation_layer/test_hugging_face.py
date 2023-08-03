@@ -467,6 +467,14 @@ def test_stop_words_multiple_token(stop_words: List[str]):
     assert "good" not in result[0]
     assert "health" not in result[0]
 
+    if stop_words == ["unambiguously"]:
+        result = layer.invoke(
+            prompt="Generate a sentence `This is unrelated, but is ambiguously. So unambiguously.`",
+            stop_words=stop_words,
+        )
+        assert len(result) > 0
+        assert "So" in result[0]
+
 
 @pytest.mark.integration
 @pytest.mark.parametrize("stop_words", [["Berlin"], ["Berlin", "Brandenburg"], ["Berlin", "Brandenburg", "Germany"]])
