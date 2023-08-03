@@ -480,7 +480,7 @@ def test_stop_words_not_being_found(stop_words: List[str]):
     for word in "I wish you a good health".split():
         assert word in result[0]
 
-        
+
 @pytest.mark.integration
 def test_stop_word_can_exist_in_prompt_text():
     """
@@ -507,7 +507,7 @@ def test_stop_word_can_exist_in_prompt_text():
     assert len(result) > 0
     assert "and I'm not a programmer" in result[0]
 
-    
+
 @pytest.mark.unit
 def test_generation_kwargs_from_constructor(mock_auto_tokenizer, mock_pipeline, mock_get_task):
     """
