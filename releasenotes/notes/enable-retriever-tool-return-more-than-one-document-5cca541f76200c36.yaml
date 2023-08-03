@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix the bug that the retriever tool always return 1 document back regardless how many documents the user wants him to return 
