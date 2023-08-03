@@ -2,8 +2,9 @@ import logging
 import os
 
 from haystack import Pipeline
-from haystack.nodes import PromptNode, PromptTemplate, TopPSampler, DocumentMerger
+from haystack.nodes import PromptNode, PromptTemplate, TopPSampler
 from haystack.nodes.ranker.diversity import DiversityRanker
+from haystack.nodes.ranker.lost_in_the_middle import LostInTheMiddleRanker
 from haystack.nodes.retriever.web import WebRetriever
 
 search_key = os.environ.get("SERPERDEV_API_KEY")
@@ -22,21 +23,21 @@ Your answer should be in your own words and be no longer than 50 words.
 """
 
 prompt_node = PromptNode(
-    "gpt-3.5-turbo", default_prompt_template=PromptTemplate(prompt_text), api_key=openai_key, max_length=256
+    "gpt-3.5-turbo", default_prompt_template=PromptTemplate(prompt_text), api_key=openai_key, max_length=768
 )
 
-web_retriever = WebRetriever(api_key=search_key, top_search_results=10, mode="preprocessed_documents", top_k=25)
+web_retriever = WebRetriever(api_key=search_key, top_search_results=5, mode="preprocessed_documents", top_k=50)
 
-sampler = TopPSampler(top_p=0.95)
-ranker = DiversityRanker()
-merger = DocumentMerger(separator="\n\n")
+sampler = TopPSampler(top_p=0.97)
+diversity_ranker = DiversityRanker()
+litm_ranker = LostInTheMiddleRanker(word_count_threshold=1024)
 
 pipeline = Pipeline()
 pipeline.add_node(component=web_retriever, name="Retriever", inputs=["Query"])
 pipeline.add_node(component=sampler, name="Sampler", inputs=["Retriever"])
-pipeline.add_node(component=ranker, name="Ranker", inputs=["Sampler"])
-pipeline.add_node(component=merger, name="Merger", inputs=["Ranker"])
-pipeline.add_node(component=prompt_node, name="PromptNode", inputs=["Merger"])
+pipeline.add_node(component=diversity_ranker, name="DiversityRanker", inputs=["Sampler"])
+pipeline.add_node(component=litm_ranker, name="LostInTheMiddleRanker", inputs=["DiversityRanker"])
+pipeline.add_node(component=prompt_node, name="PromptNode", inputs=["LostInTheMiddleRanker"])
 
 logger = logging.getLogger("boilerpy3")
 logger.setLevel(logging.CRITICAL)

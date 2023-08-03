@@ -480,7 +480,7 @@ def test_stop_words_not_being_found(stop_words: List[str]):
     for word in "I wish you a good health".split():
         assert word in result[0]
 
-
+        
 @pytest.mark.integration
 def test_stop_word_can_exist_in_prompt_text():
     """
@@ -507,47 +507,50 @@ def test_stop_word_can_exist_in_prompt_text():
     assert len(result) > 0
     assert "and I'm not a programmer" in result[0]
 
-
-@pytest.mark.integration
-def test_generation_kwargs_from_constructor():
+    
+@pytest.mark.unit
+def test_generation_kwargs_from_constructor(mock_auto_tokenizer, mock_pipeline, mock_get_task):
     """
     Test that generation_kwargs are correctly passed to pipeline invocation from constructor
     """
-    the_question = "What does 42 mean?"
+    query = "What does 42 mean?"
     # test that generation_kwargs are passed to the underlying HF model
     layer = HFLocalInvocationLayer(generation_kwargs={"do_sample": True})
-    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
-        layer.invoke(prompt=the_question)
-
-    mock_call.assert_called_with(the_question, {}, {"do_sample": True, "max_length": 100}, {})
+    layer.invoke(prompt=query)
+    assert any(
+        (call.kwargs == {"do_sample": True, "max_length": 100}) and (query in call.args)
+        for call in mock_pipeline.mock_calls
+    )
 
     # test that generation_kwargs in the form of GenerationConfig are passed to the underlying HF model
     layer = HFLocalInvocationLayer(generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
-    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
-        layer.invoke(prompt=the_question)
+    layer.invoke(prompt=query)
+    assert any(
+        (call.kwargs == {"do_sample": True, "max_length": 100, "top_p": 0.9}) and (query in call.args)
+        for call in mock_pipeline.mock_calls
+    )
 
-    mock_call.assert_called_with(the_question, {}, {"do_sample": True, "top_p": 0.9, "max_length": 100}, {})
 
-
-@pytest.mark.integration
-def test_generation_kwargs_from_invoke():
+@pytest.mark.unit
+def test_generation_kwargs_from_invoke(mock_auto_tokenizer, mock_pipeline, mock_get_task):
     """
     Test that generation_kwargs passed to invoke are passed to the underlying HF model
     """
-    the_question = "What does 42 mean?"
+    query = "What does 42 mean?"
     # test that generation_kwargs are passed to the underlying HF model
     layer = HFLocalInvocationLayer()
-    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
-        layer.invoke(prompt=the_question, generation_kwargs={"do_sample": True})
+    layer.invoke(prompt=query, generation_kwargs={"do_sample": True})
+    assert any(
+        (call.kwargs == {"do_sample": True, "max_length": 100}) and (query in call.args)
+        for call in mock_pipeline.mock_calls
+    )
 
-    mock_call.assert_called_with(the_question, {}, {"do_sample": True, "max_length": 100}, {})
-
-    # test that generation_kwargs in the form of GenerationConfig are passed to the underlying HF model
     layer = HFLocalInvocationLayer()
-    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
-        layer.invoke(prompt=the_question, generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
-
-    mock_call.assert_called_with(the_question, {}, {"do_sample": True, "top_p": 0.9, "max_length": 100}, {})
+    layer.invoke(prompt=query, generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
+    assert any(
+        (call.kwargs == {"do_sample": True, "max_length": 100, "top_p": 0.9}) and (query in call.args)
+        for call in mock_pipeline.mock_calls
+    )
 
 
 @pytest.mark.unit
@@ -659,3 +662,17 @@ def test_tokenizer_loading_unsupported_model_with_tokenizer_class_in_config(
         invocation_layer = HFLocalInvocationLayer(model_name_or_path="unsupported_model", trust_remote_code=True)
         assert not mock_tokenizer.called
         assert not caplog.text
+
+
+@pytest.mark.unit
+def test_skip_prompt_is_set_in_hf_text_streamer(mock_pipeline, mock_get_task):
+    """
+    Test that skip_prompt is set in HFTextStreamingHandler. Otherwise, we will output prompt text.
+    """
+    layer = HFLocalInvocationLayer(stream=True)
+
+    layer.invoke(prompt="Tell me hello")
+
+    _, kwargs = layer.pipe.call_args
+    assert "streamer" in kwargs and isinstance(kwargs["streamer"], HFTokenStreamingHandler)
+    assert kwargs["streamer"].skip_prompt
