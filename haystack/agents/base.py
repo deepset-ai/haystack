@@ -109,9 +109,7 @@ class Tool:
                         return_content = joined_documents
                     else:
                         return_content = first_result
-                else:
-                    return_content = []
-                return self._process_result(return_content)
+                return self._process_result(return_content if result else [])
             elif isinstance(result, dict):
                 if self.output_variable not in result:
                     raise ValueError(
