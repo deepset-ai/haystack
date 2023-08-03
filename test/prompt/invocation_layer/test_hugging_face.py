@@ -1,5 +1,6 @@
 from typing import List
 from unittest.mock import MagicMock, patch, Mock
+import logging
 
 import pytest
 import torch
@@ -68,14 +69,14 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
         "config",
         "tokenizer",
         "feature_extractor",
-        "revision",
-        "use_auth_token",
         "device_map",
         "device",
         "torch_dtype",
-        "trust_remote_code",
         "model_kwargs",
         "pipeline_class",
+        "revision",
+        "use_auth_token",
+        "trust_remote_code",
     ]
 
 
@@ -537,6 +538,23 @@ def test_generation_kwargs_from_invoke():
 
 
 @pytest.mark.unit
+def test_max_length_from_invoke(mock_auto_tokenizer, mock_pipeline, mock_get_task):
+    """
+    Test that max_length passed to invoke are passed to the underlying HF model
+    """
+    query = "What does 42 mean?"
+    # test that generation_kwargs are passed to the underlying HF model
+    layer = HFLocalInvocationLayer()
+    layer.invoke(prompt=query, generation_kwargs={"max_length": 200})
+    # find the call to pipeline invocation, and check that the kwargs are correct
+    assert any((call.kwargs == {"max_length": 200}) and (query in call.args) for call in mock_pipeline.mock_calls)
+
+    layer = HFLocalInvocationLayer()
+    layer.invoke(prompt=query, generation_kwargs=GenerationConfig(max_length=235))
+    assert any((call.kwargs == {"max_length": 235}) and (query in call.args) for call in mock_pipeline.mock_calls)
+
+
+@pytest.mark.unit
 def test_ensure_token_limit_positive_mock(mock_pipeline, mock_get_task, mock_auto_tokenizer):
     # prompt of length 5 + max_length of 3 = 8, which is less than model_max_length of 10, so no resize
     mock_tokens = ["I", "am", "a", "tokenized", "prompt"]
@@ -566,3 +584,79 @@ def test_ensure_token_limit_negative_mock(mock_pipeline, mock_get_task, mock_aut
     result = layer._ensure_token_limit("I am a tokenized prompt of length eight")
 
     assert result == correct_result
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoConfig.from_pretrained")
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoTokenizer.from_pretrained")
+def test_tokenizer_loading_unsupported_model(mock_tokenizer, mock_config, mock_pipeline, mock_get_task, caplog):
+    """
+    Test loading of tokenizers for models that are not natively supported by the transformers library.
+    """
+    mock_config.return_value = Mock(tokenizer_class=None)
+
+    with caplog.at_level(logging.WARNING):
+        invocation_layer = HFLocalInvocationLayer("unsupported_model", trust_remote_code=True)
+        assert (
+            "The transformers library doesn't know which tokenizer class should be "
+            "loaded for the model unsupported_model. Therefore, the tokenizer will be loaded in Haystack's "
+            "invocation layer and then passed to the underlying pipeline. Alternatively, you could "
+            "pass `tokenizer_class` to `model_kwargs` to workaround this, if your tokenizer is supported "
+            "by the transformers library."
+        ) in caplog.text
+        assert mock_tokenizer.called
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoTokenizer.from_pretrained")
+def test_tokenizer_loading_unsupported_model_with_initialized_model(
+    mock_tokenizer, mock_pipeline, mock_get_task, caplog
+):
+    """
+    Test loading of tokenizers for models that are not natively supported by the transformers library. In this case,
+    the model is already initialized and the model config is loaded from the model.
+    """
+    model = Mock()
+    model.config = Mock(tokenizer_class=None, _name_or_path="unsupported_model")
+
+    with caplog.at_level(logging.WARNING):
+        invocation_layer = HFLocalInvocationLayer(model_name_or_path="unsupported", model=model, trust_remote_code=True)
+        assert (
+            "The transformers library doesn't know which tokenizer class should be "
+            "loaded for the model unsupported_model. Therefore, the tokenizer will be loaded in Haystack's "
+            "invocation layer and then passed to the underlying pipeline. Alternatively, you could "
+            "pass `tokenizer_class` to `model_kwargs` to workaround this, if your tokenizer is supported "
+            "by the transformers library."
+        ) in caplog.text
+        assert mock_tokenizer.called
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoConfig.from_pretrained")
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoTokenizer.from_pretrained")
+def test_tokenizer_loading_unsupported_model_with_tokenizer_class_in_config(
+    mock_tokenizer, mock_config, mock_pipeline, mock_get_task, caplog
+):
+    """
+    Test that tokenizer is not loaded if tokenizer_class is set in model config.
+    """
+    mock_config.return_value = Mock(tokenizer_class="Some-Supported-Tokenizer")
+
+    with caplog.at_level(logging.WARNING):
+        invocation_layer = HFLocalInvocationLayer(model_name_or_path="unsupported_model", trust_remote_code=True)
+        assert not mock_tokenizer.called
+        assert not caplog.text
+
+
+@pytest.mark.unit
+def test_skip_prompt_is_set_in_hf_text_streamer(mock_pipeline, mock_get_task):
+    """
+    Test that skip_prompt is set in HFTextStreamingHandler. Otherwise, we will output prompt text.
+    """
+    layer = HFLocalInvocationLayer(stream=True)
+
+    layer.invoke(prompt="Tell me hello")
+
+    _, kwargs = layer.pipe.call_args
+    assert "streamer" in kwargs and isinstance(kwargs["streamer"], HFTokenStreamingHandler)
+    assert kwargs["streamer"].skip_prompt
