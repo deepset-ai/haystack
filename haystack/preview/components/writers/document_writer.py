@@ -56,7 +56,7 @@ class DocumentWriter(StoreAwareMixin):
         self.store: Store
 
         if not self.store:
-            raise ValueError("DocumentWriter needs a store to run: set the store instance to the self.store attribute")
+            raise ValueError("DocumentWriter needs a store to run: set the store instance to the self.store attribute.")
 
         self.store.write_documents(documents=data.documents, policy=data.policy)
         return self.output()
