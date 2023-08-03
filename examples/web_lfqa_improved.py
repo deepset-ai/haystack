@@ -47,7 +47,7 @@ pipeline.add_node(component=diversity_ranker, name="DiversityRanker", inputs=["S
 pipeline.add_node(component=litm_ranker, name="LostInTheMiddleRanker", inputs=["DiversityRanker"])
 pipeline.add_node(component=prompt_node, name="PromptNode", inputs=["LostInTheMiddleRanker"])
 
-logging.basicConfig(level=logging.CRITICAL)  # pylint: disable
+logging.disable(logging.CRITICAL)
 
 
 questions = [
