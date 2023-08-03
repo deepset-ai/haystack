@@ -1,0 +1,1 @@
+from haystack.preview.components.io_utils.file_classifier import FileTypeClassifier
