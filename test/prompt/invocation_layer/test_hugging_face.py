@@ -492,7 +492,7 @@ def test_stop_word_can_exist_in_prompt_text():
 
     # since the problem only exists for text-generation task, only the text-generation model is tested here
     # we choose `gpt2`, because it only contains 137M parameters, even smaller as the default `google/flan-t5-base`
-    model='gpt2'
+    model = "gpt2"
     tokenizer = AutoTokenizer.from_pretrained(model, add_prefix_space=True)
     tokenizer.pad_token = tokenizer.eos_token
     layer = HFLocalInvocationLayer(model, max_length=7, tokenizer=tokenizer)
