@@ -1,4 +1,4 @@
 ---
 fixes:
   - |
-    Fix the bug that StopWordsCriteria doesn't check the stop word tokens in a continuous and sequential order
+    Fix StopWordsCriteria not checking stop word tokens in a continuous and sequential order
