@@ -280,7 +280,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # We want to exclude it to be consistent with other invocation layers
             for idx, _ in enumerate(generated_texts):
                 for stop_word in stop_words:
-                    generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
+                    generated_texts[idx] = generated_texts[idx].replace(stop_word, "").rstrip()
         return generated_texts
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
