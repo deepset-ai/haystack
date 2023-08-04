@@ -8,9 +8,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Set
 from urllib.parse import urlparse
-import shutil
 
-from haystack.errors import NodeError
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 from haystack.lazy_imports import LazyImport
