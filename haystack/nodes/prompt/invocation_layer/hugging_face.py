@@ -334,16 +334,16 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         self, model: Union[str, "PreTrainedModel"], hub_kwargs: Dict, model_kwargs: Optional[Dict] = None
     ) -> Union["PreTrainedTokenizer", "PreTrainedTokenizerFast", None]:
         """
-        this method prepares the tokenizer before passing it to transformers' pipeline, so that the instantiated pipeline
+        This method prepares the tokenizer before passing it to transformers' pipeline, so that the instantiated pipeline
         object has a working tokenizer.
 
-        It basically check whether the pipeline method in the transformers library will load the tokenizer.
-        - If yes, None will be returned, because in this case, the pipeline is intelligent enough to load the tokenizer by itself
-        - If not, we will load the tokenizer and an tokenizer instance is returned
+        It checks whether the pipeline method in the transformers library will load the tokenizer.
+        - If yes, None will be returned, because in this case, the pipeline is intelligent enough to load the tokenizer by itself.
+        - If not, we will load the tokenizer and an tokenizer instance is returned.
 
-        :param model: the name or path of the underlying model
-        :hub_kwargs: keyword argument related to hugging face hub, including revision, trust_remote_code and use_auth_token
-        :model_kwargs: keyword arguments passed to the underlying model
+        :param model: The name or path of the underlying model.
+        :hub_kwargs: Keyword argument related to hugging face hub, including revision, trust_remote_code and use_auth_token.
+        :model_kwargs: Keyword arguments passed to the underlying model.
         """
 
         if isinstance(model, str):
