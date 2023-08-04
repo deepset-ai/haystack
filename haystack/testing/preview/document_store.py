@@ -1,3 +1,4 @@
+# pylint: disable=too-many-public-methods
 from typing import List
 
 import pytest
@@ -52,10 +53,10 @@ class DocumentStoreBaseTests:
                 Document(content=pd.DataFrame([i]), content_type="table", metadata={"name": f"table_doc_{i}"})
             )
             documents.append(
-                Document(content=f"Doc {i} with zeros emb", metadata={"name": f"zeros_doc"}, embedding=embedding_zero)
+                Document(content=f"Doc {i} with zeros emb", metadata={"name": "zeros_doc"}, embedding=embedding_zero)
             )
             documents.append(
-                Document(content=f"Doc {i} with ones emb", metadata={"name": f"ones_doc"}, embedding=embedding_one)
+                Document(content=f"Doc {i} with ones emb", metadata={"name": "ones_doc"}, embedding=embedding_one)
             )
         return documents
 
@@ -142,7 +143,7 @@ class DocumentStoreBaseTests:
     def test_incorrect_filter_type(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         with pytest.raises(ValueError, match="dictionaries or lists"):
-            docstore.filter_documents(filters="something odd")
+            docstore.filter_documents(filters="something odd")  # type: ignore
 
     @pytest.mark.unit
     def test_incorrect_filter_value(self, docstore: Store, filterable_docs: List[Document]):
@@ -193,26 +194,8 @@ class DocumentStoreBaseTests:
         embedding = np.zeros([768, 1]).astype(np.float32)
         result = docstore.filter_documents(filters={"embedding": embedding})
         assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if np.array_equal(embedding, doc.embedding)]
+            result, [doc for doc in filterable_docs if np.array_equal(embedding, doc.embedding)]  # type: ignore
         )
-
-    @pytest.mark.unit
-    def test_deeper_incorrect_filter_nesting(self, docstore: Store, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        with pytest.raises(ValueError, match="malformed"):
-            docstore.filter_documents(filters={"number": {"page": {"chapter": "intro"}}})
-
-    @pytest.mark.unit
-    def test_eq_filter_explicit(self, docstore: Store, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": {"$eq": "100"}})
-        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
-
-    @pytest.mark.unit
-    def test_eq_filter_implicit(self, docstore: Store, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": "100"})
-        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
 
     @pytest.mark.unit
     def test_in_filter_explicit(self, docstore: Store, filterable_docs: List[Document]):
@@ -289,16 +272,8 @@ class DocumentStoreBaseTests:
             [
                 doc
                 for doc in filterable_docs
-                if not isinstance(doc.content, np.ndarray) or not np.array_equal(embedding, doc.embedding)
+                if not isinstance(doc.content, np.ndarray) or not np.array_equal(embedding, doc.embedding)  # type: ignore
             ],
-        )
-
-    @pytest.mark.unit
-    def test_nin_filter(self, docstore: Store, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": {"$nin": ["100", "123", "n.a."]}})
-        assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if doc.metadata.get("page", None) not in ["100", "123"]]
         )
 
     @pytest.mark.unit
@@ -328,8 +303,8 @@ class DocumentStoreBaseTests:
                 for doc in filterable_docs
                 if not isinstance(doc.content, np.ndarray)
                 or (
-                    not np.array_equal(embedding_zeros, doc.embedding)
-                    and not np.array_equal(embedding_ones, doc.embedding)
+                    not np.array_equal(embedding_zeros, doc.embedding)  # type: ignore
+                    and not np.array_equal(embedding_ones, doc.embedding)  # type: ignore
                 )
             ],
         )
@@ -696,19 +671,19 @@ class DocumentStoreBaseTests:
         object.__setattr__(doc2, "id", doc1.id)  # Make two docs with different content but same ID
 
         docstore.write_documents([doc2])
-        docstore.filter_documents(filters={"id": doc1.id}) == [doc2]
+        assert docstore.filter_documents(filters={"id": doc1.id}) == [doc2]
         docstore.write_documents(documents=[doc1], policy=DuplicatePolicy.OVERWRITE)
         assert docstore.filter_documents(filters={"id": doc1.id}) == [doc1]
 
     @pytest.mark.unit
     def test_write_not_docs(self, docstore: Store):
         with pytest.raises(ValueError, match="Please provide a list of Documents"):
-            docstore.write_documents(["not a document for sure"])
+            docstore.write_documents(["not a document for sure"])  # type: ignore
 
     @pytest.mark.unit
     def test_write_not_list(self, docstore: Store):
         with pytest.raises(ValueError, match="Please provide a list of Documents"):
-            docstore.write_documents("not a list actually")
+            docstore.write_documents("not a list actually")  # type: ignore
 
     @pytest.mark.unit
     def test_delete_empty(self, docstore: Store):
