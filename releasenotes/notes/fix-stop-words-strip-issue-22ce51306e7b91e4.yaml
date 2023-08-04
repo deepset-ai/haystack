@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix the missing leading whitespace in the generated test when using `stop_word`
+    Change `strip()` to `rstrip()`
