@@ -1,8 +1,10 @@
+from typing import Optional
 from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 from haystack.document_stores.search_engine import SearchEngineDocumentStore
+from haystack.schema import FilterType
 
 
 @pytest.mark.unit
@@ -206,40 +208,51 @@ class SearchEngineDocumentStoreTestAbstract:
         assert labels[0].meta["version"] == "2023.1"
 
     @pytest.mark.integration
-    def test_custom_query(self, ds: SearchEngineDocumentStore):
+    @pytest.mark.parametrize(
+        "query,filters,result_count",
+        [
+            # test happy path
+            ("tost", {"year": ["2020", "2021", "1990"]}, 4),
+            # test empty filters
+            ("test", None, 5),
+            # test linefeeds in query
+            ("test\n", {"year": "2021"}, 3),
+            # test double quote in query
+            ('test"', {"year": "2021"}, 3),
+            # test non-matching query
+            ("toast", None, 0),
+        ],
+    )
+    def test_custom_query(
+        self, query: str, filters: Optional[FilterType], result_count: int, ds: SearchEngineDocumentStore
+    ):
         documents = [
-            {"content": "test_1", "meta": {"year": "2019"}},
-            {"content": "test_2", "meta": {"year": "2020"}},
-            {"content": "test_3", "meta": {"year": "2021"}},
-            {"content": "test_4", "meta": {"year": "2021"}},
-            {"content": "test_5", "meta": {"year": "2021"}},
+            {"id": "1", "content": "test", "meta": {"year": "2019"}},
+            {"id": "2", "content": "test", "meta": {"year": "2020"}},
+            {"id": "3", "content": "test", "meta": {"year": "2021"}},
+            {"id": "4", "content": "test", "meta": {"year": "2021"}},
+            {"id": "5", "content": "test", "meta": {"year": "2021"}},
         ]
         ds.write_documents(documents)
         custom_query = """
             {
                 "query": {
                     "bool": {
-                        "should": [{
-                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
+                        "must": [{
+                            "multi_match": {
+                                "query": ${query},
+                                "fields": ["content"],
+                                "fuzziness": "AUTO"
+                            }
+                        }],
                         "filter": ${filters}
                     }
                 }
             }
         """
 
-        results = ds.query(query="test", custom_query=custom_query)
-        assert len(results) == 5
-
-        results = ds.query(query="test", filters={"year": ["2020", "2021"]}, custom_query=custom_query)
-        assert len(results) == 4
-
-        # test linefeeds in query
-        results = ds.query(query="test\n", filters={"year": ["2021"]}, custom_query=custom_query)
-        assert len(results) == 3
-
-        # test double quote in query
-        results = ds.query(query='test"', filters={"year": ["2021"]}, custom_query=custom_query)
-        assert len(results) == 3
+        results = ds.query(query=query, filters=filters, custom_query=custom_query)
+        assert len(results) == result_count
 
 
 @pytest.mark.document_store
