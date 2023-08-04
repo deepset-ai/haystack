@@ -81,7 +81,10 @@ class WebSearch(BaseComponent):
         # query is a required parameter for search, we need to keep the signature of run() the same as in other nodes
         if not query:
             raise ValueError("WebSearch run requires the `query` parameter")
-        return {"documents": self.search_engine.search(query, top_k=top_k)}, "output_1"
+        search_kwargs = {}
+        if top_k is not None:
+            search_kwargs["top_k"] = top_k
+        return {"documents": self.search_engine.search(query, **search_kwargs)}, "output_1"
 
     def run_batch(
         self,

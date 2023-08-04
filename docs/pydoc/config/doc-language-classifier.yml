@@ -1,5 +1,5 @@
 loaders:
-  - type: python
+  - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/nodes/doc_language_classifier]
     modules: ["base", "langdetect", "transformers"]
     ignore_when_discovered: ["__init__"]
