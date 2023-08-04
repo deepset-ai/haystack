@@ -371,3 +371,8 @@ ignore_missing_imports = true
 plugins = [
   "pydantic.mypy",
 ]
+
+[tool.coverage.run]
+omit = [
+    "haystack/testing/*",
+]
