@@ -266,8 +266,8 @@ class LinkContentFetcher(BaseComponent):
         :param content_type: The content type of the response.
         :return: The matching content handler callable or the default html_content_handler if no match is found.
         """
-        content_type: str = (content_type or "").split(";")[0]
-        return self.handlers[content_type]
+        content_type_lookup: str = (content_type or "").split(";")[0]
+        return self.handlers[content_type_lookup]
 
     def _switch_user_agent(self, retry_state: RetryCallState) -> None:
         """
