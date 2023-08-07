@@ -139,6 +139,8 @@ class LinkContentFetcher(BaseComponent):
         has_content = response.status_code == HTTPStatus.OK and (response.text or response.content)
         fetched_documents = []
         if has_content:
+            # if we get here, we have a valid response, let's try to extract content
+            # using the registered content handler
             extracted_content: str = ""
             handler: Callable = self._get_content_type_handler(response.headers.get("Content-Type", ""))
             try:
@@ -147,7 +149,7 @@ class LinkContentFetcher(BaseComponent):
                 if self.raise_on_failure:
                     raise e
                 logger.warning("failed to extract content from %s", response.url)
-            content = extracted_content or extracted_doc.get("snippet_text", "")
+            content = extracted_content or extracted_doc.get("snippet_text", "")  # fallback to snippet_text
             if not content:
                 return []
             if extracted_content:
@@ -229,6 +231,8 @@ class LinkContentFetcher(BaseComponent):
         """
 
         @retry(
+            # we want to reraise the exception if we fail after the last self.retry_attempts
+            # then we can catch it in the outer try/except block, see below
             reraise=True,
             stop=stop_after_attempt(self.retry_attempts),
             wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -236,6 +240,7 @@ class LinkContentFetcher(BaseComponent):
             after=self._switch_user_agent,
         )
         def _request():
+            # we need a request copy because we modify the headers
             headers = self.REQUEST_HEADERS.copy()
             headers["User-Agent"] = self.current_user_agent
             r = requests.get(url, headers=headers, timeout=timeout or 3)
@@ -245,9 +250,10 @@ class LinkContentFetcher(BaseComponent):
         try:
             response = _request()
         except Exception as e:
+            # catch all exceptions including HTTPError and RequestException
             if self.raise_on_failure:
                 raise e
-
+            # if we don't raise on failure, log it, and return a response object
             logger.warning("Couldn't retrieve content from %s", url)
             response = requests.Response()
         finally:
