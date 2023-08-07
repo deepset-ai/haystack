@@ -156,7 +156,7 @@ class PromptNode(BaseComponent):
         # kwargs override model kwargs
         kwargs = {**self._prepare_model_kwargs(), **kwargs}
         template_to_fill = self.get_prompt_template(prompt_template)
-        prompt_params = template_to_fill.prompt_params
+        prompt_params = template_to_fill.prompt_params if template_to_fill else []
         if template_to_fill:
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
