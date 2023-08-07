@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.preview.components.io_utils.file_classifier import FileTypeClassifier
+from haystack.preview.components.classifiers.file_classifier import FileTypeClassifier
 from test.preview.components.base import BaseTestComponent
 from test.conftest import preview_samples_path
 
