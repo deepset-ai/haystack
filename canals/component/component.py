@@ -1,6 +1,72 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+"""
+    Attributes:
+
+        component: Marks a class as a component. Any class decorated with `@component` can be used by a Pipeline.
+
+    All components must follow the contract below. This docstring is the source of truth for components contract.
+
+    <hr>
+
+    `@component` decorator
+
+    All component classes must be decorated with the `@component` decorator. This allows Canals to discover them.
+
+    <hr>
+
+    `__init__(self, **kwargs)`
+
+    Optional method.
+
+    Components may have an `__init__` method where they define:
+
+    - `self.init_parameters = {same parameters that the __init__ method received}`:
+        In this dictionary you can store any state the components wish to be persisted when they are saved.
+        These values will be given to the `__init__` method of a new instance when the pipeline is loaded.
+        Note that by default the `@component` decorator saves the arguments automatically.
+        However, if a component sets their own `init_parameters` manually in `__init__()`, that will be used instead.
+        Note: all of the values contained here **must be JSON serializable**. Serialize them manually if needed.
+
+    Components should take only "basic" Python types as parameters of their `__init__` function, or iterables and
+    dictionaries containing only such values. Anything else (objects, functions, etc) will raise an exception at init
+    time. If there's the need for such values, consider serializing them to a string.
+
+    _(TODO explain how to use classes and functions in init. In the meantime see `test/components/test_accumulate.py`)_
+
+    The `__init__` must be extrememly lightweight, because it's a frequent operation during the construction and
+    validation of the pipeline. If a component has some heavy state to initialize (models, backends, etc...) refer to
+    the `warm_up()` method.
+
+    <hr>
+
+    `warm_up(self)`
+
+    Optional method.
+
+    This method is called by Pipeline before the graph execution. Make sure to avoid double-initializations,
+    because Pipeline will not keep track of which components it called `warm_up()` on.
+
+    <hr>
+
+    `run(self, data)`
+
+    Mandatory method.
+
+    This is the method where the main functionality of the component should be carried out. It's called by
+    `Pipeline.run()`.
+
+    When the component should run, Pipeline will call this method with an instance of the dataclass returned by the
+    method decorated with `@component.input`. This dataclass contains:
+
+    - all the input values coming from other components connected to it,
+    - if any is missing, the corresponding value defined in `self.defaults`, if it exists.
+
+    `run()` must return a single instance of the dataclass declared through the method decorated with
+    `@component.output`.
+
+"""
 
 import logging
 import inspect
@@ -49,61 +115,7 @@ def _prepare_init_params_and_sockets(init_func):
 
 class _Component:
     """
-    Marks a class as a component. Any class decorated with `@component` can be used by a Pipeline.
-
-    All components must follow the contract below. This docstring is the source of truth for components contract.
-
-    ### `@component` decorator
-
-    All component classes must be decorated with the `@component` decorator. This allows Canals to discover them.
-
-    ### `__init__(self, **kwargs)`
-
-    Optional method.
-
-    Components may have an `__init__` method where they define:
-
-    - `self.init_parameters = {same parameters that the __init__ method received}`:
-        In this dictionary you can store any state the components wish to be persisted when they are saved.
-        These values will be given to the `__init__` method of a new instance when the pipeline is loaded.
-        Note that by default the `@component` decorator saves the arguments automatically.
-        However, if a component sets their own `init_parameters` manually in `__init__()`, that will be used instead.
-        Note: all of the values contained here **must be JSON serializable**. Serialize them manually if needed.
-
-    Components should take only "basic" Python types as parameters of their `__init__` function, or iterables and
-    dictionaries containing only such values. Anything else (objects, functions, etc) will raise an exception at init
-    time. If there's the need for such values, consider serializing them to a string.
-
-    _(TODO explain how to use classes and functions in init. In the meantime see `test/components/test_accumulate.py`)_
-
-    The `__init__` must be extrememly lightweight, because it's a frequent operation during the construction and
-    validation of the pipeline. If a component has some heavy state to initialize (models, backends, etc...) refer to
-    the `warm_up()` method.
-
-
-    ### `warm_up(self)`
-
-    Optional method.
-
-    This method is called by Pipeline before the graph execution. Make sure to avoid double-initializations,
-    because Pipeline will not keep track of which components it called `warm_up()` on.
-
-
-    ### `run(self, data)`
-
-    Mandatory method.
-
-    This is the method where the main functionality of the component should be carried out. It's called by
-    `Pipeline.run()`.
-
-    When the component should run, Pipeline will call this method with an instance of the dataclass returned by the
-    method decorated with `@component.input`. This dataclass contains:
-
-    - all the input values coming from other components connected to it,
-    - if any is missing, the corresponding value defined in `self.defaults`, if it exists.
-
-    `run()` must return a single instance of the dataclass declared through the method decorated with
-    `@component.output`.
+    See module's docstring.
 
     Args:
         class_: the class that Canals should use as a component.
