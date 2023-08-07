@@ -1,7 +1,7 @@
 loaders:
-  - type: loaders.CustomPythonLoader
-    search_path: [../../../haystack/nodes/document_classifier]
-    modules: ["transformers"]
+  - type: python
+    search_path: [../../../haystack/nodes/reader]
+    modules: ["base"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,16 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmeRenderer
-  excerpt: Used to create predictions that are attached to documents as metadata.
+  excerpt: Abstract class for Readers.
   category_slug: haystack-classes
-  title: Document Classifier API
-  slug: document-classifier-api
-  order: 20
+  title: Base Reader API
+  slug: base-reader-api
+  order: 162
+  parent_doc_slug: reader-api
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: document_classifier_api.md
+    filename: base_reader_api.md
+

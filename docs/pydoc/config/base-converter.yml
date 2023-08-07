@@ -1,7 +1,7 @@
 loaders:
-  - type: loaders.CustomPythonLoader
-    search_path: [../../../haystack/nodes/document_classifier]
-    modules: ["transformers"]
+  - type: python
+    search_path: [../../../haystack/nodes/file_converter]
+    modules: ["base"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,15 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmeRenderer
-  excerpt: Used to create predictions that are attached to documents as metadata.
+  excerpt: Abstract class for implementing file converters.
   category_slug: haystack-classes
-  title: Document Classifier API
-  slug: document-classifier-api
-  order: 20
+  title: Base Converters API
+  slug: base-converters-api
+  order: 72
+  parent_doc_slug: file-converters-api
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: document_classifier_api.md
+    filename: base_converters_api.md
