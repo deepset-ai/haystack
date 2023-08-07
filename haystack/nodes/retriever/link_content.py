@@ -266,7 +266,7 @@ class LinkContentFetcher(BaseComponent):
     def _switch_user_agent(self, retry_state: RetryCallState) -> None:
         """
         Switches the User-Agent for this LinkContentRetriever to the next one in the list of user agents.
-        :param retry_state: The retry state (unused, required by tenacity)
+        :param retry_state: The retry state (unused, required by tenacity).
         """
         self.current_user_agent = next(self.user_agents)
 
