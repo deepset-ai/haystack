@@ -473,7 +473,6 @@ def test_stop_words_criteria():
     """
     Test that StopWordsCriteria will check stop word tokens in a continuous and sequential order
     """
-    stop_words = ["unambiguously"]
     # input ids for "unambiguously"
     stop_words_id = torch.tensor([[73, 24621, 11937]])
 
@@ -491,13 +490,8 @@ def test_stop_words_criteria():
     # In "This is ambiguously, but is unrelated." sentence the "un" token comes from "unrelated" and the
     # "ambiguously" token comes from "ambiguously". The algorithm below will return True for presence of
     # "unambiguously" in input_ids1 which is not correct.
-    torch_isin1 = all(torch.isin(stop_words_id, input_ids1)[0])
-    torch_isin2 = all(torch.isin(stop_words_id, input_ids2)[0])
-    assert torch_isin1
-    assert torch_isin2
 
-    tokenizer = Mock()
-    stop_words_criteria = StopWordsCriteria(tokenizer=tokenizer, stop_words=stop_words)
+    stop_words_criteria = StopWordsCriteria(tokenizer=Mock(), stop_words=["mock data"])
     # because we are mocking the tokenizer, we need to set the stop words manually
     stop_words_criteria.stop_words = stop_words_id
 
