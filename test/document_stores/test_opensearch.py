@@ -60,6 +60,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         opensearch_mock = MagicMock()
         opensearch_mock.indices.exists.return_value = True
         opensearch_mock.indices.get.return_value = {self.index_name: existing_index}
+        opensearch_mock.info.return_value = {"version": {"number": "1.3.5"}}
         DSMock._init_client = MagicMock()
         DSMock._init_client.configure_mock(return_value=opensearch_mock)
         dsMock = DSMock()

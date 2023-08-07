@@ -1,5 +1,5 @@
 loaders:
-  - type: python
+  - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/nodes/extractor]
     modules: ["entity"]
     ignore_when_discovered: ["__init__"]
@@ -26,4 +26,3 @@ renderer:
     add_method_class_prefix: true
     add_member_class_prefix: false
     filename: entity_extractor_api.md
-

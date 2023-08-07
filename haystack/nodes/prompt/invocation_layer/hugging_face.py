@@ -4,8 +4,8 @@ import os
 
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer.utils import get_task
 from haystack.lazy_imports import LazyImport
-
 
 logger = logging.getLogger(__name__)
 
@@ -16,18 +16,28 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         pipeline,
         StoppingCriteriaList,
         StoppingCriteria,
+        GenerationConfig,
         PreTrainedTokenizer,
         PreTrainedTokenizerFast,
-        GenerationConfig,
+        PreTrainedModel,
         Pipeline,
+        AutoTokenizer,
+        AutoConfig,
+        TOKENIZER_MAPPING,
     )
-    from huggingface_hub import model_info
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
     from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler
 
     class StopWordsCriteria(StoppingCriteria):
         """
         Stops text generation if any one of the stop words is generated.
+
+        Note: When a stop word is encountered, the generation of new text is stopped.
+        However, if the stop word is in the prompt itself, it can stop generating new text
+        prematurely after the first token. This is particularly important for LLMs designed
+        for dialogue generation. For these models, like for example mosaicml/mpt-7b-chat,
+        the output includes both the new text and the original prompt. Therefore, it's important
+        to make sure your prompt has no stop words.
         """
 
         def __init__(
@@ -37,20 +47,12 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
             device: Union[str, torch.device] = "cpu",
         ):
             super().__init__()
-            self.stop_words = tokenizer(stop_words, add_special_tokens=False, return_tensors="pt").to(device)
+            encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
+            self.stop_words = encoded_stop_words.input_ids.to(device)
 
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-            stop_result = torch.isin(self.stop_words["input_ids"], input_ids[-1])
+            stop_result = torch.isin(self.stop_words, input_ids[-1])
             return any(all(stop_word) for stop_word in stop_result)
-
-    def get_task(model: str, use_auth_token: Optional[Union[str, bool]] = None, timeout: float = 3.0) -> Optional[str]:
-        """
-        Simplified version of transformers.pipelines.get_task with support for timeouts
-        """
-        try:
-            return model_info(model, token=use_auth_token, timeout=timeout).pipeline_tag
-        except Exception as e:
-            raise RuntimeError(f"The task of {model} could not be checked because of the following error: {e}") from e
 
 
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
@@ -168,21 +170,35 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         torch_dtype = self._extract_torch_dtype(**kwargs)
         # and the model (prefer model instance over model_name_or_path str identifier)
         model = kwargs.get("model") or kwargs.get("model_name_or_path")
+        trust_remote_code = kwargs.get("trust_remote_code", False)
+        hub_kwargs = {
+            "revision": kwargs.get("revision", None),
+            "use_auth_token": kwargs.get("use_auth_token", None),
+            "trust_remote_code": trust_remote_code,
+        }
+        model_kwargs = kwargs.get("model_kwargs", {})
+        tokenizer = kwargs.get("tokenizer", None)
+
+        if tokenizer is None and trust_remote_code:
+            # For models not yet supported by the transformers library, we must set `trust_remote_code=True` within
+            # the underlying pipeline to ensure the model's successful loading. However, this does not guarantee the
+            # tokenizer will be loaded alongside. Therefore, we need to add additional logic here to manually load the
+            # tokenizer and pass it to transformers' pipleine.
+            # Otherwise, calling `self.pipe.tokenizer.model_max_length` will return an error.
+            tokenizer = self._prepare_tokenizer(model, hub_kwargs, model_kwargs)
 
         pipeline_kwargs = {
             "task": kwargs.get("task", None),
             "model": model,
             "config": kwargs.get("config", None),
-            "tokenizer": kwargs.get("tokenizer", None),
+            "tokenizer": tokenizer,
             "feature_extractor": kwargs.get("feature_extractor", None),
-            "revision": kwargs.get("revision", None),
-            "use_auth_token": kwargs.get("use_auth_token", None),
             "device_map": device_map,
             "device": device,
             "torch_dtype": torch_dtype,
-            "trust_remote_code": kwargs.get("trust_remote_code", False),
-            "model_kwargs": kwargs.get("model_kwargs", {}),
+            "model_kwargs": model_kwargs,
             "pipeline_class": kwargs.get("pipeline_class", None),
+            **hub_kwargs,
         }
         return pipeline_kwargs
 
@@ -237,7 +253,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # Thus only generated text is returned (excluding prompt)
             if is_text_generation and "return_full_text" not in model_input_kwargs:
                 model_input_kwargs["return_full_text"] = False
-                model_input_kwargs["max_new_tokens"] = self.max_length
             if stop_words:
                 sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words, device=self.pipe.device)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
@@ -251,7 +266,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             if is_text_generation:
                 model_input_kwargs["max_new_tokens"] = model_input_kwargs.pop("max_length", self.max_length)
             else:
-                model_input_kwargs["max_length"] = self.max_length
+                model_input_kwargs["max_length"] = model_input_kwargs.pop("max_length", self.max_length)
 
             if stream:
                 stream_handler: TokenStreamingHandler = stream_handler or DefaultTokenStreamingHandler()
@@ -265,7 +280,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # We want to exclude it to be consistent with other invocation layers
             for idx, _ in enumerate(generated_texts):
                 for stop_word in stop_words:
-                    generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
+                    generated_texts[idx] = generated_texts[idx].replace(stop_word, "").rstrip()
         return generated_texts
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
@@ -315,6 +330,44 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 raise ValueError(f"Invalid torch_dtype value {torch_dtype}")
         return torch_dtype_resolved
 
+    def _prepare_tokenizer(
+        self, model: Union[str, "PreTrainedModel"], hub_kwargs: Dict, model_kwargs: Optional[Dict] = None
+    ) -> Union["PreTrainedTokenizer", "PreTrainedTokenizerFast", None]:
+        """
+        This method prepares the tokenizer before passing it to transformers' pipeline, so that the instantiated pipeline
+        object has a working tokenizer.
+
+        It checks whether the pipeline method in the transformers library will load the tokenizer.
+        - If yes, None will be returned, because in this case, the pipeline is intelligent enough to load the tokenizer by itself.
+        - If not, we will load the tokenizer and an tokenizer instance is returned.
+
+        :param model: The name or path of the underlying model.
+        :hub_kwargs: Keyword argument related to hugging face hub, including revision, trust_remote_code and use_auth_token.
+        :model_kwargs: Keyword arguments passed to the underlying model.
+        """
+
+        if isinstance(model, str):
+            model_config = AutoConfig.from_pretrained(model, **hub_kwargs, **model_kwargs)
+        else:
+            model_config = model.config
+            model = model_config._name_or_path
+        # the will_load_tokenizer logic corresponds to this line in transformers library
+        # https://github.com/huggingface/transformers/blob/05cda5df3405e6a2ee4ecf8f7e1b2300ebda472e/src/transformers/pipelines/__init__.py#L805
+        will_load_tokenizer = type(model_config) in TOKENIZER_MAPPING or model_config.tokenizer_class is not None
+        if not will_load_tokenizer:
+            logger.warning(
+                "The transformers library doesn't know which tokenizer class should be "
+                "loaded for the model %s. Therefore, the tokenizer will be loaded in Haystack's "
+                "invocation layer and then passed to the underlying pipeline. Alternatively, you could "
+                "pass `tokenizer_class` to `model_kwargs` to workaround this, if your tokenizer is supported "
+                "by the transformers library.",
+                model,
+            )
+            tokenizer = AutoTokenizer.from_pretrained(model, **hub_kwargs, **model_kwargs)
+        else:
+            tokenizer = None
+        return tokenizer
+
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         task_name: Optional[str] = kwargs.get("task_name", None)
@@ -327,5 +380,5 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # This will fail for all non-HF models
             return False
         # if we are using an api_key it could be HF inference point
-        using_api_key = kwargs.get("api_key", None) is not None
+        using_api_key = bool(kwargs.get("api_key", None))
         return not using_api_key and task_name in ["text2text-generation", "text-generation"]
