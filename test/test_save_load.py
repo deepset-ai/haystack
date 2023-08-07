@@ -292,7 +292,6 @@ def test_cleanup_marshalled_data():
     }
 
 
-@pytest.mark.skip
 def test_unmarshal_pipelines():
     data = {
         "components": {
@@ -310,7 +309,7 @@ def test_unmarshal_pipelines():
         "pipelines": {
             "pipe1": {
                 "metadata": {"type": "test pipeline", "author": "me"},
-                "max_loops_allowed": 100,
+                "max_loops_allowed": 42,
                 "connections": [
                     {"sender": "first_addition.result", "receiver": "double.value"},
                     {"sender": "double.value", "receiver": "second_addition.value"},
@@ -318,8 +317,7 @@ def test_unmarshal_pipelines():
                 ],
             },
             "pipe2": {
-                "metadata": {"type": "another test pipeline", "author": "you"},
-                "max_loops_allowed": 100,
+                "metadata": {"author": "you"},
                 "connections": [
                     {"sender": "first_addition.result", "receiver": "double.value"},
                     {"sender": "double.value", "receiver": "second_addition.value"},
@@ -328,55 +326,49 @@ def test_unmarshal_pipelines():
         },
     }
     pipelines = unmarshal_pipelines(data)
+    assert len(pipelines) == 2
 
     pipe1 = pipelines["pipe1"]
     assert pipe1.metadata == {"type": "test pipeline", "author": "me"}
+    assert pipe1.max_loops_allowed == 42
 
-    first_addition = pipe1.get_component("first_addition")
-    assert type(first_addition) == AddFixedValue
-    assert pipe1.graph.nodes["first_addition"]["instance"].add == 300
+    components1 = dict(pipe1.graph.nodes(data="instance"))
+    assert len(components1) == 4
 
-    second_addition = pipe1.get_component("second_addition")
-    assert type(second_addition) == AddFixedValue
-    assert pipe1.graph.nodes["second_addition"]["instance"].add == 1
-    assert second_addition != first_addition
+    assert isinstance(components1["first_addition"], AddFixedValue)
+    assert components1["first_addition"].add == 200
 
-    third_addition = pipe1.get_component("third_addition")
-    assert type(third_addition) == AddFixedValue
-    assert pipe1.graph.nodes["third_addition"]["instance"].add == 300
-    assert third_addition == first_addition
+    assert isinstance(components1["double"], Double)
 
-    double = pipe1.get_component("double")
-    assert type(double) == Double
+    assert isinstance(components1["second_addition"], AddFixedValue)
+    assert components1["second_addition"].add == 1
 
-    assert list(pipe1.graph.edges) == [
-        ("first_addition", "double", "result/value"),
-        ("double", "second_addition", "value/value"),
-        ("second_addition", "third_addition", "result/value"),
-    ]
+    assert isinstance(components1["third_addition"], AddFixedValue)
+    assert components1["third_addition"].add == 200
+    assert components1["third_addition"] is components1["first_addition"]
+
+    connections1 = list(pipe1.graph.edges)
+    assert len(connections1) == 3
+    assert connections1[0] == ("first_addition", "double", "result/value")
+    assert connections1[1] == ("double", "second_addition", "value/value")
+    assert connections1[2] == ("second_addition", "third_addition", "result/value")
 
     pipe2 = pipelines["pipe2"]
-    assert pipe2.metadata == {"type": "another test pipeline", "author": "you"}
+    assert pipe2.metadata == {"author": "you"}
+    assert pipe2.max_loops_allowed == 100
 
-    first_addition_2 = pipe2.get_component("first_addition")
-    assert type(first_addition_2) == AddFixedValue
-    assert pipe2.graph.nodes["first_addition"]["instance"].add == 300
-    assert first_addition_2 == first_addition
+    components2 = dict(pipe2.graph.nodes(data="instance"))
+    assert len(components2) == 3
 
-    second_addition_2 = pipe2.get_component("second_addition")
-    assert type(second_addition_2) == AddFixedValue
-    assert pipe2.graph.nodes["second_addition"]["instance"].add == 1
-    assert second_addition_2 != first_addition_2
-    assert second_addition_2 == second_addition
+    assert isinstance(components2["first_addition"], AddFixedValue)
+    assert components2["first_addition"].add == 200
 
-    with pytest.raises(ValueError):
-        pipe2.get_component("third_addition")
+    assert isinstance(components1["double"], Double)
 
-    double_2 = pipe2.get_component("double")
-    assert type(double_2) == Double
-    assert double_2 != double
+    assert isinstance(components1["second_addition"], AddFixedValue)
+    assert components1["second_addition"].add == 1
 
-    assert list(pipe2.graph.edges) == [
-        ("first_addition", "double", "result/value"),
-        ("double", "second_addition", "value/value"),
-    ]
+    connections2 = list(pipe2.graph.edges)
+    assert len(connections2) == 2
+    assert connections2[0] == ("first_addition", "double", "result/value")
+    assert connections2[1] == ("double", "second_addition", "value/value")
