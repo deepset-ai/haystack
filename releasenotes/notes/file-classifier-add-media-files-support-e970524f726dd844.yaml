@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add FileTypeClassifier detection for media file types (mp3, mp4, mpeg, m4a etc.)
