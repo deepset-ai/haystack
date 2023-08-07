@@ -585,9 +585,12 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :param kwargs: Keyword arguments to remove template parameters from.
         :return: A modified dictionary with the template parameters removed.
         """
-        for param in self.prompt_params:
-            kwargs.pop(param, None)
-        return kwargs
+        if kwargs:
+            for param in self.prompt_params:
+                kwargs.pop(param, None)
+            return kwargs
+        else:
+            return {}
 
     def __repr__(self):
         return f"PromptTemplate(name={self.name}, prompt_text={self.prompt_text}, prompt_params={self.prompt_params})"
