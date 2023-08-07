@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/nodes/reader]
-    modules: ["base", "farm", "transformers", "table"]
+    modules: ["farm", "transformers", "table"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
