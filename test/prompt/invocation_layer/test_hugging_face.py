@@ -482,20 +482,33 @@ def test_stop_words_criteria():
     # input ids for "This is unambiguously"
     input_ids2 = torch.tensor([[100, 19, 73, 24621, 11937]])
 
+    # We used to implement stop words algorithm using the torch.isin function as below.
+    # However, this algorithm is not correct as it will return True for presence of "unambiguously" in input_ids1
+    # and True for presence of "unambiguously" in input_ids2. This is because the algorithm below will check
+    # if the stop word tokens are present in the input_ids, but it does not check if the stop word tokens are
+    # present in a continuous/sequential order.
+
+    # In "This is ambiguously, but is unrelated." sentence the "un" token comes from "unrelated" and the
+    # "ambiguously" token comes from "ambiguously". The algorithm below will return True for presence of
+    # "unambiguously" in input_ids1 which is not correct.
     torch_isin1 = all(torch.isin(stop_words_id, input_ids1)[0])
     torch_isin2 = all(torch.isin(stop_words_id, input_ids2)[0])
-    assert torch_isin1 == True
-    assert torch_isin2 == True
+    assert torch_isin1
+    assert torch_isin2
 
     tokenizer = Mock()
-
     stop_words_criteria = StopWordsCriteria(tokenizer=tokenizer, stop_words=stop_words)
+    # because we are mocking the tokenizer, we need to set the stop words manually
     stop_words_criteria.stop_words = stop_words_id
 
-    result1 = stop_words_criteria(input_ids1, scores=None)
-    result2 = stop_words_criteria(input_ids2, scores=None)
-    assert result1 == False
-    assert result2 == True
+    # this is the correct algorithm to check if the stop word tokens are present in a continuous and sequential order
+    # For the input_ids1, the stop word tokens are present BUT not in a continuous order
+    present_and_continuous = stop_words_criteria(input_ids1, scores=None)
+    assert not present_and_continuous
+
+    # For the input_ids2, the stop word tokens are both present and in a continuous order
+    present_and_continuous = stop_words_criteria(input_ids2, scores=None)
+    assert present_and_continuous
 
 
 @pytest.mark.integration
