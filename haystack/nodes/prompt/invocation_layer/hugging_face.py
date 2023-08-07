@@ -61,7 +61,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
             generated_text_ids = generated_text_ids[-1]
             len_generated_text_ids = generated_text_ids.size(0)
             len_stop_word = stop_word.size(0)
-            result = generated_text_ids[len_generated_text_ids - len_stop_word :].eq(stop_word).all().item()
+            result = all(generated_text_ids[len_generated_text_ids - len_stop_word :].eq(stop_word))
             return result
 
 
