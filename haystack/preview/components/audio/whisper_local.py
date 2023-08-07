@@ -23,7 +23,12 @@ class LocalWhisperTranscriber:
     [github repo](https://github.com/openai/whisper).
     """
 
-    def __init__(self, model_name_or_path: WhisperLocalModel = "large", device: Optional[str] = None):
+    def __init__(
+        self,
+        model_name_or_path: WhisperLocalModel = "large",
+        device: Optional[str] = None,
+        whisper_params: Optional[Dict[str, Any]] = None,
+    ):
         """
         :param model_name_or_path: Name of the model to use. Set it to one of the following values:
             - `tiny`
@@ -39,6 +44,7 @@ class LocalWhisperTranscriber:
                 f"{', '.join(get_args(WhisperLocalModel))}."
             )
         self.model_name = model_name_or_path
+        self.whisper_params = whisper_params or {}
         self.device = torch.device(device) if device else torch.device("cpu")
         self._model = None
 
@@ -64,8 +70,8 @@ class LocalWhisperTranscriber:
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
         """
-        if not whisper_params:
-            whisper_params = {}
+        whisper_params = whisper_params if whisper_params is not None else self.whisper_params
+
         documents = self.transcribe(audio_files, **whisper_params)
         return {"documents": documents}
 

@@ -29,7 +29,11 @@ class RemoteWhisperTranscriber:
     """
 
     def __init__(
-        self, api_key: str, model_name: WhisperRemoteModel = "whisper-1", api_base: str = "https://api.openai.com/v1"
+        self,
+        api_key: str,
+        model_name: WhisperRemoteModel = "whisper-1",
+        api_base: str = "https://api.openai.com/v1",
+        whisper_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Transcribes a list of audio files into a list of Documents.
@@ -47,6 +51,7 @@ class RemoteWhisperTranscriber:
 
         self.api_key = api_key
         self.api_base = api_base
+        self.whisper_params = whisper_params or {}
 
         self.model_name = model_name
 
@@ -65,8 +70,8 @@ class RemoteWhisperTranscriber:
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
         """
-        if not whisper_params:
-            whisper_params = {}
+        whisper_params = whisper_params if whisper_params is not None else self.whisper_params
+
         documents = self.transcribe(audio_files, **whisper_params)
         return {"documents": documents}
 
