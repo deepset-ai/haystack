@@ -219,10 +219,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         stream = stream or stream_handler is not None
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
-            # remove parameters that are not accepted by the transformers' pipeline
-            kwargs.pop("documents", None)
-            kwargs.pop("query", None)
-
             model_input_kwargs = kwargs.copy()
             generation_kwargs = model_input_kwargs.pop("generation_kwargs", self.generation_kwargs)
             if isinstance(generation_kwargs, dict):
