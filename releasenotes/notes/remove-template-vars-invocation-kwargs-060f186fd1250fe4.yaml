@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Remove template variables from invocation layer kwargs
