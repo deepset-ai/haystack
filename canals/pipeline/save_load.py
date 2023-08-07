@@ -4,10 +4,11 @@
 
 # pylint: disable=protected-access
 
-from typing import Dict, List, Any, Tuple
+from typing import Dict, Any, List
 import json
 import logging
 from pathlib import Path
+from collections import OrderedDict
 
 from canals.component.component import component
 from canals.pipeline.pipeline import Pipeline
@@ -67,44 +68,126 @@ def marshal_pipelines(pipelines: Dict[str, Pipeline]) -> Dict[str, Any]:
         A Python dictionary representing the Pipelines objects above, that can be written to JSON and can be reused to
         recreate the original Pipelines.
     """
-    schema: Dict[str, Any] = {}
+    schema = {}
+    schema["pipelines"] = {name: p.to_dict() for name, p in pipelines.items()}
 
-    # Summarize pipeline configuration
-    components: List[Tuple[str, str, Any]] = []
-    schema["pipelines"] = {}
-    for pipeline_name, pipeline in pipelines.items():
-        pipeline_repr: Dict[str, Any] = {}
-        pipeline_repr["metadata"] = pipeline.metadata
-        pipeline_repr["max_loops_allowed"] = pipeline.max_loops_allowed
+    # Mapping of each name to a list of instance hashes.
+    # This let us know if a name refers to different components.
+    name_to_hashes: Dict[str, List[int]] = {}
+    # Mapping of each component hash to its component.
+    # Not strictly necessary but makes it faster to get a component.
+    hash_to_component: Dict[int, Dict[str, Any]] = {}
 
-        # Collect components
-        pipeline_repr["components"] = {}
-        for component_name in pipeline.graph.nodes:
-            # Check if we saved the same instance twice (or more times) and replace duplicates with references.
-            component_instance = pipeline.graph.nodes[component_name]["instance"]
-            for existing_component_pipeline, existing_component_name, existing_components in components:
-                if component_instance == existing_components:
-                    # Build the pointer - done this way to support languages with no pointer syntax (e.g. JSON)
-                    pipeline_repr["components"][component_name] = {
-                        "refer_to": f"{existing_component_pipeline}.{existing_component_name}"
-                    }
-                    break
+    for pipeline in schema["pipelines"].values():
+        for comp_name, comp_data in OrderedDict(pipeline["components"]).items():
+            if comp_name not in name_to_hashes:
+                name_to_hashes[comp_name] = []
+            hash_ = comp_data["hash"]
+            if hash_ not in name_to_hashes[comp_name]:
+                name_to_hashes[comp_name].append(hash_)
 
-            # If no pointer was made in the previous step
-            if not component_name in pipeline_repr["components"]:
-                # Save the components in the global components list
-                components.append((pipeline_name, component_name, component_instance))
-                # Serialize the components
-                component_repr = {
-                    "type": component_instance.__class__.__name__,
-                    "init_parameters": component_instance.init_parameters,
-                }
-                pipeline_repr["components"][component_name] = component_repr
+            hash_to_component[hash_] = comp_data
 
-        pipeline_repr["connections"] = list(pipeline.graph.edges)
-        schema["pipelines"][pipeline_name] = pipeline_repr
+    connections_renames = {}
+    schema["components"] = {}
+
+    for name, hashes in name_to_hashes.items():
+        if len(hashes) > 1:
+            # Multiple different instances with this name, we rename them
+            for index, hash_ in enumerate(hashes):
+                new_name = f"{name}_{index+1}"
+                connections_renames[new_name] = name
+                schema["components"][new_name] = hash_to_component[hash_]
+            continue
+
+        hash_ = list(hashes)[0]
+        schema["components"][name] = hash_to_component[hash_]
+
+    _rename_connections(schema, connections_renames)
+    _remove_duplicate_instances(schema["components"])
+    _cleanup_marshalled_data(schema)
 
     return schema
+
+
+def _rename_connections(data: Dict[str, Any], renames: Dict[str, str]):
+    """
+    Rename all connections of all Pipelines found in data using renames.
+    """
+    for new_name, old_name in renames.items():
+        for pipe in data["pipelines"].values():
+            if old_name not in pipe["components"]:
+                # The component to rename is not in this pipeline
+                continue
+
+            if pipe["components"][old_name]["hash"] != data["components"][new_name]["hash"]:
+                # The name matches but it's another instance, it will be renamed to
+                # some other name
+                continue
+
+            for connection in pipe["connections"]:
+                # We split from the right just in case there is a dot in the
+                # component name, socket names shouldn't contain names so it's
+                # less risky this way.
+                sender = connection["sender"].rsplit(".", maxsplit=1)
+                receiver = connection["receiver"].rsplit(".", maxsplit=1)
+                if sender[0] == old_name:
+                    sender[0] = sender[0].replace(old_name, new_name)
+                if receiver[0] == old_name:
+                    receiver[0] = receiver[0].replace(old_name, new_name)
+                connection["sender"] = ".".join(sender)
+                connection["receiver"] = ".".join(receiver)
+
+
+def _remove_duplicate_instances(components: Dict[str, Any]):
+    """
+    Remove duplicate declaration of the same component instance.
+    If two or more components have the same hash remove all duplicates
+    and point them to a single component.
+
+    A structure like this:
+    ```
+    {
+        "comp1": {"hash": 123, ...},
+        "comp2": {"hash": 123, ...},
+        "comp3": {"hash": 456, ...}
+    }
+    ```
+
+    will become:
+    ```
+    {
+        "comp1": {"hash": 123, ...},
+        "comp2": "comp1",
+        "comp3": {"hash": 456, ...}
+    }
+    ```
+    """
+    for comp_name, comp in components.items():
+        if isinstance(comp, str):
+            # This component is just a pointer to another one
+            continue
+        for other_comp_name, other_comp in components.items():
+            if other_comp_name == comp_name:
+                # It's the same component, skip it
+                continue
+            if isinstance(other_comp, str):
+                # This component is just a pointer to another one
+                continue
+            if other_comp["hash"] == comp["hash"]:
+                components[other_comp_name] = comp_name
+
+
+def _cleanup_marshalled_data(schema: Dict[str, Any]):
+    # Delete components declared in each pipeline, connections are enough
+    # since we're declaring components globally
+    for pipe in schema["pipelines"].values():
+        del pipe["components"]
+
+    # Delete components hashes, we don't need them anymore
+    for comp in schema["components"].values():
+        if isinstance(comp, dict):
+            del comp["hash"]
 
 
 def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:  # pylint: disable=too-many-locals
