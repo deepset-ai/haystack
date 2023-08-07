@@ -37,6 +37,7 @@ nav:
       - Components: concepts/components.md
       - Pipelines: concepts/pipelines.md
     - API Docs:
-      - Pipeline: api-docs/pipeline.md
+      - Canals: api-docs/canals.md
       - Component: api-docs/component.md
-      - Draw: api-docs/draw.md
+      - Pipeline: api-docs/pipeline.md
+      - Testing: api-docs/testing.md
