@@ -467,13 +467,35 @@ def test_stop_words_multiple_token(stop_words: List[str]):
     assert "good" not in result[0]
     assert "health" not in result[0]
 
-    if stop_words == ["unambiguously"]:
-        result = layer.invoke(
-            prompt="Generate a sentence `This is unrelated, but is ambiguously. So unambiguously.`",
-            stop_words=stop_words,
-        )
-        assert len(result) > 0
-        assert "So" in result[0]
+
+@pytest.mark.unit
+def test_stop_words_criteria():
+    """
+    Test that StopWordsCriteria will check stop word tokens in a continuous and sequential order
+    """
+    stop_words = ["unambiguously"]
+    # input ids for "unambiguously"
+    stop_words_id = torch.tensor([[73, 24621, 11937]])
+
+    # input ids for "This is ambiguously, but is unrelated."
+    input_ids1 = torch.tensor([[100, 19, 24621, 11937, 6, 68, 19, 73, 3897, 5]])
+    # input ids for "This is unambiguously"
+    input_ids2 = torch.tensor([[100, 19, 73, 24621, 11937]])
+
+    torch_isin1 = all(torch.isin(stop_words_id, input_ids1)[0])
+    torch_isin2 = all(torch.isin(stop_words_id, input_ids2)[0])
+    assert torch_isin1 == True
+    assert torch_isin2 == True
+
+    tokenizer = Mock()
+
+    stop_words_criteria = StopWordsCriteria(tokenizer=tokenizer, stop_words=stop_words)
+    stop_words_criteria.stop_words = stop_words_id
+
+    result1 = stop_words_criteria(input_ids1, scores=None)
+    result2 = stop_words_criteria(input_ids2, scores=None)
+    assert result1 == False
+    assert result2 == True
 
 
 @pytest.mark.integration
