@@ -1,8 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../haystack/nodes/file_converter]
-    modules:
-      ["base"]
+    modules: ["base"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
