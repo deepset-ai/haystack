@@ -481,7 +481,8 @@ def test_stop_words_criteria():
     # input ids for "This is unambiguously"
     input_ids2 = torch.tensor([[100, 19, 73, 24621, 11937]])
 
-    # We used to implement stop words algorithm using the torch.isin function like `all(torch.isin(stop_words_id, input_ids1)[0])`
+    # We used to implement stop words algorithm using the torch.isin function like this:
+    # `all(torch.isin(stop_words_id, input_ids1)[0])`
     # However, this algorithm is not correct as it will return True for presence of "unambiguously" in input_ids1
     # and True for presence of "unambiguously" in input_ids2. This is because the algorithm will check
     # if the stop word tokens are present in the input_ids, but it does not check if the stop word tokens are
