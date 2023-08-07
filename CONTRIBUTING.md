@@ -202,7 +202,7 @@ Tests will automatically run in our CI for every commit you push to your PR on G
 way and we encourage you to create early "draft pull requests" to leverage the CI at an early stage.
 
 Tests can also be executed locally, by launching `pytest` from the `/test` folder (this is important because running from the
-root folder would also execute the ui and rest API tests, that require specific dependencies).
+root folder would also execute the rest API tests, that require specific dependencies).
 
 You can control which tests to run using Pytest markers, let's see how.
 
@@ -356,12 +356,12 @@ You can run it with `python -m black .` from the root folder.
 ### Mypy
 Mypy currently runs with limited configuration options that can be found at the bottom of `pyproject.toml`.
 
-You can run it with `python -m mypy haystack/ rest_api/ ui/` from the root folder.
+You can run it with `python -m mypy haystack/ rest_api/` from the root folder.
 
 ### Pylint
 Pylint is still being integrated in Haystack. The current exclusion list is very long, and can be found in `pyproject.toml`.
 
-You can run it with `python -m pylint haystack/ rest_api/ ui/ -ry` from the root folder.
+You can run it with `python -m pylint haystack/ rest_api/ -ry` from the root folder.
 
 
 ## Contributor Licence Agreement (CLA)

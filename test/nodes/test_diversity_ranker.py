@@ -231,3 +231,37 @@ def test_predict_real_world_use_case(similarity: str):
     result = ranker.predict(query=query, documents=documents)
     expected_order = [doc5, doc7, doc3, doc1, doc4, doc2, doc6, doc8]
     assert result == expected_order
+
+
+@pytest.mark.integration
+def test_diversity_ranker_with_top_k():
+    # Tests that predict method returns the correct order of documents
+    ranker = DiversityRanker(similarity="cosine", top_k=1)
+    query = "test"
+    documents = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
+    result = ranker.predict(query=query, documents=documents)
+    assert len(result) == 1
+
+
+@pytest.mark.integration
+def test_diversity_ranker_with_top_k_edge():
+    # Tests that predict method returns the correct order of documents for edge cases
+    ranker = DiversityRanker(similarity="cosine", top_k=5)
+    query = "test"
+    documents = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
+    result = ranker.predict(query=query, documents=documents)
+    assert len(result) == 3
+
+    # negative top_k should return empty list
+    ranker = DiversityRanker(similarity="cosine", top_k=-5)
+    query = "test"
+    documents = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
+    result = ranker.predict(query=query, documents=documents)
+    assert len(result) == 0
+
+    # we know None is ignored in slice notation, but let's make sure it works
+    ranker = DiversityRanker(similarity="cosine", top_k=None)
+    query = "test"
+    documents = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
+    result = ranker.predict(query=query, documents=documents)
+    assert len(result) == 3

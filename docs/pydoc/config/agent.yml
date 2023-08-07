@@ -1,5 +1,5 @@
 loaders:
-  - type: python
+  - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/agents]
     modules: ['base', 'conversational', 'utils', 'agent_step', 'memory/conversation_memory', 'memory/conversation_summary_memory']
     ignore_when_discovered: ['__init__']
