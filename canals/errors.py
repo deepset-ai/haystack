@@ -31,3 +31,7 @@ class PipelineUnmarshalError(PipelineError):
 
 class ComponentError(Exception):
     pass
+
+
+class ComponentDeserializationError(Exception):
+    pass

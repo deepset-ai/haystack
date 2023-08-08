@@ -70,10 +70,10 @@
 
 import logging
 import inspect
-from typing import Protocol, Union, Dict, Any, get_origin, get_args
+from typing import Protocol, Union, Dict, Type, Any, get_origin, get_args
 from functools import wraps
 
-from canals.errors import ComponentError
+from canals.errors import ComponentError, ComponentDeserializationError
 
 
 logger = logging.getLogger(__name__)
@@ -94,6 +94,17 @@ class Component(Protocol):  # pylint: disable=too-few-public-methods
         Inputs are defined explicitly by the run method's signature or with `component.set_input_types()` if dynamic.
         Outputs are defined by decorating the run method with `@component.output_types()`
         or with `component.set_output_types()` if dynamic.
+        """
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+        """
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Component":
+        """
+        Deserializes the component from a dictionary.
         """
 
 
@@ -268,6 +279,12 @@ class _Component:
 
         setattr(class_, "__canals_component__", True)
 
+        if not hasattr(class_, "to_dict"):
+            class_.to_dict = _default_component_to_dict
+
+        if not hasattr(class_, "from_dict"):
+            class_.from_dict = classmethod(_default_component_from_dict)
+
         return class_
 
     def __call__(self, class_=None):
@@ -286,3 +303,28 @@ def _is_optional(type_: type) -> bool:
     Utility method that returns whether a type is Optional.
     """
     return get_origin(type_) is Union and type(None) in get_args(type_)
+
+
+def _default_component_to_dict(comp: Component) -> Dict[str, Any]:
+    """
+    Default component serializer.
+    Serializes a component to a dictionary.
+    """
+    return {
+        "hash": id(comp),
+        "type": comp.__class__.__name__,
+        "init_parameters": getattr(comp, "init_parameters", {}),
+    }
+
+
+def _default_component_from_dict(cls: Type[Component], data: Dict[str, Any]) -> Component:
+    """
+    Default component deserializer.
+    The "type" field in `data` must match the class that is being deserialized into.
+    """
+    init_params = data.get("init_parameters", {})
+    if "type" not in data:
+        raise ComponentDeserializationError("Missing 'type' in component serialization data")
+    if data["type"] != cls.__name__:
+        raise ComponentDeserializationError(f"Component '{data['type']}' can't be deserialized as '{cls.__name__}'")
+    return cls(**init_params)
