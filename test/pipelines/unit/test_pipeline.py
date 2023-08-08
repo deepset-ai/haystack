@@ -63,11 +63,7 @@ def test_to_dict():
             {"sender": "double.value", "receiver": "add_default.value"},
         ],
     }
-    assert res.keys() == expected.keys()
-    assert res["metadata"] == expected["metadata"]
-    assert res["max_loops_allowed"] == expected["max_loops_allowed"]
-    assert res["components"] == expected["components"]
-    assert res["connections"] == expected["connections"]
+    assert res == expected
 
 
 def test_from_dict():
