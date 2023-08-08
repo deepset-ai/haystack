@@ -44,7 +44,7 @@ def pdf_content_handler(response: Response) -> Optional[str]:
     """
     file_path = io.BytesIO(response.content)
     with fitz.open(stream=file_path, filetype="pdf") as doc:
-        text = chr(12).join([page.get_text() for page in doc])
+        text = "\f".join([page.get_text() for page in doc])
 
     return text.encode("ascii", errors="ignore").decode()
 
