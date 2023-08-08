@@ -1,7 +1,7 @@
 loaders:
-  - type: python
+  - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/nodes/preprocessor]
-    modules: ["base", "preprocessor"]
+    modules: ["preprocessor"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -24,4 +24,3 @@ renderer:
     add_method_class_prefix: true
     add_member_class_prefix: false
     filename: preprocessor_api.md
-

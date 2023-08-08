@@ -2,12 +2,13 @@ from typing import Any, Optional, Dict, List
 
 import pytest
 
-from haystack.preview import Pipeline, component, NoSuchStoreError, Document
+from haystack.preview import Pipeline, component, store, NoSuchStoreError, Document
 from haystack.preview.pipeline import NotAStoreError
 from haystack.preview.document_stores import StoreAwareMixin, DuplicatePolicy, Store
 
 
 # Note: we're using a real class instead of a mock because mocks don't play too well with protocols.
+@store
 class MockStore:
     def count_documents(self) -> int:
         return 0
@@ -38,7 +39,7 @@ def test_add_store():
 def test_add_store_wrong_object():
     pipe = Pipeline()
 
-    with pytest.raises(NotAStoreError, match="does not respect the Store Protocol"):
+    with pytest.raises(NotAStoreError, match="'str' is not decorated with @store,"):
         pipe.add_store(name="store", store="I'm surely not a Store object!")
 
 

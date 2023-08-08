@@ -1,10 +1,10 @@
 loaders:
-  - type: python
-    search_path: [../../../haystack/document_stores]
+  - type: loaders.CustomPythonLoader
+    search_path: [../../../haystack/document_stores, ../../../haystack/document_stores/elasticsearch]
     modules:
       [
-        "base",
-        "elasticsearch",
+        "es7",
+        "es8",
         "opensearch",
         "memory",
         "sql",
@@ -13,6 +13,7 @@ loaders:
         "deepsetcloud",
         "pinecone",
         "search_engine",
+        "elasticsearch.base",
         "utils",
       ]
     ignore_when_discovered: ["__init__"]

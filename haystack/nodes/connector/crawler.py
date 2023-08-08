@@ -9,19 +9,16 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Set
 from urllib.parse import urlparse
 
-from haystack.errors import NodeError
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install farm-haystack[crawler]'") as selenium_import:
     from selenium import webdriver
-    from selenium.common.exceptions import StaleElementReferenceException, WebDriverException
+    from selenium.common.exceptions import StaleElementReferenceException
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.common.by import By
-    from webdriver_manager.chrome import ChromeDriverManager
-
 
 logger = logging.getLogger(__name__)
 
@@ -109,8 +106,10 @@ class Crawler(BaseComponent):
         if webdriver_options is None:
             webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
         webdriver_options.append("--headless")
+        if IS_ROOT or IN_WINDOWS or IN_COLAB:
+            webdriver_options.append("--no-sandbox")
         if IS_ROOT or IN_WINDOWS:
-            webdriver_options.extend(["--no-sandbox", "--remote-debugging-port=9222"])
+            webdriver_options.append("--remote-debugging-port=9222")
         if IN_COLAB or IN_AZUREML:
             webdriver_options.append("--disable-dev-shm-usage")
 
@@ -118,50 +117,7 @@ class Crawler(BaseComponent):
         for option in set(webdriver_options):
             options.add_argument(option)
 
-        if IN_COLAB:
-            try:
-                self.driver = webdriver.Chrome(service=Service("chromedriver"), options=options)
-            except WebDriverException as exc:
-                raise NodeError(
-                    """
-        \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
-                        %%shell
-                        cat > /etc/apt/sources.list.d/debian.list <<'EOF'
-                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster.gpg] http://deb.debian.org/debian buster main
-                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster-updates.gpg] http://deb.debian.org/debian buster-updates main
-                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-security-buster.gpg] http://deb.debian.org/debian-security buster/updates main
-                        EOF
-
-                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys DCC9EFBF77E11517
-                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648ACFD622F3D138
-                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 112695A0E562B32A
-                        apt-key export 77E11517 | gpg --dearmour -o /usr/share/keyrings/debian-buster.gpg
-                        apt-key export 22F3D138 | gpg --dearmour -o /usr/share/keyrings/debian-buster-updates.gpg
-                        apt-key export E562B32A | gpg --dearmour -o /usr/share/keyrings/debian-security-buster.gpg
-
-                        cat > /etc/apt/preferences.d/chromium.pref << 'EOF'
-                        Package: *
-                        Pin: release a=eoan
-                        Pin-Priority: 500
-
-
-                        Package: *
-                        Pin: origin "deb.debian.org"
-                        Pin-Priority: 300
-
-
-                        Package: chromium*
-                        Pin: origin "deb.debian.org"
-                        Pin-Priority: 700
-                        EOF
-
-                        apt-get update
-                        apt-get install chromium chromium-driver
-        If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
-                ) from exc
-        else:
-            logger.info("'chrome-driver' will be automatically installed.")
-            self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        self.driver = webdriver.Chrome(service=Service(), options=options)
         self.urls = urls
         self.crawler_depth = crawler_depth
         self.filter_urls = filter_urls
