@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Union, Dict, Optional
+from typing import List, Union, Optional
 from dataclasses import make_dataclass
 
 from haystack.preview import component
