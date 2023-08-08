@@ -270,7 +270,7 @@ def test_from_dict_without_component_type():
     with pytest.raises(PipelineError) as err:
         Pipeline.from_dict(data)
 
-    err.match("Missing 'type' in component: {'hash': '123', 'init_parameters': {'add': 2}}")
+    err.match("Missing 'type' in component 'add_two'")
 
 
 def test_from_dict_without_registered_component_type(request):
@@ -290,7 +290,7 @@ def test_from_dict_without_registered_component_type(request):
     with pytest.raises(PipelineError) as err:
         Pipeline.from_dict(data)
 
-    err.match(f"Component '{request.node.name}' not found imported.")
+    err.match(f"Component '{request.node.name}' not imported.")
 
 
 def test_from_dict_without_connection_sender():

@@ -152,9 +152,9 @@ class Pipeline:
                 instance = components_to_reuse[name]
             else:
                 if "type" not in component_data:
-                    raise PipelineError(f"Missing 'type' in component: {component_data}")
+                    raise PipelineError(f"Missing 'type' in component '{name}'")
                 if component_data["type"] not in component.registry:
-                    raise PipelineError(f"Component '{component_data['type']}' not found imported.")
+                    raise PipelineError(f"Component '{component_data['type']}' not imported.")
                 # Create a new one
                 instance = component.registry[component_data["type"]].from_dict(component_data)
             pipe.add_component(name=name, instance=instance)
