@@ -1,7 +1,10 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from canals.pipeline import Pipeline, save_pipelines, load_pipelines
+import json
+
+from canals.pipeline import Pipeline
+
 
 #
 # TODO right now the tests iterate on components, so it's not always clear which component fails the tests.
@@ -18,9 +21,8 @@ class BaseTestComponent:  # pylint: disable=too-few-public-methods
         """
         pipe = Pipeline()
         pipe.add_component("component", component)
-        save_pipelines({"pipe": pipe}, tmp_path / "test_pipe.json")
-
-        loaded_pipes = load_pipelines(tmp_path / "test_pipe.json")
-        new_pipe = loaded_pipes["pipe"]
-
-        assert pipe == new_pipe
+        data = pipe.to_dict()
+        test_file = tmp_path / "test_pipe.json"
+        test_file.write_text(json.dumps(data))
+        data = json.loads(test_file.read_text())
+        assert pipe == Pipeline.from_dict(data)
