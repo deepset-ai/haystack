@@ -237,6 +237,7 @@ class LinkContentFetcher(BaseComponent):
             stop=stop_after_attempt(self.retry_attempts),
             wait=wait_exponential(multiplier=1, min=2, max=10),
             retry=(retry_if_exception_type((HTTPError, requests.RequestException))),
+            # This method is invoked only after failed requests
             after=self._switch_user_agent,
         )
         def _request():
