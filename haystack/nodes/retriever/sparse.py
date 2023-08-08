@@ -33,11 +33,7 @@ class BM25Retriever(BaseRetriever):
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
                                      Defaults to False.
-        :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
-
-                             Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
-                             that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
-                             names must match with the filters dict supplied in self.retrieve().
+        :param custom_query: The query string containing a mandatory `${query}` and an optional `${filters}` placeholder.
 
                                 **An example custom_query:**
 
@@ -50,17 +46,13 @@ class BM25Retriever(BaseRetriever):
                                                 "query": ${query},                 // mandatory query placeholder
                                                 "type": "most_fields",
                                                 "fields": ["content", "title"]}}],
-                                            "filter": [                                 // optional custom filters
-                                                {"terms": {"year": ${years}}},
-                                                {"terms": {"quarter": ${quarters}}},
-                                                {"range": {"date": {"gte": ${date}}}}
-                                                ],
+                                            "filter": ${filters}                  // optional filter placeholder
                                         }
                                     },
                                 }
                                 ```
 
-                            **For this custom_query, a sample retrieve() could be:**
+                            **For this custom_query, a sample `retrieve()` could be:**
 
                             ```python
                             self.retrieve(query="Why did the revenue increase?",
