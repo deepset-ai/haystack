@@ -33,7 +33,7 @@ class BM25Retriever(BaseRetriever):
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
                                      Defaults to False.
-        :param custom_query: query string containing a mandatory `${query}` and an optional `${filters}` placeholder.
+        :param custom_query: The query string containing a mandatory `${query}` and an optional `${filters}` placeholder.
 
                                 **An example custom_query:**
 
@@ -52,7 +52,7 @@ class BM25Retriever(BaseRetriever):
                                 }
                                 ```
 
-                            **For this custom_query, a sample retrieve() could be:**
+                            **For this custom_query, a sample `retrieve()` could be:**
 
                             ```python
                             self.retrieve(query="Why did the revenue increase?",

@@ -706,7 +706,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return per query.
-        :param custom_query: query string containing a mandatory `${query}` and an optional `${filters}` placeholder.
+        :param custom_query: The query string containing a mandatory `${query}` and an optional `${filters}` placeholder.
 
                              ::
 
@@ -726,7 +726,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                 }
                                  ```
 
-                                **For this custom_query, a sample retrieve() could be:**
+                                **For this custom_query, a sample `retrieve()` could be:**
                                 ```python
                                 self.retrieve(query="Why did the revenue increase?",
                                               filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
