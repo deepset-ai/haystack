@@ -1,7 +1,8 @@
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Optional
+from dataclasses import make_dataclass
 
 from haystack.preview import component
 
@@ -41,19 +42,18 @@ class FileTypeClassifier:
         It returns a dictionary where the keys are the file extensions, and the values are lists
         of pathlib.Path objects, representing the file paths that match the corresponding extension.
         """
-
-        class Output:
-            extensions: Dict[str, List[Path]]
-
-        return Output
+        return make_dataclass(
+            "Output", fields=[(extension, Optional[List[Union[str, Path]]], None) for extension in self.extensions]
+        )
 
     def __init__(self, extensions: List[str]):
         """
         Initialize the FileTypeClassifier.
 
-        :param extensions: A list of file extensions to consider when classifying files (e.g. [".txt", ".wav", ".jpg"]).
+        :param extensions: A list of file extensions to consider when classifying files (e.g. ["txt", "wav", "jpg"]).
         """
         self.defaults = {"extensions": extensions}
+        self.extensions = extensions
 
     def run(self, data):
         """
@@ -70,6 +70,7 @@ class FileTypeClassifier:
         for path in paths:
             if isinstance(path, str):
                 path = Path(path)
-            if path.suffix in self.defaults["extensions"]:
-                extensions[path.suffix].append(path)
-        return self.output(extensions=extensions)
+            file_extension = path.suffix[1:]  # skip the dot
+            if file_extension in self.extensions:
+                extensions[file_extension].append(path)
+        return self.output(**extensions)
