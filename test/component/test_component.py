@@ -145,10 +145,36 @@ def test_default_component_to_dict():
     }
 
 
+def test_default_component_to_dict_with_init_parameters():
+    extra_fields = {"init_parameters": {"some_key": "some_value"}}
+    MyComponent = factory.component_class("MyComponent", extra_fields=extra_fields)
+    comp = MyComponent()
+    res = _default_component_to_dict(comp)
+    assert res == {
+        "hash": id(comp),
+        "type": "MyComponent",
+        "init_parameters": {"some_key": "some_value"},
+    }
+
+
 def test_default_component_from_dict():
-    MyComponent = factory.component_class("MyComponent")
-    comp = _default_component_from_dict(MyComponent, {"type": "MyComponent"})
+    def custom_init(self, some_param):
+        self.some_param = some_param
+
+    extra_fields = {"__init__": custom_init}
+    MyComponent = factory.component_class("MyComponent", extra_fields=extra_fields)
+    comp = _default_component_from_dict(
+        MyComponent,
+        {
+            "type": "MyComponent",
+            "init_parameters": {
+                "some_param": 10,
+            },
+            "hash": 1234,
+        },
+    )
     assert isinstance(comp, MyComponent)
+    assert comp.some_param == 10
 
 
 def test_default_component_from_dict_without_type():
