@@ -30,7 +30,7 @@ def test_to_dict():
     add_two = AddFixedValue(add=2)
     add_default = AddFixedValue()
     double = Double()
-    pipe = Pipeline(metadata={"test": "test"})
+    pipe = Pipeline(metadata={"test": "test"}, max_loops_allowed=42)
     pipe.add_component("add_two", add_two)
     pipe.add_component("add_default", add_default)
     pipe.add_component("double", double)
@@ -40,7 +40,7 @@ def test_to_dict():
     res = pipe.to_dict()
     expected = {
         "metadata": {"test": "test"},
-        "max_loops_allowed": 100,
+        "max_loops_allowed": 42,
         "components": {
             "add_two": {
                 "type": "AddFixedValue",
