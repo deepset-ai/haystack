@@ -154,8 +154,7 @@ aws = [
   "botocore>=1.27",
 ]
 crawler = [
-  "selenium>=4.0.0,!=4.1.4",  # Avoid 4.1.4 due to https://github.com/SeleniumHQ/selenium/issues/10612
-  "webdriver-manager",
+  "selenium>=4.11.0"
 ]
 preprocessing = [
   "nltk",
