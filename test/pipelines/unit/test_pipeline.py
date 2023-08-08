@@ -69,7 +69,7 @@ def test_to_dict():
 def test_from_dict():
     data = {
         "metadata": {"test": "test"},
-        "max_loops_allowed": 100,
+        "max_loops_allowed": 101,
         "components": {
             "add_two": {
                 "type": "AddFixedValue",
@@ -95,7 +95,7 @@ def test_from_dict():
     pipe = Pipeline.from_dict(data)
 
     assert pipe.metadata == {"test": "test"}
-    assert pipe.max_loops_allowed == 100
+    assert pipe.max_loops_allowed == 101
 
     # Components
     assert len(pipe.graph.nodes) == 3
