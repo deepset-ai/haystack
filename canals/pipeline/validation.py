@@ -82,7 +82,7 @@ def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, in
     """
     for node, input_data in input_values.items():
         for socket_name in input_data.keys():
-            if not input_data.get(socket_name, None):
+            if input_data.get(socket_name, None) is None:
                 continue
             if not socket_name in graph.nodes[node]["input_sockets"].keys():
                 raise ValueError(
