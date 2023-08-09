@@ -116,11 +116,11 @@ class LinkContentFetcher(BaseComponent):
 
     outgoing_edges = 1
 
-    USER_AGENT = f"haystack/LinkContentRetriever/{__version__}"
+    _USER_AGENT = f"haystack/LinkContentRetriever/{__version__}"
 
-    REQUEST_HEADERS = {
+    _REQUEST_HEADERS = {
         "accept": "*/*",
-        "User-Agent": USER_AGENT,
+        "User-Agent": _USER_AGENT,
         "Accept-Language": "en-US,en;q=0.9,it;q=0.8,es;q=0.7",
         "referer": "https://www.google.com/",
     }
@@ -147,7 +147,7 @@ class LinkContentFetcher(BaseComponent):
         super().__init__()
         self.processor = processor
         self.raise_on_failure = raise_on_failure
-        self.user_agents = itertools.cycle(user_agents or [LinkContentFetcher.USER_AGENT])
+        self.user_agents = itertools.cycle(user_agents or [LinkContentFetcher._USER_AGENT])
         self.default_user_agent = next(self.user_agents)
         self.current_user_agent = self.default_user_agent
         self.retry_attempts = retry_attempts or 2
@@ -306,7 +306,7 @@ class LinkContentFetcher(BaseComponent):
         )
         def _request():
             # we need a request copy because we modify the headers
-            headers = self.REQUEST_HEADERS.copy()
+            headers = self._REQUEST_HEADERS.copy()
             headers["User-Agent"] = self.current_user_agent
             r = requests.get(url, headers=headers, timeout=timeout or 3)
             r.raise_for_status()

@@ -172,7 +172,7 @@ def test_fetch_correct_arguments(mocked_requests, mocked_article_extractor):
     args, kwargs = mocked_requests.get.call_args
     assert args[0] == url
     assert kwargs["timeout"] == 3
-    assert kwargs["headers"] == r.REQUEST_HEADERS
+    assert kwargs["headers"] == r._REQUEST_HEADERS
 
     # another variant
     url = "https://deepset.ai"
@@ -181,7 +181,7 @@ def test_fetch_correct_arguments(mocked_requests, mocked_article_extractor):
     args, kwargs = mocked_requests.get.call_args
     assert args[0] == url
     assert kwargs["timeout"] == 10
-    assert kwargs["headers"] == r.REQUEST_HEADERS
+    assert kwargs["headers"] == r._REQUEST_HEADERS
 
 
 @pytest.mark.unit
