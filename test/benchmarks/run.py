@@ -4,7 +4,6 @@ import argparse
 import json
 
 from haystack import Pipeline
-from haystack.nodes import BaseRetriever, BaseReader
 from haystack.pipelines.config import read_pipeline_config_from_yaml
 
 from utils import prepare_environment, contains_reader, contains_retriever
@@ -72,7 +71,6 @@ if __name__ == "__main__":
 
     config_file = Path(args.config)
     output_file = f"{config_file.stem}_results.json" if args.output is None else args.output
-
     results = run_benchmark(config_file)
     with open(output_file, "w") as f:
         json.dump(results, f, indent=2)

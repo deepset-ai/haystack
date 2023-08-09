@@ -47,7 +47,7 @@ class HFTokenStreamingHandler(TextStreamer):  # pylint: disable=useless-object-i
         stream_handler: "TokenStreamingHandler",
     ):
         transformers_import.check()
-        super().__init__(tokenizer=tokenizer)  # type: ignore
+        super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
         self.token_handler = stream_handler
 
     def on_finalized_text(self, token: str, stream_end: bool = False):
