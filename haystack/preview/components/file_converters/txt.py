@@ -68,7 +68,7 @@ class TextFileToDocument:
         metadata: Optional[Union[Dict, List[Dict]]] = None,
         encoding: Optional[str] = None,
         remove_numeric_tables: Optional[bool] = None,
-        numeric_row_threshold: Optional[int] = None,
+        numeric_row_threshold: Optional[float] = None,
         valid_languages: Optional[List[str]] = None,
         id_hash_keys: Optional[List[str]] = None,
         progress_bar: Optional[bool] = None,
@@ -98,16 +98,18 @@ class TextFileToDocument:
             metadata. Default: `None`
         :param progress_bar: Whether to show a progress bar for the conversion process. Default: `True`
         """
-        encoding = encoding if encoding is not None else self.encoding
-        remove_numeric_tables = (
-            remove_numeric_tables if remove_numeric_tables is not None else self.remove_numeric_tables
-        )
-        numeric_row_threshold = (
-            numeric_row_threshold if numeric_row_threshold is not None else self.numeric_row_threshold
-        )
-        valid_languages = valid_languages if valid_languages is not None else self.valid_languages
-        id_hash_keys = id_hash_keys if id_hash_keys is not None else self.id_hash_keys
-        progress_bar = progress_bar if progress_bar is not None else self.progress_bar
+        if encoding is None:
+            self.encoding = encoding
+        if remove_numeric_tables is None:
+            self.remove_numeric_tables = remove_numeric_tables
+        if numeric_row_threshold is None:
+            self.numeric_row_threshold = numeric_row_threshold
+        if valid_languages is None:
+            self.valid_languages = valid_languages
+        if id_hash_keys is None:
+            self.id_hash_keys = id_hash_keys
+        if progress_bar is None:
+            self.progress_bar = progress_bar
 
         metas = TextFileToDocument._prepare_metadata(metadata, paths)
 

@@ -55,9 +55,12 @@ class MemoryRetriever(StoreAwareMixin):
         if not self.store:
             raise ValueError("MemoryRetriever needs a store to run: set the store instance to the self.store attribute")
 
-        filters = filters if filters is not None else self.filters
-        top_k = top_k if top_k is not None else self.top_k
-        scale_score = scale_score if scale_score is not None else self.scale_score
+        if filters is None:
+            filters = self.filters
+        if top_k is None:
+            top_k = self.top_k
+        if scale_score is None:
+            scale_score = self.scale_score
 
         docs = []
         for query in queries:

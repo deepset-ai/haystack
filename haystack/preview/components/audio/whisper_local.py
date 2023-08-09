@@ -70,7 +70,8 @@ class LocalWhisperTranscriber:
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
         """
-        whisper_params = whisper_params if whisper_params is not None else self.whisper_params
+        if whisper_params is None:
+            whisper_params = self.whisper_params
 
         documents = self.transcribe(audio_files, **whisper_params)
         return {"documents": documents}
