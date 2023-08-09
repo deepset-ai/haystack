@@ -8,3 +8,7 @@ class DuplicateDocumentError(StoreError):
 
 class MissingDocumentError(StoreError):
     pass
+
+
+class StoreDeserializationError(StoreError):
+    pass

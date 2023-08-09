@@ -1,11 +1,11 @@
 import logging
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
 
 from haystack.preview import Document
 from haystack.preview.document_stores import Store, MemoryDocumentStore
-
 from haystack.testing.preview.document_store import DocumentStoreBaseTests
 
 
@@ -17,6 +17,53 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     @pytest.fixture
     def docstore(self) -> MemoryDocumentStore:
         return MemoryDocumentStore()
+
+    @pytest.mark.unit
+    def test_to_dict(self):
+        store = MemoryDocumentStore()
+        data = store.to_dict()
+        assert data == {
+            "hash": id(store),
+            "type": "MemoryDocumentStore",
+            "init_parameters": {
+                "bm25_tokenization_regex": r"(?u)\b\w\w+\b",
+                "bm25_algorithm": "BM25Okapi",
+                "bm25_parameters": {},
+            },
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_custom_init_parameters(self):
+        store = MemoryDocumentStore(
+            bm25_tokenization_regex="custom_regex", bm25_algorithm="BM25Plus", bm25_parameters={"key": "value"}
+        )
+        data = store.to_dict()
+        assert data == {
+            "hash": id(store),
+            "type": "MemoryDocumentStore",
+            "init_parameters": {
+                "bm25_tokenization_regex": "custom_regex",
+                "bm25_algorithm": "BM25Plus",
+                "bm25_parameters": {"key": "value"},
+            },
+        }
+
+    @pytest.mark.unit
+    @patch("haystack.preview.document_stores.memory.document_store.re")
+    def test_from_dict(self, mock_regex):
+        data = {
+            "type": "MemoryDocumentStore",
+            "init_parameters": {
+                "bm25_tokenization_regex": "custom_regex",
+                "bm25_algorithm": "BM25Plus",
+                "bm25_parameters": {"key": "value"},
+            },
+        }
+        store = MemoryDocumentStore.from_dict(data)
+        mock_regex.compile.assert_called_with("custom_regex")
+        assert store.tokenizer
+        assert store.bm25_algorithm.__name__ == "BM25Plus"
+        assert store.bm25_parameters == {"key": "value"}
 
     @pytest.mark.unit
     def test_bm25_retrieval(self, docstore: Store):
