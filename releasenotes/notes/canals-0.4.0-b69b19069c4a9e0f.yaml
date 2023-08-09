@@ -1,5 +1,4 @@
 ---
 enhancements:
-  - "Migrate existing v2 components to Canals 0.4.0 and fix tests"
-  - "Fix small issue on TextFileToDocument: it was using v1 Document instead of v2. Fixes also related naming issues
-    (`meta`->`metadata`, `file_paths->paths`)"
+  - "Migrate existing v2 components to Canals 0.4.0"
+  - "Fix TextFileToDocument using wrong Document class"
