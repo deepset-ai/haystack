@@ -177,6 +177,14 @@ def test_validate_pipeline_input_only_expected_input_is_present():
     with pytest.raises(ValueError, match="The input value of comp2 is already sent by node comp1"):
         pipe.run({"comp1": {"value": 1}, "comp2": {"value": 2}})
 
+def test_validate_pipeline_input_only_expected_input_is_present_falsy():
+    pipe = Pipeline()
+    pipe.add_component("comp1", Double())
+    pipe.add_component("comp2", Double())
+    pipe.connect("comp1", "comp2")
+    with pytest.raises(ValueError, match="The input value of comp2 is already sent by node comp1"):
+        pipe.run({"comp1": {"value": 1}, "comp2": {"value": 0}})
+
 
 def test_validate_pipeline_input_only_expected_input_is_present_including_unknown_names():
     pipe = Pipeline()

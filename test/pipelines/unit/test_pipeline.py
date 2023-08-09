@@ -6,7 +6,7 @@ import logging
 
 import pytest
 
-from canals import Pipeline
+from canals import Pipeline, component
 from canals.pipeline.sockets import InputSocket, OutputSocket
 from canals.errors import PipelineMaxLoops, PipelineError
 from sample_components import AddFixedValue, Threshold, MergeLoop, Double
@@ -317,3 +317,20 @@ def test_from_dict_without_connection_receiver():
         Pipeline.from_dict(data)
 
     err.match("Missing receiver in connection: {'sender': 'some.sender'}")
+
+def test_falsy_connection():
+    @component
+    class A:
+        @component.output_types(y=int)
+        def run(self, x: int):
+            return {"y": 0}
+    @component
+    class B:
+        @component.output_types(y=int)
+        def run(self, x: int):
+            return {"y": x}
+    p = Pipeline()
+    p.add_component("a", A())
+    p.add_component("b", B())
+    p.connect("a.y", "b.x")
+    assert p.run({"a": {"x": 10}})["b"]["y"] == 0
