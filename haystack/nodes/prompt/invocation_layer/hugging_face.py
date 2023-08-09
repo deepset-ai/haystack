@@ -51,8 +51,18 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
             self.stop_words = encoded_stop_words.input_ids.to(device)
 
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-            stop_result = torch.isin(self.stop_words, input_ids[-1])
-            return any(all(stop_word) for stop_word in stop_result)
+            for stop_word in self.stop_words:
+                found_stop_word = self.is_stop_word_found(input_ids, stop_word)
+                if found_stop_word:
+                    return True
+            return False
+
+        def is_stop_word_found(self, generated_text_ids: torch.Tensor, stop_word: torch.Tensor) -> bool:
+            generated_text_ids = generated_text_ids[-1]
+            len_generated_text_ids = generated_text_ids.size(0)
+            len_stop_word = stop_word.size(0)
+            result = all(generated_text_ids[len_generated_text_ids - len_stop_word :].eq(stop_word))
+            return result
 
 
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
