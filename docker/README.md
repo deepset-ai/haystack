@@ -19,10 +19,12 @@ docker run -p 8000:8000 --network="host" deepset/haystack
 
 ## Image Variants
 
-The Docker image comes in four variants:
+The Docker image comes in six variants:
 - `haystack:gpu-<version>` contains Haystack dependencies as well as what's needed to run the REST API and UI. It comes with the CUDA runtime and is capable of running on GPUs.
+- `haystack:cpu-remote-inference-<version>` a slimmed-down version of cpu image + REST API and UI. It is specifically designed for PromptNode inferencing using remote-hosted models such as HuggingFace Inference, OpenAI, Cohere, Anthropic etc.
 - `haystack:cpu-<version>` contains Haystack dependencies as well as what's needed to run the REST API and UI. It has no support for GPU so must be run on CPU.
 - `haystack:base-gpu-<version>` only contains the Haystack dependencies. It comes with the CUDA runtime and is capable of running on GPUs.
+- `haystack:base-cpu-remote-inference-<version>` a slimmed-down version of cpu image, specifically designed for PromptNode inferencing using remote-hosted models such as HuggingFace Inference, OpenAI, Cohere, Anthropic etc.
 - `haystack:base-cpu-<version>` only contains the Haystack dependencies. It has no support for GPU so must be run on CPU.
 
 ## Image Development
