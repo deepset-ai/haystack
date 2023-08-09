@@ -99,17 +99,17 @@ class TextFileToDocument:
         :param progress_bar: Whether to show a progress bar for the conversion process. Default: `True`
         """
         if encoding is None:
-            self.encoding = encoding
+            encoding = self.encoding
         if remove_numeric_tables is None:
-            self.remove_numeric_tables = remove_numeric_tables
+            remove_numeric_tables = self.remove_numeric_tables
         if numeric_row_threshold is None:
-            self.numeric_row_threshold = numeric_row_threshold
+            numeric_row_threshold = self.numeric_row_threshold
         if valid_languages is None:
-            self.valid_languages = valid_languages
+            valid_languages = self.valid_languages
         if id_hash_keys is None:
-            self.id_hash_keys = id_hash_keys
+            id_hash_keys = self.id_hash_keys
         if progress_bar is None:
-            self.progress_bar = progress_bar
+            progress_bar = self.progress_bar
 
         metas = TextFileToDocument._prepare_metadata(metadata, paths)
 
