@@ -240,11 +240,15 @@ def test_simple_pipeline(prompt_model):
     Tests that a pipeline with a prompt node and prompt template has the right output structure
     """
     output_variable_name = "out"
-    node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable=output_variable_name)
+    node = PromptNode(
+        prompt_model, default_prompt_template="question-answering-per-document", output_variable=output_variable_name
+    )
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
-    result = pipe.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
+    result = pipe.run(
+        query="What is the capital city of Germany?", documents=[Document("Berlin is the capital city of Germany.")]
+    )
 
     # validate output variable present
     assert output_variable_name in result
