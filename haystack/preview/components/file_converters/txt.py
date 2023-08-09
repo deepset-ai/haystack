@@ -22,7 +22,7 @@ class TextFileToDocument:
     A component for converting a text file to a Document.
     """
 
-    @component.input
+    # @component.input
     def input(self):
         class Input:
             """
@@ -64,7 +64,7 @@ class TextFileToDocument:
 
         return Input
 
-    @component.output
+    # @component.output
     def output(self):
         class Output:
             """
