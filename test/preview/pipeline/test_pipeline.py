@@ -102,6 +102,7 @@ def test_add_component_store_aware_component_receives_one_docstore():
     pipe.add_store(name="second_store", store=store_2)
     pipe.add_component("component", mock, store="first_store")
     assert mock.store == store_1
+    assert mock._store_name == "first_store"
     assert pipe.run(data={"component": {"value": 1}}) == {"component": {"value": 1}}
 
 
@@ -188,6 +189,7 @@ def test_add_component_store_aware_component_receives_correct_docstore_type():
 
     pipe.add_component("component", mock, store="second_store")
     assert mock.store == store_2
+    assert mock._store_name == "second_store"
 
 
 @pytest.mark.unit
@@ -217,6 +219,7 @@ def test_add_component_store_aware_component_is_reused():
         pipe.add_component("component2", mock, store="first_store")
 
     assert mock.store == store_2
+    assert mock._store_name == "second_store"
 
 
 @pytest.mark.unit
@@ -243,8 +246,9 @@ def test_add_component_store_aware_component_receives_subclass_of_correct_docsto
 
     pipe.add_component("component", mock, store="first_store")
     assert mock.store == store_1
+    assert mock._store_name == "first_store"
     pipe.add_component("component2", mock2, store="second_store")
-    assert mock2.store == store_2
+    assert mock2._store_name == "second_store"
 
 
 @pytest.mark.unit
