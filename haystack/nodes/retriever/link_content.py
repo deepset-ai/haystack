@@ -1,6 +1,5 @@
 import inspect
 import io
-import itertools
 import logging
 from collections import defaultdict
 from datetime import datetime
