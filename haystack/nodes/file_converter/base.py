@@ -7,17 +7,14 @@ from pathlib import Path
 from tqdm import tqdm
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
 
-try:
+
+with LazyImport("Run 'pip install farm-haystack[preprocessing]' or 'pip install langdetect'") as langdetect_import:
     import langdetect
-except (ImportError, ModuleNotFoundError) as exc:
-    logger.debug(
-        "langdetect could not be imported. "
-        "Run 'pip install farm-haystack[preprocessing]' or 'pip install langdetect' to fix this issue."
-    )
-    langdetect = None
 
 
 # https://en.wikipedia.org/wiki/Ligature_(writing)
@@ -138,13 +135,17 @@ class BaseConverter(BaseComponent):
             return True
 
         lang = None
-        if not langdetect:
-            logger.debug("langdetect could not be imported. Haystack won't try to guess the document language.")
-        else:
-            try:
-                lang = langdetect.detect(text)
-            except langdetect.lang_detect_exception.LangDetectException:
-                pass
+        try:
+            langdetect_import.check()
+            lang = langdetect.detect(text)
+        except langdetect.lang_detect_exception.LangDetectException:
+            pass
+        except ImportError as exc:
+            logger.debug(
+                "langdetect could not be imported. Haystack won't try to guess the document language. "
+                "Original error: %s",
+                exc,
+            )
 
         return lang in valid_languages
 
