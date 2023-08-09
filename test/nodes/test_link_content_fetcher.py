@@ -1,3 +1,4 @@
+from typing import Optional
 from unittest.mock import Mock, patch
 import logging
 import pytest
@@ -52,6 +53,54 @@ def test_init_with_preprocessor():
 
 
 @pytest.mark.unit
+def test_init_with_content_handlers():
+    """
+    Checks the initialization of the LinkContentFetcher content handlers.
+    """
+
+    def fake_but_valid_video_content_handler(response: Response) -> Optional[str]:
+        pass
+
+    r = LinkContentFetcher(content_handlers={"video/mp4": fake_but_valid_video_content_handler})
+
+    assert isinstance(r.handlers, dict)
+    assert "text/html" in r.handlers
+    assert "application/pdf" in r.handlers
+    assert "video/mp4" in r.handlers
+
+
+@pytest.mark.unit
+def test_init_with_content_handlers_override():
+    """
+    Checks the initialization of the LinkContentFetcher content handlers but with pdf handler overridden.
+    """
+
+    def new_pdf_content_handler(response: Response) -> Optional[str]:
+        pass
+
+    r = LinkContentFetcher(content_handlers={"application/pdf": new_pdf_content_handler})
+
+    assert isinstance(r.handlers, dict)
+    assert "text/html" in r.handlers
+    assert "application/pdf" in r.handlers
+    assert r.handlers["application/pdf"] == new_pdf_content_handler
+
+
+@pytest.mark.unit
+def test_init_with_invalid_content_handlers():
+    """
+    Checks the initialization of the LinkContentFetcher content handlers fails with invalid content handlers.
+    """
+
+    # invalid because it does not have the correct signature
+    def invalid_video_content_handler() -> Optional[str]:
+        pass
+
+    with pytest.raises(ValueError, match="handler must accept"):
+        LinkContentFetcher(content_handlers={"video/mp4": invalid_video_content_handler})
+
+
+@pytest.mark.unit
 def test_fetch(mocked_requests, mocked_article_extractor):
     """
     Checks if the LinkContentFetcher is able to fetch content.
@@ -61,7 +110,7 @@ def test_fetch(mocked_requests, mocked_article_extractor):
     pre_processor_mock = Mock()
     pre_processor_mock.process.return_value = [Document("Sample content from webpage")]
 
-    r = LinkContentFetcher(pre_processor_mock)
+    r = LinkContentFetcher(processor=pre_processor_mock)
     result = r.fetch(url=url, doc_kwargs={"text": "Sample content from webpage"})
 
     assert len(result) == 1

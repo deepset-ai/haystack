@@ -57,6 +57,61 @@ class LinkContentFetcher(BaseComponent):
     - HTML
     - PDF
 
+    LinkContentFetcher offers a few options for customizing the content extraction process:
+    - content_handlers: A dictionary of content handlers to use for extracting content from a response.
+    - processor: PreProcessor to apply to the extracted text
+    - raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
+
+    One can use LinkContentFetcher as a standalone component or as part of a Pipeline. Here is an example of using
+    LinkContentFetcher as a standalone component:
+
+    ```python
+    from haystack.nodes import LinkContentFetcher
+    from haystack.schema import Document
+
+    link_content_fetcher = LinkContentFetcher()
+    dl_wiki: List[Document] = link_content_fetcher.fetch(url="https://en.wikipedia.org/wiki/Deep_learning")
+    print(dl_wiki)
+    ```
+
+    One can also use LinkContentFetcher as part of a Pipeline. Here is an example of using LinkContentFetcher as part
+    of a Pipeline:
+
+    ```python
+    import os
+    from haystack.nodes import PromptNode, LinkContentFetcher, PromptTemplate
+    from haystack import Pipeline
+
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not anthropic_key:
+        raise ValueError("Please set the ANTHROPIC_API_KEY environment variable")
+
+
+    retriever = LinkContentFetcher() # optionally add additional user agents
+    pt = PromptTemplate(
+        "Given the content below, create a summary consisting of three sections: Objectives, "
+        "Implementation and Learnings/Conclusions.\n"
+        "Each section should have at least three bullet points. \n"
+        "In the content below disregard References section.\n\n: {documents}"
+    )
+
+    prompt_node = PromptNode("claude-instant-1",
+                              api_key=anthropic_key,
+                              max_length=512,
+                              default_prompt_template=pt,
+                              model_kwargs={"stream": True}
+                              )
+
+    pipeline = Pipeline()
+    pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
+    pipeline.add_node(component=prompt_node, name="PromptNode", inputs=["Retriever"])
+
+    research_papers = ["https://arxiv.org/pdf/2307.03172.pdf", "https://arxiv.org/pdf/1706.03762.pdf"]
+
+    for research_paper in research_papers:
+        print(f"Research paper summary: {research_paper}")
+        pipeline.run(research_paper)
+        print("\n\n\n")
     """
 
     outgoing_edges = 1
@@ -72,6 +127,7 @@ class LinkContentFetcher(BaseComponent):
 
     def __init__(
         self,
+        content_handlers: Optional[Dict[str, Callable]] = None,
         processor: Optional[PreProcessor] = None,
         raise_on_failure: Optional[bool] = False,
         user_agents: Optional[List[str]] = None,
@@ -80,6 +136,7 @@ class LinkContentFetcher(BaseComponent):
         """
 
         Creates a LinkContentFetcher instance.
+        :param content_handlers: A dictionary of content handlers to use for extracting content from a response.
         :param processor: PreProcessor to apply to the extracted text
         :param raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
                          during content extraction. If False, the error is simply logged and the program continues.
@@ -95,27 +152,16 @@ class LinkContentFetcher(BaseComponent):
         self.current_user_agent = self.default_user_agent
         self.retry_attempts = retry_attempts or 2
         self.handlers: Dict[str, Callable] = defaultdict(lambda: html_content_handler)
-        self.register_content_handler("text/html", html_content_handler)
+
+        # register default content handlers
+        self._register_content_handler("text/html", html_content_handler)
         if fitz_import.is_successful():
-            self.register_content_handler("application/pdf", pdf_content_handler)
+            self._register_content_handler("application/pdf", pdf_content_handler)
 
-    def register_content_handler(self, content_type: str, handler: Callable):
-        """
-        Register a new content handler for a specific content type.
-        If a handler for the given content type already exists, it will be overridden.
-
-        :param content_type: The content type for which the handler should be used.
-        :param handler: The handler function. This function should accept a requests.Response object parameter,
-        and return the extracted text (or None).
-        """
-        if not callable(handler):
-            raise ValueError(f"handler must be a callable, but got {type(handler).__name__}")
-
-        params = inspect.signature(handler).parameters
-        if len(params) != 1 or list(params.keys()) != ["response"]:
-            raise ValueError("handler must accept 'response: requests.Response' as a single parameter")
-
-        self.handlers[content_type] = handler
+        # register custom content handlers, can override default handlers
+        if content_handlers:
+            for content_type, handler in content_handlers.items():
+                self._register_content_handler(content_type, handler)
 
     def fetch(self, url: str, timeout: Optional[int] = 3, doc_kwargs: Optional[dict] = None) -> List[Document]:
         """
@@ -222,6 +268,24 @@ class LinkContentFetcher(BaseComponent):
 
         return {"documents": results}, "output_1"
 
+    def _register_content_handler(self, content_type: str, handler: Callable):
+        """
+        Register a new content handler for a specific content type.
+        If a handler for the given content type already exists, it will be overridden.
+
+        :param content_type: The content type for which the handler should be used.
+        :param handler: The handler function. This function should accept a requests.Response object parameter,
+        and return the extracted text (or None).
+        """
+        if not callable(handler):
+            raise ValueError(f"handler must be a callable, but got {type(handler).__name__}")
+
+        params = inspect.signature(handler).parameters
+        if len(params) != 1 or list(params.keys()) != ["response"]:
+            raise ValueError(f"{content_type} handler must accept 'response: requests.Response' as a single parameter")
+
+        self.handlers[content_type] = handler
+
     def _get_response(self, url: str, timeout: Optional[int] = None) -> requests.Response:
         """
         Fetches content from a URL. Returns a response object.
@@ -237,7 +301,7 @@ class LinkContentFetcher(BaseComponent):
             stop=stop_after_attempt(self.retry_attempts),
             wait=wait_exponential(multiplier=1, min=2, max=10),
             retry=(retry_if_exception_type((HTTPError, requests.RequestException))),
-            # This method is invoked only after failed requests
+            # This method is invoked only after failed requests (exception raised)
             after=self._switch_user_agent,
         )
         def _request():
