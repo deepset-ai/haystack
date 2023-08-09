@@ -9,7 +9,6 @@ from langdetect import LangDetectException
 
 from haystack.preview.components.file_converters.txt import TextFileToDocument
 from test.preview.components.base import BaseTestComponent
-from test.conftest import preview_samples_path
 
 
 class TestTextfileToDocument(BaseTestComponent):
@@ -18,15 +17,15 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the component runs correctly.
         """
-        file_paths = [preview_samples_path / "txt" / "doc_1.txt", preview_samples_path / "txt" / "doc_2.txt"]
+        paths = [preview_samples_path / "txt" / "doc_1.txt", preview_samples_path / "txt" / "doc_2.txt"]
         converter = TextFileToDocument()
-        output = converter.run(data=converter.input(paths=file_paths))
-        docs = output.documents
+        output = converter.run(paths=paths)
+        docs = output["documents"]
         assert len(docs) == 2
         assert docs[0].content == "Some text for testing.\nTwo lines in here."
         assert docs[1].content == "This is a test line.\n123 456 789\n987 654 321."
-        assert docs[0].meta["file_path"] == str(file_paths[0])
-        assert docs[1].meta["file_path"] == str(file_paths[1])
+        assert docs[0].metadata["file_path"] == str(paths[0])
+        assert docs[1].metadata["file_path"] == str(paths[1])
 
     @pytest.mark.unit
     def test_run_warning_for_invalid_language(self, preview_samples_path, caplog):
@@ -34,13 +33,13 @@ class TestTextfileToDocument(BaseTestComponent):
         converter = TextFileToDocument()
         with patch("haystack.preview.components.file_converters.txt.langdetect.detect", return_value="en"):
             with caplog.at_level(logging.WARNING):
-                output = converter.run(data=converter.input(paths=[file_path], valid_languages=["de"]))
+                output = converter.run(paths=[file_path], valid_languages=["de"])
                 assert (
                     f"Text from file {file_path} is not in one of the valid languages: ['de']. "
                     f"The file may have been decoded incorrectly." in caplog.text
                 )
 
-        docs = output.documents
+        docs = output["documents"]
         assert len(docs) == 1
         assert docs[0].content == "Some text for testing.\nTwo lines in here."
 
@@ -49,17 +48,17 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         Test if the component correctly handles errors.
         """
-        file_paths = [preview_samples_path / "txt" / "doc_1.txt", "non_existing_file.txt"]
+        paths = [preview_samples_path / "txt" / "doc_1.txt", "non_existing_file.txt"]
         converter = TextFileToDocument()
         with caplog.at_level(logging.WARNING):
-            output = converter.run(data=converter.input(paths=file_paths))
+            output = converter.run(paths=paths)
             assert (
                 "Could not read file non_existing_file.txt. Skipping it. Error message: File at path non_existing_file.txt does not exist."
                 in caplog.text
             )
-        docs = output.documents
+        docs = output["documents"]
         assert len(docs) == 1
-        assert docs[0].meta["file_path"] == str(file_paths[0])
+        assert docs[0].metadata["file_path"] == str(paths[0])
 
     @pytest.mark.unit
     def test_prepare_metadata_no_metadata(self):
@@ -68,7 +67,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         converter = TextFileToDocument()
         meta = converter._prepare_metadata(
-            meta=None, file_paths=["data/sample_path_1.txt", Path("data/sample_path_2.txt")]
+            metadata=None, paths=["data/sample_path_1.txt", Path("data/sample_path_2.txt")]
         )
         assert len(meta) == 2
         assert meta[0]["file_path"] == "data/sample_path_1.txt"
@@ -81,7 +80,7 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         converter = TextFileToDocument()
         meta = converter._prepare_metadata(
-            meta={"name": "test"}, file_paths=["data/sample_path_1.txt", Path("data/sample_path_2.txt")]
+            metadata={"name": "test"}, paths=["data/sample_path_1.txt", Path("data/sample_path_2.txt")]
         )
         assert len(meta) == 2
         assert meta[0]["file_path"] == "data/sample_path_1.txt"
@@ -96,8 +95,8 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         converter = TextFileToDocument()
         meta = converter._prepare_metadata(
-            meta=[{"name": "test1"}, {"name": "test2"}],
-            file_paths=["data/sample_path_1.txt", Path("data/sample_path_2.txt")],
+            metadata=[{"name": "test1"}, {"name": "test2"}],
+            paths=["data/sample_path_1.txt", Path("data/sample_path_2.txt")],
         )
         assert len(meta) == 2
         assert meta[0]["file_path"] == "data/sample_path_1.txt"
@@ -113,11 +112,12 @@ class TestTextfileToDocument(BaseTestComponent):
         """
         converter = TextFileToDocument()
         with pytest.raises(
-            PipelineRuntimeError, match="The number of meta entries must match the number of paths if meta is a list."
+            PipelineRuntimeError,
+            match="The number of metadata entries must match the number of paths if metadata is a list.",
         ):
             converter._prepare_metadata(
-                meta=[{"name": "test1"}, {"name": "test2"}],
-                file_paths=["data/sample_path_1.txt", Path("data/sample_path_2.txt"), "data/sample_path_3.txt"],
+                metadata=[{"name": "test1"}, {"name": "test2"}],
+                paths=["data/sample_path_1.txt", Path("data/sample_path_2.txt"), "data/sample_path_3.txt"],
             )
 
     @pytest.mark.unit
