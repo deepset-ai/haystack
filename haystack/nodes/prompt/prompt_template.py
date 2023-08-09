@@ -578,5 +578,19 @@ class PromptTemplate(BasePromptTemplate, ABC):
             )
             yield prompt_prepared
 
+    def remove_template_params(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Removes template parameters from kwargs.
+
+        :param kwargs: Keyword arguments to remove template parameters from.
+        :return: A modified dictionary with the template parameters removed.
+        """
+        if kwargs:
+            for param in self.prompt_params:
+                kwargs.pop(param, None)
+            return kwargs
+        else:
+            return {}
+
     def __repr__(self):
         return f"PromptTemplate(name={self.name}, prompt_text={self.prompt_text}, prompt_params={self.prompt_params})"

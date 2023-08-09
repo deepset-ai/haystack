@@ -117,7 +117,7 @@ class MetricsAPI:
 
     @retry(retry=retry_if_exception_type(ConnectionError), wait=wait_fixed(5), stop=stop_after_attempt(3), reraise=True)
     def send_custom_dd_metric(self, metric: CustomDatadogMetric) -> dict:
-        datadog.initialize(api_key=self.datadog_api_key, host_name=self.datadog_host)
+        datadog.initialize(api_key=self.datadog_api_key, api_host=self.datadog_host)
 
         tags: List[str] = list(map(lambda t: str(t.value), metric.tags))
         post_metric_response: Dict = datadog.api.Metric.send(
