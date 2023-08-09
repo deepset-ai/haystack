@@ -147,9 +147,8 @@ class LinkContentFetcher(BaseComponent):
         super().__init__()
         self.processor = processor
         self.raise_on_failure = raise_on_failure
-        self.user_agents = itertools.cycle(user_agents or [LinkContentFetcher._USER_AGENT])
-        self.default_user_agent = next(self.user_agents)
-        self.current_user_agent = self.default_user_agent
+        self.user_agents = user_agents or [LinkContentFetcher._USER_AGENT]
+        self.current_user_agent_idx: int = 0
         self.retry_attempts = retry_attempts or 2
         self.handlers: Dict[str, Callable] = defaultdict(lambda: html_content_handler)
 
@@ -307,7 +306,7 @@ class LinkContentFetcher(BaseComponent):
         def _request():
             # we need a request copy because we modify the headers
             headers = self._REQUEST_HEADERS.copy()
-            headers["User-Agent"] = self.current_user_agent
+            headers["User-Agent"] = self.user_agents[self.current_user_agent_idx]
             r = requests.get(url, headers=headers, timeout=timeout or 3)
             r.raise_for_status()
             return r
@@ -322,7 +321,7 @@ class LinkContentFetcher(BaseComponent):
             logger.warning("Couldn't retrieve content from %s", url)
             response = requests.Response()
         finally:
-            self.current_user_agent = self.default_user_agent
+            self.current_user_agent_idx = 0
         return response
 
     def _get_content_type_handler(self, content_type: str) -> Callable:
@@ -339,7 +338,7 @@ class LinkContentFetcher(BaseComponent):
         Switches the User-Agent for this LinkContentRetriever to the next one in the list of user agents.
         :param retry_state: The retry state (unused, required by tenacity).
         """
-        self.current_user_agent = next(self.user_agents)
+        self.current_user_agent_idx = (self.current_user_agent_idx + 1) % len(self.user_agents)
 
     def _is_valid_url(self, url: str) -> bool:
         """
