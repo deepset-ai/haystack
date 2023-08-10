@@ -1,0 +1,3 @@
+enhancements:
+  - |
+    Remove stops words when using hugging face models for text-generation/text2text generation tasks in stream mode.
