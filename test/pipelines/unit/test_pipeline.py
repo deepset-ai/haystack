@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import Optional
 import logging
+from canals.testing.factory import component_class
 
 import pytest
 
@@ -319,16 +320,8 @@ def test_from_dict_without_connection_receiver():
     err.match("Missing receiver in connection: {'sender': 'some.sender'}")
 
 def test_falsy_connection():
-    @component
-    class A:
-        @component.output_types(y=int)
-        def run(self, x: int):
-            return {"y": 0}
-    @component
-    class B:
-        @component.output_types(y=int)
-        def run(self, x: int):
-            return {"y": x}
+    A = component_class("A", input_types={"x": int}, output={"y": 0})
+    B = component_class("A", input_types={"x": int}, output={"y": 0})
     p = Pipeline()
     p.add_component("a", A())
     p.add_component("b", B())
