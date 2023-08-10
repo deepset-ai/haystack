@@ -142,7 +142,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_incorrect_filter_type(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        with pytest.raises(ValueError):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters="something odd")  # type: ignore
 
     @pytest.mark.unit
@@ -230,8 +230,8 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_in_filter_embedding(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        embedding_zero = np.zeros([768, 1]).astype(np.float32)
-        embedding_one = np.ones([768, 1]).astype(np.float32)
+        embedding_zero = np.zeros(768, np.float32)
+        embedding_one = np.ones(768, np.float32)
         result = docstore.filter_documents(filters={"embedding": {"$in": [embedding_zero, embedding_one]}})
         assert self.contains_same_docs(
             result,
