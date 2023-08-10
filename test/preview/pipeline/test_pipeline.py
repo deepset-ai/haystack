@@ -92,22 +92,9 @@ def test_add_component_store_aware_component_receives_one_docstore():
     class MockComponent(StoreAwareMixin):
         supported_stores = [Store]
 
-        class Input:
-            value: int
-
-        class Output:
-            value: int
-
-        @component.input
-        def input(self):
-            return MockComponent.Input
-
-        @component.output
-        def output(self):
-            return MockComponent.Output
-
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(value=data.value)
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": value}
 
     mock = MockComponent()
     pipe = Pipeline()
@@ -115,7 +102,8 @@ def test_add_component_store_aware_component_receives_one_docstore():
     pipe.add_store(name="second_store", store=store_2)
     pipe.add_component("component", mock, store="first_store")
     assert mock.store == store_1
-    assert pipe.run(data={"component": MockComponent.Input(value=1)}) == {"component": MockComponent.Output(value=1)}
+    assert mock._store_name == "first_store"
+    assert pipe.run(data={"component": {"value": 1}}) == {"component": {"value": 1}}
 
 
 @pytest.mark.unit
@@ -127,22 +115,9 @@ def test_add_component_store_aware_component_receives_no_docstore():
     class MockComponent(StoreAwareMixin):
         supported_stores = [Store]
 
-        class Input:
-            value: int
-
-        class Output:
-            value: int
-
-        @component.input
-        def input(self):
-            return MockComponent.Input
-
-        @component.output
-        def output(self):
-            return MockComponent.Output
-
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(value=data.value)
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": value}
 
     pipe = Pipeline()
     pipe.add_store(name="first_store", store=store_1)
@@ -161,22 +136,9 @@ def test_non_store_aware_component_receives_one_docstore():
     class MockComponent:
         supported_stores = [Store]
 
-        class Input:
-            value: int
-
-        class Output:
-            value: int
-
-        @component.input
-        def input(self):
-            return MockComponent.Input
-
-        @component.output
-        def output(self):
-            return MockComponent.Output
-
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(value=data.value)
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": value}
 
     pipe = Pipeline()
     pipe.add_store(name="first_store", store=store_1)
@@ -195,22 +157,9 @@ def test_add_component_store_aware_component_receives_wrong_docstore_name():
     class MockComponent(StoreAwareMixin):
         supported_stores = [Store]
 
-        class Input:
-            value: int
-
-        class Output:
-            value: int
-
-        @component.input
-        def input(self):
-            return MockComponent.Input
-
-        @component.output
-        def output(self):
-            return MockComponent.Output
-
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(value=data.value)
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": value}
 
     pipe = Pipeline()
     pipe.add_store(name="first_store", store=store_1)
@@ -229,22 +178,9 @@ def test_add_component_store_aware_component_receives_correct_docstore_type():
     class MockComponent(StoreAwareMixin):
         supported_stores = [MockStore]
 
-        class Input:
-            value: int
-
-        class Output:
-            value: int
-
-        @component.input
-        def input(self):
-            return MockComponent.Input
-
-        @component.output
-        def output(self):
-            return MockComponent.Output
-
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(value=data.value)
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": value}
 
     mock = MockComponent()
     pipe = Pipeline()
@@ -253,6 +189,7 @@ def test_add_component_store_aware_component_receives_correct_docstore_type():
 
     pipe.add_component("component", mock, store="second_store")
     assert mock.store == store_2
+    assert mock._store_name == "second_store"
 
 
 @pytest.mark.unit
@@ -264,22 +201,9 @@ def test_add_component_store_aware_component_is_reused():
     class MockComponent(StoreAwareMixin):
         supported_stores = [MockStore]
 
-        class Input:
-            value: int
-
-        class Output:
-            value: int
-
-        @component.input
-        def input(self):
-            return MockComponent.Input
-
-        @component.output
-        def output(self):
-            return MockComponent.Output
-
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(value=data.value)
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": value}
 
     mock = MockComponent()
     pipe = Pipeline()
@@ -295,6 +219,7 @@ def test_add_component_store_aware_component_is_reused():
         pipe.add_component("component2", mock, store="first_store")
 
     assert mock.store == store_2
+    assert mock._store_name == "second_store"
 
 
 @pytest.mark.unit
@@ -309,22 +234,9 @@ def test_add_component_store_aware_component_receives_subclass_of_correct_docsto
     class MockComponent(StoreAwareMixin):
         supported_stores = [MockStore]
 
-        class Input:
-            value: int
-
-        class Output:
-            value: int
-
-        @component.input
-        def input(self):
-            return MockComponent.Input
-
-        @component.output
-        def output(self):
-            return MockComponent.Output
-
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(value=data.value)
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": value}
 
     mock = MockComponent()
     mock2 = MockComponent()
@@ -334,8 +246,9 @@ def test_add_component_store_aware_component_receives_subclass_of_correct_docsto
 
     pipe.add_component("component", mock, store="first_store")
     assert mock.store == store_1
+    assert mock._store_name == "first_store"
     pipe.add_component("component2", mock2, store="second_store")
-    assert mock2.store == store_2
+    assert mock2._store_name == "second_store"
 
 
 @pytest.mark.unit
@@ -347,22 +260,9 @@ def test_add_component_store_aware_component_does_not_check_supported_stores():
     class MockComponent(StoreAwareMixin):
         supported_stores = [SomethingElse]
 
-        class Input:
-            value: int
-
-        class Output:
-            value: int
-
-        @component.input
-        def input(self):
-            return MockComponent.Input
-
-        @component.output
-        def output(self):
-            return MockComponent.Output
-
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(value=data.value)
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": value}
 
     MockComponent()
 
@@ -389,22 +289,9 @@ def test_add_component_store_aware_component_receives_wrong_docstore_type():
     class MockComponent(StoreAwareMixin):
         supported_stores = [MockStore2]
 
-        class Input:
-            value: int
-
-        class Output:
-            value: int
-
-        @component.input
-        def input(self):
-            return MockComponent.Input
-
-        @component.output
-        def output(self):
-            return MockComponent.Output
-
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(value=data.value)
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": value}
 
     mock = MockComponent()
     pipe = Pipeline()

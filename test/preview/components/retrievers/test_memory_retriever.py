@@ -35,12 +35,16 @@ class TestMemoryRetriever(BaseTestComponent):
     @pytest.mark.unit
     def test_init_default(self):
         retriever = MemoryRetriever()
-        assert retriever.defaults == {"filters": {}, "top_k": 10, "scale_score": True}
+        assert retriever.filters is None
+        assert retriever.top_k == 10
+        assert retriever.scale_score
 
     @pytest.mark.unit
     def test_init_with_parameters(self):
-        retriever = MemoryRetriever(top_k=5, scale_score=False)
-        assert retriever.defaults == {"filters": {}, "top_k": 5, "scale_score": False}
+        retriever = MemoryRetriever(filters={"name": "test.txt"}, top_k=5, scale_score=False)
+        assert retriever.filters == {"name": "test.txt"}
+        assert retriever.top_k == 5
+        assert not retriever.scale_score
 
     @pytest.mark.unit
     def test_init_with_invalid_top_k_parameter(self):
@@ -55,14 +59,14 @@ class TestMemoryRetriever(BaseTestComponent):
 
         retriever = MemoryRetriever(top_k=top_k)
         retriever.store = ds
-        result = retriever.run(data=retriever.input(queries=["PHP", "Java"]))
+        result = retriever.run(queries=["PHP", "Java"])
 
-        assert getattr(result, "documents")
-        assert len(result.documents) == 2
-        assert len(result.documents[0]) == top_k
-        assert len(result.documents[1]) == top_k
-        assert result.documents[0][0].content == "PHP is a popular programming language"
-        assert result.documents[1][0].content == "Java is a popular programming language"
+        assert "documents" in result
+        assert len(result["documents"]) == 2
+        assert len(result["documents"][0]) == top_k
+        assert len(result["documents"][1]) == top_k
+        assert result["documents"][0][0].content == "PHP is a popular programming language"
+        assert result["documents"][1][0].content == "Java is a popular programming language"
 
     @pytest.mark.unit
     def test_invalid_run_no_store(self):
@@ -70,7 +74,7 @@ class TestMemoryRetriever(BaseTestComponent):
         with pytest.raises(
             ValueError, match="MemoryRetriever needs a store to run: set the store instance to the self.store attribute"
         ):
-            retriever.run(retriever.input(queries=["test"]))
+            retriever.run(queries=["test"])
 
     @pytest.mark.unit
     def test_invalid_run_not_a_store(self):
@@ -118,11 +122,11 @@ class TestMemoryRetriever(BaseTestComponent):
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
         pipeline.add_component("retriever", retriever, store="memory")
-        result: Dict[str, Any] = pipeline.run(data={"retriever": retriever.input(queries=[query])})
+        result: Dict[str, Any] = pipeline.run(data={"retriever": {"queries": [query]}})
 
         assert result
         assert "retriever" in result
-        results_docs = result["retriever"].documents
+        results_docs = result["retriever"]["documents"]
         assert results_docs
         assert results_docs[0][0].content == query_result
 
@@ -143,11 +147,11 @@ class TestMemoryRetriever(BaseTestComponent):
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
         pipeline.add_component("retriever", retriever, store="memory")
-        result: Dict[str, Any] = pipeline.run(data={"retriever": retriever.input(queries=[query], top_k=top_k)})
+        result: Dict[str, Any] = pipeline.run(data={"retriever": {"queries": [query], "top_k": top_k}})
 
         assert result
         assert "retriever" in result
-        results_docs = result["retriever"].documents
+        results_docs = result["retriever"]["documents"]
         assert results_docs
         assert len(results_docs[0]) == top_k
         assert results_docs[0][0].content == query_result

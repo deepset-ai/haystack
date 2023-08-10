@@ -99,6 +99,7 @@ class Pipeline(CanalsPipeline):
                 raise ValueError("Reusing components with stores is not supported (yet). Create a separate instance.")
 
             instance.store = self._stores[store]
+            instance._store_name = store
 
         elif store:
             raise ValueError(f"Component '{name}' doesn't support stores.")
