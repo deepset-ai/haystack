@@ -62,6 +62,11 @@ def marshal_pipelines(pipelines: Dict[str, Pipeline]) -> Dict[str, Any]:
     Converts a dictionary of named Pipelines into a Python dictionary that can be
     written to a JSON file.
 
+    In case there are different component instances, meaning components with a different
+    hash, and an identical name they are suffixed with an underscore and an incrementing number.
+    This way we can be sure that there is no confusion when loading back the Pipelines from file.
+    Obviously names will be different when unmarshaling but Pipelines' behaviour won't change.
+
     Args:
         pipelines: A dictionary of `{"pipeline-name": <pipeline object>}`
 
