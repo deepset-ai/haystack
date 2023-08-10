@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-from typing import Union, Dict
+from typing import Union, Dict, List
 
 from haystack.lazy_imports import LazyImport
 
@@ -45,14 +45,28 @@ class HFTokenStreamingHandler(TextStreamer):  # pylint: disable=useless-object-i
         self,
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
         stream_handler: "TokenStreamingHandler",
+        stop_words: List[str],
     ):
         transformers_import.check()
         super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
         self.token_handler = stream_handler
+        self.stop_words = stop_words
+        self.generated_text = ""
 
     def on_finalized_text(self, token: str, stream_end: bool = False):
+        self.generated_text = self.generated_text + token
+        for stop_word in self.stop_words:
+            found_stop_word = self.is_stop_word_found(self.generated_text, stop_word)
+            if found_stop_word:
+                token = ""
         token_to_send = token + "\n" if stream_end else token
         self.token_handler(token_received=token_to_send, **{})
+
+    def is_stop_word_found(self, generated_text: str, stop_word: str) -> bool:
+        len_generated_text = len(generated_text)
+        len_stop_word = len(stop_word)
+        result = generated_text[len_generated_text - len_stop_word :] == stop_word
+        return result
 
 
 class DefaultPromptHandler:
