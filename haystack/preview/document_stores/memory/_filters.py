@@ -224,7 +224,7 @@ def match(conditions: Any, document: Document, _current_key=None):
     if isinstance(conditions, dict):
         # Check for malformed filters, like {"name": {"year": "2020"}}
         if _current_key and any(key not in RESERVED_KEYS for key in conditions.keys()):
-            raise FilterError(
+            raise MemoryDocumentStoreFilterError(
                 f"This filter ({{{_current_key}: {conditions}}}) seems to be malformed. "
                 "Comparisons between dictionaries are not currently supported. "
                 "Check the documentation to learn more about filters syntax."
@@ -245,7 +245,7 @@ def match(conditions: Any, document: Document, _current_key=None):
         # A comparison operator ($eq, $in, $gte, ...)
         if field_key in OPERATORS.keys():
             if not _current_key:
-                raise FilterError(
+                raise MemoryDocumentStoreFilterError(
                     "Filters can't start with an operator like $eq and $in. You have to specify the field name first. "
                     "See the examples in the documentation."
                 )
@@ -268,7 +268,9 @@ def match(conditions: Any, document: Document, _current_key=None):
         # The default operator for a {key: value} filter is $eq
         return eq_operation(fields=document.flatten(), field_name=_current_key, value=conditions)
 
-    raise FilterError("Filters must be dictionaries or lists. See the examples in the documentation.")
+    raise MemoryDocumentStoreFilterError(
+        "Filters must be dictionaries or lists. See the examples in the documentation."
+    )
 
 
 def _list_conditions(conditions: Any) -> List[Any]:
