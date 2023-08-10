@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import Optional
 import logging
-from canals.testing.factory import component_class
 
 import pytest
 
-from canals import Pipeline, component
+from canals import Pipeline
 from canals.pipeline.sockets import InputSocket, OutputSocket
 from canals.errors import PipelineMaxLoops, PipelineError
 from sample_components import AddFixedValue, Threshold, MergeLoop, Double
+from canals.testing.factory import component_class
 
 logging.basicConfig(level=logging.DEBUG)
 
