@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores import Store, StoreError, DuplicatePolicy
-from haystack.preview.document_stores import MissingDocumentError, DuplicateDocumentError
+from haystack.preview.document_stores import Store, DuplicatePolicy
+from haystack.preview.document_stores.errors import FilterError, MissingDocumentError, DuplicateDocumentError
 
 
 class DocumentStoreBaseTests:
@@ -17,8 +17,8 @@ class DocumentStoreBaseTests:
 
     @pytest.fixture
     def filterable_docs(self) -> List[Document]:
-        embedding_zero = np.zeros([768, 1]).astype(np.float32)
-        embedding_one = np.ones([768, 1]).astype(np.float32)
+        embedding_zero = np.zeros(768).astype(np.float32)
+        embedding_one = np.ones(768).astype(np.float32)
 
         documents = []
         for i in range(3):
@@ -142,7 +142,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_incorrect_filter_type(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        with pytest.raises(ValueError, match="dictionaries or lists"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters="something odd")  # type: ignore
 
     @pytest.mark.unit
@@ -154,13 +154,13 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_incorrect_filter_nesting(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        with pytest.raises(ValueError, match="malformed"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"number": {"page": "100"}})
 
     @pytest.mark.unit
     def test_deeper_incorrect_filter_nesting(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        with pytest.raises(ValueError, match="malformed"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"number": {"page": {"chapter": "intro"}}})
 
     @pytest.mark.unit
@@ -189,9 +189,9 @@ class DocumentStoreBaseTests:
         )
 
     @pytest.mark.unit
-    def test_eq_filter_tensor(self, docstore: Store, filterable_docs: List[Document]):
+    def test_eq_filter_embedding(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        embedding = np.zeros([768, 1]).astype(np.float32)
+        embedding = np.zeros(768).astype(np.float32)
         result = docstore.filter_documents(filters={"embedding": embedding})
         assert self.contains_same_docs(
             result, [doc for doc in filterable_docs if np.array_equal(embedding, doc.embedding)]  # type: ignore
@@ -228,10 +228,10 @@ class DocumentStoreBaseTests:
         )
 
     @pytest.mark.unit
-    def test_in_filter_tensor(self, docstore: Store, filterable_docs: List[Document]):
+    def test_in_filter_embedding(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        embedding_zero = np.zeros([768, 1]).astype(np.float32)
-        embedding_one = np.ones([768, 1]).astype(np.float32)
+        embedding_zero = np.zeros(768, np.float32)
+        embedding_one = np.ones(768, np.float32)
         result = docstore.filter_documents(filters={"embedding": {"$in": [embedding_zero, embedding_one]}})
         assert self.contains_same_docs(
             result,
@@ -263,7 +263,7 @@ class DocumentStoreBaseTests:
         )
 
     @pytest.mark.unit
-    def test_ne_filter_tensor(self, docstore: Store, filterable_docs: List[Document]):
+    def test_ne_filter_embedding(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         embedding = np.zeros([768, 1]).astype(np.float32)
         result = docstore.filter_documents(filters={"embedding": {"$ne": embedding}})
@@ -291,7 +291,7 @@ class DocumentStoreBaseTests:
         )
 
     @pytest.mark.unit
-    def test_nin_filter_tensor(self, docstore: Store, filterable_docs: List[Document]):
+    def test_nin_filter_embedding(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         embedding_zeros = np.zeros([768, 1]).astype(np.float32)
         embedding_ones = np.zeros([768, 1]).astype(np.float32)
@@ -328,20 +328,20 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_gt_filter_non_numeric(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        with pytest.raises(StoreError, match="Can't evaluate"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"page": {"$gt": "100"}})
 
     @pytest.mark.unit
     def test_gt_filter_table(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        with pytest.raises(StoreError, match="Can't evaluate"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"content": {"$gt": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
 
     @pytest.mark.unit
-    def test_gt_filter_tensor(self, docstore: Store, filterable_docs: List[Document]):
+    def test_gt_filter_embedding(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         embedding_zeros = np.zeros([768, 1]).astype(np.float32)
-        with pytest.raises(StoreError, match="Can't evaluate"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"embedding": {"$gt": embedding_zeros}})
 
     @pytest.mark.unit
@@ -355,20 +355,20 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_gte_filter_non_numeric(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        with pytest.raises(StoreError, match="Can't evaluate"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"page": {"$gte": "100"}})
 
     @pytest.mark.unit
     def test_gte_filter_table(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        with pytest.raises(StoreError, match="Can't evaluate"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"content": {"$gte": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
 
     @pytest.mark.unit
-    def test_gte_filter_tensor(self, docstore: Store, filterable_docs: List[Document]):
+    def test_gte_filter_embedding(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         embedding_zeros = np.zeros([768, 1]).astype(np.float32)
-        with pytest.raises(StoreError, match="Can't evaluate"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"embedding": {"$gte": embedding_zeros}})
 
     @pytest.mark.unit
@@ -382,20 +382,20 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_lt_filter_non_numeric(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        with pytest.raises(StoreError, match="Can't evaluate"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"page": {"$lt": "100"}})
 
     @pytest.mark.unit
     def test_lt_filter_table(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        with pytest.raises(StoreError, match="Can't evaluate"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"content": {"$lt": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
 
     @pytest.mark.unit
-    def test_lt_filter_tensor(self, docstore: Store, filterable_docs: List[Document]):
+    def test_lt_filter_embedding(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         embedding_ones = np.ones([768, 1]).astype(np.float32)
-        with pytest.raises(StoreError, match="Can't evaluate"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"embedding": {"$lt": embedding_ones}})
 
     @pytest.mark.unit
@@ -409,20 +409,20 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_lte_filter_non_numeric(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        with pytest.raises(StoreError, match="Can't evaluate"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"page": {"$lte": "100"}})
 
     @pytest.mark.unit
     def test_lte_filter_table(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        with pytest.raises(StoreError, match="Can't evaluate"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"content": {"$lte": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
 
     @pytest.mark.unit
-    def test_lte_filter_tensor(self, docstore: Store, filterable_docs: List[Document]):
+    def test_lte_filter_embedding(self, docstore: Store, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         embedding_ones = np.ones([768, 1]).astype(np.float32)
-        with pytest.raises(StoreError, match="Can't evaluate"):
+        with pytest.raises(FilterError):
             docstore.filter_documents(filters={"embedding": {"$lte": embedding_ones}})
 
     @pytest.mark.unit
@@ -677,12 +677,12 @@ class DocumentStoreBaseTests:
 
     @pytest.mark.unit
     def test_write_not_docs(self, docstore: Store):
-        with pytest.raises(ValueError, match="Please provide a list of Documents"):
+        with pytest.raises(ValueError):
             docstore.write_documents(["not a document for sure"])  # type: ignore
 
     @pytest.mark.unit
     def test_write_not_list(self, docstore: Store):
-        with pytest.raises(ValueError, match="Please provide a list of Documents"):
+        with pytest.raises(ValueError):
             docstore.write_documents("not a list actually")  # type: ignore
 
     @pytest.mark.unit
