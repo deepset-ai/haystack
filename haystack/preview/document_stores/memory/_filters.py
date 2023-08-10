@@ -3,16 +3,12 @@ from typing import List, Any
 import numpy as np
 import pandas as pd
 
-from haystack.preview.document_stores.errors import FilterError
 from haystack.preview.dataclasses import Document
+from haystack.preview.document_stores.memory import MemoryDocumentStoreFilterError
 
 
 GT_TYPES = (int, float, np.number)
 IN_TYPES = (list, set, tuple)
-
-
-class MemoryDocumentStoreFilterError(FilterError):
-    pass
 
 
 def not_operation(conditions: List[Any], document: Document, _current_key: str):
