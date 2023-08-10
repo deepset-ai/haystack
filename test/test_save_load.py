@@ -382,3 +382,58 @@ def test_unmarshal_pipelines():
     assert len(connections2) == 2
     assert connections2[0] == ("first_addition", "double", "result/value")
     assert connections2[1] == ("double", "second_addition", "value/value")
+
+
+def test_unmarshal_pipelines_just_marshalled():
+    add_two = AddFixedValue(add=2)
+    another_add_two = AddFixedValue(add=2)
+    double = Double()
+
+    first_pipeline = Pipeline()
+    first_pipeline.add_component("add_two", add_two)
+    first_pipeline.add_component("double", double)
+    first_pipeline.add_component("another_add_two", another_add_two)
+    first_pipeline.connect("add_two", "double")
+    first_pipeline.connect("double", "another_add_two")
+
+    second_pipeline = Pipeline()
+    second_pipeline.add_component("add_two", another_add_two)
+    second_pipeline.add_component("double", double)
+    second_pipeline.connect("add_two", "double")
+
+    data = marshal_pipelines({"first_pipeline": first_pipeline, "second_pipeline": second_pipeline})
+    res = unmarshal_pipelines(data)
+
+    assert len(res) == 2
+
+    assert res["first_pipeline"] != first_pipeline
+    first_components = dict(res["first_pipeline"].graph.nodes(data="instance"))
+    assert len(first_components) == 3
+
+    assert isinstance(first_components["add_two_1"], AddFixedValue)
+    assert first_components["add_two_1"].add == 2
+
+    assert isinstance(first_components["double"], Double)
+
+    assert isinstance(first_components["another_add_two"], AddFixedValue)
+    assert first_components["add_two_1"].add == 2
+
+    first_connections = list(res["first_pipeline"].graph.edges)
+    assert len(first_connections) == 2
+    assert first_connections[0] == ("add_two_1", "double", "result/value")
+    assert first_connections[1] == ("double", "another_add_two", "value/value")
+
+    assert res["second_pipeline"] != second_pipeline
+    second_components = dict(res["second_pipeline"].graph.nodes(data="instance"))
+    assert len(second_components) == 2
+
+    assert isinstance(second_components["add_two_2"], AddFixedValue)
+    assert second_components["add_two_2"].add == 2
+
+    assert isinstance(second_components["double"], Double)
+
+    assert second_components["add_two_2"] is first_components["another_add_two"]
+
+    second_connections = list(res["second_pipeline"].graph.edges)
+    assert len(second_connections) == 1
+    assert second_connections[0] == ("add_two_2", "double", "result/value")
