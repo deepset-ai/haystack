@@ -73,8 +73,7 @@ def test_marshal_pipelines():
 
 def test_marshal_pipelines_with_reused_component_instance_and_identical_names():
     add_two = AddFixedValue(add=2)
-    # another_add_two = AddFixedValue(add=2)
-    another_add_two = Double()
+    another_double = Double()
     double = Double()
 
     first_pipeline = Pipeline()
@@ -83,7 +82,7 @@ def test_marshal_pipelines_with_reused_component_instance_and_identical_names():
     first_pipeline.connect("add_two", "double")
 
     second_pipeline = Pipeline()
-    second_pipeline.add_component("add_two", another_add_two)
+    second_pipeline.add_component("add_two", another_double)
     second_pipeline.add_component("double", double)
     second_pipeline.connect("add_two", "double")
 
