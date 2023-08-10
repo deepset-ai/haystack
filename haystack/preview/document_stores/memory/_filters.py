@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores.memory import MemoryDocumentStoreFilterError
+from haystack.preview.document_stores.memory.errors import MemoryDocumentStoreFilterError
 
 
 GT_TYPES = (int, float, np.number)

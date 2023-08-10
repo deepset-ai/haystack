@@ -8,7 +8,6 @@ import rank_bm25
 from tqdm.auto import tqdm
 
 from haystack.preview.document_stores.decorator import store
-from haystack.preview.document_stores.errors import FilterError
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.protocols import DuplicatePolicy
 from haystack.preview.document_stores.memory._filters import match
@@ -23,10 +22,6 @@ logger = logging.getLogger(__name__)
 # but to 0.78 with SCALING_FACTOR=8 (default). The default was chosen empirically. Increase the default if most
 # unscaled scores are larger than expected (>30) and otherwise would incorrectly all be mapped to scores ~1.
 SCALING_FACTOR = 8
-
-
-class MemoryDocumentStoreFilterError(FilterError):
-    pass
 
 
 @store
