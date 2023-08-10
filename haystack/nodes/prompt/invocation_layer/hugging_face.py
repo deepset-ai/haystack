@@ -2,6 +2,7 @@ from typing import Optional, Union, List, Dict, Any
 import logging
 import os
 
+from haystack.errors import HuggingFacePipelineInferenceError
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.utils import get_task
@@ -261,8 +262,10 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             if stream:
                 stream_handler: TokenStreamingHandler = stream_handler or DefaultTokenStreamingHandler()
                 model_input_kwargs["streamer"] = HFTokenStreamingHandler(self.pipe.tokenizer, stream_handler)
-
-            output = self.pipe(prompt, **model_input_kwargs)
+            try:
+                output = self.pipe(prompt, **model_input_kwargs)
+            except Exception as e:
+                raise HuggingFacePipelineInferenceError(f"Text generation failed: {str(e)}") from e
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
 
         if stop_words:

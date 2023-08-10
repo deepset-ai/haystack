@@ -8,6 +8,7 @@ from prompthub import Prompt
 from transformers import GenerationConfig, TextStreamer
 
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
+from haystack.errors import HuggingFacePipelineInferenceError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt.prompt_template import LEGACY_DEFAULT_TEMPLATES
 from haystack.nodes.prompt.invocation_layer import (
@@ -261,6 +262,23 @@ def test_simple_pipeline(prompt_model):
     # and that so-called invocation context contains the right keys
     assert "invocation_context" in result
     assert all(item in result["invocation_context"] for item in ["query", "documents", output_variable_name, "prompts"])
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["hf"], indirect=True)
+def test_hf_prompt_node_with_unknown_params(prompt_model):
+    """
+    Tests that prompt node with unknown parameters raises HuggingFacePipelineInferenceError for HF models
+    """
+
+    node = PromptNode(prompt_model, default_prompt_template="question-answering-per-document")
+    with pytest.raises(HuggingFacePipelineInferenceError, match="Text generation failed"):
+        node.prompt(
+            "question-answering-per-document",
+            query="What is the capital city of Germany?",
+            invalid_param_causing_exception=True,
+            documents=[Document("Berlin is the capital city of Germany.")],
+        )
 
 
 @pytest.mark.skip
