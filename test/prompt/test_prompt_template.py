@@ -468,3 +468,26 @@ class TestPromptTemplateSyntax:
         prompt_template = PromptTemplate(prompt_text)
         prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
         assert prompts == expected_prompts
+
+    def test_prompt_template_remove_template_params(self):
+        kwargs = {"query": "query", "documents": "documents", "other": "other"}
+        expected_kwargs = {"other": "other"}
+        prompt_text = "Here is prompt text with two variables that are also in kwargs: {query} and {documents}"
+        prompt_template = PromptTemplate(prompt_text)
+        assert prompt_template.remove_template_params(kwargs) == expected_kwargs
+
+    def test_prompt_template_remove_template_params_edge_cases(self):
+        """
+        Test that the function works with a variety of edge cases
+        """
+        kwargs = {"query": "query", "documents": "documents"}
+        prompt_text = "Here is prompt text with two variables that are also in kwargs: {query} and {documents}"
+        prompt_template = PromptTemplate(prompt_text)
+        assert prompt_template.remove_template_params(kwargs) == {}
+
+        assert prompt_template.remove_template_params({}) == {}
+
+        assert prompt_template.remove_template_params(None) == {}
+
+        totally_unrelated = {"totally_unrelated": "totally_unrelated"}
+        assert prompt_template.remove_template_params(totally_unrelated) == totally_unrelated
