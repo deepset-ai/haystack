@@ -2,6 +2,10 @@ class StoreError(Exception):
     pass
 
 
+class FilterError(StoreError):
+    pass
+
+
 class DuplicateDocumentError(StoreError):
     pass
 
