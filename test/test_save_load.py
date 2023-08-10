@@ -1,10 +1,13 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-import pytest
-
 from canals import Pipeline, marshal_pipelines, unmarshal_pipelines
-from canals.pipeline.save_load import _rename_connections, _remove_duplicate_instances, _cleanup_marshalled_data
+from canals.pipeline.save_load import (
+    _rename_connections,
+    _remove_duplicate_instances,
+    _remove_pipeline_component_data,
+    _remove_component_hashes,
+)
 from sample_components import AddFixedValue, Double
 
 import logging
@@ -257,13 +260,8 @@ def test_remove_duplicate_instances():
     }
 
 
-def test_cleanup_marshalled_data():
+def test_remove_pipeline_component_data():
     data = {
-        "components": {
-            "comp1": {"hash": 123},
-            "comp2": {"hash": 123},
-            "comp3": {"hash": 456},
-        },
         "pipelines": {
             "first": {
                 "components": {
@@ -278,16 +276,29 @@ def test_cleanup_marshalled_data():
             },
         },
     }
-    _cleanup_marshalled_data(data)
+    _remove_pipeline_component_data(data)
+    assert data == {
+        "pipelines": {
+            "first": {},
+            "second": {},
+        },
+    }
+
+
+def test_remove_component_hashes():
+    data = {
+        "components": {
+            "comp1": {"hash": 123},
+            "comp2": {"hash": 123},
+            "comp3": {"hash": 456},
+        },
+    }
+    _remove_component_hashes(data)
     assert data == {
         "components": {
             "comp1": {},
             "comp2": {},
             "comp3": {},
-        },
-        "pipelines": {
-            "first": {},
-            "second": {},
         },
     }
 

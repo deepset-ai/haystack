@@ -106,7 +106,8 @@ def marshal_pipelines(pipelines: Dict[str, Pipeline]) -> Dict[str, Any]:
 
     _rename_connections(data, connections_renames)
     _remove_duplicate_instances(data["components"])
-    _cleanup_marshalled_data(data)
+    _remove_pipeline_component_data(data)
+    _remove_component_hashes(data)
 
     return data
 
@@ -179,13 +180,19 @@ def _remove_duplicate_instances(components: Dict[str, Any]):
                 components[other_comp_name] = comp_name
 
 
-def _cleanup_marshalled_data(data: Dict[str, Any]):
-    # Delete components declared in each pipeline, connections are enough
-    # since we're declaring components globally
+def _remove_pipeline_component_data(data: Dict[str, Any]):
+    """
+    Delete components declared in each pipeline.
+    Connections are enough since we're declaring components globally.
+    """
     for pipe in data["pipelines"].values():
         del pipe["components"]
 
-    # Delete components hashes, we don't need them anymore
+
+def _remove_component_hashes(data: Dict[str, Any]):
+    """
+    Delete components hashes, we don't need them anymore.
+    """
     for comp in data["components"].values():
         if isinstance(comp, dict):
             del comp["hash"]
