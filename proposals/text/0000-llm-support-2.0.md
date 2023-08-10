@@ -1,7 +1,7 @@
 - Title: LLM SUpport in Haystack 2.0
 - Decision driver: @ZanSara
 - Start Date: 2023-08-10
-- Proposal PR: (fill in after opening the PR)
+- Proposal PR: #5540
 - Github Issue or Discussion: https://github.com/deepset-ai/haystack/issues/5330
 
 # Summary
