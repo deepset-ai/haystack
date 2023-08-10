@@ -217,8 +217,8 @@ def unmarshal_pipelines(data: Dict[str, Any]) -> Dict[str, Pipeline]:
             # This component refers to another one
             components[name] = components[comp_data]
             continue
-        init_params = comp_data["init_parameters"]
-        components[name] = component.registry[comp_data["type"]](**init_params)
+        component_class = component.registry[comp_data["type"]]
+        components[name] = component_class.from_dict(comp_data)
 
     pipelines = {}
     for name, pipe_data in data["pipelines"].items():
