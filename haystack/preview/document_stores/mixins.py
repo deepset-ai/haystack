@@ -13,6 +13,10 @@ class StoreAwareMixin:
     """
 
     _store: Optional[Store] = None
+    # This is necessary to ease serialisation when converting a Component that uses
+    # a Store into a dictionary.
+    # This is only set when calling `Pipeline.add_component()`.
+    _store_name: str = ""
     supported_stores: List[Type[Store]]  # type: ignore # (see https://github.com/python/mypy/issues/4717)
 
     @property
