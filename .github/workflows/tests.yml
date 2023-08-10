@@ -32,7 +32,7 @@ jobs:
       - name: Mypy
         run: |
           mkdir .mypy_cache/
-          mypy --install-types --non-interactive --ignore-missing-imports canals/
+          mypy --install-types --non-interactive --ignore-missing-imports canals/ sample_components/
 
   pylint:
     runs-on: ubuntu-latest
@@ -51,7 +51,7 @@ jobs:
           pip install .[mermaid,graphviz,dev]
 
       - name: Pylint
-        run: pylint -ry -j 0 canals/
+        run: pylint -ry -j 0 canals/ sample_components/
 
   black:
     runs-on: ubuntu-latest
@@ -68,30 +68,7 @@ jobs:
         run: pip install .[dev]
 
       - name: Check status
-        run: |
-          if ! black canals/ --check; then
-            git status
-            echo "###################################################################################################"
-            echo "# "
-            echo "# CHECK FAILED! Black found issues with your code formatting."
-            echo "# "
-            echo "# Either:"
-            echo "# 1. Run Black locally before committing:"
-            echo "# "
-            echo "#     pip install .[dev]"
-            echo "#     black ."
-            echo "# "
-            echo "# 2. Install the pre-commit hook:"
-            echo "# "
-            echo "#     pre-commit install --hook-type pre-push"
-            echo "# "
-            echo "# 3. See https://github.com/deepset-ai/canals/blob/main/CONTRIBUTING.md for help."
-            echo "# "
-            echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/canals/issues"
-            echo "# "
-            echo "##################################################################################################"
-            exit 1
-          fi
+        run: black canals/ --check
 
   tests:
     name: Unit / Python ${{ matrix.version }} / ${{ matrix.os }}
