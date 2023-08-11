@@ -794,7 +794,7 @@ class Pipeline:
                     inputs_buffer[target_node] = {}  # Create the buffer for the downstream node if it's not there yet
 
                 value_to_route = node_results.get(from_socket.name, None)
-                if value_to_route:
+                if value_to_route is not None:
                     inputs_buffer[target_node][to_socket.name] = value_to_route
 
         return inputs_buffer
