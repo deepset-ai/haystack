@@ -38,7 +38,7 @@ class ExtractiveReader:
 
     def _preprocess(
         self, queries: List[str], documents: List[str], max_seq_length: int
-    ) -> Tuple[torch.tensor, torch.tensor, torch.tensor, List[Encoding]]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, List[Encoding]]:
         self.tokenizer.enable_padding(length=max_seq_length)
         self.tokenizer.enable_truncation(max_seq_length)
 
@@ -55,8 +55,8 @@ class ExtractiveReader:
     def _postprocess(
         self,
         output,
-        sequence_ids: torch.tensor,
-        attention_mask: torch.tensor,
+        sequence_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
         top_k: int,
         encodings: List[Encoding],
         max_seq_length: int,
@@ -64,10 +64,10 @@ class ExtractiveReader:
         start = output.start_logits
         end = output.end_logits
         mask = sequence_ids == 1
-        mask[..., 0] = True
-        mask = torch.logical_and(mask, attention_mask == 1)
-        start = torch.where(mask, start, -torch.inf)
-        end = torch.where(mask, end, -torch.inf)
+        mask[..., 0] = True  # type: ignore # mypy doesn't understand broadcasting
+        mask = torch.logical_and(mask, attention_mask == 1)  # type: ignore # see above
+        start = torch.where(mask, start, -torch.inf)  # type: ignore # see above
+        end = torch.where(mask, end, -torch.inf)  # type: ignore # see above
         start = torch.softmax(start, -1)
         end = torch.softmax(end, -1)
         start = start.unsqueeze(-1)
