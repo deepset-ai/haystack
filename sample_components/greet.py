@@ -30,6 +30,7 @@ class Greet:  # pylint: disable=too-few-public-methods
             raise ValueError(f"This log level does not exist: {log_level}")
         self.message = message
         self.log_level = log_level
+        self.init_parameters = {"message": message, "log_level": log_level}
 
     @component.output_types(value=int)
     def run(self, value: int, message: Optional[str] = None, log_level: Optional[str] = None):

@@ -20,6 +20,7 @@ class Threshold:  # pylint: disable=too-few-public-methods
         :param threshold: the number to compare the input value against.
         """
         self.threshold = threshold
+        self.init_parameters = {"threshold": threshold}
 
     @component.output_types(above=int, below=int)
     def run(self, value: int, threshold: Optional[int] = None):

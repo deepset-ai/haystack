@@ -14,6 +14,7 @@ class AddFixedValue:  # pylint: disable=too-few-public-methods
 
     def __init__(self, add: int = 1):
         self.add = add
+        self.init_parameters = {"add": add}
 
     @component.output_types(result=int)
     def run(self, value: int, add: Optional[int] = None):

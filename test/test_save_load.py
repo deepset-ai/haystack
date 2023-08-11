@@ -45,7 +45,7 @@ def test_marshal_pipelines():
             "double": {"type": "Double", "init_parameters": {}},
             "second_addition": {
                 "type": "AddFixedValue",
-                "init_parameters": {},
+                "init_parameters": {"add": 1},
             },
             "third_addition": "first_addition",
             "adder": "first_addition",
@@ -312,7 +312,7 @@ def test_unmarshal_pipelines():
             "double": {"type": "Double", "init_parameters": {}},
             "second_addition": {
                 "type": "AddFixedValue",
-                "init_parameters": {},
+                "init_parameters": {"add": 1},
             },
             "third_addition": "first_addition",
         },

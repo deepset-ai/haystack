@@ -108,22 +108,6 @@ class Component(Protocol):  # pylint: disable=too-few-public-methods
         """
 
 
-def _prepare_init_params_and_sockets(init_func):
-    """
-    Decorator that saves the init parameters of a component in `self.init_parameters`
-    """
-
-    @wraps(init_func)
-    def wrapper(self, *args, **kwargs):
-        # Call the actual __init__ function with the arguments
-        init_func(self, *args, **kwargs)
-
-        # Collect and store all the init parameters, preserving whatever the components might have already added there
-        self.init_parameters = {**kwargs, **getattr(self, "init_parameters", {})}
-
-    return wrapper
-
-
 class _Component:
     """
     See module's docstring.
@@ -261,10 +245,6 @@ class _Component:
             }
             for param in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
         }
-
-        # Automatically registers all the init parameters in an instance attribute called `_init_parameters`.
-        # See `save_init_parameters()`.
-        class_.__init__ = _prepare_init_params_and_sockets(class_.__init__)
 
         # Save the component in the class registry (for deserialization)
         if class_.__name__ in self.registry:

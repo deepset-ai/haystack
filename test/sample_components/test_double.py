@@ -14,4 +14,3 @@ class TestDouble(BaseTestComponent):
         component = Double()
         results = component.run(value=10)
         assert results == {"value": 20}
-        assert component.init_parameters == {}
