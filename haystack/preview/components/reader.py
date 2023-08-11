@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 from haystack.preview import component, Document, Answer
-from haystack.preview.pipeline import Pipeline
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
