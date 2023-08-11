@@ -1,0 +1,3 @@
+---
+features:
+  - Add `to_dict` and `from_dict` in `MemoryRetriever`
