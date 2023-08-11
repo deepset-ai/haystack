@@ -66,7 +66,6 @@ def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_va
     for node, sockets in valid_inputs.items():
         for socket in sockets:
             inputs_for_node = input_values.get(node, {})
-            print(inputs_for_node)
             missing_input_value = (
                 inputs_for_node is None
                 or not socket.name in inputs_for_node.keys()
