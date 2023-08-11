@@ -50,7 +50,7 @@ def test_to_dict():
             "add_default": {
                 "type": "AddFixedValue",
                 "hash": id(add_default),
-                "init_parameters": {},
+                "init_parameters": {"add": 1},
             },
             "double": {
                 "type": "Double",
@@ -79,7 +79,7 @@ def test_from_dict():
             "add_default": {
                 "type": "AddFixedValue",
                 "hash": "456",
-                "init_parameters": {},
+                "init_parameters": {"add": 1},
             },
             "double": {
                 "type": "Double",

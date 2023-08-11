@@ -31,7 +31,7 @@ class TestAccumulate(BaseTestComponent):
         assert results == {"value": 11}
         assert component.state == 11
 
-        assert component.init_parameters == {}
+        assert component.init_parameters == {"function": None}
 
     def test_accumulate_callable(self):
         component = Accumulate(function=my_subtract)

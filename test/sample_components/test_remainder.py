@@ -18,7 +18,7 @@ class TestRemainder(BaseTestComponent):
         component = Remainder()
         results = component.run(value=4)
         assert results == {"remainder_is_0": None, "remainder_is_1": 4, "remainder_is_2": None}
-        assert component.init_parameters == {}
+        assert component.init_parameters == {"divisor": 3}
 
     def test_remainder_with_divisor(self):
         component = Remainder(divisor=4)

@@ -10,9 +10,6 @@ class Subtract:  # pylint: disable=too-few-public-methods
     Compute the difference between two values.
     """
 
-    def __init__(self):
-        ...
-
     @component.output_types(difference=int)
     def run(self, first_value: int, second_value: int):
         """

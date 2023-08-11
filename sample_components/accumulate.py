@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Union, Callable, Optional
+from typing import Union, Callable, Optional, Dict, Any
 import sys
 import builtins
 from importlib import import_module
@@ -28,13 +28,16 @@ class Accumulate:  # pylint: disable=too-few-public-methods
             import it at need. This is also a parameter.
         """
         self.state = 0
+        self.init_parameters: Dict[str, Any] = {}
 
         if function is None:
             self.function = lambda x, y: x + y
+            self.init_parameters["function"] = None
         else:
             self.function = self._load_function(function)
             # 'function' is not serializable by default, so we serialize it manually.
-            self.init_parameters = {"function": self._save_function(function)}
+            # FIXME use to_dict and from_dict for these operations
+            self.init_parameters["function"] = self._save_function(function)
 
     @component.output_types(value=int)
     def run(self, value: int):
@@ -50,6 +53,7 @@ class Accumulate:  # pylint: disable=too-few-public-methods
         """
         Loads the function by trying to import it.
         """
+        # FIXME use to_dict and from_dict for these operations
         if not isinstance(function, str):
             return function
 
@@ -65,6 +69,7 @@ class Accumulate:  # pylint: disable=too-few-public-methods
         Saves the function by returning its import path to be used with `_load_function`
         (which uses `import_module` internally).
         """
+        # FIXME use to_dict and from_dict for these operations
         if isinstance(function, str):
             return function
         module = sys.modules.get(function.__module__)
