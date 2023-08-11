@@ -7,9 +7,13 @@ import numpy as np
 import rank_bm25
 from tqdm.auto import tqdm
 
-from haystack.preview.document_stores.decorator import document_store
+from haystack.preview.document_stores.decorator import (
+    document_store,
+    default_document_store_to_dict,
+    default_document_store_from_dict,
+)
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores.protocols import DuplicatePolicy
+from haystack.preview.document_stores.protocols import DuplicatePolicy, DocumentStore
 from haystack.preview.document_stores.memory._filters import match
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
 from haystack.utils.scipy_utils import expit
@@ -53,6 +57,19 @@ class MemoryDocumentStore:
             "bm25_algorithm": bm25_algorithm,
             "bm25_parameters": self.bm25_parameters,
         }
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes this store to a dictionary.
+        """
+        return default_document_store_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DocumentStore":
+        """
+        Deserializes the store from a dictionary.
+        """
+        return default_document_store_from_dict(cls, data)
 
     def count_documents(self) -> int:
         """

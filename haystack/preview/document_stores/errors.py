@@ -14,5 +14,5 @@ class MissingDocumentError(DocumentStoreError):
     pass
 
 
-class StoreDeserializationError(StoreError):
+class DocumentStoreDeserializationError(DocumentStoreError):
     pass

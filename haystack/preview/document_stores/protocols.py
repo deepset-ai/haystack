@@ -31,7 +31,7 @@ class DocumentStore(Protocol):
         """
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Store":
+    def from_dict(cls, data: Dict[str, Any]) -> "DocumentStore":
         """
         Deserializes the store from a dictionary.
         """
