@@ -16,10 +16,31 @@ def test_default_store_to_dict():
 
 
 @pytest.mark.unit
+def test_default_store_to_dict_with_custom_init_parameters():
+    extra_fields = {"init_parameters": {"custom_param": True}}
+    MyStore = store_class("MyStore", extra_fields=extra_fields)
+    comp = MyStore()
+    res = _default_store_to_dict(comp)
+    assert res == {"hash": id(comp), "type": "MyStore", "init_parameters": {"custom_param": True}}
+
+
+@pytest.mark.unit
 def test_default_store_from_dict():
     MyStore = store_class("MyStore")
     comp = _default_store_from_dict(MyStore, {"type": "MyStore"})
     assert isinstance(comp, MyStore)
+
+
+@pytest.mark.unit
+def test_default_store_from_dict_with_custom_init_parameters():
+    def store_init(self, custom_param: int):
+        self.custom_param = custom_param
+
+    extra_fields = {"__init__": store_init}
+    MyStore = store_class("MyStore", extra_fields=extra_fields)
+    comp = _default_store_from_dict(MyStore, {"type": "MyStore", "init_parameters": {"custom_param": 100}})
+    assert isinstance(comp, MyStore)
+    assert comp.custom_param == 100
 
 
 @pytest.mark.unit
