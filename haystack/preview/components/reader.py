@@ -1,11 +1,11 @@
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
-from haystack.preview import component, Document, Answer
+from haystack.preview import component, Document, Answer, Pipeline
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
-    from transformers import AutoModelForQuestionAnswering
-    from tokenizers import Tokenizer, Encoding
+    from transformers import AutoModelForQuestionAnswering, AutoTokenizer
+    from tokenizers import Encoding
     import torch
 
 
@@ -28,7 +28,7 @@ class ExtractiveReader:
             else:
                 self.device = "cpu:0"
             self.model = AutoModelForQuestionAnswering.from_pretrained(self.reader).to(self.device)
-            self.tokenizer = Tokenizer.from_pretrained(self.reader)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.reader)
 
     def _flatten(self, queries: List[str], documents: List[List[Document]]) -> Tuple[List[str], List[str]]:
         flattened_queries = [query for documents_, query in zip(documents, queries) for _ in documents_]
@@ -38,13 +38,14 @@ class ExtractiveReader:
     def _preprocess(
         self, queries: List[str], documents: List[str], max_seq_length: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, List[Encoding]]:
-        self.tokenizer.enable_padding(length=max_seq_length)
-        self.tokenizer.enable_truncation(max_seq_length)
+        encodings = self.tokenizer(
+            queries, documents, padding="max_length", truncation=True, max_length=max_seq_length, return_tensors="pt"
+        )
 
-        encodings = self.tokenizer.encode_batch(list(zip(queries, documents)))
+        input_ids = encodings.input_ids.to(self.device)
+        attention_mask = encodings.attention_mask.to(self.device)
 
-        input_ids = torch.tensor([encoding.ids for encoding in encodings]).to(self.device)
-        attention_mask = torch.tensor([encoding.attention_mask for encoding in encodings]).to(self.device)
+        encodings = encodings.encodings
         sequence_ids = torch.tensor(
             [[id_ if id_ is not None else -1 for id_ in encoding.sequence_ids] for encoding in encodings]
         ).to(self.device)
@@ -73,12 +74,12 @@ class ExtractiveReader:
         end = end.unsqueeze(-2)
 
         probabilities = start * end  # shape: (batch_size, seq_length (start), seq_length (end))
-        masked_probabilities = torch.triu(probabilities, diagonal=1)
-        masked_probabilities[..., 0, 0] = probabilities[..., 0, 0]
-        masked_probabilities[..., 0, 1:] = 0
+        masked_probabilities = torch.triu(probabilities, diagonal=1)  # End shouldn't be before start
+        masked_probabilities[..., 0, 0] = probabilities[..., 0, 0]  # Make exception for no answer
+        masked_probabilities[..., 0, 1:] = 0  # Do not want no answer as start and normal end
         flat_probabilities = masked_probabilities.flatten(-2, -1)  # necessary for topk
         candidates = torch.topk(flat_probabilities, top_k)
-        start_candidates = candidates.indices // max_seq_length
+        start_candidates = candidates.indices // max_seq_length  # Recover indices from flattening
         end_candidates = candidates.indices % max_seq_length
         start_candidates = start_candidates.cpu()
         end_candidates = end_candidates.cpu()
@@ -148,3 +149,19 @@ class ExtractiveReader:
         answers = self._unflatten(start, end, probabilities, flattened_documents, documents, top_k)
 
         return {"answers": answers}
+
+
+if __name__ == "__main__":
+    docs = [
+        [
+            Document(content="Angela Merkel is the chancellor of Germany."),
+            Document(content="Olaf Scholz is the chancellor of Germany"),
+        ],
+        [Document(content="Jerry is the head of the department.")],
+    ]
+    queries = ["Who is the chancellor of Germany?", "What is Jerry's role?"]
+    reader = ExtractiveReader("deepset/roberta-base-squad2")
+    p = Pipeline()
+    p.add_component("reader", reader)
+
+    print(p.run({"reader": {"documents": docs, "queries": queries}}))
