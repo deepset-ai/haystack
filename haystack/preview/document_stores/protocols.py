@@ -25,6 +25,17 @@ class Store(Protocol):
     you're using.
     """
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes this store to a dictionary.
+        """
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Store":
+        """
+        Deserializes the store from a dictionary.
+        """
+
     def count_documents(self) -> int:
         """
         Returns the number of documents stored.
