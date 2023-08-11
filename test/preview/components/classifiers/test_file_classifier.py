@@ -19,13 +19,12 @@ class TestFileClassifier(BaseTestComponent):
         ]
 
         classifier = FileTypeClassifier(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
-        data_input = classifier.input(file_paths)
-        output = classifier.run(data=data_input)
+        output = classifier.run(paths=file_paths)
         assert output
-        assert len(output.text_plain) == 2
-        assert len(output.audio_x_wav) == 1
-        assert len(output.image_jpeg) == 1
-        assert not output.unclassified
+        assert len(output["text_plain"]) == 2
+        assert len(output["audio_x_wav"]) == 1
+        assert len(output["image_jpeg"]) == 1
+        assert not output["unclassified"]
 
     @pytest.mark.unit
     def test_no_files(self):
@@ -33,13 +32,8 @@ class TestFileClassifier(BaseTestComponent):
         Test that the component runs correctly when no files are provided.
         """
         classifier = FileTypeClassifier(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
-        data_input = classifier.input([])
-        output = classifier.run(data=data_input)
-        assert output
-        assert not output.text_plain
-        assert not output.audio_x_wav
-        assert not output.image_jpeg
-        assert not output.unclassified
+        output = classifier.run(paths=[])
+        assert not output
 
     @pytest.mark.unit
     def test_unlisted_extensions(self, preview_samples_path):
@@ -48,13 +42,11 @@ class TestFileClassifier(BaseTestComponent):
         """
         file_paths = [preview_samples_path / "txt" / "doc_1.txt", preview_samples_path / "audio" / "ignored.mp3"]
         classifier = FileTypeClassifier(mime_types=["text/plain"])
-        data_input = classifier.input(file_paths)
-        output = classifier.run(data=data_input)
-        assert len(output.text_plain) == 1
-        assert not hasattr(output, "mp3")
-        assert hasattr(output, "unclassified")
-        assert len(output.unclassified) == 1
-        assert str(output.unclassified[0]).endswith("ignored.mp3")
+        output = classifier.run(paths=file_paths)
+        assert len(output["text_plain"]) == 1
+        assert "mp3" not in output
+        assert len(output["unclassified"]) == 1
+        assert str(output["unclassified"][0]).endswith("ignored.mp3")
 
     @pytest.mark.unit
     def test_no_extension(self, preview_samples_path):
@@ -63,11 +55,9 @@ class TestFileClassifier(BaseTestComponent):
         """
         file_paths = [preview_samples_path / "txt" / "doc_1.txt", preview_samples_path / "txt" / "doc_2"]
         classifier = FileTypeClassifier(mime_types=["text/plain"])
-        data_input = classifier.input(file_paths)
-        output = classifier.run(data=data_input)
-        assert len(output.text_plain) == 1
-        assert hasattr(output, "unclassified")
-        assert len(output.unclassified) == 1
+        output = classifier.run(paths=file_paths)
+        assert len(output["text_plain"]) == 1
+        assert len(output["unclassified"]) == 1
 
     @pytest.mark.unit
     def test_unknown_mime_type(self):
