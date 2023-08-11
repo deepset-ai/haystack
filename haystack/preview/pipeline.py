@@ -92,7 +92,7 @@ class Pipeline(CanalsPipeline):
             if document_store not in self._document_stores:
                 raise NoSuchDocumentStoreError(
                     f"DocumentStore named '{document_store}' not found. "
-                    f"Add it with 'pipeline.add_store('{document_store}', <the DocumentStore instance>)'."
+                    f"Add it with 'pipeline.add_document_store('{document_store}', <the DocumentStore instance>)'."
                 )
 
             if instance.document_store:
