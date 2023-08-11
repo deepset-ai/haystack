@@ -56,7 +56,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
     4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
 
     Weaviate python client is used to connect to the server, more details are here
-    https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
+    https://weaviate.io/developers/weaviate/client-libraries/python
 
     Usage:
     1. Start a Weaviate server (see https://weaviate.io/developers/weaviate/current/getting-started/installation.html)

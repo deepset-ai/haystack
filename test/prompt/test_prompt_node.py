@@ -233,19 +233,30 @@ def test_azure_vs_open_ai_invocation_layer_selection():
     )
 
 
-@pytest.mark.skip
 @pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
+@pytest.mark.parametrize("prompt_model", ["hf"], indirect=True)
 def test_simple_pipeline(prompt_model):
-    # TODO: This can be another unit test?
-    skip_test_for_invalid_key(prompt_model)
-
-    node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable="out")
+    """
+    Tests that a pipeline with a prompt node and prompt template has the right output structure
+    """
+    output_variable_name = "out"
+    node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable=output_variable_name)
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
     result = pipe.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    assert "positive" in result["out"][0].casefold()
+
+    # validate output variable present
+    assert output_variable_name in result
+    assert len(result[output_variable_name]) == 1
+
+    # validate pipeline parameters are present
+    assert "query" in result
+    assert "documents" in result
+
+    # and that so-called invocation context contains the right keys
+    assert "invocation_context" in result
+    assert all(item in result["invocation_context"] for item in ["query", "documents", output_variable_name, "prompts"])
 
 
 @pytest.mark.skip

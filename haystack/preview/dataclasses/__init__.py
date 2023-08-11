@@ -1,1 +1,3 @@
-from haystack.preview.dataclasses.document import Document
+from haystack.preview.dataclasses.document import Document, ContentType
+
+__all__ = ["Document", "ContentType"]

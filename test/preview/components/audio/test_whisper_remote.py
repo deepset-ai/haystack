@@ -46,11 +46,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         with patch("haystack.utils.requests_utils.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
-            result = comp.run(
-                RemoteWhisperTranscriber.Input(
-                    audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"]
-                )
-            )
+            result = comp.run(audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"])
             expected = Document(
                 content="test transcription",
                 metadata={
@@ -58,7 +54,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
                     "other_metadata": ["other", "meta", "data"],
                 },
             )
-            assert result.documents == [expected]
+            assert result["documents"] == [expected]
 
     @pytest.mark.unit
     def test_run_with_str(self, preview_samples_path):
@@ -71,11 +67,9 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
             mocked_requests.request.return_value = mock_response
 
             result = comp.run(
-                RemoteWhisperTranscriber.Input(
-                    audio_files=[
-                        str((preview_samples_path / "audio" / "this is the content of the document.wav").absolute())
-                    ]
-                )
+                audio_files=[
+                    str((preview_samples_path / "audio" / "this is the content of the document.wav").absolute())
+                ]
             )
             expected = Document(
                 content="test transcription",
@@ -86,7 +80,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
                     "other_metadata": ["other", "meta", "data"],
                 },
             )
-            assert result.documents == [expected]
+            assert result["documents"] == [expected]
 
     @pytest.mark.unit
     def test_transcribe_with_stream(self, preview_samples_path):
@@ -116,11 +110,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         with patch("haystack.utils.requests_utils.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
-            comp.run(
-                RemoteWhisperTranscriber.Input(
-                    audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"]
-                )
-            )
+            comp.run(audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"])
             requests_params = mocked_requests.request.call_args.kwargs
             requests_params.pop("files")
             assert requests_params == {
@@ -142,10 +132,8 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
             mocked_requests.request.return_value = mock_response
 
             comp.run(
-                RemoteWhisperTranscriber.Input(
-                    audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"],
-                    whisper_params={"translate": True},
-                )
+                audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"],
+                whisper_params={"translate": True},
             )
             requests_params = mocked_requests.request.call_args.kwargs
             requests_params.pop("files")

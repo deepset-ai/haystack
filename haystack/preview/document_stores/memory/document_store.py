@@ -47,6 +47,13 @@ class MemoryDocumentStore:
         self.bm25_algorithm = algorithm_class
         self.bm25_parameters = bm25_parameters or {}
 
+        # Used to convert this instance to a dictionary for serialization
+        self.init_parameters = {
+            "bm25_tokenization_regex": bm25_tokenization_regex,
+            "bm25_algorithm": bm25_algorithm,
+            "bm25_parameters": self.bm25_parameters,
+        }
+
     def count_documents(self) -> int:
         """
         Returns the number of how many documents are present in the document store.
