@@ -106,6 +106,8 @@ class ChatGPT:
 
 Note how the component takes a list of prompts and LLM parameters only, but no variables nor templates, and returns only strings. This is because input rendering and output parsing are delegated to separate components, which description follows.
 
+Note: whether LLM components accept multiple prompts or a single one depends only on whether we want the LLM to support batching of prompts. Therefore it's an implementation decision that will be evaluated once we know the internals of the component. We strive to keep the interfaces as similar as possible to ease switching the various LLMs, but we won't force identical interfaces over them where it doesn't make sense with respect to their internal implementation.
+
 ### Returning metadata
 
 In the example above we made the LLM return only a list of replies, as strings. However, in order to be able to parse the output into meaningful objects (see “Output parsing”) we may need additional metadata from these clients.
