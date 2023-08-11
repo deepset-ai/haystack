@@ -56,11 +56,9 @@ class Accumulate:  # pylint: disable=too-few-public-methods
 
         init_params = data.get("init_parameters", {})
 
-        if isinstance(init_params["function"], str):
-            parts = init_params["function"].split(".")
-            module_name = ".".join(parts[:-1])
-            function_name = parts[-1]
-
+        parts = init_params["function"].split(".")
+        module_name = ".".join(parts[:-1])
+        function_name = parts[-1]
         module = import_module(module_name)
         accumulator_function = getattr(module, function_name)
 
