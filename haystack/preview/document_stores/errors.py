@@ -1,16 +1,16 @@
-class DocumentStore(Exception):
+class DocumentStoreError(Exception):
     pass
 
 
-class FilterError(DocumentStore):
+class FilterError(DocumentStoreError):
     pass
 
 
-class DuplicateDocumentError(DocumentStore):
+class DuplicateDocumentError(DocumentStoreError):
     pass
 
 
-class MissingDocumentError(DocumentStore):
+class MissingDocumentError(DocumentStoreError):
     pass
 
 

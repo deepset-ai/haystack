@@ -21,7 +21,7 @@ class DocumentStoreAwareMixin:
 
     @property
     def document_store(self) -> Optional[DocumentStore]:
-        return self._store
+        return self._document_store
 
     @document_store.setter
     def document_store(self, document_store: DocumentStore):
@@ -30,7 +30,7 @@ class DocumentStoreAwareMixin:
         if not self._is_supported(document_store):
             raise ValueError(
                 f"DocumentStore type '{type(document_store).__name__}' is not compatible with this component. "
-                f"Compatible DocumentStore types: {[type_.__name__ for type_ in type(self).supported_stores]}"
+                f"Compatible DocumentStore types: {[type_.__name__ for type_ in type(self).supported_document_stores]}"
             )
         self._document_store = document_store
 

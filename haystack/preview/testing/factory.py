@@ -79,12 +79,14 @@ def document_store_class(
     """
 
     if documents is not None and documents_count is None:
-        documents_count = len(documents)
+        _documents_count = len(documents)
     elif documents_count is None:
-        documents_count = 0
+        _documents_count = 0
+    else:
+        raise ValueError("either 'documents' or 'documents_count' must be set")
 
     def count_documents(self) -> int:
-        return documents_count
+        return _documents_count
 
     def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
         if documents is not None:
