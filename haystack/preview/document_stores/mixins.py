@@ -25,8 +25,8 @@ class DocumentStoreAwareMixin:
 
     @document_store.setter
     def document_store(self, document_store: DocumentStore):
-        if not getattr(document_store, "__haystack_store__", False):
-            raise ValueError(f"'{type(document_store).__name__}' is not decorate with @store.")
+        if not getattr(document_store, "__haystack_document_store__", False):
+            raise ValueError(f"'{type(document_store).__name__}' is not decorate with @document_store.")
         if not self._is_supported(document_store):
             raise ValueError(
                 f"DocumentStore type '{type(document_store).__name__}' is not compatible with this component. "

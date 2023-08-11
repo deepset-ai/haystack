@@ -12,7 +12,7 @@ class MemoryRetriever(DocumentStoreAwareMixin):
     Needs to be connected to a MemoryDocumentStore to run.
     """
 
-    supported_stores = [MemoryDocumentStore]
+    supported_document_stores = [MemoryDocumentStore]
 
     def __init__(self, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = True):
         """

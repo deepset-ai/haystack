@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple, Type, List
+from typing import Any, Dict, Optional, Tuple, Type, List, Union
 
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores import document_store, DocumentStore, DuplicatePolicy
@@ -77,16 +77,13 @@ def document_store_class(
     assert document_store.my_field == 10
     ```
     """
-
     if documents is not None and documents_count is None:
-        _documents_count = len(documents)
+        documents_count = len(documents)
     elif documents_count is None:
-        _documents_count = 0
-    else:
-        raise ValueError("either 'documents' or 'documents_count' must be set")
+        documents_count = 0
 
-    def count_documents(self) -> int:
-        return _documents_count
+    def count_documents(self) -> Union[int, None]:
+        return documents_count
 
     def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
         if documents is not None:

@@ -79,7 +79,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     @pytest.mark.unit
     def test_bm25_retrieval_with_empty_document_store(self, docstore: DocumentStore, caplog):
         caplog.set_level(logging.INFO)
-        # Tests if the bm25_retrieval method correctly returns an empty list when there are no documents in the store.
+        # Tests if the bm25_retrieval method correctly returns an empty list when there are no documents in the DocumentStore.
         results = docstore.bm25_retrieval(query="How to test this?", top_k=2)
         assert len(results) == 0
         assert "No documents found for BM25 retrieval. Returning empty list." in caplog.text
@@ -208,7 +208,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     @pytest.mark.unit
     def test_bm25_retrieval_with_updated_docs(self, docstore: DocumentStore):
         # Tests if the bm25_retrieval method correctly updates the retrieved documents when new
-        # documents are added to the store.
+        # documents are added to the DocumentStore.
         docs = [Document(content="Hello world")]
         docstore.write_documents(docs)
 

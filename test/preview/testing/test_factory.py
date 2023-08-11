@@ -2,7 +2,7 @@ import pytest
 
 from haystack.preview.dataclasses import Document
 from haystack.preview.testing.factory import document_store_class
-from haystack.preview.document_stores.decorator import store
+from haystack.preview.document_stores.decorator import document_store
 
 
 @pytest.mark.unit
@@ -18,7 +18,7 @@ def test_document_store_class_default():
 @pytest.mark.unit
 def test_document_store_class_is_registered():
     MyStore = document_store_class("MyStore")
-    assert store.registry["MyStore"] == MyStore
+    assert document_store.registry["MyStore"] == MyStore
 
 
 @pytest.mark.unit

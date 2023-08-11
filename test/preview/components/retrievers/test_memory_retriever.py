@@ -58,7 +58,7 @@ class TestMemoryRetriever(BaseTestComponent):
         ds.write_documents(mock_docs)
 
         retriever = MemoryRetriever(top_k=top_k)
-        retriever.store = ds
+        retriever.document_store = ds
         result = retriever.run(queries=["PHP", "Java"])
 
         assert "documents" in result
@@ -72,7 +72,8 @@ class TestMemoryRetriever(BaseTestComponent):
     def test_invalid_run_no_store(self):
         retriever = MemoryRetriever()
         with pytest.raises(
-            ValueError, match="MemoryRetriever needs a store to run: set the store instance to the self.store attribute"
+            ValueError,
+            match="MemoryRetriever needs a DocumentStore to run: set the DocumentStore instance to the self.document_store attribute",
         ):
             retriever.run(queries=["test"])
 
@@ -82,8 +83,8 @@ class TestMemoryRetriever(BaseTestComponent):
             ...
 
         retriever = MemoryRetriever()
-        with pytest.raises(ValueError, match="'MockStore' is not decorate with @store."):
-            retriever.store = MockStore()
+        with pytest.raises(ValueError, match="'MockStore' is not decorate with @document_store."):
+            retriever.document_store = MockStore()
 
     @pytest.mark.unit
     def test_invalid_run_wrong_store_type(self):
@@ -103,8 +104,8 @@ class TestMemoryRetriever(BaseTestComponent):
                 return None
 
         retriever = MemoryRetriever()
-        with pytest.raises(ValueError, match="'MockStore' is not decorate with @store."):
-            retriever.store = MockStore()
+        with pytest.raises(ValueError, match="'MockStore' is not decorate with @document_store."):
+            retriever.document_store = MockStore()
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
@@ -121,7 +122,7 @@ class TestMemoryRetriever(BaseTestComponent):
 
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
-        pipeline.add_component("retriever", retriever, store="memory")
+        pipeline.add_component("retriever", retriever, document_store="memory")
         result: Dict[str, Any] = pipeline.run(data={"retriever": {"queries": [query]}})
 
         assert result
@@ -146,7 +147,7 @@ class TestMemoryRetriever(BaseTestComponent):
 
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
-        pipeline.add_component("retriever", retriever, store="memory")
+        pipeline.add_component("retriever", retriever, document_store="memory")
         result: Dict[str, Any] = pipeline.run(data={"retriever": {"queries": [query], "top_k": top_k}})
 
         assert result
