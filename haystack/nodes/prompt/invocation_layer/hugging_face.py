@@ -51,8 +51,18 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
             self.stop_words = encoded_stop_words.input_ids.to(device)
 
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-            stop_result = torch.isin(self.stop_words, input_ids[-1])
-            return any(all(stop_word) for stop_word in stop_result)
+            for stop_word in self.stop_words:
+                found_stop_word = self.is_stop_word_found(input_ids, stop_word)
+                if found_stop_word:
+                    return True
+            return False
+
+        def is_stop_word_found(self, generated_text_ids: torch.Tensor, stop_word: torch.Tensor) -> bool:
+            generated_text_ids = generated_text_ids[-1]
+            len_generated_text_ids = generated_text_ids.size(0)
+            len_stop_word = stop_word.size(0)
+            result = all(generated_text_ids[len_generated_text_ids - len_stop_word :].eq(stop_word))
+            return result
 
 
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
@@ -280,7 +290,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # We want to exclude it to be consistent with other invocation layers
             for idx, _ in enumerate(generated_texts):
                 for stop_word in stop_words:
-                    generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
+                    generated_texts[idx] = generated_texts[idx].replace(stop_word, "").rstrip()
         return generated_texts
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
@@ -334,16 +344,16 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         self, model: Union[str, "PreTrainedModel"], hub_kwargs: Dict, model_kwargs: Optional[Dict] = None
     ) -> Union["PreTrainedTokenizer", "PreTrainedTokenizerFast", None]:
         """
-        this method prepares the tokenizer before passing it to transformers' pipeline, so that the instantiated pipeline
+        This method prepares the tokenizer before passing it to transformers' pipeline, so that the instantiated pipeline
         object has a working tokenizer.
 
-        It basically check whether the pipeline method in the transformers library will load the tokenizer.
-        - If yes, None will be returned, because in this case, the pipeline is intelligent enough to load the tokenizer by itself
-        - If not, we will load the tokenizer and an tokenizer instance is returned
+        It checks whether the pipeline method in the transformers library will load the tokenizer.
+        - If yes, None will be returned, because in this case, the pipeline is intelligent enough to load the tokenizer by itself.
+        - If not, we will load the tokenizer and an tokenizer instance is returned.
 
-        :param model: the name or path of the underlying model
-        :hub_kwargs: keyword argument related to hugging face hub, including revision, trust_remote_code and use_auth_token
-        :model_kwargs: keyword arguments passed to the underlying model
+        :param model: The name or path of the underlying model.
+        :hub_kwargs: Keyword argument related to hugging face hub, including revision, trust_remote_code and use_auth_token.
+        :model_kwargs: Keyword arguments passed to the underlying model.
         """
 
         if isinstance(model, str):

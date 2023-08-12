@@ -15,19 +15,14 @@ from more_itertools import windowed
 from haystack.nodes.preprocessor.base import BasePreProcessor
 from haystack.errors import HaystackError
 from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
 
 
-try:
+with LazyImport("Run 'pip install farm-haystack[preprocessing]' or 'pip install nltk'") as nltk_import:
     import nltk
-except ImportError as exc:
-    logger.debug(
-        "nltk could not be imported. "
-        "Run 'pip install farm-haystack[preprocessing]' or 'pip install nltk' to fix this issue."
-    )
-    nltk = None
 
 
 iso639_to_nltk = {
@@ -108,17 +103,16 @@ class PreProcessor(BasePreProcessor):
             `max_char_check`-th char, regardless of any other constraint. If the resulting documents are still too long,
             they'll be cut again until all fragments are below the maximum allowed length.
         """
+        nltk_import.check()
         if remove_substrings is None:
             remove_substrings = []
         super().__init__()
 
         try:
-            if nltk:
-                nltk.data.find("tokenizers/punkt")
+            nltk.data.find("tokenizers/punkt")
         except LookupError:
             try:
-                if nltk:
-                    nltk.download("punkt")
+                nltk.download("punkt")
             except FileExistsError as error:
                 logger.debug("NLTK punkt tokenizer seems to be already downloaded. Error message: %s", error)
                 pass
@@ -830,11 +824,6 @@ class PreProcessor(BasePreProcessor):
         return sentences
 
     def _load_sentence_tokenizer(self, language_name: Optional[str]) -> "nltk.tokenize.punkt.PunktSentenceTokenizer":
-        if not nltk:
-            raise ImportError(
-                "nltk could not be imported. "
-                "Run 'pip install farm-haystack[preprocessing]' or 'pip install nltk' to fix this issue."
-            )
         # Try to load a custom model from 'tokenizer_model_path'
         if self.tokenizer_model_folder is not None:
             tokenizer_model_path = Path(self.tokenizer_model_folder).absolute() / f"{self.language}.pickle"

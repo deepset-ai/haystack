@@ -3,7 +3,6 @@ loaders:
     search_path: [../../../haystack/nodes/file_converter]
     modules:
       [
-        "base",
         "csv",
         "docx",
         "image",

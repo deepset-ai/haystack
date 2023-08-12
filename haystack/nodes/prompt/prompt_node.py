@@ -159,7 +159,7 @@ class PromptNode(BaseComponent):
         if template_to_fill:
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
-                kwargs_copy = copy.copy(kwargs)
+                kwargs_copy = template_to_fill.remove_template_params(copy.copy(kwargs))
                 # and pass the prepared prompt and kwargs copy to the model
                 prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
