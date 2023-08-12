@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from elasticsearch import Elasticsearch
 
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore, VERSION
+from haystack.document_stores.elasticsearch import VERSION, ElasticsearchDocumentStore
 from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.nodes import PreProcessor
@@ -389,7 +389,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         We test this to make sure we use the correct syntax for newer ES versions.
         """
         vec_sim_query = mocked_document_store._get_vector_similarity_query(np.random.rand(3).astype(np.float32), 10)
-        assert vec_sim_query["script_score"]["script"]["source"] == "dotProduct(params.query_vector,'embedding') + 1000"
+        assert vec_sim_query["script"]["source"] == "dotProduct(params.query_vector,'embedding') + 1000"
 
     @pytest.mark.unit
     def test_get_vector_similarity_query_es_7_5_and_below(self, mocked_document_store):
@@ -402,10 +402,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         mocked_document_store.server_version = (7, 5, 0)
 
         vec_sim_query = mocked_document_store._get_vector_similarity_query(np.random.rand(3).astype(np.float32), 10)
-        assert (
-            vec_sim_query["script_score"]["script"]["source"]
-            == "dotProduct(params.query_vector,doc['embedding']) + 1000"
-        )
+        assert vec_sim_query["script"]["source"] == "dotProduct(params.query_vector,doc['embedding']) + 1000"
 
     # The following tests are overridden only to be able to skip them depending on ES version
 
@@ -527,3 +524,82 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         # assert the resulting body is consistent with the `excluded_meta_data` value
         _, kwargs = mocked_document_store.client.options().search.call_args
         assert "_source" not in kwargs
+
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 does not implement aNN")
+    @pytest.mark.unit
+    def test_get_ann_query_es8(self, mocked_document_store):
+        embedding = np.array([1, 2, 3])
+        top_k = 10
+        embedding_field = "embedding"
+
+        body = mocked_document_store._construct_dense_query_body_ann(query_emb=embedding, top_k=top_k)
+        EXPECTED_BODY = {
+            "knn": {
+                "field": embedding_field,
+                "k": top_k,
+                "num_candidates": 10 * top_k,
+                "query_vector": embedding.tolist(),
+                "filter": {"bool": {"must": [{"exists": {"field": embedding_field}}]}},
+            }
+        }
+
+        np.testing.assert_equal(body, EXPECTED_BODY)
+
+    @pytest.mark.unit
+    def test_get_knn_query(self, mocked_document_store):
+        embedding = np.array([1, 2, 3])
+        top_k = 10
+        embedding_field = "embedding"
+
+        body = mocked_document_store._construct_dense_query_body_knn(query_emb=embedding, top_k=top_k)
+        EXPECTED_BODY = {
+            "query": {
+                "script_score": {
+                    "script": {
+                        "source": f"dotProduct(params.query_vector,'{embedding_field}') + 1000",
+                        "params": {"query_vector": embedding.tolist()},
+                    },
+                    "query": {"bool": {"filter": {"bool": {"must": [{"exists": {"field": "embedding"}}]}}}},
+                }
+            },
+            "size": top_k,
+        }
+        np.testing.assert_equal(body, EXPECTED_BODY)
+
+    @pytest.mark.unit
+    def test_construct_filter(self, mocked_document_store):
+        filter = mocked_document_store._construct_filter()
+        assert filter == {"bool": {"must": [{"exists": {"field": "embedding"}}]}}
+
+        filter = mocked_document_store._construct_filter(filters={"a": "b"})
+        assert filter == {"bool": {"must": [{"term": {"a": "b"}}, {"exists": {"field": "embedding"}}]}}
+
+        mocked_document_store.skip_missing_embeddings = False
+        filter = mocked_document_store._construct_filter()
+        assert filter == {"match_all": {}}
+
+    @pytest.mark.unit
+    def test_construct_dense_query_body_ann_or_knn(self, mocked_document_store):
+        embedding = np.array([1, 2, 3])
+        top_k = 10
+
+        mocked_document_store.use_approximate_nearest_neighbors = False
+        body = mocked_document_store._construct_dense_query_body(
+            query_emb=embedding, top_k=top_k, return_embedding=False
+        )
+        assert "query" in body
+
+        mocked_document_store.use_approximate_nearest_neighbors = True
+        body = mocked_document_store._construct_dense_query_body(
+            query_emb=embedding, top_k=top_k, return_embedding=False
+        )
+        assert "knn" in body
+
+    @pytest.mark.unit
+    def test_create_embedding_field_mapping(self, mocked_document_store):
+        mapping = mocked_document_store._create_embedding_field_mapping()
+        assert mapping == {"type": "dense_vector", "dims": 768}
+
+        mocked_document_store.use_approximate_nearest_neighbors = True
+        mapping = mocked_document_store._create_embedding_field_mapping()
+        assert mapping == {"type": "dense_vector", "dims": 768, "similarity": "dot_product", "index": True}
