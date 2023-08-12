@@ -7,9 +7,13 @@ import numpy as np
 import rank_bm25
 from tqdm.auto import tqdm
 
-from haystack.preview.document_stores.decorator import store
+from haystack.preview.document_stores.decorator import (
+    document_store,
+    default_document_store_to_dict,
+    default_document_store_from_dict,
+)
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores.protocols import DuplicatePolicy
+from haystack.preview.document_stores.protocols import DuplicatePolicy, DocumentStore
 from haystack.preview.document_stores.memory._filters import match
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
 from haystack.utils.scipy_utils import expit
@@ -24,7 +28,7 @@ logger = logging.getLogger(__name__)
 SCALING_FACTOR = 8
 
 
-@store
+@document_store
 class MemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
@@ -37,7 +41,7 @@ class MemoryDocumentStore:
         bm25_parameters: Optional[Dict] = None,
     ):
         """
-        Initializes the store.
+        Initializes the DocumentStore.
         """
         self.storage: Dict[str, Document] = {}
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
@@ -54,9 +58,22 @@ class MemoryDocumentStore:
             "bm25_parameters": self.bm25_parameters,
         }
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes this store to a dictionary.
+        """
+        return default_document_store_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DocumentStore":
+        """
+        Deserializes the store from a dictionary.
+        """
+        return default_document_store_from_dict(cls, data)
+
     def count_documents(self) -> int:
         """
-        Returns the number of how many documents are present in the document store.
+        Returns the number of how many documents are present in the DocumentStore.
         """
         return len(self.storage.keys())
 
@@ -137,11 +154,11 @@ class MemoryDocumentStore:
 
     def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
         """
-        Writes (or overwrites) documents into the store.
+        Writes (or overwrites) documents into the DocumentStore.
 
         :param documents: a list of documents.
         :param policy: documents with the same ID count as duplicates. When duplicates are met,
-            the store can:
+            the DocumentStore can:
              - skip: keep the existing document and ignore the new one.
              - overwrite: remove the old document and write the new one.
              - fail: an error is raised
@@ -165,8 +182,8 @@ class MemoryDocumentStore:
 
     def delete_documents(self, document_ids: List[str]) -> None:
         """
-        Deletes all documents with a matching document_ids from the document store.
-        Fails with `MissingDocumentError` if no document with this id is present in the store.
+        Deletes all documents with a matching document_ids from the DocumentStore.
+        Fails with `MissingDocumentError` if no document with this id is present in the DocumentStore.
 
         :param object_ids: the object_ids to delete
         """
@@ -218,7 +235,7 @@ class MemoryDocumentStore:
                 csv_content = str_content.to_csv(index=False)
                 lower_case_documents.append(csv_content.lower())
 
-        # Tokenize the entire content of the document store
+        # Tokenize the entire content of the DocumentStore
         tokenized_corpus = [
             self.tokenizer(doc) for doc in tqdm(lower_case_documents, unit=" docs", desc="Ranking by BM25...")
         ]
