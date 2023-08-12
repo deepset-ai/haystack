@@ -67,6 +67,8 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         synonym_type: str = "synonym",
         use_system_proxy: bool = False,
         batch_size: int = 10_000,
+        use_approximate_nearest_neighboors: bool = False,
+        ann_num_candidates: Optional[int] = None,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -140,6 +142,10 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         :param use_system_proxy: Whether to use system proxy.
         :param batch_size: Number of Documents to index at once / Number of queries to execute at once. If you face
                            memory issues, decrease the batch_size.
+        :param use_approximate_nearest_neighbors: Specifies whether to use the approximate nearest neighbors algorithms. Only supported for  elasticsearch > 8.0.
+                            Defaults to False.
+        :param ann_num_candidates: Specifies the number of candidates which are used to compute the approximate nearest neighbors. Only supported for  elasticsearch > 8.0.
+                            Defaults to None. If None, the number of candidates is set to 10 times the requested top_k hits.
 
         """
         # Ensure all the required inputs were successful
@@ -184,6 +190,8 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
             synonyms=synonyms,
             synonym_type=synonym_type,
             batch_size=batch_size,
+            use_approximate_nearest_neighbors=use_approximate_nearest_neighboors,
+            ann_num_candidates=ann_num_candidates,
         )
 
         self._validate_server_version(expected_version=8)

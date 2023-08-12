@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
@@ -8,11 +8,64 @@ from haystack.schema import Document, FilterType
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.search_engine import SearchEngineDocumentStore
 
-
 logger = logging.getLogger(__name__)
 
 
 class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
+    def __init__(
+        self,
+        client: Any,
+        index: str = "document",
+        label_index: str = "label",
+        search_fields: Union[str, list] = "content",
+        content_field: str = "content",
+        name_field: str = "name",
+        embedding_field: str = "embedding",
+        embedding_dim: int = 768,
+        custom_mapping: Optional[dict] = None,
+        excluded_meta_data: Optional[list] = None,
+        analyzer: str = "standard",
+        recreate_index: bool = False,
+        create_index: bool = True,
+        refresh_type: str = "wait_for",
+        similarity: str = "dot_product",
+        return_embedding: bool = False,
+        duplicate_documents: str = "overwrite",
+        scroll: str = "1d",
+        skip_missing_embeddings: bool = True,
+        synonyms: Optional[List] = None,
+        synonym_type: str = "synonym",
+        batch_size: int = 10_000,
+        use_approximate_nearest_neighbors: bool = False,
+        ann_num_candidates: Optional[int] = None,
+    ):
+        self.use_approximate_nearest_neighbors = use_approximate_nearest_neighbors
+        self.ann_num_candidates = ann_num_candidates
+        super().__init__(
+            client=client,
+            index=index,
+            label_index=label_index,
+            search_fields=search_fields,
+            content_field=content_field,
+            name_field=name_field,
+            embedding_field=embedding_field,
+            embedding_dim=embedding_dim,
+            custom_mapping=custom_mapping,
+            excluded_meta_data=excluded_meta_data,
+            analyzer=analyzer,
+            recreate_index=recreate_index,
+            create_index=create_index,
+            refresh_type=refresh_type,
+            similarity=similarity,
+            return_embedding=return_embedding,
+            duplicate_documents=duplicate_documents,
+            scroll=scroll,
+            skip_missing_embeddings=skip_missing_embeddings,
+            synonyms=synonyms,
+            synonym_type=synonym_type,
+            batch_size=batch_size,
+        )
+
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
@@ -142,19 +195,51 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
     def _construct_dense_query_body(
         self, query_emb: np.ndarray, return_embedding: bool, filters: Optional[FilterType] = None, top_k: int = 10
     ):
-        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
-        if filters:
-            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
-            if body["query"]["script_score"]["query"] == {"match_all": {}}:
-                body["query"]["script_score"]["query"] = filter_
-            else:
-                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
+        if self.use_approximate_nearest_neighbors:
+            body = self._construct_dense_query_body_ann(query_emb=query_emb, top_k=top_k, filters=filters)
+        else:
+            body = self._construct_dense_query_body_knn(query_emb=query_emb, top_k=top_k, filters=filters)
 
         excluded_fields = self._get_excluded_fields(return_embedding=return_embedding)
         if excluded_fields:
             body["_source"] = {"excludes": excluded_fields}
 
         return body
+
+    def _construct_dense_query_body_knn(self, query_emb: np.ndarray, top_k: int, filters: Optional[FilterType] = None):
+        filter_ = self._construct_filter(filters)
+        body = {"size": top_k, "query": {"script_score": self._get_vector_similarity_query(query_emb, top_k=top_k)}}
+        body["query"]["script_score"]["query"] = {"bool": {"filter": filter_}}
+        return body
+
+    def _construct_dense_query_body_ann(self, query_emb: np.ndarray, top_k: int, filters: Optional[FilterType] = None):
+        filter_ = self._construct_filter(filters)
+        body = {
+            "knn": {
+                "field": self.embedding_field,
+                "query_vector": query_emb,
+                "num_candidates": self._get_ann_num_candidates(top_k),
+                "k": top_k,
+                "filter": filter_,
+            }
+        }
+        return body
+
+    def _get_ann_num_candidates(self, top_k: int) -> int:
+        if self.ann_num_candidates is None:
+            return 10 * top_k
+        return self.ann_num_candidates
+
+    def _construct_filter(self, filters: Optional[FilterType] = None) -> Dict:
+        filter_ = []
+        if filters:
+            filter_.append(LogicalFilterClause.parse(filters).convert_to_elasticsearch())
+        if self.skip_missing_embeddings:
+            skip_missing_embedding_filter = {"exists": {"field": self.embedding_field}}
+            filter_.append(skip_missing_embedding_filter)
+        if len(filter_) == 0:
+            return {"match_all": {}}
+        return {"bool": {"must": filter_}}
 
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
@@ -191,10 +276,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                     mapping["mappings"]["properties"].update({field: {"type": "text"}})
 
             if self.embedding_field:
-                mapping["mappings"]["properties"][self.embedding_field] = {
-                    "type": "dense_vector",
-                    "dims": self.embedding_dim,
-                }
+                mapping["mappings"]["properties"][self.embedding_field] = self._create_embedding_field_mapping()
 
         try:
             self._index_create(index=index_name, **mapping, headers=headers)
@@ -205,6 +287,24 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
             # - one fails as the other one already created it
             if not self._index_exists(index_name, headers=headers):
                 raise e
+
+    def _create_embedding_field_mapping(self):
+        mapping = {"type": "dense_vector", "dims": self.embedding_dim}
+        if not self.use_approximate_nearest_neighbors:
+            return mapping
+        mapping["index"] = True
+        mapping["similarity"] = self._get_similarity_string()
+        return mapping
+
+    def _get_similarity_string(self):
+        if self.similarity == "dot_product":
+            return "dot_product"
+        elif self.similarity == "cosine":
+            return "cosine"
+        elif self.similarity == "l2":
+            return "l2_norm"
+        else:
+            raise ValueError(f"Unknown similarity metric: {self.similarity}")
 
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         mapping = {
@@ -267,7 +367,6 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                         mapping["properties"][search_field] = (
                             {"type": "text", "analyzer": "synonym"} if self.synonyms else {"type": "text"}
                         )
-                        self._index_put_mapping(index=index_id, body=mapping, headers=headers)
 
             if self.embedding_field:
                 if (
@@ -309,26 +408,18 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                 "Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'dot_product' and 'l2'"
             )
 
-        # To handle scenarios where embeddings may be missing
-        script_score_query: dict = {"match_all": {}}
-        if self.skip_missing_embeddings:
-            script_score_query = {"bool": {"filter": {"bool": {"must": [{"exists": {"field": self.embedding_field}}]}}}}
-
         # Elasticsearch 7.6 introduced a breaking change regarding the vector function signatures:
         # https://www.elastic.co/guide/en/elasticsearch/reference/7.6/breaking-changes-7.6.html#_update_to_vector_function_signatures
         if self.server_version[0] == 7 and self.server_version[1] < 6:
-            similarity_script_source = f"{similarity_fn_name}(params.query_vector,doc['{self.embedding_field}']) + 1000"
+            similarity_script_score = f"{similarity_fn_name}(params.query_vector,doc['{self.embedding_field}']) + 1000"
         else:
-            similarity_script_source = f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000"
+            similarity_script_score = f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000"
 
         query = {
-            "script_score": {
-                "query": script_score_query,
-                "script": {
-                    # offset score to ensure a positive range as required by Elasticsearch
-                    "source": similarity_script_source,
-                    "params": {"query_vector": query_emb.tolist()},
-                },
+            "script": {
+                # offset score to ensure a positive range as required by Elasticsearch
+                "source": similarity_script_score,
+                "params": {"query_vector": query_emb.tolist()},
             }
         }
         return query
