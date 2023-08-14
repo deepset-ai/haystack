@@ -7,7 +7,7 @@ import pytest
 from haystack.preview import Document
 from haystack.preview.document_stores import DocumentStore, MemoryDocumentStore
 
-from haystack.testing.preview.document_store import DocumentStoreBaseTests
+from haystack.preview.testing.document_store import DocumentStoreBaseTests
 
 
 class TestMemoryDocumentStore(DocumentStoreBaseTests):
