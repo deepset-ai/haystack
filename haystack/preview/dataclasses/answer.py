@@ -1,23 +1,26 @@
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 from haystack.preview.dataclasses.document import Document
 
 
 @dataclass
-class ExtractiveAnswer:
-    answer: str
-    start: int
-    end: int
-
-
-@dataclass
-class GenerativeAnswer:
-    answer: str
-
-
-@dataclass
 class Answer:
-    answer: Optional[Union[ExtractiveAnswer, GenerativeAnswer]]
-    probability: float
+    data: Any
     question: str
+    metadata: Dict[str, Any]
+
+
+@dataclass
+class ExtractiveAnswer(Answer):
+    data: Optional[str]
+    document: Document
+    probability: float
+    start: Optional[int] = None
+    end: Optional[int] = None
+
+
+@dataclass
+class GenerativeAnswer(Answer):
+    data: str
     documents: List[Document]
+    probability: float
