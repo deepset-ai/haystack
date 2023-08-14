@@ -12,9 +12,10 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
 @component
 class ExtractiveReader:
     def __init__(
-        self, reader: Union[Path, str], device: Optional[str] = None, max_seq_length: int = 384, top_k: int = 10
+        self, model: Union[Path, str], device: Optional[str] = None, max_seq_length: int = 384, top_k: int = 10
     ) -> None:
-        self.reader = reader
+        torch_and_transformers_import.check()
+        self.model = model
         self.device = device
         self.loaded = False
         self.max_seq_length = max_seq_length
@@ -22,13 +23,12 @@ class ExtractiveReader:
 
     def warm_up(self):
         if not self.loaded:
-            torch_and_transformers_import.check()
             if torch.cuda.is_available():
                 self.device = "cuda:0"
             else:
                 self.device = "cpu:0"
-            self.model = AutoModelForQuestionAnswering.from_pretrained(self.reader).to(self.device)
-            self.tokenizer = AutoTokenizer.from_pretrained(self.reader)
+            self.model = AutoModelForQuestionAnswering.from_pretrained(self.model).to(self.device)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model)
 
     def _flatten(self, queries: List[str], documents: List[List[Document]]) -> Tuple[List[str], List[str]]:
         flattened_queries = [query for documents_, query in zip(documents, queries) for _ in documents_]
@@ -68,12 +68,10 @@ class ExtractiveReader:
         mask = torch.logical_and(mask, attention_mask == 1)  # type: ignore # see above
         start = torch.where(mask, start, -torch.inf)  # type: ignore # see above
         end = torch.where(mask, end, -torch.inf)  # type: ignore # see above
-        start = torch.softmax(start, -1)
-        end = torch.softmax(end, -1)
         start = start.unsqueeze(-1)
         end = end.unsqueeze(-2)
 
-        probabilities = start * end  # shape: (batch_size, seq_length (start), seq_length (end))
+        probabilities = start + end  # shape: (batch_size, seq_length (start), seq_length (end))
         masked_probabilities = torch.triu(probabilities, diagonal=1)  # End shouldn't be before start
         masked_probabilities[..., 0, 0] = probabilities[..., 0, 0]  # Make exception for no answer
         masked_probabilities[..., 0, 1:] = 0  # Do not want no answer as start and normal end
