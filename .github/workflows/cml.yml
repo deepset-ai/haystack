@@ -42,7 +42,6 @@ jobs:
           # Extract 'id' from the log and set it as an environment variable
           ID_VALUE=$(echo "$OUTPUT" | jq -r '.message? | fromjson? | select(.id != null) | .id // empty')
           echo "cml_runner_id=$ID_VALUE" >> "$GITHUB_OUTPUT"
-          echo "Complete OUTPUT: $OUTPUT"
           echo "ID_VALUE: $ID_VALUE"
 
   run-reader-benchmarks:
