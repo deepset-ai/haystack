@@ -1,7 +1,9 @@
 from typing import Dict, List, Any, Optional
 
+from canals.errors import ComponentDeserializationError
+
 from haystack.preview import component, Document
-from haystack.preview.document_stores import MemoryDocumentStore, DocumentStoreAwareMixin
+from haystack.preview.document_stores import document_store, MemoryDocumentStore, DocumentStoreAwareMixin
 
 
 @component
@@ -30,6 +32,31 @@ class MemoryRetriever(DocumentStoreAwareMixin):
         self.filters = filters
         self.top_k = top_k
         self.scale_score = scale_score
+
+    def to_dict(self) -> Dict[str, Any]:
+        document_store = None
+        if self._document_store:
+            document_store = self._document_store.to_dict()
+        return {
+            "hash": id(self),
+            "type": self.__class__.__name__,
+            "document_store": document_store,
+            "init_parameters": {"filters": self.filters, "top_k": self.top_k, "scale_score": self.scale_score},
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MemoryRetriever":
+        if "type" not in data:
+            raise ComponentDeserializationError("Missing 'type' in component serialization data")
+        if data["type"] != cls.__name__:
+            raise ComponentDeserializationError(f"Component '{data['type']}' can't be deserialized as '{cls.__name__}'")
+        init_params = data["init_parameters"]
+        comp = cls(**init_params)
+        if data["document_store"]:
+            docstore_type = data["document_store"]["type"]
+            docstore_class = document_store.registry[docstore_type]
+            comp.document_store = docstore_class.from_dict(data["document_store"])
+        return comp
 
     @component.output_types(documents=List[List[Document]])
     def run(

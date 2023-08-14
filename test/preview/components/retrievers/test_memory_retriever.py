@@ -2,6 +2,8 @@ from typing import Dict, Any, List, Optional
 
 import pytest
 
+from canals.errors import ComponentDeserializationError
+
 from haystack.preview import Pipeline
 from haystack.preview.components.retrievers.memory import MemoryRetriever
 from haystack.preview.dataclasses import Document
@@ -31,6 +33,130 @@ class TestMemoryRetriever(BaseTestComponent):
     @pytest.mark.unit
     def test_save_load_with_parameters(self, tmp_path):
         self.assert_can_be_saved_and_loaded_in_pipeline(MemoryRetriever(top_k=5, scale_score=False), tmp_path)
+
+    @pytest.mark.unit
+    def test_to_dict(self):
+        retriever = MemoryRetriever()
+        data = retriever.to_dict()
+        assert data == {
+            "hash": id(retriever),
+            "type": "MemoryRetriever",
+            "document_store": None,
+            "init_parameters": {"filters": None, "top_k": 10, "scale_score": True},
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_custom_init_parameters(self):
+        filters = {"content_type": ["text"]}
+        top_k = 42
+        scale_score = False
+        retriever = MemoryRetriever(filters=filters, top_k=top_k, scale_score=scale_score)
+        data = retriever.to_dict()
+        assert data == {
+            "hash": id(retriever),
+            "type": "MemoryRetriever",
+            "document_store": None,
+            "init_parameters": {"filters": {"content_type": ["text"]}, "top_k": 42, "scale_score": False},
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_store_instance(self):
+        retriever = MemoryRetriever()
+        retriever.document_store = MemoryDocumentStore()
+        data = retriever.to_dict()
+        assert data == {
+            "hash": id(retriever),
+            "type": "MemoryRetriever",
+            "document_store": {
+                "hash": id(retriever.document_store),
+                "type": "MemoryDocumentStore",
+                "init_parameters": {
+                    "bm25_tokenization_regex": r"(?u)\b\w\w+\b",
+                    "bm25_algorithm": "BM25Okapi",
+                    "bm25_parameters": {},
+                },
+            },
+            "init_parameters": {"filters": None, "top_k": 10, "scale_score": True},
+        }
+
+    @pytest.mark.unit
+    def test_from_dict(self):
+        data = {
+            "hash": 1234,
+            "type": "MemoryRetriever",
+            "document_store": None,
+            "init_parameters": {"filters": None, "top_k": 10, "scale_score": True},
+        }
+        retriever = MemoryRetriever.from_dict(data)
+        assert retriever._document_store == None
+        assert retriever._document_store_name == ""
+        assert retriever.filters == None
+        assert retriever.top_k == 10
+        assert retriever.scale_score
+
+    @pytest.mark.unit
+    def test_from_dict_with_init_parameters(self):
+        data = {
+            "hash": 1234,
+            "type": "MemoryRetriever",
+            "document_store": None,
+            "init_parameters": {"filters": {"content_type": ["text"]}, "top_k": 42, "scale_score": False},
+        }
+        retriever = MemoryRetriever.from_dict(data)
+        assert retriever._document_store == None
+        assert retriever._document_store_name == ""
+        assert retriever.filters == {"content_type": ["text"]}
+        assert retriever.top_k == 42
+        assert not retriever.scale_score
+
+    @pytest.mark.unit
+    def test_from_dict_with_store_instance(self):
+        data = {
+            "hash": 1234,
+            "type": "MemoryRetriever",
+            "document_store": {
+                "hash": 5678,
+                "type": "MemoryDocumentStore",
+                "init_parameters": {
+                    "bm25_tokenization_regex": r"(?u)\b\w\w+\b",
+                    "bm25_algorithm": "BM25Okapi",
+                    "bm25_parameters": {},
+                },
+            },
+            "init_parameters": {"filters": None, "top_k": 10, "scale_score": True},
+        }
+        retriever = MemoryRetriever.from_dict(data)
+        assert isinstance(retriever._document_store, MemoryDocumentStore)
+        assert retriever._document_store_name == ""
+        assert retriever.filters == None
+        assert retriever.top_k == 10
+        assert retriever.scale_score
+
+    @pytest.mark.unit
+    def test_from_dict_without_type(self):
+        data = {
+            "hash": 1234,
+            "document_store": None,
+            "init_parameters": {"filters": None, "top_k": 10, "scale_score": True},
+        }
+        with pytest.raises(ComponentDeserializationError, match="Missing 'type' in component serialization data"):
+            MemoryRetriever.from_dict(data)
+
+    def test_from_dict_with_wrong_type(self, request):
+        # We use the test function name as component type to make sure it's not registered.
+        # Since the registry is global we risk to have a component with the same type registered in another test.
+        component_type = request.node.name
+        data = {
+            "hash": 1234,
+            "type": component_type,
+            "document_store": None,
+            "init_parameters": {"filters": None, "top_k": 10, "scale_score": True},
+        }
+        with pytest.raises(
+            ComponentDeserializationError,
+            match=f"Component '{component_type}' can't be deserialized as 'MemoryRetriever'",
+        ):
+            MemoryRetriever.from_dict(data)
 
     @pytest.mark.unit
     def test_init_default(self):
@@ -121,7 +247,7 @@ class TestMemoryRetriever(BaseTestComponent):
         retriever = MemoryRetriever()
 
         pipeline = Pipeline()
-        pipeline.add_store("memory", ds)
+        pipeline.add_document_store("memory", ds)
         pipeline.add_component("retriever", retriever, document_store="memory")
         result: Dict[str, Any] = pipeline.run(data={"retriever": {"queries": [query]}})
 
@@ -146,7 +272,7 @@ class TestMemoryRetriever(BaseTestComponent):
         retriever = MemoryRetriever()
 
         pipeline = Pipeline()
-        pipeline.add_store("memory", ds)
+        pipeline.add_document_store("memory", ds)
         pipeline.add_component("retriever", retriever, document_store="memory")
         result: Dict[str, Any] = pipeline.run(data={"retriever": {"queries": [query], "top_k": top_k}})
 
