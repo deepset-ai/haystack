@@ -230,7 +230,9 @@ jobs:
           path: test/benchmarks/out/
 
   terminate-runner:
-    needs: deploy-runner
+    needs:
+      - deploy-runner
+      - run-opensearch-benchmarks
     runs-on: ubuntu-latest
     steps:
     - name: AWS authentication
