@@ -54,6 +54,12 @@ class RemoteWhisperTranscriber:
         self.whisper_params = whisper_params or {}
 
         self.model_name = model_name
+        self.init_parameters = {
+            "api_key": self.api_key,
+            "model_name": self.model_name,
+            "api_base": self.api_base,
+            "whisper_params": self.whisper_params,
+        }
 
     @component.output_types(documents=List[Document])
     def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None):
