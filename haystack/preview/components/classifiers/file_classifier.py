@@ -1,5 +1,6 @@
 import logging
 import mimetypes
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import List, Union, Optional
@@ -92,4 +93,6 @@ class FileTypeClassifier:
         :param mime_type: The MIME type to check.
         :return: True if the provided MIME type is a known MIME type, False otherwise.
         """
-        return mime_type in mimetypes.types_map.values() or mime_type in mimetypes.common_types.values()
+        # this mimetypes check fails on Windows, therefore we use a regex instead
+        # return mime_type in mimetypes.types_map.values() or mime_type in mimetypes.common_types.values()
+        return bool(re.match(r"^.+/[^/]+$", mime_type))

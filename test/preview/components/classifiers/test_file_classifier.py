@@ -65,4 +65,4 @@ class TestFileClassifier(BaseTestComponent):
         Test that the component handles files with unknown mime types.
         """
         with pytest.raises(ValueError, match="The list of mime types"):
-            FileTypeClassifier(mime_types=["type/invalid"])
+            FileTypeClassifier(mime_types=["type_invalid"])
