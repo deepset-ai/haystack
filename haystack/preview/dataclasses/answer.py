@@ -3,14 +3,14 @@ from dataclasses import dataclass
 from haystack.preview.dataclasses.document import Document
 
 
-@dataclass
+@dataclass(frozen=True)
 class Answer:
     data: Any
     question: str
     metadata: Dict[str, Any]
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExtractiveAnswer(Answer):
     data: Optional[str]
     document: Document
@@ -19,7 +19,7 @@ class ExtractiveAnswer(Answer):
     end: Optional[int] = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class GenerativeAnswer(Answer):
     data: str
     documents: List[Document]
