@@ -21,9 +21,9 @@ class TestFileClassifier(BaseTestComponent):
         classifier = FileTypeClassifier(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
         output = classifier.run(paths=file_paths)
         assert output
-        assert len(output["text_plain"]) == 2
-        assert len(output["audio_x_wav"]) == 1
-        assert len(output["image_jpeg"]) == 1
+        assert len(output["text/plain"]) == 2
+        assert len(output["audio/x-wav"]) == 1
+        assert len(output["image/jpeg"]) == 1
         assert not output["unclassified"]
 
     @pytest.mark.unit
@@ -40,23 +40,32 @@ class TestFileClassifier(BaseTestComponent):
         """
         Test that the component correctly handles files with non specified mime types.
         """
-        file_paths = [preview_samples_path / "txt" / "doc_1.txt", preview_samples_path / "audio" / "ignored.mp3"]
+        file_paths = [
+            preview_samples_path / "txt" / "doc_1.txt",
+            preview_samples_path / "audio" / "ignored.mp3",
+            preview_samples_path / "audio" / "this is the content of the document.wav",
+        ]
         classifier = FileTypeClassifier(mime_types=["text/plain"])
         output = classifier.run(paths=file_paths)
-        assert len(output["text_plain"]) == 1
+        assert len(output["text/plain"]) == 1
         assert "mp3" not in output
-        assert len(output["unclassified"]) == 1
+        assert len(output["unclassified"]) == 2
         assert str(output["unclassified"][0]).endswith("ignored.mp3")
+        assert str(output["unclassified"][1]).endswith("this is the content of the document.wav")
 
     @pytest.mark.unit
     def test_no_extension(self, preview_samples_path):
         """
         Test that the component ignores files with no extension.
         """
-        file_paths = [preview_samples_path / "txt" / "doc_1.txt", preview_samples_path / "txt" / "doc_2"]
+        file_paths = [
+            preview_samples_path / "txt" / "doc_1.txt",
+            preview_samples_path / "txt" / "doc_2",
+            preview_samples_path / "txt" / "doc_2.txt",
+        ]
         classifier = FileTypeClassifier(mime_types=["text/plain"])
         output = classifier.run(paths=file_paths)
-        assert len(output["text_plain"]) == 1
+        assert len(output["text/plain"]) == 2
         assert len(output["unclassified"]) == 1
 
     @pytest.mark.unit

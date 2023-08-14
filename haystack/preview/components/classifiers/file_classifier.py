@@ -32,15 +32,12 @@ class FileTypeClassifier:
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
 
-        all_known_mime_types = all(self.is_known_mime_type(mime_type) for mime_type in mime_types)
+        all_known_mime_types = all(self.is_valid_mime_type_format(mime_type) for mime_type in mime_types)
         if not all_known_mime_types:
             raise ValueError(f"The list of mime types contains unknown mime types: {mime_types}")
 
-        # convert the mime types to the underscore format (e.g. text_plain)
-        # otherwise we'll have issues with the dataclass field name convention
-        # in the output dataclass
-        mime_types = [self.to_underscore_format(mime_type) for mime_type in mime_types]
         # add the "unclassified" mime type to the list of mime types
+        mime_types = mime_types.copy()
         mime_types.append("unclassified")
 
         component.set_output_types(self, **{mime_type: List[Path] for mime_type in mime_types})
@@ -60,7 +57,7 @@ class FileTypeClassifier:
         for path in paths:
             if isinstance(path, str):
                 path = Path(path)
-            mime_type = self.to_underscore_format(self.get_mime_type(path))
+            mime_type = self.get_mime_type(path)
             if mime_type in self.mime_types:
                 mime_types[mime_type].append(path)
             else:
@@ -77,21 +74,11 @@ class FileTypeClassifier:
         """
         return mimetypes.guess_type(path.as_posix())[0]
 
-    def to_underscore_format(self, mime_type: Optional[str]) -> str:
+    def is_valid_mime_type_format(self, mime_type: str) -> bool:
         """
-        Convert the provided MIME type to underscore format.
-        :param mime_type: The MIME type to convert.
-        :return: The converted MIME type or an empty string if the provided MIME type is None.
-        """
-        if mime_type:
-            return "".join(c if c.isalnum() else "_" for c in mime_type)
-        return ""
-
-    def is_known_mime_type(self, mime_type: str) -> bool:
-        """
-        Check if the provided MIME type is a known MIME type.
+        Check if the provided MIME type is in valid format
         :param mime_type: The MIME type to check.
-        :return: True if the provided MIME type is a known MIME type, False otherwise.
+        :return: True if the provided MIME type is a valid MIME type format, False otherwise.
         """
         # this mimetypes check fails on Windows, therefore we use a regex instead
         # return mime_type in mimetypes.types_map.values() or mime_type in mimetypes.common_types.values()
