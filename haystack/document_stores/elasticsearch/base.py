@@ -3,10 +3,10 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from haystack.errors import DocumentStoreError
-from haystack.schema import Document, FilterType
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.search_engine import SearchEngineDocumentStore
+from haystack.errors import DocumentStoreError
+from haystack.schema import Document, FilterType
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +36,11 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
         batch_size: int = 10_000,
-        use_approximate_nearest_neighbors: bool = False,
-        ann_num_candidates: Optional[int] = None,
+        index_type: str = "exact",
+        hnsw_num_candidates: Optional[int] = None,
     ):
-        self.use_approximate_nearest_neighbors = use_approximate_nearest_neighbors
-        self.ann_num_candidates = ann_num_candidates
+        self.index_type = index_type
+        self.hnsw_num_candidates = hnsw_num_candidates
         super().__init__(
             client=client,
             index=index,
@@ -177,6 +177,8 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                 count_embeddings = self.get_embedding_count(index=index, headers=headers)
                 if count_embeddings == 0:
                     logger.warning("No documents with embeddings. Run the document store's update_embeddings() method.")
+        # TODO: hnsw does not throw an error since it directly ignores all documents without embedding
+        # What should we do? Artifically throw an error? -> Affects test_query_with_filters_and_missing_embeddings
         except self._RequestError as e:
             if e.error == "search_phase_execution_exception":
                 error_message: str = (
@@ -195,11 +197,12 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
     def _construct_dense_query_body(
         self, query_emb: np.ndarray, return_embedding: bool, filters: Optional[FilterType] = None, top_k: int = 10
     ):
-        if self.use_approximate_nearest_neighbors:
+        if self.index_type == "hnsw":
             body = self._construct_dense_query_body_ann(query_emb=query_emb, top_k=top_k, filters=filters)
-        else:
+        elif self.index_type == "exact":
             body = self._construct_dense_query_body_knn(query_emb=query_emb, top_k=top_k, filters=filters)
-
+        else:
+            raise DocumentStoreError(f"index_type {self.index_type} not supported")
         excluded_fields = self._get_excluded_fields(return_embedding=return_embedding)
         if excluded_fields:
             body["_source"] = {"excludes": excluded_fields}
@@ -226,9 +229,9 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
         return body
 
     def _get_ann_num_candidates(self, top_k: int) -> int:
-        if self.ann_num_candidates is None:
+        if self.hnsw_num_candidates is None:
             return 10 * top_k
-        return self.ann_num_candidates
+        return self.hnsw_num_candidates
 
     def _construct_filter(self, filters: Optional[FilterType] = None) -> Dict:
         filter_ = []
@@ -290,7 +293,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
 
     def _create_embedding_field_mapping(self):
         mapping = {"type": "dense_vector", "dims": self.embedding_dim}
-        if not self.use_approximate_nearest_neighbors:
+        if self.index_type == "exact":
             return mapping
         mapping["index"] = True
         mapping["similarity"] = self._get_similarity_string()
@@ -378,7 +381,15 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                         f"The index '{index_id}' in Elasticsearch already has a field called '{self.embedding_field}' "
                         f"of type '{mapping['properties'][self.embedding_field]['type']}'."
                     )
-                mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
+                request_mapping = self._create_embedding_field_mapping()
+                embedding_mapping_exists = self.embedding_field in mapping["properties"]
+                if embedding_mapping_exists and (
+                    mapping["properties"][self.embedding_field].keys() != request_mapping.keys()
+                ):
+                    raise DocumentStoreError(
+                        "The mapping of the existing embedding field is not compatible with the requested mapping."
+                    )
+                mapping["properties"][self.embedding_field] = request_mapping
                 self._index_put_mapping(index=index_id, body=mapping, headers=headers)
 
     def _validate_server_version(self, expected_version: int):
