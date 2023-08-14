@@ -16,7 +16,7 @@ from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.protocols import DuplicatePolicy, DocumentStore
 from haystack.preview.document_stores.memory._filters import match
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
-from haystack.utils.scipy_utils import expit
+from haystack.preview.utils import expit
 
 logger = logging.getLogger(__name__)
 
