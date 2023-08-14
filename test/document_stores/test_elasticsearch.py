@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -14,11 +15,31 @@ from haystack.testing import DocumentStoreBaseTestAbstract
 
 from .test_search_engine import SearchEngineDocumentStoreTestAbstract
 
+if VERSION[0] == 7:
+    index_types = None
+else:
+    index_types = ["exact", "hnsw"]
+similarities = ["l2", "cosine", "dot_product"]
+
 
 class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDocumentStoreTestAbstract):
     # Constants
 
     index_name = __name__
+
+    def create_ds(self, index_type: Optional[str] = None, similarity: str = "l2") -> ElasticsearchDocumentStore:
+        labels_index_name = f"{self.index_name}_labels"
+        kwargs = dict(
+            index=self.index_name,
+            label_index=labels_index_name,
+            host=os.environ.get("ELASTICSEARCH_HOST", "localhost"),
+            create_index=True,
+            recreate_index=True,
+            similarity=similarity,
+        )
+        if index_type:
+            kwargs["index_type"] = index_type
+        return ElasticsearchDocumentStore(**kwargs)
 
     @pytest.fixture
     def ds(self):
@@ -26,15 +47,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         This fixture provides a working document store and takes care of keeping clean
         the ES cluster used in the tests.
         """
-        labels_index_name = f"{self.index_name}_labels"
-        ds = ElasticsearchDocumentStore(
-            index=self.index_name,
-            label_index=labels_index_name,
-            host=os.environ.get("ELASTICSEARCH_HOST", "localhost"),
-            create_index=True,
-            recreate_index=True,
-        )
-
+        ds = self.create_ds()
         yield ds
 
     @pytest.fixture
@@ -142,12 +155,16 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         ds.write_documents(documents)
         filters = {"month": {"$in": ["01", "03"]}}
         ds.skip_missing_embeddings = False
-        with pytest.raises(ds._RequestError):
-            ds.query_by_embedding(np.random.rand(768), filters=filters)
+        if ds.index_type == "exact":
+            with pytest.raises(ds._RequestError):
+                ds.query_by_embedding(np.random.rand(768), filters=filters)
+        else:
+            docs = ds.query_by_embedding(np.random.rand(768), filters=filters)
+            assert len(docs) == 3
 
         ds.skip_missing_embeddings = True
-        documents = ds.query_by_embedding(np.random.rand(768), filters=filters)
-        assert len(documents) == 3
+        docs = ds.query_by_embedding(np.random.rand(768), filters=filters)
+        assert len(docs) == 3
 
     @pytest.mark.integration
     def test_synonyms(self, ds):
@@ -300,6 +317,27 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         assert all("name" in doc.meta for doc in transferred_documents)
         # Check if number of transferred_documents is equal to number of unique words.
         assert len(transferred_documents) == len(set(" ".join(original_content).split()))
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("index_type", index_types)
+    @pytest.mark.parametrize("similarity", similarities)
+    def test_write_documents_all_configurations(self, index_type, similarity, documents):
+        document_store = self.create_ds(index_type=index_type, similarity=similarity)
+        document_store.write_documents(documents)
+        assert len(document_store.get_all_documents()) == len(documents)
+        document_store.delete_all_documents()
+        assert len(document_store.get_all_documents()) == 0
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("index_type", index_types)
+    @pytest.mark.parametrize("similarity", similarities)
+    def test_query_documents_all_configurations(self, index_type, similarity, documents):
+        document_store = self.create_ds(index_type=index_type, similarity=similarity)
+        document_store.write_documents(documents)
+        filters = {"month": {"$in": ["01", "03"]}}
+
+        docs = document_store.query_by_embedding(np.random.rand(768), filters=filters)
+        assert len(docs) == 3
 
     @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
     @pytest.mark.unit
@@ -583,13 +621,13 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         embedding = np.array([1, 2, 3])
         top_k = 10
 
-        mocked_document_store.use_approximate_nearest_neighbors = False
+        mocked_document_store.index_type = "exact"
         body = mocked_document_store._construct_dense_query_body(
             query_emb=embedding, top_k=top_k, return_embedding=False
         )
         assert "query" in body
 
-        mocked_document_store.use_approximate_nearest_neighbors = True
+        mocked_document_store.index_type = "hnsw"
         body = mocked_document_store._construct_dense_query_body(
             query_emb=embedding, top_k=top_k, return_embedding=False
         )
@@ -600,6 +638,6 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         mapping = mocked_document_store._create_embedding_field_mapping()
         assert mapping == {"type": "dense_vector", "dims": 768}
 
-        mocked_document_store.use_approximate_nearest_neighbors = True
+        mocked_document_store.index_type = "hnsw"
         mapping = mocked_document_store._create_embedding_field_mapping()
         assert mapping == {"type": "dense_vector", "dims": 768, "similarity": "dot_product", "index": True}
