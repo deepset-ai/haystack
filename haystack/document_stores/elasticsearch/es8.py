@@ -1,8 +1,11 @@
 import logging
-from typing import List, Optional, Union, Dict, Any
+from typing import Any, Dict, List, Literal, Optional, Union
 
-from haystack.lazy_imports import LazyImport
+import numpy as np
+
 from haystack import Document
+from haystack.lazy_imports import LazyImport
+from haystack.schema import Document, FilterType
 
 with LazyImport("Run 'pip install farm-haystack[elasticsearch8]'") as es_import:
     from elasticsearch import Elasticsearch, RequestError
@@ -67,8 +70,8 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         synonym_type: str = "synonym",
         use_system_proxy: bool = False,
         batch_size: int = 10_000,
-        use_approximate_nearest_neighboors: bool = False,
-        ann_num_candidates: Optional[int] = None,
+        index_type: str = "exact",
+        hnsw_num_candidates: Optional[int] = None,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -142,9 +145,12 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         :param use_system_proxy: Whether to use system proxy.
         :param batch_size: Number of Documents to index at once / Number of queries to execute at once. If you face
                            memory issues, decrease the batch_size.
-        :param use_approximate_nearest_neighbors: Specifies whether to use the approximate nearest neighbors algorithms. Only supported for  elasticsearch > 8.0.
-                            Defaults to False.
-        :param ann_num_candidates: Specifies the number of candidates which are used to compute the approximate nearest neighbors. Only supported for  elasticsearch > 8.0.
+        :param index_type: The type of index you want to create. Choose from 'exact' or 'hnsw'.
+                            'exact' uses the brute force algorithm for retrieving nearest neighbors.
+                            'hnsw' uses the HNSW Algorithm to determine nearest neighbors. This is more performant than 'exact'.
+                            'hnsw' is only supported for elasticsearch >=8.
+                            Defaults to 'exact'.
+        :param hnsw_num_candidates: Specifies the number of candidates which are used to compute the approximate nearest neighbors. Only supported for  elasticsearch > 8.0.
                             Defaults to None. If None, the number of candidates is set to 10 times the requested top_k hits.
 
         """
@@ -190,8 +196,8 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
             synonyms=synonyms,
             synonym_type=synonym_type,
             batch_size=batch_size,
-            use_approximate_nearest_neighbors=use_approximate_nearest_neighboors,
-            ann_num_candidates=ann_num_candidates,
+            index_type=index_type,
+            hnsw_num_candidates=hnsw_num_candidates,
         )
 
         self._validate_server_version(expected_version=8)
@@ -203,6 +209,58 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
     def _do_scan(self, *args, **kwargs):
         """Override the base class method to use the Elasticsearch client"""
         return scan(*args, **kwargs)
+
+    def query_by_embedding(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[FilterType] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
+    ) -> List[Document]:
+        __doc__ = _ElasticsearchDocumentStore.write_documents.__doc__  # type: ignore
+        if self.index_type == "hnsw" and self.similarity == "dot_product":
+            self.normalize_embedding(query_emb)
+
+        return super().query_by_embedding(
+            query_emb=query_emb,
+            filters=filters,
+            top_k=top_k,
+            index=index,
+            return_embedding=return_embedding,
+            headers=headers,
+            scale_score=scale_score,
+        )
+
+    def write_documents(
+        self,
+        documents: Union[List[dict], List[Document]],
+        index: Optional[str] = None,
+        batch_size: Optional[int] = None,
+        duplicate_documents: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
+        __doc__ = _ElasticsearchDocumentStore.write_documents.__doc__  # type: ignore
+        self.embedding_dim
+        if self.index_type == "hnsw" and self.similarity == "dot_product":
+            field_map = self._create_document_field_map()
+            documents = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
+            embeddings_to_index = np.array(
+                [d.embedding if d.embedding is not None else [None] * self.embedding_dim for d in documents],
+                dtype="float32",
+            )
+            self.normalize_embedding(embeddings_to_index)
+            for document, embedding in zip(documents, embeddings_to_index):
+                document.embedding = None if np.isnan(embedding).any() else embedding
+        super().write_documents(
+            documents=documents,
+            index=index,
+            batch_size=batch_size,
+            duplicate_documents=duplicate_documents,
+            headers=headers,
+        )
 
     @staticmethod
     def _init_elastic_client(
