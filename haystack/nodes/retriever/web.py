@@ -116,12 +116,12 @@ class WebRetriever(BaseRetriever):
         :param cache_document_store: The DocumentStore to cache the documents to.
         :param cache_index: The index name to save the documents to.
         :param cache_headers: The headers to save the documents to.
-        :param cache_time: The time limit in seconds to check the cache. The default is 24 hours.
+        :param cache_time: The time limit in seconds for the documents in the cache. If objects are older than this time,
+        they will be deleted from the cache on the next retrieval.
         """
 
         # Initialize default parameters
         preprocessor = preprocessor or self.preprocessor
-        cache_document_store = cache_document_store or self.cache_document_store
         cache_index = cache_index or self.cache_index
         top_k = top_k or self.top_k
         cache_headers = cache_headers or self.cache_headers
@@ -178,7 +178,7 @@ class WebRetriever(BaseRetriever):
         Scrape the links and return the documents.
 
         :param links: List of SearchResult objects.
-        :return: List of Document objects obtained from scraping the links.
+        :return: List of Document objects obtained by fetching the content from the links.
         """
         if not links:
             return []
@@ -248,6 +248,15 @@ class WebRetriever(BaseRetriever):
         cache_headers: Optional[Dict[str, str]] = None,
         cache_time: Optional[int] = None,
     ) -> None:
+        """
+        Save the documents to the cache and potentially delete old expired documents from the cache.
+
+        :param documents: List of Document objects to be saved to the cache.
+        :param cache_index: Optional index name to save the documents to.
+        :param cache_headers: Optional headers made to use when saving the documents to the cache.
+        :param cache_time: Optional time to live in seconds for the documents in the cache. If objects are older than
+        this time, they will be deleted from the cache.
+        """
         cache_document_store = self.cache_document_store
 
         if cache_document_store is not None and documents:
@@ -290,7 +299,8 @@ class WebRetriever(BaseRetriever):
         DocumentStore is used.
         :param cache_index: The index name to save the documents to. If None, the instance's default cache_index is used.
         :param cache_headers: The headers to save the documents to. If None, the instance's default cache_headers is used.
-        :param cache_time: The time limit in seconds to check the cache. If None, the instance's default cache_time is used.
+        :param cache_time: The time limit in seconds for the documents in the cache.
+
         :returns: A list of lists where each inner list represents the documents fetched for a particular query.
         """
         documents = []
