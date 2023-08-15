@@ -51,7 +51,9 @@ class SerpAPI(SearchEngine):
         top_k = kwargs.pop("top_k", self.top_k)
         url = "https://serpapi.com/search"
 
-        params = {"source": "python", "serp_api_key": self.api_key, "q": query, **kwargs}
+        allowed_domains = kwargs.pop("allowed_domains", None)
+        query_prepend = "OR ".join(f"site:{domain} " for domain in allowed_domains) if allowed_domains else ""
+        params = {"source": "python", "serp_api_key": self.api_key, "q": query_prepend + query, **kwargs}
 
         if self.engine:
             params["engine"] = self.engine
@@ -144,10 +146,12 @@ class SerperDev(SearchEngine):
         """
         kwargs = {**self.kwargs, **kwargs}
         top_k = kwargs.pop("top_k", self.top_k)
+        allowed_domains = kwargs.pop("allowed_domains", None)
+        query_prepend = "OR ".join(f"site:{domain} " for domain in allowed_domains) if allowed_domains else ""
 
         url = "https://google.serper.dev/search"
 
-        payload = json.dumps({"q": query, "gl": "us", "hl": "en", "autocorrect": True, **kwargs})
+        payload = json.dumps({"q": query_prepend + query, "gl": "us", "hl": "en", "autocorrect": True, **kwargs})
         headers = {"X-API-KEY": self.api_key, "Content-Type": "application/json"}
 
         response = requests.request("POST", url, headers=headers, data=payload, timeout=30)
@@ -225,7 +229,7 @@ class BingAPI(SearchEngine):
     def search(self, query: str, **kwargs) -> List[Document]:
         """
         :param query: Query string.
-        :param kwargs: Additional parameters passed to the SerperDev API.
+        :param kwargs: Additional parameters passed to the BingAPI API.
                        As an example, you can pass the market parameter to specify the market to use for the query: 'mkt':'en-US'.
                        If you don't specify the market parameter, the default market for the user's location is used.
                        For a complete list of the market codes, see [Market Codes](https://learn.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference#market-codes).
@@ -237,7 +241,10 @@ class BingAPI(SearchEngine):
         top_k = kwargs.pop("top_k", self.top_k)
         url = "https://api.bing.microsoft.com/v7.0/search"
 
-        params: Dict[str, Union[str, int, float]] = {"q": query, "count": 50, **kwargs}
+        allowed_domains = kwargs.pop("allowed_domains", None)
+        query_prepend = "OR ".join(f"site:{domain} " for domain in allowed_domains) if allowed_domains else ""
+
+        params: Dict[str, Union[str, int, float]] = {"q": query_prepend + query, "count": 50, **kwargs}
 
         headers = {"Ocp-Apim-Subscription-Key": self.api_key}
 
@@ -338,8 +345,11 @@ class GoogleAPI(SearchEngine):
         self._validate_environment()
 
         top_k = kwargs.pop("top_k", self.top_k)
+        allowed_domains = kwargs.pop("allowed_domains", None)
+        query_prepend = "OR ".join(f"site:{domain} " for domain in allowed_domains) if allowed_domains else ""
+
         params: Dict[str, Union[str, int, float]] = {"num": 10, **kwargs}
-        res = self.service.cse().list(q=query, cx=self.engine_id, **params).execute()
+        res = self.service.cse().list(q=query_prepend + query, cx=self.engine_id, **params).execute()
         documents: List[Document] = []
         for i, result in enumerate(res["items"]):
             documents.append(
