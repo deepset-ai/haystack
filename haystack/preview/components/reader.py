@@ -1,7 +1,9 @@
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
+import os
 from haystack.preview import component, Document, Answer, Pipeline
 from haystack.lazy_imports import LazyImport
+from haystack.nodes.prompt.invocation_layer.utils import get_task
 
 with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
@@ -20,12 +22,22 @@ class ExtractiveReader:
         stride: int = 128,
     ) -> None:
         torch_and_transformers_import.check()
-        self.model = model
+        self.model = str(model)
         self.device = device
         self.loaded = False
         self.max_seq_length = max_seq_length
         self.top_k = top_k
         self.stride = stride
+        if os.path.exists(self.model):
+            return
+        try:
+            task = get_task(self.model)
+            if task != "question-answering":
+                raise ValueError(f"The provided model does not support question answering. Its intended use is {task}")
+        except RuntimeError:
+            raise ValueError(
+                "The provided model either does not exist or it does not have a HF transformers compatible format."
+            )
 
     def warm_up(self):
         if not self.loaded:
