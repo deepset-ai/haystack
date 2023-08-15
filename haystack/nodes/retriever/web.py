@@ -82,11 +82,9 @@ class WebRetriever(BaseRetriever):
         self.top_k = top_k
         self.cache_headers = cache_headers
         self.cache_time = cache_time
-        self.preprocessor = None
-        if preprocessor is not None:
-            self.preprocessor = preprocessor
-        elif mode == "preprocessed_documents":
-            self.preprocessor = PreProcessor(progress_bar=False)
+        self.preprocessor = (
+            preprocessor or PreProcessor(progress_bar=False) if mode == "preprocessed_documents" else None
+        )
 
     def retrieve(  # type: ignore[override]
         self,
@@ -108,7 +106,7 @@ class WebRetriever(BaseRetriever):
 
         Optionally, the retrieved documents can be stored in a DocumentStore for future use, saving time
         and resources on repeated retrievals. This caching mechanism can significantly improve retrieval times
-        for frequently accessed information.
+        for frequently accessed URLs.
 
         :param query: The query string.
         :param top_k: The number of Documents to be returned by the retriever.
@@ -206,7 +204,7 @@ class WebRetriever(BaseRetriever):
 
             return docs
 
-        thread_count = cpu_count() if len(links) > cpu_count() else len(links)
+        thread_count = min(cpu_count() if len(links) > cpu_count() else len(links), 10)  # max 10 threads
         with ThreadPoolExecutor(max_workers=thread_count) as executor:
             fetched_pages: Iterator[List[Document]] = executor.map(link_fetch, links)
 

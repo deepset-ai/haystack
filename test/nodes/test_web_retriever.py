@@ -35,12 +35,6 @@ def mocked_link_content_fetcher_handler_type():
         yield
 
 
-@pytest.fixture
-def mock_scrape_links():
-    with patch("haystack.nodes.retriever.web.WebRetriever._scrape_links", return_value=["https://test.com"]):
-        yield
-
-
 @pytest.mark.unit
 def test_init_default_parameters():
     retriever = WebRetriever(api_key="test_key")
@@ -53,7 +47,7 @@ def test_init_default_parameters():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("mode", ["snippets", "documents", "preprocessed_documents"])
+@pytest.mark.parametrize("mode", ["snippets", "raw_documents", "preprocessed_documents"])
 @pytest.mark.parametrize("top_k", [1, 5, 7])
 def test_retrieve_from_web_all_params(mock_web_search, mode, top_k):
     """
@@ -214,7 +208,7 @@ def test_retrieve_uses_cache(mock_web_search):
     cached_docs = [Document("doc1"), Document("doc2")]
     with patch.object(wr, "_check_cache", return_value=(cached_links, cached_docs)) as mock_check_cache:
         with patch.object(wr, "_save_to_cache") as mock_save_cache:
-            with patch.object(wr, "_scrape_links", return_value=[]) as mock_scrape_links:
+            with patch.object(wr, "_scrape_links", return_value=[]):
                 result = wr.retrieve("query")
 
     # checking cache is always called
