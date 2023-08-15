@@ -1,0 +1,3 @@
+---
+enhancements:
+  - move `test_summarization_pipelines.py` into `test_standard_pipelines.py`
