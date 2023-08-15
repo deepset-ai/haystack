@@ -230,6 +230,7 @@ jobs:
           path: test/benchmarks/out/
 
   terminate-runner:
+    if: always()
     needs:
       - deploy-runner
       - run-opensearch-benchmarks
