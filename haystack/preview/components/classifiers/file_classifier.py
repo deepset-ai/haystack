@@ -36,6 +36,9 @@ class FileExtensionClassifier:
         if not all_known_mime_types:
             raise ValueError(f"The list of mime types contains unknown mime types: {mime_types}")
 
+        # save the parameters for serialization; before we add the "unclassified" mime type
+        self.init_parameters = {"mime_types": mime_types}
+
         # add the "unclassified" mime type to the list of mime types
         mime_types = mime_types.copy()
         mime_types.append("unclassified")
