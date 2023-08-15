@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 from haystack.preview.components.classifiers.file_classifier import FileTypeClassifier
@@ -5,7 +7,16 @@ from test.preview.components.base import BaseTestComponent
 from test.conftest import preview_samples_path
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Can't run on Windows Github CI, need access to registry to get mime types"
+)
 class TestFileClassifier(BaseTestComponent):
+    @pytest.mark.unit
+    def test_save_load(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(
+            FileTypeClassifier(mime_types=["text/plain", "audio/x-wav", "image/jpeg"]), tmp_path
+        )
+
     @pytest.mark.unit
     def test_run(self, preview_samples_path):
         """

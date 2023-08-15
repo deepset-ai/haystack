@@ -80,6 +80,4 @@ class FileTypeClassifier:
         :param mime_type: The MIME type to check.
         :return: True if the provided MIME type is a valid MIME type format, False otherwise.
         """
-        # this mimetypes check fails on Windows, therefore we use a regex instead
-        # return mime_type in mimetypes.types_map.values() or mime_type in mimetypes.common_types.values()
-        return bool(re.match(r"^.+/[^/]+$", mime_type))
+        return mime_type in mimetypes.types_map.values()
