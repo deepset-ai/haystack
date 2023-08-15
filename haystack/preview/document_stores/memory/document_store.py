@@ -250,7 +250,7 @@ class MemoryDocumentStore:
         # get scores for the query against the corpus
         docs_scores = bm25_scorer.get_scores(tokenized_query)
         if scale_score:
-            docs_scores = [float(expit(np.asarray(score / SCALING_FACTOR))) for score in docs_scores]
+            docs_scores = [expit(float(score / SCALING_FACTOR)) for score in docs_scores]
         # get the last top_k indexes and reverse them
         top_docs_positions = np.argsort(docs_scores)[-top_k:][::-1]
 
