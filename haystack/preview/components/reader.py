@@ -33,7 +33,7 @@ class ExtractiveReader:
         try:
             task = get_task(self.model)
             if task != "question-answering":
-                raise ValueError(f"The provided model does not support question answering. Its intended use is {task}")
+                raise ValueError(f"The provided model does not support question answering. Its intended use is {task}.")
         except RuntimeError:
             raise ValueError(
                 "The provided model either does not exist or it does not have a HF transformers compatible format."
