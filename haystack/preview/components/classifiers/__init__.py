@@ -1,1 +1,1 @@
-from haystack.preview.components.classifiers.file_classifier import FileTypeClassifier
+from haystack.preview.components.classifiers.file_classifier import FileExtensionClassifier

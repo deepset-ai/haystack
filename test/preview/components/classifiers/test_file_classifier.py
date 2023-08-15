@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from haystack.preview.components.classifiers.file_classifier import FileTypeClassifier
+from haystack.preview.components.classifiers.file_classifier import FileExtensionClassifier
 from test.preview.components.base import BaseTestComponent
 from test.conftest import preview_samples_path
 
@@ -14,7 +14,7 @@ class TestFileClassifier(BaseTestComponent):
     @pytest.mark.unit
     def test_save_load(self, tmp_path):
         self.assert_can_be_saved_and_loaded_in_pipeline(
-            FileTypeClassifier(mime_types=["text/plain", "audio/x-wav", "image/jpeg"]), tmp_path
+            FileExtensionClassifier(mime_types=["text/plain", "audio/x-wav", "image/jpeg"]), tmp_path
         )
 
     @pytest.mark.unit
@@ -29,7 +29,7 @@ class TestFileClassifier(BaseTestComponent):
             preview_samples_path / "images" / "apple.jpg",
         ]
 
-        classifier = FileTypeClassifier(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
+        classifier = FileExtensionClassifier(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
         output = classifier.run(paths=file_paths)
         assert output
         assert len(output["text/plain"]) == 2
@@ -42,7 +42,7 @@ class TestFileClassifier(BaseTestComponent):
         """
         Test that the component runs correctly when no files are provided.
         """
-        classifier = FileTypeClassifier(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
+        classifier = FileExtensionClassifier(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
         output = classifier.run(paths=[])
         assert not output
 
@@ -56,7 +56,7 @@ class TestFileClassifier(BaseTestComponent):
             preview_samples_path / "audio" / "ignored.mp3",
             preview_samples_path / "audio" / "this is the content of the document.wav",
         ]
-        classifier = FileTypeClassifier(mime_types=["text/plain"])
+        classifier = FileExtensionClassifier(mime_types=["text/plain"])
         output = classifier.run(paths=file_paths)
         assert len(output["text/plain"]) == 1
         assert "mp3" not in output
@@ -74,7 +74,7 @@ class TestFileClassifier(BaseTestComponent):
             preview_samples_path / "txt" / "doc_2",
             preview_samples_path / "txt" / "doc_2.txt",
         ]
-        classifier = FileTypeClassifier(mime_types=["text/plain"])
+        classifier = FileExtensionClassifier(mime_types=["text/plain"])
         output = classifier.run(paths=file_paths)
         assert len(output["text/plain"]) == 2
         assert len(output["unclassified"]) == 1
@@ -85,4 +85,4 @@ class TestFileClassifier(BaseTestComponent):
         Test that the component handles files with unknown mime types.
         """
         with pytest.raises(ValueError, match="The list of mime types"):
-            FileTypeClassifier(mime_types=["type_invalid"])
+            FileExtensionClassifier(mime_types=["type_invalid"])

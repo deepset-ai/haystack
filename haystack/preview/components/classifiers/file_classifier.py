@@ -1,6 +1,5 @@
 import logging
 import mimetypes
-import re
 from collections import defaultdict
 from pathlib import Path
 from typing import List, Union, Optional
@@ -11,11 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class FileTypeClassifier:
+class FileExtensionClassifier:
     """
-    A component that classifies files based on their MIME types.
+    A component that classifies files based on their MIME types read from their file extensions. This component
+    does not read the file contents, but rather uses the file extension to determine the MIME type of the file.
 
-    The FileTypeClassifier takes a list of file paths and groups them by their MIME types.
+    The FileExtensionClassifier takes a list of file paths and groups them by their MIME types.
     The list of MIME types to consider is provided during the initialization of the component.
 
     This component is particularly useful when working with a large number of files, and you
@@ -24,7 +24,7 @@ class FileTypeClassifier:
 
     def __init__(self, mime_types: List[str]):
         """
-        Initialize the FileTypeClassifier.
+        Initialize the FileExtensionClassifier.
 
         :param mime_types: A list of file mime types to consider when classifying
         files (e.g. ["text/plain", "audio/x-wav", "image/jpeg"]).
@@ -45,7 +45,7 @@ class FileTypeClassifier:
 
     def run(self, paths: List[Union[str, Path]]):
         """
-        Run the FileTypeClassifier.
+        Run the FileExtensionClassifier.
 
         This method takes the input data, iterates through the provided file paths, checks the file
         mime type of each file, and groups the file paths by their mime types.
