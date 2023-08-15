@@ -23,4 +23,3 @@ class ExtractiveAnswer(Answer):
 class GenerativeAnswer(Answer):
     data: str
     documents: List[Document]
-    probability: float
