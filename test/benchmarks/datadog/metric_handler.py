@@ -1,5 +1,4 @@
 from enum import Enum
-from itertools import chain
 from time import time
 from typing import Dict, List, Optional
 
@@ -55,7 +54,7 @@ class CustomDatadogMetric:
     tags: List[Tag]
 
     def __init__(self, name: str, value: float, tags: Optional[List[Tag]] = None) -> None:
-        self.timestamp = time()
+        self.timestamp = int(time())
         self.name = name
         self.value = value
         self.tags = self.validate_tags(tags) if tags is not None else []
@@ -121,7 +120,7 @@ class MetricsAPI:
 
         tags: List[str] = list(map(lambda t: str(t.value), metric.tags))
         post_metric_response: Dict = datadog.api.Metric.send(
-            metric=metric.name, points=[metric.timestamp, metric.value], tags=tags
+            metric=metric.name, points=[(metric.timestamp, metric.value)], tags=tags
         )
 
         if post_metric_response.get("status") != "ok":
