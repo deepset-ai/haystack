@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/nodes/ranker]
-    modules: ["sentence_transformers", "recentness_ranker", "diversity", "lost_in_the_middle"]
+    modules: ["sentence_transformers", "recentness_ranker", "cohere", "diversity", "lost_in_the_middle"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter

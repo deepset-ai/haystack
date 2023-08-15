@@ -1,18 +1,18 @@
-class StoreError(Exception):
+class DocumentStoreError(Exception):
     pass
 
 
-class FilterError(StoreError):
+class FilterError(DocumentStoreError):
     pass
 
 
-class DuplicateDocumentError(StoreError):
+class DuplicateDocumentError(DocumentStoreError):
     pass
 
 
-class MissingDocumentError(StoreError):
+class MissingDocumentError(DocumentStoreError):
     pass
 
 
-class StoreDeserializationError(StoreError):
+class DocumentStoreDeserializationError(DocumentStoreError):
     pass
