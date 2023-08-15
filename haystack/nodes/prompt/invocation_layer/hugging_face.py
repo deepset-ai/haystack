@@ -265,7 +265,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             try:
                 output = self.pipe(prompt, **model_input_kwargs)
             except Exception as e:
-                raise HuggingFacePipelineError(f"Text generation failed: {str(e)}") from e
+                raise HuggingFacePipelineError("Text generation failed") from e
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
 
         if stop_words:
