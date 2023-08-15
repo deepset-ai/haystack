@@ -237,19 +237,3 @@ class ExtractiveReader:
         )
 
         return {"answers": answers}
-
-
-if __name__ == "__main__":
-    docs = [
-        [
-            Document(content="Angela Merkel is the chancellor of Germany."),
-            Document(content="Olaf Scholz is the chancellor of Germany"),
-        ],
-        [Document(content="Jerry is the head of the department.")],
-    ]
-    queries = ["Who is the chancellor of Germany?", "What is Jerry's role?"]
-    reader = ExtractiveReader("deepset/roberta-base-squad2")
-    p = Pipeline()
-    p.add_component("reader", reader)
-
-    print(p.run({"reader": {"documents": docs, "queries": queries}}))
