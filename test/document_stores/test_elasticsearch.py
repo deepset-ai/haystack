@@ -16,7 +16,7 @@ from haystack.testing import DocumentStoreBaseTestAbstract
 from .test_search_engine import SearchEngineDocumentStoreTestAbstract
 
 if VERSION[0] == 7:
-    index_types = None
+    index_types = [None]
 else:
     index_types = ["exact", "hnsw"]
 similarities = ["l2", "cosine", "dot_product"]

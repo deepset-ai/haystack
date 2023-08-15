@@ -1,9 +1,8 @@
 import logging
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from haystack import Document
 from haystack.lazy_imports import LazyImport
 from haystack.schema import Document, FilterType
 
@@ -220,7 +219,8 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = True,
     ) -> List[Document]:
-        __doc__ = _ElasticsearchDocumentStore.write_documents.__doc__  # type: ignore
+        __doc__ = _ElasticsearchDocumentStore.write_documents.__doc__  # noqa: W0612
+
         if self.index_type == "hnsw" and self.similarity == "dot_product":
             self.normalize_embedding(query_emb)
 
@@ -242,7 +242,7 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         duplicate_documents: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        __doc__ = _ElasticsearchDocumentStore.write_documents.__doc__  # type: ignore
+        __doc__ = _ElasticsearchDocumentStore.write_documents.__doc__  # noqa: W0612
         self.embedding_dim
         if self.index_type == "hnsw" and self.similarity == "dot_product":
             field_map = self._create_document_field_map()
