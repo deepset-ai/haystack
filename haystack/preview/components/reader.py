@@ -54,13 +54,14 @@ class ExtractiveReader:
         attention_mask = encodings.attention_mask.to(self.device)
 
         query_ids = [query_ids[index] for index in encodings.overflow_to_sample_mapping]
+        document_ids = encodings.overflow_to_sample_mapping
 
         encodings = encodings.encodings
         sequence_ids = torch.tensor(
             [[id_ if id_ is not None else -1 for id_ in encoding.sequence_ids] for encoding in encodings]
         ).to(self.device)
 
-        return input_ids, attention_mask, sequence_ids, encodings, query_ids
+        return input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids
 
     def _postprocess(
         self,
@@ -87,7 +88,6 @@ class ExtractiveReader:
         mask[0, :1] = False
         masked_logits = torch.where(mask, logits, -torch.inf)
 
-        query_ids_set = set(query_ids)
         last_docs = []
         not_last_docs = []
         i = 0
@@ -105,8 +105,19 @@ class ExtractiveReader:
         masked_logits[..., 0, 0] = no_answer_logits_sum
         exp_logits = torch.exp(masked_logits)
         exp_logits_sum = torch.sum(exp_logits, -1)
-        exp_logits_sum = torch.cumsum(exp_logits, -1)
-        exp_logits[last_docs]
+        exp_logits_sum = torch.sum(exp_logits_sum, -1)
+        exp_logits_sum = torch.cumsum(exp_logits_sum, -1)
+        exp_logits_sum[not_last_docs] = 0
+        exp_logits_sum[last_docs[1:]] -= exp_logits_sum[last_docs[:-1]]
+        rev_sum = torch.flip(exp_logits_sum, [-1])
+        rev_cumsum = torch.cumsum(rev_sum, -1)
+        exp_logits_sum[last_docs[:-1]] = exp_logits_sum[last_docs[1:]]
+        exp_logits_sum[-1] = 0
+        rev_sum_shifted = torch.flip(exp_logits_sum, [-1])
+        rev_sum_shifted = torch.cumsum(rev_sum_shifted, -1)
+        rev_cumsum -= rev_sum_shifted
+        exp_sum_per_query = torch.flip(rev_cumsum, [-1])
+        exp_logits /= exp_sum_per_query.unsqueeze(-1).unsqueeze(-1)
         flat_logits = masked_logits.flatten(-2, -1)  # necessary for topk
         candidates = torch.topk(flat_logits, top_k)
         seq_length = logits.shape[-1]
@@ -135,22 +146,25 @@ class ExtractiveReader:
         flattened_documents: List[str],
         documents: List[List[Document]],
         top_k: int,
+        query_ids: List[int],
+        document_ids: List[int],
     ) -> List[List[Answer]]:
         answers = [
-            [document[start:end] for start, end in zip(start_candidates_, end_candidates_)]
-            for document, start_candidates_, end_candidates_ in zip(flattened_documents, start, end)
+            (flattened_documents[document_id][start:end], probability)
+            for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
+                document_ids, start, end, probabilities
+            )
+            for start, end, probability in zip(start_candidates_, end_candidates_, probabilities_)
         ]
 
         i = 0
         nested_answers = []
-        for documents_ in documents:
+        for query_id in range(query_ids[-1] + 1):
             current_answers = []
-            j = i + len(documents_)
-            for answers_, probabilities_ in zip(answers[i:j], probabilities[i:j]):
-                for answer, probability in zip(answers_, probabilities_):
-                    current_answers.append(Answer(answer=answer, probability=probability))
-            i = j
-            current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)[:top_k]
+            while i < len(answers) and query_ids[i // top_k] == query_id:
+                current_answers.append(answers[i])
+                i += 1
+            current_answers = sorted(current_answers, key=lambda answer: answer[1], reverse=True)[:top_k]
             nested_answers.append(current_answers)
 
         return nested_answers
@@ -167,7 +181,7 @@ class ExtractiveReader:
         max_seq_length = max_seq_length or self.max_seq_length
 
         flattened_queries, flattened_documents, query_ids = self._flatten(queries, documents)
-        input_ids, attention_mask, sequence_ids, encodings, query_ids, not_first = self._preprocess(
+        input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
             flattened_queries, flattened_documents, max_seq_length, query_ids
         )
 
@@ -175,7 +189,9 @@ class ExtractiveReader:
 
         start, end, probabilities = self._postprocess(output, sequence_ids, attention_mask, top_k, encodings, query_ids)
 
-        answers = self._unflatten(start, end, probabilities, flattened_documents, documents, top_k)
+        answers = self._unflatten(
+            start, end, probabilities, flattened_documents, documents, top_k, query_ids, document_ids
+        )
 
         return {"answers": answers}
 
