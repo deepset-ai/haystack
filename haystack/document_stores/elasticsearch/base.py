@@ -212,7 +212,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
     def _construct_dense_query_body_knn(self, query_emb: np.ndarray, top_k: int, filters: Optional[FilterType] = None):
         filter_ = self._construct_filter(filters)
         body = {"size": top_k, "query": {"script_score": self._get_vector_similarity_query(query_emb, top_k=top_k)}}
-        body["query"]["script_score"]["query"] = {"bool": {"filter": filter_}}
+        body["query"]["script_score"]["query"] = {"bool": {"filter": filter_}}  # type: ignore
         return body
 
     def _construct_dense_query_body_ann(self, query_emb: np.ndarray, top_k: int, filters: Optional[FilterType] = None):
@@ -404,7 +404,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                 ".".join(map(str, self.server_version)),
             )
 
-    def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
+    def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int) -> Dict[str, Any]:
         """
         Generate Elasticsearch query for vector similarity.
         """
