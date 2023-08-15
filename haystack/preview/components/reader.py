@@ -12,7 +12,12 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
 @component
 class ExtractiveReader:
     def __init__(
-        self, model: Union[Path, str], device: Optional[str] = None, max_seq_length: int = 384, top_k: int = 10
+        self,
+        model: Union[Path, str],
+        device: Optional[str] = None,
+        max_seq_length: int = 384,
+        top_k: int = 10,
+        stride: int = 128,
     ) -> None:
         torch_and_transformers_import.check()
         self.model = model
@@ -20,6 +25,7 @@ class ExtractiveReader:
         self.loaded = False
         self.max_seq_length = max_seq_length
         self.top_k = top_k
+        self.stride = stride
 
     def warm_up(self):
         if not self.loaded:
@@ -37,7 +43,7 @@ class ExtractiveReader:
         return flattened_queries, flattened_documents, query_ids
 
     def _preprocess(
-        self, queries: List[str], documents: List[str], max_seq_length: int, query_ids: List[int]
+        self, queries: List[str], documents: List[str], max_seq_length: int, query_ids: List[int], stride: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, List[Encoding], List[int], List[int]]:
         encodings = self.tokenizer(
             queries,
@@ -47,7 +53,7 @@ class ExtractiveReader:
             max_length=max_seq_length,
             return_tensors="pt",
             return_overflowing_tokens=True,
-            stride=32,
+            stride=stride,
         )
 
         input_ids = encodings.input_ids.to(self.device)
@@ -176,13 +182,15 @@ class ExtractiveReader:
         documents: List[List[Document]],
         top_k: Optional[int] = None,
         max_seq_length: Optional[int] = None,
+        stride: Optional[int] = None,
     ):
         top_k = top_k or self.top_k
         max_seq_length = max_seq_length or self.max_seq_length
+        stride = stride or self.stride
 
         flattened_queries, flattened_documents, query_ids = self._flatten(queries, documents)
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
-            flattened_queries, flattened_documents, max_seq_length, query_ids
+            flattened_queries, flattened_documents, max_seq_length, query_ids, stride
         )
 
         output = self.model_(input_ids=input_ids, attention_mask=attention_mask)
