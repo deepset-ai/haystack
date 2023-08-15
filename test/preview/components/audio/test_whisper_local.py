@@ -58,11 +58,7 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
             "text": "test transcription",
             "other_metadata": ["other", "meta", "data"],
         }
-        results = comp.run(
-            LocalWhisperTranscriber.Input(
-                audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"]
-            )
-        )
+        results = comp.run(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
         expected = Document(
             content="test transcription",
             metadata={
@@ -70,8 +66,7 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
                 "other_metadata": ["other", "meta", "data"],
             },
         )
-        assert isinstance(results, LocalWhisperTranscriber.Output)
-        assert results.documents == [expected]
+        assert results["documents"] == [expected]
 
     @pytest.mark.unit
     def test_run_with_str(self):
@@ -82,9 +77,7 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
             "other_metadata": ["other", "meta", "data"],
         }
         results = comp.run(
-            LocalWhisperTranscriber.Input(
-                audio_files=[str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute())]
-            )
+            audio_files=[str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute())]
         )
         expected = Document(
             content="test transcription",
@@ -93,8 +86,7 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
                 "other_metadata": ["other", "meta", "data"],
             },
         )
-        assert isinstance(results, LocalWhisperTranscriber.Output)
-        assert results.documents == [expected]
+        assert results["documents"] == [expected]
 
     @pytest.mark.unit
     def test_transcribe(self):
