@@ -242,9 +242,9 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
         role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
 
-    - env:
+    - name: Terminate EC2 instance
+      env:
         CML_RUNNER_ID: ${{needs.deploy-runner.outputs.cml_runner_id}}
-      name: Terminate EC2 instance
       run: |
         # Get the instance ID using its Name tag and terminate the instance
         INSTANCE_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${{ env.CML_RUNNER_ID }}" --query "Reservations[*].Instances[*].[InstanceId]" --output text)
