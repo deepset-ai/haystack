@@ -36,14 +36,10 @@ class FileExtensionClassifier:
         if not all_known_mime_types:
             raise ValueError(f"The list of mime types contains unknown mime types: {mime_types}")
 
-        # save the parameters for serialization; before we add the "unclassified" mime type
+        # save the init parameters for serialization
         self.init_parameters = {"mime_types": mime_types}
 
-        # add the "unclassified" mime type to the list of mime types
-        mime_types = mime_types.copy()
-        mime_types.append("unclassified")
-
-        component.set_output_types(self, **{mime_type: List[Path] for mime_type in mime_types})
+        component.set_output_types(self, unclassified=List[Path], **{mime_type: List[Path] for mime_type in mime_types})
         self.mime_types = mime_types
 
     def run(self, paths: List[Union[str, Path]]):
