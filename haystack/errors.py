@@ -181,7 +181,7 @@ class ImageToTextError(NodeError):
         super().__init__(message=message)
 
 
-class HuggingFacePipelineInferenceError(NodeError):
+class HuggingFacePipelineError(NodeError):
     """Exception for issues that occur in the HuggingFace pipeline inference"""
 
     def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
