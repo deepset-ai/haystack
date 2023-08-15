@@ -81,6 +81,58 @@ class ExtractiveReader:
 
         return input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids
 
+    def _softmax_across_documents(self, logits: torch.Tensor, query_ids: List[int]) -> torch.Tensor:
+        last_docs = []
+        not_last_docs = []
+        i = 0
+        for j in range(query_ids[-1]):
+            while i < len(query_ids) and query_ids[i] == j:
+                if i != 0:
+                    not_last_docs.append(i - 1)
+                i += 1
+            last_docs.append(i - 1)
+
+        # The following might seem a bit obfuscated, but the goal of doing it like this is to keep the operations vectorized and on the GPU
+        # Sum all no answer logits for the query and only save in the last slice
+        no_answer_logits = logits[..., 0, 0]
+        no_answer_logits_sum = torch.cumsum(no_answer_logits, -1)
+        no_answer_logits_sum[last_docs[1:]] -= no_answer_logits_sum[last_docs[:-1]]
+        no_answer_logits_sum[not_last_docs] = -torch.inf
+        logits[..., 0, 0] = no_answer_logits_sum
+
+        exp_logits = torch.exp(logits)
+        # For softmax, we need to sum all exp_logits for each query to normalise them
+        # This is a bit more complicated because there can be multiple queries in one batch
+        # There is also a varying number of slices and documents per query so we can't just create a new axis
+        # Start by computing sum for every slice across start and end axis
+        exp_logits_sum = torch.sum(exp_logits, -1)  # Sum across end axis
+        exp_logits_sum = torch.sum(exp_logits_sum, -1)  # Sum across start axis
+
+        # Sum across all samples
+        exp_logits_sum = torch.cumsum(exp_logits_sum, -1)
+        # Every last sample of a query will have the sum of all samples belonging to the query + all other samples belonging to other queries
+        # By subtracting the value of the previous last sample, we get the sum of the items only belonging to the respective query
+        exp_logits_sum[not_last_docs] = 0
+        exp_logits_sum[last_docs[1:]] -= exp_logits_sum[last_docs[:-1]]
+        # We now have the correct sum at the indices containing the last sample for a query
+        # However, all other values are 0
+        # We can propagate these values to the other samples using cumsum again
+        # To do that, we need to revert the axis so the correct value is the first sample for each query as cumsum only goes from left to right
+        rev_sum = torch.flip(exp_logits_sum, [-1])
+        rev_cumsum = torch.cumsum(rev_sum, -1)
+        # We can again subtract the previous values so we only have the value for the current query
+        exp_logits_sum[last_docs[:-1]] = exp_logits_sum[last_docs[1:]]
+        exp_logits_sum[-1] = 0
+        rev_sum_shifted = torch.flip(exp_logits_sum, [-1])
+        rev_sum_shifted = torch.cumsum(rev_sum_shifted, -1)
+        rev_cumsum -= rev_sum_shifted
+        # Having used the reversed order for cumsum, we can revert the axis back
+        exp_sum_per_query = torch.flip(rev_cumsum, [-1])
+
+        # Now, we can finally use the sums to normalise the values
+        exp_logits /= exp_sum_per_query.unsqueeze(-1).unsqueeze(-1)
+        return exp_logits
+
     def _postprocess(
         self,
         output,
@@ -105,39 +157,10 @@ class ExtractiveReader:
         mask = torch.triu(mask)  # End shouldn't be before start
         mask[0, :1] = False
         masked_logits = torch.where(mask, logits, -torch.inf)
+        probabilities = self._softmax_across_documents(masked_logits, query_ids)
 
-        last_docs = []
-        not_last_docs = []
-        i = 0
-        for j in range(query_ids[-1]):
-            while i < len(query_ids) and query_ids[i] == j:
-                if i != 0:
-                    not_last_docs.append(i - 1)
-                i += 1
-            last_docs.append(i - 1)
-
-        no_answer_logits = masked_logits[..., 0, 0]
-        no_answer_logits_sum = torch.cumsum(no_answer_logits, -1)
-        no_answer_logits_sum[last_docs[1:]] -= no_answer_logits_sum[last_docs[:-1]]
-        no_answer_logits_sum[not_last_docs] = -torch.inf
-        masked_logits[..., 0, 0] = no_answer_logits_sum
-        exp_logits = torch.exp(masked_logits)
-        exp_logits_sum = torch.sum(exp_logits, -1)
-        exp_logits_sum = torch.sum(exp_logits_sum, -1)
-        exp_logits_sum = torch.cumsum(exp_logits_sum, -1)
-        exp_logits_sum[not_last_docs] = 0
-        exp_logits_sum[last_docs[1:]] -= exp_logits_sum[last_docs[:-1]]
-        rev_sum = torch.flip(exp_logits_sum, [-1])
-        rev_cumsum = torch.cumsum(rev_sum, -1)
-        exp_logits_sum[last_docs[:-1]] = exp_logits_sum[last_docs[1:]]
-        exp_logits_sum[-1] = 0
-        rev_sum_shifted = torch.flip(exp_logits_sum, [-1])
-        rev_sum_shifted = torch.cumsum(rev_sum_shifted, -1)
-        rev_cumsum -= rev_sum_shifted
-        exp_sum_per_query = torch.flip(rev_cumsum, [-1])
-        exp_logits /= exp_sum_per_query.unsqueeze(-1).unsqueeze(-1)
-        flat_logits = masked_logits.flatten(-2, -1)  # necessary for topk
-        candidates = torch.topk(flat_logits, top_k)
+        flat_probabilities = probabilities.flatten(-2, -1)  # necessary for topk
+        candidates = torch.topk(flat_probabilities, top_k)
         seq_length = logits.shape[-1]
         start_candidates = candidates.indices // seq_length  # Recover indices from flattening
         end_candidates = candidates.indices % seq_length
