@@ -8,9 +8,10 @@ from test.conftest import preview_samples_path
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32", reason="Can't run on Windows Github CI, need access to registry to get mime types"
+    sys.platform in ["win32", "cygwin"],
+    reason="Can't run on Windows Github CI, need access to registry to get mime types",
 )
-class TestFileClassifier(BaseTestComponent):
+class TestFileExtensionClassifier(BaseTestComponent):
     @pytest.mark.unit
     def test_save_load(self, tmp_path):
         self.assert_can_be_saved_and_loaded_in_pipeline(
