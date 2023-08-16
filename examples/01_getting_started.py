@@ -73,6 +73,7 @@ def load_pipelines(provider, API_KEY):
 
 
 def add_example_data(indexing_pipeline, dir):
+    # TODO add conversion for user supplied local folder (maybe using unstructured.io partition() or similar)
     fetch_archive_from_http(
         url="https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip",
         output_dir=dir,
