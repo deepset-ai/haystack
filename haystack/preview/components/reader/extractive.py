@@ -135,7 +135,7 @@ class ExtractiveReader:
         top_k: int,
         encodings: List[Encoding],
         query_ids: List[int],
-    ) -> Tuple[List[List[Optional[int]]], List[List[Optional[int]]], List[List[float]]]:
+    ) -> Tuple[List[List[Optional[int]]], List[List[Optional[int]]], torch.Tensor]:
         mask = sequence_ids == 1
         mask[..., 0] = True
         mask = torch.logical_and(mask, attention_mask == 1)
@@ -167,7 +167,7 @@ class ExtractiveReader:
             [encoding.token_to_chars(end)[1] if end != 0 else None for end in candidates]
             for candidates, encoding in zip(end_candidates, encodings)
         ]
-        probabilities = candidates.values.cpu().tolist()
+        probabilities = candidates.values.cpu()
 
         return start_candidates, end_candidates, probabilities
 
@@ -175,14 +175,14 @@ class ExtractiveReader:
         self,
         start: List[List[Optional[int]]],
         end: List[List[Optional[int]]],
-        probabilities: List[List[float]],
+        probabilities: torch.Tensor,
         flattened_documents: List[Document],
         queries: List[str],
         top_k: int,
         query_ids: List[int],
         document_ids: List[int],
     ) -> List[List[ExtractedAnswer]]:
-        answers = [
+        answers: List[Tuple[Document, Optional[str], float, Optional[int], Optional[int]]] = [
             (doc := flattened_documents[document_id], doc.content[start:end], probability, start, end)
             if start is not None and end is not None
             else (flattened_documents[document_id], None, probability, None, None)
@@ -197,15 +197,15 @@ class ExtractiveReader:
         for query_id in range(query_ids[-1] + 1):
             current_answers = []
             while i < len(answers) and query_ids[i // top_k] == query_id:
-                doc, data, probability, start, end = answers[i]
+                doc, data, probability, cur_start, cur_end = answers[i]
                 answer = ExtractedAnswer(
                     data=data,
                     question=queries[query_id],
                     metadata={},
                     document=doc,
                     probability=probability,
-                    start=start,
-                    end=end,
+                    start=cur_start,
+                    end=cur_end,
                 )
                 current_answers.append(answer)
                 i += 1
@@ -237,14 +237,14 @@ class ExtractiveReader:
         num_batches = math.ceil(input_ids.shape[0] / max_batch_size) if max_batch_size else 1
         batch_size = max_batch_size or input_ids.shape[0]
 
-        start_logits = []
-        end_logits = []
+        start_logits_list = []
+        end_logits_list = []
 
         for i in range(num_batches):
-            start = i * batch_size
-            end = start + batch_size
-            cur_input_ids = input_ids[start:end]
-            cur_attention_mask = attention_mask[start:end]
+            start_index = i * batch_size
+            end_index = start_index + batch_size
+            cur_input_ids = input_ids[start_index:end_index]
+            cur_attention_mask = attention_mask[start_index:end_index]
 
             output = self.model_(input_ids=cur_input_ids, attention_mask=cur_attention_mask)  # type: ignore # we know that self._model can't be None
             cur_start_logits = output.start_logits
@@ -252,11 +252,11 @@ class ExtractiveReader:
             if num_batches != 1:
                 cur_start_logits = cur_start_logits.cpu()
                 cur_end_logits = cur_end_logits.cpu()
-            start_logits.append(cur_start_logits)
-            end_logits.append(cur_end_logits)
+            start_logits_list.append(cur_start_logits)
+            end_logits_list.append(cur_end_logits)
 
-        start_logits = torch.cat(start_logits)
-        end_logits = torch.cat(end_logits)
+        start_logits = torch.cat(start_logits_list)
+        end_logits = torch.cat(end_logits_list)
 
         start, end, probabilities = self._postprocess(
             start_logits, end_logits, sequence_ids, attention_mask, top_k, encodings, query_ids
