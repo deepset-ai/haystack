@@ -3,3 +3,4 @@ from haystack.preview.components.audio.whisper_remote import RemoteWhisperTransc
 from haystack.preview.components.file_converters import TextFileToDocument
 from haystack.preview.components.classifiers import FileExtensionClassifier
 from haystack.preview.components.reader import ExtractiveReader
+from haystack.preview.components.writers.document_writer import DocumentWriter
