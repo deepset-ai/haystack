@@ -20,10 +20,12 @@ class ExtractiveReader:
         self,
         model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
         device: Optional[str] = None,
-        top_k: int = 10,
+        top_k: Optional[int] = None,
+        top_p: Optional[float] = None,
         max_seq_length: int = 384,
         stride: int = 128,
         max_batch_size: Optional[int] = None,
+        answers_per_seq: Optional[int] = None,
     ) -> None:
         """
         Creates an ExtractiveReader
@@ -33,12 +35,15 @@ class ExtractiveReader:
         :param device: Pytorch device string. Uses GPU by default if available
         :param top_k: Number of answers to return per query
             Default: 10
+        :param top_p: Probability mass that should be contained in returned samples (nucleus sampling)
         :param max_seq_length: Maximum number of tokens.
             If exceeded by a sequence, the sequence will be split.
             Default: 128
         :param stride: Number of tokens that overlap when sequence is split because it exceeds max_seq_length
             Default: 128
         :param max_batch_size: Maximum number of samples that are fed through the model at the same time
+        :param answers_per_seq: Number of answer candidates to consider per sequence.
+            This is relevant when a document has been split into multiple sequence due to max_seq_length.
         """
         torch_and_transformers_import.check()
         self.model = str(model)
@@ -46,8 +51,10 @@ class ExtractiveReader:
         self.device = device
         self.max_seq_length = max_seq_length
         self.top_k = top_k
+        self.top_p = top_p
         self.stride = stride
         self.max_batch_size = max_batch_size
+        self.answers_per_seq = answers_per_seq
 
     def warm_up(self):
         if self.model_ is None:
@@ -151,7 +158,7 @@ class ExtractiveReader:
         end: torch.Tensor,
         sequence_ids: torch.Tensor,
         attention_mask: torch.Tensor,
-        top_k: int,
+        answers_per_seq: int,
         encodings: List[Encoding],
         query_ids: List[int],
     ) -> Tuple[List[List[Optional[int]]], List[List[Optional[int]]], torch.Tensor]:
@@ -171,7 +178,7 @@ class ExtractiveReader:
         probabilities = self._softmax_across_documents(masked_logits, query_ids)
 
         flat_probabilities = probabilities.flatten(-2, -1)  # necessary for topk
-        candidates = torch.topk(flat_probabilities, top_k)
+        candidates = torch.topk(flat_probabilities, answers_per_seq)
         seq_length = logits.shape[-1]
         start_candidates = candidates.indices // seq_length  # Recover indices from flattening
         end_candidates = candidates.indices % seq_length
@@ -197,14 +204,16 @@ class ExtractiveReader:
         probabilities: torch.Tensor,
         flattened_documents: List[Document],
         queries: List[str],
-        top_k: int,
+        answers_per_seq: int,
+        top_k: Optional[int],
+        top_p: Optional[float],
         query_ids: List[int],
         document_ids: List[int],
     ) -> List[List[ExtractedAnswer]]:
         flat_answers_without_queries: List[Tuple[Document, Optional[str], float, Optional[int], Optional[int]]] = [
-            (doc := flattened_documents[document_id], doc.content[start:end], probability, start, end)
+            (doc := flattened_documents[document_id], doc.content[start:end], probability.item(), start, end)
             if start is not None and end is not None
-            else (flattened_documents[document_id], None, probability, None, None)
+            else (flattened_documents[document_id], None, probability.item(), None, None)
             for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
                 document_ids, start, end, probabilities
             )
@@ -215,7 +224,7 @@ class ExtractiveReader:
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):
             current_answers = []
-            while i < len(flat_answers_without_queries) and query_ids[i // top_k] == query_id:
+            while i < len(flat_answers_without_queries) and query_ids[i // answers_per_seq] == query_id:
                 doc, data, probability, cur_start, cur_end = flat_answers_without_queries[i]
                 answer = ExtractedAnswer(
                     data=data,
@@ -228,7 +237,16 @@ class ExtractiveReader:
                 )
                 current_answers.append(answer)
                 i += 1
-            current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)[:top_k]
+            current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
+            if top_k is not None:
+                current_answers = current_answers[:top_k]
+            if top_p is not None:
+                p_sum = 0
+                for i, answer in enumerate(current_answers):
+                    p_sum += answer.probability
+                    if p_sum >= top_p:
+                        current_answers = current_answers[: i + 1]
+                        break
             nested_answers.append(current_answers)
 
         return nested_answers
@@ -239,14 +257,20 @@ class ExtractiveReader:
         queries: List[str],
         documents: List[List[Document]],
         top_k: Optional[int] = None,
+        top_p: Optional[float] = None,
         max_seq_length: Optional[int] = None,
         stride: Optional[int] = None,
         max_batch_size: Optional[int] = None,
+        answers_per_seq: Optional[int] = None,
     ):
         top_k = top_k or self.top_k
+        top_p = top_p or self.top_p
+        if top_k is None and top_p is None:
+            top_k = 10
         max_seq_length = max_seq_length or self.max_seq_length
         stride = stride or self.stride
         max_batch_size = max_batch_size or self.max_batch_size
+        answers_per_seq = answers_per_seq or self.answers_per_seq or top_k or 20
 
         flattened_queries, flattened_documents, query_ids = self._flatten(queries, documents)
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
@@ -278,11 +302,20 @@ class ExtractiveReader:
         end_logits = torch.cat(end_logits_list)
 
         start, end, probabilities = self._postprocess(
-            start_logits, end_logits, sequence_ids, attention_mask, top_k, encodings, query_ids
+            start_logits, end_logits, sequence_ids, attention_mask, answers_per_seq, encodings, query_ids
         )
 
         answers = self._unflatten(
-            start, end, probabilities, flattened_documents, queries, top_k, query_ids, document_ids
+            start,
+            end,
+            probabilities,
+            flattened_documents,
+            queries,
+            answers_per_seq,
+            top_k,
+            top_p,
+            query_ids,
+            document_ids,
         )
 
         return {"answers": answers}
