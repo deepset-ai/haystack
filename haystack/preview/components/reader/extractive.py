@@ -12,15 +12,34 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
 
 @component
 class ExtractiveReader:
+    """
+    A component for performing extractive QA
+    """
+
     def __init__(
         self,
         model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
         device: Optional[str] = None,
-        max_seq_length: int = 384,
         top_k: int = 10,
+        max_seq_length: int = 384,
         stride: int = 128,
         max_batch_size: Optional[int] = None,
     ) -> None:
+        """
+        Creates an ExtractiveReader
+        :param model: A HuggingFace transformers question answering model.
+            Can either be a path to a folder containing the model files or an identifier for the HF hub
+            Default: `'deepset/roberta-base-squad2-distilled'`
+        :param device: Pytorch device string. Uses GPU by default if available
+        :param top_k: Number of answers to return per query
+            Default: 10
+        :param max_seq_length: Maximum number of tokens.
+            If exceeded by a sequence, the sequence will be split.
+            Default: 128
+        :param stride: Number of tokens that overlap when sequence is split because it exceeds max_seq_length
+            Default: 128
+        :param max_batch_size: Maximum number of samples that are fed through the model at the same time
+        """
         torch_and_transformers_import.check()
         self.model = str(model)
         self.model_ = None
@@ -77,13 +96,13 @@ class ExtractiveReader:
     def _softmax_across_documents(self, logits: torch.Tensor, query_ids: List[int]) -> torch.Tensor:
         last_docs = []
         not_last_docs = []
-        i = 0
-        for j in range(query_ids[0], query_ids[-1] + 1):
-            while i < len(query_ids) and query_ids[i] == j:
-                if i != 0:
-                    not_last_docs.append(i - 1)
-                i += 1
-            last_docs.append(i - 1)
+        seq_id = 0
+        for query_id in range(query_ids[0], query_ids[-1] + 1):
+            while seq_id < len(query_ids) and query_ids[seq_id] == query_id:
+                if seq_id != 0:
+                    not_last_docs.append(seq_id - 1)
+                seq_id += 1
+            last_docs.append(seq_id - 1)
 
         # The following might seem a bit obfuscated, but the goal of doing it like this is to keep the operations vectorized and on the GPU
         # Sum all no answer logits for the query and only save in the last slice
@@ -182,7 +201,7 @@ class ExtractiveReader:
         query_ids: List[int],
         document_ids: List[int],
     ) -> List[List[ExtractedAnswer]]:
-        answers: List[Tuple[Document, Optional[str], float, Optional[int], Optional[int]]] = [
+        flat_answers_without_queries: List[Tuple[Document, Optional[str], float, Optional[int], Optional[int]]] = [
             (doc := flattened_documents[document_id], doc.content[start:end], probability, start, end)
             if start is not None and end is not None
             else (flattened_documents[document_id], None, probability, None, None)
@@ -196,8 +215,8 @@ class ExtractiveReader:
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):
             current_answers = []
-            while i < len(answers) and query_ids[i // top_k] == query_id:
-                doc, data, probability, cur_start, cur_end = answers[i]
+            while i < len(flat_answers_without_queries) and query_ids[i // top_k] == query_id:
+                doc, data, probability, cur_start, cur_end = flat_answers_without_queries[i]
                 answer = ExtractedAnswer(
                     data=data,
                     question=queries[query_id],
