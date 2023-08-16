@@ -11,7 +11,7 @@ class Answer:
 
 
 @dataclass(frozen=True)
-class ExtractiveAnswer(Answer):
+class ExtractedAnswer(Answer):
     data: Optional[str]
     document: Document
     probability: float
@@ -20,6 +20,6 @@ class ExtractiveAnswer(Answer):
 
 
 @dataclass(frozen=True)
-class GenerativeAnswer(Answer):
+class GeneratedAnswer(Answer):
     data: str
     documents: List[Document]
