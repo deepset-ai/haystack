@@ -1,23 +1,22 @@
 from typing import List, Optional
 
 from haystack.preview import component, Document
-from haystack.preview.document_stores import DocumentStoreAwareMixin, DocumentStore, DuplicatePolicy
+from haystack.preview.document_stores import DocumentStore, DuplicatePolicy
 
 
 @component
-class DocumentWriter(DocumentStoreAwareMixin):
+class DocumentWriter:
     """
     A component for writing documents to a DocumentStore.
     """
 
-    supported_document_stores = [DocumentStore]  # type: ignore
-
-    def __init__(self, policy: DuplicatePolicy = DuplicatePolicy.FAIL):
+    def __init__(self, document_store: DocumentStore, policy: DuplicatePolicy = DuplicatePolicy.FAIL):
         """
         Create a DocumentWriter component.
 
         :param policy: The policy to use when encountering duplicate documents (default is DuplicatePolicy.FAIL).
         """
+        self.document_store = document_store
         self.policy = policy
 
     def run(self, documents: List[Document], policy: Optional[DuplicatePolicy] = None):
@@ -30,11 +29,6 @@ class DocumentWriter(DocumentStoreAwareMixin):
 
         :raises ValueError: If the specified document store is not found.
         """
-        if not self.document_store:
-            raise ValueError(
-                "DocumentWriter needs a DocumentStore to run: set the DocumentStore instance to the self.document_store attribute."
-            )
-
         if policy is None:
             policy = self.policy
 
