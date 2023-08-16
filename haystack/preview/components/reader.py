@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 import os
-from haystack.preview import component, Document, Answer, Pipeline
+from haystack.preview import component, Document, Answer
 from haystack.lazy_imports import LazyImport
 from haystack.nodes.prompt.invocation_layer.utils import get_task
 
@@ -15,7 +15,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
 class ExtractiveReader:
     def __init__(
         self,
-        model: Union[Path, str],
+        model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
         device: Optional[str] = None,
         max_seq_length: int = 384,
         top_k: int = 10,
