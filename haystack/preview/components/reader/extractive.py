@@ -241,7 +241,7 @@ class ExtractiveReader:
             if top_k is not None:
                 current_answers = current_answers[:top_k]
             if top_p is not None:
-                p_sum = 0
+                p_sum = 0.0
                 for i, answer in enumerate(current_answers):
                     p_sum += answer.probability
                     if p_sum >= top_p:
