@@ -8,7 +8,6 @@ from haystack.preview.pipeline import Pipeline
 from haystack.preview.document_stores.decorator import document_store
 from canals.pipeline.save_load import (
     marshal_pipelines as marshal_canals_pipelines,
-    _unmarshal_pipelines as _unmarshal_canals_pipelines,
     _unmarshal_components as _unmarshal_canals_components,
 )
 
