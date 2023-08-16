@@ -1,51 +1,18 @@
 from typing import Dict, List, Any, Optional
 
 from haystack.preview import component, Document
-from haystack.preview.document_stores import MemoryDocumentStore, StoreAwareMixin
+from haystack.preview.document_stores import MemoryDocumentStore, DocumentStoreAwareMixin
 
 
 @component
-class MemoryRetriever(StoreAwareMixin):
+class MemoryRetriever(DocumentStoreAwareMixin):
     """
     A component for retrieving documents from a MemoryDocumentStore using the BM25 algorithm.
 
     Needs to be connected to a MemoryDocumentStore to run.
     """
 
-    supported_stores = [MemoryDocumentStore]
-
-    @component.input
-    def input(self):  # type: ignore
-        class Input:
-            """
-            Input data for the MemoryRetriever component.
-
-            :param query: The query string for the retriever.
-            :param filters: A dictionary with filters to narrow down the search space.
-            :param top_k: The maximum number of documents to return.
-            :param scale_score: Whether to scale the BM25 scores or not.
-            :param stores: A dictionary mapping document store names to instances.
-            """
-
-            queries: List[str]
-            filters: Dict[str, Any]
-            top_k: int
-            scale_score: bool
-
-        return Input
-
-    @component.output
-    def output(self):  # type: ignore
-        class Output:
-            """
-            Output data from the MemoryRetriever component.
-
-            :param documents: The retrieved documents.
-            """
-
-            documents: List[List[Document]]
-
-        return Output
+    supported_document_stores = [MemoryDocumentStore]
 
     def __init__(self, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = True):
         """
@@ -59,26 +26,47 @@ class MemoryRetriever(StoreAwareMixin):
         """
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
-        self.defaults = {"top_k": top_k, "scale_score": scale_score, "filters": filters or {}}
 
-    def run(self, data):
+        self.filters = filters
+        self.top_k = top_k
+        self.scale_score = scale_score
+
+    @component.output_types(documents=List[List[Document]])
+    def run(
+        self,
+        queries: List[str],
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: Optional[int] = None,
+        scale_score: Optional[bool] = None,
+    ):
         """
         Run the MemoryRetriever on the given input data.
 
-        :param data: The input data for the retriever.
+        :param query: The query string for the retriever.
+        :param filters: A dictionary with filters to narrow down the search space.
+        :param top_k: The maximum number of documents to return.
+        :param scale_score: Whether to scale the BM25 scores or not.
+        :param document_stores: A dictionary mapping DocumentStore names to instances.
         :return: The retrieved documents.
 
-        :raises ValueError: If the specified document store is not found or is not a MemoryDocumentStore instance.
+        :raises ValueError: If the specified DocumentStore is not found or is not a MemoryDocumentStore instance.
         """
-        self.store: MemoryDocumentStore
-
-        if not self.store:
-            raise ValueError("MemoryRetriever needs a store to run: set the store instance to the self.store attribute")
-        docs = []
-        for query in data.queries:
-            docs.append(
-                self.store.bm25_retrieval(
-                    query=query, filters=data.filters, top_k=data.top_k, scale_score=data.scale_score
-                )
+        self.document_store: MemoryDocumentStore
+        if not self.document_store:
+            raise ValueError(
+                "MemoryRetriever needs a DocumentStore to run: set the DocumentStore instance to the self.document_store attribute"
             )
-        return self.output(documents=docs)
+
+        if filters is None:
+            filters = self.filters
+        if top_k is None:
+            top_k = self.top_k
+        if scale_score is None:
+            scale_score = self.scale_score
+
+        docs = []
+        for query in queries:
+            docs.append(
+                self.document_store.bm25_retrieval(query=query, filters=filters, top_k=top_k, scale_score=scale_score)
+            )
+        return {"documents": docs}

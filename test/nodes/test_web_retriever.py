@@ -6,6 +6,7 @@ import pytest
 from haystack import Document, Pipeline
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes import WebRetriever, PromptNode
+from haystack.nodes.retriever.link_content import html_content_handler
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.web import SearchResult
 from test.nodes.conftest import example_serperdev_response
@@ -24,6 +25,15 @@ def mocked_requests():
 @pytest.fixture
 def mocked_article_extractor():
     with patch("boilerpy3.extractors.ArticleExtractor.get_content", return_value="Sample content from webpage"):
+        yield
+
+
+@pytest.fixture
+def mocked_link_content_fetcher_handler_type():
+    with patch(
+        "haystack.nodes.retriever.link_content.LinkContentFetcher._get_content_type_handler",
+        return_value=html_content_handler,
+    ):
         yield
 
 
@@ -121,7 +131,9 @@ def test_scrape_links_empty_list():
 
 
 @pytest.mark.unit
-def test_scrape_links_with_search_results(mocked_requests, mocked_article_extractor):
+def test_scrape_links_with_search_results(
+    mocked_requests, mocked_article_extractor, mocked_link_content_fetcher_handler_type
+):
     wr = WebRetriever(api_key="fake_key")
 
     sr1 = SearchResult("https://pagesix.com", "Some text", "0.43", "1")
@@ -136,7 +148,9 @@ def test_scrape_links_with_search_results(mocked_requests, mocked_article_extrac
 
 
 @pytest.mark.unit
-def test_scrape_links_with_search_results_with_preprocessor(mocked_requests, mocked_article_extractor):
+def test_scrape_links_with_search_results_with_preprocessor(
+    mocked_requests, mocked_article_extractor, mocked_link_content_fetcher_handler_type
+):
     wr = WebRetriever(api_key="fake_key", mode="preprocessed_documents")
     preprocessor = PreProcessor(progress_bar=False)
 

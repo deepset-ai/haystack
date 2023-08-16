@@ -706,11 +706,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return per query.
-        :param custom_query: query string containing a mandatory `${query}` placeholder.
+        :param custom_query: The query string containing a mandatory `${query}` and an optional `${filters}` placeholder.
 
-                             Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
-                             that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
-                             names must match with the filters dict supplied in self.retrieve().
                              ::
 
                                  **An example custom_query:**
@@ -723,17 +720,13 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                                 "query": ${query},                 // mandatory query placeholder
                                                 "type": "most_fields",
                                                 "fields": ["content", "title"]}}],
-                                            "filter": [                                 // optional custom filters
-                                                {"terms": {"year": ${years}}},
-                                                {"terms": {"quarter": ${quarters}}},
-                                                {"range": {"date": {"gte": ${date}}}}
-                                                ],
+                                            "filter": ${filters}                   // optional filters placeholder
                                         }
                                     },
                                 }
                                  ```
 
-                                **For this custom_query, a sample retrieve() could be:**
+                                **For this custom_query, a sample `retrieve()` could be:**
                                 ```python
                                 self.retrieve(query="Why did the revenue increase?",
                                               filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
