@@ -229,13 +229,13 @@ class WebRetriever(BaseRetriever):
         cache_documents: List[Document] = []
         cached_links: List[SearchResult] = []
 
-        cache_ids = [link.url for link in links if link.url]
-        for idx, cache_id in enumerate(cache_ids):
-            cache_filter: FilterType = {"url": cache_id}
+        valid_links = [link for link in links if link.url]
+        for link in valid_links:
+            cache_filter: FilterType = {"url": link.url}
             documents = self.cache_document_store.get_all_documents(filters=cache_filter, return_embedding=False)
             if documents:
                 cache_documents.extend(documents)
-                cached_links.append(links[idx])
+                cached_links.append(link)
 
         return cached_links, cache_documents
 
