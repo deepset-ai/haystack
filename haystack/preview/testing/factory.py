@@ -1,18 +1,18 @@
-from typing import Any, Dict, Optional, Tuple, Type, List
+from typing import Any, Dict, Optional, Tuple, Type, List, Union
 
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores import store, Store, DuplicatePolicy
+from haystack.preview.document_stores import document_store, DocumentStore, DuplicatePolicy
 
 
-def store_class(
+def document_store_class(
     name: str,
     documents: Optional[List[Document]] = None,
     documents_count: Optional[int] = None,
     bases: Optional[Tuple[type, ...]] = None,
     extra_fields: Optional[Dict[str, Any]] = None,
-) -> Type[Store]:
+) -> Type[DocumentStore]:
     """
-    Utility function to create a Store class with the given name and list of documents.
+    Utility function to create a DocumentStore class with the given name and list of documents.
 
     If `documents` is set but `documents_count` is not, `documents_count` will be the length
     of `documents`.
@@ -23,67 +23,66 @@ def store_class(
 
     ### Usage
 
-    Create a store class that returns no documents:
+    Create a DocumentStore class that returns no documents:
     ```python
-    MyFakeStore = store_class("MyFakeComponent")
-    store = MyFakeStore()
-    assert store.documents_count() == 0
-    assert store.filter_documents() == []
+    MyFakeStore = document_store_class("MyFakeComponent")
+    document_store = MyFakeStore()
+    assert document_store.documents_count() == 0
+    assert document_store.filter_documents() == []
     ```
 
-    Create a store class that returns a single document:
+    Create a DocumentStore class that returns a single document:
     ```python
     doc = Document(id="fake_id", content="Fake content")
-    MyFakeStore = store_class("MyFakeComponent", documents=[doc])
-    store = MyFakeStore()
-    assert store.documents_count() == 1
-    assert store.filter_documents() == [doc]
+    MyFakeStore = document_store_class("MyFakeComponent", documents=[doc])
+    document_store = MyFakeStore()
+    assert document_store.documents_count() == 1
+    assert document_store.filter_documents() == [doc]
     ```
 
-    Create a store class that returns no document but returns a custom count:
+    Create a DocumentStore class that returns no document but returns a custom count:
     ```python
-    MyFakeStore = store_class("MyFakeComponent", documents_count=100)
-    store = MyFakeStore()
-    assert store.documents_count() == 100
-    assert store.filter_documents() == []
+    MyFakeStore = document_store_class("MyFakeComponent", documents_count=100)
+    document_store = MyFakeStore()
+    assert document_store.documents_count() == 100
+    assert document_store.filter_documents() == []
     ```
 
-    Create a store class that returns a document and a custom count:
+    Create a DocumentStore class that returns a document and a custom count:
     ```python
     doc = Document(id="fake_id", content="Fake content")
-    MyFakeStore = store_class("MyFakeComponent", documents=[doc], documents_count=100)
-    store = MyFakeStore()
-    assert store.documents_count() == 100
-    assert store.filter_documents() == [doc]
+    MyFakeStore = document_store_class("MyFakeComponent", documents=[doc], documents_count=100)
+    document_store = MyFakeStore()
+    assert document_store.documents_count() == 100
+    assert document_store.filter_documents() == [doc]
     ```
 
-    Create a store class with a custom base class:
+    Create a DocumentStore class with a custom base class:
     ```python
-    MyFakeStore = store_class(
+    MyFakeStore = document_store_class(
         "MyFakeStore",
         bases=(MyBaseClass,)
     )
-    store = MyFakeStore()
+    document_store = MyFakeStore()
     assert isinstance(store, MyBaseClass)
     ```
 
-    Create a store class with an extra field `my_field`:
+    Create a DocumentStore class with an extra field `my_field`:
     ```python
-    MyFakeStore = store_class(
+    MyFakeStore = document_store_class(
         "MyFakeStore",
         extra_fields={"my_field": 10}
     )
-    store = MyFakeStore()
-    assert store.my_field == 10
+    document_store = MyFakeStore()
+    assert document_store.my_field == 10
     ```
     """
-
     if documents is not None and documents_count is None:
         documents_count = len(documents)
     elif documents_count is None:
         documents_count = 0
 
-    def count_documents(self) -> int:
+    def count_documents(self) -> Union[int, None]:
         return documents_count
 
     def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
@@ -111,4 +110,4 @@ def store_class(
         bases = (object,)
 
     cls = type(name, bases, fields)
-    return store(cls)
+    return document_store(cls)
