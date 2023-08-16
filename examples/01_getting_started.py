@@ -23,7 +23,7 @@ def getting_started():
     # You can also provide a folder with your local documents. Be aware that some of your data will be sent to external APIs!
     add_example_data(indexing_pipeline, dir="data/getting_started")
 
-    result = query_pipeline.run(query="How old is Arya Stark?")
+    result = query_pipeline.run(query="Who is the father of Arya Stark?")
 
     # This prints only the answer.
     # For details, like which documents were used to generate the answer, look into the <result> object
