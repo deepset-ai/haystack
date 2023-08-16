@@ -2,7 +2,7 @@ from typing import Dict, Any
 
 import pytest
 
-from haystack.preview import Pipeline
+from canals import Pipeline
 from haystack.preview.testing.factory import document_store_class
 from haystack.preview.components.retrievers.memory import MemoryRetriever
 from haystack.preview.dataclasses import Document
