@@ -126,4 +126,9 @@ def unmarshal_pipelines(data: Dict[str, Any]) -> Dict[str, Pipeline]:
         for component_name, store_name in store_connections.items():
             components[component_name].document_store = stores[store_name]
 
-    return _unmarshal_canals_pipelines(data, components)
+    pipelines = {}
+    for name, pipe_data in data["pipelines"].items():
+        pipe_data["components"] = {component_name: {} for component_name in components}
+        pipelines[name] = Pipeline.from_dict(pipe_data, components=components)
+
+    return pipelines

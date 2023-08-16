@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, Callable
+from typing import List, Dict, Any, Optional, Union
 
 from pathlib import Path
 
@@ -26,8 +26,13 @@ class Pipeline(CanalsPipeline):
     Haystack Pipeline is a thin wrapper over Canals' Pipelines to add support for DocumentStores.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(
+        self,
+        metadata: Optional[Dict[str, Any]] = None,
+        max_loops_allowed: int = 100,
+        debug_path: Union[Path, str] = Path(".canals_debug/"),
+    ):
+        super().__init__(metadata=metadata, max_loops_allowed=max_loops_allowed, debug_path=debug_path)
         self._document_stores_connections = {}
         self._document_stores: Dict[str, DocumentStore] = {}
 
@@ -93,19 +98,21 @@ class Pipeline(CanalsPipeline):
                     f"Store '{self._document_stores_connections[name]}'."
                 )
 
-            if not document_store and not instance.document_store:
-                raise ValueError(f"Component '{name}' needs a DocumentStore.")
+            else:
+                if not document_store:
+                    if not instance.document_store:
+                        raise ValueError(f"Component '{name}' needs a DocumentStore.")
 
-            if document_store not in self._document_stores:
-                raise NoSuchDocumentStoreError(
-                    f"DocumentStore named '{document_store}' not found. "
-                    f"Add it with 'pipeline.add_document_store('{document_store}', <the DocumentStore instance>)'."
-                )
+                elif document_store not in self._document_stores:
+                    raise NoSuchDocumentStoreError(
+                        f"DocumentStore named '{document_store}' not found. "
+                        f"Add it with 'pipeline.add_document_store('{document_store}', <the DocumentStore instance>)'."
+                    )
 
-            if not instance.document_store:
-                self._document_stores_connections[name] = document_store
-                instance.document_store = self._document_stores[document_store]
-                instance._document_store_name = document_store
+                if not instance.document_store:
+                    self._document_stores_connections[name] = document_store
+                    instance.document_store = self._document_stores[document_store]
+                    instance._document_store_name = document_store
 
         elif document_store:
             raise ValueError(f"Component '{name}' doesn't support DocumentStores.")
