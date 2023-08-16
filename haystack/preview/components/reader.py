@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
+import math
 from haystack.preview import component, Document, ExtractedAnswer
 from haystack.lazy_imports import LazyImport
 
@@ -18,6 +19,7 @@ class ExtractiveReader:
         max_seq_length: int = 384,
         top_k: int = 10,
         stride: int = 128,
+        max_batch_size: Optional[int] = None,
     ) -> None:
         torch_and_transformers_import.check()
         self.model = str(model)
@@ -26,6 +28,7 @@ class ExtractiveReader:
         self.max_seq_length = max_seq_length
         self.top_k = top_k
         self.stride = stride
+        self.max_batch_size = max_batch_size
 
     def warm_up(self):
         if self.model_ is None:
@@ -75,7 +78,7 @@ class ExtractiveReader:
         last_docs = []
         not_last_docs = []
         i = 0
-        for j in range(query_ids[-1]):
+        for j in range(query_ids[0], query_ids[-1] + 1):
             while i < len(query_ids) and query_ids[i] == j:
                 if i != 0:
                     not_last_docs.append(i - 1)
@@ -125,17 +128,16 @@ class ExtractiveReader:
 
     def _postprocess(
         self,
-        output,
+        start: torch.Tensor,
+        end: torch.Tensor,
         sequence_ids: torch.Tensor,
         attention_mask: torch.Tensor,
         top_k: int,
         encodings: List[Encoding],
         query_ids: List[int],
     ) -> Tuple[List[List[Optional[int]]], List[List[Optional[int]]], List[List[float]]]:
-        start = output.start_logits
-        end = output.end_logits
         mask = sequence_ids == 1
-        mask[..., 0] = True  # mypy doesn't understand broadcasting
+        mask[..., 0] = True
         mask = torch.logical_and(mask, attention_mask == 1)
         start = torch.where(mask, start, -torch.inf)
         end = torch.where(mask, end, -torch.inf)
@@ -180,11 +182,10 @@ class ExtractiveReader:
         query_ids: List[int],
         document_ids: List[int],
     ) -> List[List[ExtractedAnswer]]:
-        print((len(start), len(document_ids)))
         answers = [
-            (doc := flattened_documents[document_id], doc.content[start:end], probability)
+            (doc := flattened_documents[document_id], doc.content[start:end], probability, start, end)
             if start is not None and end is not None
-            else (flattened_documents[document_id], None, probability)
+            else (flattened_documents[document_id], None, probability, None, None)
             for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
                 document_ids, start, end, probabilities
             )
@@ -196,9 +197,15 @@ class ExtractiveReader:
         for query_id in range(query_ids[-1] + 1):
             current_answers = []
             while i < len(answers) and query_ids[i // top_k] == query_id:
-                doc, data, probability = answers[i]
+                doc, data, probability, start, end = answers[i]
                 answer = ExtractedAnswer(
-                    data=data, question=queries[query_id], metadata={}, document=doc, probability=probability
+                    data=data,
+                    question=queries[query_id],
+                    metadata={},
+                    document=doc,
+                    probability=probability,
+                    start=start,
+                    end=end,
                 )
                 current_answers.append(answer)
                 i += 1
@@ -215,19 +222,45 @@ class ExtractiveReader:
         top_k: Optional[int] = None,
         max_seq_length: Optional[int] = None,
         stride: Optional[int] = None,
+        max_batch_size: Optional[int] = None,
     ):
         top_k = top_k or self.top_k
         max_seq_length = max_seq_length or self.max_seq_length
         stride = stride or self.stride
+        max_batch_size = max_batch_size or self.max_batch_size
 
         flattened_queries, flattened_documents, query_ids = self._flatten(queries, documents)
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
             flattened_queries, flattened_documents, max_seq_length, query_ids, stride
         )
 
-        output = self.model_(input_ids=input_ids, attention_mask=attention_mask)  # type: ignore # we know that self._model can't be None
+        num_batches = math.ceil(input_ids.shape[0] / max_batch_size) if max_batch_size else 1
+        batch_size = max_batch_size or input_ids.shape[0]
 
-        start, end, probabilities = self._postprocess(output, sequence_ids, attention_mask, top_k, encodings, query_ids)
+        start_logits = []
+        end_logits = []
+
+        for i in range(num_batches):
+            start = i * batch_size
+            end = start + batch_size
+            cur_input_ids = input_ids[start:end]
+            cur_attention_mask = attention_mask[start:end]
+
+            output = self.model_(input_ids=cur_input_ids, attention_mask=cur_attention_mask)  # type: ignore # we know that self._model can't be None
+            cur_start_logits = output.start_logits
+            cur_end_logits = output.end_logits
+            if num_batches != 1:
+                cur_start_logits = cur_start_logits.cpu()
+                cur_end_logits = cur_end_logits.cpu()
+            start_logits.append(cur_start_logits)
+            end_logits.append(cur_end_logits)
+
+        start_logits = torch.cat(start_logits)
+        end_logits = torch.cat(end_logits)
+
+        start, end, probabilities = self._postprocess(
+            start_logits, end_logits, sequence_ids, attention_mask, top_k, encodings, query_ids
+        )
 
         answers = self._unflatten(
             start, end, probabilities, flattened_documents, queries, top_k, query_ids, document_ids
