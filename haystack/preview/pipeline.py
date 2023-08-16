@@ -9,100 +9,100 @@ from canals.pipeline import (
     save_pipelines as save_canals_pipelines,
 )
 
-from haystack.preview.document_stores.protocols import Store
-from haystack.preview.document_stores.mixins import StoreAwareMixin
+from haystack.preview.document_stores.protocols import DocumentStore
+from haystack.preview.document_stores.mixins import DocumentStoreAwareMixin
 
 
-class NotAStoreError(PipelineError):
+class NotADocumentStoreError(PipelineError):
     pass
 
 
-class NoSuchStoreError(PipelineError):
+class NoSuchDocumentStoreError(PipelineError):
     pass
 
 
 class Pipeline(CanalsPipeline):
     """
-    Haystack Pipeline is a thin wrapper over Canals' Pipelines to add support for Stores.
+    Haystack Pipeline is a thin wrapper over Canals' Pipelines to add support for DocumentStores.
     """
 
     def __init__(self):
         super().__init__()
-        self._stores: Dict[str, Store] = {}
+        self._document_stores: Dict[str, DocumentStore] = {}
 
-    def add_store(self, name: str, store: Store) -> None:
+    def add_document_store(self, name: str, document_store: DocumentStore) -> None:
         """
-        Make a store available to all nodes of this pipeline.
+        Make a DocumentStore available to all nodes of this pipeline.
 
-        :param name: the name of the store.
-        :param store: the store object.
+        :param name: the name of the DocumentStore.
+        :param document_store: the DocumentStore object.
         :returns: None
         """
-        if not getattr(store, "__haystack_store__", False):
-            raise NotAStoreError(
-                f"'{type(store).__name__}' is not decorated with @store, "
-                "so it can't be added to the pipeline with Pipeline.add_store()."
+        if not getattr(document_store, "__haystack_document_store__", False):
+            raise NotADocumentStoreError(
+                f"'{type(document_store).__name__}' is not decorated with @document_store, "
+                "so it can't be added to the pipeline with Pipeline.add_document_store()."
             )
-        self._stores[name] = store
+        self._document_stores[name] = document_store
 
-    def list_stores(self) -> List[str]:
+    def list_document_stores(self) -> List[str]:
         """
-        Returns a dictionary with all the stores that are attached to this Pipeline.
+        Returns a dictionary with all the DocumentStores that are attached to this Pipeline.
 
-        :returns: a dictionary with all the stores attached to this Pipeline.
+        :returns: a dictionary with all the DocumentStores attached to this Pipeline.
         """
-        return list(self._stores.keys())
+        return list(self._document_stores.keys())
 
-    def get_store(self, name: str) -> Store:
+    def get_document_store(self, name: str) -> DocumentStore:
         """
-        Returns the store associated with the given name.
+        Returns the DocumentStore associated with the given name.
 
-        :param name: the name of the store
-        :returns: the store
+        :param name: the name of the DocumentStore
+        :returns: the DocumentStore
         """
         try:
-            return self._stores[name]
+            return self._document_stores[name]
         except KeyError as e:
-            raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
+            raise NoSuchDocumentStoreError(f"No DocumentStore named '{name}' was added to this pipeline.") from e
 
-    def add_component(self, name: str, instance: Any, store: Optional[str] = None) -> None:
+    def add_component(self, name: str, instance: Any, document_store: Optional[str] = None) -> None:
         """
         Make this component available to the pipeline. Components are not connected to anything by default:
         use `Pipeline.connect()` to connect components together.
 
         Component names must be unique, but component instances can be reused if needed.
 
-        If `store` has a value, the pipeline will also connect this component to the requested document store.
-        Note that only components that inherit from StoreAwareMixin can be connected to stores.
+        If `document_store` is not None, the pipeline will also connect this component to the requested DocumentStore.
+        Note that only components that inherit from DocumentStoreAwareMixin can be connected to DocumentStores.
 
         :param name: the name of the component.
         :param instance: the component instance.
-        :param store: the store this component needs access to, if any.
+        :param document_store: the DocumentStore this component needs access to, if any.
         :raises ValueError: if:
             - a component with the same name already exists
-            - a component requiring a store didn't receive it
-            - a component that didn't expect a store received it
+            - a component requiring a DocumentStore didn't receive it
+            - a component that didn't expect a DocumentStore received it
         :raises PipelineValidationError: if the given instance is not a component
-        :raises NoSuchStoreError: if the given store name is not known to the pipeline
+        :raises NoSuchDocumentStoreError: if the given DocumentStore name is not known to the pipeline
         """
-        if isinstance(instance, StoreAwareMixin):
-            if not store:
-                raise ValueError(f"Component '{name}' needs a store.")
+        if isinstance(instance, DocumentStoreAwareMixin):
+            if not document_store:
+                raise ValueError(f"Component '{name}' needs a DocumentStore.")
 
-            if store not in self._stores:
-                raise NoSuchStoreError(
-                    f"Store named '{store}' not found. "
-                    f"Add it with 'pipeline.add_store('{store}', <the docstore instance>)'."
+            if document_store not in self._document_stores:
+                raise NoSuchDocumentStoreError(
+                    f"DocumentStore named '{document_store}' not found. "
+                    f"Add it with 'pipeline.add_document_store('{document_store}', <the DocumentStore instance>)'."
                 )
 
-            if instance.store:
-                raise ValueError("Reusing components with stores is not supported (yet). Create a separate instance.")
+            if instance.document_store:
+                raise ValueError("Reusing components with DocumentStores is not supported. Create a separate instance.")
 
-            instance.store = self._stores[store]
-            instance._store_name = store
+            instance.document_store = self._document_stores[document_store]
+            instance._document_store_name = document_store
 
-        elif store:
-            raise ValueError(f"Component '{name}' doesn't support stores.")
+        elif document_store:
+            raise ValueError(f"Component '{name}' doesn't support DocumentStores.")
 
         super().add_component(name, instance)
 
