@@ -10,27 +10,27 @@ from test.preview.components.base import BaseTestComponent
 
 class TestDocumentWriter(BaseTestComponent):
     @pytest.mark.unit
-    def test_writer_forwards_documents_and_policy_to_store(self):
+    def test_run(self):
         writer = DocumentWriter()
         documents = [
             Document(content="This is the text of a document."),
             Document(content="This is the text of another document."),
         ]
 
-        mocked_store = MagicMock()
-        mocked_store.__haystack_store__ = True
-        writer.store = mocked_store
-        writer.run(writer.input(documents=documents))
+        mocked_document_store = MagicMock()
+        mocked_document_store.__haystack_document_store__ = True
+        writer.document_store = mocked_document_store
+        writer.run(documents=documents)
 
-        # TODO check for default value DuplicatePolicy instead of None with new canals release
-        writer.store.write_documents.assert_called_once_with(documents=documents, policy=None)
+        mocked_document_store.write_documents.assert_called_once_with(documents=documents, policy=DuplicatePolicy.FAIL)
 
     @pytest.mark.unit
-    def test_writer_fails_without_store(self):
+    def test_run_without_store(self):
         writer = DocumentWriter()
         documents = [Document(content="test")]
         with pytest.raises(
             ValueError,
-            match="DocumentWriter needs a store to run: set the store instance to the " "self.store attribute",
+            match="DocumentWriter needs a DocumentStore to run: set the DocumentStore instance to the "
+            "self.document_store attribute",
         ):
-            writer.run(writer.input(documents=documents))
+            writer.run(documents=documents)
