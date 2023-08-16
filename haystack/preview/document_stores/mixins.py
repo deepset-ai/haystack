@@ -1,40 +1,40 @@
 from typing import List, Optional, Type
 
 
-from haystack.preview.document_stores.protocols import Store
+from haystack.preview.document_stores.protocols import DocumentStore
 
 
-class StoreAwareMixin:
+class DocumentStoreAwareMixin:
     """
-    Adds the capability of a component to use a single document store from the `self.store` property.
+    Adds the capability of a component to use a single DocumentStore from the `self.document_store` property.
 
-    To use this mixin you must specify which document stores to support by setting a value to `supported_stores`.
-    To support any document store, set it to `[Store]`.
+    To use this mixin you must specify which DocumentStores to support by setting a value to `supported_stores`.
+    To support any DocumentStore, set it to `[DocumentStore]`.
     """
 
-    _store: Optional[Store] = None
+    _document_store: Optional[DocumentStore] = None
     # This is necessary to ease serialisation when converting a Component that uses
-    # a Store into a dictionary.
+    # a DocumentStore into a dictionary.
     # This is only set when calling `Pipeline.add_component()`.
-    _store_name: str = ""
-    supported_stores: List[Type[Store]]  # type: ignore # (see https://github.com/python/mypy/issues/4717)
+    _document_store_name: str = ""
+    supported_document_stores: List[Type[DocumentStore]]  # type: ignore # (see https://github.com/python/mypy/issues/4717)
 
     @property
-    def store(self) -> Optional[Store]:
-        return self._store
+    def document_store(self) -> Optional[DocumentStore]:
+        return self._document_store
 
-    @store.setter
-    def store(self, store: Store):
-        if not getattr(store, "__haystack_store__", False):
-            raise ValueError(f"'{type(store).__name__}' is not decorate with @store.")
-        if not self._is_supported(store):
+    @document_store.setter
+    def document_store(self, document_store: DocumentStore):
+        if not getattr(document_store, "__haystack_document_store__", False):
+            raise ValueError(f"'{type(document_store).__name__}' is not decorate with @document_store.")
+        if not self._is_supported(document_store):
             raise ValueError(
-                f"Store type '{type(store).__name__}' is not compatible with this component. "
-                f"Compatible store types: {[type_.__name__ for type_ in type(self).supported_stores]}"
+                f"DocumentStore type '{type(document_store).__name__}' is not compatible with this component. "
+                f"Compatible DocumentStore types: {[type_.__name__ for type_ in type(self).supported_document_stores]}"
             )
-        self._store = store
+        self._document_store = document_store
 
-    def _is_supported(self, store: Store):
-        if Store in self.supported_stores:
+    def _is_supported(self, document_store: DocumentStore):
+        if DocumentStore in self.supported_document_stores:
             return True
-        return any(isinstance(store, type_) for type_ in self.supported_stores)
+        return any(isinstance(document_store, type_) for type_ in self.supported_document_stores)
