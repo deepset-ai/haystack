@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple, Union
 import math
 from haystack.preview import component, Document, ExtractedAnswer
-from haystack.lazy_imports import LazyImport
+from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
