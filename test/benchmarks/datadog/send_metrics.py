@@ -65,10 +65,10 @@ def get_retriever_tag(config: Dict) -> Tag:
                 return RetrieverModelTags.bm25
 
             model = comp["params"]["embedding_model"]
-            if "minilm" in model:
+            if "minilm" in model.lower():
                 return RetrieverModelTags.minilm
 
-            if "mpnet-base" in model:
+            if "mpnet-base" in model.lower():
                 return RetrieverModelTags.mpnetbase
 
     return NoneTag.none
