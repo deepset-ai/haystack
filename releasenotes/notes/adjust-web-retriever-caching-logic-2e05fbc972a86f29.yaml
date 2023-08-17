@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    The WebRetriever now employs an enhanced caching mechanism that caches web page content based on search engine
+    results rather than the query.
