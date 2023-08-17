@@ -33,12 +33,12 @@ class ExtractiveReader:
             Can either be a path to a folder containing the model files or an identifier for the HF hub
             Default: `'deepset/roberta-base-squad2-distilled'`
         :param device: Pytorch device string. Uses GPU by default if available
-        :param top_k: Number of answers to return per query
-            Default: 10
+        :param top_k: Number of answers to return per query.
+            If neither top_k nor top_p is set by the user, top_k will default to 10
         :param top_p: Probability mass that should be contained in returned samples (nucleus sampling)
         :param max_seq_length: Maximum number of tokens.
             If exceeded by a sequence, the sequence will be split.
-            Default: 128
+            Default: 384
         :param stride: Number of tokens that overlap when sequence is split because it exceeds max_seq_length
             Default: 128
         :param max_batch_size: Maximum number of samples that are fed through the model at the same time
@@ -118,6 +118,8 @@ class ExtractiveReader:
         no_answer_logits_sum[last_docs[1:]] -= no_answer_logits_sum[last_docs[:-1]]
         no_answer_logits_sum[not_last_docs] = -torch.inf
         logits[..., 0, 0] = no_answer_logits_sum
+        print(no_answer_logits_sum)
+        print(logits[2])
 
         exp_logits = torch.exp(logits)
         # For softmax, we need to sum all exp_logits for each query to normalise them
