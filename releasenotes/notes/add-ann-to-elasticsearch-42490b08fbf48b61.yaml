@@ -1,0 +1,2 @@
+features:
+  - Add the possibility for elasticsearch > 8 to use the faster approximate nearest neighbor (HNSW) algorithm.
