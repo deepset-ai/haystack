@@ -4,7 +4,9 @@ components:
   - name: DocumentStore
     type: OpenSearchDocumentStore
     params:
-      batch_size: 5000
+      host: opensearch
+      port: 9200
+      batch_size: 1000
   - name: TextConverter
     type: TextConverter
   - name: Retriever
@@ -16,6 +18,7 @@ components:
     type: FARMReader
     params:
       model_name_or_path: deepset/deberta-v3-base-squad2
+      preprocessing_batch_size: 1000
       top_k: 10
 
 pipelines:

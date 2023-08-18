@@ -1,0 +1,228 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+  schedule:
+    # At 00:01 on Sunday
+    - cron: "1 0 * * 0"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-central-1
+
+jobs:
+  deploy-runner:
+    runs-on: ubuntu-latest
+    outputs:
+      cml_runner_id: ${{ steps.deploy.outputs.cml_runner_id }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: iterative/setup-cml@v1
+
+      - name: AWS authentication
+        uses: aws-actions/configure-aws-credentials@5fd3084fc36e372ff1fff382a39b10d03659f355
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
+
+      - name: Launch EC2 instance and deploy runner
+        id: deploy
+        env:
+          repo_token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+        run: |
+          cml runner launch \
+            --single \
+            --cloud aws \
+            --cloud-region ${{ env.AWS_REGION }} \
+            --cloud-type=p3.2xlarge \
+            --cloud-hdd-size=64 \
+            --labels=cml
+
+  run-reader-benchmarks:
+    needs: deploy-runner
+    runs-on: [self-hosted, cml]
+    container:
+      image: docker://iterativeai/cml:0-dvc2-base1-gpu
+      options: --gpus all
+    timeout-minutes: 2880
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Haystack + Datadog requirements
+        run: |
+          pip install .[metrics,benchmarks,inference]
+          pip install -r test/benchmarks/datadog/requirements.txt
+
+      - name: Run benchmarks
+        working-directory: test/benchmarks
+        run: |
+          mkdir +p out
+          for f in ./configs/reader/*.yml; do
+            name="${f%.*}"
+            echo "=== Running benchmarks for $name ===";
+            config_name="$(basename "$name")"
+            python run.py --output "out/$config_name.json" "$f";
+            echo "=== Benchmarks done for $name (or failed) ===";
+          done
+
+      - name: Send Benchmark results to Datadog
+        working-directory: test/benchmarks
+        run: |
+          python datadog/send_metrics.py out/ ${{ secrets.CORE_DATADOG_API_KEY }} https://api.datadoghq.eu
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results-reader
+          path: test/benchmarks/out/
+
+  run-elasticsearch-benchmarks:
+    needs:
+      - deploy-runner
+      - run-reader-benchmarks
+    runs-on: [self-hosted, cml]
+    container:
+      image: docker://iterativeai/cml:0-dvc2-base1-gpu
+      options: --gpus all
+    services:
+      elasticsearch:
+        image: elasticsearch:7.17.6
+        env:
+          discovery.type: "single-node"
+        ports:
+          - 9201:9200
+    timeout-minutes: 2880
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Haystack + Datadog requirements
+        run: |
+          pip install .[metrics,elasticsearch,benchmarks,inference]
+          pip install -r test/benchmarks/datadog/requirements.txt
+
+      - name: Run benchmarks
+        working-directory: test/benchmarks
+        run: |
+          mkdir +p out
+          for f in ./configs/**/*-elasticsearch-*.yml; do
+            name="${f%.*}"
+            echo "=== Running benchmarks for $name ===";
+            config_name="$(basename "$name")"
+            python run.py --output "out/$config_name.json" "$f";
+            echo "=== Benchmarks done for $name (or failed) ===";
+          done
+
+      - name: Send Benchmark results to Datadog
+        working-directory: test/benchmarks
+        run: |
+          python datadog/send_metrics.py out/ ${{ secrets.CORE_DATADOG_API_KEY }} https://api.datadoghq.eu
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results-elasticsearch
+          path: test/benchmarks/out/
+
+  run-weaviate-benchmarks:
+    needs:
+      - deploy-runner
+      - run-elasticsearch-benchmarks
+    runs-on: [self-hosted, cml]
+    container:
+      image: docker://iterativeai/cml:0-dvc2-base1-gpu
+      options: --gpus all
+    services:
+      weaviate:
+        image: semitechnologies/weaviate:1.17.2
+        env:
+          AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+          PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+        ports:
+          - 8080:8080
+    timeout-minutes: 2880
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Haystack + Datadog requirements
+        run: |
+          pip install .[metrics,weaviate,benchmarks,inference]
+          pip install -r test/benchmarks/datadog/requirements.txt
+
+      - name: Run benchmarks
+        working-directory: test/benchmarks
+        run: |
+          mkdir +p out
+          for f in ./configs/**/*-weaviate-*.yml; do
+            name="${f%.*}"
+            echo "=== Running benchmarks for $name ===";
+            config_name="$(basename "$name")"
+            python run.py --output "out/$config_name.json" "$f";
+            echo "=== Benchmarks done for $name (or failed) ===";
+          done
+
+      - name: Send Benchmark results to Datadog
+        working-directory: test/benchmarks
+        run: |
+          python datadog/send_metrics.py out/ ${{ secrets.CORE_DATADOG_API_KEY }} https://api.datadoghq.eu
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results-weaviate
+          path: test/benchmarks/out/
+
+  run-opensearch-benchmarks:
+    needs:
+      - deploy-runner
+      - run-weaviate-benchmarks
+    runs-on: [self-hosted, cml]
+    container:
+      image: docker://iterativeai/cml:0-dvc2-base1-gpu
+      options: --gpus all
+    services:
+      opensearch:
+        image: opensearchproject/opensearch:1.3.5
+        env:
+          discovery.type: "single-node"
+          OPENSEARCH_JAVA_OPTS: "-Xms4096m -Xmx4096m"
+        ports:
+          - 9200:9200
+    timeout-minutes: 2880
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Haystack + Datadog requirements
+        run: |
+          pip install .[metrics,opensearch,benchmarks,inference]
+          pip install -r test/benchmarks/datadog/requirements.txt
+
+      - name: Run benchmarks
+        working-directory: test/benchmarks
+        run: |
+          mkdir +p out
+          for f in ./configs/**/*-opensearch-*.yml; do
+            name="${f%.*}"
+            echo "=== Running benchmarks for $name ===";
+            config_name="$(basename "$name")"
+            python run.py --output "out/$config_name.json" "$f";
+            echo "=== Benchmarks done for $name (or failed) ===";
+          done
+
+      - name: Send Benchmark results to Datadog
+        working-directory: test/benchmarks
+        run: |
+          python datadog/send_metrics.py out/ ${{ secrets.CORE_DATADOG_API_KEY }} https://api.datadoghq.eu
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results-opensearch
+          path: test/benchmarks/out/

@@ -85,5 +85,5 @@ class TestFileExtensionClassifier(BaseTestComponent):
         """
         Test that the component handles files with unknown mime types.
         """
-        with pytest.raises(ValueError, match="The list of mime types"):
+        with pytest.raises(ValueError, match="Unknown mime type:"):
             FileExtensionClassifier(mime_types=["type_invalid"])

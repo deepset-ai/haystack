@@ -34,6 +34,10 @@ template: |
   fixes:
     - |
       Add normal bug fixes here, or remove this section.
+  preview:
+    - |
+      Add changes to Haystack version 2, or remove this section.
+      Haystack version 2 can be found under haystack/preview.
 sections:
   # The prelude section is implicitly included.
   - [upgrade, Upgrade Notes]
@@ -43,3 +47,4 @@ sections:
   - [deprecations, Deprecation Notes]
   - [security, Security Notes]
   - [fixes, Bug Fixes]
+  - [preview, Haystack 2.0 preview]

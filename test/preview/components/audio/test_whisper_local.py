@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from haystack.preview.dataclasses import Document
-from haystack.preview.components import LocalWhisperTranscriber
+from haystack.preview.components.audio import LocalWhisperTranscriber
 
 from test.preview.components.base import BaseTestComponent
 
