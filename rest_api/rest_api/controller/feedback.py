@@ -193,7 +193,7 @@ def export_feedback(
             json.dump(export_data, f, ensure_ascii=False, sort_keys=True, indent=4)
     except Exception as e:
         # might fail in some docker container environment.
-        logger.error("Can't write feedback file. filename="+feedback_file)
+        logger.error("Can't write feedback file. filename=" + feedback_file)
         logger.exception(e)
 
     return export
