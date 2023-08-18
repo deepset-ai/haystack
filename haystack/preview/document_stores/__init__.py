@@ -6,7 +6,6 @@ from haystack.preview.document_stores.decorator import document_store
 __all__ = [
     "DocumentStore",
     "DuplicatePolicy",
-    "DocumentStoreAwareMixin",
     "MemoryDocumentStore",
     "DocumentStoreError",
     "DuplicateDocumentError",
