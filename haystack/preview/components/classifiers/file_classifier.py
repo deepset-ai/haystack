@@ -32,9 +32,11 @@ class FileExtensionClassifier:
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
 
-        all_known_mime_types = all(self.is_valid_mime_type_format(mime_type) for mime_type in mime_types)
-        if not all_known_mime_types:
-            raise ValueError(f"The list of mime types contains unknown mime types: {mime_types}")
+        for mime_type in mime_types:
+            if not self.is_valid_mime_type_format(mime_type):
+                raise ValueError(
+                    f"Unknown mime type: '{mime_type}'. Ensure you passed a list of strings in the 'mime_types' parameter"
+                )
 
         # save the init parameters for serialization
         self.init_parameters = {"mime_types": mime_types}
