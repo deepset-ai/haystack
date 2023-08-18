@@ -13,8 +13,8 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
 
     `init_parameters` are parameters passed to the object class `__init__`.
     They must be defined explicitly as they'll be used when creating a new
-    instance of `obj` with `from_dict`. Omitting them maybe cause deserialisation
-    to fail using `from_dict` to fail.
+    instance of `obj` with `from_dict`. Omitting them might cause deserialisation
+    errors or unexpected behaviours later, when calling `from_dict`.
 
     An example usage:
 
