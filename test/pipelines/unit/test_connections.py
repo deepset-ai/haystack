@@ -378,17 +378,10 @@ def test_connect_many_outputs_to_the_same_input():
 
 
 def test_connect_many_connections_possible_name_matches():
-    @component
-    class Component1:
-        @component.output_types(value=str)
-        def run(self, value: str):
-            return {"value": value}
-
-    @component
-    class Component2:
-        @component.output_types(value=str)
-        def run(self, value: str, othervalue: str, yetanothervalue: str):
-            return {"value": value}
+    Component1 = factory.component_class("Component1", output_types={"value": str})
+    Component2 = factory.component_class(
+        "Component2", input_types={"value": str, "othervalue": str, "yetanothervalue": str}
+    )
 
     pipe = Pipeline()
     pipe.add_component("c1", Component1())
@@ -398,17 +391,8 @@ def test_connect_many_connections_possible_name_matches():
 
 
 def test_connect_many_connections_possible_no_name_matches():
-    @component
-    class Component1:
-        @component.output_types(value=str)
-        def run(self, value: str):
-            return {"value": value}
-
-    @component
-    class Component2:
-        @component.output_types(value=str)
-        def run(self, value1: str, value2: str, value3: str):
-            return {"value": value1}
+    Component1 = factory.component_class("Component1", output_types={"value": str})
+    Component2 = factory.component_class("Component2", input_types={"value1": str, "value2": str, "value3": str})
 
     expected_message = re.escape(
         """Cannot connect 'c1' with 'c2': more than one connection is possible between these components. Please specify the connection name, like: pipeline.connect('c1.value', 'c2.value1').

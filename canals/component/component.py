@@ -70,18 +70,16 @@
 
 import logging
 import inspect
-from typing import Protocol, Union, Dict, Type, Any, get_origin, get_args
+from typing import Protocol, Union, Dict, Any, get_origin, get_args
 from functools import wraps
 
-from canals.errors import ComponentError, ComponentDeserializationError
+from canals.errors import ComponentError
 
 
 logger = logging.getLogger(__name__)
 
 
-# We ignore too-few-public-methods Pylint error as this is only meant to be
-# the definition of the Component interface.
-class Component(Protocol):  # pylint: disable=too-few-public-methods
+class Component(Protocol):
     """
     Abstract interface of a Component.
     This is only used by type checking tools.
@@ -231,10 +229,20 @@ class _Component:
         """
         logger.debug("Registering %s as a component", class_)
 
-        # Check for run()
+        # Check for required methods
         if not hasattr(class_, "run"):
             raise ComponentError(f"{class_.__name__} must have a 'run()' method. See the docs for more information.")
         run_signature = inspect.signature(class_.run)
+
+        if not hasattr(class_, "to_dict"):
+            raise ComponentError(
+                f"{class_.__name__} must have a 'to_dict()' method. See the docs for more information."
+            )
+
+        if not hasattr(class_, "from_dict"):
+            raise ComponentError(
+                f"{class_.__name__} must have a 'from_dict()' method. See the docs for more information."
+            )
 
         # Create the input sockets
         class_.run.__canals_input__ = {
@@ -259,12 +267,6 @@ class _Component:
 
         setattr(class_, "__canals_component__", True)
 
-        if not hasattr(class_, "to_dict"):
-            class_.to_dict = _default_component_to_dict
-
-        if not hasattr(class_, "from_dict"):
-            class_.from_dict = classmethod(_default_component_from_dict)
-
         return class_
 
     def __call__(self, class_=None):
@@ -283,28 +285,3 @@ def _is_optional(type_: type) -> bool:
     Utility method that returns whether a type is Optional.
     """
     return get_origin(type_) is Union and type(None) in get_args(type_)
-
-
-def _default_component_to_dict(comp: Component) -> Dict[str, Any]:
-    """
-    Default component serializer.
-    Serializes a component to a dictionary.
-    """
-    return {
-        "hash": id(comp),
-        "type": comp.__class__.__name__,
-        "init_parameters": getattr(comp, "init_parameters", {}),
-    }
-
-
-def _default_component_from_dict(cls: Type[Component], data: Dict[str, Any]) -> Component:
-    """
-    Default component deserializer.
-    The "type" field in `data` must match the class that is being deserialized into.
-    """
-    init_params = data.get("init_parameters", {})
-    if "type" not in data:
-        raise ComponentDeserializationError("Missing 'type' in component serialization data")
-    if data["type"] != cls.__name__:
-        raise ComponentDeserializationError(f"Component '{data['type']}' can't be deserialized as '{cls.__name__}'")
-    return cls(**init_params)
