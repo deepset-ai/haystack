@@ -169,13 +169,11 @@ class Pipeline:
 
     def _comparable_nodes_list(self, graph: networkx.MultiDiGraph) -> List[Dict[str, Any]]:
         """
-        Replaces instances of nodes with their class name and defaults list in order to make sure they're comparable.
+        Replaces instances of nodes with their class name in order to make sure they're comparable.
         """
         nodes = []
         for node in graph.nodes:
             comparable_node = graph.nodes[node]
-            if hasattr(comparable_node, "defaults"):
-                comparable_node["defaults"] = comparable_node["instance"].defaults
             comparable_node["instance"] = comparable_node["instance"].__class__
             nodes.append(comparable_node)
         nodes.sort()
@@ -728,14 +726,6 @@ class Pipeline:
         try:
             logger.info("* Running %s (visits: %s)", name, self.graph.nodes[name]["visits"])
             logger.debug("   '%s' inputs: %s", name, inputs)
-
-            # # Optional fields are defaulted to None so creation of the input dataclass doesn't fail
-            # # cause we're missing some argument
-            # optionals = {field: None for field in instance.__canals_optional_inputs__}
-
-            # Pass the inputs as kwargs after adding the component's own defaults to them
-            # inputs = {**optionals, **instance.defaults, **inputs}
-            # input_dataclass = instance.input(**inputs)
 
             outputs = instance.run(**inputs)
 
