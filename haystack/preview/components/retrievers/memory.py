@@ -22,7 +22,7 @@ class MemoryRetriever:
         """
         Create a MemoryRetriever component.
 
-        :param document_store: A instance of MemoryDocumentStore.
+        :param document_store: An instance of MemoryDocumentStore.
         :param filters: A dictionary with filters to narrow down the search space (default is None).
         :param top_k: The maximum number of documents to retrieve (default is 10).
         :param scale_score: Whether to scale the BM25 score or not (default is True).
