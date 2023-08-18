@@ -5,7 +5,7 @@ from typing import Optional, List, Union, Dict
 from canals.errors import PipelineRuntimeError
 from tqdm import tqdm
 
-from haystack.lazy_imports import LazyImport
+from haystack.preview.lazy_imports import LazyImport
 from haystack.preview import Document, component
 
 with LazyImport("Run 'pip install farm-haystack[preprocessing]'") as langdetect_import:
