@@ -6,11 +6,17 @@ from sample_components import Repeat
 
 
 class TestRepeat(BaseTestComponent):
-    def test_saveload(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Repeat(outputs=["one", "two"]), tmp_path)
+    def test_to_dict(self):
+        component = Repeat(outputs=["first", "second"])
+        res = component.to_dict()
+        assert res == {"hash": id(component), "type": "Repeat", "init_parameters": {"outputs": ["first", "second"]}}
+
+    def test_from_dict(self):
+        data = {"hash": 1234, "type": "Repeat", "init_parameters": {"outputs": ["first", "second"]}}
+        component = Repeat.from_dict(data)
+        assert component.outputs == ["first", "second"]
 
     def test_repeat_default(self):
         component = Repeat(outputs=["one", "two"])
         results = component.run(value=10)
         assert results == {"one": 10, "two": 10}
-        assert component.init_parameters == {"outputs": ["one", "two"]}
