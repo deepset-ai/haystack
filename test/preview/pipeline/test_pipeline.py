@@ -2,8 +2,9 @@ from typing import Any, Optional, Dict, List
 
 import pytest
 
-from haystack.preview import Pipeline, component, document_store, NoSuchDocumentStoreError, Document
-from haystack.preview.pipeline import NotADocumentStoreError
+from haystack.preview import Pipeline, component, Document
+from haystack.preview.document_stores import document_store
+from haystack.preview.pipeline import NotADocumentStoreError, NoSuchDocumentStoreError
 from haystack.preview.document_stores import DocumentStoreAwareMixin, DuplicatePolicy, DocumentStore
 
 
