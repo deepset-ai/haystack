@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from canals.testing import BaseTestComponent
-from sample_components import Accumulate
+from sample_components.accumulate import Accumulate, _default_function
 
 
 def my_subtract(first, second):
@@ -10,14 +10,50 @@ def my_subtract(first, second):
 
 
 class TestAccumulate(BaseTestComponent):
-    def test_saveload_default(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Accumulate(), tmp_path)
+    def test_to_dict(self):
+        accumulate = Accumulate()
+        res = accumulate.to_dict()
+        assert res == {
+            "hash": id(accumulate),
+            "type": "Accumulate",
+            "init_parameters": {"function": "sample_components.accumulate._default_function"},
+        }
 
-    def test_saveload_function_as_string(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Accumulate(function=my_subtract), tmp_path)
+    def test_to_dict_with_custom_function(self):
+        accumulate = Accumulate(function=my_subtract)
+        res = accumulate.to_dict()
+        assert res == {
+            "hash": id(accumulate),
+            "type": "Accumulate",
+            "init_parameters": {"function": "test.sample_components.test_accumulate.my_subtract"},
+        }
 
-    def test_saveload_function_as_callable(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Accumulate(function=my_subtract), tmp_path)
+    def test_from_dict(self):
+        data = {
+            "hash": 1234,
+            "type": "Accumulate",
+            "init_parameters": {},
+        }
+        accumulate = Accumulate.from_dict(data)
+        assert accumulate.function == _default_function
+
+    def test_from_dict_with_default_function(self):
+        data = {
+            "hash": 1234,
+            "type": "Accumulate",
+            "init_parameters": {"function": "sample_components.accumulate._default_function"},
+        }
+        accumulate = Accumulate.from_dict(data)
+        assert accumulate.function == _default_function
+
+    def test_from_dict_with_custom_function(self):
+        data = {
+            "hash": 1234,
+            "type": "Accumulate",
+            "init_parameters": {"function": "test.sample_components.test_accumulate.my_subtract"},
+        }
+        accumulate = Accumulate.from_dict(data)
+        assert accumulate.function == my_subtract
 
     def test_accumulate_default(self):
         component = Accumulate()
