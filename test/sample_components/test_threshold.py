@@ -6,11 +6,25 @@ from sample_components import Threshold
 
 
 class TestThreshold(BaseTestComponent):
-    def test_saveload_default(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Threshold(), tmp_path)
+    def test_to_dict(self):
+        component = Threshold()
+        res = component.to_dict()
+        assert res == {"hash": id(component), "type": "Threshold", "init_parameters": {"threshold": 10}}
 
-    def test_saveload_threshold(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Threshold(threshold=3), tmp_path)
+    def test_to_dict_with_custom_threshold_value(self):
+        component = Threshold(threshold=100)
+        res = component.to_dict()
+        assert res == {"hash": id(component), "type": "Threshold", "init_parameters": {"threshold": 100}}
+
+    def test_from_dict(self):
+        data = {"hash": 1234, "type": "Threshold"}
+        component = Threshold.from_dict(data)
+        assert component.threshold == 10
+
+    def test_from_dict_with_custom_threshold_value(self):
+        data = {"hash": 1234, "type": "Threshold", "init_parameters": {"threshold": 100}}
+        component = Threshold.from_dict(data)
+        assert component.threshold == 100
 
     def test_threshold(self):
         component = Threshold()
