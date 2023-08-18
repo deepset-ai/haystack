@@ -65,13 +65,13 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     Converts a Networkx graph into Mermaid syntax. The output of this function can be used in the documentation
     with `mermaid` codeblocks and it will be automatically rendered.
     """
-    init_params = {
-        comp: ",<br>".join(
-            [f"{key}={json.dumps(value)}" for key, value in getattr(data["instance"], "init_parameters", {}).items()]
-        )
-        for comp, data in graph.nodes(data=True)
-        if comp not in ["input", "output"]
-    }
+    init_params = {}
+    for name, comp in graph.nodes(data="instance"):
+        if name in ["input", "output"]:
+            continue
+        data = comp.to_dict()
+        params = [f"{k}={json.dumps(v)}" for k, v in data.get("init_parameters", {}).items()]
+        init_params[name] = ",<br>".join(params)
     states = "\n".join(
         [
             f"{comp}:::components: <b>{comp}</b><br><small><i>{type(data['instance']).__name__}({init_params[comp]})</i></small>"
