@@ -35,3 +35,7 @@ class ComponentError(Exception):
 
 class ComponentDeserializationError(Exception):
     pass
+
+
+class DeserializationError(Exception):
+    pass
