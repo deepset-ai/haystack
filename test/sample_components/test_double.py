@@ -7,8 +7,15 @@ from sample_components import Double
 
 
 class TestDouble(BaseTestComponent):
-    def test_saveload_default(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Double(), tmp_path)
+    def test_to_dict(self):
+        component = Double()
+        res = component.to_dict()
+        assert res == {"hash": id(component), "type": "Double", "init_parameters": {}}
+
+    def test_from_dict(self):
+        data = {"hash": 12345, "type": "Double", "init_parameters": {}}
+        component = Double.from_dict(data)
+        assert component
 
     def test_double_default(self):
         component = Double()

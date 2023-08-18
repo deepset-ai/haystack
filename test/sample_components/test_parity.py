@@ -6,8 +6,15 @@ from sample_components import Parity
 
 
 class TestParity(BaseTestComponent):
-    def test_saveload_default(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Parity(), tmp_path)
+    def test_to_dict(self):
+        component = Parity()
+        res = component.to_dict()
+        assert res == {"hash": id(component), "type": "Parity", "init_parameters": {}}
+
+    def test_from_dict(self):
+        data = {"hash": 12345, "type": "Parity", "init_parameters": {}}
+        component = Parity.from_dict(data)
+        assert component
 
     def test_parity(self):
         component = Parity()

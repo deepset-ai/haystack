@@ -6,8 +6,15 @@ from sample_components import Subtract
 
 
 class TestSubtract(BaseTestComponent):
-    def test_saveload_default(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(Subtract(), tmp_path)
+    def test_to_dict(self):
+        component = Subtract()
+        res = component.to_dict()
+        assert res == {"hash": id(component), "type": "Subtract", "init_parameters": {}}
+
+    def test_from_dict(self):
+        data = {"hash": 12345, "type": "Subtract", "init_parameters": {}}
+        component = Subtract.from_dict(data)
+        assert component
 
     def test_subtract(self):
         component = Subtract()
