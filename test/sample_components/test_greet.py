@@ -22,6 +22,50 @@ class TestGreet(BaseTestComponent):
             Greet(message="Hello, that's {value}", log_level="WARNING"), tmp_path
         )
 
+    def test_to_dict(self):
+        component = Greet()
+        res = component.to_dict()
+        assert res == {
+            "hash": id(component),
+            "type": "Greet",
+            "init_parameters": {
+                "message": "\nGreeting component says: Hi! The value is {value}\n",
+                "log_level": "INFO",
+            },
+        }
+
+    def test_to_dict_with_custom_parameters(self):
+        component = Greet(message="My message", log_level="ERROR")
+        res = component.to_dict()
+        assert res == {
+            "hash": id(component),
+            "type": "Greet",
+            "init_parameters": {
+                "message": "My message",
+                "log_level": "ERROR",
+            },
+        }
+
+    def test_from_dict(self):
+        data = {
+            "hash": 1234,
+            "type": "Greet",
+            "init_parameters": {},
+        }
+        component = Greet.from_dict(data)
+        assert component.message == "\nGreeting component says: Hi! The value is {value}\n"
+        assert component.log_level == "INFO"
+
+    def test_from_with_custom_parameters(self):
+        data = {
+            "hash": 1234,
+            "type": "Greet",
+            "init_parameters": {"message": "My message", "log_level": "ERROR"},
+        }
+        component = Greet.from_dict(data)
+        assert component.message == "My message"
+        assert component.log_level == "ERROR"
+
     def test_greet_message(self, caplog):
         caplog.set_level(logging.WARNING)
         component = Greet()

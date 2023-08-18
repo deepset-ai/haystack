@@ -1,18 +1,18 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Optional
+from typing import Optional, Dict, Any
 import logging
 
-
 from canals import component
+from canals.serialization import default_to_dict, default_from_dict
 
 
 logger = logging.getLogger(__name__)
 
 
 @component
-class Greet:  # pylint: disable=too-few-public-methods
+class Greet:
     """
     Logs a greeting message without affecting the value passing on the connection.
     """
@@ -30,7 +30,13 @@ class Greet:  # pylint: disable=too-few-public-methods
             raise ValueError(f"This log level does not exist: {log_level}")
         self.message = message
         self.log_level = log_level
-        self.init_parameters = {"message": message, "log_level": log_level}
+
+    def to_dict(self) -> Dict[str, Any]:  # pylint: disable=missing-function-docstring
+        return default_to_dict(self, message=self.message, log_level=self.log_level)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Greet":  # pylint: disable=missing-function-docstring
+        return default_from_dict(cls, data)
 
     @component.output_types(value=int)
     def run(self, value: int, message: Optional[str] = None, log_level: Optional[str] = None):
