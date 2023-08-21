@@ -52,7 +52,7 @@ class SentenceTransformersTextEmbedder:
 
     def warm_up(self):
         """
-        Loads the embedding backend.
+        Load the embedding backend.
         """
         if not hasattr(self, "embedding_backend"):
             self.embedding_backend = SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
