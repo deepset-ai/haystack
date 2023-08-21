@@ -54,11 +54,12 @@ class SentenceTransformersTextEmbedder:
         """
         Loads the embedding backend.
         """
-        self.embedding_backend = SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
-            model_name_or_path=self.model_name_or_path, device=self.device, use_auth_token=self.use_auth_token
-        )
+        if not hasattr(self, "embedding_backend"):
+            self.embedding_backend = SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
+                model_name_or_path=self.model_name_or_path, device=self.device, use_auth_token=self.use_auth_token
+            )
 
-    @component.output_types(result=List[np.ndarray])
+    @component.output_types(embeddings=List[np.ndarray])
     def run(self, texts: List[str]):
         """Embed a list of strings."""
         self.warm_up()
@@ -69,4 +70,4 @@ class SentenceTransformersTextEmbedder:
             show_progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,
         )
-        return {"result": embeddings}
+        return {"embeddings": embeddings}
