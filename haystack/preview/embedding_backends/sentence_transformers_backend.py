@@ -41,7 +41,7 @@ class SentenceTransformersEmbeddingBackendFactory:
 
 class _SentenceTransformersEmbeddingBackend:
     """
-    Class to manage SentenceTransformers embeddings.
+    Class to manage Sentence Transformers embeddings.
     """
 
     def __init__(
