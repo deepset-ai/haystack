@@ -8,7 +8,7 @@ from test.preview.components.base import BaseTestComponent
 import numpy as np
 
 
-class TestSentenceTransformersEmbedder(BaseTestComponent):
+class TestSentenceTransformersTextEmbedder(BaseTestComponent):
     # TODO: We're going to rework these tests when we'll remove BaseTestComponent.
 
     @pytest.mark.unit
@@ -76,6 +76,9 @@ class TestSentenceTransformersEmbedder(BaseTestComponent):
         texts = ["sentence1", "sentence2"]
 
         result = embedder.run(texts=texts)
-        assert isinstance(result["embeddings"], list)
-        assert isinstance(result["embeddings"][0], np.ndarray)
-        assert len(result["embeddings"]) == len(texts)
+
+        embeddings = result["embeddings"]
+        assert isinstance(embeddings, list)
+        assert len(embeddings) == len(texts)
+        for embedding in embeddings:
+            assert isinstance(embedding, np.ndarray)
