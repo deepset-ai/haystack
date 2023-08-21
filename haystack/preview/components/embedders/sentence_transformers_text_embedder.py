@@ -3,7 +3,9 @@ from typing import List, Optional, Union
 import numpy as np
 
 from haystack.preview import component
-from haystack.preview.embedding_backends.sentence_transformers_backend import _SentenceTransformersEmbeddingBackend
+from haystack.preview.embedding_backends.sentence_transformers_backend import (
+    SentenceTransformersEmbeddingBackendFactory,
+)
 
 
 @component
@@ -52,7 +54,7 @@ class SentenceTransformersTextEmbedder:
         """
         Loads the embedding backend.
         """
-        self.embedding_backend = _SentenceTransformersEmbeddingBackend(
+        self.embedding_backend = SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
             model_name_or_path=self.model_name_or_path, device=self.device, use_auth_token=self.use_auth_token
         )
 
@@ -67,4 +69,4 @@ class SentenceTransformersTextEmbedder:
             show_progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,
         )
-        return {"result": list(embeddings)}
+        return {"result": embeddings}
