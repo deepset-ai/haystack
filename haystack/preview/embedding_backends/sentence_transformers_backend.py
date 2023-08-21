@@ -17,14 +17,21 @@ class SentenceTransformersEmbeddingBackendFactory:
 
     @staticmethod
     def get_embedding_backend(
-        model_name_or_path: str, device: Optional[str] = None, use_auth_token: Union[bool, str, None] = None
+        model_name_or_path: str,
+        device: Optional[str] = None,
+        use_auth_token: Union[bool, str, None] = None,
+        force_fresh_instance: bool = False,
     ):
+        if force_fresh_instance is True:
+            return _SentenceTransformersEmbeddingBackend(
+                model_name_or_path=model_name_or_path, device=device, use_auth_token=use_auth_token
+            )
+
         args_string = f"{model_name_or_path}{device}{use_auth_token}"
         embedding_backend_id = hashlib.md5(args_string.encode()).hexdigest()
 
         if embedding_backend_id in SentenceTransformersEmbeddingBackendFactory._instances:
             return SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id]
-
         embedding_backend = _SentenceTransformersEmbeddingBackend(
             model_name_or_path=model_name_or_path, device=device, use_auth_token=use_auth_token
         )

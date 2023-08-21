@@ -8,7 +8,7 @@ import numpy as np
 
 @pytest.mark.unit
 @patch("haystack.preview.embedding_backends.sentence_transformers_backend.SentenceTransformer")
-def test_singleton_behavior(mock_sentence_transformer):
+def test_factory_behavior(mock_sentence_transformer):
     embedding_backend = SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
         model_name_or_path="my_model", device="cpu"
     )
@@ -19,6 +19,19 @@ def test_singleton_behavior(mock_sentence_transformer):
 
     assert same_embedding_backend is embedding_backend
     assert another_embedding_backend is not embedding_backend
+
+
+@pytest.mark.unit
+@patch("haystack.preview.embedding_backends.sentence_transformers_backend.SentenceTransformer")
+def test_factory_force_fresh_instance(mock_sentence_transformer):
+    embedding_backend = SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
+        model_name_or_path="my_model", device="cpu"
+    )
+    fresh_embedding_backend = SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
+        model_name_or_path="my_model", device="cpu", force_fresh_instance=True
+    )
+
+    assert fresh_embedding_backend is not embedding_backend
 
 
 @pytest.mark.unit
