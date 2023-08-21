@@ -1,3 +1,4 @@
+from __future__ import annotations
 import copy
 import json
 import logging
@@ -18,7 +19,6 @@ from haystack.schema import Answer, Document, FilterType, Label, Span
 
 with LazyImport("Run 'pip install farm-haystack[pinecone]'") as pinecone_import:
     import pinecone
-
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +72,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
         metadata_config: Optional[Dict] = None,
+        namespace: Optional[str] = None,
         validate_index_sync: bool = True,
     ):
         """
@@ -143,6 +144,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         # Pinecone index params
         self.replicas = replicas
         self.shards = shards
+        self.namespace = namespace
 
         # Add necessary metadata fields to metadata_config
         fields = ["label-id", "query", self.type_metadata_field]
@@ -202,7 +204,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         if metadata_config is None:
             metadata_config = {"indexed": []}
 
-        if recreate_index:
+        if recreate_index and index:
             self.delete_index(index)
 
         # Skip if already exists
@@ -225,7 +227,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         stats = index_connection.describe_index_stats()
         dims = stats["dimension"]
         count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
-        logger.info(f"Index statistics: name: {index} embedding dimensions: {dims}, record count: {count}")
+        logger.info("Index statistics: name: %s embedding dimensions: %s, record count: %s", index, dims, count)
 
         # return index connection
         return index_connection
@@ -254,6 +256,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
+        return None
 
     def _set_similarity_metric(self, similarity: str):
         """
@@ -284,35 +287,52 @@ class PineconeDocumentStore(BaseDocumentStore):
             filters = {}
         return filters
 
+    def _updated_metadata_filter(self, type_value: str, current_type_filter) -> FilterType:
+        type_values = [type_value]
+        if isinstance(current_type_filter, str):
+            type_values.append(current_type_filter)
+        elif isinstance(current_type_filter, dict):
+            if "$eq" in current_type_filter:
+                type_values.append(current_type_filter["$eq"])
+            else:
+                type_values.extend(current_type_filter["$in"])
+
+        return {self.type_metadata_field: {"$in": type_values}}
+
     def _add_type_metadata_filter(self, filters: FilterType, type_value: Optional[str]) -> FilterType:
         """
         Add new filter for `doc_type` metadata field.
         """
         if type_value:
-            new_type_filter = {self.type_metadata_field: {"$eq": type_value}}
+            if not filters:
+                filters = {self.type_metadata_field: {"$eq": type_value}}
+
             if "$and" in filters:
-                if self.type_metadata_field in filters["$and"]:
-                    current_type_filter = filters["$and"][self.type_metadata_field]
-                    type_values = [type_value]
-                    if isinstance(current_type_filter, str):
-                        type_values.append(current_type_filter)
-                    elif isinstance(current_type_filter, dict):
-                        if "$eq" in current_type_filter:
-                            # current `doc_type` filter has single value
-                            type_values.append(current_type_filter["$eq"])
-                        else:
-                            # current `doc_type` filter has multiple values
-                            type_values.extend(current_type_filter["$in"])
-                    new_type_filter = {self.type_metadata_field: {"$in": type_values}}
-                filters["$and"].update(new_type_filter)
+                and_filters_keys = [list(and_filter)[0] for and_filter in filters["$and"]]
+
+                if self.type_metadata_field in and_filters_keys:
+                    current_type_filter = [
+                        and_filters for and_filters in filters["$and"] if self.type_metadata_field in and_filters
+                    ][0][self.type_metadata_field]
+                    new_type_filter = self._updated_metadata_filter(type_value, current_type_filter)
+                    filters["$and"].update(new_type_filter)
+
+                else:
+                    new_type_filter = {self.type_metadata_field: {"$eq": type_value}}
+                    filters["$and"].append(new_type_filter)
+
+            elif self.type_metadata_field in filters:
+                current_type_filter = filters[self.type_metadata_field]
+                filters = self._updated_metadata_filter(type_value, current_type_filter)
+
             else:
-                # extend filters with new `doc_type` filter and add $and operator
+                new_type_filter = {self.type_metadata_field: {"$eq": type_value}}
                 filters.update(new_type_filter)
-                all_filters = filters
-                filters = {"$and": all_filters}
+                filters = {"$and": [filters]}
+
         return filters
 
-    def _set_default_type_metadata(self, index: str, namespace: Optional[str] = None) -> str:
+    def _set_default_type_metadata(self, index: Optional[str], namespace: Optional[str] = None) -> str:
         """
         Set default value for `doc_type` metadata filed. If there is at least one embedding, default value
         will be `vector`, otherwise it will be `no-vector`.
@@ -634,7 +654,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
 
-        logger.info(f"Updating embeddings for {document_count} docs...")
+        logger.info("Updating embeddings for %s docs...", document_count)
 
         # If embeddings don't exist or the user doesn't want to update existing embeddings, update dummy embeddings
         if self.get_embedding_count(index=index) == 0 or not update_existing_embeddings:
@@ -949,9 +969,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         )
         return documents[0]
 
-    def update_document_meta(
-        self, id: str, meta: Dict[str, str], namespace: Optional[str] = None, index: Optional[str] = None
-    ):  # type: ignore
+    def update_document_meta(self, id: str, meta: Dict[str, str], index: Optional[str] = None):  # type: ignore
         """
         Update the metadata dictionary of a document by specifying its string ID.
 
@@ -968,7 +986,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if doc.embedding is not None:
             meta = {"content": doc.content, "content_type": doc.content_type, **meta}
-            self.pinecone_indexes[index].upsert(vectors=[(id, doc.embedding.tolist(), meta)], namespace=namespace)
+            self.pinecone_indexes[index].upsert(vectors=[(id, doc.embedding.tolist(), meta)], namespace=self.namespace)
 
     def delete_documents(
         self,
@@ -1056,7 +1074,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         if drop_ids:
             self.all_ids[index] = self.all_ids[index].difference(set(id_values))
 
-    def delete_index(self, index: str):
+    def delete_index(self, index: Optional[str]):
         """
         Delete an existing index. The index including all data will be removed.
 
@@ -1312,7 +1330,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         return bool(res["vectors"].get(id, False))
 
     def _get_ids(
-        self, index: str, type_metadata: str, filters: Optional[FilterType], namespace: Optional[str]
+        self, index: str, type_metadata: Optional[str], filters: Optional[FilterType], namespace: Optional[str]
     ) -> List[str]:
         """
         Retrieves a list of IDs that satisfy a particular filter condition (or any) using
