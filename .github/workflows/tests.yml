@@ -841,6 +841,8 @@ jobs:
       - integration-tests-weaviate
       - integration-tests-pinecone
       - integration-tests-memory
+      - integration-tests-promptnode
+      - integration-tests-agents
 
     steps:
       - name: Finisher
