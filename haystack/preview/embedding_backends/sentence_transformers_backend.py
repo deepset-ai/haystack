@@ -8,34 +8,43 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as sentenc
     from sentence_transformers import SentenceTransformer
 
 
-class _SentenceTransformersEmbeddingBackend:
+class SentenceTransformersEmbeddingBackendFactory:
     """
-    Singleton class to manage SentenceTransformers embeddings.
+    Factory class to create instances of Sentence Transformers embedding backends.
     """
 
     _instances: Dict[str, "_SentenceTransformersEmbeddingBackend"] = {}
 
-    def __new__(
-        cls, model_name_or_path: str, device: Optional[str] = None, use_auth_token: Union[bool, str, None] = None
+    @staticmethod
+    def get_embedding_backend(
+        model_name_or_path: str, device: Optional[str] = None, use_auth_token: Union[bool, str, None] = None
     ):
-        args_str = f"{model_name_or_path}{device}{use_auth_token}"
-        instance_id = hashlib.md5(args_str.encode()).hexdigest()
-        if instance_id in cls._instances:
-            return cls._instances[instance_id]
+        args_string = f"{model_name_or_path}{device}{use_auth_token}"
+        embedding_backend_id = hashlib.md5(args_string.encode()).hexdigest()
 
-        instance = super().__new__(cls)
-        cls._instances[instance_id] = instance
-        return instance
+        if embedding_backend_id in SentenceTransformersEmbeddingBackendFactory._instances:
+            return SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id]
+
+        embedding_backend = _SentenceTransformersEmbeddingBackend(
+            model_name_or_path=model_name_or_path, device=device, use_auth_token=use_auth_token
+        )
+        SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id] = embedding_backend
+        return embedding_backend
+
+
+class _SentenceTransformersEmbeddingBackend:
+    """
+    Class to manage SentenceTransformers embeddings.
+    """
 
     def __init__(
         self, model_name_or_path: str, device: Optional[str] = None, use_auth_token: Union[bool, str, None] = None
     ):
         sentence_transformers_import.check()
-        if not hasattr(self, "model"):
-            self.model = SentenceTransformer(
-                model_name_or_path=model_name_or_path, device=device, use_auth_token=use_auth_token
-            )
+        self.model = SentenceTransformer(
+            model_name_or_path=model_name_or_path, device=device, use_auth_token=use_auth_token
+        )
 
-    def embed(self, data: List[str], **kwargs) -> np.ndarray:
+    def embed(self, data: List[str], **kwargs) -> List[np.ndarray]:
         embedding = self.model.encode(data, **kwargs)
-        return embedding
+        return list(embedding)
