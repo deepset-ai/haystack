@@ -3,10 +3,9 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from multiprocessing import cpu_count
-from typing import Dict, Iterator, List, Optional, Literal, Union
-from unicodedata import combining, normalize
+from typing import Dict, Iterator, List, Optional, Literal, Union, Tuple
 
-from haystack import Document
+from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever
@@ -80,106 +79,12 @@ class WebRetriever(BaseRetriever):
         self.cache_document_store = cache_document_store
         self.document_store = cache_document_store
         self.cache_index = cache_index
+        self.top_k = top_k
         self.cache_headers = cache_headers
         self.cache_time = cache_time
-        self.top_k = top_k
-        self.preprocessor = None
-        if preprocessor is not None:
-            self.preprocessor = preprocessor
-        elif mode == "preprocessed_documents":
-            self.preprocessor = PreProcessor(progress_bar=False)
-
-    def _normalize_query(self, query: str) -> str:
-        return "".join([c for c in normalize("NFKD", query.lower()) if not combining(c)])
-
-    def _check_cache(
-        self,
-        query: str,
-        cache_index: Optional[str] = None,
-        cache_headers: Optional[Dict[str, str]] = None,
-        cache_time: Optional[int] = None,
-    ) -> List[Document]:
-        """
-        Private method to check if the documents for a given query are already cached. The documents are fetched from
-        the specified DocumentStore. It retrieves documents that are newer than the cache_time limit.
-
-        :param query: The query string to check in the cache.
-        :param cache_index: Optional index name in the DocumentStore to fetch the documents. Defaults to the instance's
-        cache_index.
-        :param cache_headers: Optional headers to be used when fetching documents from the DocumentStore. Defaults to
-        the instance's cache_headers.
-        :param cache_time: Optional time limit in seconds to check the cache. Only documents newer than cache_time are
-        returned. Defaults to the instance's cache_time.
-        :returns: A list of Document instances fetched from the cache. If no documents are found in the cache, an empty
-        list is returned.
-        """
-        cache_document_store = self.cache_document_store
-        documents = []
-
-        if cache_document_store is not None:
-            query_norm = self._normalize_query(query)
-            cache_filter: FilterType = {"$and": {"search.query": query_norm}}
-
-            if cache_time is not None and cache_time > 0:
-                cache_filter["timestamp"] = {
-                    "$gt": int((datetime.utcnow() - timedelta(seconds=cache_time)).timestamp())
-                }
-                logger.debug("Cache filter: %s", cache_filter)
-
-            documents = cache_document_store.get_all_documents(
-                filters=cache_filter, index=cache_index, headers=cache_headers, return_embedding=False
-            )
-
-        logger.debug("Found %d documents in cache", len(documents))
-
-        return documents
-
-    def _save_cache(
-        self,
-        query: str,
-        documents: List[Document],
-        cache_index: Optional[str] = None,
-        cache_headers: Optional[Dict[str, str]] = None,
-        cache_time: Optional[int] = None,
-    ) -> bool:
-        """
-        Private method to cache the retrieved documents for a given query.
-        The documents are saved in the specified DocumentStore. If the same document already exists, it is
-        overwritten.
-
-        :param query: The query string for which the documents are being cached.
-        :param documents: The list of Document instances to be cached.
-        :param cache_index: Optional index name in the DocumentStore to save the documents. Defaults to the
-        instance's cache_index.
-        :param cache_headers: Optional headers to be used when saving documents in the DocumentStore. Defaults to
-        the instance's cache_headers.
-        :param cache_time: Optional time limit in seconds to check the cache. Documents older than the
-        cache_time are deleted. Defaults to the instance's cache_time.
-        :returns: True if the documents are successfully saved in the cache, False otherwise.
-        """
-        cache_document_store = self.cache_document_store
-
-        if cache_document_store is not None:
-            cache_document_store.write_documents(
-                documents=documents, index=cache_index, headers=cache_headers, duplicate_documents="overwrite"
-            )
-
-            logger.debug("Saved %d documents in the cache", len(documents))
-
-            cache_filter: FilterType = {"$and": {"search.query": query}}
-
-            if cache_time is not None and cache_time > 0:
-                cache_filter["timestamp"] = {
-                    "$lt": int((datetime.utcnow() - timedelta(seconds=cache_time)).timestamp())
-                }
-
-                cache_document_store.delete_documents(index=cache_index, headers=cache_headers, filters=cache_filter)
-
-                logger.debug("Deleted documents in the cache using filter: %s", cache_filter)
-
-            return True
-
-        return False
+        self.preprocessor = (
+            preprocessor or PreProcessor(progress_bar=False) if mode == "preprocessed_documents" else None
+        )
 
     def retrieve(  # type: ignore[override]
         self,
@@ -201,7 +106,7 @@ class WebRetriever(BaseRetriever):
 
         Optionally, the retrieved documents can be stored in a DocumentStore for future use, saving time
         and resources on repeated retrievals. This caching mechanism can significantly improve retrieval times
-        for frequently accessed information.
+        for frequently accessed URLs.
 
         :param query: The query string.
         :param top_k: The number of Documents to be returned by the retriever.
@@ -209,56 +114,45 @@ class WebRetriever(BaseRetriever):
         :param cache_document_store: The DocumentStore to cache the documents to.
         :param cache_index: The index name to save the documents to.
         :param cache_headers: The headers to save the documents to.
-        :param cache_time: The time limit in seconds to check the cache. The default is 24 hours.
+        :param cache_time: The time limit in seconds for the documents in the cache. If objects are older than this time,
+        they will be deleted from the cache on the next retrieval.
         """
 
         # Initialize default parameters
         preprocessor = preprocessor or self.preprocessor
-        cache_document_store = cache_document_store or self.cache_document_store
         cache_index = cache_index or self.cache_index
+        top_k = top_k or self.top_k
         cache_headers = cache_headers or self.cache_headers
         cache_time = cache_time or self.cache_time
-        top_k = top_k or self.top_k
 
-        # Normalize query
-        query_norm = self._normalize_query(query)
+        search_results, _ = self.web_search.run(query=query)
+        result_docs = search_results["documents"]
 
-        # Check cache for query
-        extracted_docs = self._check_cache(
-            query_norm, cache_index=cache_index, cache_headers=cache_headers, cache_time=cache_time
-        )
+        if self.mode != "snippets":
+            # for raw_documents and preprocessed_documents modes, we need to retrieve the links from the search results
+            links: List[SearchResult] = self._prepare_links(result_docs)
 
-        # If query is not cached, fetch from web
-        if not extracted_docs:
-            extracted_docs = self._retrieve_from_web(query_norm, preprocessor)
+            links_found_in_cache, cached_docs = self._check_cache(links)
+            logger.debug("Found %d links in cache", len(links_found_in_cache))
 
-        # Save results to cache
-        if cache_document_store and extracted_docs:
-            cached = self._save_cache(query_norm, extracted_docs, cache_index=cache_index, cache_headers=cache_headers)
-            if not cached:
-                logger.warning(
-                    "Could not save retrieved Documents to the DocumentStore cache. "
-                    "Check your DocumentStore configuration."
-                )
-        return extracted_docs[:top_k]
+            links_to_fetch = [link for link in links if link not in links_found_in_cache]
+            logger.debug("Fetching %d links", len(links_to_fetch))
+            result_docs = self._scrape_links(links_to_fetch)
 
-    def _retrieve_from_web(self, query_norm: str, preprocessor: Optional[PreProcessor]) -> List[Document]:
-        """
-        Retrieve Documents from the web based on the query.
+            # Save result_docs to cache
+            self._save_to_cache(
+                result_docs, cache_index=cache_index, cache_headers=cache_headers, cache_time=cache_time
+            )
 
-        :param query_norm: The normalized query string.
-        :param preprocessor: The PreProcessor to be used to split documents into paragraphs.
-        :return: List of Document objects.
-        """
+            # join cached_docs and result_docs
+            result_docs = cached_docs + result_docs
 
-        search_results, _ = self.web_search.run(query=query_norm)
-        search_results_docs = search_results["documents"]
-        if self.mode == "snippets":
-            return search_results_docs
-        else:
-            links: List[SearchResult] = self._prepare_links(search_results_docs)
-            logger.debug("Starting to fetch %d links from WebSearch results", len(links))
-            return self._scrape_links(links, query_norm, preprocessor)
+            # Preprocess documents
+            if preprocessor:
+                result_docs = preprocessor.process(result_docs)
+
+        # Return results
+        return result_docs[:top_k]
 
     def _prepare_links(self, search_results: List[Document]) -> List[SearchResult]:
         """
@@ -277,38 +171,29 @@ class WebRetriever(BaseRetriever):
         ]
         return links
 
-    def _scrape_links(
-        self, links: List[SearchResult], query_norm: str, preprocessor: Optional[PreProcessor]
-    ) -> List[Document]:
+    def _scrape_links(self, links: List[SearchResult]) -> List[Document]:
         """
         Scrape the links and return the documents.
 
         :param links: List of SearchResult objects.
-        :param query_norm: The normalized query string.
-        :param preprocessor: The PreProcessor object to be used to split documents into paragraphs.
-        :return: List of Document objects obtained from scraping the links.
+        :return: List of Document objects obtained by fetching the content from the links.
         """
         if not links:
             return []
 
-        fetcher = (
-            LinkContentFetcher(processor=preprocessor, raise_on_failure=True)
-            if self.mode == "preprocessed_documents" and preprocessor
-            else LinkContentFetcher(raise_on_failure=True)
-        )
+        fetcher = LinkContentFetcher(raise_on_failure=True)
 
-        def scrape_link_content(link: SearchResult) -> List[Document]:
+        def link_fetch(link: SearchResult) -> List[Document]:
             """
-            Encapsulate the link scraping logic in a function to be used in a ThreadPoolExecutor.
+            Encapsulate the link fetching logic in a function to be used in a ThreadPoolExecutor.
             """
             docs: List[Document] = []
             try:
                 docs = fetcher.fetch(
                     url=link.url,
                     doc_kwargs={
+                        "id_hash_keys": ["meta.url"],
                         "search.score": link.score,
-                        "id_hash_keys": ["meta.url", "meta.search.query"],
-                        "search.query": query_norm,
                         "search.position": link.position,
                         "snippet_text": link.snippet,
                     },
@@ -319,17 +204,71 @@ class WebRetriever(BaseRetriever):
 
             return docs
 
-        thread_count = cpu_count() if len(links) > cpu_count() else len(links)
+        thread_count = min(cpu_count() if len(links) > cpu_count() else len(links), 10)  # max 10 threads
         with ThreadPoolExecutor(max_workers=thread_count) as executor:
-            scraped_pages: Iterator[List[Document]] = executor.map(scrape_link_content, links)
+            fetched_pages: Iterator[List[Document]] = executor.map(link_fetch, links)
 
         # Flatten list of lists to a single list
-        extracted_docs = [doc for doc_list in scraped_pages for doc in doc_list]
+        extracted_docs = [doc for doc_list in fetched_pages for doc in doc_list]
 
         # Sort by score
         extracted_docs = sorted(extracted_docs, key=lambda x: x.meta["search.score"], reverse=True)
 
         return extracted_docs
+
+    def _check_cache(self, links: List[SearchResult]) -> Tuple[List[SearchResult], List[Document]]:
+        """
+        Check the DocumentStore cache for documents.
+
+        :param links: List of SearchResult objects.
+        :return: Tuple of lists of SearchResult and Document objects that were found in the cache.
+        """
+        if not links or not self.cache_document_store:
+            return [], []
+
+        cache_documents: List[Document] = []
+        cached_links: List[SearchResult] = []
+
+        valid_links = [link for link in links if link.url]
+        for link in valid_links:
+            cache_filter: FilterType = {"url": link.url}
+            documents = self.cache_document_store.get_all_documents(filters=cache_filter, return_embedding=False)
+            if documents:
+                cache_documents.extend(documents)
+                cached_links.append(link)
+
+        return cached_links, cache_documents
+
+    def _save_to_cache(
+        self,
+        documents: List[Document],
+        cache_index: Optional[str] = None,
+        cache_headers: Optional[Dict[str, str]] = None,
+        cache_time: Optional[int] = None,
+    ) -> None:
+        """
+        Save the documents to the cache and potentially delete old expired documents from the cache.
+
+        :param documents: List of Document objects to be saved to the cache.
+        :param cache_index: Optional index name to save the documents to.
+        :param cache_headers: Optional headers made to use when saving the documents to the cache.
+        :param cache_time: Optional time to live in seconds for the documents in the cache. If objects are older than
+        this time, they will be deleted from the cache.
+        """
+        cache_document_store = self.cache_document_store
+
+        if cache_document_store is not None and documents:
+            cache_document_store.write_documents(
+                documents=documents, index=cache_index, headers=cache_headers, duplicate_documents="overwrite"
+            )
+
+        if cache_document_store and cache_time is not None and cache_time > 0:
+            cache_filter: FilterType = {
+                "timestamp": {"$lt": int((datetime.utcnow() - timedelta(seconds=cache_time)).timestamp())}
+            }
+
+            cache_document_store.delete_documents(index=cache_index, headers=cache_headers, filters=cache_filter)
+            logger.debug("Deleted documents in the cache using filter: %s", cache_filter)
 
     def retrieve_batch(  # type: ignore[override]
         self,
@@ -358,7 +297,8 @@ class WebRetriever(BaseRetriever):
         DocumentStore is used.
         :param cache_index: The index name to save the documents to. If None, the instance's default cache_index is used.
         :param cache_headers: The headers to save the documents to. If None, the instance's default cache_headers is used.
-        :param cache_time: The time limit in seconds to check the cache. If None, the instance's default cache_time is used.
+        :param cache_time: The time limit in seconds for the documents in the cache.
+
         :returns: A list of lists where each inner list represents the documents fetched for a particular query.
         """
         documents = []
@@ -370,8 +310,6 @@ class WebRetriever(BaseRetriever):
                     preprocessor=preprocessor,
                     cache_document_store=cache_document_store,
                     cache_index=cache_index,
-                    cache_headers=cache_headers,
-                    cache_time=cache_time,
                 )
             )
 

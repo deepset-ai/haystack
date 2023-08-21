@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Improve error messaging in the FileExtensionClassifier constructor
+    to avoid common mistakes.

@@ -1,0 +1,82 @@
+---
+upgrade:
+  - |
+    The Opensearch custom query syntax changes: the old filter placeholders for ``custom_query`` are no longer supported.
+    Replace your custom filter expressions with the new ``${filters}`` placeholder:
+
+    **Old:**
+    ```python
+      retriever = BM25Retriever(
+        custom_query="""
+          {
+              "query": {
+                  "bool": {
+                      "should": [{"multi_match": {
+                          "query": ${query},
+                          "type": "most_fields",
+                          "fields": ["content", "title"]}}
+                      ],
+                      "filter": [
+                          {"terms": {"year": ${years}}},
+                          {"terms": {"quarter": ${quarters}}},
+                          {"range": {"date": {"gte": ${date}}}}
+                      ]
+                  }
+              }
+          }
+        """
+      )
+
+      retriever.retrieve(
+          query="What is the meaning of life?",
+          filters={"years": [2019, 2020], "quarters": [1, 2, 3], "date": "2019-03-01"}
+      )
+    ```
+
+    **New:**
+    ```python
+      retriever = BM25Retriever(
+        custom_query="""
+          {
+              "query": {
+                  "bool": {
+                      "should": [{"multi_match": {
+                          "query": ${query},
+                          "type": "most_fields",
+                          "fields": ["content", "title"]}}
+                      ],
+                      "filter": ${filters}
+                  }
+              }
+          }
+        """
+      )
+
+      retriever.retrieve(
+          query="What is the meaning of life?",
+          filters={"year": [2019, 2020], "quarter": [1, 2, 3], "date": {"$gte": "2019-03-01"}}
+      )
+    ```
+features:
+  - |
+    When using ``custom_query`` in ``BM25Retriever`` along with ``OpenSearch``
+    or ``Elasticsearch``, we added support for dynamic ``filters``, like in regular queries.
+    With this change, you can pass filters at query-time without having to modify the ``custom_query``:
+    Instead of defining filter expressions and field placeholders, all you have to do
+    is setting the ``${filters}`` placeholder analogous to the ``${query}`` placeholder into
+    your ``custom_query``.
+    **For example:**
+    ```python
+      {
+          "query": {
+              "bool": {
+                  "should": [{"multi_match": {
+                      "query": ${query},                 // mandatory query placeholder
+                      "type": "most_fields",
+                      "fields": ["content", "title"]}}
+                  ],
+                  "filter": ${filters}                 // optional filters placeholder
+              }
+          }
+      }
+    ```

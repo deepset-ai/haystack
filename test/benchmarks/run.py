@@ -3,6 +3,8 @@ from typing import Dict
 import argparse
 import json
 
+import posthog
+
 from haystack import Pipeline
 from haystack.pipelines.config import read_pipeline_config_from_yaml
 
@@ -10,6 +12,10 @@ from utils import prepare_environment, contains_reader, contains_retriever
 from reader import benchmark_reader
 from retriever import benchmark_retriever
 from retriever_reader import benchmark_retriever_reader
+
+
+# Disable telemetry reports when running benchmarks
+posthog.disabled = True
 
 
 def run_benchmark(pipeline_yaml: Path) -> Dict:

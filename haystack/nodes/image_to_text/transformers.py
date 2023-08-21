@@ -158,6 +158,11 @@ class TransformersImageToText(BaseImageToText):
         if len(image_file_paths) == 0:
             raise ImageToTextError("ImageToText needs at least one file path to produce a caption.")
 
+        if type(image_file_paths) is not list:
+            raise ImageToTextError(
+                "Expected List[str] for image_file_paths, got %s instead" % str(type(image_file_paths))
+            )
+
         images_dataset = ListDataset(image_file_paths)
 
         captions: List[str] = []

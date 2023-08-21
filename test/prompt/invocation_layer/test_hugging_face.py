@@ -468,6 +468,44 @@ def test_stop_words_multiple_token(stop_words: List[str]):
     assert "health" not in result[0]
 
 
+@pytest.mark.unit
+def test_stop_words_criteria():
+    """
+    Test that StopWordsCriteria will check stop word tokens in a continuous and sequential order
+    """
+    # input ids for "unambiguously"
+    stop_words_id = torch.tensor([[73, 24621, 11937]])
+
+    # input ids for "This is ambiguously, but is unrelated."
+    input_ids1 = torch.tensor([[100, 19, 24621, 11937, 6, 68, 19, 73, 3897, 5]])
+    # input ids for "This is unambiguously"
+    input_ids2 = torch.tensor([[100, 19, 73, 24621, 11937]])
+
+    # We used to implement stop words algorithm using the torch.isin function like this:
+    # `all(torch.isin(stop_words_id, input_ids1)[0])`
+    # However, this algorithm is not correct as it will return True for presence of "unambiguously" in input_ids1
+    # and True for presence of "unambiguously" in input_ids2. This is because the algorithm will check
+    # if the stop word tokens are present in the input_ids, but it does not check if the stop word tokens are
+    # present in a continuous/sequential order.
+
+    # In "This is ambiguously, but is unrelated." sentence the "un" token comes from "unrelated" and the
+    # "ambiguously" token comes from "ambiguously". The algorithm will return True for presence of
+    # "unambiguously" in input_ids1 which is not correct.
+
+    stop_words_criteria = StopWordsCriteria(tokenizer=Mock(), stop_words=["mock data"])
+    # because we are mocking the tokenizer, we need to set the stop words manually
+    stop_words_criteria.stop_words = stop_words_id
+
+    # this is the correct algorithm to check if the stop word tokens are present in a continuous and sequential order
+    # For the input_ids1, the stop word tokens are present BUT not in a continuous order
+    present_and_continuous = stop_words_criteria(input_ids1, scores=None)
+    assert not present_and_continuous
+
+    # For the input_ids2, the stop word tokens are both present and in a continuous order
+    present_and_continuous = stop_words_criteria(input_ids2, scores=None)
+    assert present_and_continuous
+
+
 @pytest.mark.integration
 @pytest.mark.parametrize("stop_words", [["Berlin"], ["Berlin", "Brandenburg"], ["Berlin", "Brandenburg", "Germany"]])
 def test_stop_words_not_being_found(stop_words: List[str]):
@@ -481,46 +519,49 @@ def test_stop_words_not_being_found(stop_words: List[str]):
         assert word in result[0]
 
 
-@pytest.mark.integration
-def test_generation_kwargs_from_constructor():
+@pytest.mark.unit
+def test_generation_kwargs_from_constructor(mock_auto_tokenizer, mock_pipeline, mock_get_task):
     """
     Test that generation_kwargs are correctly passed to pipeline invocation from constructor
     """
-    the_question = "What does 42 mean?"
+    query = "What does 42 mean?"
     # test that generation_kwargs are passed to the underlying HF model
     layer = HFLocalInvocationLayer(generation_kwargs={"do_sample": True})
-    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
-        layer.invoke(prompt=the_question)
-
-    mock_call.assert_called_with(the_question, {}, {"do_sample": True, "max_length": 100}, {})
+    layer.invoke(prompt=query)
+    assert any(
+        (call.kwargs == {"do_sample": True, "max_length": 100}) and (query in call.args)
+        for call in mock_pipeline.mock_calls
+    )
 
     # test that generation_kwargs in the form of GenerationConfig are passed to the underlying HF model
     layer = HFLocalInvocationLayer(generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
-    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
-        layer.invoke(prompt=the_question)
+    layer.invoke(prompt=query)
+    assert any(
+        (call.kwargs == {"do_sample": True, "max_length": 100, "top_p": 0.9}) and (query in call.args)
+        for call in mock_pipeline.mock_calls
+    )
 
-    mock_call.assert_called_with(the_question, {}, {"do_sample": True, "top_p": 0.9, "max_length": 100}, {})
 
-
-@pytest.mark.integration
-def test_generation_kwargs_from_invoke():
+@pytest.mark.unit
+def test_generation_kwargs_from_invoke(mock_auto_tokenizer, mock_pipeline, mock_get_task):
     """
     Test that generation_kwargs passed to invoke are passed to the underlying HF model
     """
-    the_question = "What does 42 mean?"
+    query = "What does 42 mean?"
     # test that generation_kwargs are passed to the underlying HF model
     layer = HFLocalInvocationLayer()
-    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
-        layer.invoke(prompt=the_question, generation_kwargs={"do_sample": True})
+    layer.invoke(prompt=query, generation_kwargs={"do_sample": True})
+    assert any(
+        (call.kwargs == {"do_sample": True, "max_length": 100}) and (query in call.args)
+        for call in mock_pipeline.mock_calls
+    )
 
-    mock_call.assert_called_with(the_question, {}, {"do_sample": True, "max_length": 100}, {})
-
-    # test that generation_kwargs in the form of GenerationConfig are passed to the underlying HF model
     layer = HFLocalInvocationLayer()
-    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
-        layer.invoke(prompt=the_question, generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
-
-    mock_call.assert_called_with(the_question, {}, {"do_sample": True, "top_p": 0.9, "max_length": 100}, {})
+    layer.invoke(prompt=query, generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
+    assert any(
+        (call.kwargs == {"do_sample": True, "max_length": 100, "top_p": 0.9}) and (query in call.args)
+        for call in mock_pipeline.mock_calls
+    )
 
 
 @pytest.mark.unit
