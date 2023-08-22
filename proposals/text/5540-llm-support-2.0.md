@@ -28,9 +28,9 @@ Using the components discussed in the Detailed Design section, a Haystack 2.0 RA
 graph TD;
 
 IN{IN} -- "questions (List[str])" --> Retriever
-IN{IN} -- "questions (List[str])" --> Prompts
-Retriever -- "documents (List[List[Doc]])"  --> Prompts
-Prompts -- "prompts (List[str])" --> GPT4
+IN{IN} -- "questions (List[str])" --> PromptBuilder
+Retriever -- "documents (List[List[Doc]])"  --> PromptBuilder
+PromptBuilder -- "prompts (List[str])" --> GPT4
 GPT4 -- "replies (List[List[str]])" --> RepliesToAnswersConverter
 RepliesToAnswersConverter -- "answers (List[List[Answer]])" --> OUT{OUT}
 ```
@@ -38,14 +38,14 @@ RepliesToAnswersConverter -- "answers (List[List[Answer]])" --> OUT{OUT}
 While the code for such pipeline may look like:
 
 ```python
-from haystack.preview.components import MemoryRetriever, Prompts, ChatGPT, RepliesToAnswersConverter
+from haystack.preview.components import MemoryRetriever, PromptBuilder, ChatGPT, RepliesToAnswersConverter
 from haystack.preview.document_stores import MemoryDocumentStore
 from haystack.preview.pipeline import Pipeline
 
 pipe = Pipeline()
 pipe.add_store("store", MemoryDocumentStore())
 pipe.add_component("retriever", MemoryRetriever(), store="store")
-pipe.add_component("prompts", Prompts("deepset/question-answering"))
+pipe.add_component("prompt_builder", PromptBuilder("deepset/question-answering"))
 pipe.add_component("llm", GPT4(api_key="..."))
 pipe.add_component("replies_converter", RepliesToAnswersConverter())
 
@@ -151,23 +151,29 @@ Plus one more for any other inference hosting/library that may appear in the fut
 
 ## Prompt Builder
 
-In Haystack 1.x, prompts fetching and rendering is carried out by `PromptTemplate`. In 2.0, we rather make a separate `Prompts` component to handle this process.
+In Haystack 1.x, prompts fetching and rendering is carried out by `PromptTemplate`. In 2.0, we rather make a separate `PromptBuilder` component to handle this process.
 
-Due to the dynamic nature of prompt templates, the `Prompts.run()`  method takes `kwargs`, which contains all the variables that will be filled in the template. However, for this component to work with Canals, we need to know in advance which values this dict will contain: therefore, we need the users to specify in the `__init__` of the component which parameters to expect in the template.
+The goal of `PromptBuilder` is to transform prompt templates, which are strings with variables (for example f-strings, Jinja-like templates), and fill up those variables with values that come from other components in the pipeline or from the pipeline inputs. The output of tis component is one (or more) prompts, where prompts means strings that the LLM can directly use.
 
-Keep in mind that such parameters names **cannot be changed at runtime**.
+`PromptBuilder` is tokenizer aware, which means that the component is going to be initialize a tokenizer and use it to be able to count the tokens of the prompts that it is generating, as well as the token count of variables to be filled. This flexibility enables `PromptBuilder` to cut the variables, or the prompt itself, intelligently to fit the LLM's context lenght without cutting off critical information.
 
-We foresee `Prompts` to output a list of prompts, not necessarily just one, as currently  some of our existing prompt templates produce several output prompts when rendered.
+This means that `PromptBuilder` needs to use the correct tokenizer for the LLM that follows it. However, the need for a tokenizer also depends on the complexity of the template and the needs of the user: if users don't provide a tokenizer,     `PromptBuilder` will simply not check that the token count respects any constraints and users are free to perform such check in a separate component, if needed.
 
-Draft I/O for `Prompts`:
+Draft I/O for `PromptBuilder`:
 
 ```python
 @component
-class Prompts:
+class PromptBuilder:
 
-    def __init__(self, template_variables: Union[str, Path]):
+    def __init__(self, template_variables: Union[str, Path], tokenizer: str):
         self.template_variables = template_variables
+        self.tokenizer_name = tokenizer_name
+        self.tokenizer = None # initialized in warm_up()
 		component.set_input_parameters(**{var: Any for var in template_variables})
+
+    def warm_up(self):
+        if not self.tokenizer:
+            self.tokenizer = # initialize the tokenizer
 
   	@component.output_types(prompts=List[str])
     def run(self, template: str, **kwargs):
@@ -181,19 +187,23 @@ class Prompts:
         return {"prompts": prompts}
 ```
 
-### **Why we need to specify the variables in `__init__`?**
+### Template variables
+
+Due to the dynamic nature of prompt templates, the `PromptBuilder.run()`  method takes `kwargs`, which contains all the variables that will be filled in the template. However, for this component to work with Canals, we need to know in advance which values this dict will contain: therefore, we need the users to specify in the `__init__` of the component which parameters to expect in the template.
+
+Such parameters names **cannot be changed at runtime**.
 
 The design above derives from one Canals limitation: component’s sockets need to be all known the latest at `__init__` time, in order for the connections to be made and validated. Therefore, we need to know all the prompt variables before building the pipelines, because the prompt variables are inputs of the `run()` method.
 
 However, earlier iterations of Canals did support so-called “true variadic” components: components that do not need to know what they will be connected to, and build the input sockets at need. Such components of course lack input validation, but enable usecases like the above.
 
-If we decide that Canals should support again such components, we would be able to rewrite `Prompts` to take a prompt as its input parameter and just accept any other incoming input, on the assumption that users knows that they’re doing.
+If we decide that Canals should support again such components, we would be able to rewrite `PromptBuilder` to take a prompt as its input parameter and just accept any other incoming input, on the assumption that users knows that they’re doing.
 
 For example:
 
 ```python
 @component
-class Prompts:
+class PromptBuilder:
 
 	@variadic_input
   	@component.output_types(prompts=List[str])
@@ -203,74 +213,15 @@ class Prompts:
         return {"prompts": prompts}
 ```
 
-### Why a separate `Prompts` component at all?
+### Why a separate `PromptBuilder` component at all?
 
 `PromptNode` used to take the prompt template and the variables to render it directly, and then forward the result to the LLM.
 
-**PRO: Allows using various templating and guidance libraries, or none at all**
-
-The key advantage of `Prompts` is ability to use any tool from the ever growing list of LLM prompting template libs. These include but are not limited to: https://github.com/microsoft/guidance,
-https://shreyar.github.io/guardrails/rail/prompt/
-and many many more. See list at https://www.promptingguide.ai/tools If someone has invested a lot in guidance and considers using a framework like Haystack or LangChain this will be one of the biggest selling points: an ability to use `Prompts` for a specific prompt tooling lib.
+The key advantage of `PromptBuilder` is ability to use any tool from the ever growing list of LLM prompting template libs. If someone has invested a lot in guidance and considers using a framework like Haystack or LangChain this will be one of the biggest selling points: an ability to use `PromptBuilder` for a specific prompt tooling lib.
 
 On top of that, it also allows users to skip the template rendering step altogether and send prompts directly to the LLM, which may be beneficial in some context (for example, if users just want to chat with the LLM without RAG).
 
-**PRO: Abstracts away duplicate work (which may be expensive)**
-
-On top of this, there is also the question of duplication of work. In a situation where a Pipeline sends the same prompt to several LLMs, the v2 version of such pipeline can easily become very complicated. Take this usecase:
-
-```mermaid
-graph TD;
-
-LegalLLM -- "replies (List[List[str]])" --> JoinLists
-CodingLLM -- "replies (List[List[str]])" --> JoinLists
-MedicalLLM -- "replies (List[List[str]])" --> JoinLists
-JoinLists -- "list (List[List[str]])" --> RepliesToAnswers
-RepliesToAnswers -- "answers (List[List[Answer]])" --> OUT{OUT}
-```
-
-How to send the prompts to the LLMs? If the LLMs expect the template and the variables, the pipeline may look as:
-
-```mermaid
-graph TD;
-
-IN{IN} -- "questions (List[str])" --> Retriever
-IN{IN} -- "questions (List[str])" --> LegalLLM
-IN{IN} -- "questions (List[str])" --> CodingLLM
-IN{IN} -- "questions (List[str])" --> MedicalLLM
-Retriever -- "documents (List[List[Doc]])"  --> LegalLLM
-Retriever -- "documents (List[List[Doc]])"  --> CodingLLM
-Retriever -- "documents (List[List[Doc]])"  --> MedicalLLM
-LegalLLM -- "replies (List[List[str]])" --> JoinLists
-CodingLLM -- "replies (List[List[str]])" --> JoinLists
-MedicalLLM -- "replies (List[List[str]])" --> JoinLists
-JoinLists -- "list (List[List[str]])" --> RepliesToAnswers
-RepliesToAnswers -- "answers (List[List[Answer]])" --> OUT{OUT}
-```
-
-Assuming the prompt requires only questions and documents, or the number of connections to make will grow. Also, each of the LLM component will perform the exact same rendering step under the hood, so it results in duplication of efforts.
-
-Compare with a pipeline that uses a `Prompts` :
-
-```mermaid
-graph TD;
-
-IN{IN} -- "questions (List[str])" --> Retriever
-IN{IN} -- "questions (List[str])" --> Prompts
-Retriever -- "documents (List[List[Doc]])"  --> Prompts
-Prompts -- "prompts (List[str])" --> LegalLLM
-Prompts -- "prompts (List[str])" --> CodingLLM
-Prompts -- "prompts (List[str])" --> MedicalLLM
-LegalLLM -- "replies (List[List[str]])" --> JoinLists
-CodingLLM -- "replies (List[List[str]])" --> JoinLists
-MedicalLLM -- "replies (List[List[str]])" --> JoinLists
-JoinLists -- "list (List[List[str]])" --> RepliesToAnswers
-RepliesToAnswers -- "answers (List[List[Answer]])" --> OUT{OUT}
-```
-
-**CON: One additional component = more complexity**
-
-The drawback is that `Prompts` is an additional component, so we must evaluate if this additional flexibility is worth the additional complexity. To do so, we need to understand how likely it is that the prompt will need to be sent to different pipelines and under which circumstances.
+The drawback is that `PromptBuilder` is an additional component, so we must evaluate if this additional flexibility is worth the additional complexity. However, at this point in time we are convinced that the benefits are worth the cost.
 
 ## Output parsing
 
@@ -300,7 +251,7 @@ Possible drawbacks of this design:
 
 # Alternatives
 
-1. Porting the existing `PromptNode` to v2: would be a massive effort and make v2 inherit some design decision that, with time, proved unnecessary and/or clumsy to use, like the “hiding” of invocation layer that makes it quite hard for external contributors to add support for other LLMs to `PromptNode`, or it’s imperfect layer selection algorithm.
+1. Porting the existing `PromptNode` to Haystack 2.0: would be a massive effort and make the new version inherit some design decision that, with time, proved unnecessary and/or clumsy to use, like the “hiding” of invocation layer that makes it quite hard for external contributors to add support for other LLMs to `PromptNode`, or it’s imperfect layer selection algorithm.
 
 # Adoption strategy
 
