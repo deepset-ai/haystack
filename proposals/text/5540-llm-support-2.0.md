@@ -30,7 +30,7 @@ graph TD;
 IN{IN} -- "questions (List[str])" --> Retriever
 IN{IN} -- "questions (List[str])" --> PromptBuilder
 Retriever -- "documents (List[List[Doc]])"  --> PromptBuilder
-PromptBuilder -- "prompts (List[str])" --> GPT4
+PromptBuilder -- "prompts (List[str])" --> GPT4Generator
 GPT4 -- "replies (List[List[str]])" --> RepliesToAnswersConverter
 RepliesToAnswersConverter -- "answers (List[List[Answer]])" --> OUT{OUT}
 ```
@@ -38,7 +38,7 @@ RepliesToAnswersConverter -- "answers (List[List[Answer]])" --> OUT{OUT}
 While the code for such pipeline may look like:
 
 ```python
-from haystack.preview.components import MemoryRetriever, PromptBuilder, ChatGPT, RepliesToAnswersConverter
+from haystack.preview.components import MemoryRetriever, PromptBuilder, ChatGPTGenerator, RepliesToAnswersConverter
 from haystack.preview.document_stores import MemoryDocumentStore
 from haystack.preview.pipeline import Pipeline
 
@@ -46,7 +46,7 @@ pipe = Pipeline()
 pipe.add_store("store", MemoryDocumentStore())
 pipe.add_component("retriever", MemoryRetriever(), store="store")
 pipe.add_component("prompt_builder", PromptBuilder("deepset/question-answering"))
-pipe.add_component("llm", GPT4(api_key="..."))
+pipe.add_component("llm", GPT4Generator(api_key="..."))
 pipe.add_component("replies_converter", RepliesToAnswersConverter())
 
 pipe.connect("retriever", "prompt_builder")
@@ -88,7 +88,7 @@ In Haystack 1.x, `PromptNode` uses `InvocationLayer` to query different LLMs und
 
 Such invocation layers can be ported to 2.0 as standalone components. In this way we will have one component for each LLM backed that we support.
 
-Each component should be named after the class of models it supports. For example we should have `GPT4`, `ChatGPT`, etc. For components whose name may be confusing, or that include models that are not LLMs, we can add a LLM suffix: like `FalconLLM`, `CohereLLM`, `HuggingFaceLLM`.
+Each component should be named after the class of models it supports, plus a `Generator` suffix. For example we should have `GPT4Generator`, `HuggingFaceLocalGenerator`, `CohereGenerator`, etc.
 
 Note that having separate components for each LLM makes easy to deprecate them when we realize they are dropping out of favor or become severely outdated. It also makes very easy for external contributors to make their own external components to support rarer LLMs, without having to add them to Haystack’s core.
 
@@ -96,7 +96,7 @@ All these LLM clients will have a near-identical I/O:
 
 ```python
 @component
-class ChatGPT:
+class ChatGPTGenerator:
 
     @component.output_types(replies=List[List[str]])
     def run(self, prompts: List[str], ... chatgpt specific params...):
@@ -126,8 +126,8 @@ To achieve such effect, we should make LLM components return a more generic type
 ```mermaid
 graph TD;
 
-IN(...previous components...) --> GPT4
-GPT4 -- "replies (List[Iterator[str]])" --> S[StreamPrinter\n<i><small>Prints the input stream to the console\nwhile unrolling the iterator\n.]
+IN(...previous components...) --> GPT4Generator
+GPT4Generator -- "replies (List[Iterator[str]])" --> S[StreamPrinter\n<i><small>Prints the input stream to the console\nwhile unrolling the iterator\n.]
 S -- "replies (List[List[str]])" --> RepliesToAnswersConverter
 RepliesToAnswersConverter -- "answers (List[List[Answer]])" --> OUT{OUT}
 
@@ -137,15 +137,14 @@ RepliesToAnswersConverter -- "answers (List[List[Answer]])" --> OUT{OUT}
 
 Basing on the list of current invocation layers in Haystack 1.x, the list might look like:
 
-1. `Claude`
-2. `ChatGPT` (supporting GPT4 as well)
-3. `Cohere`
-4. `HuggingFaceInferenceLLM`
-5. `HuggingFaceLocalLLM`
-6. `GPT3`
-6. `AzureGPT3`?
-7. `Bard` ?
-8. `SagemakerLLM`
+1. `ClaudeGenerator`
+2. `ChatGPTGenerator`, supporting GPT4 as well
+    - it may have an alias `GPT4Generator` to help users
+3. `CohereGenerator`
+4. `HuggingFaceInferenceGenerator`
+5. `HuggingFaceLocalGenerator`
+6. `GPT3Generator`
+7. `SagemakerGenerator`
 
 Plus one more for any other inference hosting/library that may appear in the future.
 
@@ -155,9 +154,7 @@ In Haystack 1.x, prompts fetching and rendering is carried out by `PromptTemplat
 
 The goal of `PromptBuilder` is to transform prompt templates, which are strings with variables (for example f-strings, Jinja-like templates), and fill up those variables with values that come from other components in the pipeline or from the pipeline inputs. The output of tis component is one (or more) prompts, where prompts means strings that the LLM can directly use.
 
-`PromptBuilder` is tokenizer aware, which means that the component is going to be initialize a tokenizer and use it to be able to count the tokens of the prompts that it is generating, as well as the token count of variables to be filled. This flexibility enables `PromptBuilder` to cut the variables, or the prompt itself, intelligently to fit the LLM's context lenght without cutting off critical information.
-
-This means that `PromptBuilder` needs to use the correct tokenizer for the LLM that follows it. However, the need for a tokenizer also depends on the complexity of the template and the needs of the user: if users don't provide a tokenizer,     `PromptBuilder` will simply not check that the token count respects any constraints and users are free to perform such check in a separate component, if needed.
+`PromptBuilder` is not tokenizer aware: the prompt will be checked for length by the LLM component before inference. If the need arise, we may later extend the component.
 
 Draft I/O for `PromptBuilder`:
 
@@ -165,33 +162,22 @@ Draft I/O for `PromptBuilder`:
 @component
 class PromptBuilder:
 
-    def __init__(self, template_variables: Union[str, Path], tokenizer: str):
-        self.template_variables = template_variables
-        self.tokenizer_name = tokenizer_name
-        self.tokenizer = None # initialized in warm_up()
+    def __init__(self, template: Union[str, Path]):
+        self.template = # Download the template
+        template_variables = # extracts the variables from the template text
 		component.set_input_parameters(**{var: Any for var in template_variables})
 
-    def warm_up(self):
-        if not self.tokenizer:
-            self.tokenizer = # initialize the tokenizer
-
   	@component.output_types(prompts=List[str])
-    def run(self, template: str, **kwargs):
-        self.template_text = # Load the template
-
-        variables = # extracts the variables from the template text
-        if variables != self.template_variables:
-            raise ValueError()
-
+    def run(self, **kwargs):
         # Render the template using the variables
         return {"prompts": prompts}
 ```
 
 ### Template variables
 
-Due to the dynamic nature of prompt templates, the `PromptBuilder.run()`  method takes `kwargs`, which contains all the variables that will be filled in the template. However, for this component to work with Canals, we need to know in advance which values this dict will contain: therefore, we need the users to specify in the `__init__` of the component which parameters to expect in the template.
+Due to the dynamic nature of prompt templates, the `PromptBuilder.run()`  method takes `kwargs`, which contains all the variables that will be filled in the template. However, for this component to work with Canals, we need to know in advance which values this dict will contain: therefore, we need the users to specify in the `__init__` of the component the template to use.
 
-Such parameters names **cannot be changed at runtime**.
+Such template names **cannot be changed at runtime**.
 
 The design above derives from one Canals limitation: component’s sockets need to be all known the latest at `__init__` time, in order for the connections to be made and validated. Therefore, we need to know all the prompt variables before building the pipelines, because the prompt variables are inputs of the `run()` method.
 
