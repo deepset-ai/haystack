@@ -49,14 +49,14 @@ pipe.add_component("prompt_builder", PromptBuilder("deepset/question-answering")
 pipe.add_component("llm", GPT4(api_key="..."))
 pipe.add_component("replies_converter", RepliesToAnswersConverter())
 
-pipe.connect("retriever", "prompt")
-pipe.connect("prompt", "llm")
+pipe.connect("retriever", "prompt_builder")
+pipe.connect("prompt_builder", "llm")
 pipe.connect("llm", "replies_converter")
 
 questions = ["Why?", "Why not?"]
 results = pipe.run({
 	"retriever": {"queries": questions},
-	"prompt": {"questions": questions},
+	"prompt_builder": {"questions": questions},
 })
 
 assert results == {
