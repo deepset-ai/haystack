@@ -119,19 +119,11 @@ If the answer to any of the above is yes, a simple, maybe temporary solution wou
 
 ### Returning streams
 
-In some cases users may want to see the output of the LLM as it’s being generated, so as a stream that prints word by word in the terminal.
+Most LLMs like ChatGPT have the option to stream the tokens as their generated. As we're already supporting this use case in version 1.x we want to support it in 2.x too.
 
-To achieve such effect, we should make LLM components return a more generic type `replies: List[Iterator[str]]`. In this way, users will have the ability of returning a generator or iterator in place of a regular string, and therefore allow the receiving components to unroll these replies as they wish. Components that need the full reply will unroll the iterator internally (like `RepliesToAnswersConverter`), while if the generator goes in the output, the users can unroll it in a loop printing the content word by word. We can also have specialized components to visualize the stream within a pipeline: something like:
+Currently we're supporting it by accepting a callback during `PromptNode` initialization that will be called every time a new chunk of the streamed response is received.
 
-```mermaid
-graph TD;
-
-IN(...previous components...) --> GPT4Generator
-GPT4Generator -- "replies (List[Iterator[str]])" --> S[StreamPrinter\n<i><small>Prints the input stream to the console\nwhile unrolling the iterator\n.]
-S -- "replies (List[List[str]])" --> RepliesToAnswersConverter
-RepliesToAnswersConverter -- "answers (List[List[Answer]])" --> OUT{OUT}
-
-```
+In version 2.x we're going to do the same and have all generator components accept an optional callback during initialization.
 
 ### How many clients we will have?
 
