@@ -51,12 +51,9 @@ logging.disable(logging.CRITICAL)
 
 
 questions = [
-    "What are the main reasons for long-standing animosities between Russia and Poland?",
     "What are the primary causes and effects of climate change on global and local scales?",
-    "What were the key events and influences that led to Renaissance; how did these developments "
-    "shape modern Western culture?",
+    "What were the key events and influences that led to Renaissance; how did these developments shape modern Western culture?",
     "How have advances in technology in the 21st century affected job markets and economies around the world?",
-    "What are the main reasons behind the Israel-Palestine conflict and how have they evolved over time?",
     "How has the European Union influenced the political, economic, and social dynamics of Europe?",
 ]
 

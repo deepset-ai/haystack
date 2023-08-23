@@ -1,24 +1,12 @@
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-import requests
 
 from haystack.preview.dataclasses import Document
 from haystack.preview.components.audio.whisper_remote import RemoteWhisperTranscriber, OPENAI_TIMEOUT
 
-from test.preview.components.base import BaseTestComponent
 
-
-class TestRemoteWhisperTranscriber(BaseTestComponent):
-    """
-    Tests for RemoteWhisperTranscriber.
-    """
-
-    @pytest.mark.unit
-    def test_save_load(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(RemoteWhisperTranscriber(api_key="just a test"), tmp_path)
-
+class TestRemoteWhisperTranscriber:
     @pytest.mark.unit
     def test_init_unknown_model(self):
         with pytest.raises(ValueError, match="not recognized"):
@@ -43,7 +31,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
         comp = RemoteWhisperTranscriber(api_key="whatever")
 
-        with patch("haystack.utils.requests_utils.requests") as mocked_requests:
+        with patch("haystack.preview.utils.requests_utils.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
             result = comp.run(audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"])
@@ -63,7 +51,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
         comp = RemoteWhisperTranscriber(api_key="whatever")
 
-        with patch("haystack.utils.requests_utils.requests") as mocked_requests:
+        with patch("haystack.preview.utils.requests_utils.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
             result = comp.run(
@@ -89,7 +77,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
         comp = RemoteWhisperTranscriber(api_key="whatever")
 
-        with patch("haystack.utils.requests_utils.requests") as mocked_requests:
+        with patch("haystack.preview.utils.requests_utils.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
             with open(preview_samples_path / "audio" / "this is the content of the document.wav", "rb") as audio_stream:
@@ -107,7 +95,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
         comp = RemoteWhisperTranscriber(api_key="whatever")
 
-        with patch("haystack.utils.requests_utils.requests") as mocked_requests:
+        with patch("haystack.preview.utils.requests_utils.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
             comp.run(audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"])
@@ -128,7 +116,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
         comp = RemoteWhisperTranscriber(api_key="whatever")
 
-        with patch("haystack.utils.requests_utils.requests") as mocked_requests:
+        with patch("haystack.preview.utils.requests_utils.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
             comp.run(

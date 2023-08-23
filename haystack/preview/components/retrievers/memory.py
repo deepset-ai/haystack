@@ -1,29 +1,39 @@
 from typing import Dict, List, Any, Optional
 
 from haystack.preview import component, Document
-from haystack.preview.document_stores import MemoryDocumentStore, DocumentStoreAwareMixin
+from haystack.preview.document_stores import MemoryDocumentStore
 
 
 @component
-class MemoryRetriever(DocumentStoreAwareMixin):
+class MemoryRetriever:
     """
     A component for retrieving documents from a MemoryDocumentStore using the BM25 algorithm.
 
     Needs to be connected to a MemoryDocumentStore to run.
     """
 
-    supported_document_stores = [MemoryDocumentStore]
-
-    def __init__(self, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = True):
+    def __init__(
+        self,
+        document_store: MemoryDocumentStore,
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: int = 10,
+        scale_score: bool = True,
+    ):
         """
         Create a MemoryRetriever component.
 
+        :param document_store: An instance of MemoryDocumentStore.
         :param filters: A dictionary with filters to narrow down the search space (default is None).
         :param top_k: The maximum number of documents to retrieve (default is 10).
         :param scale_score: Whether to scale the BM25 score or not (default is True).
 
         :raises ValueError: If the specified top_k is not > 0.
         """
+        if not isinstance(document_store, MemoryDocumentStore):
+            raise ValueError("document_store must be an instance of MemoryDocumentStore")
+
+        self.document_store = document_store
+
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
@@ -51,12 +61,6 @@ class MemoryRetriever(DocumentStoreAwareMixin):
 
         :raises ValueError: If the specified DocumentStore is not found or is not a MemoryDocumentStore instance.
         """
-        self.document_store: MemoryDocumentStore
-        if not self.document_store:
-            raise ValueError(
-                "MemoryRetriever needs a DocumentStore to run: set the DocumentStore instance to the self.document_store attribute"
-            )
-
         if filters is None:
             filters = self.filters
         if top_k is None:
