@@ -7,19 +7,11 @@ import torch
 from haystack.preview.dataclasses import Document
 from haystack.preview.components.audio import LocalWhisperTranscriber
 
-from test.preview.components.base import BaseTestComponent
-
 
 SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
 
 
-class Test_LocalWhisperTranscriber(BaseTestComponent):
-    @pytest.mark.unit
-    def test_save_load(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(
-            LocalWhisperTranscriber(model_name_or_path="large-v2"), tmp_path
-        )
-
+class TestLocalWhisperTranscriber:
     @pytest.mark.unit
     def test_init(self):
         transcriber = LocalWhisperTranscriber(
