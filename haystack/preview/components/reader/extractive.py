@@ -26,6 +26,7 @@ class ExtractiveReader:
         stride: int = 128,
         max_batch_size: Optional[int] = None,
         answers_per_seq: Optional[int] = None,
+        no_answer: bool = True,
     ) -> None:
         """
         Creates an ExtractiveReader
@@ -44,6 +45,7 @@ class ExtractiveReader:
         :param max_batch_size: Maximum number of samples that are fed through the model at the same time
         :param answers_per_seq: Number of answer candidates to consider per sequence.
             This is relevant when a document has been split into multiple sequence due to max_seq_length.
+        :param no_answer: Whether to return no answer scores
         """
         torch_and_transformers_import.check()
         self.model = str(model)
@@ -55,6 +57,7 @@ class ExtractiveReader:
         self.stride = stride
         self.max_batch_size = max_batch_size
         self.answers_per_seq = answers_per_seq
+        self.no_answer = no_answer
 
     def warm_up(self):
         if self.model_ is None:
@@ -163,9 +166,10 @@ class ExtractiveReader:
         answers_per_seq: int,
         encodings: List[Encoding],
         query_ids: List[int],
+        no_answer: bool,
     ) -> Tuple[List[List[Optional[int]]], List[List[Optional[int]]], torch.Tensor]:
         mask = sequence_ids == 1
-        mask[..., 0] = True
+        mask[..., 0] = no_answer
         mask = torch.logical_and(mask, attention_mask == 1)
         start = torch.where(mask, start, -torch.inf)
         end = torch.where(mask, end, -torch.inf)
@@ -264,6 +268,7 @@ class ExtractiveReader:
         stride: Optional[int] = None,
         max_batch_size: Optional[int] = None,
         answers_per_seq: Optional[int] = None,
+        no_answer: Optional[bool] = None,
     ):
         top_k = top_k or self.top_k
         top_p = top_p or self.top_p
@@ -273,6 +278,7 @@ class ExtractiveReader:
         stride = stride or self.stride
         max_batch_size = max_batch_size or self.max_batch_size
         answers_per_seq = answers_per_seq or self.answers_per_seq or top_k or 20
+        no_answer = no_answer or self.no_answer
 
         flattened_queries, flattened_documents, query_ids = self._flatten(queries, documents)
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
@@ -304,7 +310,7 @@ class ExtractiveReader:
         end_logits = torch.cat(end_logits_list)
 
         start, end, probabilities = self._postprocess(
-            start_logits, end_logits, sequence_ids, attention_mask, answers_per_seq, encodings, query_ids
+            start_logits, end_logits, sequence_ids, attention_mask, answers_per_seq, encodings, query_ids, no_answer
         )
 
         answers = self._unflatten(
