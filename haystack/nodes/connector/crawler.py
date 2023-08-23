@@ -17,13 +17,10 @@ from haystack.schema import Document
 WebDriver = object
 with LazyImport("Run 'pip install farm-haystack[crawler]'") as selenium_import:
     from selenium import webdriver as selenium_webdriver
-    from selenium.common.exceptions import StaleElementReferenceException, WebDriverException
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.common.by import By
     from selenium.webdriver.remote.webdriver import WebDriver
-    from webdriver_manager.chrome import ChromeDriverManager
-
 
 logger = logging.getLogger(__name__)
 
@@ -114,8 +111,10 @@ class Crawler(BaseComponent):
         if webdriver_options is None:
             webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
         webdriver_options.append("--headless")
+        if IS_ROOT or IN_WINDOWS or IN_COLAB:
+            webdriver_options.append("--no-sandbox")
         if IS_ROOT or IN_WINDOWS:
-            webdriver_options.extend(["--no-sandbox", "--remote-debugging-port=9222"])
+            webdriver_options.append("--remote-debugging-port=9222")
         if IN_COLAB or IN_AZUREML:
             webdriver_options.append("--disable-dev-shm-usage")
 
@@ -168,8 +167,7 @@ class Crawler(BaseComponent):
                 ) from exc
         else:
             logger.info("'chrome-driver' will be automatically installed.")
-            self.driver = selenium_webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
+            self.driver = selenium_webdriver.Chrome(service=Service(), options=options)
         self.urls = urls
         self.crawler_depth = crawler_depth
         self.filter_urls = filter_urls

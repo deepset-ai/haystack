@@ -1,5 +1,5 @@
 loaders:
-  - type: python
+  - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/nodes/connector]
     modules: ["crawler"]
     ignore_when_discovered: ["__init__"]
@@ -24,4 +24,3 @@ renderer:
     add_method_class_prefix: true
     add_member_class_prefix: false
     filename: crawler_api.md
-

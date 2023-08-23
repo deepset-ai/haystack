@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Add utility function `store_class` factory to create `Store`s for testing purposes.
