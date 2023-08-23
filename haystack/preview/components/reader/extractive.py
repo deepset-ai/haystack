@@ -121,8 +121,6 @@ class ExtractiveReader:
         no_answer_logits_sum[last_docs[1:]] -= no_answer_logits_sum[last_docs[:-1]]
         no_answer_logits_sum[not_last_docs] = -torch.inf
         logits[..., 0, 0] = no_answer_logits_sum
-        print(no_answer_logits_sum)
-        print(logits[2])
 
         exp_logits = torch.exp(logits)
         # For softmax, we need to sum all exp_logits for each query to normalise them
