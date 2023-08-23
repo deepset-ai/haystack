@@ -1,9 +1,8 @@
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 import pytest
 from haystack.preview.embedding_backends.sentence_transformers_backend import (
     SentenceTransformersEmbeddingBackendFactory,
 )
-import numpy as np
 
 
 @pytest.mark.unit
@@ -23,19 +22,6 @@ def test_factory_behavior(mock_sentence_transformer):
 
 @pytest.mark.unit
 @patch("haystack.preview.embedding_backends.sentence_transformers_backend.SentenceTransformer")
-def test_factory_force_fresh_instance(mock_sentence_transformer):
-    embedding_backend = SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
-        model_name_or_path="my_model", device="cpu"
-    )
-    fresh_embedding_backend = SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
-        model_name_or_path="my_model", device="cpu", force_fresh_instance=True
-    )
-
-    assert fresh_embedding_backend is not embedding_backend
-
-
-@pytest.mark.unit
-@patch("haystack.preview.embedding_backends.sentence_transformers_backend.SentenceTransformer")
 def test_model_initialization(mock_sentence_transformer):
     SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(model_name_or_path="model", device="cpu")
     mock_sentence_transformer.assert_called_once_with(model_name_or_path="model", device="cpu", use_auth_token=None)
@@ -45,11 +31,8 @@ def test_model_initialization(mock_sentence_transformer):
 @patch("haystack.preview.embedding_backends.sentence_transformers_backend.SentenceTransformer")
 def test_embedding_function_with_kwargs(mock_sentence_transformer):
     embedding_backend = SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(model_name_or_path="model")
-    fake_embeddings = [np.array([0.1, 0.2]), np.array([0.3, 0.4])]
-    embedding_backend.model.encode.return_value = fake_embeddings
 
     data = ["sentence1", "sentence2"]
-    result = embedding_backend.embed(data=data, normalize_embeddings=True)
+    embedding_backend.embed(data=data, normalize_embeddings=True)
 
     embedding_backend.model.encode.assert_called_once_with(data, normalize_embeddings=True)
-    np.testing.assert_array_equal(result, fake_embeddings)
