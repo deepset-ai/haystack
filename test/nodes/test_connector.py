@@ -4,7 +4,7 @@ import os
 import re
 from pathlib import Path
 from typing import List
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from selenium.webdriver import Chrome
@@ -54,7 +54,7 @@ def content_in_results(crawler: Crawler, url: str, results: List[Path], expected
 
 @pytest.mark.unit
 @patch("haystack.nodes.connector.crawler.ChromeDriverManager")
-@patch("haystack.nodes.connector.crawler.webdriver")
+@patch("haystack.nodes.connector.crawler.selenium_webdriver")
 def test_crawler_url_none_exception(webdriver, manager):
     crawler = Crawler()
     with pytest.raises(ValueError):
@@ -262,7 +262,7 @@ def test_crawler_depth_2_multiple_urls(test_url, tmp_path):
 
 @pytest.mark.unit
 def test_crawler_custom_webdriver():
-    webdriver = Chrome()
+    webdriver = Mock(Chrome)
     crawler = Crawler(webdriver=webdriver)
 
     assert webdriver is crawler.driver
