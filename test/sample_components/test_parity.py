@@ -7,11 +7,11 @@ from sample_components import Parity
 def test_to_dict():
     component = Parity()
     res = component.to_dict()
-    assert res == {"hash": id(component), "type": "Parity", "init_parameters": {}}
+    assert res == {"type": "Parity", "init_parameters": {}}
 
 
 def test_from_dict():
-    data = {"hash": 12345, "type": "Parity", "init_parameters": {}}
+    data = {"type": "Parity", "init_parameters": {}}
     component = Parity.from_dict(data)
     assert component
 

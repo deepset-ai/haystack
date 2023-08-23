@@ -14,7 +14,6 @@ def test_to_dict():
     component = MergeLoop(expected_type=int, inputs=["first", "second"])
     res = component.to_dict()
     assert res == {
-        "hash": id(component),
         "type": "MergeLoop",
         "init_parameters": {"expected_type": "builtins.int", "inputs": ["first", "second"]},
     }
@@ -24,7 +23,6 @@ def test_to_dict_with_typing_class():
     component = MergeLoop(expected_type=Dict, inputs=["first", "second"])
     res = component.to_dict()
     assert res == {
-        "hash": id(component),
         "type": "MergeLoop",
         "init_parameters": {
             "expected_type": "typing.Dict",
@@ -37,7 +35,6 @@ def test_to_dict_with_custom_class():
     component = MergeLoop(expected_type=MergeLoop, inputs=["first", "second"])
     res = component.to_dict()
     assert res == {
-        "hash": id(component),
         "type": "MergeLoop",
         "init_parameters": {
             "expected_type": "sample_components.merge_loop.MergeLoop",
@@ -48,7 +45,6 @@ def test_to_dict_with_custom_class():
 
 def test_from_dict():
     data = {
-        "hash": 12345,
         "type": "MergeLoop",
         "init_parameters": {"expected_type": "builtins.int", "inputs": ["first", "second"]},
     }
@@ -59,7 +55,6 @@ def test_from_dict():
 
 def test_from_dict_with_typing_class():
     data = {
-        "hash": 1234,
         "type": "MergeLoop",
         "init_parameters": {
             "expected_type": "typing.Dict",
@@ -73,7 +68,6 @@ def test_from_dict_with_typing_class():
 
 def test_from_dict_with_custom_class():
     data = {
-        "hash": 12345,
         "type": "MergeLoop",
         "init_parameters": {
             "expected_type": "sample_components.merge_loop.MergeLoop",
@@ -87,7 +81,6 @@ def test_from_dict_with_custom_class():
 
 def test_from_dict_without_expected_type():
     data = {
-        "hash": 12345,
         "type": "MergeLoop",
         "init_parameters": {
             "inputs": ["first", "second"],
@@ -101,7 +94,6 @@ def test_from_dict_without_expected_type():
 
 def test_from_dict_without_inputs():
     data = {
-        "hash": 12345,
         "type": "MergeLoop",
         "init_parameters": {
             "expected_type": "sample_components.merge_loop.MergeLoop",

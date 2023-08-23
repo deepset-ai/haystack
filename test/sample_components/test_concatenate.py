@@ -7,11 +7,11 @@ from sample_components import Concatenate
 def test_to_dict():
     component = Concatenate()
     res = component.to_dict()
-    assert res == {"hash": id(component), "type": "Concatenate", "init_parameters": {}}
+    assert res == {"type": "Concatenate", "init_parameters": {}}
 
 
 def test_from_dict():
-    data = {"hash": 12345, "type": "Concatenate", "init_parameters": {}}
+    data = {"type": "Concatenate", "init_parameters": {}}
     component = Concatenate.from_dict(data)
     assert component
 

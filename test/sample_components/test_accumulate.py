@@ -12,7 +12,6 @@ def test_to_dict():
     accumulate = Accumulate()
     res = accumulate.to_dict()
     assert res == {
-        "hash": id(accumulate),
         "type": "Accumulate",
         "init_parameters": {"function": "sample_components.accumulate._default_function"},
     }
@@ -22,7 +21,6 @@ def test_to_dict_with_custom_function():
     accumulate = Accumulate(function=my_subtract)
     res = accumulate.to_dict()
     assert res == {
-        "hash": id(accumulate),
         "type": "Accumulate",
         "init_parameters": {"function": "test.sample_components.test_accumulate.my_subtract"},
     }
@@ -30,7 +28,6 @@ def test_to_dict_with_custom_function():
 
 def test_from_dict():
     data = {
-        "hash": 1234,
         "type": "Accumulate",
         "init_parameters": {},
     }
@@ -40,7 +37,6 @@ def test_from_dict():
 
 def test_from_dict_with_default_function():
     data = {
-        "hash": 1234,
         "type": "Accumulate",
         "init_parameters": {"function": "sample_components.accumulate._default_function"},
     }
@@ -50,7 +46,6 @@ def test_from_dict_with_default_function():
 
 def test_from_dict_with_custom_function():
     data = {
-        "hash": 1234,
         "type": "Accumulate",
         "init_parameters": {"function": "test.sample_components.test_accumulate.my_subtract"},
     }

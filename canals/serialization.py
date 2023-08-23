@@ -30,7 +30,6 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
     obj = MyClass(my_param=1000)
     data = obj.to_dict()
     assert data == {
-        "hash": 4378522336,
         "type": "MyClass",
         "init_parameters": {
             "my_param": 1000,
@@ -39,7 +38,6 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
     ```
     """
     return {
-        "hash": id(obj),
         "type": obj.__class__.__name__,
         "init_parameters": init_parameters,
     }

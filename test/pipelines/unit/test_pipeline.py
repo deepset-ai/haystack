@@ -45,17 +45,14 @@ def test_to_dict():
         "components": {
             "add_two": {
                 "type": "AddFixedValue",
-                "hash": id(add_two),
                 "init_parameters": {"add": 2},
             },
             "add_default": {
                 "type": "AddFixedValue",
-                "hash": id(add_default),
                 "init_parameters": {"add": 1},
             },
             "double": {
                 "type": "Double",
-                "hash": id(double),
                 "init_parameters": {},
             },
         },
@@ -74,17 +71,14 @@ def test_from_dict():
         "components": {
             "add_two": {
                 "type": "AddFixedValue",
-                "hash": "123",
                 "init_parameters": {"add": 2},
             },
             "add_default": {
                 "type": "AddFixedValue",
-                "hash": "456",
                 "init_parameters": {"add": 1},
             },
             "double": {
                 "type": "Double",
-                "hash": "789",
                 "init_parameters": {},
             },
         },
@@ -177,7 +171,6 @@ def test_from_dict_with_components_instances():
             "add_default": {},
             "double": {
                 "type": "Double",
-                "hash": "789",
                 "init_parameters": {},
             },
         },
@@ -258,7 +251,6 @@ def test_from_dict_without_component_type():
         "max_loops_allowed": 100,
         "components": {
             "add_two": {
-                "hash": "123",
                 "init_parameters": {"add": 2},
             },
         },
@@ -278,7 +270,6 @@ def test_from_dict_without_registered_component_type(request):
             "add_two": {
                 # We use the test function name as component type to make sure it's not registered.
                 "type": request.node.name,
-                "hash": "123",
                 "init_parameters": {"add": 2},
             },
         },
@@ -318,6 +309,7 @@ def test_from_dict_without_connection_receiver():
         Pipeline.from_dict(data)
 
     err.match("Missing receiver in connection: {'sender': 'some.sender'}")
+
 
 def test_falsy_connection():
     A = component_class("A", input_types={"x": int}, output={"y": 0})

@@ -7,11 +7,11 @@ from sample_components import Subtract
 def test_to_dict():
     component = Subtract()
     res = component.to_dict()
-    assert res == {"hash": id(component), "type": "Subtract", "init_parameters": {}}
+    assert res == {"type": "Subtract", "init_parameters": {}}
 
 
 def test_from_dict():
-    data = {"hash": 12345, "type": "Subtract", "init_parameters": {}}
+    data = {"type": "Subtract", "init_parameters": {}}
     component = Subtract.from_dict(data)
     assert component
 

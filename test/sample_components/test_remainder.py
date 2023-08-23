@@ -9,23 +9,23 @@ from sample_components import Remainder
 def test_to_dict():
     component = Remainder()
     res = component.to_dict()
-    assert res == {"hash": id(component), "type": "Remainder", "init_parameters": {"divisor": 3}}
+    assert res == {"type": "Remainder", "init_parameters": {"divisor": 3}}
 
 
 def test_to_dict_with_custom_divisor_value():
     component = Remainder(divisor=100)
     res = component.to_dict()
-    assert res == {"hash": id(component), "type": "Remainder", "init_parameters": {"divisor": 100}}
+    assert res == {"type": "Remainder", "init_parameters": {"divisor": 100}}
 
 
 def test_from_dict():
-    data = {"hash": 1234, "type": "Remainder"}
+    data = {"type": "Remainder"}
     component = Remainder.from_dict(data)
     assert component.divisor == 3
 
 
 def test_from_dict_with_custom_divisor_value():
-    data = {"hash": 1234, "type": "Remainder", "init_parameters": {"divisor": 100}}
+    data = {"type": "Remainder", "init_parameters": {"divisor": 100}}
     component = Remainder.from_dict(data)
     assert component.divisor == 100
 

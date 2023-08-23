@@ -8,11 +8,11 @@ from sample_components import Sum
 def test_to_dict():
     component = Sum(inputs=["first", "second"])
     res = component.to_dict()
-    assert res == {"hash": id(component), "type": "Sum", "init_parameters": {"inputs": ["first", "second"]}}
+    assert res == {"type": "Sum", "init_parameters": {"inputs": ["first", "second"]}}
 
 
 def test_from_dict():
-    data = {"hash": 1234, "type": "Sum", "init_parameters": {"inputs": ["first", "second"]}}
+    data = {"type": "Sum", "init_parameters": {"inputs": ["first", "second"]}}
     component = Sum.from_dict(data)
     assert component.inputs == ["first", "second"]
 

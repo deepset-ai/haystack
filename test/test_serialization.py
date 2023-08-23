@@ -12,7 +12,6 @@ def test_default_component_to_dict():
     comp = MyComponent()
     res = default_to_dict(comp)
     assert res == {
-        "hash": id(comp),
         "type": "MyComponent",
         "init_parameters": {},
     }
@@ -23,7 +22,6 @@ def test_default_component_to_dict_with_init_parameters():
     comp = MyComponent()
     res = default_to_dict(comp, some_key="some_value")
     assert res == {
-        "hash": id(comp),
         "type": "MyComponent",
         "init_parameters": {"some_key": "some_value"},
     }
@@ -42,7 +40,6 @@ def test_default_component_from_dict():
             "init_parameters": {
                 "some_param": 10,
             },
-            "hash": 1234,
         },
     )
     assert isinstance(comp, MyComponent)

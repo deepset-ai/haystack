@@ -113,17 +113,14 @@ class Pipeline:
             "components": {
                 "add_two": {
                     "type": "AddFixedValue",
-                    "hash": "123",
                     "init_parameters": {"add": 2},
                 },
                 "add_default": {
                     "type": "AddFixedValue",
-                    "hash": "456",
                     "init_parameters": {"add": 1},
                 },
                 "double": {
                     "type": "Double",
-                    "hash": "789"
                 },
             },
             "connections": [

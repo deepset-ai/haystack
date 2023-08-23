@@ -10,7 +10,6 @@ def test_to_dict():
     component = Greet()
     res = component.to_dict()
     assert res == {
-        "hash": id(component),
         "type": "Greet",
         "init_parameters": {
             "message": "\nGreeting component says: Hi! The value is {value}\n",
@@ -23,7 +22,6 @@ def test_to_dict_with_custom_parameters():
     component = Greet(message="My message", log_level="ERROR")
     res = component.to_dict()
     assert res == {
-        "hash": id(component),
         "type": "Greet",
         "init_parameters": {
             "message": "My message",
@@ -34,7 +32,6 @@ def test_to_dict_with_custom_parameters():
 
 def test_from_dict():
     data = {
-        "hash": 1234,
         "type": "Greet",
         "init_parameters": {},
     }
@@ -45,7 +42,6 @@ def test_from_dict():
 
 def test_from_with_custom_parameters():
     data = {
-        "hash": 1234,
         "type": "Greet",
         "init_parameters": {"message": "My message", "log_level": "ERROR"},
     }

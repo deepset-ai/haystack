@@ -7,23 +7,23 @@ from sample_components import Threshold
 def test_to_dict():
     component = Threshold()
     res = component.to_dict()
-    assert res == {"hash": id(component), "type": "Threshold", "init_parameters": {"threshold": 10}}
+    assert res == {"type": "Threshold", "init_parameters": {"threshold": 10}}
 
 
 def test_to_dict_with_custom_threshold_value():
     component = Threshold(threshold=100)
     res = component.to_dict()
-    assert res == {"hash": id(component), "type": "Threshold", "init_parameters": {"threshold": 100}}
+    assert res == {"type": "Threshold", "init_parameters": {"threshold": 100}}
 
 
 def test_from_dict():
-    data = {"hash": 1234, "type": "Threshold"}
+    data = {"type": "Threshold"}
     component = Threshold.from_dict(data)
     assert component.threshold == 10
 
 
 def test_from_dict_with_custom_threshold_value():
-    data = {"hash": 1234, "type": "Threshold", "init_parameters": {"threshold": 100}}
+    data = {"type": "Threshold", "init_parameters": {"threshold": 100}}
     component = Threshold.from_dict(data)
     assert component.threshold == 100
 

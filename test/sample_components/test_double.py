@@ -8,11 +8,11 @@ from sample_components import Double
 def test_to_dict():
     component = Double()
     res = component.to_dict()
-    assert res == {"hash": id(component), "type": "Double", "init_parameters": {}}
+    assert res == {"type": "Double", "init_parameters": {}}
 
 
 def test_from_dict():
-    data = {"hash": 12345, "type": "Double", "init_parameters": {}}
+    data = {"type": "Double", "init_parameters": {}}
     component = Double.from_dict(data)
     assert component
 
