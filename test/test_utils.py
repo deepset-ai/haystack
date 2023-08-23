@@ -7,21 +7,21 @@ import pytest
 from canals.utils import _type_name
 
 
-class TestClass1:
+class Class1:
     ...
 
 
-class TestClass2:
+class Class2:
     ...
 
 
-class TestClass3(TestClass1):
+class Class3(Class1):
     ...
 
 
-class TestEnum(Enum):
-    TEST1 = TestClass1
-    TEST2 = TestClass2
+class Enum1(Enum):
+    TEST1 = Class1
+    TEST2 = Class2
 
 
 @pytest.mark.parametrize(
@@ -29,11 +29,11 @@ class TestEnum(Enum):
     [
         pytest.param(str, "str", id="primitive-types"),
         pytest.param(Any, "Any", id="any"),
-        pytest.param(TestClass1, "TestClass1", id="class"),
+        pytest.param(Class1, "Class1", id="class"),
         pytest.param(Optional[int], "Optional[int]", id="shallow-optional-with-primitive"),
         pytest.param(Optional[Any], "Optional[Any]", id="shallow-optional-with-any"),
-        pytest.param(Optional[TestClass1], "Optional[TestClass1]", id="shallow-optional-with-class"),
-        pytest.param(Union[bool, TestClass1], "Union[bool, TestClass1]", id="shallow-union"),
+        pytest.param(Optional[Class1], "Optional[Class1]", id="shallow-optional-with-class"),
+        pytest.param(Union[bool, Class1], "Union[bool, Class1]", id="shallow-union"),
         pytest.param(List[str], "List[str]", id="shallow-sequence-of-primitives"),
         pytest.param(List[Set[Sequence[str]]], "List[Set[Sequence[str]]]", id="nested-sequence-of-primitives"),
         pytest.param(
@@ -46,10 +46,8 @@ class TestEnum(Enum):
             "List[Set[Sequence[Optional[str]]]]",
             id="nested-optional-sequence-of-primitives",
         ),
-        pytest.param(List[TestClass1], "List[TestClass1]", id="shallow-sequence-of-classes"),
-        pytest.param(
-            List[Set[Sequence[TestClass1]]], "List[Set[Sequence[TestClass1]]]", id="nested-sequence-of-classes"
-        ),
+        pytest.param(List[Class1], "List[Class1]", id="shallow-sequence-of-classes"),
+        pytest.param(List[Set[Sequence[Class1]]], "List[Set[Sequence[Class1]]]", id="nested-sequence-of-classes"),
         pytest.param(Dict[str, int], "Dict[str, int]", id="shallow-mapping-of-primitives"),
         pytest.param(
             Dict[str, Mapping[str, Dict[str, int]]],
@@ -61,10 +59,10 @@ class TestEnum(Enum):
             "Dict[str, Mapping[Any, Dict[str, int]]]",
             id="nested-mapping-of-primitives-with-any",
         ),
-        pytest.param(Dict[str, TestClass1], "Dict[str, TestClass1]", id="shallow-mapping-of-classes"),
+        pytest.param(Dict[str, Class1], "Dict[str, Class1]", id="shallow-mapping-of-classes"),
         pytest.param(
-            Dict[str, Mapping[str, Dict[str, TestClass1]]],
-            "Dict[str, Mapping[str, Dict[str, TestClass1]]]",
+            Dict[str, Mapping[str, Dict[str, Class1]]],
+            "Dict[str, Mapping[str, Dict[str, Class1]]]",
             id="nested-mapping-of-classes",
         ),
         pytest.param(
@@ -78,13 +76,13 @@ class TestEnum(Enum):
             id="primitive-literal",
         ),
         pytest.param(
-            Literal[TestEnum.TEST1],
-            "Literal[TestEnum.TEST1]",
+            Literal[Enum1.TEST1],
+            "Literal[Enum1.TEST1]",
             id="enum-literal",
         ),
         pytest.param(
-            Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, TestClass1]]],
-            "Tuple[Optional[Literal['a', 'b', 'c']], Union[Path, Dict[int, TestClass1]]]",
+            Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, Class1]]],
+            "Tuple[Optional[Literal['a', 'b', 'c']], Union[Path, Dict[int, Class1]]]",
             id="deeply-nested-complex-type",
         ),
     ],
