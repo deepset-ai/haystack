@@ -175,7 +175,7 @@ class ExtractiveReader:
         end = end.unsqueeze(-2)
 
         logits = start + end  # shape: (batch_size, seq_length (start), seq_length (end))
-        mask = torch.ones(logits.shape[-2:], dtype=torch.bool)
+        mask = torch.ones(logits.shape[-2:], dtype=torch.bool, device=self.device)
         mask = torch.triu(mask)  # End shouldn't be before start
         mask[0, :1] = False
         masked_logits = torch.where(mask, logits, -torch.inf)
