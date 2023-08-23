@@ -22,6 +22,8 @@ class SentenceTransformersDocumentEmbedder:
         batch_size: int = 32,
         progress_bar: bool = True,
         normalize_embeddings: bool = False,
+        embed_meta_fields: Optional[List[str]] = None,
+        embed_separator: str = "\n",
     ):
         """
         Create a SentenceTransformersDocumentEmbedder component.
@@ -34,6 +36,8 @@ class SentenceTransformersDocumentEmbedder:
         :param batch_size: Number of strings to encode at once.
         :param progress_bar: If true displays progress bar during embedding.
         :param normalize_embeddings: If set to true, returned vectors will have length 1.
+        :param embed_meta_fields: List of meta fields that should be embedded along with the Document content.
+        :param embed_separator: Separator used to concatenate the meta fields to the Document content.
         """
 
         self.model_name_or_path = model_name_or_path
@@ -43,6 +47,8 @@ class SentenceTransformersDocumentEmbedder:
         self.batch_size = batch_size
         self.progress_bar = progress_bar
         self.normalize_embeddings = normalize_embeddings
+        self.embed_meta_fields = embed_meta_fields or []
+        self.embed_separator = embed_separator
 
     def warm_up(self):
         """
@@ -63,9 +69,13 @@ class SentenceTransformersDocumentEmbedder:
 
         # TODO: once non textual Documents are properly supported, we should also prepare them for embedding here
 
-        # TODO: we should find a proper strategy for supporting the embedding of meta fields, also supporting templates
-        # E.g.: This article talks about {{doc.meta["company"]}}, it was published on {{doc.meta["publication_date"]}}. Here is the article's content: {{doc.content}}
-        texts_to_embed = [doc.content for doc in documents]
+        texts_to_embed = []
+        for doc in documents:
+            meta_values_to_embed = [
+                doc.metadata[key] for key in self.embed_meta_fields if key in doc.metadata and doc.metadata[key]
+            ]
+            text_to_embed = self.embed_separator.join(meta_values_to_embed + [doc.content])
+            texts_to_embed.append(text_to_embed)
 
         embeddings = self.embedding_backend.embed(
             texts_to_embed,
