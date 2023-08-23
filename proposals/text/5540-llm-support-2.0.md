@@ -31,7 +31,7 @@ IN{IN} -- "questions (List[str])" --> Retriever
 IN{IN} -- "questions (List[str])" --> PromptBuilder
 Retriever -- "documents (List[List[Doc]])"  --> PromptBuilder
 PromptBuilder -- "prompts (List[str])" --> GPT4Generator
-GPT4 -- "replies (List[List[str]])" --> RepliesToAnswersConverter
+GPT4Generator -- "replies (List[List[str]])" --> RepliesToAnswersConverter
 RepliesToAnswersConverter -- "answers (List[List[Answer]])" --> OUT{OUT}
 ```
 
@@ -107,6 +107,19 @@ class ChatGPTGenerator:
 Note how the component takes a list of prompts and LLM parameters only, but no variables nor templates, and returns only strings. This is because input rendering and output parsing are delegated to separate components, which description follows.
 
 Note: whether LLM components accept multiple prompts or a single one depends only on whether we want the LLM to support batching of prompts. Therefore it's an implementation decision that will be evaluated once we know the internals of the component. We strive to keep the interfaces as similar as possible to ease switching the various LLMs, but we won't force identical interfaces over them where it doesn't make sense with respect to their internal implementation.
+
+### Chat API
+
+Most LLMs support Chat interfaces, where they expect not a single prompt, but a list of messages in a format such as:
+
+```
+[
+    {"role": "system", "content": "\nYou are a helpful assistant speaking like a pirate. argh!"},
+    {"role": "user", "content": "What is the sun?"},
+]
+```
+
+In this proposal we're not taking this way of querying the LLMs into account, we will just focus on simple completion. We're going to address the Chat completion topic in a dedicated proposal.
 
 ### Returning metadata
 
