@@ -28,13 +28,13 @@ class SentenceTransformersDocumentEmbedder:
         """
         Create a SentenceTransformersDocumentEmbedder component.
 
-        :param model_name_or_path: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``.
+        :param model_name_or_path: Local path or name of the model in Hugging Face's model hub, such as ``'sentence-transformers/all-MiniLM-L6-v2'``.
         :param device: Device (like 'cuda' / 'cpu') that should be used for computation. If None, checks if a GPU can be used.
         :param use_auth_token: The API token used to download private models from Hugging Face.
                         If this parameter is set to `True`, then the token generated when running
                         `transformers-cli login` (stored in ~/.huggingface) will be used.
         :param batch_size: Number of strings to encode at once.
-        :param progress_bar: If true displays progress bar during embedding.
+        :param progress_bar: If true, displays progress bar during embedding.
         :param normalize_embeddings: If set to true, returned vectors will have length 1.
         :param embed_meta_fields: List of meta fields that should be embedded along with the Document content.
         :param embed_separator: Separator used to concatenate the meta fields to the Document content.
