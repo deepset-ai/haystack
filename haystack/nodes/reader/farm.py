@@ -1306,35 +1306,39 @@ class FARMReader(BaseReader):
                 if ans.answer_type != "span":
                     continue
 
-                for overlap in relevant_overlaps:
-                    # Check if answer offsets are within the overlap
-                    if not self._qa_cand_in_overlap(ans, overlap):
-                        continue
-
-                    # Check if predictions from overlapping Document are within the overlap
-                    overlapping_doc_pred = preds_per_doc[overlap["doc_id"]]
-                    cur_doc_overlap = [ol for ol in overlapping_docs[overlap["doc_id"]] if ol["doc_id"] == pred.id][0]
-                    breaked = False
-                    for pot_dupl_ans_idx in reversed(range(len(overlapping_doc_pred.prediction))):
-                        pot_dupl_ans = overlapping_doc_pred.prediction[pot_dupl_ans_idx]
-                        if pot_dupl_ans.answer_type != "span":
-                            continue
-                        if not self._qa_cand_in_overlap(pot_dupl_ans, cur_doc_overlap):
-                            continue
-
-                        # Check if ans and pot_dupl_ans are duplicates
-                        if self._is_duplicate_answer(ans, overlap, pot_dupl_ans, cur_doc_overlap):
-                            # Discard the duplicate with lower score
-                            if ans.confidence < pot_dupl_ans.confidence:
-                                pred.prediction.pop(ans_idx)
-                                breaked = True
-                                break
-                            else:
-                                overlapping_doc_pred.prediction.pop(pot_dupl_ans_idx)
-
-                    if breaked:
-                        break
+                self.handle_qa_overlap_duplicates(
+                    overlapping_docs, preds_per_doc, pred, relevant_overlaps, ans_idx, ans
+                )
         return predictions
+
+    def handle_qa_overlap_duplicates(self, overlapping_docs, preds_per_doc, pred, relevant_overlaps, ans_idx, ans):
+        for overlap in relevant_overlaps:
+            # Check if answer offsets are within the overlap
+            if not self._qa_cand_in_overlap(ans, overlap):
+                continue
+
+                # Check if predictions from overlapping Document are within the overlap
+            overlapping_doc_pred = preds_per_doc[overlap["doc_id"]]
+            cur_doc_overlap = [ol for ol in overlapping_docs[overlap["doc_id"]] if ol["doc_id"] == pred.id][0]
+            breaked = False
+            for pot_dupl_ans_idx in reversed(range(len(overlapping_doc_pred.prediction))):
+                pot_dupl_ans = overlapping_doc_pred.prediction[pot_dupl_ans_idx]
+                if pot_dupl_ans.answer_type != "span":
+                    continue
+                if not self._qa_cand_in_overlap(pot_dupl_ans, cur_doc_overlap):
+                    continue
+
+                    # Check if ans and pot_dupl_ans are duplicates
+                if self._is_duplicate_answer(ans, overlap, pot_dupl_ans, cur_doc_overlap):
+                    # Discard the duplicate with lower score
+                    if ans.confidence < pot_dupl_ans.confidence:
+                        pred.prediction.pop(ans_idx)
+                        breaked = True
+                        break
+                    else:
+                        overlapping_doc_pred.prediction.pop(pot_dupl_ans_idx)
+
+            return
 
     @staticmethod
     def _is_duplicate_answer(
