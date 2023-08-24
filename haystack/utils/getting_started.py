@@ -1,8 +1,6 @@
 import logging
 import os
 
-from haystack.nodes import AnswerParser, PromptNode, PromptTemplate, BM25Retriever, PreProcessor, TextConverter
-from haystack.pipelines import Pipeline
 from haystack.utils import convert_files_to_docs
 from haystack.utils import fetch_archive_from_http
 
@@ -10,6 +8,10 @@ logger = logging.getLogger(__name__)
 
 
 def build_pipeline(provider, API_KEY, document_store):
+    # Importing top-level causes a circular import
+    from haystack.nodes import AnswerParser, PromptNode, PromptTemplate, BM25Retriever
+    from haystack.pipelines import Pipeline
+
     provider = provider.lower()
     # A retriever selects the right documents when given a question.
     retriever = BM25Retriever(document_store=document_store, top_k=5)
@@ -52,6 +54,9 @@ def build_pipeline(provider, API_KEY, document_store):
 
 
 def add_example_data(document_store, dir):
+    # Importing top-level causes a circular import
+    from haystack.nodes import TextConverter, PreProcessor
+
     if dir == "data/GoT_getting_started":
         # Download and add Game of Thrones TXT files
         fetch_archive_from_http(
