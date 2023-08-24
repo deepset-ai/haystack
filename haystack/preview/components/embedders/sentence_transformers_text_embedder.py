@@ -28,7 +28,7 @@ class SentenceTransformersTextEmbedder:
         """
         Create a SentenceTransformersTextEmbedder component.
 
-        :param model_name_or_path: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``.
+        :param model_name_or_path: Local path or name of the model in Hugging Face's model hub, such as ``'sentence-transformers/all-MiniLM-L6-v2'``.
         :param device: Device (like 'cuda' / 'cpu') that should be used for computation. If None, checks if a GPU can be used.
         :param use_auth_token: The API token used to download private models from Hugging Face.
                         If this parameter is set to `True`, then the token generated when running
@@ -36,7 +36,7 @@ class SentenceTransformersTextEmbedder:
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         :param batch_size: Number of strings to encode at once.
-        :param progress_bar: If true displays progress bar during embedding.
+        :param progress_bar: If true, displays progress bar during embedding.
         :param normalize_embeddings: If set to true, returned vectors will have length 1.
         """
 
