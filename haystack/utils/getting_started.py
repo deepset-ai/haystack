@@ -53,7 +53,7 @@ def build_pipeline(provider, API_KEY, document_store):
 
 def add_example_data(document_store, dir):
     if dir == "data/GoT_getting_started":
-        # This code downloads and adds Game of Thrones txt files
+        # Download and add Game of Thrones TXT files
         fetch_archive_from_http(
             url="https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip",
             output_dir=dir,
@@ -63,8 +63,8 @@ def add_example_data(document_store, dir):
         docs = [converter.convert(file_path=file, meta=None)[0] for file in files_to_index]
     else:
         # Here you can add a local folder with your files(.txt, .pdf, .docx).
-        # You might need to install additional packages with "pip install farm-haystack[ocr,preprocessing,file-conversion,pdf]"
-        # For more details, see: https://haystack.deepset.ai/tutorials/08_preprocessing
+        # You might need to install additional packages with "pip install farm-haystack[ocr,preprocessing,file-conversion,pdf]".
+        # For more details, see: https://haystack.deepset.ai/tutorials/08_preprocessing.
         # Be aware that some of your data will be sent to external APIs if you use this functionality!
         files_to_index = [dir + "/" + f for f in os.listdir(dir)]
         logger.info(f"Adding {len(files_to_index)} number of files from local disk at {dir}.")

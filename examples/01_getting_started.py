@@ -1,4 +1,4 @@
-# This getting_started shows you how to use LLMs with your data, a technique called Retrieval Augmented Generation - RAG
+# This getting_started example shows you how to use LLMs with your data with a technique called Retrieval Augmented Generation - RAG.
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.utils import build_pipeline, add_example_data, print_answers
 
@@ -12,7 +12,7 @@ document_store = InMemoryDocumentStore(use_bm25=True)
 # Pipelines are the main abstraction in Haystack, they connect components like LLMs and databases.
 pipeline = build_pipeline(provider, API_KEY, document_store)
 
-# Downloads and adds Game of Thrones TXT articles to haystacks database.
+# Download and add Game of Thrones TXT articles to Haystack's database.
 # You can also provide a folder with your local documents.
 # You might need to install additional dependencies - look inside the function for more information.
 add_example_data(document_store, "data/GoT_getting_started")
@@ -20,5 +20,5 @@ add_example_data(document_store, "data/GoT_getting_started")
 # Ask a question on the data you just added.
 result = pipeline.run(query="Who is the father of Arya Stark?")
 
-# For details, like which documents were used to generate the answer, look into the <result> object
+# For details such as which documents were used to generate the answer, look into the <result> object.
 print_answers(result, details="medium")
