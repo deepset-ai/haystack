@@ -187,6 +187,13 @@ def export_feedback(
 
     export = {"data": export_data}
 
-    with open("feedback_squad_direct.json", "w", encoding="utf8") as f:
-        json.dump(export_data, f, ensure_ascii=False, sort_keys=True, indent=4)
+    feedback_file = "feedback_squad_direct.json"
+    try:
+        with open(feedback_file, "w", encoding="utf8") as f:
+            json.dump(export_data, f, ensure_ascii=False, sort_keys=True, indent=4)
+    except Exception as e:
+        # might fail in some docker container environment.
+        logger.error("Can't write feedback file. filename=%s", feedback_file)
+        logger.exception(e)
+
     return export
