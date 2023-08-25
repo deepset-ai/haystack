@@ -1,11 +1,11 @@
 from unittest.mock import patch, MagicMock
 import pytest
 
+import numpy as np
+
 from haystack.preview.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
 
 from test.preview.components.base import BaseTestComponent
-
-import numpy as np
 
 
 class TestSentenceTransformersTextEmbedder(BaseTestComponent):
@@ -46,7 +46,7 @@ class TestSentenceTransformersTextEmbedder(BaseTestComponent):
 
     @pytest.mark.unit
     @patch(
-        "haystack.preview.components.embedders.sentence_transformers_text_embedder.SentenceTransformersEmbeddingBackendFactory"
+        "haystack.preview.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup(self, mocked_factory):
         embedder = SentenceTransformersTextEmbedder(model_name_or_path="model")
@@ -58,7 +58,7 @@ class TestSentenceTransformersTextEmbedder(BaseTestComponent):
 
     @pytest.mark.unit
     @patch(
-        "haystack.preview.components.embedders.sentence_transformers_text_embedder.SentenceTransformersEmbeddingBackendFactory"
+        "haystack.preview.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup_doesnt_reload(self, mocked_factory):
         embedder = SentenceTransformersTextEmbedder(model_name_or_path="model")
@@ -71,29 +71,29 @@ class TestSentenceTransformersTextEmbedder(BaseTestComponent):
     def test_run(self):
         embedder = SentenceTransformersTextEmbedder(model_name_or_path="model")
         embedder.embedding_backend = MagicMock()
-        embedder.embedding_backend.embed = lambda x, **kwargs: list(np.random.rand(len(x), 16))
+        embedder.embedding_backend.embed = lambda x, **kwargs: np.random.rand(len(x), 16).tolist()
 
         texts = ["sentence1", "sentence2"]
 
         result = embedder.run(texts=texts)
-
         embeddings = result["embeddings"]
+
         assert isinstance(embeddings, list)
         assert len(embeddings) == len(texts)
         for embedding in embeddings:
-            assert isinstance(embedding, np.ndarray)
+            assert isinstance(embedding, list)
+            assert isinstance(embedding[0], float)
 
     @pytest.mark.unit
     def test_run_wrong_input_format(self):
         embedder = SentenceTransformersTextEmbedder(model_name_or_path="model")
         embedder.embedding_backend = MagicMock()
-        # embedder.embedding_backend.embed = lambda x, **kwargs: list(np.random.rand(len(x), 16))
 
         string_input = "text"
         list_integers_input = [1, 2, 3]
 
-        with pytest.raises(ValueError, match="SentenceTransformersTextEmbedder expects a list of strings as input"):
+        with pytest.raises(TypeError, match="SentenceTransformersTextEmbedder expects a list of strings as input"):
             embedder.run(texts=string_input)
 
-        with pytest.raises(ValueError, match="SentenceTransformersTextEmbedder expects a list of strings as input"):
+        with pytest.raises(TypeError, match="SentenceTransformersTextEmbedder expects a list of strings as input"):
             embedder.run(texts=list_integers_input)

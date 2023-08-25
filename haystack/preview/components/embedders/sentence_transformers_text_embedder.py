@@ -4,7 +4,7 @@ import numpy as np
 
 from haystack.preview import component
 from haystack.preview.embedding_backends.sentence_transformers_backend import (
-    SentenceTransformersEmbeddingBackendFactory,
+    _SentenceTransformersEmbeddingBackendFactory,
 )
 
 
@@ -55,19 +55,20 @@ class SentenceTransformersTextEmbedder:
         Load the embedding backend.
         """
         if not hasattr(self, "embedding_backend"):
-            self.embedding_backend = SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
+            self.embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
                 model_name_or_path=self.model_name_or_path, device=self.device, use_auth_token=self.use_auth_token
             )
 
-    @component.output_types(embeddings=List[np.ndarray])
+    @component.output_types(embeddings=List[List[float]])
     def run(self, texts: List[str]):
         """Embed a list of strings."""
         if not isinstance(texts, list) or not isinstance(texts[0], str):
-            raise ValueError(
+            raise TypeError(
                 "SentenceTransformersTextEmbedder expects a list of strings as input."
                 "In case you want to embed a list of Documents, please use the SentenceTransformersDocumentEmbedder."
             )
-        self.warm_up()
+        if not hasattr(self, "embedding_backend"):
+            raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
         texts_to_embed = [self.prefix + text + self.suffix for text in texts]
         embeddings = self.embedding_backend.embed(
             texts_to_embed,
