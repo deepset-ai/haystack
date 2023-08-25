@@ -14,8 +14,6 @@
 
 ::: canals.pipeline.pipeline
 
-::: canals.pipeline.save_load
-
 ::: canals.pipeline.sockets
 
 ::: canals.pipeline.validation
