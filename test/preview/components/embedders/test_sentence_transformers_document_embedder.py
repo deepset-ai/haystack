@@ -79,3 +79,47 @@ class TestSentenceTransformersDocumentEmbedder(BaseTestComponent):
         for doc in result["documents"]:
             assert isinstance(doc, Document)
             assert isinstance(doc.embedding, np.ndarray)
+
+    @pytest.mark.unit
+    def test_run_wrong_input_format(self):
+        embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
+
+        string_input = "text"
+        list_integers_input = [1, 2, 3]
+
+        with pytest.raises(
+            ValueError, match="SentenceTransformersDocumentEmbedder expects a list of Documents as input"
+        ):
+            embedder.run(documents=string_input)
+
+        with pytest.raises(
+            ValueError, match="SentenceTransformersDocumentEmbedder expects a list of Documents as input"
+        ):
+            embedder.run(documents=list_integers_input)
+
+    @pytest.mark.unit
+    def test_embed_metadata(self):
+        embedder = SentenceTransformersDocumentEmbedder(
+            model_name_or_path="model", metadata_fields_to_embed=["meta_field"], embedding_separator="\n"
+        )
+        embedder.embedding_backend = MagicMock()
+        # embedder.embedding_backend.embed = lambda x, **kwargs: list(np.random.rand(len(x), 16))
+
+        documents = [
+            Document(content=f"document number {i}", metadata={"meta_field": f"meta_value {i}"}) for i in range(5)
+        ]
+
+        embedder.run(documents=documents)
+
+        embedder.embedding_backend.embed.assert_called_once_with(
+            [
+                "meta_value 0\ndocument number 0",
+                "meta_value 1\ndocument number 1",
+                "meta_value 2\ndocument number 2",
+                "meta_value 3\ndocument number 3",
+                "meta_value 4\ndocument number 4",
+            ],
+            batch_size=32,
+            show_progress_bar=True,
+            normalize_embeddings=False,
+        )
