@@ -8,10 +8,9 @@ from canals.errors import PipelineRuntimeError
 from langdetect import LangDetectException
 
 from haystack.preview.components.file_converters.txt import TextFileToDocument
-from test.preview.components.base import BaseTestComponent
 
 
-class TestTextfileToDocument(BaseTestComponent):
+class TestTextfileToDocument:
     @pytest.mark.unit
     def test_run(self, preview_samples_path):
         """
