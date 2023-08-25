@@ -7,7 +7,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as sentenc
     from sentence_transformers import SentenceTransformer
 
 
-class SentenceTransformersEmbeddingBackendFactory:
+class _SentenceTransformersEmbeddingBackendFactory:
     """
     Factory class to create instances of Sentence Transformers embedding backends.
     """
@@ -20,12 +20,12 @@ class SentenceTransformersEmbeddingBackendFactory:
     ):
         embedding_backend_id = f"{model_name_or_path}{device}{use_auth_token}"
 
-        if embedding_backend_id in SentenceTransformersEmbeddingBackendFactory._instances:
-            return SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id]
+        if embedding_backend_id in _SentenceTransformersEmbeddingBackendFactory._instances:
+            return _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id]
         embedding_backend = _SentenceTransformersEmbeddingBackend(
             model_name_or_path=model_name_or_path, device=device, use_auth_token=use_auth_token
         )
-        SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id] = embedding_backend
+        _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id] = embedding_backend
         return embedding_backend
 
 
@@ -42,6 +42,6 @@ class _SentenceTransformersEmbeddingBackend:
             model_name_or_path=model_name_or_path, device=device, use_auth_token=use_auth_token
         )
 
-    def embed(self, data: List[str], **kwargs) -> List[np.ndarray]:
+    def embed(self, data: List[str], **kwargs) -> List[List[float]]:
         embedding = self.model.encode(data, **kwargs)
-        return list(embedding)
+        return embedding
