@@ -43,5 +43,5 @@ class _SentenceTransformersEmbeddingBackend:
         )
 
     def embed(self, data: List[str], **kwargs) -> List[List[float]]:
-        embedding = self.model.encode(data, **kwargs)
-        return embedding
+        embeddings = self.model.encode(data, **kwargs).tolist()
+        return embeddings
