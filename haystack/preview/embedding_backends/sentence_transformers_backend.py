@@ -42,6 +42,6 @@ class _SentenceTransformersEmbeddingBackend:
             model_name_or_path=model_name_or_path, device=device, use_auth_token=use_auth_token
         )
 
-    def embed(self, data: List[str], **kwargs) -> List[np.ndarray]:
+    def embed(self, data: List[str], **kwargs) -> List[List[float]]:
         embedding = self.model.encode(data, **kwargs)
-        return list(embedding)
+        return embedding
