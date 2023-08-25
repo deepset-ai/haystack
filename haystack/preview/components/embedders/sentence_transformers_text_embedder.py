@@ -65,7 +65,7 @@ class SentenceTransformersTextEmbedder:
         if not isinstance(texts, list) or not isinstance(texts[0], str):
             raise ValueError(
                 "SentenceTransformersTextEmbedder expects a list of strings as input."
-                "In case you want to embed Documents, please use the SentenceTransformersDocumentEmbedder."
+                "In case you want to embed a list of Documents, please use the SentenceTransformersDocumentEmbedder."
             )
         self.warm_up()
         texts_to_embed = [self.prefix + text + self.suffix for text in texts]
