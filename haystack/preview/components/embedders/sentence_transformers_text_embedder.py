@@ -69,6 +69,7 @@ class SentenceTransformersTextEmbedder:
             )
         if not hasattr(self, "embedding_backend"):
             raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
+
         texts_to_embed = [self.prefix + text + self.suffix for text in texts]
         embeddings = self.embedding_backend.embed(
             texts_to_embed,
