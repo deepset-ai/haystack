@@ -77,7 +77,9 @@ class SentenceTransformersDocumentEmbedder:
         texts_to_embed = []
         for doc in documents:
             meta_values_to_embed = [
-                doc.metadata[key] for key in self.metadata_fields_to_embed if key in doc.metadata and doc.metadata[key]
+                str(doc.metadata[key])
+                for key in self.metadata_fields_to_embed
+                if key in doc.metadata and doc.metadata[key]
             ]
             text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.content])
             texts_to_embed.append(text_to_embed)
