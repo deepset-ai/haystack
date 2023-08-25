@@ -82,3 +82,18 @@ class TestSentenceTransformersTextEmbedder(BaseTestComponent):
         assert len(embeddings) == len(texts)
         for embedding in embeddings:
             assert isinstance(embedding, np.ndarray)
+
+    @pytest.mark.unit
+    def test_run_wrong_input_format(self):
+        embedder = SentenceTransformersTextEmbedder(model_name_or_path="model")
+        embedder.embedding_backend = MagicMock()
+        # embedder.embedding_backend.embed = lambda x, **kwargs: list(np.random.rand(len(x), 16))
+
+        string_input = "text"
+        list_integers_input = [1, 2, 3]
+
+        with pytest.raises(ValueError, match="SentenceTransformersTextEmbedder expects a list of strings as input"):
+            embedder.run(texts=string_input)
+
+        with pytest.raises(ValueError, match="SentenceTransformersTextEmbedder expects a list of strings as input"):
+            embedder.run(texts=list_integers_input)

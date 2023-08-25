@@ -62,6 +62,11 @@ class SentenceTransformersTextEmbedder:
     @component.output_types(embeddings=List[np.ndarray])
     def run(self, texts: List[str]):
         """Embed a list of strings."""
+        if not isinstance(texts, list) or not isinstance(texts[0], str):
+            raise ValueError(
+                "SentenceTransformersTextEmbedder expects a list of strings as input."
+                "In case you want to embed Documents, please use the SentenceTransformersDocumentEmbedder."
+            )
         self.warm_up()
         texts_to_embed = [self.prefix + text + self.suffix for text in texts]
         embeddings = self.embedding_backend.embed(
