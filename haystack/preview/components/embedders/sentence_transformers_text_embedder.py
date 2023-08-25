@@ -1,7 +1,5 @@
 from typing import List, Optional, Union
 
-import numpy as np
-
 from haystack.preview import component
 from haystack.preview.embedding_backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
@@ -16,7 +14,7 @@ class SentenceTransformersTextEmbedder:
 
     def __init__(
         self,
-        model_name_or_path: str,
+        model_name_or_path: str = "sentence-transformers/all-mpnet-base-v2",
         device: Optional[str] = None,
         use_auth_token: Union[bool, str, None] = None,
         prefix: str = "",
@@ -28,7 +26,7 @@ class SentenceTransformersTextEmbedder:
         """
         Create a SentenceTransformersTextEmbedder component.
 
-        :param model_name_or_path: Local path or name of the model in Hugging Face's model hub, such as ``'sentence-transformers/all-MiniLM-L6-v2'``.
+        :param model_name_or_path: Local path or name of the model in Hugging Face's model hub, such as ``'sentence-transformers/all-mpnet-base-v2'``.
         :param device: Device (like 'cuda' / 'cpu') that should be used for computation. If None, checks if a GPU can be used.
         :param use_auth_token: The API token used to download private models from Hugging Face.
                         If this parameter is set to `True`, then the token generated when running
