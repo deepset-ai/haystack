@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 from haystack.preview import component
 from haystack.preview import Document
 from haystack.preview.embedding_backends.sentence_transformers_backend import (
-    SentenceTransformersEmbeddingBackendFactory,
+    _SentenceTransformersEmbeddingBackendFactory,
 )
 
 
@@ -16,7 +16,7 @@ class SentenceTransformersDocumentEmbedder:
 
     def __init__(
         self,
-        model_name_or_path: str,
+        model_name_or_path: str = "sentence-transformers/all-mpnet-base-v2",
         device: Optional[str] = None,
         use_auth_token: Union[bool, str, None] = None,
         batch_size: int = 32,
@@ -28,7 +28,7 @@ class SentenceTransformersDocumentEmbedder:
         """
         Create a SentenceTransformersDocumentEmbedder component.
 
-        :param model_name_or_path: Local path or name of the model in Hugging Face's model hub, such as ``'sentence-transformers/all-MiniLM-L6-v2'``.
+        :param model_name_or_path: Local path or name of the model in Hugging Face's model hub, such as ``'sentence-transformers/all-mpnet-base-v2'``.
         :param device: Device (like 'cuda' / 'cpu') that should be used for computation. If None, checks if a GPU can be used.
         :param use_auth_token: The API token used to download private models from Hugging Face.
                         If this parameter is set to `True`, then the token generated when running
@@ -55,7 +55,7 @@ class SentenceTransformersDocumentEmbedder:
         Load the embedding backend.
         """
         if not hasattr(self, "embedding_backend"):
-            self.embedding_backend = SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
+            self.embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
                 model_name_or_path=self.model_name_or_path, device=self.device, use_auth_token=self.use_auth_token
             )
 
@@ -66,11 +66,12 @@ class SentenceTransformersDocumentEmbedder:
         The embedding of each Document is stored in the `embedding` field of the Document.
         """
         if not isinstance(documents, list) or not isinstance(documents[0], Document):
-            raise ValueError(
+            raise TypeError(
                 "SentenceTransformersDocumentEmbedder expects a list of Documents as input."
                 "In case you want to embed a list of strings, please use the SentenceTransformersTextEmbedder."
             )
-        self.warm_up()
+        if not hasattr(self, "embedding_backend"):
+            raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
 
         # TODO: once non textual Documents are properly supported, we should also prepare them for embedding here
 

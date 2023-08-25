@@ -43,7 +43,7 @@ class TestSentenceTransformersDocumentEmbedder(BaseTestComponent):
 
     @pytest.mark.unit
     @patch(
-        "haystack.preview.components.embedders.sentence_transformers_document_embedder.SentenceTransformersEmbeddingBackendFactory"
+        "haystack.preview.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup(self, mocked_factory):
         embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
@@ -55,7 +55,7 @@ class TestSentenceTransformersDocumentEmbedder(BaseTestComponent):
 
     @pytest.mark.unit
     @patch(
-        "haystack.preview.components.embedders.sentence_transformers_document_embedder.SentenceTransformersEmbeddingBackendFactory"
+        "haystack.preview.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup_doesnt_reload(self, mocked_factory):
         embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
@@ -68,7 +68,7 @@ class TestSentenceTransformersDocumentEmbedder(BaseTestComponent):
     def test_run(self):
         embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
         embedder.embedding_backend = MagicMock()
-        embedder.embedding_backend.embed = lambda x, **kwargs: list(np.random.rand(len(x), 16))
+        embedder.embedding_backend.embed = lambda x, **kwargs: np.random.rand(len(x), 16).tolist()
 
         documents = [Document(content=f"document number {i}") for i in range(5)]
 
@@ -78,7 +78,8 @@ class TestSentenceTransformersDocumentEmbedder(BaseTestComponent):
         assert len(result["documents"]) == len(documents)
         for doc in result["documents"]:
             assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, np.ndarray)
+            assert isinstance(doc.embedding, list)
+            assert isinstance(doc.embedding[0], float)
 
     @pytest.mark.unit
     def test_run_wrong_input_format(self):
@@ -88,12 +89,12 @@ class TestSentenceTransformersDocumentEmbedder(BaseTestComponent):
         list_integers_input = [1, 2, 3]
 
         with pytest.raises(
-            ValueError, match="SentenceTransformersDocumentEmbedder expects a list of Documents as input"
+            TypeError, match="SentenceTransformersDocumentEmbedder expects a list of Documents as input"
         ):
             embedder.run(documents=string_input)
 
         with pytest.raises(
-            ValueError, match="SentenceTransformersDocumentEmbedder expects a list of Documents as input"
+            TypeError, match="SentenceTransformersDocumentEmbedder expects a list of Documents as input"
         ):
             embedder.run(documents=list_integers_input)
 
@@ -103,7 +104,6 @@ class TestSentenceTransformersDocumentEmbedder(BaseTestComponent):
             model_name_or_path="model", metadata_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
         embedder.embedding_backend = MagicMock()
-        # embedder.embedding_backend.embed = lambda x, **kwargs: list(np.random.rand(len(x), 16))
 
         documents = [
             Document(content=f"document number {i}", metadata={"meta_field": f"meta_value {i}"}) for i in range(5)
