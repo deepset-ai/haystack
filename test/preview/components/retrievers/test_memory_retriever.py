@@ -8,8 +8,6 @@ from haystack.preview.components.retrievers.memory import MemoryRetriever
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores import MemoryDocumentStore
 
-from test.preview.components.base import BaseTestComponent
-
 
 @pytest.fixture()
 def mock_docs():
@@ -22,17 +20,7 @@ def mock_docs():
     ]
 
 
-class TestMemoryRetriever(BaseTestComponent):
-    # TODO: We're going to rework these tests when we'll remove BaseTestComponent.
-    # We also need to implement `to_dict` and `from_dict` to test this properly.
-    # @pytest.mark.unit
-    # def test_save_load(self, tmp_path):
-    #     self.assert_can_be_saved_and_loaded_in_pipeline(MemoryRetriever(MemoryDocumentStore()), tmp_path)
-
-    # @pytest.mark.unit
-    # def test_save_load_with_parameters(self, tmp_path):
-    #     self.assert_can_be_saved_and_loaded_in_pipeline(MemoryRetriever(top_k=5, scale_score=False), tmp_path)
-
+class TestMemoryRetriever:
     @pytest.mark.unit
     def test_init_default(self):
         retriever = MemoryRetriever(MemoryDocumentStore())
