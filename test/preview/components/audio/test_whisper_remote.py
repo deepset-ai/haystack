@@ -1,3 +1,4 @@
+from typing import Literal
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,6 +24,63 @@ class TestRemoteWhisperTranscriber:
     def test_init_no_key(self):
         with pytest.raises(ValueError, match="API key is None"):
             RemoteWhisperTranscriber(api_key=None)
+
+    @pytest.mark.unit
+    def test_to_dict(self):
+        transcriber = RemoteWhisperTranscriber(api_key="test")
+        data = transcriber.to_dict()
+        assert data == {
+            "type": "RemoteWhisperTranscriber",
+            "init_parameters": {
+                "model_name": "whisper-1",
+                "api_key": "test",
+                "api_base": "https://api.openai.com/v1",
+                "whisper_params": {},
+            },
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_custom_init_parameters(self, monkeypatch):
+        monkeypatch.setattr(
+            "haystack.preview.components.audio.whisper_remote.WhisperRemoteModel", Literal["whisper-1", "whisper-2"]
+        )
+
+        transcriber = RemoteWhisperTranscriber(
+            api_key="test",
+            model_name="whisper-2",
+            api_base="https://my.api.base/something_else/v3",
+            whisper_params={"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+        )
+        data = transcriber.to_dict()
+        assert data == {
+            "type": "RemoteWhisperTranscriber",
+            "init_parameters": {
+                "model_name": "whisper-2",
+                "api_key": "test",
+                "api_base": "https://my.api.base/something_else/v3",
+                "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+            },
+        }
+
+    @pytest.mark.unit
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setattr(
+            "haystack.preview.components.audio.whisper_remote.WhisperRemoteModel", Literal["whisper-1", "whisper-2"]
+        )
+        data = {
+            "type": "RemoteWhisperTranscriber",
+            "init_parameters": {
+                "model_name": "whisper-2",
+                "api_key": "test",
+                "api_base": "https://my.api.base/something_else/v3",
+                "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+            },
+        }
+        transcriber = RemoteWhisperTranscriber.from_dict(data)
+        assert transcriber.model_name == "whisper-2"
+        assert transcriber.api_key == "test"
+        assert transcriber.api_base == "https://my.api.base/something_else/v3"
+        assert transcriber.whisper_params == {"return_segments": True, "temperature": [0.1, 0.6, 0.8]}
 
     @pytest.mark.unit
     def test_run_with_path(self, preview_samples_path):
