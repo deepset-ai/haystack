@@ -3,21 +3,13 @@ import sys
 import pytest
 
 from haystack.preview.components.classifiers.file_classifier import FileExtensionClassifier
-from test.preview.components.base import BaseTestComponent
-from test.conftest import preview_samples_path
 
 
 @pytest.mark.skipif(
     sys.platform in ["win32", "cygwin"],
     reason="Can't run on Windows Github CI, need access to registry to get mime types",
 )
-class TestFileExtensionClassifier(BaseTestComponent):
-    @pytest.mark.unit
-    def test_save_load(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(
-            FileExtensionClassifier(mime_types=["text/plain", "audio/x-wav", "image/jpeg"]), tmp_path
-        )
-
+class TestFileExtensionClassifier:
     @pytest.mark.unit
     def test_run(self, preview_samples_path):
         """
@@ -85,5 +77,5 @@ class TestFileExtensionClassifier(BaseTestComponent):
         """
         Test that the component handles files with unknown mime types.
         """
-        with pytest.raises(ValueError, match="The list of mime types"):
+        with pytest.raises(ValueError, match="Unknown mime type:"):
             FileExtensionClassifier(mime_types=["type_invalid"])
