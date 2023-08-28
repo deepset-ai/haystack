@@ -17,6 +17,8 @@ on:
     paths:
       - "**.py"
       - "pyproject.toml"
+      - "!haystack/preview/**/*.py"  # See tests_preview.yml
+      - "!test/preview/**/*.py"  # See tests_preview.yml
       - "!.github/**/*.py"
       - "!rest_api/**/*.py"
       - "!docs/**/*.py"
