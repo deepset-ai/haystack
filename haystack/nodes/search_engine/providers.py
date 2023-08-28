@@ -237,7 +237,7 @@ class BingAPI(SearchEngine):
         :param api_key: API key for the Bing API.
         :param top_k: Number of documents to return.
         :param allowed_domains: List of domains to limit the search to.
-        :param search_engine_kwargs: Additional parameters passed to the SerperDev API. As an example, you can pass the market parameter to specify the market to use for the query: 'mkt':'en-US'.
+        :param search_engine_kwargs: Additional parameters passed to the Bing. As an example, you can pass the market parameter to specify the market to use for the query: 'mkt':'en-US'.
         """
         super().__init__()
         self.api_key = api_key
@@ -248,7 +248,7 @@ class BingAPI(SearchEngine):
     def search(self, query: str, **kwargs) -> List[Document]:
         """
         :param query: Query string.
-        :param kwargs: Additional parameters passed to the BingAPI API.
+        :param kwargs: Additional parameters passed to the BingAPI.
                        As an example, you can pass the market parameter to specify the market to use for the query: 'mkt':'en-US'.
                        If you don't specify the market parameter, the default market for the user's location is used.
                        For a complete list of the market codes, see [Market Codes](https://learn.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference#market-codes).
