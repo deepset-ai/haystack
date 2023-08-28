@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any, Optional, Dict, List, Tuple, Union, Callable, Type
 
-from copy import deepcopy
+from copy import deepcopy, copy
 from abc import ABC, abstractmethod
 from functools import wraps
 import inspect
@@ -216,7 +216,7 @@ class BaseComponent(ABC):
           - collate `_debug` information if present
           - merge component output with the preceding output and pass it on to the subsequent Component in the Pipeline
         """
-        arguments = deepcopy(kwargs)
+        arguments = copy(kwargs)
         params = arguments.get("params") or {}
 
         run_signature_args = inspect.signature(run_method).parameters.keys()

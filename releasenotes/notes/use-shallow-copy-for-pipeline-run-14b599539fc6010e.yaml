@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix the bug that object can't be passed as an argument to pipeline.run()
