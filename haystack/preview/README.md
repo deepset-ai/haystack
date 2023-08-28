@@ -3,7 +3,7 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/haystack-ai.svg)](https://pypi.org/project/haystack-ai)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/haystack-ai.svg)](https://pypi.org/project/haystack-ai)
 
-Since Haystack v1.15, we’ve been slowly introducing new components and features to Haystack in the background in preparation for Haystack 2.0. In this `preview` module, you can find what’s been implemented so far regarding Haystack 2.0. **Keep in mind that Haystack 2.0 is still a work in progress.**
+Since Haystack v1.15, we’ve been slowly introducing new components and features to Haystack in the background in preparation for Haystack 2.0. In this `preview` module, you can find what’s been implemented so far regarding Haystack 2.0. **Keep in mind that Haystack 2.0 is still a work in progress.** Read more about Haystack 2.0 in [Shaping Haystack 2.0](https://github.com/deepset-ai/haystack/discussions/5568).
 
 ## 💾 Installation
 
