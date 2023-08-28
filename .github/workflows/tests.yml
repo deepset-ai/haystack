@@ -114,7 +114,6 @@ jobs:
           - nodes
           - agents
           - cli
-          - preview
           - prompt
           - pipelines
           - utils
