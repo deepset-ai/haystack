@@ -5,11 +5,8 @@ import numpy as np
 
 from haystack.preview.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
 
-from test.preview.components.base import BaseTestComponent
 
-
-class TestSentenceTransformersTextEmbedder(BaseTestComponent):
-    # TODO: We're going to rework these tests when we'll remove BaseTestComponent.
+class TestSentenceTransformersTextEmbedder:
 
     @pytest.mark.unit
     def test_init_default(self):
