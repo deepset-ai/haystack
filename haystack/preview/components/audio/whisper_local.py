@@ -55,6 +55,19 @@ class LocalWhisperTranscriber:
         if not self._model:
             self._model = whisper.load_model(self.model_name, device=self.device)
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        # return default_to_dict(self, model_name_or_path=self.model_name, device=self.device, whisper_params=self.whisper_params)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "LocalWhisperTranscriber":
+        """
+        Deserialize this component from a dictionary.
+        """
+        # return default_from_dict(cls, data)
+
     @component.output_types(documents=List[Document])
     def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None):
         """
