@@ -27,6 +27,47 @@ class TestLocalWhisperTranscriber:
             LocalWhisperTranscriber(model_name_or_path="whisper-1")
 
     @pytest.mark.unit
+    def test_to_dict(self):
+        transcriber = LocalWhisperTranscriber()
+        data = transcriber.to_dict()
+        assert data == {
+            "type": "LocalWhisperTranscriber",
+            "init_parameters": {"model_name_or_path": "large", "device": "cpu", "whisper_params": {}},
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_custom_init_parameters(self):
+        transcriber = LocalWhisperTranscriber(
+            model_name_or_path="tiny",
+            device="cuda",
+            whisper_params={"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+        )
+        data = transcriber.to_dict()
+        assert data == {
+            "type": "LocalWhisperTranscriber",
+            "init_parameters": {
+                "model_name_or_path": "tiny",
+                "device": "cuda",
+                "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+            },
+        }
+
+    @pytest.mark.unit
+    def test_from_dict(self):
+        data = {
+            "type": "LocalWhisperTranscriber",
+            "init_parameters": {
+                "model_name_or_path": "tiny",
+                "device": "cuda",
+                "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+            },
+        }
+        transcriber = LocalWhisperTranscriber.from_dict(data)
+        assert transcriber.model_name == "tiny"
+        assert transcriber.device == torch.device("cuda")
+        assert transcriber.whisper_params == {"return_segments": True, "temperature": [0.1, 0.6, 0.8]}
+
+    @pytest.mark.unit
     def test_warmup(self):
         with patch("haystack.preview.components.audio.whisper_local.whisper") as mocked_whisper:
             transcriber = LocalWhisperTranscriber(model_name_or_path="large-v2")
