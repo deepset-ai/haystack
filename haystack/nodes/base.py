@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any, Optional, Dict, List, Tuple, Union, Callable, Type
 
-from copy import deepcopy, copy
+from copy import copy
 from abc import ABC, abstractmethod
 from functools import wraps
 import inspect
