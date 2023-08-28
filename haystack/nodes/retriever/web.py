@@ -77,8 +77,8 @@ class WebRetriever(BaseRetriever):
         self.web_search = WebSearch(
             api_key=api_key,
             top_k=top_search_results,
+            allowed_domains=allowed_domains,
             search_engine_provider=search_engine_provider,
-            search_engine_kwargs={"allowed_domains": allowed_domains},
         )
         self.mode = mode
         self.cache_document_store = cache_document_store
