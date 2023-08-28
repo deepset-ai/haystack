@@ -1,18 +1,14 @@
 from unittest.mock import patch, MagicMock
 import pytest
+import numpy as np
 
 from haystack.preview import Document
 from haystack.preview.components.embedders.sentence_transformers_document_embedder import (
     SentenceTransformersDocumentEmbedder,
 )
 
-from test.preview.components.base import BaseTestComponent
 
-import numpy as np
-
-
-class TestSentenceTransformersDocumentEmbedder(BaseTestComponent):
-    # TODO: We're going to rework these tests when we'll remove BaseTestComponent.
+class TestSentenceTransformersDocumentEmbedder:
 
     @pytest.mark.unit
     def test_init_default(self):
