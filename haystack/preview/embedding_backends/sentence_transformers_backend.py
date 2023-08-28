@@ -1,5 +1,4 @@
 from typing import List, Optional, Union, Dict
-import numpy as np
 
 from haystack.preview.lazy_imports import LazyImport
 
@@ -43,5 +42,5 @@ class _SentenceTransformersEmbeddingBackend:
         )
 
     def embed(self, data: List[str], **kwargs) -> List[List[float]]:
-        embedding = self.model.encode(data, **kwargs)
-        return embedding
+        embeddings = self.model.encode(data, **kwargs).tolist()
+        return embeddings
