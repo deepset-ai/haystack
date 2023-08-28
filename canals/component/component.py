@@ -71,7 +71,6 @@
 import logging
 import inspect
 from typing import Protocol, Union, Dict, Any, get_origin, get_args
-from keyword import iskeyword
 from functools import wraps
 
 from canals.errors import ComponentError
@@ -129,7 +128,6 @@ class _Component:
     def set_input_types(self, instance, **types):
         """
         Method that validates the input kwargs of the run method.
-        `types` names must be valid Python identifiers and must not clash with any keyword.
 
         Use as:
 
@@ -146,12 +144,6 @@ class _Component:
                 return {"output_1": kwargs["value_1"], "output_2": ""}
         ```
         """
-        for name in types:
-            if not _is_valid_socket_name(name):
-                raise ComponentError(
-                    f"Invalid socket name '{name}'. Socket names must be valid Python identifiers and must not clash with any keyword."
-                )
-
         run_method = instance.run
 
         def wrapper(**kwargs):
@@ -169,7 +161,6 @@ class _Component:
     def set_output_types(self, instance, **types):
         """
         Method that validates the output dictionary of the run method.
-        `types` names must be valid Python identifiers and must not clash with any keyword.
 
         Use as:
 
@@ -188,12 +179,6 @@ class _Component:
         if not types:
             return
 
-        for name in types:
-            if not _is_valid_socket_name(name):
-                raise ComponentError(
-                    f"Invalid socket name '{name}'. Socket names must be valid Python identifiers and must not clash with any keyword."
-                )
-
         run_method = instance.run
 
         def wrapper(*args, **kwargs):
@@ -209,7 +194,6 @@ class _Component:
     def output_types(self, **types):
         """
         Decorator factory that validates the output dictionary of the run method.
-        `types` names must be valid Python identifiers and must not clash with any keyword.
 
         Use as:
 
@@ -221,11 +205,6 @@ class _Component:
                 return {"output_1": 1, "output_2": "2"}
         ```
         """
-        for name in types:
-            if not _is_valid_socket_name(name):
-                raise ComponentError(
-                    f"Invalid socket name '{name}'. Socket names must be valid Python identifiers and must not clash with any keyword."
-                )
 
         def output_types_decorator(run_method):
             """
@@ -306,11 +285,3 @@ def _is_optional(type_: type) -> bool:
     Utility method that returns whether a type is Optional.
     """
     return get_origin(type_) is Union and type(None) in get_args(type_)
-
-
-def _is_valid_socket_name(name: str) -> bool:
-    """
-    Utility method that checks if a string a valid socket name.
-    Socket names must be valid Python identifiers and must clash with any keyword.
-    """
-    return name.isidentifier() and not iskeyword(name)
