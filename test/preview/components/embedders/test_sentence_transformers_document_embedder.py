@@ -9,7 +9,6 @@ from haystack.preview.components.embedders.sentence_transformers_document_embedd
 
 
 class TestSentenceTransformersDocumentEmbedder:
-
     @pytest.mark.unit
     def test_init_default(self):
         embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
