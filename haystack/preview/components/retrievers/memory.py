@@ -41,6 +41,19 @@ class MemoryRetriever:
         self.top_k = top_k
         self.scale_score = scale_score
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        # return default_to_dict(self, ...)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MemoryRetriever":
+        """
+        Deserialize this component from a dictionary.
+        """
+        # return default_from_dict(cls, data)
+
     @component.output_types(documents=List[List[Document]])
     def run(
         self,

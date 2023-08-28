@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 
 from haystack.preview import component
 from haystack.preview.embedding_backends.sentence_transformers_backend import (
@@ -47,6 +47,19 @@ class SentenceTransformersTextEmbedder:
         self.batch_size = batch_size
         self.progress_bar = progress_bar
         self.normalize_embeddings = normalize_embeddings
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        # return default_to_dict(self, ...)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersTextEmbedder":
+        """
+        Deserialize this component from a dictionary.
+        """
+        # return default_from_dict(cls, data)
 
     def warm_up(self):
         """

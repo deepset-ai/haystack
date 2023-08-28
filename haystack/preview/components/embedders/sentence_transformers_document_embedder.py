@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 
 from haystack.preview import component
 from haystack.preview import Document
@@ -49,6 +49,19 @@ class SentenceTransformersDocumentEmbedder:
         self.normalize_embeddings = normalize_embeddings
         self.metadata_fields_to_embed = metadata_fields_to_embed or []
         self.embedding_separator = embedding_separator
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        # return default_to_dict(self, ...)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersDocumentEmbedder":
+        """
+        Deserialize this component from a dictionary.
+        """
+        # return default_from_dict(cls, data)
 
     def warm_up(self):
         """

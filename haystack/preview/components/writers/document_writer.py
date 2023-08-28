@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from haystack.preview import component, Document
 from haystack.preview.document_stores import DocumentStore, DuplicatePolicy
@@ -18,6 +18,19 @@ class DocumentWriter:
         """
         self.document_store = document_store
         self.policy = policy
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        # return default_to_dict(self, ...)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DocumentWriter":
+        """
+        Deserialize this component from a dictionary.
+        """
+        # return default_from_dict(cls, data)
 
     def run(self, documents: List[Document], policy: Optional[DuplicatePolicy] = None):
         """

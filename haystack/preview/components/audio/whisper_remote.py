@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from haystack.preview.utils import request_with_retry
-from haystack.preview import component, Document, default_to_dict, default_from_dict
+from haystack.preview import component, Document
 
 logger = logging.getLogger(__name__)
 
