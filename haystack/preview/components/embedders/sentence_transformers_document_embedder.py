@@ -41,7 +41,7 @@ class SentenceTransformersDocumentEmbedder:
 
         self.model_name_or_path = model_name_or_path
         # TODO: remove device parameter and use Haystack's device management once migrated
-        self.device = device
+        self.device = device or "cpu"
         self.use_auth_token = use_auth_token
         self.batch_size = batch_size
         self.progress_bar = progress_bar
@@ -56,7 +56,7 @@ class SentenceTransformersDocumentEmbedder:
         return default_to_dict(
             self,
             model_name_or_path=self.model_name_or_path,
-            device=str(self.device) if self.device else None,
+            device=self.device,
             use_auth_token=self.use_auth_token,
             batch_size=self.batch_size,
             progress_bar=self.progress_bar,
