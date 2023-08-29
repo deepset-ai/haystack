@@ -46,7 +46,6 @@ class MemoryRetriever:
         Serialize this component to a dictionary.
         """
         docstore = self.document_store.to_dict()
-        docstore.pop("hash", None)
         return default_to_dict(
             self, document_store=docstore, filters=self.filters, top_k=self.top_k, scale_score=self.scale_score
         )

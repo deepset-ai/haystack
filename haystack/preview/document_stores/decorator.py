@@ -47,11 +47,7 @@ def default_document_store_to_dict(store_: DocumentStore) -> Dict[str, Any]:
     Default DocumentStore serializer.
     Serializes a DocumentStore to a dictionary.
     """
-    return {
-        "hash": id(store_),
-        "type": store_.__class__.__name__,
-        "init_parameters": getattr(store_, "init_parameters", {}),
-    }
+    return {"type": store_.__class__.__name__, "init_parameters": getattr(store_, "init_parameters", {})}
 
 
 def default_document_store_from_dict(cls: Type[DocumentStore], data: Dict[str, Any]) -> DocumentStore:
