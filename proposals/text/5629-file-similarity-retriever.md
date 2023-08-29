@@ -6,13 +6,13 @@
 
 # Summary
 
-The retriever takes a file ID as query, searches for all documents from that file in the doc store and then performs one query for these documents, finding similar files for each.
+The retriever takes a file ID as query, searches for all documents from that file in the doc store and then performs a query for each document to find similar documents for each. Then these search results for each document are aggregated to produce a list of similar files.
 
 # Basic example
 
 The FileSimilarityRetriever would be instantiated as follows:
 
-''' python
+``` python
 
 	  retriever = FileSimilarityRetriever(
 	      document_store = ElasticSearchDocumentStore,
@@ -21,11 +21,11 @@ The FileSimilarityRetriever would be instantiated as follows:
 	      file_aggregation_key = "file_id",
           max_num_queries = 50
 	  )
-'''
+```
 
 And here is an example of how the node would work in the context of a full pipeline:
 
-''' yaml
+``` yaml
 
 version: '1.19.0'
 name: 'FileSim'
@@ -75,7 +75,7 @@ pipelines:
       - name: DocumentStore
         inputs: [EmbeddingRetriever]
 
-'''
+```
 
 # Motivation
 
@@ -131,4 +131,4 @@ Not many unresolved questions, I'll just need to see if the retriever can be ado
 
 Another open question is whether it would be a good idea to enable providing a JoinDocuments node in the parameters (after the primary_retriever and secondary_retriever), to make results aggregation more flexible. This would make it possible to (in the definition of JoinDocuments) choose the join_mode (concatenate/merge/reciprocal_rank_fusion) and in case "merge" is chosen, it would also be possible to set weights per retriever.
 
-Alternatively, we could change how the FileSimilarityRetriever works and instead of primary_retriever + secondary_retriever + join_node provide it right away with a hybrid document search pipeline that includes all these elements, and just make FileSimilarityRetriever iteratively perform the document search for all docs pertaining to a file and output the top_k documents found. But this looping of doc search pipeline execution within a filesim pipeline may not be currently supported. Is this something that would be possible in Haystack 2.0?
+Alternatively, we could change how the FileSimilarityRetriever works and instead of primary_retriever + secondary_retriever + join_node provide it right away with a hybrid document search pipeline that includes all these elements, and just make FileSimilarityRetriever iteratively perform the document search for all docs pertaining to a file and output the top_k documents found. But this looping of doc search pipeline execution within a filesim pipeline is not a typical design pattern in Haystack v1 and we are unsure if it would be a good approach.
