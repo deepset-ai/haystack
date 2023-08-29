@@ -1,7 +1,7 @@
 from typing import Dict, List, Any, Optional
 
-from haystack.preview import component, Document
-from haystack.preview.document_stores import MemoryDocumentStore
+from haystack.preview import component, Document, default_to_dict, default_from_dict, DeserializationError
+from haystack.preview.document_stores import MemoryDocumentStore, document_store
 
 
 @component
@@ -40,6 +40,33 @@ class MemoryRetriever:
         self.filters = filters
         self.top_k = top_k
         self.scale_score = scale_score
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        docstore = self.document_store.to_dict()
+        return default_to_dict(
+            self, document_store=docstore, filters=self.filters, top_k=self.top_k, scale_score=self.scale_score
+        )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MemoryRetriever":
+        """
+        Deserialize this component from a dictionary.
+        """
+        init_params = data.get("init_parameters", {})
+        if "document_store" not in init_params:
+            raise DeserializationError("Missing 'document_store' in serialization data")
+        if "type" not in init_params["document_store"]:
+            raise DeserializationError("Missing 'type' in document store's serialization data")
+        if init_params["document_store"]["type"] not in document_store.registry:
+            raise DeserializationError(f"DocumentStore type '{init_params['document_store']['type']}' not found")
+
+        docstore_class = document_store.registry[init_params["document_store"]["type"]]
+        docstore = docstore_class.from_dict(init_params["document_store"])
+        data["init_parameters"]["document_store"] = docstore
+        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[List[Document]])
     def run(
