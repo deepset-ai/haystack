@@ -48,7 +48,7 @@ classifiers = [
 dependencies = [
   "requests",
   "pydantic<2",
-  "transformers==4.32.0",
+  "transformers==4.32.1",
   "safetensors<0.3.2", # related issue: https://github.com/huggingface/safetensors/issues/314
   "pandas",
   "rank_bm25",
