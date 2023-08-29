@@ -18,7 +18,8 @@ from haystack.schema import Document
 
 def test_faq_pipeline():
     documents = [
-        {"content": f"How to test module-{i}?", "meta": {"source": f"wiki{i}", "answer": f"Using tests for module-{i}"}} for i in range(1, 6)
+        {"content": f"How to test module-{i}?", "meta": {"source": f"wiki{i}", "answer": f"Using tests for module-{i}"}}
+        for i in range(1, 6)
     ]
     document_store = InMemoryDocumentStore()
     retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert")
