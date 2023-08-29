@@ -127,6 +127,8 @@ As for documentation needs, some info on how to use this retriever would be good
 
 # Unresolved questions
 
-Not many unresolved questions, I'll just need to adopt the retriever so it inherits from the BaseRetriever and not BaseComponent. Plus looks like I'll need to add the "retrieve_batch" method as currently it only has "retrieve".
+Not many unresolved questions, I'll just need to see if the retriever can be adopted so it inherits from the BaseRetriever and not BaseComponent. Plus I might need to add the "retrieve_batch" method as currently it only has "retrieve".
 
-Also we need to make sure that if/when the custom node is deprecated and we transition to using this node in Haystack, there are no disruptions to production pipelines that have been using this node and they get adjusted accordingly.
+Another open question is whether it would be a good idea to enable providing a JoinDocuments node in the parameters (after the primary_retriever and secondary_retriever), to make results aggregation more flexible. This would make it possible to (in the definition of JoinDocuments) choose the join_mode (concatenate/merge/reciprocal_rank_fusion) and in case "merge" is chosen, it would also be possible to set weights per retriever.
+
+Alternatively, we could change how the FileSimilarityRetriever works and instead of primary_retriever + secondary_retriever + join_node provide it right away with a hybrid document search pipeline that includes all these elements, and just make FileSimilarityRetriever iteratively perform the document search for all docs pertaining to a file and output the top_k documents found. But this looping of doc search pipeline execution within a filesim pipeline may not be currently supported. Is this something that would be possible in Haystack 2.0?
