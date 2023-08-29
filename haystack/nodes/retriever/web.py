@@ -51,6 +51,7 @@ class WebRetriever(BaseRetriever):
         api_key: str,
         search_engine_provider: Union[str, SearchEngine] = "SerperDev",
         allowed_domains: Optional[List[str]] = None,
+        link_content_fetcher: Optional[LinkContentFetcher] = None,
         top_search_results: Optional[int] = 10,
         top_k: Optional[int] = 5,
         mode: Literal["snippets", "raw_documents", "preprocessed_documents"] = "snippets",
@@ -64,6 +65,8 @@ class WebRetriever(BaseRetriever):
         :param api_key: API key for the search engine provider.
         :param search_engine_provider: Name of the search engine provider class, see `providers.py` for a list of supported providers.
         :param allowed_domains: List of domains to restrict the search to. If not provided, the search is unrestricted.
+        :param link_content_fetcher: LinkContentFetcher to be used to fetch the content from the links. If not provided,
+        the default LinkContentFetcher is used.
         :param top_search_results: Number of top search results to be retrieved.
         :param top_k: Top k documents to be returned by the retriever.
         :param mode: Whether to return snippets, raw documents, or preprocessed documents. Snippets are the default.
@@ -80,6 +83,7 @@ class WebRetriever(BaseRetriever):
             allowed_domains=allowed_domains,
             search_engine_provider=search_engine_provider,
         )
+        self.link_content_fetcher = link_content_fetcher or LinkContentFetcher()
         self.mode = mode
         self.cache_document_store = cache_document_store
         self.document_store = cache_document_store
@@ -186,15 +190,13 @@ class WebRetriever(BaseRetriever):
         if not links:
             return []
 
-        fetcher = LinkContentFetcher(raise_on_failure=True)
-
         def link_fetch(link: SearchResult) -> List[Document]:
             """
             Encapsulate the link fetching logic in a function to be used in a ThreadPoolExecutor.
             """
             docs: List[Document] = []
             try:
-                docs = fetcher.fetch(
+                docs = self.link_content_fetcher.fetch(
                     url=link.url,
                     doc_kwargs={
                         "id_hash_keys": ["meta.url"],
