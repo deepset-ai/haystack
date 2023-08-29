@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 import math
+import bisect
 from haystack.preview import component, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
 
@@ -27,6 +28,7 @@ class ExtractiveReader:
         max_batch_size: Optional[int] = None,
         answers_per_seq: Optional[int] = None,
         no_answer: bool = True,
+        calibration_factor: float = 0.1,
     ) -> None:
         """
         Creates an ExtractiveReader
@@ -46,6 +48,7 @@ class ExtractiveReader:
         :param answers_per_seq: Number of answer candidates to consider per sequence.
             This is relevant when a document has been split into multiple sequence due to max_seq_length.
         :param no_answer: Whether to return no answer scores
+        :param calibration_factor: Factor used for calibrating confidence scores
         """
         torch_and_transformers_import.check()
         self.model = str(model)
@@ -58,6 +61,7 @@ class ExtractiveReader:
         self.max_batch_size = max_batch_size
         self.answers_per_seq = answers_per_seq
         self.no_answer = no_answer
+        self.calibration_factor = calibration_factor
 
     def warm_up(self):
         if self.model_ is None:
@@ -103,58 +107,6 @@ class ExtractiveReader:
 
         return input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids
 
-    def _softmax_across_documents(self, logits: torch.Tensor, query_ids: List[int]) -> torch.Tensor:
-        last_docs = []
-        not_last_docs = []
-        seq_id = 0
-        for query_id in range(query_ids[0], query_ids[-1] + 1):
-            while seq_id < len(query_ids) and query_ids[seq_id] == query_id:
-                if seq_id != 0:
-                    not_last_docs.append(seq_id - 1)
-                seq_id += 1
-            last_docs.append(seq_id - 1)
-
-        # The following might seem a bit obfuscated, but the goal of doing it like this is to keep the operations vectorized and on the GPU
-        # Sum all no answer logits for the query and only save in the last slice
-        no_answer_logits = logits[..., 0, 0]
-        no_answer_logits_sum = torch.cumsum(no_answer_logits, -1)
-        no_answer_logits_sum[last_docs[1:]] -= no_answer_logits_sum[last_docs[:-1]]
-        no_answer_logits_sum[not_last_docs] = -torch.inf
-        logits[..., 0, 0] = no_answer_logits_sum
-
-        exp_logits = torch.exp(logits)
-        # For softmax, we need to sum all exp_logits for each query to normalise them
-        # This is a bit more complicated because there can be multiple queries in one batch
-        # There is also a varying number of slices and documents per query so we can't just create a new axis
-        # Start by computing sum for every slice across start and end axis
-        exp_logits_sum = torch.sum(exp_logits, -1)  # Sum across end axis
-        exp_logits_sum = torch.sum(exp_logits_sum, -1)  # Sum across start axis
-
-        # Sum across all samples
-        exp_logits_sum = torch.cumsum(exp_logits_sum, -1)
-        # Every last sample of a query will have the sum of all samples belonging to the query + all other samples belonging to other queries
-        # By subtracting the value of the previous last sample, we get the sum of the items only belonging to the respective query
-        exp_logits_sum[not_last_docs] = 0
-        exp_logits_sum[last_docs[1:]] -= exp_logits_sum[last_docs[:-1]]
-        # We now have the correct sum at the indices containing the last sample for a query
-        # However, all other values are 0
-        # We can propagate these values to the other samples using cumsum again
-        # To do that, we need to revert the axis so the correct value is the first sample for each query as cumsum only goes from left to right
-        rev_sum = torch.flip(exp_logits_sum, [-1])
-        rev_cumsum = torch.cumsum(rev_sum, -1)
-        # We can again subtract the previous values so we only have the value for the current query
-        exp_logits_sum[last_docs[:-1]] = exp_logits_sum[last_docs[1:]]
-        exp_logits_sum[-1] = 0
-        rev_sum_shifted = torch.flip(exp_logits_sum, [-1])
-        rev_sum_shifted = torch.cumsum(rev_sum_shifted, -1)
-        rev_cumsum -= rev_sum_shifted
-        # Having used the reversed order for cumsum, we can revert the axis back
-        exp_sum_per_query = torch.flip(rev_cumsum, [-1])
-
-        # Now, we can finally use the sums to normalise the values
-        exp_logits /= exp_sum_per_query.unsqueeze(-1).unsqueeze(-1)
-        return exp_logits
-
     def _postprocess(
         self,
         start: torch.Tensor,
@@ -163,11 +115,8 @@ class ExtractiveReader:
         attention_mask: torch.Tensor,
         answers_per_seq: int,
         encodings: List[Encoding],
-        query_ids: List[int],
-        no_answer: bool,
     ) -> Tuple[List[List[Optional[int]]], List[List[Optional[int]]], torch.Tensor]:
         mask = sequence_ids == 1
-        mask[..., 0] = no_answer
         mask = torch.logical_and(mask, attention_mask == 1)
         start = torch.where(mask, start, -torch.inf)
         end = torch.where(mask, end, -torch.inf)
@@ -177,9 +126,9 @@ class ExtractiveReader:
         logits = start + end  # shape: (batch_size, seq_length (start), seq_length (end))
         mask = torch.ones(logits.shape[-2:], dtype=torch.bool, device=self.device)
         mask = torch.triu(mask)  # End shouldn't be before start
-        mask[0, :1] = False
+        mask[0, :] = False  # TODO: Might not be necessary because of sequence id
         masked_logits = torch.where(mask, logits, -torch.inf)
-        probabilities = self._softmax_across_documents(masked_logits, query_ids)
+        probabilities = torch.sigmoid(masked_logits * self.calibration_factor)
 
         flat_probabilities = probabilities.flatten(-2, -1)  # necessary for topk
         candidates = torch.topk(flat_probabilities, answers_per_seq)
@@ -213,6 +162,7 @@ class ExtractiveReader:
         top_p: Optional[float],
         query_ids: List[int],
         document_ids: List[int],
+        no_answer: bool,
     ) -> List[List[ExtractedAnswer]]:
         flat_answers_without_queries: List[Tuple[Document, Optional[str], float, Optional[int], Optional[int]]] = [
             (doc := flattened_documents[document_id], doc.content[start:end], probability.item(), start, end)
@@ -244,6 +194,16 @@ class ExtractiveReader:
             current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
             if top_k is not None:
                 current_answers = current_answers[:top_k]
+            if no_answer:
+                no_answer_probability = math.prod(1 - answer.probability for answer in current_answers)
+                answer = ExtractedAnswer(
+                    data=None,
+                    question=queries[query_id],
+                    metadata={},
+                    document=None,  # TODO: Change dataclass
+                    probability=no_answer_probability,
+                )
+                bisect.insort(current_answers, answer, key=lambda answer: -answer.probability)
             if top_p is not None:
                 p_sum = 0.0
                 for i, answer in enumerate(current_answers):
@@ -308,7 +268,7 @@ class ExtractiveReader:
         end_logits = torch.cat(end_logits_list)
 
         start, end, probabilities = self._postprocess(
-            start_logits, end_logits, sequence_ids, attention_mask, answers_per_seq, encodings, query_ids, no_answer
+            start_logits, end_logits, sequence_ids, attention_mask, answers_per_seq, encodings
         )
 
         answers = self._unflatten(
@@ -322,6 +282,7 @@ class ExtractiveReader:
             top_p,
             query_ids,
             document_ids,
+            no_answer,
         )
 
         return {"answers": answers}
