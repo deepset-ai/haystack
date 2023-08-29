@@ -200,8 +200,10 @@ class LinkContentFetcher(BaseComponent):
                 logger.debug("%s handler extracted content from %s", handler, url)
 
             extracted_doc["content"] = content
-            document = Document.from_dict(extracted_doc)
-            fetched_documents = self.processor.process(documents=[document]) if self.processor else [document]
+        else:
+            extracted_doc["content"] = extracted_doc.get("snippet_text", "")  # fallback to snippet_text
+        document = Document.from_dict(extracted_doc)
+        fetched_documents = self.processor.process(documents=[document]) if self.processor else [document]
 
         return fetched_documents
 
