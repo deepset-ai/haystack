@@ -1,3 +1,4 @@
+from unittest.mock import patch
 import pytest
 from pathlib import Path
 from urllib.error import URLError
@@ -13,6 +14,14 @@ def test_sklearnqueryclassifier_deprecation():
             SklearnQueryClassifier(Path("fake_model"), Path("fake_vectorizer"))
         except URLError:
             pass
+
+
+@pytest.mark.unit
+def test_query_classifier_initialized_with_token_instead_of_use_auth_token():
+    with patch("haystack.nodes.query_classifier.transformers.pipeline") as mock_transformers_pipeline:
+        classifier = TransformersQueryClassifier(task="zero-shot-classification")
+        assert "token" in mock_transformers_pipeline.call_args.kwargs
+        assert "use_auth_token" not in mock_transformers_pipeline.call_args.kwargs
 
 
 @pytest.fixture

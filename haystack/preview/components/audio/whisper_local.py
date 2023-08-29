@@ -111,7 +111,6 @@ class LocalWhisperTranscriber:
         :param audio_files: a list of paths or binary streams to transcribe
         :returns: a list of transcriptions.
         """
-        self.warm_up()
         return_segments = kwargs.pop("return_segments", False)
         transcriptions = []
         for audio_file in audio_files:

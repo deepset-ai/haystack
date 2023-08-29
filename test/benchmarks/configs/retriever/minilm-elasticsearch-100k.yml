@@ -7,6 +7,8 @@ components:
       batch_size: 5000
       similarity: cosine
       embedding_dim: 384
+      host: elasticsearch
+      port: 9200
   - name: TextConverter
     type: TextConverter
   - name: Retriever

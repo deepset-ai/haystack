@@ -17,6 +17,7 @@ jobs:
       matrix:
         folder:
           - "document_search"
+          - "pipelines"
 
     runs-on: ubuntu-latest
 
