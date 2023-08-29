@@ -35,7 +35,8 @@ class DocumentWriter:
             raise DeserializationError("Missing 'document_store' in serialization data")
         if "type" not in init_params["document_store"]:
             raise DeserializationError("Missing 'type' in document store's serialization data")
-
+        if init_params["document_store"]["type"] not in document_store.registry:
+            raise DeserializationError(f"DocumentStore of type '{init_params['document_store']['type']}' not found.")
         docstore_class = document_store.registry[init_params["document_store"]["type"]]
         docstore = docstore_class.from_dict(init_params["document_store"])
 

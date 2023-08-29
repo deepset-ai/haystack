@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from haystack.preview import Document
+from haystack.preview import Document, DeserializationError
 from haystack.preview.document_stores import document_store
 from haystack.preview.components.writers.document_writer import DocumentWriter
 from haystack.preview.document_stores import DuplicatePolicy
@@ -68,6 +68,27 @@ class TestDocumentWriter:
         assert isinstance(component.document_store, MockedDocumentStore)
         assert component.document_store.parameter == 100
         assert component.policy == DuplicatePolicy.SKIP
+
+    @pytest.mark.unit
+    def test_from_dict_without_docstore(self):
+        data = {"type": "DocumentWriter", "init_parameters": {}}
+        with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
+            DocumentWriter.from_dict(data)
+
+    @pytest.mark.unit
+    def test_from_dict_without_docstore_type(self):
+        data = {"type": "DocumentWriter", "init_parameters": {"document_store": {"init_parameters": {}}}}
+        with pytest.raises(DeserializationError, match="Missing 'type' in document store's serialization data"):
+            DocumentWriter.from_dict(data)
+
+    @pytest.mark.unit
+    def test_from_dict_nonexisting_docstore(self):
+        data = {
+            "type": "DocumentWriter",
+            "init_parameters": {"document_store": {"type": "NonexistingDocumentStore", "init_parameters": {}}},
+        }
+        with pytest.raises(DeserializationError, match="DocumentStore of type 'NonexistingDocumentStore' not found."):
+            DocumentWriter.from_dict(data)
 
     @pytest.mark.unit
     def test_run(self):
