@@ -1,7 +1,4 @@
-from typing import Dict, Any, Type
 import logging
-
-from haystack.preview.document_stores.protocols import DocumentStore
 
 logger = logging.getLogger(__name__)
 
