@@ -13,6 +13,15 @@ def test_document_store_class_default():
     assert store.filter_documents() == []
     assert store.write_documents([]) is None
     assert store.delete_documents([]) is None
+    assert store.to_dict() == {"type": "MyStore", "init_parameters": {}}
+
+
+@pytest.mark.unit
+def test_document_store_from_dict():
+    MyStore = document_store_class("MyStore")
+
+    store = MyStore.from_dict({"type": "MyStore", "init_parameters": {}})
+    assert isinstance(store, MyStore)
 
 
 @pytest.mark.unit

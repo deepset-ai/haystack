@@ -20,12 +20,14 @@ class SerpAPI(SearchEngine):
         self,
         api_key: str,
         top_k: Optional[int] = 10,
+        allowed_domains: Optional[List[str]] = None,
         engine: Optional[str] = "google",
         search_engine_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         :param api_key: API key for SerpAPI.
         :param top_k: Number of results to return.
+        :param allowed_domains: List of domains to limit the search to.
         :param engine: Search engine to use, for example google, bing, baidu, duckduckgo, yahoo, yandex.
         See the [SerpAPI documentation](https://serpapi.com/search-api) for the full list of supported engines.
         :param search_engine_kwargs: Additional parameters passed to the SerperDev API. For example, you can set 'lr' to 'lang_en'
@@ -38,6 +40,7 @@ class SerpAPI(SearchEngine):
         self.kwargs = search_engine_kwargs if search_engine_kwargs else {}
         self.engine = engine
         self.top_k = top_k
+        self.allowed_domains = allowed_domains
 
     def search(self, query: str, **kwargs) -> List[Document]:
         """
@@ -51,7 +54,9 @@ class SerpAPI(SearchEngine):
         top_k = kwargs.pop("top_k", self.top_k)
         url = "https://serpapi.com/search"
 
-        params = {"source": "python", "serp_api_key": self.api_key, "q": query, **kwargs}
+        allowed_domains = kwargs.pop("allowed_domains", self.allowed_domains)
+        query_prepend = "OR ".join(f"site:{domain} " for domain in allowed_domains) if allowed_domains else ""
+        params = {"source": "python", "serp_api_key": self.api_key, "q": query_prepend + query, **kwargs}
 
         if self.engine:
             params["engine"] = self.engine
@@ -124,16 +129,24 @@ class SerperDev(SearchEngine):
     Search engine using SerperDev API. See the [Serper Dev website](https://serper.dev/) for more details.
     """
 
-    def __init__(self, api_key: str, top_k: Optional[int] = 10, search_engine_kwargs: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        api_key: str,
+        top_k: Optional[int] = 10,
+        allowed_domains: Optional[List[str]] = None,
+        search_engine_kwargs: Optional[Dict[str, Any]] = None,
+    ):
         """
         :param api_key: API key for the SerperDev API.
         :param top_k: Number of documents to return.
+        :param allowed_domains: List of domains to limit the search to.
         :param search_engine_kwargs: Additional parameters passed to the SerperDev API.
         For example, you can set 'num' to 20 to increase the number of search results.
         """
         super().__init__()
         self.api_key = api_key
         self.top_k = top_k
+        self.allowed_domains = allowed_domains
         self.kwargs = search_engine_kwargs if search_engine_kwargs else {}
 
     def search(self, query: str, **kwargs) -> List[Document]:
@@ -144,10 +157,12 @@ class SerperDev(SearchEngine):
         """
         kwargs = {**self.kwargs, **kwargs}
         top_k = kwargs.pop("top_k", self.top_k)
+        allowed_domains = kwargs.pop("allowed_domains", self.allowed_domains)
+        query_prepend = "OR ".join(f"site:{domain} " for domain in allowed_domains) if allowed_domains else ""
 
         url = "https://google.serper.dev/search"
 
-        payload = json.dumps({"q": query, "gl": "us", "hl": "en", "autocorrect": True, **kwargs})
+        payload = json.dumps({"q": query_prepend + query, "gl": "us", "hl": "en", "autocorrect": True, **kwargs})
         headers = {"X-API-KEY": self.api_key, "Content-Type": "application/json"}
 
         response = requests.request("POST", url, headers=headers, data=payload, timeout=30)
@@ -211,21 +226,29 @@ class BingAPI(SearchEngine):
     Search engine using the Bing API. See [Bing Web Search API](https://learn.microsoft.com/en-us/bing/search-apis/bing-web-search/overview) for more details.
     """
 
-    def __init__(self, api_key: str, top_k: Optional[int] = 10, search_engine_kwargs: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        api_key: str,
+        top_k: Optional[int] = 10,
+        allowed_domains: Optional[List[str]] = None,
+        search_engine_kwargs: Optional[Dict[str, Any]] = None,
+    ):
         """
         :param api_key: API key for the Bing API.
         :param top_k: Number of documents to return.
-        :param search_engine_kwargs: Additional parameters passed to the SerperDev API. As an example, you can pass the market parameter to specify the market to use for the query: 'mkt':'en-US'.
+        :param allowed_domains: List of domains to limit the search to.
+        :param search_engine_kwargs: Additional parameters passed to the Bing. As an example, you can pass the market parameter to specify the market to use for the query: 'mkt':'en-US'.
         """
         super().__init__()
         self.api_key = api_key
         self.top_k = top_k
+        self.allowed_domains = allowed_domains
         self.kwargs = search_engine_kwargs if search_engine_kwargs else {}
 
     def search(self, query: str, **kwargs) -> List[Document]:
         """
         :param query: Query string.
-        :param kwargs: Additional parameters passed to the SerperDev API.
+        :param kwargs: Additional parameters passed to the BingAPI.
                        As an example, you can pass the market parameter to specify the market to use for the query: 'mkt':'en-US'.
                        If you don't specify the market parameter, the default market for the user's location is used.
                        For a complete list of the market codes, see [Market Codes](https://learn.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference#market-codes).
@@ -237,7 +260,10 @@ class BingAPI(SearchEngine):
         top_k = kwargs.pop("top_k", self.top_k)
         url = "https://api.bing.microsoft.com/v7.0/search"
 
-        params: Dict[str, Union[str, int, float]] = {"q": query, "count": 50, **kwargs}
+        allowed_domains = kwargs.pop("allowed_domains", self.allowed_domains)
+        query_prepend = "OR ".join(f"site:{domain} " for domain in allowed_domains) if allowed_domains else ""
+
+        params: Dict[str, Union[str, int, float]] = {"q": query_prepend + query, "count": 50, **kwargs}
 
         headers = {"Ocp-Apim-Subscription-Key": self.api_key}
 
@@ -282,12 +308,14 @@ class GoogleAPI(SearchEngine):
     def __init__(
         self,
         top_k: Optional[int] = 10,
+        allowed_domains: Optional[List[str]] = None,
         api_key: Optional[str] = None,
         engine_id: Optional[str] = None,
         search_engine_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         :param top_k: Number of documents to return.
+        :param allowed_domains: List of domains to limit the search to.
         :param api_key: API key for the Google API.
         :param engine_id: Engine ID for the Google API.
         :param search_engine_kwargs: Additional parameters passed to the Google API. As an example, you can pass the hl parameter to specify the language to use for the query: 'hl':'en'.
@@ -296,6 +324,7 @@ class GoogleAPI(SearchEngine):
         self.api_key = api_key
         self.engine_id = engine_id
         self.top_k = top_k
+        self.allowed_domains = allowed_domains
         self.kwargs = search_engine_kwargs if search_engine_kwargs else {}
 
     def _validate_environment(self):
@@ -338,8 +367,11 @@ class GoogleAPI(SearchEngine):
         self._validate_environment()
 
         top_k = kwargs.pop("top_k", self.top_k)
+        allowed_domains = kwargs.pop("allowed_domains", self.allowed_domains)
+        query_prepend = "OR ".join(f"site:{domain} " for domain in allowed_domains) if allowed_domains else ""
+
         params: Dict[str, Union[str, int, float]] = {"num": 10, **kwargs}
-        res = self.service.cse().list(q=query, cx=self.engine_id, **params).execute()
+        res = self.service.cse().list(q=query_prepend + query, cx=self.engine_id, **params).execute()
         documents: List[Document] = []
         for i, result in enumerate(res["items"]):
             documents.append(
