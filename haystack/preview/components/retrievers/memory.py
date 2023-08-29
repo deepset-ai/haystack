@@ -59,7 +59,8 @@ class MemoryRetriever:
         init_params = data.get("init_parameters", {})
         if "document_store" not in init_params:
             raise DeserializationError("Missing 'document_store' in serialization data")
-
+        if "type" not in init_params["document_store"]:
+            raise DeserializationError("Missing 'type' in document store's serialization data")
         if init_params["document_store"]["type"] not in document_store.registry:
             raise DeserializationError(f"DocumentStore type '{init_params['document_store']['type']}' not found")
 

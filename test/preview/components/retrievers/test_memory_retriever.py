@@ -96,6 +96,18 @@ class TestMemoryRetriever:
         assert component.scale_score
 
     @pytest.mark.unit
+    def test_from_dict_without_docstore(self):
+        data = {"type": "MemoryRetriever", "init_parameters": {}}
+        with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
+            MemoryRetriever.from_dict(data)
+
+    @pytest.mark.unit
+    def test_from_dict_without_docstore_type(self):
+        data = {"type": "MemoryRetriever", "init_parameters": {"document_store": {"init_parameters": {}}}}
+        with pytest.raises(DeserializationError, match="Missing 'type' in document store's serialization data"):
+            MemoryRetriever.from_dict(data)
+
+    @pytest.mark.unit
     def test_from_dict_nonexisting_docstore(self):
         data = {
             "type": "MemoryRetriever",
