@@ -110,5 +110,4 @@ def document_store_class(
         bases = (object,)
 
     cls = type(name, bases, fields)
-    cls.__name__ = name
     return document_store(cls)
