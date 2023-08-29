@@ -121,7 +121,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
             tokenizer=tokenizer,
             device=resolved_devices[0],
             revision=model_version,
-            use_auth_token=use_auth_token,
+            token=use_auth_token,
         )
 
         self.labels = labels
