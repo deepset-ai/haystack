@@ -99,50 +99,34 @@ As a general description, the FileSimilarityRetriever works by:
 FileSimilarityRetriever has the following parameters:
     document_store: The document store that the retriever should retrieve from.
     file_aggregation_key: The meta data key that should be used to aggregate documents to the file level.
-    primary_retriever: A clutch until haystack supports passing a list of retrievers.
-    secondary_retriever: A clutch until haystack supports passing a list of retrievers.
-    keep_original_score: Set this to store the original score of the returned document in the document's meta field. The document's score property will be replaced with the reciprocal rank fusion score.
+    primary_retriever (optional): First retriever (if applicable).
+    secondary_retriever (optional): Second retriever (if applicable).
+    keep_original_score (optional): Set this to store the original relevance score of the returned document in the document's meta field (the documents' scores get replaced in the FileSimilarityRetriever output with the reciprocal rank fusion score).
     top_k: How many documents to return.
-    max_query_len: How many chars can be in a query document. The document will be cut off if it is longer
-            than the maximum length. We need this here because there might be an issue with queries that are too long
-            and the BM25Retriever because an error will be thrown if the query excees the `max_clause_count` search
-            setting (https://www.elastic.co/guide/en/elasticsearch/reference/7.17/search-settings.html)
-    max_num_queries: The maximum number of queries that should be run for a single file. If the number of
-            query documents exceeds this limit, the query documents will be split into n parts so that
-            n < max_num_queries and every nth document will be kept.
-    use_existing_embeddings: Whether to re-use the existing embeddings from the index.
-            To optimize speed for the file similarity retrieval you should set this parameter to `True`.
-            This way the FileSimilarityRetriever can run on the CPU.
+    max_query_len: How many characters can be in a query document. The documents exceeding this limit will be cut off. This was added because in some cases BM25Retriever threw an error if the query exceeded the `max_clause_count` search setting (https://www.elastic.co/guide/en/elasticsearch/reference/7.17/search-settings.html)
+    max_num_queries (optional): The maximum number of queries that should be run for a single file. If the number of query documents exceeds this limit, the query documents will be split into n parts so that n < max_num_queries and every nth document will be kept.
+    use_existing_embeddings: Whether to re-use the existing embeddings from the index. To optimize speed for the file similarity retrieval you should set this parameter to `True`. This way the FileSimilarityRetriever can run on the CPU.
 
 # Drawbacks
 
-Look at the feature from the other side: what are the reasons why we should _not_ work on it? Consider the following:
-
-- What's the implementation cost, both in terms of code size and complexity?
-- Can the solution you're proposing be implemented as a separate package, outside of Haystack?
-- Does it teach people more about Haystack?
-- How does this feature integrate with other existing and planned features?
-- What's the cost of migrating existing Haystack pipelines (is it a breaking change?)?
-
-There are tradeoffs to choosing any path. Attempt to identify them here.
+Since this is a relatively small addition without any effect on existing nodes, I do not see major reasons not to add this retriever. The only consideration when using this node is the need to have a metadata field for aggregating documents to file level. The default file_id meta field works well for that. It is also important to make sure that the document store is compatible with the chosen retrieval method(s), but that is the case when using any other retriever node as well.
 
 # Alternatives
 
-What other designs have you considered? What's the impact of not adding this feature?
+Without adding this feature it will not be possible to quickly retrive similar documents to a specific file, see the Motivation section for example situations where this is useful.
 
 # Adoption strategy
 
-If we implement this proposal, how will the existing Haystack users adopt it? Is
-this a breaking change? Can we write a migration script?
+This is not a breaking change and there does not seem to be any need for a migration script. Existing Haystack users can just start using this node on as-needed basis by itself, no need for a reader/PromptNode after the FileSimilarityRetriever.
 
 # How we teach this
 
-Would implementing this feature mean the documentation must be re-organized
-or updated? Does it change how Haystack is taught to new developers at any level?
+It could be good to have a short tutorial about how this node is used, as it's slightly different in the query input and in the outputs from other retriever nodes. Alternatively, a blog post could be written about it.
 
-How should this feature be taught to the existing Haystack users (for example with a page in the docs,
-a tutorial, ...).
+As for documentation needs, some info on how to use this retriever would be good to add to the Retrievers page (https://docs.haystack.deepset.ai/docs/retriever). If you need help writing the documentation and/or the blog post/tutorial, please do not hesitate to reach out to me.
 
 # Unresolved questions
 
-Not many unresolved questions, just need to adopt the retriever so it inherits from the BaseRetriever and not BaseComponent. Plus looks like I'll need to add the "retrieve_batch" method as currently it only has "retrieve".
+Not many unresolved questions, I'll just need to adopt the retriever so it inherits from the BaseRetriever and not BaseComponent. Plus looks like I'll need to add the "retrieve_batch" method as currently it only has "retrieve".
+
+Also we need to make sure that if/when the custom node is deprecated and we transition to using this node in Haystack, there are no disruptions to production pipelines that have been using this node and they get adjusted accordingly.
