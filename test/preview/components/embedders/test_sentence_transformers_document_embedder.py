@@ -13,7 +13,7 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_init_default(self):
         embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
         assert embedder.model_name_or_path == "model"
-        assert embedder.device is None
+        assert embedder.device == "cpu"
         assert embedder.use_auth_token is None
         assert embedder.batch_size == 32
         assert embedder.progress_bar is True
@@ -25,7 +25,7 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_init_with_parameters(self):
         embedder = SentenceTransformersDocumentEmbedder(
             model_name_or_path="model",
-            device="cpu",
+            device="cuda",
             use_auth_token=True,
             batch_size=64,
             progress_bar=False,
@@ -34,7 +34,7 @@ class TestSentenceTransformersDocumentEmbedder:
             embedding_separator=" | ",
         )
         assert embedder.model_name_or_path == "model"
-        assert embedder.device == "cpu"
+        assert embedder.device == "cuda"
         assert embedder.use_auth_token is True
         assert embedder.batch_size == 64
         assert embedder.progress_bar is False
@@ -50,7 +50,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "type": "SentenceTransformersDocumentEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
-                "device": None,
+                "device": "cpu",
                 "use_auth_token": None,
                 "batch_size": 32,
                 "progress_bar": True,
@@ -64,7 +64,7 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_to_dict_with_custom_init_parameters(self):
         component = SentenceTransformersDocumentEmbedder(
             model_name_or_path="model",
-            device="cpu",
+            device="cuda",
             use_auth_token="the-token",
             batch_size=64,
             progress_bar=False,
@@ -77,7 +77,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "type": "SentenceTransformersDocumentEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
-                "device": "cpu",
+                "device": "cuda",
                 "use_auth_token": "the-token",
                 "batch_size": 64,
                 "progress_bar": False,
@@ -93,7 +93,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "type": "SentenceTransformersDocumentEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
-                "device": "cpu",
+                "device": "cuda",
                 "use_auth_token": "the-token",
                 "batch_size": 64,
                 "progress_bar": False,
@@ -104,7 +104,7 @@ class TestSentenceTransformersDocumentEmbedder:
         }
         component = SentenceTransformersDocumentEmbedder.from_dict(data)
         assert component.model_name_or_path == "model"
-        assert component.device == "cpu"
+        assert component.device == "cuda"
         assert component.use_auth_token == "the-token"
         assert component.batch_size == 64
         assert component.progress_bar is False
@@ -121,7 +121,7 @@ class TestSentenceTransformersDocumentEmbedder:
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model_name_or_path="model", device=None, use_auth_token=None
+            model_name_or_path="model", device="cpu", use_auth_token=None
         )
 
     @pytest.mark.unit

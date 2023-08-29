@@ -23,7 +23,7 @@ class TestSentenceTransformersTextEmbedder:
     def test_init_with_parameters(self):
         embedder = SentenceTransformersTextEmbedder(
             model_name_or_path="model",
-            device="cuda-0",
+            device="cuda",
             use_auth_token=True,
             prefix="prefix",
             suffix="suffix",
@@ -32,7 +32,7 @@ class TestSentenceTransformersTextEmbedder:
             normalize_embeddings=True,
         )
         assert embedder.model_name_or_path == "model"
-        assert embedder.device == "cuda-0"
+        assert embedder.device == "cuda"
         assert embedder.use_auth_token is True
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
@@ -62,7 +62,7 @@ class TestSentenceTransformersTextEmbedder:
     def test_to_dict_with_custom_init_parameters(self):
         component = SentenceTransformersTextEmbedder(
             model_name_or_path="model",
-            device="cuda-0",
+            device="cuda",
             use_auth_token=True,
             prefix="prefix",
             suffix="suffix",
@@ -75,7 +75,7 @@ class TestSentenceTransformersTextEmbedder:
             "type": "SentenceTransformersTextEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
-                "device": "cuda-0",
+                "device": "cuda",
                 "use_auth_token": True,
                 "prefix": "prefix",
                 "suffix": "suffix",
@@ -91,7 +91,7 @@ class TestSentenceTransformersTextEmbedder:
             "type": "SentenceTransformersTextEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
-                "device": "cuda-0",
+                "device": "cuda",
                 "use_auth_token": True,
                 "prefix": "prefix",
                 "suffix": "suffix",
@@ -102,7 +102,7 @@ class TestSentenceTransformersTextEmbedder:
         }
         component = SentenceTransformersTextEmbedder.from_dict(data)
         assert component.model_name_or_path == "model"
-        assert component.device == "cuda-0"
+        assert component.device == "cuda"
         assert component.use_auth_token is True
         assert component.prefix == "prefix"
         assert component.suffix == "suffix"
