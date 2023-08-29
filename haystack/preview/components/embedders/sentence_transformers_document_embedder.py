@@ -1,7 +1,6 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 
-from haystack.preview import component
-from haystack.preview import Document
+from haystack.preview import component, Document, default_to_dict, default_from_dict
 from haystack.preview.embedding_backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
@@ -42,13 +41,36 @@ class SentenceTransformersDocumentEmbedder:
 
         self.model_name_or_path = model_name_or_path
         # TODO: remove device parameter and use Haystack's device management once migrated
-        self.device = device
+        self.device = device or "cpu"
         self.use_auth_token = use_auth_token
         self.batch_size = batch_size
         self.progress_bar = progress_bar
         self.normalize_embeddings = normalize_embeddings
         self.metadata_fields_to_embed = metadata_fields_to_embed or []
         self.embedding_separator = embedding_separator
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        return default_to_dict(
+            self,
+            model_name_or_path=self.model_name_or_path,
+            device=self.device,
+            use_auth_token=self.use_auth_token,
+            batch_size=self.batch_size,
+            progress_bar=self.progress_bar,
+            normalize_embeddings=self.normalize_embeddings,
+            metadata_fields_to_embed=self.metadata_fields_to_embed,
+            embedding_separator=self.embedding_separator,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersDocumentEmbedder":
+        """
+        Deserialize this component from a dictionary.
+        """
+        return default_from_dict(cls, data)
 
     def warm_up(self):
         """

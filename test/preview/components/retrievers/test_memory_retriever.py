@@ -1,8 +1,9 @@
 from typing import Dict, Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from haystack.preview import Pipeline
+from haystack.preview import Pipeline, DeserializationError
 from haystack.preview.testing.factory import document_store_class
 from haystack.preview.components.retrievers.memory import MemoryRetriever
 from haystack.preview.dataclasses import Document
@@ -39,6 +40,81 @@ class TestMemoryRetriever:
     def test_init_with_invalid_top_k_parameter(self):
         with pytest.raises(ValueError, match="top_k must be > 0, but got -2"):
             MemoryRetriever(MemoryDocumentStore(), top_k=-2, scale_score=False)
+
+    @pytest.mark.unit
+    def test_to_dict(self):
+        MyFakeStore = document_store_class("MyFakeStore", bases=(MemoryDocumentStore,))
+        document_store = MyFakeStore()
+        document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}
+        component = MemoryRetriever(document_store=document_store)
+
+        data = component.to_dict()
+        assert data == {
+            "type": "MemoryRetriever",
+            "init_parameters": {
+                "document_store": {"type": "MyFakeStore", "init_parameters": {}},
+                "filters": None,
+                "top_k": 10,
+                "scale_score": True,
+            },
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_custom_init_parameters(self):
+        MyFakeStore = document_store_class("MyFakeStore", bases=(MemoryDocumentStore,))
+        document_store = MyFakeStore()
+        document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}
+        component = MemoryRetriever(
+            document_store=document_store, filters={"name": "test.txt"}, top_k=5, scale_score=False
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "MemoryRetriever",
+            "init_parameters": {
+                "document_store": {"type": "MyFakeStore", "init_parameters": {}},
+                "filters": {"name": "test.txt"},
+                "top_k": 5,
+                "scale_score": False,
+            },
+        }
+
+    @pytest.mark.unit
+    def test_from_dict(self):
+        document_store_class("MyFakeStore", bases=(MemoryDocumentStore,))
+        data = {
+            "type": "MemoryRetriever",
+            "init_parameters": {
+                "document_store": {"type": "MyFakeStore", "init_parameters": {}},
+                "filters": {"name": "test.txt"},
+                "top_k": 5,
+            },
+        }
+        component = MemoryRetriever.from_dict(data)
+        assert isinstance(component.document_store, MemoryDocumentStore)
+        assert component.filters == {"name": "test.txt"}
+        assert component.top_k == 5
+        assert component.scale_score
+
+    @pytest.mark.unit
+    def test_from_dict_without_docstore(self):
+        data = {"type": "MemoryRetriever", "init_parameters": {}}
+        with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
+            MemoryRetriever.from_dict(data)
+
+    @pytest.mark.unit
+    def test_from_dict_without_docstore_type(self):
+        data = {"type": "MemoryRetriever", "init_parameters": {"document_store": {"init_parameters": {}}}}
+        with pytest.raises(DeserializationError, match="Missing 'type' in document store's serialization data"):
+            MemoryRetriever.from_dict(data)
+
+    @pytest.mark.unit
+    def test_from_dict_nonexisting_docstore(self):
+        data = {
+            "type": "MemoryRetriever",
+            "init_parameters": {"document_store": {"type": "NonexistingDocstore", "init_parameters": {}}},
+        }
+        with pytest.raises(DeserializationError, match="DocumentStore type 'NonexistingDocstore' not found"):
+            MemoryRetriever.from_dict(data)
 
     @pytest.mark.unit
     def test_valid_run(self, mock_docs):

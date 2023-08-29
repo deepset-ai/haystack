@@ -24,7 +24,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         store = MemoryDocumentStore()
         data = store.to_dict()
         assert data == {
-            "hash": id(store),
             "type": "MemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": r"(?u)\b\w\w+\b",
@@ -40,7 +39,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         )
         data = store.to_dict()
         assert data == {
-            "hash": id(store),
             "type": "MemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": "custom_regex",

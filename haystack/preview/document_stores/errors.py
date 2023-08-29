@@ -12,7 +12,3 @@ class DuplicateDocumentError(DocumentStoreError):
 
 class MissingDocumentError(DocumentStoreError):
     pass
-
-
-class DocumentStoreDeserializationError(DocumentStoreError):
-    pass
