@@ -197,11 +197,7 @@ class ExtractiveReader:
             if no_answer:
                 no_answer_probability = math.prod(1 - answer.probability for answer in current_answers)
                 answer = ExtractedAnswer(
-                    data=None,
-                    question=queries[query_id],
-                    metadata={},
-                    document=None,  # TODO: Change dataclass
-                    probability=no_answer_probability,
+                    data=None, question=queries[query_id], metadata={}, document=None, probability=no_answer_probability
                 )
                 bisect.insort(current_answers, answer, key=lambda answer: -answer.probability)
             if top_p is not None:

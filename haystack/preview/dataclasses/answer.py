@@ -13,7 +13,7 @@ class Answer:
 @dataclass(frozen=True)
 class ExtractedAnswer(Answer):
     data: Optional[str]
-    document: Document
+    document: Optional[Document]
     probability: float
     start: Optional[int] = None
     end: Optional[int] = None
