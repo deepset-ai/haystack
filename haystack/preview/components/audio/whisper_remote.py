@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from haystack.preview.utils import request_with_retry
-from haystack.preview import component, Document
+from haystack.preview import component, Document, default_to_dict, default_from_dict
 
 logger = logging.getLogger(__name__)
 
@@ -58,14 +58,20 @@ class RemoteWhisperTranscriber:
         """
         Serialize this component to a dictionary.
         """
-        # return default_to_dict(self, model_name=self.model_name, api_key=self.api_key, api_base=self.api_base, whisper_params=self.whisper_params)
+        return default_to_dict(
+            self,
+            model_name=self.model_name,
+            api_key=self.api_key,
+            api_base=self.api_base,
+            whisper_params=self.whisper_params,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "RemoteWhisperTranscriber":
         """
         Deserialize this component from a dictionary.
         """
-        # return default_from_dict(cls, data)
+        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
     def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None):
