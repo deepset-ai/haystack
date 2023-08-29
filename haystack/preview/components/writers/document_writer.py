@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Any
 
-from haystack.preview import component, Document
-from haystack.preview.document_stores import DocumentStore, DuplicatePolicy
+from haystack.preview import component, Document, default_from_dict, default_to_dict, DeserializationError
+from haystack.preview.document_stores import DocumentStore, DuplicatePolicy, document_store
 
 
 @component
@@ -23,14 +23,25 @@ class DocumentWriter:
         """
         Serialize this component to a dictionary.
         """
-        # return default_to_dict(self, ...)
+        return default_to_dict(self, document_store=self.document_store.to_dict(), policy=self.policy.name)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DocumentWriter":
         """
         Deserialize this component from a dictionary.
         """
-        # return default_from_dict(cls, data)
+        init_params = data.get("init_parameters", {})
+        if "document_store" not in init_params:
+            raise DeserializationError("Missing 'document_store' in serialization data")
+        if "type" not in init_params["document_store"]:
+            raise DeserializationError("Missing 'type' in document store's serialization data")
+
+        docstore_class = document_store.registry[init_params["document_store"]["type"]]
+        docstore = docstore_class.from_dict(init_params["document_store"])
+
+        data["init_parameters"]["document_store"] = docstore
+        data["init_parameters"]["policy"] = DuplicatePolicy[data["init_parameters"]["policy"]]
+        return default_from_dict(cls, data)
 
     def run(self, documents: List[Document], policy: Optional[DuplicatePolicy] = None):
         """
