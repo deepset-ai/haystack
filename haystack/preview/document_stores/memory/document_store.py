@@ -7,11 +7,8 @@ import numpy as np
 import rank_bm25
 from tqdm.auto import tqdm
 
-from haystack.preview.document_stores.decorator import (
-    document_store,
-    default_document_store_to_dict,
-    default_document_store_from_dict,
-)
+from haystack.preview import default_from_dict, default_to_dict
+from haystack.preview.document_stores.decorator import document_store
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.protocols import DuplicatePolicy, DocumentStore
 from haystack.preview.document_stores.memory._filters import match
@@ -44,6 +41,7 @@ class MemoryDocumentStore:
         Initializes the DocumentStore.
         """
         self.storage: Dict[str, Document] = {}
+        self._bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
         algorithm_class = getattr(rank_bm25, bm25_algorithm)
         if algorithm_class is None:
@@ -51,25 +49,23 @@ class MemoryDocumentStore:
         self.bm25_algorithm = algorithm_class
         self.bm25_parameters = bm25_parameters or {}
 
-        # Used to convert this instance to a dictionary for serialization
-        self.init_parameters = {
-            "bm25_tokenization_regex": bm25_tokenization_regex,
-            "bm25_algorithm": bm25_algorithm,
-            "bm25_parameters": self.bm25_parameters,
-        }
-
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes this store to a dictionary.
         """
-        return default_document_store_to_dict(self)
+        return default_to_dict(
+            self,
+            bm25_tokenization_regex=self._bm25_tokenization_regex,
+            bm25_algorithm=self.bm25_algorithm.__name__,
+            bm25_parameters=self.bm25_parameters,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DocumentStore":
         """
         Deserializes the store from a dictionary.
         """
-        return default_document_store_from_dict(cls, data)
+        return default_from_dict(cls, data)
 
     def count_documents(self) -> int:
         """
