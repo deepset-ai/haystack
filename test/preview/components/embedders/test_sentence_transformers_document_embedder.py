@@ -18,6 +18,8 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.batch_size == 32
         assert embedder.progress_bar is True
         assert embedder.normalize_embeddings is False
+        assert embedder.metadata_fields_to_embed == []
+        assert embedder.embedding_separator == "\n"
 
     @pytest.mark.unit
     def test_init_with_parameters(self):
@@ -28,6 +30,8 @@ class TestSentenceTransformersDocumentEmbedder:
             batch_size=64,
             progress_bar=False,
             normalize_embeddings=True,
+            metadata_fields_to_embed=["test_field"],
+            embedding_separator=" | ",
         )
         assert embedder.model_name_or_path == "model"
         assert embedder.device == "cpu"
@@ -35,6 +39,78 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.batch_size == 64
         assert embedder.progress_bar is False
         assert embedder.normalize_embeddings is True
+        assert embedder.metadata_fields_to_embed == ["test_field"]
+        assert embedder.embedding_separator == " | "
+
+    @pytest.mark.unit
+    def test_to_dict(self):
+        component = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
+        data = component.to_dict()
+        assert data == {
+            "type": "SentenceTransformersDocumentEmbedder",
+            "init_parameters": {
+                "model_name_or_path": "model",
+                "device": None,
+                "use_auth_token": None,
+                "batch_size": 32,
+                "progress_bar": True,
+                "normalize_embeddings": False,
+                "embedding_separator": "\n",
+                "metadata_fields_to_embed": [],
+            },
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_custom_init_parameters(self):
+        component = SentenceTransformersDocumentEmbedder(
+            model_name_or_path="model",
+            device="cpu",
+            use_auth_token="the-token",
+            batch_size=64,
+            progress_bar=False,
+            normalize_embeddings=True,
+            metadata_fields_to_embed=["meta_field"],
+            embedding_separator=" - ",
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "SentenceTransformersDocumentEmbedder",
+            "init_parameters": {
+                "model_name_or_path": "model",
+                "device": "cpu",
+                "use_auth_token": "the-token",
+                "batch_size": 64,
+                "progress_bar": False,
+                "normalize_embeddings": True,
+                "embedding_separator": " - ",
+                "metadata_fields_to_embed": ["meta_field"],
+            },
+        }
+
+    @pytest.mark.unit
+    def test_from_dict(self):
+        data = {
+            "type": "SentenceTransformersDocumentEmbedder",
+            "init_parameters": {
+                "model_name_or_path": "model",
+                "device": "cpu",
+                "use_auth_token": "the-token",
+                "batch_size": 64,
+                "progress_bar": False,
+                "normalize_embeddings": False,
+                "embedding_separator": " - ",
+                "metadata_fields_to_embed": ["meta_field"],
+            },
+        }
+        component = SentenceTransformersDocumentEmbedder.from_dict(data)
+        assert component.model_name_or_path == "model"
+        assert component.device == "cpu"
+        assert component.use_auth_token == "the-token"
+        assert component.batch_size == 64
+        assert component.progress_bar is False
+        assert component.normalize_embeddings is False
+        assert component.metadata_fields_to_embed == ["meta_field"]
+        assert component.embedding_separator == " - "
 
     @pytest.mark.unit
     @patch(
