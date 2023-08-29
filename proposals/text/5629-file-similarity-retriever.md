@@ -85,7 +85,7 @@ One example where this could be useful is in academic writing, if you have a lar
 
 # Detailed design
 
-You can see the code for this proposal here: https://github.com/deepset-ai/haystack/pull/xxxx/files.
+You can see the code for this proposal here: https://github.com/deepset-ai/haystack/pull/5666/files.
 
 As a general description, the FileSimilarityRetriever works by:
 1. Getting all documents corresponding to the provided file ID from the document store. The documents can be obtained together with their embeddings, to save resources by avoiding re-calculating them at query time.
