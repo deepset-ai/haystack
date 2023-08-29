@@ -7,6 +7,7 @@
 # Summary
 
 As a requirement for evaluation in Haystack 2.0, as a user, I want to:
+
 - compare the performance of different pipelines on level of pipeline outputs (user perspective, integrated eval)
   - while running the full pipeline we can store intermediate results and calculate metrics for each component that returns answers or documents
 - find out which component is the performance bottleneck in one pipeline by evaluating subpipelines (isolated evaluation)
@@ -22,10 +23,14 @@ As a requirement for evaluation in Haystack 2.0, as a user, I want to:
 
 # Basic example
 
-When applicable, write a snippet of code showing how the new feature would
-be used.
-
-pipeline.run() # with labels split into inputs and expected outputs plus other inputs (top_k, etc.)
+```
+pipe = Pipeline()
+...
+inputs = [{"component_name": {"query": "some question"}, ...}, ...]
+expected_output = [{"another_component_name": {"answer": "42"}, ...}, ...]
+result = eval(pipe, inputs=inputs, expected_output=expected_output)
+metrics = result.calculate_metrics()
+```
 
 # Motivation
 
@@ -37,7 +42,44 @@ proposal, others can use the motivation to develop alternative solutions.
 
 # Detailed design
 
+### The `eval` function
+
+With evaluation in Haystack 2.0 we want to give the users a flexible way to evaluate their Pipelines and Components.
+We'll implement an `eval` function that will be able to evaluate all `Pipeline`s and `Component`s.
+A minimal implementation could look like this:
+
+```
+def eval(runnable: Union[Pipeline, Component], inputs: List[Dict[str, Any]], expected_outputs: List[Dict[str, Any]]) -> EvaluationResult:
+    output = []
+    for input_ in inputs:
+      output = runnable.run(input_)
+      outputs.append(output)
+    return EvaluationResult(runnable, outputs, expected_outputs)
+```
+
+This is obviously an overtly simplistic example but the core concept remains.
+`inputs` must be a list of data that will be passed to either the `Pipeline` or the `Component`.
+`expected_outputs` could be a list with the same length of `inputs` or an empty list for blind evaluation.
+
+`EvaluationResult` could either be a `Dict` or its own class, this is open to discussion. Either way it must be easy to save to disk. When saving the results to disk we can also include the `Pipeline` or `Component` in a serialized form.
+
+When evaluating a `Pipeline` we could also override its private `_run_component` function to evaluate every node it will run. This will 100% work for our implementation of `Pipeline`. If a user tries to evaluate a `Pipeline` that reimplements its own `run` method it might not be able to evaluate each `Component`. I believe this a worthy risky tradeoff.
+
+Overriding `_run_component` would also give us the chance to simulate optimal component outputs. `eval` could also accept an optional `simulated_output` dictionary containing the outputs of one or more `Component` that are in the `Pipeline`. It would look similar to this:
+
+```
+simulated_output = {
+  "component_name": {"answer": "120"},
+  "another_component_name": {"metadata": {"id": 1}}
+}
+```
+
+### `EvaluationResult`
+
+TODO
+
 ### Export evaluation results to a file (similar to Haystack 1.x but faster)
+
 Haystack 1.x iterates through the queries one by one when calculating metrics, which is slow.
 Haystack 2.0 should increase the speed of calculating metrics by using a batched approach.
 
