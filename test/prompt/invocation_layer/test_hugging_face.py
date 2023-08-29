@@ -74,6 +74,7 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
         "torch_dtype",
         "model_kwargs",
         "pipeline_class",
+        "use_fast",
         "revision",
         "use_auth_token",
         "trust_remote_code",
