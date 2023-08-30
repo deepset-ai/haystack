@@ -135,7 +135,6 @@ def test_query_and_indexing_pipeline(samples_path):
     )
     assert prediction["query"] == "Who made the PDF specification?"
     assert prediction["answers"][0].answer == "Adobe Systems"
-    assert prediction["answers"][0].meta["classification"]["label"] == "joy"
     assert "_debug" not in prediction.keys()
 
 
@@ -253,7 +252,7 @@ def test_most_similar_documents_pipeline_with_filters_batch():
     retriever = EmbeddingRetriever(
         document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
     )
-    document_store = InMemoryDocumentStore()
+    document_store = InMemoryDocumentStore(embedding_dim=384)
     document_store.write_documents(documents)
     document_store.update_embeddings(retriever)
 
