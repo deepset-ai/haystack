@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import pytest
 
@@ -251,13 +251,16 @@ class TestChatGPTGenerator:
     def test_run(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
             with patch("haystack.preview.components.generators.openai.chatgpt.query_chat_model") as query_patch:
-                query_patch.return_value = ["test-response"]
+                query_patch.return_value = ["test-response", "another-response"]
                 component = ChatGPTGenerator(
                     api_key="test-api-key", openai_organization="test_orga_id", api_base_url="test-base-url"
                 )
-                results = component.run(prompts=["test-prompt"])
-                assert results == {"replies": [["test-response"]]}
-                query_patch.assert_called_once_with(
+                results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
+                assert results == {
+                    "replies": [["test-response", "another-response"], ["test-response", "another-response"]]
+                }
+                query_patch.call_count == 2
+                query_patch.assert_any_call(
                     url="test-base-url/chat/completions",
                     headers={
                         "Authorization": f"Bearer test-api-key",
@@ -278,7 +281,7 @@ class TestChatGPTGenerator:
                         "moderate_content": True,
                         "messages": [
                             {"role": "system", "content": "You are a helpful assistant."},
-                            {"role": "user", "content": "test-prompt"},
+                            {"role": "user", "content": "test-prompt-1"},
                         ],
                     },
                 )
@@ -287,16 +290,15 @@ class TestChatGPTGenerator:
     def test_run_streaming(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
             with patch("haystack.preview.components.generators.openai.chatgpt.query_chat_model_stream") as query_patch:
-                query_patch.return_value = ["test-response-a", "test-response-b"]
-                callback = lambda x: x + "--test"
+                query_patch.side_effect = [["test-response-a"], ["test-response-b"]]
+                callback = Mock()
                 component = ChatGPTGenerator(
                     api_key="test-api-key", stream=True, streaming_callback=callback, streaming_done_marker="test-done"
                 )
-                results = component.run(prompts=["test-prompt1, test-prompt2"])
-                assert results == {
-                    "replies": [["test-response-a", "test-response-b"], ["test-response-a", "test-response-b"]]
-                }
-                query_patch.assert_called_once_with(
+                results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
+                assert results == {"replies": [["test-response-a"], ["test-response-b"]]}
+                query_patch.call_count == 2
+                query_patch.assert_any_call(
                     url="https://api.openai.com/v1/chat/completions",
                     headers={"Authorization": f"Bearer test-api-key", "Content-Type": "application/json"},
                     payload={
@@ -313,7 +315,7 @@ class TestChatGPTGenerator:
                         "moderate_content": True,
                         "messages": [
                             {"role": "system", "content": "You are a helpful assistant."},
-                            {"role": "user", "content": "test-prompt"},
+                            {"role": "user", "content": "test-prompt-1"},
                         ],
                     },
                     callback=callback,

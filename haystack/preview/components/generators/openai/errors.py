@@ -5,10 +5,9 @@ from haystack.preview import ComponentError
 class OpenAIError(ComponentError):
     """Exception for issues that occur in the OpenAI APIs"""
 
-    def __init__(
-        self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False
-    ):
-        super().__init__(message=message, send_message_in_event=send_message_in_event)
+    def __init__(self, message: Optional[str] = None, status_code: Optional[int] = None):
+        super().__init__()
+        self.message = message
         self.status_code = status_code
 
 
@@ -19,8 +18,8 @@ class OpenAIRateLimitError(OpenAIError):
     See https://help.openai.com/en/articles/5955598-is-api-usage-subject-to-any-rate-limits
     """
 
-    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
-        super().__init__(message=message, status_code=429, send_message_in_event=send_message_in_event)
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message, status_code=429)
 
 
 class OpenAIUnauthorizedError(OpenAIError):
@@ -29,5 +28,5 @@ class OpenAIUnauthorizedError(OpenAIError):
     See https://platform.openai.com/docs/guides/error-codes/api-errors
     """
 
-    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
-        super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message, status_code=401)

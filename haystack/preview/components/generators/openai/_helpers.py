@@ -71,12 +71,12 @@ def query_chat_model(url: str, headers: Dict[str, str], payload: Dict[str, Any])
     :param payload: The payload to send with the request.
     :return: A list of strings containing the response from the OpenAI API.
     """
-    response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
+    response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
     raise_for_status(response=response)
     json_response = json.loads(response.text)
     check_truncated_answers(result=json_response, payload=payload)
     check_filtered_answers(result=json_response, payload=payload)
-    return [choice["message"]["content"].strip() for choice in response["choices"]]
+    return [choice["message"]["content"].strip() for choice in json_response["choices"]]
 
 
 @openai_retry
@@ -96,19 +96,20 @@ def query_chat_model_stream(
     :param marker: A marker that indicates the end of the stream. It is used to determine when to stop streaming.
     :return: A list of strings containing the response from the OpenAI API.
     """
-    response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
+    response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
     raise_for_status(response=response)
 
     client = sseclient.SSEClient(response)
     tokens = []
     try:
         for event in client.events():
-            if event.data != marker:
-                event_data = json.loads(event.data)
-                delta = event_data["choices"][0]["delta"]
-                token = delta["content"] if "content" in delta else None
-                if token:
-                    tokens.append(callback(token, event_data=event_data["choices"]))
+            if event.data == marker:
+                break
+            event_data = json.loads(event.data)
+            delta = event_data["choices"][0]["delta"]
+            token = delta["content"] if "content" in delta else None
+            if token:
+                tokens.append(callback(token, event_data=event_data["choices"]))
     finally:
         client.close()
     return ["".join(tokens)]
@@ -121,7 +122,7 @@ def raise_for_status(response: requests.Response):
     :param response: The response returned from the OpenAI API.
     :raises OpenAIError: If the response status code is not 200.
     """
-    if response.status_code != 200:
+    if response.status_code >= 400:
         openai_error: OpenAIError
         if response.status_code == 429:
             openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
