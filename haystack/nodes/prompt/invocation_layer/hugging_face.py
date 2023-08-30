@@ -208,6 +208,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             "torch_dtype": torch_dtype,
             "model_kwargs": model_kwargs,
             "pipeline_class": kwargs.get("pipeline_class", None),
+            "use_fast": kwargs.get("use_fast", True),
             **hub_kwargs,
         }
         return pipeline_kwargs
