@@ -16,7 +16,7 @@ def enforce_token_limit(prompt: str, tokenizer, max_tokens_limit: int) -> str:
     """
     tokens = tokenizer.encode(prompt)
     tokens_count = len(tokens)
-    if tokens_count <= max_tokens_limit:
+    if tokens_count > max_tokens_limit:
         logger.warning(
             "The prompt has been truncated from %s tokens to %s tokens so that the prompt fits within the max token "
             "limit. Reduce the length of the prompt to prevent it from being cut off.",
