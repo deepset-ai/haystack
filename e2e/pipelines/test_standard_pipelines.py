@@ -173,7 +173,7 @@ def test_faq_pipeline_batch():
         {"content": "How to test module-4?", "meta": {"source": "wiki4", "answer": "Using tests for module-4"}},
         {"content": "How to test module-5?", "meta": {"source": "wiki5", "answer": "Using tests for module-5"}},
     ]
-    document_store = InMemoryDocumentStore()
+    document_store = InMemoryDocumentStore(embedding_dim=384)
     retriever = EmbeddingRetriever(
         document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
     )
@@ -197,7 +197,7 @@ def test_document_search_pipeline_batch():
         {"content": "Sample text for document-4", "meta": {"source": "wiki4"}},
         {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
     ]
-    document_store = InMemoryDocumentStore()
+    document_store = InMemoryDocumentStore(embedding_dim=384)
     retriever = EmbeddingRetriever(
         document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
     )
@@ -218,7 +218,7 @@ def test_most_similar_documents_pipeline_batch():
         {"content": "Sample text for document-4", "meta": {"source": "wiki4"}},
         {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
     ]
-    document_store = InMemoryDocumentStore()
+    document_store = InMemoryDocumentStore(embedding_dim=384)
     retriever = EmbeddingRetriever(
         document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
     )
@@ -249,7 +249,7 @@ def test_most_similar_documents_pipeline_with_filters_batch():
         {"content": "Sample text for document-4", "meta": {"source": "wiki4"}},
         {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
     ]
-    document_store = InMemoryDocumentStore()
+    document_store = InMemoryDocumentStore(embedding_dim=384)
     retriever = EmbeddingRetriever(
         document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
     )
@@ -307,7 +307,7 @@ def test_summarization_pipeline():
     output = pipeline.run(query=query, params={"Retriever": {"top_k": 1}})
     answers = output["answers"]
     assert len(answers) == 1
-    assert "The Eiffel Tower is one of the world's tallest structures" == answers[0]["answer"].strip()
+    assert "The Eiffel Tower is one of the world's tallest structures." == answers[0]["answer"].strip()
 
 
 def test_summarization_pipeline_one_summary():
