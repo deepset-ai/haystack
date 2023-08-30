@@ -26,11 +26,11 @@ logger = logging.getLogger(__name__)
 OPENAI_TIMEOUT = float(os.environ.get("HAYSTACK_REMOTE_API_TIMEOUT_SEC", 30))
 OPENAI_BACKOFF = int(os.environ.get("HAYSTACK_REMOTE_API_BACKOFF_SEC", 10))
 OPENAI_MAX_RETRIES = int(os.environ.get("HAYSTACK_REMOTE_API_MAX_RETRIES", 5))
-TOKENIZERS = {
+OPENAI_TOKENIZERS = {
     **tiktoken.model.MODEL_TO_ENCODING,
     "gpt-35-turbo": "cl100k_base",  # https://github.com/openai/tiktoken/pull/72
 }
-TOKENIZERS_TOKEN_LIMITS = {
+OPENAI_TOKENIZERS_TOKEN_LIMITS = {
     "gpt2": 2049,  # Ref: https://platform.openai.com/docs/models/gpt-3
     "text-davinci": 4097,  # Ref: https://platform.openai.com/docs/models/gpt-3
     "gpt-35-turbo": 2049,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
@@ -39,7 +39,6 @@ TOKENIZERS_TOKEN_LIMITS = {
     "gpt-3": 4096,  # Ref: https://platform.openai.com/docs/models/gpt-3
     "gpt-4-32k": 32768,  # Ref: https://platform.openai.com/docs/models/gpt-4
     "gpt-4": 8192,  # Ref: https://platform.openai.com/docs/models/gpt-4
-    "": 2049,  # Default
 }
 
 

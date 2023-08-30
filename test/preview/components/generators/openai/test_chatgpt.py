@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -38,10 +38,12 @@ class TestChatGPTGenerator:
     @pytest.mark.unit
     def test_init_with_parameters(self, caplog, monkeypatch):
         monkeypatch.setattr(
-            "haystack.preview.components.generators.openai.chatgpt.TOKENIZERS", {"test-model-name": "test-encoding"}
+            "haystack.preview.components.generators.openai.chatgpt.OPENAI_TOKENIZERS",
+            {"test-model-name": "test-encoding"},
         )
         monkeypatch.setattr(
-            "haystack.preview.components.generators.openai.chatgpt.TOKENIZERS_TOKEN_LIMITS", {"test-model-name": 10}
+            "haystack.preview.components.generators.openai.chatgpt.OPENAI_TOKENIZERS_TOKEN_LIMITS",
+            {"test-model-name": 10},
         )
         with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
             callback = lambda x: x
@@ -87,6 +89,22 @@ class TestChatGPTGenerator:
             assert not caplog.records
 
     @pytest.mark.unit
+    def test_init_unknown_tokenizer(self):
+        with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
+            with pytest.raises(ValueError, match="Tokenizer for model 'test-another-model-name' not found."):
+                ChatGPTGenerator(model_name="test-another-model-name")
+
+    @pytest.mark.unit
+    def test_init_unknown_token_limit(self, monkeypatch):
+        monkeypatch.setattr(
+            "haystack.preview.components.generators.openai.chatgpt.OPENAI_TOKENIZERS",
+            {"test-model-name": "test-encoding"},
+        )
+        with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
+            with pytest.raises(ValueError, match="Max tokens limit for model 'test-model-name' not found."):
+                ChatGPTGenerator(model_name="test-model-name")
+
+    @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
             component = ChatGPTGenerator()
@@ -117,10 +135,12 @@ class TestChatGPTGenerator:
     @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self, monkeypatch):
         monkeypatch.setattr(
-            "haystack.preview.components.generators.openai.chatgpt.TOKENIZERS", {"test-model-name": "test-encoding"}
+            "haystack.preview.components.generators.openai.chatgpt.OPENAI_TOKENIZERS",
+            {"test-model-name": "test-encoding"},
         )
         monkeypatch.setattr(
-            "haystack.preview.components.generators.openai.chatgpt.TOKENIZERS_TOKEN_LIMITS", {"test-model-name": 10}
+            "haystack.preview.components.generators.openai.chatgpt.OPENAI_TOKENIZERS_TOKEN_LIMITS",
+            {"test-model-name": 10},
         )
         with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
             callback = lambda x: x
@@ -170,10 +190,12 @@ class TestChatGPTGenerator:
     @pytest.mark.unit
     def test_from_dict(self, monkeypatch):
         monkeypatch.setattr(
-            "haystack.preview.components.generators.openai.chatgpt.TOKENIZERS", {"test-model-name": "test-encoding"}
+            "haystack.preview.components.generators.openai.chatgpt.OPENAI_TOKENIZERS",
+            {"test-model-name": "test-encoding"},
         )
         monkeypatch.setattr(
-            "haystack.preview.components.generators.openai.chatgpt.TOKENIZERS_TOKEN_LIMITS", {"test-model-name": 10}
+            "haystack.preview.components.generators.openai.chatgpt.OPENAI_TOKENIZERS_TOKEN_LIMITS",
+            {"test-model-name": 10},
         )
         with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
             data = {
@@ -218,85 +240,82 @@ class TestChatGPTGenerator:
             assert component.openai_organization == "test-orga-id"
             assert component.max_tokens_limit == 10
 
-    # @pytest.mark.unit
-    # @patch(
-    #     "haystack.preview.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
-    # )
-    # def test_warmup(self, mocked_factory):
-    #     embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
-    #     mocked_factory.get_embedding_backend.assert_not_called()
-    #     embedder.warm_up()
-    #     mocked_factory.get_embedding_backend.assert_called_once_with(
-    #         model_name_or_path="model", device="cpu", use_auth_token=None
-    #     )
+    @pytest.mark.unit
+    def test_run_no_api_key(self):
+        with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
+            component = ChatGPTGenerator()
+            with pytest.raises(ValueError, match="OpenAI API key is missing. Please provide an API key."):
+                component.run(prompts=[])
 
-    # @pytest.mark.unit
-    # @patch(
-    #     "haystack.preview.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
-    # )
-    # def test_warmup_doesnt_reload(self, mocked_factory):
-    #     embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
-    #     mocked_factory.get_embedding_backend.assert_not_called()
-    #     embedder.warm_up()
-    #     embedder.warm_up()
-    #     mocked_factory.get_embedding_backend.assert_called_once()
+    @pytest.mark.unit
+    def test_run(self):
+        with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
+            with patch("haystack.preview.components.generators.openai.chatgpt.query_chat_model") as query_patch:
+                query_patch.return_value = ["test-response"]
+                component = ChatGPTGenerator(
+                    api_key="test-api-key", openai_organization="test_orga_id", api_base_url="test-base-url"
+                )
+                results = component.run(prompts=["test-prompt"])
+                assert results == {"replies": [["test-response"]]}
+                query_patch.assert_called_once_with(
+                    url="test-base-url/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer test-api-key",
+                        "Content-Type": "application/json",
+                        "OpenAI-Organization": "test_orga_id",
+                    },
+                    payload={
+                        "model": "gpt-3.5-turbo",
+                        "max_reply_tokens": 500,
+                        "temperature": 0.7,
+                        "top_p": 1,
+                        "n": 1,
+                        "stream": False,
+                        "stop": None,
+                        "presence_penalty": 0,
+                        "frequency_penalty": 0,
+                        "logit_bias": None,
+                        "moderate_content": True,
+                        "messages": [
+                            {"role": "system", "content": "You are a helpful assistant."},
+                            {"role": "user", "content": "test-prompt"},
+                        ],
+                    },
+                )
 
-    # @pytest.mark.unit
-    # def test_run(self):
-    #     embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
-    #     embedder.embedding_backend = MagicMock()
-    #     embedder.embedding_backend.embed = lambda x, **kwargs: np.random.rand(len(x), 16).tolist()
-
-    #     documents = [Document(content=f"document number {i}") for i in range(5)]
-
-    #     result = embedder.run(documents=documents)
-
-    #     assert isinstance(result["documents"], list)
-    #     assert len(result["documents"]) == len(documents)
-    #     for doc in result["documents"]:
-    #         assert isinstance(doc, Document)
-    #         assert isinstance(doc.embedding, list)
-    #         assert isinstance(doc.embedding[0], float)
-
-    # @pytest.mark.unit
-    # def test_run_wrong_input_format(self):
-    #     embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
-
-    #     string_input = "text"
-    #     list_integers_input = [1, 2, 3]
-
-    #     with pytest.raises(
-    #         TypeError, match="SentenceTransformersDocumentEmbedder expects a list of Documents as input"
-    #     ):
-    #         embedder.run(documents=string_input)
-
-    #     with pytest.raises(
-    #         TypeError, match="SentenceTransformersDocumentEmbedder expects a list of Documents as input"
-    #     ):
-    #         embedder.run(documents=list_integers_input)
-
-    # @pytest.mark.unit
-    # def test_embed_metadata(self):
-    #     embedder = SentenceTransformersDocumentEmbedder(
-    #         model_name_or_path="model", metadata_fields_to_embed=["meta_field"], embedding_separator="\n"
-    #     )
-    #     embedder.embedding_backend = MagicMock()
-
-    #     documents = [
-    #         Document(content=f"document number {i}", metadata={"meta_field": f"meta_value {i}"}) for i in range(5)
-    #     ]
-
-    #     embedder.run(documents=documents)
-
-    #     embedder.embedding_backend.embed.assert_called_once_with(
-    #         [
-    #             "meta_value 0\ndocument number 0",
-    #             "meta_value 1\ndocument number 1",
-    #             "meta_value 2\ndocument number 2",
-    #             "meta_value 3\ndocument number 3",
-    #             "meta_value 4\ndocument number 4",
-    #         ],
-    #         batch_size=32,
-    #         show_progress_bar=True,
-    #         normalize_embeddings=False,
-    #     )
+    @pytest.mark.unit
+    def test_run_streaming(self):
+        with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
+            with patch("haystack.preview.components.generators.openai.chatgpt.query_chat_model_stream") as query_patch:
+                query_patch.return_value = ["test-response-a", "test-response-b"]
+                callback = lambda x: x + "--test"
+                component = ChatGPTGenerator(
+                    api_key="test-api-key", stream=True, streaming_callback=callback, streaming_done_marker="test-done"
+                )
+                results = component.run(prompts=["test-prompt1, test-prompt2"])
+                assert results == {
+                    "replies": [["test-response-a", "test-response-b"], ["test-response-a", "test-response-b"]]
+                }
+                query_patch.assert_called_once_with(
+                    url="https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer test-api-key", "Content-Type": "application/json"},
+                    payload={
+                        "model": "gpt-3.5-turbo",
+                        "max_reply_tokens": 500,
+                        "temperature": 0.7,
+                        "top_p": 1,
+                        "n": 1,
+                        "stream": True,
+                        "stop": None,
+                        "presence_penalty": 0,
+                        "frequency_penalty": 0,
+                        "logit_bias": None,
+                        "moderate_content": True,
+                        "messages": [
+                            {"role": "system", "content": "You are a helpful assistant."},
+                            {"role": "user", "content": "test-prompt"},
+                        ],
+                    },
+                    callback=callback,
+                    marker="test-done",
+                )

@@ -9,8 +9,8 @@ from haystack.preview.components.generators.openai._helpers import (
     default_streaming_callback,
     query_chat_model,
     query_chat_model_stream,
-    TOKENIZERS,
-    TOKENIZERS_TOKEN_LIMITS,
+    OPENAI_TOKENIZERS,
+    OPENAI_TOKENIZERS_TOKEN_LIMITS,
 )
 
 
@@ -110,20 +110,20 @@ class ChatGPTGenerator:
         self.api_base_url = api_base_url
 
         self.tokenizer = None
-        for model_prefix in TOKENIZERS:
+        for model_prefix in OPENAI_TOKENIZERS:
             if model_name.startswith(model_prefix):
-                self.tokenizer = tiktoken.get_encoding(TOKENIZERS[model_prefix])
+                self.tokenizer = tiktoken.get_encoding(OPENAI_TOKENIZERS[model_prefix])
                 break
         if not self.tokenizer:
-            raise ValueError(f"Tokenizer for model {model_name} not found.")
+            raise ValueError(f"Tokenizer for model '{model_name}' not found.")
 
         self.max_tokens_limit = None
-        for model_prefix in TOKENIZERS_TOKEN_LIMITS:
+        for model_prefix in OPENAI_TOKENIZERS_TOKEN_LIMITS:
             if model_name.startswith(model_prefix):
-                self.max_tokens_limit = TOKENIZERS_TOKEN_LIMITS[model_prefix]
+                self.max_tokens_limit = OPENAI_TOKENIZERS_TOKEN_LIMITS[model_prefix]
                 break
         if not self.max_tokens_limit:
-            raise ValueError(f"Max tokens limit for model {model_name} not found.")
+            raise ValueError(f"Max tokens limit for model '{model_name}' not found.")
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -162,23 +162,23 @@ class ChatGPTGenerator:
     def run(
         self,
         prompts: List[str],
-        api_key: str,
-        model_name: str = "gpt-3.5-turbo",
-        system_prompt: Optional[str] = "You are a helpful assistant.",
-        max_reply_tokens: Optional[int] = 500,
-        temperature: Optional[float] = 0.7,
-        top_p: Optional[float] = 1,
-        n: Optional[int] = 1,
+        api_key: Optional[str] = None,
+        model_name: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        max_reply_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        n: Optional[int] = None,
         stop: Optional[List[str]] = None,
-        presence_penalty: Optional[float] = 0,
-        frequency_penalty: Optional[float] = 0,
+        presence_penalty: Optional[float] = None,
+        frequency_penalty: Optional[float] = None,
         logit_bias: Optional[Dict[str, float]] = None,
-        moderate_content: bool = True,
-        api_base_url: str = "https://api.openai.com/v1",
+        moderate_content: Optional[bool] = None,
+        api_base_url: Optional[str] = None,
         openai_organization: Optional[str] = None,
-        stream: bool = False,
+        stream: Optional[bool] = None,
         streaming_callback: Optional[Callable] = None,
-        streaming_done_marker: str = "[DONE]",
+        streaming_done_marker: Optional[str] = None,
     ):
         """
         Queries the LLM with the prompts to produce replies.
@@ -217,32 +217,48 @@ class ChatGPTGenerator:
 
         See OpenAI documentation](https://platform.openai.com/docs/api-reference/chat) for more details.
         """
-        if not api_key and not self.api_key:
+        api_key = api_key if api_key is not None else self.api_key
+        model_name = model_name if model_name is not None else self.model_name
+        system_prompt = system_prompt if system_prompt is not None else self.system_prompt
+        max_reply_tokens = max_reply_tokens if max_reply_tokens is not None else self.max_reply_tokens
+        temperature = temperature if temperature is not None else self.temperature
+        top_p = top_p if top_p is not None else self.top_p
+        n = n if n is not None else self.n
+        stop = stop if stop is not None else self.stop
+        presence_penalty = presence_penalty if presence_penalty is not None else self.presence_penalty
+        frequency_penalty = frequency_penalty if frequency_penalty is not None else self.frequency_penalty
+        logit_bias = logit_bias if logit_bias is not None else self.logit_bias
+        moderate_content = moderate_content if moderate_content is not None else self.moderate_content
+        stream = stream if stream is not None else self.stream
+        streaming_callback = streaming_callback if streaming_callback is not None else self.streaming_callback
+        streaming_done_marker = (
+            streaming_done_marker if streaming_done_marker is not None else self.streaming_done_marker
+        )
+        api_base_url = api_base_url or self.api_base_url
+        openai_organization = openai_organization if openai_organization is not None else self.openai_organization
+
+        if not api_key:
             raise ValueError("OpenAI API key is missing. Please provide an API key.")
 
-        stream = stream or self.stream
         parameters = {
-            "model": model_name or self.model_name,
-            "max_reply_tokens": max_reply_tokens or self.max_reply_tokens,
-            "temperature": temperature or self.temperature,
-            "top_p": top_p or self.top_p,
-            "n": n or self.n,
+            "model": model_name,
+            "max_reply_tokens": max_reply_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+            "n": n,
             "stream": stream,
-            "stop": stop or self.stop,
-            "presence_penalty": presence_penalty or self.presence_penalty,
-            "frequency_penalty": frequency_penalty or self.frequency_penalty,
-            "logit_bias": logit_bias or self.logit_bias,
-            "moderate_content": moderate_content or self.moderate_content,
+            "stop": stop,
+            "presence_penalty": presence_penalty,
+            "frequency_penalty": frequency_penalty,
+            "logit_bias": logit_bias,
+            "moderate_content": moderate_content,
         }
-
-        headers = {"Authorization": f"Bearer {api_key or self.api_key}", "Content-Type": "application/json"}
-        if openai_organization or self.openai_organization:
-            headers["OpenAI-Organization"] = openai_organization or self.openai_organization
-
-        url = f"{api_base_url or self.api_base_url}/chat/completions"
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        if openai_organization:
+            headers["OpenAI-Organization"] = openai_organization
+        url = f"{api_base_url}/chat/completions"
 
         replies = []
-        streaming_callback = streaming_callback or self.streaming_callback
         for prompt in prompts:
             payload = {
                 **parameters,
