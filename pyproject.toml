@@ -9,7 +9,7 @@ name = "farm-haystack"
 dynamic = [
   "version",
 ]
-description = "Neural Question Answering & Semantic Search at Scale. Use modern transformer based models like BERT to find answers in large document collections"
+description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.8"
