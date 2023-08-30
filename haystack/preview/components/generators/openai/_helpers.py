@@ -33,7 +33,8 @@ TOKENIZERS = {
 TOKENIZERS_TOKEN_LIMITS = {
     "gpt2": 2049,  # Ref: https://platform.openai.com/docs/models/gpt-3
     "text-davinci": 4097,  # Ref: https://platform.openai.com/docs/models/gpt-3
-    "gpt3-35-turbo": 2049,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
+    "gpt-35-turbo": 2049,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
+    "gpt-3.5-turbo": 2049,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
     "gpt-3.5-turbo-16k": 16384,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
     "gpt-3": 4096,  # Ref: https://platform.openai.com/docs/models/gpt-3
     "gpt-4-32k": 32768,  # Ref: https://platform.openai.com/docs/models/gpt-4

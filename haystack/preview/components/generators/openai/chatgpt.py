@@ -117,13 +117,13 @@ class ChatGPTGenerator:
         if not self.tokenizer:
             raise ValueError(f"Tokenizer for model {model_name} not found.")
 
-        self.max_reply_tokens_limit = None
+        self.max_tokens_limit = None
         for model_prefix in TOKENIZERS_TOKEN_LIMITS:
             if model_name.startswith(model_prefix):
-                self.max_reply_tokens_limit = TOKENIZERS_TOKEN_LIMITS[model_prefix]
+                self.max_tokens_limit = TOKENIZERS_TOKEN_LIMITS[model_prefix]
                 break
-        if not self.max_reply_tokens_limit:
-            raise ValueError(f"Max reply tokens limit for model {model_name} not found.")
+        if not self.max_tokens_limit:
+            raise ValueError(f"Max tokens limit for model {model_name} not found.")
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -249,7 +249,7 @@ class ChatGPTGenerator:
                 "messages": enforce_token_limit(
                     prompt=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
                     tokenizer=self.tokenizer,
-                    max_tokens_limit=self.max_reply_tokens_limit,
+                    max_tokens_limit=self.max_tokens_limit,
                 ),
             }
             if stream:
