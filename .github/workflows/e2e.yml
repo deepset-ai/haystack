@@ -5,6 +5,14 @@ on:
   workflow_dispatch: # Activate this workflow manually
   schedule:
     - cron: "0 0 * * *"
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths:
+      - "e2e/**/*.py"
 
 env:
   PYTHON_VERSION: "3.8"
