@@ -59,8 +59,8 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
     assert kwargs["task"] == "text2text-generation"
     assert kwargs["model"] == "google/flan-t5-base"
 
-    # no matter what kwargs we pass or don't pass, there are always 13 predefined kwargs passed to the pipeline
-    assert len(kwargs) == 13
+    # no matter what kwargs we pass or don't pass, there are always 14 predefined kwargs passed to the pipeline
+    assert len(kwargs) == 14
 
     # and these kwargs are passed to the pipeline
     assert list(kwargs.keys()) == [
@@ -74,6 +74,7 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
         "torch_dtype",
         "model_kwargs",
         "pipeline_class",
+        "use_fast",
         "revision",
         "use_auth_token",
         "trust_remote_code",
@@ -248,8 +249,8 @@ def test_constructor_with_invalid_kwargs(mock_pipeline, mock_get_task):
     # invalid kwargs are ignored and not passed to the pipeline
     assert "some_invalid_kwarg" not in kwargs
 
-    # still our 13 kwargs passed to the pipeline
-    assert len(kwargs) == 13
+    # still our 14 kwargs passed to the pipeline
+    assert len(kwargs) == 14
 
 
 @pytest.mark.unit
@@ -287,8 +288,8 @@ def test_constructor_with_various_kwargs(mock_pipeline, mock_get_task):
     assert kwargs["device_map"] and kwargs["device_map"] == "auto"
     assert kwargs["revision"] == "1.1"
 
-    # still on 13 kwargs passed to the pipeline
-    assert len(kwargs) == 13
+    # still on 14 kwargs passed to the pipeline
+    assert len(kwargs) == 14
 
 
 @pytest.mark.integration
