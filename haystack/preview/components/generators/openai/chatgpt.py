@@ -4,7 +4,7 @@ import logging
 
 from haystack.preview.lazy_imports import LazyImport
 from haystack.preview import component, default_from_dict, default_to_dict
-from haystack.preview.components.generators._helpers import enforce_token_limit
+from haystack.preview.components.generators._helpers import enforce_token_limit_chat
 from haystack.preview.components.generators.openai._helpers import (
     default_streaming_callback,
     query_chat_model,
@@ -19,6 +19,9 @@ with LazyImport() as tiktoken_import:
 
 
 logger = logging.getLogger(__name__)
+
+
+TOKENS_PER_MESSAGE_OVERHEAD = 4
 
 
 @component
@@ -260,13 +263,16 @@ class ChatGPTGenerator:
 
         replies = []
         for prompt in prompts:
+            system_prompt, prompt = enforce_token_limit_chat(
+                prompts=[system_prompt, prompts[0]],
+                tokenizer=self.tokenizer,
+                max_tokens_limit=self.max_tokens_limit,
+                tokens_per_message_overhead=TOKENS_PER_MESSAGE_OVERHEAD,
+            )
+
             payload = {
                 **parameters,
-                "messages": enforce_token_limit(
-                    prompt=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
-                    tokenizer=self.tokenizer,
-                    max_tokens_limit=self.max_tokens_limit,
-                ),
+                "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
             }
             if stream:
                 reply = query_chat_model_stream(

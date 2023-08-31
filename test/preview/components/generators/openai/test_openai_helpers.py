@@ -20,12 +20,6 @@ from haystack.preview.components.generators.openai._helpers import (
 )
 
 
-@pytest.fixture(autouse=True)
-def tenacity_wait():
-    with patch("tenacity.nap.time"):
-        yield
-
-
 @pytest.mark.unit
 def test_raise_for_status_200():
     response = Mock()

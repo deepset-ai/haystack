@@ -123,19 +123,14 @@ def raise_for_status(response: requests.Response):
     :raises OpenAIError: If the response status code is not 200.
     """
     if response.status_code >= 400:
-        openai_error: OpenAIError
         if response.status_code == 429:
-            openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-        elif response.status_code == 401:
-            openai_error = OpenAIUnauthorizedError(f"API key is invalid: {response.text}")
-        else:
-            openai_error = OpenAIError(
-                f"OpenAI returned an error.\n"
-                f"Status code: {response.status_code}\n"
-                f"Response body: {response.text}",
-                status_code=response.status_code,
-            )
-        raise openai_error
+            raise OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
+        if response.status_code == 401:
+            raise OpenAIUnauthorizedError(f"API key is invalid: {response.text}")
+        raise OpenAIError(
+            f"OpenAI returned an error.\n" f"Status code: {response.status_code}\n" f"Response body: {response.text}",
+            status_code=response.status_code,
+        )
 
 
 def check_truncated_answers(result: Dict[str, Any], payload: Dict[str, Any]):
