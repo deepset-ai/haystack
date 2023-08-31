@@ -128,20 +128,25 @@ def _process_request_streaming(pipeline, request) -> StreamingResponse:
     last_node_name = list(query_pipeline.graph.nodes)[-1]
     last_node_component = query_pipeline.graph.nodes.get(last_node_name)["component"]
     run_signature_args = inspect.signature(last_node_component).parameters.keys()
-    
+
     if isinstance(last_node_component, PromptNode) or "stream_handler" in run_signature_args:
+
         def pipeline_invocation_thread(pipeline, g, prompt):
             try:
                 if isinstance(last_node_component, PromptNode):
                     if last_node_name in params:
                         if "invocation_context" in params[last_node_name].keys():
-                            params[last_node_name]["invocation_context"]["stream_handler"] = FastAPITokenStreamingHandler(g)
+                            params[last_node_name]["invocation_context"][
+                                "stream_handler"
+                            ] = FastAPITokenStreamingHandler(g)
                         else:
                             params[last_node_name]["invocation_context"] = {
                                 "stream_handler": FastAPITokenStreamingHandler(g)
                             }
                     else:
-                        params[last_node_name] = {"invocation_context": {"stream_handler": FastAPITokenStreamingHandler(g)}}
+                        params[last_node_name] = {
+                            "invocation_context": {"stream_handler": FastAPITokenStreamingHandler(g)}
+                        }
                 elif "stream_handler" in run_signature_args:
                     if last_node_name in params:
                         params[last_node_name]["stream_handler"] = FastAPITokenStreamingHandler(g)
@@ -163,6 +168,7 @@ def _process_request_streaming(pipeline, request) -> StreamingResponse:
 
     else:
         warning_msg = "WARNING: The query-streaming endpoint requires the last component in the pipeline to be a PromptNode or a node that accepts `stream_handler`. Please consider updating your pipeline and rerun the backend."
+
         def warning_message_thread(g, warning_msg):
             stream_handler = FastAPITokenStreamingHandler(g)
             stream_handler(warning_msg)
@@ -174,6 +180,3 @@ def _process_request_streaming(pipeline, request) -> StreamingResponse:
             return g
 
         return StreamingResponse(token_generator(warning_msg), media_type="text/event-stream")
-
-
-    
