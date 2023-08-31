@@ -106,13 +106,13 @@ async def query_streaming(request: QueryRequest):
         run_signature_args = inspect.signature(last_node_component).parameters.keys()
 
         if isinstance(last_node_component, PromptNode):
-            result = _process_streaming_request(
+            result = _process_request_streaming(
                 query_pipeline, request, run_signature_args, last_node_component, last_node_name
             )
             return result
         else:
             if "stream_handler" in run_signature_args:
-                result = _process_streaming_request(
+                result = _process_request_streaming(
                     query_pipeline, request, run_signature_args, last_node_component, last_node_name
                 )
             else:
@@ -139,7 +139,7 @@ def _process_request(pipeline, request) -> Dict[str, Any]:
     return result
 
 
-def _process_streaming_request(
+def _process_request_streaming(
     pipeline, request, run_signature_args, last_node_component, last_node_name
 ) -> StreamingResponse:
     params = request.params or {}
