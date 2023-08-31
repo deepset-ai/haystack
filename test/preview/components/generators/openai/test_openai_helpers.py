@@ -3,7 +3,6 @@ import json
 
 import pytest
 
-
 from haystack.preview.components.generators.openai.errors import (
     OpenAIUnauthorizedError,
     OpenAIError,

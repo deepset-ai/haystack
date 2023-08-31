@@ -14,7 +14,6 @@ from haystack.preview.components.generators.openai.errors import (
     OpenAIUnauthorizedError,
 )
 
-
 with LazyImport("Run 'pip install tiktoken'") as tiktoken_import:
     import tiktoken
 
