@@ -235,19 +235,25 @@ class TestChatGPTGenerator:
     def test_run(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
             with patch("haystack.preview.components.generators.openai.chatgpt.query_chat_model") as query_patch:
-                query_patch.side_effect = lambda payload, **kwargs: [
-                    f"Response for {payload['messages'][1]['content']}",
-                    f"Another Response for {payload['messages'][1]['content']}",
-                ]
+                query_patch.side_effect = lambda payload, **kwargs: (
+                    [
+                        f"Response for {payload['messages'][1]['content']}",
+                        f"Another Response for {payload['messages'][1]['content']}",
+                    ],
+                    [{"metadata of": payload["messages"][1]["content"]}],
+                )
                 component = ChatGPTGenerator(
                     api_key="test-api-key", openai_organization="test_orga_id", api_base_url="test-base-url"
                 )
+
                 results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
+
                 assert results == {
                     "replies": [
                         [f"Response for test-prompt-1", f"Another Response for test-prompt-1"],
                         [f"Response for test-prompt-2", f"Another Response for test-prompt-2"],
-                    ]
+                    ],
+                    "metadata": [[{"metadata of": "test-prompt-1"}], [{"metadata of": "test-prompt-2"}]],
                 }
                 query_patch.call_count == 2
                 query_patch.assert_any_call(
@@ -279,13 +285,19 @@ class TestChatGPTGenerator:
     def test_run_streaming(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
             with patch("haystack.preview.components.generators.openai.chatgpt.query_chat_model_stream") as query_patch:
-                query_patch.side_effect = lambda payload, **kwargs: [
-                    f"Response for {payload['messages'][1]['content']}"
-                ]
+                query_patch.side_effect = lambda payload, **kwargs: (
+                    [f"Response for {payload['messages'][1]['content']}"],
+                    [{"metadata of": payload["messages"][1]["content"]}],
+                )
                 callback = Mock()
                 component = ChatGPTGenerator(api_key="test-api-key", stream=True, streaming_callback=callback)
+
                 results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
-                assert results == {"replies": [["Response for test-prompt-1"], ["Response for test-prompt-2"]]}
+
+                assert results == {
+                    "replies": [["Response for test-prompt-1"], ["Response for test-prompt-2"]],
+                    "metadata": [[{"metadata of": "test-prompt-1"}], [{"metadata of": "test-prompt-2"}]],
+                }
                 query_patch.call_count == 2
                 query_patch.assert_any_call(
                     url="https://api.openai.com/v1/chat/completions",

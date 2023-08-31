@@ -1,4 +1,4 @@
-from typing import List, Callable, Dict, Any
+from typing import List, Callable, Dict, Any, Tuple
 import os
 import logging
 import json
@@ -75,13 +75,22 @@ def query_chat_model(url: str, headers: Dict[str, str], payload: Dict[str, Any])
     json_response = json.loads(response.text)
     check_truncated_answers(result=json_response, payload=payload)
     check_filtered_answers(result=json_response, payload=payload)
-    return [choice["message"]["content"].strip() for choice in json_response["choices"]]
+    metadata = [
+        {
+            "model": json_response.get("model", None),
+            "index": choice.get("index", None),
+            "finish_reason": choice.get("finish_reason", None),
+            **json_response.get("usage", {}),
+        }
+        for choice in json_response.get("choices", [])
+    ]
+    return [choice["message"]["content"].strip() for choice in json_response.get("choices", [])], metadata
 
 
 @openai_retry
 def query_chat_model_stream(
     url: str, headers: Dict[str, str], payload: Dict[str, Any], callback: Callable
-) -> List[str]:
+) -> Tuple[List[str], List[Dict[str, Any]]]:
     """
     Query ChatGPT and streams the response. Once the stream finishes, returns a list of strings just like
     self._query_llm()
@@ -98,6 +107,7 @@ def query_chat_model_stream(
     raise_for_status(response=response)
 
     client = sseclient.SSEClient(response)
+    event_data = None
     tokens = []
     try:
         for event in client.events():
@@ -110,7 +120,21 @@ def query_chat_model_stream(
                 tokens.append(callback(token, event_data=event_data["choices"]))
     finally:
         client.close()
-    return ["".join(tokens)]
+
+    metadata = (
+        [
+            {
+                "model": event_data.get("model", None),
+                "index": choice.get("index", None),
+                "finish_reason": choice.get("finish_reason", None),
+            }
+            for choice in event_data.get("choices", [])
+        ]
+        if event_data
+        else []
+    )
+
+    return ["".join(tokens)], metadata
 
 
 def raise_for_status(response: requests.Response):

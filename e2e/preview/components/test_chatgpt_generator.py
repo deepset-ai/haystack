@@ -17,6 +17,14 @@ def test_chatgpt_generator_run():
     assert len(results["replies"][1]) == 1
     assert "Berlin" in results["replies"][1][0]
 
+    assert len(results["metadata"]) == 2
+    assert len(results["metadata"][0]) == 1
+    assert "gpt-3.5-turbo" in results["metadata"][0][0]["model"]
+    assert "stop" == results["metadata"][0][0]["finish_reason"]
+    assert len(results["metadata"][1]) == 1
+    assert "gpt-3.5-turbo" in results["metadata"][1][0]["model"]
+    assert "stop" == results["metadata"][1][0]["finish_reason"]
+
 
 @pytest.mark.skipif(
     not os.environ.get("OPENAI_API_KEY", None),
@@ -42,3 +50,11 @@ def test_chatgpt_generator_run_streaming():
     assert "Berlin" in results["replies"][1][0]
 
     assert callback.responses == results["replies"][0][0] + results["replies"][1][0]
+
+    assert len(results["metadata"]) == 2
+    assert len(results["metadata"][0]) == 1
+    assert "gpt-3.5-turbo" in results["metadata"][0][0]["model"]
+    assert "stop" == results["metadata"][0][0]["finish_reason"]
+    assert len(results["metadata"][1]) == 1
+    assert "gpt-3.5-turbo" in results["metadata"][1][0]["model"]
+    assert "stop" == results["metadata"][1][0]["finish_reason"]

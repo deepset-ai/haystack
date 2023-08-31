@@ -152,7 +152,7 @@ class ChatGPTGenerator:
         # FIXME how to deserialize the streaming callback?
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[List[str]])
+    @component.output_types(replies=List[List[str]], metadata=List[Dict[str, Any]])
     def run(
         self,
         prompts: List[str],
@@ -241,6 +241,7 @@ class ChatGPTGenerator:
         url = f"{api_base_url}/chat/completions"
 
         replies = []
+        metadata = []
         for prompt in prompts:
             system_prompt, prompt = enforce_token_limit_chat(
                 prompts=[system_prompt, prompt],
@@ -254,9 +255,12 @@ class ChatGPTGenerator:
                 "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
             }
             if stream:
-                reply = query_chat_model_stream(url=url, headers=headers, payload=payload, callback=streaming_callback)
+                reply, meta = query_chat_model_stream(
+                    url=url, headers=headers, payload=payload, callback=streaming_callback
+                )
             else:
-                reply = query_chat_model(url=url, headers=headers, payload=payload)
+                reply, meta = query_chat_model(url=url, headers=headers, payload=payload)
             replies.append(reply)
+            metadata.append(meta)
 
-        return {"replies": replies}
+        return {"replies": replies, "metadata": metadata}

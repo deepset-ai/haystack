@@ -87,9 +87,27 @@ def test_query_chat_model():
     with patch("haystack.preview.components.generators.openai._helpers.requests.post") as mock_post:
         response = Mock()
         response.status_code = 200
-        response.text = '{"choices": [{"finish_reason": "stop", "message": {"content": "   Hello, how are you? "}}]}'
+        response.text = """
+            {
+                "model": "test-model",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "stop",
+                        "message": {"content": "   Hello, how are you? "}
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 4,
+                    "completion_tokens": 5,
+                    "total_tokens": 9
+                }
+
+            }"""
         mock_post.return_value = response
-        replies = query_chat_model(url="test-url", headers={"header": "test-header"}, payload={"param": "test-param"})
+        replies, metadata = query_chat_model(
+            url="test-url", headers={"header": "test-header"}, payload={"param": "test-param"}
+        )
         mock_post.assert_called_once_with(
             "test-url",
             headers={"header": "test-header"},
@@ -97,6 +115,16 @@ def test_query_chat_model():
             timeout=OPENAI_TIMEOUT,
         )
         assert replies == ["Hello, how are you?"]
+        assert metadata == [
+            {
+                "model": "test-model",
+                "index": 0,
+                "finish_reason": "stop",
+                "prompt_tokens": 4,
+                "completion_tokens": 5,
+                "total_tokens": 9,
+            }
+        ]
 
 
 @pytest.mark.unit
@@ -116,6 +144,21 @@ def test_query_chat_model_fail():
             mock_post.call_count == OPENAI_MAX_RETRIES
 
 
+def mock_chat_completion_stream(model="test-model", index=0, token="test", finish_reason="stop"):
+    return Mock(
+        data=f"""{{
+            "model": "{model}",
+            "choices": [
+                {{
+                    "index": {index},
+                    "delta": {{"content": "{token}"}},
+                    "finish_reason": "{finish_reason}"
+                }}
+            ]
+        }}"""
+    )
+
+
 @pytest.mark.unit
 def test_query_chat_model_stream():
     with patch("haystack.preview.components.generators.openai._helpers.requests.post") as mock_post:
@@ -125,18 +168,18 @@ def test_query_chat_model_stream():
             response.status_code = 200
 
             mock_sseclient.return_value.events.return_value = [
-                Mock(data='{"choices": [{"delta": {"content": "Hello"}}]}'),
-                Mock(data='{"choices": [{"delta": {"content": ","}}]}'),
-                Mock(data='{"choices": [{"delta": {"content": " how"}}]}'),
-                Mock(data='{"choices": [{"delta": {"content": " are"}}]}'),
-                Mock(data='{"choices": [{"delta": {"content": " you"}}]}'),
-                Mock(data='{"choices": [{"delta": {"content": "?"}}]}'),
+                mock_chat_completion_stream(token="Hello"),
+                mock_chat_completion_stream(token=","),
+                mock_chat_completion_stream(token=" how"),
+                mock_chat_completion_stream(token=" are"),
+                mock_chat_completion_stream(token=" you"),
+                mock_chat_completion_stream(token="?"),
                 Mock(data="[DONE]"),
-                Mock(data='{"choices": [{"delta": {"content": "discarded tokens"}}]}'),
+                mock_chat_completion_stream(token="discarded tokens"),
             ]
 
             mock_post.return_value = response
-            replies = query_chat_model_stream(
+            replies, metadata = query_chat_model_stream(
                 url="test-url", headers={"header": "test-header"}, payload={"param": "test-param"}, callback=callback
             )
             mock_post.assert_called_once_with(
@@ -144,8 +187,10 @@ def test_query_chat_model_stream():
                 headers={"header": "test-header"},
                 data=json.dumps({"param": "test-param"}),
                 timeout=OPENAI_TIMEOUT,
+                stream=True,
             )
             assert replies == ["|Hello||,|| how|| are|| you||?|"]
+            assert metadata == [{"model": "test-model", "index": 0, "finish_reason": "stop"}]
 
 
 @pytest.mark.unit
