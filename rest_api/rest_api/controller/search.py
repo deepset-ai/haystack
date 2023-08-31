@@ -147,7 +147,7 @@ def _process_streaming_request(pipeline, request) -> StreamingResponse:
                     params[last_node_name] = {"invocation_context": {"stream_handler": FastAPITokenStreamingHandler(g)}}
             else:
                 logging.warning(
-                    "The he last component in the pipeline is not a PromptNode or it does not accept the parameter `stream_handler`. The output will not be streamed."
+                    "The last component in the pipeline is not a PromptNode or it does not accept the parameter `stream_handler`. The output will not be streamed."
                 )
 
             pipeline.run(query=prompt, params=params)
