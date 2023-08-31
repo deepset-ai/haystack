@@ -177,12 +177,9 @@ def test_query_chat_model_stream_fail():
 
 
 @pytest.mark.unit
-def test_enforce_token_limit_above_limit(caplog):
-    tokenizer = Mock()
-    tokenizer.encode = lambda text: text.split()
-    tokenizer.decode = lambda tokens: " ".join(tokens)
-
-    assert enforce_token_limit("This is a test prompt.", tokenizer=tokenizer, max_tokens_limit=3) == "This is a"
+def test_enforce_token_limit_above_limit(caplog, mock_tokenizer):
+    prompt = enforce_token_limit("This is a test prompt.", tokenizer=mock_tokenizer, max_tokens_limit=3)
+    assert prompt == "This is a"
     assert caplog.records[0].message == (
         "The prompt has been truncated from 5 tokens to 3 tokens to fit within the max token "
         "limit. Reduce the length of the prompt to prevent it from being cut off."
@@ -190,30 +187,21 @@ def test_enforce_token_limit_above_limit(caplog):
 
 
 @pytest.mark.unit
-def test_enforce_token_limit_below_limit(caplog):
-    tokenizer = Mock()
-    tokenizer.encode = lambda text: text.split()
-    tokenizer.decode = lambda tokens: " ".join(tokens)
-
-    assert (
-        enforce_token_limit("This is a test prompt.", tokenizer=tokenizer, max_tokens_limit=100)
-        == "This is a test prompt."
-    )
+def test_enforce_token_limit_below_limit(caplog, mock_tokenizer):
+    prompt = enforce_token_limit("This is a test prompt.", tokenizer=mock_tokenizer, max_tokens_limit=100)
+    assert prompt == "This is a test prompt."
     assert not caplog.records
 
 
 @pytest.mark.unit
-def test_enforce_token_limit_chat_above_limit(caplog):
-    tokenizer = Mock()
-    tokenizer.encode = lambda text: text.split()
-    tokenizer.decode = lambda tokens: " ".join(tokens)
-
-    assert enforce_token_limit_chat(
+def test_enforce_token_limit_chat_above_limit(caplog, mock_tokenizer):
+    prompts = enforce_token_limit_chat(
         ["System Prompt", "This is a test prompt."],
-        tokenizer=tokenizer,
+        tokenizer=mock_tokenizer,
         max_tokens_limit=7,
         tokens_per_message_overhead=2,
-    ) == ["System Prompt", "This is a"]
+    )
+    assert prompts == ["System Prompt", "This is a"]
     assert caplog.records[0].message == (
         "The prompts have been truncated from 11 tokens to 7 tokens to fit within the max token limit. "
         "Reduce the length of the prompt to prevent it from being cut off."
@@ -221,15 +209,12 @@ def test_enforce_token_limit_chat_above_limit(caplog):
 
 
 @pytest.mark.unit
-def test_enforce_token_limit_chat_below_limit(caplog):
-    tokenizer = Mock()
-    tokenizer.encode = lambda text: text.split()
-    tokenizer.decode = lambda tokens: " ".join(tokens)
-
-    assert enforce_token_limit_chat(
+def test_enforce_token_limit_chat_below_limit(caplog, mock_tokenizer):
+    prompts = enforce_token_limit_chat(
         ["System Prompt", "This is a test prompt."],
-        tokenizer=tokenizer,
+        tokenizer=mock_tokenizer,
         max_tokens_limit=100,
         tokens_per_message_overhead=2,
-    ) == ["System Prompt", "This is a test prompt."]
+    )
+    assert prompts == ["System Prompt", "This is a test prompt."]
     assert not caplog.records
