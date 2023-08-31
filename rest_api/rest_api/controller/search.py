@@ -174,9 +174,9 @@ def _process_request_streaming(pipeline, request) -> StreamingResponse:
             stream_handler(warning_msg)
             g.close()
 
-        def token_generator(warning_msg: str):
+        def warning_message_generator(warning_msg: str):
             g = ThreadedGenerator()
             threading.Thread(target=warning_message_thread, args=(g, warning_msg)).start()
             return g
 
-        return StreamingResponse(token_generator(warning_msg), media_type="text/event-stream")
+        return StreamingResponse(warning_message_generator(warning_msg), media_type="text/event-stream")
