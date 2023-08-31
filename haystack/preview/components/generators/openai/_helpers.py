@@ -215,7 +215,7 @@ def enforce_token_limit_chat(
         max_tokens_limit,
     )
     cut_prompts = []
-    cut_prompts_lens = []
+    cut_prompts_lens: List[int] = []
     for prompt, prompt_len in zip(prompts, prompts_lens):
         if sum(cut_prompts_lens) + prompt_len <= max_tokens_limit:
             cut_prompts.append(prompt)
@@ -223,4 +223,5 @@ def enforce_token_limit_chat(
         else:
             remaining_tokens = max_tokens_limit - sum(cut_prompts_lens)
             cut_prompts.append(enforce_token_limit(prompt, tokenizer, remaining_tokens))
-            return cut_prompts
+            break
+    return cut_prompts

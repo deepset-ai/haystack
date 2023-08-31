@@ -101,27 +101,29 @@ class ChatGPTGenerator:
         self.frequency_penalty = frequency_penalty
         self.logit_bias = logit_bias or {}
         self.stream = stream
-        self.streaming_callback = streaming_callback
+        self.streaming_callback = streaming_callback or default_streaming_callback
         self.streaming_done_marker = streaming_done_marker
 
         self.openai_organization = openai_organization
         self.api_base_url = api_base_url
 
-        self.tokenizer = None
-        for model_prefix in OPENAI_TOKENIZERS:
+        tokenizer = None
+        for model_prefix, tokenizer_name in OPENAI_TOKENIZERS.items():
             if model_name.startswith(model_prefix):
-                self.tokenizer = tiktoken.get_encoding(OPENAI_TOKENIZERS[model_prefix])
+                tokenizer = tiktoken.get_encoding(tokenizer_name)
                 break
-        if not self.tokenizer:
+        if not tokenizer:
             raise ValueError(f"Tokenizer for model '{model_name}' not found.")
+        self.tokenizer = tokenizer
 
-        self.max_tokens_limit = None
-        for model_prefix in OPENAI_TOKENIZERS_TOKEN_LIMITS:
+        max_tokens_limit = None
+        for model_prefix, limit in OPENAI_TOKENIZERS_TOKEN_LIMITS.items():
             if model_name.startswith(model_prefix):
-                self.max_tokens_limit = OPENAI_TOKENIZERS_TOKEN_LIMITS[model_prefix]
+                max_tokens_limit = limit
                 break
-        if not self.max_tokens_limit:
+        if not max_tokens_limit:
             raise ValueError(f"Max tokens limit for model '{model_name}' not found.")
+        self.max_tokens_limit = max_tokens_limit
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -212,7 +214,7 @@ class ChatGPTGenerator:
         """
         api_key = api_key if api_key is not None else self.api_key
         model_name = model_name if model_name is not None else self.model_name
-        system_prompt = system_prompt if system_prompt is not None else self.system_prompt
+        system_prompt = system_prompt if system_prompt is not None else self.system_prompt or ""
         max_tokens = max_tokens if max_tokens is not None else self.max_tokens
         temperature = temperature if temperature is not None else self.temperature
         top_p = top_p if top_p is not None else self.top_p

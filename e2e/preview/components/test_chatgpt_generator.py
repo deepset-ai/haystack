@@ -1,6 +1,6 @@
 import os
 import pytest
-from haystack.preview.components.generators.openai.chatgpt import ChatGPTGenerator, default_streaming_callback
+from haystack.preview.components.generators.openai.chatgpt import ChatGPTGenerator
 
 
 @pytest.mark.skipif(
