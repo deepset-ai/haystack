@@ -279,7 +279,9 @@ def test_handle_various_response_errors(caplog, mocked_requests, error_code: int
     docs = r.fetch(url=url)
 
     assert f"Couldn't retrieve content from {url}" in caplog.text
-    assert docs == []
+    assert len(docs) == 1
+    assert isinstance(docs[0], Document)
+    assert docs[0].content == ""
 
 
 @pytest.mark.unit

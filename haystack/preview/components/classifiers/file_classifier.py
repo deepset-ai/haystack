@@ -2,9 +2,9 @@ import logging
 import mimetypes
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict, Any
 
-from haystack.preview import component
+from haystack.preview import component, default_from_dict, default_to_dict
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +38,21 @@ class FileExtensionClassifier:
                     f"Unknown mime type: '{mime_type}'. Ensure you passed a list of strings in the 'mime_types' parameter"
                 )
 
-        # save the init parameters for serialization
-        self.init_parameters = {"mime_types": mime_types}
-
         component.set_output_types(self, unclassified=List[Path], **{mime_type: List[Path] for mime_type in mime_types})
         self.mime_types = mime_types
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        return default_to_dict(self, mime_types=self.mime_types)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "FileExtensionClassifier":
+        """
+        Deserialize this component from a dictionary.
+        """
+        return default_from_dict(cls, data)
 
     def run(self, paths: List[Union[str, Path]]):
         """
