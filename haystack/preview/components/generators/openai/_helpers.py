@@ -95,7 +95,7 @@ def query_chat_model_stream(
     :param marker: A marker that indicates the end of the stream. It is used to determine when to stop streaming.
     :return: A list of strings containing the response from the OpenAI API.
     """
-    response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
+    response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT, stream=True)
     raise_for_status(response=response)
 
     client = sseclient.SSEClient(response)
