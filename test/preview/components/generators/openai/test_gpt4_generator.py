@@ -13,15 +13,14 @@ class TestChatGPTGenerator:
             assert component.api_key is None
             assert component.model_name == "gpt-4"
             assert component.system_prompt == "You are a helpful assistant."
-            assert component.max_reply_tokens == 500
+            assert component.max_tokens == 500
             assert component.temperature == 0.7
             assert component.top_p == 1
             assert component.n == 1
-            assert component.stop is None
+            assert component.stop == []
             assert component.presence_penalty == 0
             assert component.frequency_penalty == 0
-            assert component.logit_bias == None
-            assert component.moderate_content is True
+            assert component.logit_bias == {}
             assert component.stream is False
             assert component.streaming_callback == default_streaming_callback
             assert component.streaming_done_marker == "[DONE]"
@@ -50,7 +49,7 @@ class TestChatGPTGenerator:
                 api_key="test-api-key",
                 model_name="test-model-name",
                 system_prompt="test-system-prompt",
-                max_reply_tokens=20,
+                max_tokens=20,
                 temperature=1,
                 top_p=5,
                 n=10,
@@ -58,7 +57,6 @@ class TestChatGPTGenerator:
                 presence_penalty=0.5,
                 frequency_penalty=0.4,
                 logit_bias={"test-logit-bias": 0.3},
-                moderate_content=False,
                 stream=True,
                 streaming_callback=callback,
                 streaming_done_marker="test-marker",
@@ -68,7 +66,7 @@ class TestChatGPTGenerator:
             assert component.api_key == "test-api-key"
             assert component.model_name == "test-model-name"
             assert component.system_prompt == "test-system-prompt"
-            assert component.max_reply_tokens == 20
+            assert component.max_tokens == 20
             assert component.temperature == 1
             assert component.top_p == 5
             assert component.n == 10
@@ -76,7 +74,6 @@ class TestChatGPTGenerator:
             assert component.presence_penalty == 0.5
             assert component.frequency_penalty == 0.4
             assert component.logit_bias == {"test-logit-bias": 0.3}
-            assert component.moderate_content is False
             assert component.stream is True
             assert component.streaming_callback == callback
             assert component.streaming_done_marker == "test-marker"
