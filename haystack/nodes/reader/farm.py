@@ -1320,7 +1320,6 @@ class FARMReader(BaseReader):
                 # Check if predictions from overlapping Document are within the overlap
             overlapping_doc_pred = preds_per_doc[overlap["doc_id"]]
             cur_doc_overlap = [ol for ol in overlapping_docs[overlap["doc_id"]] if ol["doc_id"] == pred.id][0]
-            breaked = False
             for pot_dupl_ans_idx in reversed(range(len(overlapping_doc_pred.prediction))):
                 pot_dupl_ans = overlapping_doc_pred.prediction[pot_dupl_ans_idx]
                 if pot_dupl_ans.answer_type != "span":
@@ -1333,12 +1332,11 @@ class FARMReader(BaseReader):
                     # Discard the duplicate with lower score
                     if ans.confidence < pot_dupl_ans.confidence:
                         pred.prediction.pop(ans_idx)
-                        breaked = True
-                        break
+                        return
                     else:
                         overlapping_doc_pred.prediction.pop(pot_dupl_ans_idx)
 
-            return
+                return
 
     @staticmethod
     def _is_duplicate_answer(
