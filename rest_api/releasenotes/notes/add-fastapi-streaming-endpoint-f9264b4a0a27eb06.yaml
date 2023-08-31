@@ -1,4 +1,4 @@
 ---
 features:
   - |
-    add a FastAPI streaming endpoint for the query pipeline
+    add a REST API streaming endpoint for the query pipeline
