@@ -256,7 +256,8 @@ class _Component:
 
         # Save the component in the class registry (for deserialization)
         if class_.__name__ in self.registry:
-            logger.error(
+            # It may occur easily in notebooks by re-running cells.
+            logger.debug(
                 "Component %s is already registered. Previous imported from '%s', new imported from '%s'",
                 class_.__name__,
                 self.registry[class_.__name__],
