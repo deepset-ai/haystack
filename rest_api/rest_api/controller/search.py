@@ -109,6 +109,7 @@ async def query_streaming(request: QueryRequest):
             result = _process_streaming_request(
                 query_pipeline, request, run_signature_args, last_node_component, last_node_name
             )
+            return result
         else:
             if "stream_handler" in run_signature_args:
                 result = _process_streaming_request(
@@ -117,7 +118,7 @@ async def query_streaming(request: QueryRequest):
             else:
                 result = _process_request(query_pipeline, request)
 
-        return result
+            return result
 
 
 def _process_request(pipeline, request) -> Dict[str, Any]:
