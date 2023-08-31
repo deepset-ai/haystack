@@ -10,6 +10,9 @@ class OpenAIError(ComponentError):
         self.message = message
         self.status_code = status_code
 
+    def __str__(self):
+        return self.message + f"(status code {self.status_code})" if self.status_code else ""
+
 
 class OpenAIRateLimitError(OpenAIError):
     """

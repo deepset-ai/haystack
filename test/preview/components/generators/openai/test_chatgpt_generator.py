@@ -14,15 +14,14 @@ class TestChatGPTGenerator:
             assert component.api_key is None
             assert component.model_name == "gpt-3.5-turbo"
             assert component.system_prompt == "You are a helpful assistant."
-            assert component.max_reply_tokens == 500
+            assert component.max_tokens == 500
             assert component.temperature == 0.7
             assert component.top_p == 1
             assert component.n == 1
-            assert component.stop is None
+            assert component.stop == []
             assert component.presence_penalty == 0
             assert component.frequency_penalty == 0
-            assert component.logit_bias == None
-            assert component.moderate_content is True
+            assert component.logit_bias == {}
             assert component.stream is False
             assert component.streaming_callback == default_streaming_callback
             assert component.streaming_done_marker == "[DONE]"
@@ -51,7 +50,7 @@ class TestChatGPTGenerator:
                 api_key="test-api-key",
                 model_name="test-model-name",
                 system_prompt="test-system-prompt",
-                max_reply_tokens=20,
+                max_tokens=20,
                 temperature=1,
                 top_p=5,
                 n=10,
@@ -59,7 +58,6 @@ class TestChatGPTGenerator:
                 presence_penalty=0.5,
                 frequency_penalty=0.4,
                 logit_bias={"test-logit-bias": 0.3},
-                moderate_content=False,
                 stream=True,
                 streaming_callback=callback,
                 streaming_done_marker="test-marker",
@@ -69,7 +67,7 @@ class TestChatGPTGenerator:
             assert component.api_key == "test-api-key"
             assert component.model_name == "test-model-name"
             assert component.system_prompt == "test-system-prompt"
-            assert component.max_reply_tokens == 20
+            assert component.max_tokens == 20
             assert component.temperature == 1
             assert component.top_p == 5
             assert component.n == 10
@@ -77,7 +75,6 @@ class TestChatGPTGenerator:
             assert component.presence_penalty == 0.5
             assert component.frequency_penalty == 0.4
             assert component.logit_bias == {"test-logit-bias": 0.3}
-            assert component.moderate_content is False
             assert component.stream is True
             assert component.streaming_callback == callback
             assert component.streaming_done_marker == "test-marker"
@@ -115,7 +112,7 @@ class TestChatGPTGenerator:
                     "api_key": None,
                     "model_name": "gpt-3.5-turbo",
                     "system_prompt": "You are a helpful assistant.",
-                    "max_reply_tokens": 500,
+                    "max_tokens": 500,
                     "temperature": 0.7,
                     "top_p": 1,
                     "n": 1,
@@ -123,7 +120,6 @@ class TestChatGPTGenerator:
                     "presence_penalty": 0,
                     "frequency_penalty": 0,
                     "logit_bias": None,
-                    "moderate_content": True,
                     "stream": False,
                     # FIXME serialize callback?
                     "streaming_done_marker": "[DONE]",
@@ -148,7 +144,7 @@ class TestChatGPTGenerator:
                 api_key="test-api-key",
                 model_name="test-model-name",
                 system_prompt="test-system-prompt",
-                max_reply_tokens=20,
+                max_tokens=20,
                 temperature=1,
                 top_p=5,
                 n=10,
@@ -156,7 +152,6 @@ class TestChatGPTGenerator:
                 presence_penalty=0.5,
                 frequency_penalty=0.4,
                 logit_bias={"test-logit-bias": 0.3},
-                moderate_content=False,
                 stream=True,
                 streaming_callback=callback,
                 streaming_done_marker="test-marker",
@@ -170,7 +165,7 @@ class TestChatGPTGenerator:
                     "api_key": "test-api-key",
                     "model_name": "test-model-name",
                     "system_prompt": "test-system-prompt",
-                    "max_reply_tokens": 20,
+                    "max_tokens": 20,
                     "temperature": 1,
                     "top_p": 5,
                     "n": 10,
@@ -178,7 +173,6 @@ class TestChatGPTGenerator:
                     "presence_penalty": 0.5,
                     "frequency_penalty": 0.4,
                     "logit_bias": {"test-logit-bias": 0.3},
-                    "moderate_content": False,
                     "stream": True,
                     # FIXME serialize callback?
                     "streaming_done_marker": "test-marker",
@@ -204,7 +198,7 @@ class TestChatGPTGenerator:
                     "api_key": "test-api-key",
                     "model_name": "test-model-name",
                     "system_prompt": "test-system-prompt",
-                    "max_reply_tokens": 20,
+                    "max_tokens": 20,
                     "temperature": 1,
                     "top_p": 5,
                     "n": 10,
@@ -212,7 +206,6 @@ class TestChatGPTGenerator:
                     "presence_penalty": 0.5,
                     "frequency_penalty": 0.4,
                     "logit_bias": {"test-logit-bias": 0.3},
-                    "moderate_content": False,
                     "stream": True,
                     # FIXME serialize callback?
                     "streaming_done_marker": "test-marker",
@@ -224,7 +217,7 @@ class TestChatGPTGenerator:
             assert component.api_key == "test-api-key"
             assert component.model_name == "test-model-name"
             assert component.system_prompt == "test-system-prompt"
-            assert component.max_reply_tokens == 20
+            assert component.max_tokens == 20
             assert component.temperature == 1
             assert component.top_p == 5
             assert component.n == 10
@@ -232,7 +225,6 @@ class TestChatGPTGenerator:
             assert component.presence_penalty == 0.5
             assert component.frequency_penalty == 0.4
             assert component.logit_bias == {"test-logit-bias": 0.3}
-            assert component.moderate_content is False
             assert component.stream is True
             assert component.streaming_callback == default_streaming_callback
             assert component.streaming_done_marker == "test-marker"
@@ -251,13 +243,19 @@ class TestChatGPTGenerator:
     def test_run(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
             with patch("haystack.preview.components.generators.openai.chatgpt.query_chat_model") as query_patch:
-                query_patch.return_value = ["test-response", "another-response"]
+                query_patch.side_effect = lambda payload, **kwargs: [
+                    f"Response for {payload['messages'][1]['content']}",
+                    f"Another Response for {payload['messages'][1]['content']}",
+                ]
                 component = ChatGPTGenerator(
                     api_key="test-api-key", openai_organization="test_orga_id", api_base_url="test-base-url"
                 )
                 results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
                 assert results == {
-                    "replies": [["test-response", "another-response"], ["test-response", "another-response"]]
+                    "replies": [
+                        [f"Response for test-prompt-1", f"Another Response for test-prompt-1"],
+                        [f"Response for test-prompt-2", f"Another Response for test-prompt-2"],
+                    ]
                 }
                 query_patch.call_count == 2
                 query_patch.assert_any_call(
@@ -269,16 +267,15 @@ class TestChatGPTGenerator:
                     },
                     payload={
                         "model": "gpt-3.5-turbo",
-                        "max_reply_tokens": 500,
+                        "max_tokens": 500,
                         "temperature": 0.7,
                         "top_p": 1,
                         "n": 1,
                         "stream": False,
-                        "stop": None,
+                        "stop": [],
                         "presence_penalty": 0,
                         "frequency_penalty": 0,
-                        "logit_bias": None,
-                        "moderate_content": True,
+                        "logit_bias": {},
                         "messages": [
                             {"role": "system", "content": "You are a helpful assistant."},
                             {"role": "user", "content": "test-prompt-1"},
@@ -290,29 +287,30 @@ class TestChatGPTGenerator:
     def test_run_streaming(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
             with patch("haystack.preview.components.generators.openai.chatgpt.query_chat_model_stream") as query_patch:
-                query_patch.side_effect = [["test-response-a"], ["test-response-b"]]
+                query_patch.side_effect = lambda payload, **kwargs: [
+                    f"Response for {payload['messages'][1]['content']}"
+                ]
                 callback = Mock()
                 component = ChatGPTGenerator(
                     api_key="test-api-key", stream=True, streaming_callback=callback, streaming_done_marker="test-done"
                 )
                 results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
-                assert results == {"replies": [["test-response-a"], ["test-response-b"]]}
+                assert results == {"replies": [["Response for test-prompt-1"], ["Response for test-prompt-2"]]}
                 query_patch.call_count == 2
                 query_patch.assert_any_call(
                     url="https://api.openai.com/v1/chat/completions",
                     headers={"Authorization": f"Bearer test-api-key", "Content-Type": "application/json"},
                     payload={
                         "model": "gpt-3.5-turbo",
-                        "max_reply_tokens": 500,
+                        "max_tokens": 500,
                         "temperature": 0.7,
                         "top_p": 1,
                         "n": 1,
                         "stream": True,
-                        "stop": None,
+                        "stop": [],
                         "presence_penalty": 0,
                         "frequency_penalty": 0,
-                        "logit_bias": None,
-                        "moderate_content": True,
+                        "logit_bias": {},
                         "messages": [
                             {"role": "system", "content": "You are a helpful assistant."},
                             {"role": "user", "content": "test-prompt-1"},

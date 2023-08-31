@@ -1,5 +1,4 @@
 from typing import List, Callable, Dict, Any
-
 import os
 import logging
 import json
@@ -16,7 +15,7 @@ from haystack.preview.components.generators.openai.errors import (
 )
 
 
-with LazyImport() as tiktoken_import:
+with LazyImport("Run 'pip install tiktoken'") as tiktoken_import:
     import tiktoken
 
 
@@ -52,7 +51,7 @@ openai_retry = tenacity.retry(
 )
 
 
-def default_streaming_callback(token: str):
+def default_streaming_callback(token: str, **kwargs):
     """
     Default callback function for streaming responses from OpenAI API.
     Prints the tokens to stdout as soon as they are received and returns them.
@@ -123,19 +122,14 @@ def raise_for_status(response: requests.Response):
     :raises OpenAIError: If the response status code is not 200.
     """
     if response.status_code >= 400:
-        openai_error: OpenAIError
         if response.status_code == 429:
-            openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-        elif response.status_code == 401:
-            openai_error = OpenAIUnauthorizedError(f"API key is invalid: {response.text}")
-        else:
-            openai_error = OpenAIError(
-                f"OpenAI returned an error.\n"
-                f"Status code: {response.status_code}\n"
-                f"Response body: {response.text}",
-                status_code=response.status_code,
-            )
-        raise openai_error
+            raise OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
+        if response.status_code == 401:
+            raise OpenAIUnauthorizedError(f"API key is invalid: {response.text}")
+        raise OpenAIError(
+            f"OpenAI returned an error.\n" f"Status code: {response.status_code}\n" f"Response body: {response.text}",
+            status_code=response.status_code,
+        )
 
 
 def check_truncated_answers(result: Dict[str, Any], payload: Dict[str, Any]):
@@ -171,3 +165,63 @@ def check_filtered_answers(result: Dict[str, Any], payload: Dict[str, Any]):
             filtered_completions,
             payload["n"],
         )
+
+
+def enforce_token_limit(prompt: str, tokenizer: "tiktoken.Encoding", max_tokens_limit: int) -> str:
+    """
+    Ensure that the length of the prompt is within the max tokens limit of the model.
+    If needed, truncate the prompt text so that it fits within the limit.
+
+    :param prompt: Prompt text to be sent to the generative model.
+    :param tokenizer: The tokenizer used to encode the prompt.
+    :param max_tokens_limit: The max tokens limit of the model.
+    :return: The prompt text that fits within the max tokens limit of the model.
+    """
+    tiktoken_import.check()
+    tokens = tokenizer.encode(prompt)
+    tokens_count = len(tokens)
+    if tokens_count > max_tokens_limit:
+        logger.warning(
+            "The prompt has been truncated from %s tokens to %s tokens to fit within the max token limit. "
+            "Reduce the length of the prompt to prevent it from being cut off.",
+            tokens_count,
+            max_tokens_limit,
+        )
+        prompt = tokenizer.decode(tokens[:max_tokens_limit])
+    return prompt
+
+
+def enforce_token_limit_chat(
+    prompts: List[str], tokenizer: "tiktoken.Encoding", max_tokens_limit: int, tokens_per_message_overhead: int
+) -> List[str]:
+    """
+    Ensure that the length of the list of prompts is within the max tokens limit of the model.
+    If needed, truncate the prompts text and list so that it fits within the limit.
+
+    :param prompts: Prompts text to be sent to the generative model.
+    :param tokenizer: The tokenizer used to encode the prompt.
+    :param max_tokens_limit: The max tokens limit of the model.
+    :param tokens_per_message_overhead: The number of tokens that are added to the prompt text for each message.
+    :return: A list of prompts that fits within the max tokens limit of the model.
+    """
+    prompts_lens = [len(tokenizer.encode(prompt)) + tokens_per_message_overhead for prompt in prompts]
+    if (total_prompt_length := sum(prompts_lens)) <= max_tokens_limit:
+        return prompts
+
+    logger.warning(
+        "The prompts have been truncated from %s tokens to %s tokens to fit within the max token limit. "
+        "Reduce the length of the prompt to prevent it from being cut off.",
+        total_prompt_length,
+        max_tokens_limit,
+    )
+    cut_prompts = []
+    cut_prompts_lens: List[int] = []
+    for prompt, prompt_len in zip(prompts, prompts_lens):
+        if sum(cut_prompts_lens) + prompt_len <= max_tokens_limit:
+            cut_prompts.append(prompt)
+            cut_prompts_lens.append(prompt_len)
+        else:
+            remaining_tokens = max_tokens_limit - sum(cut_prompts_lens)
+            cut_prompts.append(enforce_token_limit(prompt, tokenizer, remaining_tokens))
+            break
+    return cut_prompts
