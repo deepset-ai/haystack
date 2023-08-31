@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes exception while running node 'Reader':pop index out of range
