@@ -97,10 +97,26 @@ async def query_streaming(request: QueryRequest):
     """
     This endpoint receives the question as a string and allows the requester to set
     additional parameters that will be passed on to the Haystack pipeline. If the last node in the pipeline
-    is a PromptNode, the output of the last note will be a streaming text. Otherwise, the output will not be streamed.
+    is a PromptNode or a node that accepts `stream_handler` in its `run` method, the output of the last note will be a streaming text.
+    Otherwise, the output will not be streamed.
     """
     with concurrency_limiter.run():
-        result = _process_streaming_request(query_pipeline, request)
+        last_node_name = list(query_pipeline.graph.nodes)[-1]
+        last_node_component = query_pipeline.graph.nodes.get(last_node_name)["component"]
+        run_signature_args = inspect.signature(last_node_component).parameters.keys()
+
+        if isinstance(last_node_component, PromptNode):
+            result = _process_streaming_request(
+                query_pipeline, request, run_signature_args, last_node_component, last_node_name
+            )
+        else:
+            if "stream_handler" in run_signature_args:
+                result = _process_streaming_request(
+                    query_pipeline, request, run_signature_args, last_node_component, last_node_name
+                )
+            else:
+                result = _process_request(query_pipeline, request)
+
         return result
 
 
@@ -122,20 +138,14 @@ def _process_request(pipeline, request) -> Dict[str, Any]:
     return result
 
 
-def _process_streaming_request(pipeline, request) -> StreamingResponse:
+def _process_streaming_request(
+    pipeline, request, run_signature_args, last_node_component, last_node_name
+) -> StreamingResponse:
     params = request.params or {}
-    last_node_name = list(query_pipeline.graph.nodes)[-1]
-    last_node_component = query_pipeline.graph.nodes.get(last_node_name)["component"]
-    run_signature_args = inspect.signature(last_node_component).parameters.keys()
 
     def prompt_node_invocation_thread(pipeline, g, prompt):
         try:
-            if "stream_hanlder" in run_signature_args:
-                if last_node_name in params:
-                    params[last_node_name]["stream_handler"] = FastAPITokenStreamingHandler(g)
-                else:
-                    params[last_node_name] = {"stream_handler": FastAPITokenStreamingHandler(g)}
-            elif isinstance(last_node_component, PromptNode):
+            if isinstance(last_node_component, PromptNode):
                 if last_node_name in params:
                     if "invocation_context" in params[last_node_name].keys():
                         params[last_node_name]["invocation_context"]["stream_handler"] = FastAPITokenStreamingHandler(g)
@@ -145,10 +155,13 @@ def _process_streaming_request(pipeline, request) -> StreamingResponse:
                         }
                 else:
                     params[last_node_name] = {"invocation_context": {"stream_handler": FastAPITokenStreamingHandler(g)}}
+            elif "stream_handler" in run_signature_args:
+                if last_node_name in params:
+                    params[last_node_name]["stream_handler"] = FastAPITokenStreamingHandler(g)
+                else:
+                    params[last_node_name] = {"stream_handler": FastAPITokenStreamingHandler(g)}
             else:
-                logging.warning(
-                    "The last component in the pipeline is not a PromptNode or it does not accept the parameter `stream_handler`. The output will not be streamed."
-                )
+                pass
 
             pipeline.run(query=prompt, params=params)
         finally:
