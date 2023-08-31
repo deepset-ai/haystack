@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    add a FastAPI streaming endpoint for the query pipeline
