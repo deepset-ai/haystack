@@ -60,7 +60,7 @@ def default_streaming_callback(token: str, **kwargs):
 
 
 @openai_retry
-def query_chat_model(url: str, headers: Dict[str, str], payload: Dict[str, Any]) -> List[str]:
+def query_chat_model(url: str, headers: Dict[str, str], payload: Dict[str, Any]) -> Tuple[List[str], Dict[str, Any]]:
     """
     Query ChatGPT without streaming the response.
 

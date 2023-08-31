@@ -240,8 +240,8 @@ class ChatGPTGenerator:
             headers["OpenAI-Organization"] = openai_organization
         url = f"{api_base_url}/chat/completions"
 
-        replies = []
-        metadata = []
+        replies: List[List[str]] = []
+        metadata: List[List[Dict[str, Any]]] = []
         for prompt in prompts:
             system_prompt, prompt = enforce_token_limit_chat(
                 prompts=[system_prompt, prompt],
