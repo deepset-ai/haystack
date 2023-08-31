@@ -131,17 +131,13 @@ def test_query_chat_model_stream():
                 Mock(data='{"choices": [{"delta": {"content": " are"}}]}'),
                 Mock(data='{"choices": [{"delta": {"content": " you"}}]}'),
                 Mock(data='{"choices": [{"delta": {"content": "?"}}]}'),
-                Mock(data="test-marker"),
+                Mock(data="[DONE]"),
                 Mock(data='{"choices": [{"delta": {"content": "discarded tokens"}}]}'),
             ]
 
             mock_post.return_value = response
             replies = query_chat_model_stream(
-                url="test-url",
-                headers={"header": "test-header"},
-                payload={"param": "test-param"},
-                callback=callback,
-                marker="test-marker",
+                url="test-url", headers={"header": "test-header"}, payload={"param": "test-param"}, callback=callback
             )
             mock_post.assert_called_once_with(
                 "test-url",
@@ -161,11 +157,7 @@ def test_query_chat_model_stream_fail():
         mock_post.return_value = response
         with pytest.raises(OpenAIError):
             query_chat_model_stream(
-                url="test-url",
-                headers={"header": "test-header"},
-                payload={"param": "test-param"},
-                callback=callback,
-                marker="test-marker",
+                url="test-url", headers={"header": "test-header"}, payload={"param": "test-param"}, callback=callback
             )
             mock_post.assert_called_with(
                 "test-url",

@@ -30,15 +30,15 @@ OPENAI_TOKENIZERS = {
     "gpt-35-turbo": "cl100k_base",  # https://github.com/openai/tiktoken/pull/72
 }
 OPENAI_TOKENIZERS_TOKEN_LIMITS = {
-    "gpt2": 2049,  # Ref: https://platform.openai.com/docs/models/gpt-3
     "text-davinci": 4097,  # Ref: https://platform.openai.com/docs/models/gpt-3
-    "gpt-35-turbo": 2049,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
-    "gpt-3.5-turbo": 2049,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
+    "gpt-35-turbo": 4097,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
+    "gpt-3.5-turbo": 4097,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
     "gpt-3.5-turbo-16k": 16384,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
     "gpt-3": 4096,  # Ref: https://platform.openai.com/docs/models/gpt-3
     "gpt-4-32k": 32768,  # Ref: https://platform.openai.com/docs/models/gpt-4
     "gpt-4": 8192,  # Ref: https://platform.openai.com/docs/models/gpt-4
 }
+OPENAI_STREAMING_DONE_MARKER = "[DONE]"  # Ref: https://platform.openai.com/docs/api-reference/chat/create#stream
 
 
 #: Retry on OpenAI errors
@@ -80,7 +80,7 @@ def query_chat_model(url: str, headers: Dict[str, str], payload: Dict[str, Any])
 
 @openai_retry
 def query_chat_model_stream(
-    url: str, headers: Dict[str, str], payload: Dict[str, Any], callback: Callable, marker: str
+    url: str, headers: Dict[str, str], payload: Dict[str, Any], callback: Callable
 ) -> List[str]:
     """
     Query ChatGPT and streams the response. Once the stream finishes, returns a list of strings just like
@@ -92,7 +92,6 @@ def query_chat_model_stream(
     :param callback: A callback function that is called when a new token is received from the stream.
         The callback function should accept two parameters: the token received from the stream and **kwargs.
         The callback function should return the token that will be returned at the end of the streaming.
-    :param marker: A marker that indicates the end of the stream. It is used to determine when to stop streaming.
     :return: A list of strings containing the response from the OpenAI API.
     """
     response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
@@ -102,7 +101,7 @@ def query_chat_model_stream(
     tokens = []
     try:
         for event in client.events():
-            if event.data == marker:
+            if event.data == OPENAI_STREAMING_DONE_MARKER:
                 break
             event_data = json.loads(event.data)
             delta = event_data["choices"][0]["delta"]
