@@ -192,7 +192,7 @@ def enforce_token_limit(prompt: str, tokenizer: "tiktoken.Encoding", max_tokens_
 
 
 def enforce_token_limit_chat(
-    prompts: List[str], tokenizer, max_tokens_limit: int, tokens_per_message_overhead: int
+    prompts: List[str], tokenizer: "tiktoken.Encoding", max_tokens_limit: int, tokens_per_message_overhead: int
 ) -> List[str]:
     """
     Ensure that the length of the list of prompts is within the max tokens limit of the model.
@@ -204,8 +204,8 @@ def enforce_token_limit_chat(
     :param tokens_per_message_overhead: The number of tokens that are added to the prompt text for each message.
     :return: A list of prompts that fits within the max tokens limit of the model.
     """
-    prompts_lens = [len(tokenizer.encode(prompt)) for prompt in prompts]
-    if (total_prompt_length := sum(prompts_lens) + (tokens_per_message_overhead * len(prompts))) <= max_tokens_limit:
+    prompts_lens = [len(tokenizer.encode(prompt)) + tokens_per_message_overhead for prompt in prompts]
+    if (total_prompt_length := sum(prompts_lens)) <= max_tokens_limit:
         return prompts
 
     logger.warning(
@@ -217,13 +217,10 @@ def enforce_token_limit_chat(
     cut_prompts = []
     cut_prompts_lens = []
     for prompt, prompt_len in zip(prompts, prompts_lens):
-        prompt_len = prompt_len + sum(cut_prompts_lens) + (tokens_per_message_overhead * (len(cut_prompts) + 1))
-        if prompt_len <= max_tokens_limit:
+        if sum(cut_prompts_lens) + prompt_len <= max_tokens_limit:
             cut_prompts.append(prompt)
             cut_prompts_lens.append(prompt_len)
         else:
-            remaining_tokens = (
-                max_tokens_limit - sum(cut_prompts_lens) - (tokens_per_message_overhead * (len(cut_prompts) + 1))
-            )
+            remaining_tokens = max_tokens_limit - sum(cut_prompts_lens)
             cut_prompts.append(enforce_token_limit(prompt, tokenizer, remaining_tokens))
             return cut_prompts

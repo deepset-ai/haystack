@@ -78,7 +78,7 @@ def test_check_truncated_answers(caplog):
     payload = {"n": 3}
     check_filtered_answers(result, payload)
     assert caplog.records[0].message == (
-        "1 out of the 3 completions have omitted content due to a flag from " "OpenAI content filters."
+        "1 out of the 3 completions have omitted content due to a flag from OpenAI content filters."
     )
 
 
