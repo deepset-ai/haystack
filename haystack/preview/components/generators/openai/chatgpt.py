@@ -38,7 +38,7 @@ class ChatGPTGenerator:
         api_key: Optional[str] = None,
         model_name: str = "gpt-3.5-turbo",
         system_prompt: Optional[str] = "You are a helpful assistant.",
-        max_reply_tokens: Optional[int] = 500,
+        max_tokens: Optional[int] = 500,
         temperature: Optional[float] = 0.7,
         top_p: Optional[float] = 1,
         n: Optional[int] = 1,
@@ -46,7 +46,6 @@ class ChatGPTGenerator:
         presence_penalty: Optional[float] = 0,
         frequency_penalty: Optional[float] = 0,
         logit_bias: Optional[Dict[str, float]] = None,
-        moderate_content: bool = True,
         stream: bool = False,
         streaming_callback: Optional[Callable] = default_streaming_callback,
         streaming_done_marker="[DONE]",
@@ -59,7 +58,7 @@ class ChatGPTGenerator:
         :param api_key: The OpenAI API key.
         :param model_name: The name or path of the underlying model.
         :param system_prompt: The prompt to be prepended to the user prompt.
-        :param max_reply_tokens: The maximum number of tokens the output text can have.
+        :param max_tokens: The maximum number of tokens the output text can have.
         :param temperature: What sampling temperature to use. Higher values means the model will take more risks.
             Try 0.9 for more creative applications, and 0 (argmax sampling) for ones with a well-defined answer.
         :param top_p: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -73,9 +72,6 @@ class ChatGPTGenerator:
             Bigger values mean the model will be less likely to repeat the same token in the text.
         :param logit_bias: Add a logit bias to specific tokens. The keys of the dictionary are tokens and the
             values are the bias to add to that token.
-        :param moderate_content: If set to True, the input and generated answers are filtered for potentially
-            sensitive content using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation).
-            If the input or answers are flagged, an empty list is returned in place of the answers.
         :param stream: If set to True, the API will stream the response. The streaming_callback parameter
             is used to process the stream. If set to False, the response will be returned as a string.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
@@ -96,15 +92,14 @@ class ChatGPTGenerator:
         self.model_name = model_name
         self.system_prompt = system_prompt
 
-        self.max_reply_tokens = max_reply_tokens
+        self.max_tokens = max_tokens
         self.temperature = temperature
         self.top_p = top_p
         self.n = n
-        self.stop = stop
+        self.stop = stop or []
         self.presence_penalty = presence_penalty
         self.frequency_penalty = frequency_penalty
-        self.logit_bias = logit_bias
-        self.moderate_content = moderate_content
+        self.logit_bias = logit_bias or {}
         self.stream = stream
         self.streaming_callback = streaming_callback
         self.streaming_done_marker = streaming_done_marker
@@ -137,7 +132,7 @@ class ChatGPTGenerator:
             api_key=self.api_key,
             model_name=self.model_name,
             system_prompt=self.system_prompt,
-            max_reply_tokens=self.max_reply_tokens,
+            max_tokens=self.max_tokens,
             temperature=self.temperature,
             top_p=self.top_p,
             n=self.n,
@@ -145,7 +140,6 @@ class ChatGPTGenerator:
             presence_penalty=self.presence_penalty,
             frequency_penalty=self.frequency_penalty,
             logit_bias=self.logit_bias,
-            moderate_content=self.moderate_content,
             stream=self.stream,
             # FIXME how to serialize the streaming callback?
             streaming_done_marker=self.streaming_done_marker,
@@ -168,7 +162,7 @@ class ChatGPTGenerator:
         api_key: Optional[str] = None,
         model_name: Optional[str] = None,
         system_prompt: Optional[str] = None,
-        max_reply_tokens: Optional[int] = None,
+        max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
         n: Optional[int] = None,
@@ -176,7 +170,6 @@ class ChatGPTGenerator:
         presence_penalty: Optional[float] = None,
         frequency_penalty: Optional[float] = None,
         logit_bias: Optional[Dict[str, float]] = None,
-        moderate_content: Optional[bool] = None,
         api_base_url: Optional[str] = None,
         openai_organization: Optional[str] = None,
         stream: Optional[bool] = None,
@@ -190,7 +183,7 @@ class ChatGPTGenerator:
         :param api_key: The OpenAI API key.
         :param model_name: The name or path of the underlying model.
         :param system_prompt: The prompt to be prepended to the user prompt.
-        :param max_reply_tokens: The maximum number of tokens the output text can have.
+        :param max_tokens: The maximum number of tokens the output text can have.
         :param temperature: What sampling temperature to use. Higher values means the model will take more risks.
             Try 0.9 for more creative applications, and 0 (argmax sampling) for ones with a well-defined answer.
         :param top_p: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -204,9 +197,6 @@ class ChatGPTGenerator:
             Bigger values mean the model will be less likely to repeat the same token in the text.
         :param logit_bias: Add a logit bias to specific tokens. The keys of the dictionary are tokens and the
             values are the bias to add to that token.
-        :param moderate_content: If set to True, the input and generated answers are filtered for potentially
-            sensitive content using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation).
-            If the input or answers are flagged, an empty list is returned in place of the answers.
         :param stream: If set to True, the API will stream the response. The streaming_callback parameter
             is used to process the stream. If set to False, the response will be returned as a string.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
@@ -223,7 +213,7 @@ class ChatGPTGenerator:
         api_key = api_key if api_key is not None else self.api_key
         model_name = model_name if model_name is not None else self.model_name
         system_prompt = system_prompt if system_prompt is not None else self.system_prompt
-        max_reply_tokens = max_reply_tokens if max_reply_tokens is not None else self.max_reply_tokens
+        max_tokens = max_tokens if max_tokens is not None else self.max_tokens
         temperature = temperature if temperature is not None else self.temperature
         top_p = top_p if top_p is not None else self.top_p
         n = n if n is not None else self.n
@@ -231,7 +221,6 @@ class ChatGPTGenerator:
         presence_penalty = presence_penalty if presence_penalty is not None else self.presence_penalty
         frequency_penalty = frequency_penalty if frequency_penalty is not None else self.frequency_penalty
         logit_bias = logit_bias if logit_bias is not None else self.logit_bias
-        moderate_content = moderate_content if moderate_content is not None else self.moderate_content
         stream = stream if stream is not None else self.stream
         streaming_callback = streaming_callback if streaming_callback is not None else self.streaming_callback
         streaming_done_marker = (
@@ -245,7 +234,7 @@ class ChatGPTGenerator:
 
         parameters = {
             "model": model_name,
-            "max_reply_tokens": max_reply_tokens,
+            "max_tokens": max_tokens,
             "temperature": temperature,
             "top_p": top_p,
             "n": n,
@@ -254,7 +243,6 @@ class ChatGPTGenerator:
             "presence_penalty": presence_penalty,
             "frequency_penalty": frequency_penalty,
             "logit_bias": logit_bias,
-            "moderate_content": moderate_content,
         }
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         if openai_organization:
@@ -264,7 +252,7 @@ class ChatGPTGenerator:
         replies = []
         for prompt in prompts:
             system_prompt, prompt = enforce_token_limit_chat(
-                prompts=[system_prompt, prompts[0]],
+                prompts=[system_prompt, prompt],
                 tokenizer=self.tokenizer,
                 max_tokens_limit=self.max_tokens_limit,
                 tokens_per_message_overhead=TOKENS_PER_MESSAGE_OVERHEAD,

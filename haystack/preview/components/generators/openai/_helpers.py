@@ -51,7 +51,7 @@ openai_retry = tenacity.retry(
 )
 
 
-def default_streaming_callback(token: str):
+def default_streaming_callback(token: str, **kwargs):
     """
     Default callback function for streaming responses from OpenAI API.
     Prints the tokens to stdout as soon as they are received and returns them.
