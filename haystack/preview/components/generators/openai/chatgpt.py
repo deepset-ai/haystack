@@ -4,11 +4,11 @@ import logging
 
 from haystack.preview.lazy_imports import LazyImport
 from haystack.preview import component, default_from_dict, default_to_dict
-from haystack.preview.components.generators._helpers import enforce_token_limit_chat
 from haystack.preview.components.generators.openai._helpers import (
     default_streaming_callback,
     query_chat_model,
     query_chat_model_stream,
+    enforce_token_limit_chat,
     OPENAI_TOKENIZERS,
     OPENAI_TOKENIZERS_TOKEN_LIMITS,
 )
