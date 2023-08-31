@@ -4,9 +4,8 @@ from typing import Dict, Any
 
 from haystack import Pipeline
 from haystack.nodes import PromptNode, PromptTemplate, TopPSampler
-from haystack.nodes.ranker.diversity import DiversityRanker
-from haystack.nodes.ranker.lost_in_the_middle import LostInTheMiddleRanker
-from haystack.nodes.retriever.web import WebRetriever
+from haystack.nodes.ranker import DiversityRanker, LostInTheMiddleRanker
+from haystack.nodes.retriever import WebRetriever
 
 search_key = os.environ.get("SERPERDEV_API_KEY")
 if not search_key:
