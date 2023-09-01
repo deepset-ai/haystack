@@ -83,15 +83,18 @@ class AnswersBuilder:
             if doc_list and reference_pattern:
                 reference_idxs = AnswersBuilder._extract_reference_idxs(reply_list, reference_pattern)
             else:
-                reference_idxs = [[doc_idx for doc_idx, _ in enumerate(docs, start=1)] for docs in doc_list]
+                reference_idxs = [[doc_idx for doc_idx, _ in enumerate(doc_list)] * len(reply_list)]
 
+            answers_for_cur_query = []
             for answer_string, doc_idxs, meta in zip_longest(extracted_answer_strings, reference_idxs, meta_list):
                 referenced_docs = []
                 if doc_idxs:
                     referenced_docs = [doc_list[idx] for idx in doc_idxs if idx < len(doc_list)]
 
                 answer = GeneratedAnswer(data=answer_string, query=query, documents=referenced_docs, metadata=meta)
-                all_answers.append(answer)
+                answers_for_cur_query.append(answer)
+
+            all_answers.append(answers_for_cur_query)
 
         return all_answers
 
