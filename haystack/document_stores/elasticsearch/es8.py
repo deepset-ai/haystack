@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
+from haystack.document_stores.filter_utils import LogicalFilterClause
+from haystack.errors import DocumentStoreError
 from haystack.lazy_imports import LazyImport
 from haystack.schema import Document, FilterType
 
@@ -70,7 +72,7 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         use_system_proxy: bool = False,
         batch_size: int = 10_000,
         index_type: str = "exact",
-        hnsw_num_candidates: Optional[int] = None,
+        knn_parameters: Optional[Dict] = None,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -149,8 +151,8 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
                             'hnsw' uses the HNSW Algorithm to determine nearest neighbors. This is more performant than 'exact'.
                             'hnsw' is only supported for elasticsearch >=8.
                             Defaults to 'exact'.
-        :param hnsw_num_candidates: Specifies the number of candidates which are used to compute the approximate nearest neighbors. Only supported for  elasticsearch > 8.0.
-                            Defaults to None. If None, the number of candidates is set to 10 times the requested top_k hits.
+        :param knn_parameters: Custom parameters for the KNN engine. Parameter names depend on the index type you use.
+                            `"ef_construction"`, `"ef_search"`, `"m"`
 
         """
         # Ensure all the required inputs were successful
@@ -171,6 +173,10 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
             timeout=timeout,
             use_system_proxy=use_system_proxy,
         )
+
+        self.index_type = index_type
+        self.knn_parameters = knn_parameters or {}
+        self._check_hnsw_parameters()
 
         super().__init__(
             client=client,
@@ -195,8 +201,6 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
             synonyms=synonyms,
             synonym_type=synonym_type,
             batch_size=batch_size,
-            index_type=index_type,
-            hnsw_num_candidates=hnsw_num_candidates,
         )
 
         self._validate_server_version(expected_version=8)
@@ -422,3 +426,90 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
             documents.append(cur_documents)
 
         return documents
+
+    def _construct_dense_query_body(
+        self, query_emb: np.ndarray, return_embedding: bool, filters: Optional[FilterType] = None, top_k: int = 10
+    ):
+        if self.index_type == "hnsw":
+            body = self._construct_dense_query_body_ann(query_emb=query_emb, top_k=top_k, filters=filters)
+        elif self.index_type == "exact":
+            body = self._construct_dense_query_body_knn(query_emb=query_emb, top_k=top_k, filters=filters)
+        else:
+            raise DocumentStoreError(f"index_type {self.index_type} not supported")
+        excluded_fields = self._get_excluded_fields(return_embedding=return_embedding)
+        if excluded_fields:
+            body["_source"] = {"excludes": excluded_fields}
+
+        return body
+
+    def _construct_dense_query_body_knn(self, query_emb: np.ndarray, top_k: int, filters: Optional[FilterType] = None):
+        filter_ = self._construct_filter(filters)
+        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k=top_k)}
+        body["query"]["script_score"]["query"] = {"bool": {"filter": filter_}}  # type: ignore
+        return body
+
+    def _construct_dense_query_body_ann(self, query_emb: np.ndarray, top_k: int, filters: Optional[FilterType] = None):
+        filter_ = self._construct_filter(filters)
+        body = {
+            "knn": {
+                "field": self.embedding_field,
+                "query_vector": query_emb,
+                "k": top_k,
+                "filter": filter_,
+                "num_candidates": self.knn_parameters.get("num_candidates", 10 * top_k),
+            }
+        }
+        return body
+
+    def _construct_filter(self, filters: Optional[FilterType] = None) -> Dict:
+        filter_ = []
+        if filters:
+            filter_.append(LogicalFilterClause.parse(filters).convert_to_elasticsearch())
+        if self.skip_missing_embeddings:
+            skip_missing_embedding_filter = {"exists": {"field": self.embedding_field}}
+            filter_.append(skip_missing_embedding_filter)
+        if len(filter_) == 0:
+            return {"match_all": {}}
+        return {"bool": {"must": filter_}}
+
+    def _create_embedding_field_mapping(self):
+        mapping = {"type": "dense_vector", "dims": self.embedding_dim}
+        if self.index_type == "exact":
+            return mapping
+        mapping["index"] = True
+        mapping["similarity"] = self._get_similarity_string()
+        if self._hnsw_parameters_index_specified():
+            mapping["index_options"] = {
+                "index_type": "hnsw",
+                "ef_construction": self.knn_parameters["ef_construction"],
+                "m": self.knn_parameters["m"],
+            }
+        return mapping
+
+    def _hnsw_parameters_index_specified(self):
+        return "ef_construction" in self.knn_parameters and "m" in self.knn_parameters
+
+    def _check_hnsw_parameters(self):
+        parameters = set(self.knn_parameters.keys())
+        if len(parameters.intersection({"ef_construction", "m"})) == 1:
+            raise ValueError("Both ef_construction and m or none of these must be specified for HNSW index")
+
+    def _create_embedding_index_field(self) -> Dict:
+        if self.index_type == "exact":
+            return super()._create_embedding_index_field()
+        return {
+            "type": "dense_vector",
+            "dims": self.embedding_dim,
+            "index": True,
+            "similarity": self._get_similarity_string(),
+        }
+
+    def _get_similarity_string(self):
+        if self.similarity == "dot_product":
+            return "dot_product"
+        elif self.similarity == "cosine":
+            return "cosine"
+        elif self.similarity == "l2":
+            return "l2_norm"
+        else:
+            raise ValueError(f"Unknown similarity metric: {self.similarity}")

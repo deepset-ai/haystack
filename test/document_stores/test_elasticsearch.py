@@ -184,7 +184,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
     def test_search_field_mapping(self):
         index = "haystack_search_field_mapping"
         document_store = ElasticsearchDocumentStore(
-            index=index, search_fields=["content", "sub_content"], content_field="title"
+            index=index, search_fields=["content", "sub_content"], content_field="title", recreate_index=True
         )
 
         document_store.write_documents(
@@ -427,7 +427,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         We test this to make sure we use the correct syntax for newer ES versions.
         """
         vec_sim_query = mocked_document_store._get_vector_similarity_query(np.random.rand(3).astype(np.float32), 10)
-        assert vec_sim_query["script"]["source"] == "dotProduct(params.query_vector,'embedding') + 1000"
+        assert vec_sim_query["script_score"]["script"]["source"] == "dotProduct(params.query_vector,'embedding') + 1000"
 
     @pytest.mark.unit
     def test_get_vector_similarity_query_es_7_5_and_below(self, mocked_document_store):
@@ -440,7 +440,10 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         mocked_document_store.server_version = (7, 5, 0)
 
         vec_sim_query = mocked_document_store._get_vector_similarity_query(np.random.rand(3).astype(np.float32), 10)
-        assert vec_sim_query["script"]["source"] == "dotProduct(params.query_vector,doc['embedding']) + 1000"
+        assert (
+            vec_sim_query["script_score"]["script"]["source"]
+            == "dotProduct(params.query_vector,doc['embedding']) + 1000"
+        )
 
     # The following tests are overridden only to be able to skip them depending on ES version
 
@@ -583,8 +586,9 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
 
         np.testing.assert_equal(body, EXPECTED_BODY)
 
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 does distinguish between different query types")
     @pytest.mark.unit
-    def test_get_knn_query(self, mocked_document_store):
+    def test_get_knn_query_es8(self, mocked_document_store):
         embedding = np.array([1, 2, 3])
         top_k = 10
         embedding_field = "embedding"
@@ -641,3 +645,13 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         mocked_document_store.index_type = "hnsw"
         mapping = mocked_document_store._create_embedding_field_mapping()
         assert mapping == {"type": "dense_vector", "dims": 768, "similarity": "dot_product", "index": True}
+
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 does not implement aNN")
+    @pytest.mark.unit
+    def test_hnsw_params_es8(self, mocked_document_store):
+        mocked_document_store.knn_parameters = {"ef_construction": 1000}
+        with pytest.raises(ValueError):
+            mocked_document_store._check_hnsw_parameters()
+        mocked_document_store.knn_parameters = {"m": 1000}
+        with pytest.raises(ValueError):
+            mocked_document_store._check_hnsw_parameters()
