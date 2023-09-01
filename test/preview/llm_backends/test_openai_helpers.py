@@ -3,15 +3,10 @@ import json
 
 import pytest
 
-from haystack.preview.components.generators.openai.errors import (
-    OpenAIUnauthorizedError,
-    OpenAIError,
-    OpenAIRateLimitError,
-)
-from haystack.preview.components.generators.openai._helpers import (
+from haystack.preview.llm_backends.openai.errors import OpenAIUnauthorizedError, OpenAIError, OpenAIRateLimitError
+from haystack.preview.llm_backends.openai._helpers import (
     raise_for_status,
     check_truncated_answers,
-    check_filtered_answers,
     query_chat_model,
     query_chat_model_stream,
     enforce_token_limit,
@@ -68,16 +63,6 @@ def test_check_truncated_answers(caplog):
     assert caplog.records[0].message == (
         "2 out of the 4 completions have been truncated before reaching a natural "
         "stopping point. Increase the max_tokens parameter to allow for longer completions."
-    )
-
-
-@pytest.mark.unit
-def test_check_truncated_answers(caplog):
-    result = {"choices": [{"finish_reason": "content_filter"}, {"finish_reason": "length"}, {"finish_reason": "stop"}]}
-    payload = {"n": 3}
-    check_filtered_answers(result, payload)
-    assert caplog.records[0].message == (
-        "1 out of the 3 completions have omitted content due to a flag from OpenAI content filters."
     )
 
 

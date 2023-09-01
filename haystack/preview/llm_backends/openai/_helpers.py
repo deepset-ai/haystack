@@ -8,11 +8,8 @@ import requests
 import sseclient
 
 from haystack.preview.lazy_imports import LazyImport
-from haystack.preview.components.generators.openai.errors import (
-    OpenAIError,
-    OpenAIRateLimitError,
-    OpenAIUnauthorizedError,
-)
+from haystack.preview.llm_backends.chat_message import ChatMessage
+from haystack.preview.llm_backends.openai.errors import OpenAIError, OpenAIRateLimitError, OpenAIUnauthorizedError
 
 with LazyImport("Run 'pip install tiktoken'") as tiktoken_import:
     import tiktoken
@@ -75,7 +72,6 @@ def query_chat_model(
     raise_for_status(response=response)
     json_response = json.loads(response.text)
     check_truncated_answers(result=json_response, payload=payload)
-    check_filtered_answers(result=json_response, payload=payload)
     metadata = [
         {
             "model": json_response.get("model", None),
@@ -121,7 +117,6 @@ def query_chat_model_stream(
                 tokens.append(callback(token, event_data=event_data["choices"]))
     finally:
         client.close()
-
     metadata = (
         [
             {
@@ -134,7 +129,6 @@ def query_chat_model_stream(
         if event_data
         else []
     )
-
     return ["".join(tokens)], metadata
 
 
@@ -174,23 +168,6 @@ def check_truncated_answers(result: Dict[str, Any], payload: Dict[str, Any]):
         )
 
 
-def check_filtered_answers(result: Dict[str, Any], payload: Dict[str, Any]):
-    """
-    Check the `finish_reason` the answers returned by OpenAI completions endpoint.
-    If the `finish_reason` is `content_filter`, log a warning to the user.
-
-    :param result: The result returned from the OpenAI API.
-    :param payload: The payload sent to the OpenAI API.
-    """
-    filtered_completions = sum(1 for ans in result["choices"] if ans["finish_reason"] == "content_filter")
-    if filtered_completions > 0:
-        logger.warning(
-            "%s out of the %s completions have omitted content due to a flag from OpenAI content filters.",
-            filtered_completions,
-            payload["n"],
-        )
-
-
 def enforce_token_limit(prompt: str, tokenizer: "tiktoken.Encoding", max_tokens_limit: int) -> str:
     """
     Ensure that the length of the prompt is within the max tokens limit of the model.
@@ -216,36 +193,41 @@ def enforce_token_limit(prompt: str, tokenizer: "tiktoken.Encoding", max_tokens_
 
 
 def enforce_token_limit_chat(
-    prompts: List[str], tokenizer: "tiktoken.Encoding", max_tokens_limit: int, tokens_per_message_overhead: int
+    chat: List[ChatMessage], tokenizer: "tiktoken.Encoding", max_tokens_limit: int, tokens_per_message_overhead: int
 ) -> List[str]:
     """
-    Ensure that the length of the list of prompts is within the max tokens limit of the model.
-    If needed, truncate the prompts text and list so that it fits within the limit.
+    Ensure that the length of the chat is within the max tokens limit of the model.
+    If needed, truncate the messages so that the chat fits within the limit.
 
-    :param prompts: Prompts text to be sent to the generative model.
-    :param tokenizer: The tokenizer used to encode the prompt.
+    :param chat: The chat messages to be sent to the generative model.
+    :param tokenizer: The tokenizer used to encode the chat.
     :param max_tokens_limit: The max tokens limit of the model.
     :param tokens_per_message_overhead: The number of tokens that are added to the prompt text for each message.
-    :return: A list of prompts that fits within the max tokens limit of the model.
+    :return: A chat that fits within the max tokens limit of the model.
     """
-    prompts_lens = [len(tokenizer.encode(prompt)) + tokens_per_message_overhead for prompt in prompts]
-    if (total_prompt_length := sum(prompts_lens)) <= max_tokens_limit:
-        return prompts
+    print(chat)
+    messages_len = [len(tokenizer.encode(message.content)) + tokens_per_message_overhead for message in chat]
+    if (total_chat_length := sum(messages_len)) <= max_tokens_limit:
+        return chat
 
     logger.warning(
-        "The prompts have been truncated from %s tokens to %s tokens to fit within the max token limit. "
-        "Reduce the length of the prompt to prevent it from being cut off.",
-        total_prompt_length,
+        "The chat have been truncated from %s tokens to %s tokens to fit within the max token limit. "
+        "Reduce the length of the chat to prevent it from being cut off.",
+        total_chat_length,
         max_tokens_limit,
     )
-    cut_prompts = []
-    cut_prompts_lens: List[int] = []
-    for prompt, prompt_len in zip(prompts, prompts_lens):
-        if sum(cut_prompts_lens) + prompt_len <= max_tokens_limit:
-            cut_prompts.append(prompt)
-            cut_prompts_lens.append(prompt_len)
+    cut_messages = []
+    cut_messages_len: List[int] = []
+    for message, message_len in zip(chat, messages_len):
+        if sum(cut_messages_len) + message_len <= max_tokens_limit:
+            cut_messages.append(message)
+            cut_messages_len.append(message_len)
         else:
-            remaining_tokens = max_tokens_limit - sum(cut_prompts_lens)
-            cut_prompts.append(enforce_token_limit(prompt, tokenizer, remaining_tokens))
+            remaining_tokens = max_tokens_limit - sum(cut_messages_len)
+            cut_messages.append(
+                ChatMessage(
+                    content=enforce_token_limit(message.content, tokenizer, remaining_tokens), role=message.role
+                )
+            )
             break
-    return cut_prompts
+    return cut_messages
