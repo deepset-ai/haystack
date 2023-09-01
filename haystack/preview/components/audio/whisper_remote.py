@@ -5,7 +5,7 @@ import json
 import logging
 from pathlib import Path
 
-from haystack.utils import request_with_retry
+from haystack.preview.utils import request_with_retry
 from haystack.preview import component, Document
 
 logger = logging.getLogger(__name__)

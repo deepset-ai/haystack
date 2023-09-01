@@ -1,0 +1,4 @@
+---
+preview:
+  - Add Answer base class for haystack v2
+  - Add GeneratedAnswer and ExtractedAnswer
