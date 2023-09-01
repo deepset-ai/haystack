@@ -99,6 +99,8 @@ k is set to 61 in reciprocal rank fusion based on a University of Waterloo paper
 4. Returning the final similar files (top-k from the FileSimilarityRetriever definition), based on an aggregated RRF score of all documents pertaining to the file. In the results the user sees the most relevant document from each file.
 We can also provide the user a choice to have the values of the metadata key used for aggregation (e.g. file IDs) returned instead of the most relevant documents, e.g. via an additional optional param "output" set by the user to "top_document" or "file_aggregation_key", with "top_document" being default since it looks more similar to the output of all pipelines (as haystack pipelines usually return natural language responses).
 
+The score aggregation approach is based on the paper "PARM: A Paragraph Aggregation Retrieval Model for Dense Document-to-Document Retrieval" [https://arxiv.org/pdf/2201.01614.pdf] by Althammer et al., with the exception that reciprocal rank fusion (RRF) is used instead of vector-based aggregation with reciprocal rank fusion weighting (VRRF) to make implementation more straightforward.
+
 FileSimilarityRetriever has the following parameters:
 - document_store: The document store that the retriever should retrieve from.
 - file_aggregation_key: The meta data key that should be used to aggregate documents to the file level.
