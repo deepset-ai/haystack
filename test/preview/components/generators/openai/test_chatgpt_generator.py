@@ -24,10 +24,9 @@ class TestChatGPTGenerator:
             assert component.logit_bias == {}
             assert component.stream is False
             assert component.streaming_callback == default_streaming_callback
-            assert component.streaming_done_marker == "[DONE]"
             assert component.api_base_url == "https://api.openai.com/v1"
             assert component.openai_organization is None
-            assert component.max_tokens_limit == 2049
+            assert component.max_tokens_limit == 4097
 
             tiktoken_patch.get_encoding.assert_called_once_with("cl100k_base")
             assert caplog.records[0].message == (
@@ -60,7 +59,6 @@ class TestChatGPTGenerator:
                 logit_bias={"test-logit-bias": 0.3},
                 stream=True,
                 streaming_callback=callback,
-                streaming_done_marker="test-marker",
                 api_base_url="test-base-url",
                 openai_organization="test-orga-id",
             )
@@ -77,7 +75,6 @@ class TestChatGPTGenerator:
             assert component.logit_bias == {"test-logit-bias": 0.3}
             assert component.stream is True
             assert component.streaming_callback == callback
-            assert component.streaming_done_marker == "test-marker"
             assert component.api_base_url == "test-base-url"
             assert component.openai_organization == "test-orga-id"
             assert component.max_tokens_limit == 10
@@ -122,7 +119,6 @@ class TestChatGPTGenerator:
                     "logit_bias": None,
                     "stream": False,
                     # FIXME serialize callback?
-                    "streaming_done_marker": "[DONE]",
                     "api_base_url": "https://api.openai.com/v1",
                     "openai_organization": None,
                 },
@@ -154,7 +150,6 @@ class TestChatGPTGenerator:
                 logit_bias={"test-logit-bias": 0.3},
                 stream=True,
                 streaming_callback=callback,
-                streaming_done_marker="test-marker",
                 api_base_url="test-base-url",
                 openai_organization="test-orga-id",
             )
@@ -175,7 +170,6 @@ class TestChatGPTGenerator:
                     "logit_bias": {"test-logit-bias": 0.3},
                     "stream": True,
                     # FIXME serialize callback?
-                    "streaming_done_marker": "test-marker",
                     "api_base_url": "test-base-url",
                     "openai_organization": "test-orga-id",
                 },
@@ -208,7 +202,6 @@ class TestChatGPTGenerator:
                     "logit_bias": {"test-logit-bias": 0.3},
                     "stream": True,
                     # FIXME serialize callback?
-                    "streaming_done_marker": "test-marker",
                     "api_base_url": "test-base-url",
                     "openai_organization": "test-orga-id",
                 },
@@ -227,7 +220,6 @@ class TestChatGPTGenerator:
             assert component.logit_bias == {"test-logit-bias": 0.3}
             assert component.stream is True
             assert component.streaming_callback == default_streaming_callback
-            assert component.streaming_done_marker == "test-marker"
             assert component.api_base_url == "test-base-url"
             assert component.openai_organization == "test-orga-id"
             assert component.max_tokens_limit == 10
@@ -243,19 +235,25 @@ class TestChatGPTGenerator:
     def test_run(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
             with patch("haystack.preview.components.generators.openai.chatgpt.query_chat_model") as query_patch:
-                query_patch.side_effect = lambda payload, **kwargs: [
-                    f"Response for {payload['messages'][1]['content']}",
-                    f"Another Response for {payload['messages'][1]['content']}",
-                ]
+                query_patch.side_effect = lambda payload, **kwargs: (
+                    [
+                        f"Response for {payload['messages'][1]['content']}",
+                        f"Another Response for {payload['messages'][1]['content']}",
+                    ],
+                    [{"metadata of": payload["messages"][1]["content"]}],
+                )
                 component = ChatGPTGenerator(
                     api_key="test-api-key", openai_organization="test_orga_id", api_base_url="test-base-url"
                 )
+
                 results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
+
                 assert results == {
                     "replies": [
                         [f"Response for test-prompt-1", f"Another Response for test-prompt-1"],
                         [f"Response for test-prompt-2", f"Another Response for test-prompt-2"],
-                    ]
+                    ],
+                    "metadata": [[{"metadata of": "test-prompt-1"}], [{"metadata of": "test-prompt-2"}]],
                 }
                 query_patch.call_count == 2
                 query_patch.assert_any_call(
@@ -287,15 +285,19 @@ class TestChatGPTGenerator:
     def test_run_streaming(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.tiktoken") as tiktoken_patch:
             with patch("haystack.preview.components.generators.openai.chatgpt.query_chat_model_stream") as query_patch:
-                query_patch.side_effect = lambda payload, **kwargs: [
-                    f"Response for {payload['messages'][1]['content']}"
-                ]
-                callback = Mock()
-                component = ChatGPTGenerator(
-                    api_key="test-api-key", stream=True, streaming_callback=callback, streaming_done_marker="test-done"
+                query_patch.side_effect = lambda payload, **kwargs: (
+                    [f"Response for {payload['messages'][1]['content']}"],
+                    [{"metadata of": payload["messages"][1]["content"]}],
                 )
+                callback = Mock()
+                component = ChatGPTGenerator(api_key="test-api-key", stream=True, streaming_callback=callback)
+
                 results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
-                assert results == {"replies": [["Response for test-prompt-1"], ["Response for test-prompt-2"]]}
+
+                assert results == {
+                    "replies": [["Response for test-prompt-1"], ["Response for test-prompt-2"]],
+                    "metadata": [[{"metadata of": "test-prompt-1"}], [{"metadata of": "test-prompt-2"}]],
+                }
                 query_patch.call_count == 2
                 query_patch.assert_any_call(
                     url="https://api.openai.com/v1/chat/completions",
@@ -317,5 +319,4 @@ class TestChatGPTGenerator:
                         ],
                     },
                     callback=callback,
-                    marker="test-done",
                 )

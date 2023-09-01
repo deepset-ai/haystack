@@ -48,7 +48,6 @@ class ChatGPTGenerator:
         logit_bias: Optional[Dict[str, float]] = None,
         stream: bool = False,
         streaming_callback: Optional[Callable] = default_streaming_callback,
-        streaming_done_marker="[DONE]",
         api_base_url: str = "https://api.openai.com/v1",
         openai_organization: Optional[str] = None,
     ):
@@ -78,8 +77,6 @@ class ChatGPTGenerator:
             The callback function should accept two parameters: the token received from the stream and **kwargs.
             The callback function should return the token to be sent to the stream. If the callback function is not
             provided, the token is printed to stdout.
-        :param streaming_done_marker: A marker that indicates the end of the stream. The marker is used to determine
-            when to stop streaming. Defaults to "[DONE]".
         :param api_base_url: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
         :param openai_organization: The OpenAI organization ID.
 
@@ -102,7 +99,6 @@ class ChatGPTGenerator:
         self.logit_bias = logit_bias or {}
         self.stream = stream
         self.streaming_callback = streaming_callback or default_streaming_callback
-        self.streaming_done_marker = streaming_done_marker
 
         self.openai_organization = openai_organization
         self.api_base_url = api_base_url
@@ -144,7 +140,6 @@ class ChatGPTGenerator:
             logit_bias=self.logit_bias,
             stream=self.stream,
             # FIXME how to serialize the streaming callback?
-            streaming_done_marker=self.streaming_done_marker,
             api_base_url=self.api_base_url,
             openai_organization=self.openai_organization,
         )
@@ -157,7 +152,7 @@ class ChatGPTGenerator:
         # FIXME how to deserialize the streaming callback?
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[List[str]])
+    @component.output_types(replies=List[List[str]], metadata=List[Dict[str, Any]])
     def run(
         self,
         prompts: List[str],
@@ -176,7 +171,6 @@ class ChatGPTGenerator:
         openai_organization: Optional[str] = None,
         stream: Optional[bool] = None,
         streaming_callback: Optional[Callable] = None,
-        streaming_done_marker: Optional[str] = None,
     ):
         """
         Queries the LLM with the prompts to produce replies.
@@ -205,8 +199,6 @@ class ChatGPTGenerator:
             The callback function should accept two parameters: the token received from the stream and **kwargs.
             The callback function should return the token to be sent to the stream. If the callback function is not
             provided, the token is printed to stdout.
-        :param streaming_done_marker: A marker that indicates the end of the stream. The marker is used to determine
-            when to stop streaming. Defaults to "[DONE]".
         :param api_base_url: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
         :param openai_organization: The OpenAI organization ID.
 
@@ -225,9 +217,6 @@ class ChatGPTGenerator:
         logit_bias = logit_bias if logit_bias is not None else self.logit_bias
         stream = stream if stream is not None else self.stream
         streaming_callback = streaming_callback if streaming_callback is not None else self.streaming_callback
-        streaming_done_marker = (
-            streaming_done_marker if streaming_done_marker is not None else self.streaming_done_marker
-        )
         api_base_url = api_base_url or self.api_base_url
         openai_organization = openai_organization if openai_organization is not None else self.openai_organization
 
@@ -251,7 +240,8 @@ class ChatGPTGenerator:
             headers["OpenAI-Organization"] = openai_organization
         url = f"{api_base_url}/chat/completions"
 
-        replies = []
+        replies: List[List[str]] = []
+        metadata: List[List[Dict[str, Any]]] = []
         for prompt in prompts:
             system_prompt, prompt = enforce_token_limit_chat(
                 prompts=[system_prompt, prompt],
@@ -265,11 +255,12 @@ class ChatGPTGenerator:
                 "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
             }
             if stream:
-                reply = query_chat_model_stream(
-                    url=url, headers=headers, payload=payload, callback=streaming_callback, marker=streaming_done_marker
+                reply, meta = query_chat_model_stream(
+                    url=url, headers=headers, payload=payload, callback=streaming_callback
                 )
             else:
-                reply = query_chat_model(url=url, headers=headers, payload=payload)
+                reply, meta = query_chat_model(url=url, headers=headers, payload=payload)
             replies.append(reply)
+            metadata.append(meta)
 
-        return {"replies": replies}
+        return {"replies": replies, "metadata": metadata}

@@ -1,4 +1,4 @@
-from typing import List, Callable, Dict, Any
+from typing import List, Callable, Dict, Any, Tuple
 import os
 import logging
 import json
@@ -13,7 +13,6 @@ from haystack.preview.components.generators.openai.errors import (
     OpenAIRateLimitError,
     OpenAIUnauthorizedError,
 )
-
 
 with LazyImport("Run 'pip install tiktoken'") as tiktoken_import:
     import tiktoken
@@ -30,15 +29,15 @@ OPENAI_TOKENIZERS = {
     "gpt-35-turbo": "cl100k_base",  # https://github.com/openai/tiktoken/pull/72
 }
 OPENAI_TOKENIZERS_TOKEN_LIMITS = {
-    "gpt2": 2049,  # Ref: https://platform.openai.com/docs/models/gpt-3
     "text-davinci": 4097,  # Ref: https://platform.openai.com/docs/models/gpt-3
-    "gpt-35-turbo": 2049,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
-    "gpt-3.5-turbo": 2049,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
+    "gpt-35-turbo": 4097,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
+    "gpt-3.5-turbo": 4097,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
     "gpt-3.5-turbo-16k": 16384,  # Ref: https://platform.openai.com/docs/models/gpt-3-5
     "gpt-3": 4096,  # Ref: https://platform.openai.com/docs/models/gpt-3
     "gpt-4-32k": 32768,  # Ref: https://platform.openai.com/docs/models/gpt-4
     "gpt-4": 8192,  # Ref: https://platform.openai.com/docs/models/gpt-4
 }
+OPENAI_STREAMING_DONE_MARKER = "[DONE]"  # Ref: https://platform.openai.com/docs/api-reference/chat/create#stream
 
 
 #: Retry on OpenAI errors
@@ -61,7 +60,9 @@ def default_streaming_callback(token: str, **kwargs):
 
 
 @openai_retry
-def query_chat_model(url: str, headers: Dict[str, str], payload: Dict[str, Any]) -> List[str]:
+def query_chat_model(
+    url: str, headers: Dict[str, str], payload: Dict[str, Any]
+) -> Tuple[List[str], List[Dict[str, Any]]]:
     """
     Query ChatGPT without streaming the response.
 
@@ -75,13 +76,22 @@ def query_chat_model(url: str, headers: Dict[str, str], payload: Dict[str, Any])
     json_response = json.loads(response.text)
     check_truncated_answers(result=json_response, payload=payload)
     check_filtered_answers(result=json_response, payload=payload)
-    return [choice["message"]["content"].strip() for choice in json_response["choices"]]
+    metadata = [
+        {
+            "model": json_response.get("model", None),
+            "index": choice.get("index", None),
+            "finish_reason": choice.get("finish_reason", None),
+            **json_response.get("usage", {}),
+        }
+        for choice in json_response.get("choices", [])
+    ]
+    return [choice["message"]["content"].strip() for choice in json_response.get("choices", [])], metadata
 
 
 @openai_retry
 def query_chat_model_stream(
-    url: str, headers: Dict[str, str], payload: Dict[str, Any], callback: Callable, marker: str
-) -> List[str]:
+    url: str, headers: Dict[str, str], payload: Dict[str, Any], callback: Callable
+) -> Tuple[List[str], List[Dict[str, Any]]]:
     """
     Query ChatGPT and streams the response. Once the stream finishes, returns a list of strings just like
     self._query_llm()
@@ -92,17 +102,17 @@ def query_chat_model_stream(
     :param callback: A callback function that is called when a new token is received from the stream.
         The callback function should accept two parameters: the token received from the stream and **kwargs.
         The callback function should return the token that will be returned at the end of the streaming.
-    :param marker: A marker that indicates the end of the stream. It is used to determine when to stop streaming.
     :return: A list of strings containing the response from the OpenAI API.
     """
-    response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
+    response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT, stream=True)
     raise_for_status(response=response)
 
     client = sseclient.SSEClient(response)
+    event_data = None
     tokens = []
     try:
         for event in client.events():
-            if event.data == marker:
+            if event.data == OPENAI_STREAMING_DONE_MARKER:
                 break
             event_data = json.loads(event.data)
             delta = event_data["choices"][0]["delta"]
@@ -111,7 +121,21 @@ def query_chat_model_stream(
                 tokens.append(callback(token, event_data=event_data["choices"]))
     finally:
         client.close()
-    return ["".join(tokens)]
+
+    metadata = (
+        [
+            {
+                "model": event_data.get("model", None),
+                "index": choice.get("index", None),
+                "finish_reason": choice.get("finish_reason", None),
+            }
+            for choice in event_data.get("choices", [])
+        ]
+        if event_data
+        else []
+    )
+
+    return ["".join(tokens)], metadata
 
 
 def raise_for_status(response: requests.Response):
