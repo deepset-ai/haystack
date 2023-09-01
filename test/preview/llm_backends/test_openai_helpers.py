@@ -5,6 +5,7 @@ import pytest
 
 from haystack.preview.llm_backends.openai.errors import OpenAIUnauthorizedError, OpenAIError, OpenAIRateLimitError
 from haystack.preview.llm_backends.openai._helpers import (
+    ChatMessage,
     raise_for_status,
     check_truncated_answers,
     query_chat_model,
@@ -68,7 +69,7 @@ def test_check_truncated_answers(caplog):
 
 @pytest.mark.unit
 def test_query_chat_model():
-    with patch("haystack.preview.components.generators.openai._helpers.requests.post") as mock_post:
+    with patch("haystack.preview.llm_backends.openai._helpers.requests.post") as mock_post:
         response = Mock()
         response.status_code = 200
         response.text = """
@@ -113,7 +114,7 @@ def test_query_chat_model():
 
 @pytest.mark.unit
 def test_query_chat_model_fail():
-    with patch("haystack.preview.components.generators.openai._helpers.requests.post") as mock_post:
+    with patch("haystack.preview.llm_backends.openai._helpers.requests.post") as mock_post:
         response = Mock()
         response.status_code = 500
         mock_post.return_value = response
@@ -145,8 +146,8 @@ def mock_chat_completion_stream(model="test-model", index=0, token="test", finis
 
 @pytest.mark.unit
 def test_query_chat_model_stream():
-    with patch("haystack.preview.components.generators.openai._helpers.requests.post") as mock_post:
-        with patch("haystack.preview.components.generators.openai._helpers.sseclient.SSEClient") as mock_sseclient:
+    with patch("haystack.preview.llm_backends.openai._helpers.requests.post") as mock_post:
+        with patch("haystack.preview.llm_backends.openai._helpers.sseclient.SSEClient") as mock_sseclient:
             callback = lambda token, event_data: f"|{token}|"
             response = Mock()
             response.status_code = 200
@@ -179,7 +180,7 @@ def test_query_chat_model_stream():
 
 @pytest.mark.unit
 def test_query_chat_model_stream_fail():
-    with patch("haystack.preview.components.generators.openai._helpers.requests.post") as mock_post:
+    with patch("haystack.preview.llm_backends.openai._helpers.requests.post") as mock_post:
         callback = Mock()
         response = Mock()
         response.status_code = 500
@@ -217,25 +218,37 @@ def test_enforce_token_limit_below_limit(caplog, mock_tokenizer):
 @pytest.mark.unit
 def test_enforce_token_limit_chat_above_limit(caplog, mock_tokenizer):
     prompts = enforce_token_limit_chat(
-        ["System Prompt", "This is a test prompt."],
+        [
+            ChatMessage(content="System Prompt", role="system"),
+            ChatMessage(content="This is a test prompt.", role="user"),
+        ],
         tokenizer=mock_tokenizer,
         max_tokens_limit=7,
         tokens_per_message_overhead=2,
     )
-    assert prompts == ["System Prompt", "This is a"]
+    assert prompts == [
+        ChatMessage(content="System Prompt", role="system"),
+        ChatMessage(content="This is a", role="user"),
+    ]
     assert caplog.records[0].message == (
-        "The prompts have been truncated from 11 tokens to 7 tokens to fit within the max token limit. "
-        "Reduce the length of the prompt to prevent it from being cut off."
+        "The chat have been truncated from 11 tokens to 7 tokens to fit within the max token limit. "
+        "Reduce the length of the chat to prevent it from being cut off."
     )
 
 
 @pytest.mark.unit
 def test_enforce_token_limit_chat_below_limit(caplog, mock_tokenizer):
     prompts = enforce_token_limit_chat(
-        ["System Prompt", "This is a test prompt."],
+        [
+            ChatMessage(content="System Prompt", role="system"),
+            ChatMessage(content="This is a test prompt.", role="user"),
+        ],
         tokenizer=mock_tokenizer,
         max_tokens_limit=100,
         tokens_per_message_overhead=2,
     )
-    assert prompts == ["System Prompt", "This is a test prompt."]
+    assert prompts == [
+        ChatMessage(content="System Prompt", role="system"),
+        ChatMessage(content="This is a test prompt.", role="user"),
+    ]
     assert not caplog.records
