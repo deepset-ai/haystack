@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 import pytest
 
 
@@ -11,3 +11,12 @@ def mock_tokenizer():
     tokenizer.encode = lambda text: text.split()
     tokenizer.decode = lambda tokens: " ".join(tokens)
     return tokenizer
+
+
+@pytest.fixture(autouse=True)
+def tenacity_wait():
+    """
+    Mocks tenacity's wait function to speed up tests.
+    """
+    with patch("tenacity.nap.time"):
+        yield
