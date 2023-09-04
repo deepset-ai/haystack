@@ -8,8 +8,8 @@ from haystack.preview.llm_backends.openai._helpers import (
     ChatMessage,
     raise_for_status,
     check_truncated_answers,
-    query_chat_model,
-    query_chat_model_stream,
+    complete,
+    complete_stream,
     enforce_token_limit,
     enforce_token_limit_chat,
     OPENAI_TIMEOUT,
@@ -90,9 +90,7 @@ def test_query_chat_model():
 
             }"""
         mock_post.return_value = response
-        replies, metadata = query_chat_model(
-            url="test-url", headers={"header": "test-header"}, payload={"param": "test-param"}
-        )
+        replies, metadata = complete(url="test-url", headers={"header": "test-header"}, payload={"param": "test-param"})
         mock_post.assert_called_once_with(
             "test-url",
             headers={"header": "test-header"},
@@ -119,7 +117,7 @@ def test_query_chat_model_fail():
         response.status_code = 500
         mock_post.return_value = response
         with pytest.raises(OpenAIError):
-            query_chat_model(url="test-url", headers={"header": "test-header"}, payload={"param": "test-param"})
+            complete(url="test-url", headers={"header": "test-header"}, payload={"param": "test-param"})
             mock_post.assert_called_with(
                 "test-url",
                 headers={"header": "test-header"},
@@ -164,7 +162,7 @@ def test_query_chat_model_stream():
             ]
 
             mock_post.return_value = response
-            replies, metadata = query_chat_model_stream(
+            replies, metadata = complete_stream(
                 url="test-url", headers={"header": "test-header"}, payload={"param": "test-param"}, callback=callback
             )
             mock_post.assert_called_once_with(
@@ -186,7 +184,7 @@ def test_query_chat_model_stream_fail():
         response.status_code = 500
         mock_post.return_value = response
         with pytest.raises(OpenAIError):
-            query_chat_model_stream(
+            complete_stream(
                 url="test-url", headers={"header": "test-header"}, payload={"param": "test-param"}, callback=callback
             )
             mock_post.assert_called_with(

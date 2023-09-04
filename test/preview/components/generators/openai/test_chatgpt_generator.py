@@ -194,7 +194,7 @@ class TestChatGPTGenerator:
     @pytest.mark.unit
     def test_run_no_system_prompt(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.ChatGPTBackend") as chatgpt_patch:
-            chatgpt_patch.return_value.query.side_effect = lambda chat, **kwargs: (
+            chatgpt_patch.return_value.complete.side_effect = lambda chat, **kwargs: (
                 [f"{msg.role}: {msg.content}" for msg in chat],
                 {"some_info": None},
             )
@@ -208,7 +208,7 @@ class TestChatGPTGenerator:
     @pytest.mark.unit
     def test_run_with_system_prompt(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.ChatGPTBackend") as chatgpt_patch:
-            chatgpt_patch.return_value.query.side_effect = lambda chat, **kwargs: (
+            chatgpt_patch.return_value.complete.side_effect = lambda chat, **kwargs: (
                 [f"{msg.role}: {msg.content}" for msg in chat],
                 {"some_info": None},
             )

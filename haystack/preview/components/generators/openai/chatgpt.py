@@ -171,7 +171,7 @@ class ChatGPTGenerator:
 
         replies, metadata = [], []
         for chat in chats:
-            reply, meta = self.llm.query(
+            reply, meta = self.llm.complete(
                 chat=chat,
                 api_key=api_key,
                 model_name=model_name,

@@ -57,9 +57,7 @@ def default_streaming_callback(token: str, **kwargs):
 
 
 @openai_retry
-def query_chat_model(
-    url: str, headers: Dict[str, str], payload: Dict[str, Any]
-) -> Tuple[List[str], List[Dict[str, Any]]]:
+def complete(url: str, headers: Dict[str, str], payload: Dict[str, Any]) -> Tuple[List[str], List[Dict[str, Any]]]:
     """
     Query ChatGPT without streaming the response.
 
@@ -81,11 +79,12 @@ def query_chat_model(
         }
         for choice in json_response.get("choices", [])
     ]
-    return [choice["message"]["content"].strip() for choice in json_response.get("choices", [])], metadata
+    replies = [choice["message"]["content"].strip() for choice in json_response.get("choices", [])]
+    return replies, metadata
 
 
 @openai_retry
-def query_chat_model_stream(
+def complete_stream(
     url: str, headers: Dict[str, str], payload: Dict[str, Any], callback: Callable
 ) -> Tuple[List[str], List[Dict[str, Any]]]:
     """

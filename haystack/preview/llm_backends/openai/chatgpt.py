@@ -7,8 +7,8 @@ from haystack.preview.lazy_imports import LazyImport
 from haystack.preview.llm_backends.chat_message import ChatMessage
 from haystack.preview.llm_backends.openai._helpers import (
     default_streaming_callback,
-    query_chat_model,
-    query_chat_model_stream,
+    complete,
+    complete_stream,
     enforce_token_limit_chat,
     OPENAI_TOKENIZERS,
     OPENAI_TOKENIZERS_TOKEN_LIMITS,
@@ -141,7 +141,7 @@ class ChatGPTBackend:
             "openai_organization": self.openai_organization,
         }
 
-    def query(
+    def complete(
         self,
         chat: List[ChatMessage],
         api_key: Optional[str] = None,
@@ -234,6 +234,6 @@ class ChatGPTBackend:
         )
         payload = {**parameters, "messages": [asdict(message) for message in chat]}
         if stream:
-            return query_chat_model_stream(url=url, headers=headers, payload=payload, callback=streaming_callback)
+            return complete_stream(url=url, headers=headers, payload=payload, callback=streaming_callback)
         else:
-            return query_chat_model(url=url, headers=headers, payload=payload)
+            return complete(url=url, headers=headers, payload=payload)

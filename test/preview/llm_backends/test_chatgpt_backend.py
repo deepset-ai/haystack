@@ -150,13 +150,13 @@ class TestChatGPTBackend:
         with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
             component = ChatGPTBackend()
             with pytest.raises(ValueError, match="OpenAI API key is missing. Please provide an API key."):
-                component.query(chat=[])
+                component.complete(chat=[])
 
     @pytest.mark.unit
-    def test_query(self):
+    def test_complete(self):
         with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
-            with patch("haystack.preview.llm_backends.openai.chatgpt.query_chat_model") as query_patch:
-                query_patch.side_effect = lambda payload, **kwargs: (
+            with patch("haystack.preview.llm_backends.openai.chatgpt.complete") as complete_patch:
+                complete_patch.side_effect = lambda payload, **kwargs: (
                     [
                         f"Response for {payload['messages'][1]['content']}",
                         f"Another Response for {payload['messages'][1]['content']}",
@@ -167,7 +167,7 @@ class TestChatGPTBackend:
                     api_key="test-api-key", openai_organization="test_orga_id", api_base_url="test-base-url"
                 )
 
-                results = component.query(
+                results = component.complete(
                     chat=[
                         ChatMessage(content="test-prompt-system", role="system"),
                         ChatMessage(content="test-prompt-user", role="user"),
@@ -179,8 +179,8 @@ class TestChatGPTBackend:
                     [{"metadata of": "test-prompt-user"}],
                 )
 
-                query_patch.call_count == 2
-                query_patch.assert_called_once_with(
+                complete_patch.call_count == 2
+                complete_patch.assert_called_once_with(
                     url="test-base-url/chat/completions",
                     headers={
                         "Authorization": f"Bearer test-api-key",
@@ -206,17 +206,17 @@ class TestChatGPTBackend:
                 )
 
     @pytest.mark.unit
-    def test_query_streaming(self):
+    def test_complete_streaming(self):
         with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
-            with patch("haystack.preview.llm_backends.openai.chatgpt.query_chat_model_stream") as query_patch:
-                query_patch.side_effect = lambda payload, **kwargs: (
+            with patch("haystack.preview.llm_backends.openai.chatgpt.complete_stream") as complete_stream_patch:
+                complete_stream_patch.side_effect = lambda payload, **kwargs: (
                     [f"Response for {payload['messages'][1]['content']}"],
                     [{"metadata of": payload["messages"][1]["content"]}],
                 )
                 callback = Mock()
                 component = ChatGPTBackend(api_key="test-api-key", stream=True, streaming_callback=callback)
 
-                results = component.query(
+                results = component.complete(
                     chat=[
                         ChatMessage(content="test-prompt-system", role="system"),
                         ChatMessage(content="test-prompt-user", role="user"),
@@ -224,8 +224,8 @@ class TestChatGPTBackend:
                 )
 
                 assert results == (["Response for test-prompt-user"], [{"metadata of": "test-prompt-user"}])
-                query_patch.call_count == 2
-                query_patch.assert_any_call(
+                complete_stream_patch.call_count == 2
+                complete_stream_patch.assert_any_call(
                     url="https://api.openai.com/v1/chat/completions",
                     headers={"Authorization": f"Bearer test-api-key", "Content-Type": "application/json"},
                     payload={
