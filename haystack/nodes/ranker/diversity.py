@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import List, Literal, Optional, Union
 
-from haystack.nodes import BaseRanker
+from haystack.nodes.ranker.base import BaseRanker
 from haystack.schema import Document
 from haystack.lazy_imports import LazyImport
 
