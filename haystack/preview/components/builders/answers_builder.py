@@ -145,14 +145,8 @@ class AnswersBuilder:
                 if not match.lastindex:
                     extracted_answers.append(match.group(0))
                 # One capture group in pattern -> use the capture group as answer
-                elif match.lastindex == 1:
-                    extracted_answers.append(match.group(1))
-                # Multiple capture groups in pattern -> raise error
                 else:
-                    raise ValueError(
-                        f"Pattern '{pattern}' contains multiple capture groups. "
-                        f"Please specify a pattern with at most one capture group."
-                    )
+                    extracted_answers.append(match.group(1))
             else:
                 extracted_answers.append("")
 
