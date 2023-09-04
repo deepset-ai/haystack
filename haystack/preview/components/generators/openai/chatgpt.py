@@ -3,9 +3,13 @@ from typing import Optional, List, Callable, Dict, Any
 import sys
 import builtins
 import logging
+from dataclasses import asdict
+
+import openai
 
 from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
-from haystack.preview.llm_backends.openai.chatgpt import ChatGPTBackend
+
+# from haystack.preview.llm_backends.openai.chatgpt import ChatGPTBackend
 from haystack.preview.llm_backends.chat_message import ChatMessage
 
 
@@ -15,13 +19,14 @@ logger = logging.getLogger(__name__)
 TOKENS_PER_MESSAGE_OVERHEAD = 4
 
 
-def default_streaming_callback(token: str, **kwargs):
+def default_streaming_callback(chunk: Dict[str, Any]) -> Dict[str, Any]:
     """
     Default callback function for streaming responses from OpenAI API.
-    Prints the tokens to stdout as soon as they are received and returns them.
+    Prints the tokens to stdout as soon as they are received and returns the chunk unchanged.
     """
-    print(token, flush=True, end="")
-    return token
+    if chunk.choices.delta.content:
+        print(chunk.choices.delta.content, flush=True, end="")
+    return chunk
 
 
 @component
@@ -75,38 +80,36 @@ class ChatGPTGenerator:
                 values are the bias to add to that token.
             - `openai_organization`: The OpenAI organization ID.
         """
-        self.llm = ChatGPTBackend(
-            api_key=api_key,
-            model_name=model_name,
-            model_parameters=model_parameters,
-            streaming_callback=streaming_callback,
-            api_base_url=api_base_url,
-        )
+        self.api_key = api_key
+        self.model_name = model_name
         self.system_prompt = system_prompt
+        self.model_parameters = model_parameters
+        self.streaming_callback = streaming_callback
+        self.api_base_url = api_base_url
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
         """
-        if self.llm.streaming_callback:
-            module = sys.modules.get(self.llm.streaming_callback.__module__)
+        if self.streaming_callback:
+            module = sys.modules.get(self.streaming_callback.__module__)
             if not module:
                 raise ValueError("Could not locate the import module.")
             if module == builtins:
-                callback_name = self.llm.streaming_callback.__name__
+                callback_name = self.streaming_callback.__name__
             else:
-                callback_name = f"{module.__name__}.{self.llm.streaming_callback.__name__}"
+                callback_name = f"{module.__name__}.{self.streaming_callback.__name__}"
         else:
             callback_name = None
 
         return default_to_dict(
             self,
-            api_key=self.llm.api_key,
-            model_name=self.llm.model_name,
-            model_parameters=self.llm.model_parameters,
+            api_key=self.api_key,
+            model_name=self.model_name,
+            model_parameters=self.model_parameters,
             system_prompt=self.system_prompt,
             streaming_callback=callback_name,
-            api_base_url=self.llm.api_base_url,
+            api_base_url=self.api_base_url,
         )
 
     @classmethod
@@ -174,7 +177,13 @@ class ChatGPTGenerator:
 
         See OpenAI documentation](https://platform.openai.com/docs/api-reference/chat) for more details.
         """
+        api_key = api_key if api_key is not None else self.api_key
+        model_name = model_name if model_name is not None else self.model_name
         system_prompt = system_prompt if system_prompt is not None else self.system_prompt
+        model_parameters = model_parameters if model_parameters is not None else self.model_parameters
+        streaming_callback = streaming_callback if streaming_callback is not None else self.streaming_callback
+        api_base_url = api_base_url if api_base_url is not None else self.api_base_url
+
         if system_prompt:
             system_message = ChatMessage(content=system_prompt, role="system")
         chats = []
@@ -185,17 +194,65 @@ class ChatGPTGenerator:
             else:
                 chats.append([message])
 
-        replies, metadata = [], []
+        all_replies, all_metadata = [], []
         for chat in chats:
-            reply, meta = self.llm.complete(
-                chat=chat,
-                api_key=api_key,
-                model_name=model_name,
-                model_parameters=model_parameters,
-                streaming_callback=streaming_callback,
-                api_base_url=api_base_url,
+            completion = openai.ChatCompletion.create(
+                model=self.model_name,
+                api_key=self.api_key,
+                messages=[asdict(message) for message in chat],
+                stream=streaming_callback is not None,
+                **(self.model_parameters or model_parameters or {}),
             )
-            replies.append(reply)
-            metadata.append(meta)
+            if streaming_callback:
+                replies = {}
+                metadata = {}
+                for chunk in completion:
+                    chunk = streaming_callback(chunk)
+                    for choice in chunk.choices:
+                        if choice.index not in replies:
+                            replies[choice.index] = ""
+                            metadata[choice.index] = {}
 
-        return {"replies": replies, "metadata": metadata}
+                        if hasattr(choice.delta, "content"):
+                            replies[choice.index] += choice.delta.content
+                        metadata[choice.index].update(
+                            {"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason}
+                        )
+                all_replies.append(list(replies.values()))
+                all_metadata.append(list(metadata.values()))
+                check_truncated_answers(list(metadata.values()))
+
+            else:
+                metadata = [
+                    {
+                        "model": completion.model,
+                        "index": choice.index,
+                        "finish_reason": choice.finish_reason,
+                        **completion.usage.__dict__,
+                    }
+                    for choice in completion.choices
+                ]
+                replies = [choice.message.content.strip() for choice in completion.choices]
+                all_replies.append(replies)
+                all_metadata.append(metadata)
+                check_truncated_answers(metadata)
+
+        return {"replies": all_replies, "metadata": all_metadata}
+
+
+def check_truncated_answers(metadata: List[List[Dict[str, Any]]]):
+    """
+    Check the `finish_reason` the answers returned by OpenAI completions endpoint.
+    If the `finish_reason` is `length`, log a warning to the user.
+
+    :param result: The result returned from the OpenAI API.
+    :param payload: The payload sent to the OpenAI API.
+    """
+    truncated_completions = sum(1 for meta in metadata if meta.get("finish_reason") != "stop")
+    if truncated_completions > 0:
+        logger.warning(
+            "%s out of the %s completions have been truncated before reaching a natural stopping point. "
+            "Increase the max_tokens parameter to allow for longer completions.",
+            truncated_completions,
+            len(metadata),
+        )

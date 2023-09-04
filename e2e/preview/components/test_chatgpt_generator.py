@@ -37,9 +37,9 @@ def test_chatgpt_generator_run_streaming():
         def __init__(self):
             self.responses = ""
 
-        def __call__(self, token, event_data):
-            self.responses += token
-            return token
+        def __call__(self, chunk):
+            self.responses += chunk.choices[0].delta.content if chunk.choices[0].delta else ""
+            return chunk
 
     callback = Callback()
     component = ChatGPTGenerator(os.environ.get("OPENAI_API_KEY"), streaming_callback=callback)
@@ -57,6 +57,9 @@ def test_chatgpt_generator_run_streaming():
 
     assert len(results["metadata"]) == 2
     assert len(results["metadata"][0]) == 1
+
+    print(results["metadata"][0][0])
+
     assert "gpt-3.5-turbo" in results["metadata"][0][0]["model"]
     assert "stop" == results["metadata"][0][0]["finish_reason"]
     assert len(results["metadata"][1]) == 1
