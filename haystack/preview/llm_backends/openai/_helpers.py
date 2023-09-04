@@ -194,7 +194,7 @@ def enforce_token_limit(prompt: str, tokenizer: "tiktoken.Encoding", max_tokens_
 
 def enforce_token_limit_chat(
     chat: List[ChatMessage], tokenizer: "tiktoken.Encoding", max_tokens_limit: int, tokens_per_message_overhead: int
-) -> List[str]:
+) -> List[ChatMessage]:
     """
     Ensure that the length of the chat is within the max tokens limit of the model.
     If needed, truncate the messages so that the chat fits within the limit.
