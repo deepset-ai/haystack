@@ -10,6 +10,7 @@ import networkx
 
 from canals.errors import PipelineDrawingError
 from canals.utils import _type_name
+from canals.serialization import component_to_dict
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     for name, comp in graph.nodes(data="instance"):
         if name in ["input", "output"]:
             continue
-        data = comp.to_dict()
+        data = component_to_dict(comp)
         params = [f"{k}={json.dumps(v)}" for k, v in data.get("init_parameters", {}).items()]
         init_params[name] = ",<br>".join(params)
     states = "\n".join(

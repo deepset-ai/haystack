@@ -4,11 +4,12 @@
 import logging
 
 from sample_components import Greet
+from canals.serialization import component_to_dict, component_from_dict
 
 
 def test_to_dict():
     component = Greet()
-    res = component.to_dict()
+    res = component_to_dict(component)
     assert res == {
         "type": "Greet",
         "init_parameters": {
@@ -20,7 +21,7 @@ def test_to_dict():
 
 def test_to_dict_with_custom_parameters():
     component = Greet(message="My message", log_level="ERROR")
-    res = component.to_dict()
+    res = component_to_dict(component)
     assert res == {
         "type": "Greet",
         "init_parameters": {
@@ -35,7 +36,7 @@ def test_from_dict():
         "type": "Greet",
         "init_parameters": {},
     }
-    component = Greet.from_dict(data)
+    component = component_from_dict(Greet, data)
     assert component.message == "\nGreeting component says: Hi! The value is {value}\n"
     assert component.log_level == "INFO"
 
@@ -45,7 +46,7 @@ def test_from_with_custom_parameters():
         "type": "Greet",
         "init_parameters": {"message": "My message", "log_level": "ERROR"},
     }
-    component = Greet.from_dict(data)
+    component = component_from_dict(Greet, data)
     assert component.message == "My message"
     assert component.log_level == "ERROR"
 

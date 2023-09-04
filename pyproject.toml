@@ -91,4 +91,5 @@ disable = [
   "line-too-long",
   "missing-class-docstring",
   "missing-module-docstring",
+  "too-few-public-methods",
 ]

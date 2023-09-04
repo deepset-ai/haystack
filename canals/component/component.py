@@ -94,17 +94,6 @@ class Component(Protocol):
         or with `component.set_output_types()` if dynamic.
         """
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serializes the component to a dictionary.
-        """
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Component":
-        """
-        Deserializes the component from a dictionary.
-        """
-
 
 class _Component:
     """
@@ -233,16 +222,6 @@ class _Component:
         if not hasattr(class_, "run"):
             raise ComponentError(f"{class_.__name__} must have a 'run()' method. See the docs for more information.")
         run_signature = inspect.signature(class_.run)
-
-        if not hasattr(class_, "to_dict"):
-            raise ComponentError(
-                f"{class_.__name__} must have a 'to_dict()' method. See the docs for more information."
-            )
-
-        if not hasattr(class_, "from_dict"):
-            raise ComponentError(
-                f"{class_.__name__} must have a 'from_dict()' method. See the docs for more information."
-            )
 
         # Create the input sockets
         class_.run.__canals_input__ = {

@@ -1,9 +1,50 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+import inspect
 from typing import Type, Dict, Any
 
-from canals.errors import DeserializationError
+from canals.errors import DeserializationError, SerializationError
+
+
+def component_to_dict(obj: Any) -> Dict[str, Any]:
+    """
+    The marshaller used by the Pipeline. If a `to_dict` method is present in the
+    component instance, that will be used instead of the default method.
+    """
+    if hasattr(obj, "to_dict"):
+        return obj.to_dict()
+
+    init_parameters = {}
+    for name, param in inspect.signature(obj.__init__).parameters.items():
+        try:
+            # This only works if the Component constructor assigns the init
+            # parameter to an instance variable or property with the same name
+            param_value = getattr(obj, name)
+        except AttributeError as e:
+            # If the parameter doesn't have a default value, raise an error
+            if param.default is param.empty:
+                raise SerializationError(
+                    f"Cannot determined the value of the init parameter '{name}'. "
+                    f"You can fix this error by assigning 'self.{name} = {name}' or adding a "
+                    f"custom serialization method 'to_dict' to the class {obj.__class__.__name__}"
+                ) from e
+            # In case the init parameter was not assigned, we use the default value
+            param_value = param.default
+        init_parameters[name] = param_value
+
+    return default_to_dict(obj, **init_parameters)
+
+
+def component_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
+    """
+    The unmarshaller used by the Pipeline. If a `from_dict` method is present in the
+    component instance, that will be used instead of the default method.
+    """
+    if hasattr(cls, "from_dict"):
+        return cls.from_dict(data)
+
+    return default_from_dict(cls, data)
 
 
 def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:

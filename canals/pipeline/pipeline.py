@@ -26,6 +26,7 @@ from canals.pipeline.sockets import InputSocket, OutputSocket
 from canals.pipeline.validation import _validate_pipeline_input
 from canals.pipeline.connections import _parse_connection_name, _find_unambiguous_connection
 from canals.utils import _type_name
+from canals.serialization import component_to_dict, component_from_dict
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,10 @@ class Pipeline:
         Returns this Pipeline instance as a dictionary.
         This is meant to be an intermediate representation but it can be also used to save a pipeline to file.
         """
-        components = {name: instance.to_dict() for name, instance in self.graph.nodes(data="instance")}
+        components = {}
+        for name, instance in self.graph.nodes(data="instance"):
+            components[name] = component_to_dict(instance)
+
         connections = []
         for sender, receiver, sockets in self.graph.edges:
             (sender_socket, receiver_socket) = sockets.split("/")
@@ -152,7 +156,8 @@ class Pipeline:
                 if component_data["type"] not in component.registry:
                     raise PipelineError(f"Component '{component_data['type']}' not imported.")
                 # Create a new one
-                instance = component.registry[component_data["type"]].from_dict(component_data)
+                component_class = component.registry[component_data["type"]]
+                instance = component_from_dict(component_class, component_data)
             pipe.add_component(name=name, instance=instance)
 
         for connection in data.get("connections", []):
