@@ -1,4 +1,3 @@
-from itertools import zip_longest
 import logging
 import re
 from typing import List, Dict, Any, Optional
@@ -88,26 +87,24 @@ class AnswersBuilder:
         reference_pattern = reference_pattern or self.reference_pattern
 
         all_answers = []
-        for query, reply_list, doc_list, meta_list in zip_longest(
-            queries, replies, documents, metadata, fillvalue=[]
-        ):  # type: (str, List[str], List[Document], List[Dict[str, Any]])
+        for i, (query, reply_list, meta_list) in enumerate(zip(queries, replies, metadata)):
+            doc_list = documents[i] if i < len(documents) else []
+
             extracted_answer_strings = AnswersBuilder._extract_answer_strings(reply_list, pattern)
+
             if doc_list and reference_pattern:
                 reference_idxs = AnswersBuilder._extract_reference_idxs(reply_list, reference_pattern)
             else:
-                reference_idxs = [[doc_idx for doc_idx, _ in enumerate(doc_list)] * len(reply_list)]
+                reference_idxs = [[doc_idx for doc_idx, _ in enumerate(doc_list)] for _ in reply_list]
 
             answers_for_cur_query = []
-            for answer_string, doc_idxs, meta in zip_longest(extracted_answer_strings, reference_idxs, meta_list):
+            for answer_string, doc_idxs, meta in zip(extracted_answer_strings, reference_idxs, meta_list):
                 referenced_docs = []
-                if doc_idxs:
-                    for idx in doc_idxs:
-                        if idx < len(doc_list):
-                            referenced_docs.append(doc_list[idx])
-                        else:
-                            logger.warning(
-                                f"Document index '{idx + 1}' referenced in Generator output is out of range. "
-                            )
+                for idx in doc_idxs:
+                    if idx < len(doc_list):
+                        referenced_docs.append(doc_list[idx])
+                    else:
+                        logger.warning("Document index '%s' referenced in Generator output is out of range. ", idx + 1)
 
                 answer = GeneratedAnswer(data=answer_string, query=query, documents=referenced_docs, metadata=meta)
                 answers_for_cur_query.append(answer)
