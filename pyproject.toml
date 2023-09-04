@@ -79,7 +79,7 @@ dependencies = [
   "jsonschema",
 
   # Preview
-  "canals==0.7.0",
+  "canals==0.8.0",
 
   # Agent events
   "events",
