@@ -102,7 +102,7 @@ def complete_stream(
     response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT, stream=True)
     raise_for_status(response=response)
 
-    client = sseclient.SSEClient(response)
+    client = sseclient.SSEClient(response)  # type: ignore
     event_data = None
     tokens = []
     try:
