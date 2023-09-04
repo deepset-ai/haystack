@@ -141,16 +141,13 @@ class TestChatGPTGenerator:
 
 @pytest.mark.unit
 def test_check_truncated_answers(caplog):
-    result = {
-        "choices": [
-            {"finish_reason": "length"},
-            {"finish_reason": "content_filter"},
-            {"finish_reason": "length"},
-            {"finish_reason": "stop"},
-        ]
-    }
-    payload = {"n": 4}
-    check_truncated_answers(result, payload)
+    metadata = [
+        {"finish_reason": "length"},
+        {"finish_reason": "content_filter"},
+        {"finish_reason": "length"},
+        {"finish_reason": "stop"},
+    ]
+    check_truncated_answers(metadata)
     assert caplog.records[0].message == (
         "2 out of the 4 completions have been truncated before reaching a natural "
         "stopping point. Increase the max_tokens parameter to allow for longer completions."

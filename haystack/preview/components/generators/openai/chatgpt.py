@@ -10,7 +10,7 @@ import openai
 from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
 
 # from haystack.preview.llm_backends.openai.chatgpt import ChatGPTBackend
-from haystack.preview.llm_backends.chat_message import ChatMessage
+from haystack.preview.dataclasses.chat_message import ChatMessage
 
 
 logger = logging.getLogger(__name__)
