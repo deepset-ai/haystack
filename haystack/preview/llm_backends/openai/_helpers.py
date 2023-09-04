@@ -47,15 +47,6 @@ openai_retry = tenacity.retry(
 )
 
 
-def default_streaming_callback(token: str, **kwargs):
-    """
-    Default callback function for streaming responses from OpenAI API.
-    Prints the tokens to stdout as soon as they are received and returns them.
-    """
-    print(token, flush=True, end="")
-    return token
-
-
 @openai_retry
 def complete(url: str, headers: Dict[str, str], payload: Dict[str, Any]) -> Tuple[List[str], List[Dict[str, Any]]]:
     """

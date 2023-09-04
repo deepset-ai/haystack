@@ -1,44 +1,33 @@
 from typing import Optional, List, Callable, Dict, Any
 
+import sys
+import builtins
 import logging
-from dataclasses import asdict
 
-from haystack.preview.lazy_imports import LazyImport
+from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
+from haystack.preview.llm_backends.openai.chatgpt import ChatGPTBackend
 from haystack.preview.llm_backends.chat_message import ChatMessage
-from haystack.preview.llm_backends.openai._helpers import (
-    complete,
-    complete_stream,
-    enforce_token_limit_chat,
-    OPENAI_TOKENIZERS,
-    OPENAI_TOKENIZERS_TOKEN_LIMITS,
-)
-
-
-with LazyImport() as tiktoken_import:
-    import tiktoken
 
 
 logger = logging.getLogger(__name__)
 
 
 TOKENS_PER_MESSAGE_OVERHEAD = 4
-DEFAULT_OPENAI_PARAMS = {
-    "max_tokens": 500,
-    "temperature": 0.7,
-    "top_p": 1,
-    "n": 1,
-    "stop": [],
-    "presence_penalty": 0,
-    "frequency_penalty": 0,
-    "logit_bias": {},
-    "stream": False,
-    "openai_organization": None,
-}
 
 
-class ChatGPTBackend:
+def default_streaming_callback(token: str, **kwargs):
     """
-    ChatGPT LLM interface.
+    Default callback function for streaming responses from OpenAI API.
+    Prints the tokens to stdout as soon as they are received and returns them.
+    """
+    print(token, flush=True, end="")
+    return token
+
+
+@component
+class ChatGPTGenerator:
+    """
+    ChatGPT LLM Generator.
 
     Queries ChatGPT using OpenAI's GPT-3 ChatGPT API. Invocations are made using REST API.
     See [OpenAI ChatGPT API](https://platform.openai.com/docs/guides/chat) for more details.
@@ -50,6 +39,7 @@ class ChatGPTBackend:
         self,
         api_key: Optional[str] = None,
         model_name: str = "gpt-3.5-turbo",
+        system_prompt: Optional[str] = None,
         model_parameters: Optional[Dict[str, Any]] = None,
         streaming_callback: Optional[Callable] = None,
         api_base_url: str = "https://api.openai.com/v1",
@@ -59,6 +49,7 @@ class ChatGPTBackend:
 
         :param api_key: The OpenAI API key.
         :param model_name: The name of the model to use.
+        :param system_prompt: The prompt to be prepended to the user prompt.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function should accept two parameters: the token received from the stream and **kwargs.
             The callback function should return the token to be sent to the stream. If the callback function is not
@@ -83,50 +74,79 @@ class ChatGPTBackend:
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens and the
                 values are the bias to add to that token.
             - `openai_organization`: The OpenAI organization ID.
-
         """
-        if not api_key:
-            logger.warning("OpenAI API key is missing. You will need to provide an API key to Pipeline.run().")
+        self.llm = ChatGPTBackend(
+            api_key=api_key,
+            model_name=model_name,
+            model_parameters=model_parameters,
+            streaming_callback=streaming_callback,
+            api_base_url=api_base_url,
+        )
+        self.system_prompt = system_prompt
 
-        self.api_key = api_key
-        self.model_name = model_name
-        self.model_parameters = DEFAULT_OPENAI_PARAMS | (model_parameters or {})
-        self.streaming_callback = streaming_callback
-        self.api_base_url = api_base_url
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        if self.llm.streaming_callback:
+            module = sys.modules.get(self.llm.streaming_callback.__module__)
+            if not module:
+                raise ValueError("Could not locate the import module.")
+            if module == builtins:
+                callback_name = self.llm.streaming_callback.__name__
+            else:
+                callback_name = f"{module.__name__}.{self.llm.streaming_callback.__name__}"
+        else:
+            callback_name = None
 
-        tokenizer = None
-        for model_prefix, tokenizer_name in OPENAI_TOKENIZERS.items():
-            if model_name.startswith(model_prefix):
-                tokenizer = tiktoken.get_encoding(tokenizer_name)
-                break
-        if not tokenizer:
-            raise ValueError(f"Tokenizer for model '{model_name}' not found.")
-        self.tokenizer = tokenizer
+        return default_to_dict(
+            self,
+            api_key=self.llm.api_key,
+            model_name=self.llm.model_name,
+            model_parameters=self.llm.model_parameters,
+            system_prompt=self.system_prompt,
+            streaming_callback=callback_name,
+            api_base_url=self.llm.api_base_url,
+        )
 
-        max_tokens_limit = None
-        for model_prefix, limit in OPENAI_TOKENIZERS_TOKEN_LIMITS.items():
-            if model_name.startswith(model_prefix):
-                max_tokens_limit = limit
-                break
-        if not max_tokens_limit:
-            raise ValueError(f"Max tokens limit for model '{model_name}' not found.")
-        self.max_tokens_limit = max_tokens_limit
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ChatGPTGenerator":
+        """
+        Deserialize this component from a dictionary.
+        """
+        init_params = data.get("init_parameters", {})
+        streaming_callback = None
+        if "streaming_callback" in init_params:
+            parts = init_params["streaming_callback"].split(".")
+            module_name = ".".join(parts[:-1])
+            function_name = parts[-1]
+            module = sys.modules.get(module_name, None)
+            if not module:
+                raise DeserializationError(f"Could not locate the module of the streaming callback: {module_name}")
+            streaming_callback = getattr(module, function_name, None)
+            if not streaming_callback:
+                raise DeserializationError(f"Could not locate the streaming callback: {function_name}")
+            data["init_parameters"]["streaming_callback"] = streaming_callback
+        return default_from_dict(cls, data)
 
-    def complete(
+    @component.output_types(replies=List[List[str]], metadata=List[Dict[str, Any]])
+    def run(
         self,
-        chat: List[ChatMessage],
+        prompts: List[str],
         api_key: Optional[str] = None,
-        model_name: Optional[str] = None,
+        model_name: str = "gpt-3.5-turbo",
+        system_prompt: Optional[str] = None,
         model_parameters: Optional[Dict[str, Any]] = None,
         streaming_callback: Optional[Callable] = None,
-        api_base_url: Optional[str] = None,
+        api_base_url: str = "https://api.openai.com/v1",
     ):
         """
         Queries the LLM with the prompts to produce replies.
 
-        :param chat: The chat to be sent to the generative model.
+        :param prompts: The prompts to be sent to the generative model.
         :param api_key: The OpenAI API key.
         :param model_name: The name of the model to use.
+        :param system_prompt: The prompt to be prepended to the user prompt.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function should accept two parameters: the token received from the stream and **kwargs.
             The callback function should return the token to be sent to the stream. If the callback function is not
@@ -152,35 +172,30 @@ class ChatGPTBackend:
                 values are the bias to add to that token.
             - `openai_organization`: The OpenAI organization ID.
 
+        See OpenAI documentation](https://platform.openai.com/docs/api-reference/chat) for more details.
         """
-        api_key = api_key if api_key is not None else self.api_key
+        system_prompt = system_prompt if system_prompt is not None else self.system_prompt
+        if system_prompt:
+            system_message = ChatMessage(content=system_prompt, role="system")
+        chats = []
+        for prompt in prompts:
+            message = ChatMessage(content=prompt, role="user")
+            if system_prompt:
+                chats.append([system_message, message])
+            else:
+                chats.append([message])
 
-        if not api_key:
-            raise ValueError("OpenAI API key is missing. Please provide an API key.")
+        replies, metadata = [], []
+        for chat in chats:
+            reply, meta = self.llm.complete(
+                chat=chat,
+                api_key=api_key,
+                model_name=model_name,
+                model_parameters=model_parameters,
+                streaming_callback=streaming_callback,
+                api_base_url=api_base_url,
+            )
+            replies.append(reply)
+            metadata.append(meta)
 
-        model_name = model_name or self.model_name
-        model_parameters = self.model_parameters | (model_parameters or {})
-        streaming_callback = streaming_callback or self.streaming_callback
-        api_base_url = api_base_url or self.api_base_url
-
-        openai_organization = model_parameters.pop("openai_organization", None)
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        if openai_organization:
-            headers["OpenAI-Organization"] = openai_organization
-        url = f"{api_base_url}/chat/completions"
-
-        chat = enforce_token_limit_chat(
-            chat=chat,
-            tokenizer=self.tokenizer,
-            max_tokens_limit=self.max_tokens_limit,
-            tokens_per_message_overhead=TOKENS_PER_MESSAGE_OVERHEAD,
-        )
-        payload = {
-            "model": model_name,
-            **model_parameters,
-            "stream": streaming_callback is not None,
-            "messages": [asdict(message) for message in chat],
-        }
-        if streaming_callback:
-            return complete_stream(url=url, headers=headers, payload=payload, callback=streaming_callback)
-        return complete(url=url, headers=headers, payload=payload)
+        return {"replies": replies, "metadata": metadata}
