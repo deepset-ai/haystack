@@ -312,9 +312,8 @@ class MemoryDocumentStore:
                 "To generate embeddings, use a DocumentEmbedder."
             )
 
-        embedding_sizes = [
-            len(doc.embedding) for doc in documents_with_embeddings if doc.embedding is not None
-        ]  # if statement needed for mypy
+        # if statement in the list comprehension is needed to avoid a mypy error
+        embedding_sizes = [len(doc.embedding) for doc in documents_with_embeddings if doc.embedding is not None]
         if any(size != embedding_sizes[0] for size in embedding_sizes):
             raise ValueError(
                 "The embedding size of all Documents should be the same."
