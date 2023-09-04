@@ -21,14 +21,14 @@ class AnswersBuilder:
                         most one capture group. If a capture group is present, the text matched by the capture group
                         is used as the answer. If no capture group is present, the whole match is used as the answer.
                         Examples:
-                            `[^\\n]+$` finds "this is an answer" in string "this is an argument.\nthis is an answer".
-                            `Answer: (.*)` finds "this is an answer" in string "this is an argument. Answer: this is an answer".
+                            `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\nthis is an answer".
+                            `Answer: (.*)` finds "this is an answer" in a string "this is an argument. Answer: this is an answer".
                         Default: `None`.
         :param reference_pattern: The regular expression pattern to use for parsing the document references.
                                   We assume that references are specified as indices of the input documents and that
                                   indices start at 1.
-                                  Example: `\\[(\\d+)\\]` finds "1" in string "this is an answer[1]".
-                                  If not specified, no parsing is done and all documents are referenced.
+                                  Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
+                                  If not specified, no parsing is done, and all documents are referenced.
                                   Default: `None`.
         """
         if pattern:
@@ -63,14 +63,14 @@ class AnswersBuilder:
                         most one capture group. If a capture group is present, the text matched by the capture group
                         is used as the answer. If no capture group is present, the whole match is used as the answer.
                         Examples:
-                            `[^\\n]+$` finds "this is an answer" in string "this is an argument.\nthis is an answer".
-                            `Answer: (.*)` finds "this is an answer" in string "this is an argument. Answer: this is an answer".
+                            `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\nthis is an answer".
+                            `Answer: (.*)` finds "this is an answer" in a string "this is an argument. Answer: this is an answer".
                         Default: `None`.
         :param reference_pattern: The regular expression pattern to use for parsing the document references.
                                   We assume that references are specified as indices of the input documents and that
                                   indices start at 1.
-                                  Example: `\\[(\\d+)\\]` finds "1" in string "this is an answer[1]".
-                                  If not specified, no parsing is done and all documents are referenced.
+                                  Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
+                                  If not specified, no parsing is done, and all documents are referenced.
                                   Default: `None`.
         """
         if len(queries) != len(replies) != len(metadata):
