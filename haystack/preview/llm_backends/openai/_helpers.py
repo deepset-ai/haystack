@@ -204,7 +204,6 @@ def enforce_token_limit_chat(
     :param tokens_per_message_overhead: The number of tokens that are added to the prompt text for each message.
     :return: A chat that fits within the max tokens limit of the model.
     """
-    print(chat)
     messages_len = [len(tokenizer.encode(message.content)) + tokens_per_message_overhead for message in chat]
     if (total_chat_length := sum(messages_len)) <= max_tokens_limit:
         return chat

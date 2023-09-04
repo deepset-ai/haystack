@@ -175,9 +175,6 @@ class ChatGPTBackend:
             max_tokens_limit=self.max_tokens_limit,
             tokens_per_message_overhead=TOKENS_PER_MESSAGE_OVERHEAD,
         )
-
-        print(model_parameters)
-
         payload = {
             "model": model_name,
             **model_parameters,
