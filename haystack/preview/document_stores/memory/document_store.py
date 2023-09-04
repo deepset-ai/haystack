@@ -20,9 +20,10 @@ logger = logging.getLogger(__name__)
 # document scores are essentially unbounded and will be scaled to values between 0 and 1 if scale_score is set to
 # True (default). Scaling uses the expit function (inverse of the logit function) after applying a SCALING_FACTOR. A
 # larger SCALING_FACTOR decreases scaled scores. For example, an input of 10 is scaled to 0.99 with SCALING_FACTOR=2
-# but to 0.78 with SCALING_FACTOR=8 (default). The default was chosen empirically. Increase the default if most
+# but to 0.78 with SCALING_FACTOR=8 (default). The defaults were chosen empirically. Increase the default if most
 # unscaled scores are larger than expected (>30) and otherwise would incorrectly all be mapped to scores ~1.
-SCALING_FACTOR = 8
+BM25_SCALING_FACTOR = 8
+DOT_PRODUCT_SCALING_FACTOR = 100
 
 
 @document_store
@@ -36,9 +37,20 @@ class MemoryDocumentStore:
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
         bm25_parameters: Optional[Dict] = None,
+        embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
     ):
         """
         Initializes the DocumentStore.
+
+        :param bm25_tokenization_regex: The regular expression used to tokenize the text for BM25 retrieval.
+        :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", "BM25Plus".
+        :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
+                                For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
+                                You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25
+                                By default, no parameters are set.
+        :param embedding_similarity_function: The similarity function used to compare Documents embeddings.
+                                              One of "dot_product" (default) and "cosine".
+                                              To choose the most appropriate function, you should look for information about your embedding model.
         """
         self.storage: Dict[str, Document] = {}
         self._bm25_tokenization_regex = bm25_tokenization_regex
@@ -48,6 +60,7 @@ class MemoryDocumentStore:
             raise ValueError(f"BM25 algorithm '{bm25_algorithm}' not found.")
         self.bm25_algorithm = algorithm_class
         self.bm25_parameters = bm25_parameters or {}
+        self.embedding_similarity_function = embedding_similarity_function
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -58,6 +71,7 @@ class MemoryDocumentStore:
             bm25_tokenization_regex=self._bm25_tokenization_regex,
             bm25_algorithm=self.bm25_algorithm.__name__,
             bm25_parameters=self.bm25_parameters,
+            embedding_similarity_function=self.embedding_similarity_function,
         )
 
     @classmethod
@@ -218,9 +232,6 @@ class MemoryDocumentStore:
             filters = {**filters, "content_type": ["text", "table"]}
         all_documents = self.filter_documents(filters=filters)
 
-        # FIXME: remove this guard after resolving https://github.com/deepset-ai/canals/issues/33
-        top_k = top_k if top_k is not None else 10
-
         # Lowercase all documents
         lower_case_documents = []
         for doc in all_documents:
@@ -246,7 +257,7 @@ class MemoryDocumentStore:
         # get scores for the query against the corpus
         docs_scores = bm25_scorer.get_scores(tokenized_query)
         if scale_score:
-            docs_scores = [expit(float(score / SCALING_FACTOR)) for score in docs_scores]
+            docs_scores = [expit(float(score / BM25_SCALING_FACTOR)) for score in docs_scores]
         # get the last top_k indexes and reverse them
         top_docs_positions = np.argsort(docs_scores)[-top_k:][::-1]
 
@@ -259,3 +270,106 @@ class MemoryDocumentStore:
             return_document = Document(**doc_fields)
             return_documents.append(return_document)
         return return_documents
+
+    def embedding_retrieval(
+        self,
+        query_embedding: List[float],
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: int = 10,
+        scale_score: bool = True,
+        return_embedding: bool = False,
+    ) -> List[Document]:
+        """
+        Retrieves documents that are most similar to the query embedding using a vector similarity metric.
+
+        :param query_embedding: Embedding of the query.
+        :param filters: A dictionary with filters to narrow down the search space.
+        :param top_k: The number of top documents to retrieve. Default is 10.
+        :param scale_score: Whether to scale the scores of the retrieved Documents. Default is True.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
+        :return: A list of the top 'k' documents most relevant to the query.
+        """
+        if (
+            not isinstance(query_embedding, list)
+            or len(query_embedding) == 0
+            or not isinstance(query_embedding[0], float)
+        ):
+            raise ValueError("query_embedding should be a non-empty list of floats.")
+
+        filters = filters or {}
+        all_documents = self.filter_documents(filters=filters)
+
+        documents_with_embeddings = [doc for doc in all_documents if doc.embedding is not None]
+        if len(documents_with_embeddings) == 0:
+            logger.info(
+                "No Documents found with embeddings. Returning empty list. "
+                "To generate embeddings, use a DocumentEmbedder."
+            )
+            return []
+        elif len(documents_with_embeddings) < len(all_documents):
+            logger.info(
+                "Skipping some Documents that don't have an embedding. "
+                "To generate embeddings, use a DocumentEmbedder."
+            )
+
+        embedding_sizes = [len(doc.embedding) for doc in documents_with_embeddings]
+        if any(size != embedding_sizes[0] for size in embedding_sizes):
+            raise ValueError(
+                "The embedding size of all Documents should be the same."
+                "Please make sure that the Documents have been embedded with the same model."
+            )
+
+        if len(query_embedding) != embedding_sizes[0]:
+            raise ValueError(
+                "The embedding size of the query should be the same as the embedding size of the Documents."
+                "Please make sure that the query has been embedded with the same model as the Documents."
+            )
+
+        scores = self._compute_embedding_similarity_scores(
+            query_embedding=query_embedding, documents=documents_with_embeddings, scale_score=scale_score
+        )
+
+        # create Documents with the similarity score for the top k results
+        top_documents = []
+        for doc, score in sorted(zip(documents_with_embeddings, scores), key=lambda x: x[1], reverse=True)[:top_k]:
+            doc_fields = doc.to_dict()
+            doc_fields["score"] = score
+            doc_fields["embedding"] = doc.embedding if return_embedding else None
+            top_documents.append(Document(**doc_fields))
+
+        return top_documents
+
+    def _compute_embedding_similarity_scores(
+        self, query_embedding: List[float], documents: List[Document], scale_score: bool = True
+    ) -> List[float]:
+        """
+        Computes the similarity scores between the query embedding and the embeddings of the documents.
+
+        :param query_embedding: Embedding of the query.
+        :param documents: A list of Documents.
+        :param scale_score: Whether to scale the scores of the Documents. Default is True.
+        :return: A list of scores.
+        """
+
+        query_embedding_arr = np.array(query_embedding)
+        if query_embedding_arr.ndim == 1:
+            query_embedding_arr = np.expand_dims(a=query_embedding_arr, axis=0)
+
+        document_embeddings_arr = np.array([doc.embedding for doc in documents])
+        if document_embeddings_arr.ndim == 1:
+            document_embeddings_arr = np.expand_dims(a=document_embeddings_arr, axis=0)
+
+        if self.embedding_similarity_function == "cosine":
+            # cosine similarity is a normed dot product
+            query_embedding_arr /= np.linalg.norm(x=query_embedding_arr, axis=1, keepdims=True)
+            document_embeddings_arr /= np.linalg.norm(x=document_embeddings_arr, axis=1, keepdims=True)
+
+        scores = np.dot(a=query_embedding_arr, b=document_embeddings_arr.T)[0].tolist()
+
+        if scale_score:
+            if self.embedding_similarity_function == "dot_product":
+                scores = [expit(float(score / DOT_PRODUCT_SCALING_FACTOR)) for score in scores]
+            elif self.embedding_similarity_function == "cosine":
+                scores = [(score + 1) / 2 for score in scores]
+
+        return scores
