@@ -3,8 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from haystack.preview.components.generators.openai.chatgpt import ChatGPTGenerator
-from haystack.preview.components.generators.openai.chatgpt import default_streaming_callback
-from haystack.preview.llm_backends.openai.chatgpt import ChatGPTBackend, DEFAULT_OPENAI_PARAMS
+from haystack.preview.components.generators.openai.chatgpt import default_streaming_callback, check_truncated_answers
 
 
 class TestChatGPTGenerator:
@@ -13,12 +12,11 @@ class TestChatGPTGenerator:
         with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
             component = ChatGPTGenerator()
             assert component.system_prompt is None
-            assert component.llm.api_key is None
-            assert component.llm.model_name == "gpt-3.5-turbo"
-            assert component.llm.streaming_callback is None
-            assert component.llm.api_base_url == "https://api.openai.com/v1"
-            assert component.llm.model_parameters == DEFAULT_OPENAI_PARAMS
-            assert isinstance(component.llm, ChatGPTBackend)
+            assert component.api_key is None
+            assert component.model_name == "gpt-3.5-turbo"
+            assert component.streaming_callback is None
+            assert component.api_base_url == "https://api.openai.com/v1"
+            assert component.model_parameters is None
 
     @pytest.mark.unit
     def test_init_with_parameters(self, caplog):
@@ -33,15 +31,11 @@ class TestChatGPTGenerator:
                 api_base_url="test-base-url",
             )
             assert component.system_prompt == "test-system-prompt"
-            assert component.llm.api_key == "test-api-key"
-            assert component.llm.model_name == "gpt-4"
-            assert component.llm.streaming_callback == callback
-            assert component.llm.api_base_url == "test-base-url"
-            assert component.llm.model_parameters == {
-                **DEFAULT_OPENAI_PARAMS,
-                "max_tokens": 10,
-                "some-test-param": "test-params",
-            }
+            assert component.api_key == "test-api-key"
+            assert component.model_name == "gpt-4"
+            assert component.streaming_callback == callback
+            assert component.api_base_url == "test-base-url"
+            assert component.model_parameters == {"max_tokens": 10, "some-test-param": "test-params"}
 
     @pytest.mark.unit
     def test_to_dict_default(self):
@@ -54,7 +48,7 @@ class TestChatGPTGenerator:
                     "api_key": None,
                     "model_name": "gpt-3.5-turbo",
                     "system_prompt": None,
-                    "model_parameters": DEFAULT_OPENAI_PARAMS,
+                    "model_parameters": None,
                     "streaming_callback": None,
                     "api_base_url": "https://api.openai.com/v1",
                 },
@@ -78,7 +72,7 @@ class TestChatGPTGenerator:
                     "api_key": "test-api-key",
                     "model_name": "gpt-4",
                     "system_prompt": "test-system-prompt",
-                    "model_parameters": {**DEFAULT_OPENAI_PARAMS, "max_tokens": 10, "some-test-params": "test-params"},
+                    "model_parameters": {"max_tokens": 10, "some-test-params": "test-params"},
                     "api_base_url": "test-base-url",
                     "streaming_callback": "haystack.preview.components.generators.openai.chatgpt.default_streaming_callback",
                 },
@@ -100,15 +94,11 @@ class TestChatGPTGenerator:
             }
             component = ChatGPTGenerator.from_dict(data)
             assert component.system_prompt == "test-system-prompt"
-            assert component.llm.api_key == "test-api-key"
-            assert component.llm.model_name == "gpt-4"
-            assert component.llm.streaming_callback == default_streaming_callback
-            assert component.llm.api_base_url == "test-base-url"
-            assert component.llm.model_parameters == {
-                **DEFAULT_OPENAI_PARAMS,
-                "max_tokens": 10,
-                "some-test-params": "test-params",
-            }
+            assert component.api_key == "test-api-key"
+            assert component.model_name == "gpt-4"
+            assert component.streaming_callback == default_streaming_callback
+            assert component.api_base_url == "test-base-url"
+            assert component.model_parameters == {"max_tokens": 10, "some-test-params": "test-params"}
 
     @pytest.mark.unit
     def test_run_no_api_key(self):
@@ -147,3 +137,21 @@ class TestChatGPTGenerator:
                 ],
                 "metadata": [{"some_info": None}, {"some_info": None}],
             }
+
+
+@pytest.mark.unit
+def test_check_truncated_answers(caplog):
+    result = {
+        "choices": [
+            {"finish_reason": "length"},
+            {"finish_reason": "content_filter"},
+            {"finish_reason": "length"},
+            {"finish_reason": "stop"},
+        ]
+    }
+    payload = {"n": 4}
+    check_truncated_answers(result, payload)
+    assert caplog.records[0].message == (
+        "2 out of the 4 completions have been truncated before reaching a natural "
+        "stopping point. Increase the max_tokens parameter to allow for longer completions."
+    )
