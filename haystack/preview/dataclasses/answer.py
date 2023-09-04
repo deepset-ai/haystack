@@ -6,7 +6,7 @@ from haystack.preview.dataclasses.document import Document
 @dataclass(frozen=True)
 class Answer:
     data: Any
-    question: str
+    query: str
     metadata: Dict[str, Any]
 
 
