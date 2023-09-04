@@ -1,8 +1,12 @@
 from itertools import zip_longest
+import logging
 import re
 from typing import List, Dict, Any, Optional
 
 from haystack.preview import component, GeneratedAnswer, Document, default_to_dict, default_from_dict
+
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -28,6 +32,9 @@ class AnswersBuilder:
                                   If not specified, no parsing is done and all documents are referenced.
                                   Default: `None`.
         """
+        if pattern:
+            AnswersBuilder._check_num_groups_in_regex(pattern)
+
         self.pattern = pattern
         self.reference_pattern = reference_pattern
 
@@ -73,12 +80,17 @@ class AnswersBuilder:
                 f"({len(metadata)}) must match."
             )
 
+        if pattern:
+            AnswersBuilder._check_num_groups_in_regex(pattern)
+
         documents = documents or []
         pattern = pattern or self.pattern
         reference_pattern = reference_pattern or self.reference_pattern
 
         all_answers = []
-        for query, reply_list, doc_list, meta_list in zip_longest(queries, replies, documents, metadata, fillvalue=[]):
+        for query, reply_list, doc_list, meta_list in zip_longest(
+            queries, replies, documents, metadata, fillvalue=[]
+        ):  # type: (str, List[str], List[Document], List[Dict[str, Any]])
             extracted_answer_strings = AnswersBuilder._extract_answer_strings(reply_list, pattern)
             if doc_list and reference_pattern:
                 reference_idxs = AnswersBuilder._extract_reference_idxs(reply_list, reference_pattern)
@@ -89,7 +101,13 @@ class AnswersBuilder:
             for answer_string, doc_idxs, meta in zip_longest(extracted_answer_strings, reference_idxs, meta_list):
                 referenced_docs = []
                 if doc_idxs:
-                    referenced_docs = [doc_list[idx] for idx in doc_idxs if idx < len(doc_list)]
+                    for idx in doc_idxs:
+                        if idx < len(doc_list):
+                            referenced_docs.append(doc_list[idx])
+                        else:
+                            logger.warning(
+                                f"Document index '{idx + 1}' referenced in Generator output is out of range. "
+                            )
 
                 answer = GeneratedAnswer(data=answer_string, query=query, documents=referenced_docs, metadata=meta)
                 answers_for_cur_query.append(answer)
@@ -151,3 +169,12 @@ class AnswersBuilder:
             reference_idxs.append([int(idx) - 1 for idx in document_idxs])
 
         return reference_idxs
+
+    @staticmethod
+    def _check_num_groups_in_regex(pattern: str):
+        num_groups = re.compile(pattern).groups
+        if num_groups > 1:
+            raise ValueError(
+                f"Pattern '{pattern}' contains multiple capture groups. "
+                f"Please specify a pattern with at most one capture group."
+            )

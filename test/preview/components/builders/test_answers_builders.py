@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 from haystack.preview import GeneratedAnswer, Document
@@ -70,12 +72,11 @@ class TestAnswersBuilder:
         assert isinstance(answers[0][0], GeneratedAnswer)
 
     def test_run_with_pattern_with_more_than_one_capturing_group(self):
-        component = AnswersBuilder(pattern=r"Answer: (.*), (.*)")
         with pytest.raises(ValueError, match="contains multiple capture groups"):
-            component.run(queries=["test query"], replies=[["Answer: AnswerString, AnswerString2"]], metadata=[[{}]])
+            component = AnswersBuilder(pattern=r"Answer: (.*), (.*)")
 
     def test_run_with_pattern_set_at_runtime(self):
-        component = AnswersBuilder()
+        component = AnswersBuilder(pattern="unused pattern")
         answers = component.run(
             queries=["test query"], replies=[["Answer: AnswerString"]], metadata=[[{}]], pattern=r"Answer: (.*)"
         )
@@ -120,23 +121,25 @@ class TestAnswersBuilder:
         assert len(answers[0][0].documents) == 1
         assert answers[0][0].documents[0].content == "test doc 2"
 
-    def test_run_with_documents_with_reference_pattern_and_no_match(self):
+    def test_run_with_documents_with_reference_pattern_and_no_match(self, caplog):
         component = AnswersBuilder(reference_pattern="\\[(\\d+)\\]")
-        answers = component.run(
-            queries=["test query"],
-            replies=[["Answer: AnswerString[3]"]],
-            metadata=[[{}]],
-            documents=[[Document(content="test doc 1"), Document(content="test doc 2")]],
-        )
+        with caplog.at_level(logging.WARNING):
+            answers = component.run(
+                queries=["test query"],
+                replies=[["Answer: AnswerString[3]"]],
+                metadata=[[{}]],
+                documents=[[Document(content="test doc 1"), Document(content="test doc 2")]],
+            )
         assert len(answers) == 1
         assert len(answers[0]) == 1
         assert answers[0][0].data == "Answer: AnswerString[3]"
         assert answers[0][0].metadata == {}
         assert answers[0][0].query == "test query"
         assert len(answers[0][0].documents) == 0
+        assert "Document index '3' referenced in Generator output is out of range." in caplog.text
 
     def test_run_with_reference_pattern_set_at_runtime(self):
-        component = AnswersBuilder()
+        component = AnswersBuilder(reference_pattern="unused pattern")
         answers = component.run(
             queries=["test query"],
             replies=[["Answer: AnswerString[2][3]"]],
