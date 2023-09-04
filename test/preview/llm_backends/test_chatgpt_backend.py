@@ -2,7 +2,7 @@ from unittest.mock import patch, Mock
 
 import pytest
 
-from haystack.preview.llm_backends.openai.chatgpt import ChatGPTBackend, default_streaming_callback, ChatMessage
+from haystack.preview.llm_backends.openai.chatgpt import ChatGPTBackend, ChatMessage
 
 
 class TestChatGPTBackend:
@@ -12,18 +12,20 @@ class TestChatGPTBackend:
             component = ChatGPTBackend()
             assert component.api_key is None
             assert component.model_name == "gpt-3.5-turbo"
-            assert component.max_tokens == 500
-            assert component.temperature == 0.7
-            assert component.top_p == 1
-            assert component.n == 1
-            assert component.stop == []
-            assert component.presence_penalty == 0
-            assert component.frequency_penalty == 0
-            assert component.logit_bias == {}
-            assert component.stream is False
-            assert component.streaming_callback == default_streaming_callback
+            assert component.model_parameters == {
+                "max_tokens": 500,
+                "temperature": 0.7,
+                "top_p": 1,
+                "n": 1,
+                "stop": [],
+                "presence_penalty": 0,
+                "frequency_penalty": 0,
+                "logit_bias": {},
+                "stream": False,
+                "openai_organization": None,
+            }
+            assert component.streaming_callback is None
             assert component.api_base_url == "https://api.openai.com/v1"
-            assert component.openai_organization is None
             assert component.max_tokens_limit == 4097
 
             tiktoken_patch.get_encoding.assert_called_once_with("cl100k_base")
@@ -38,33 +40,27 @@ class TestChatGPTBackend:
             component = ChatGPTBackend(
                 api_key="test-api-key",
                 model_name="gpt-4",
-                max_tokens=20,
-                temperature=1,
-                top_p=5,
-                n=10,
-                stop=["test-stop-word"],
-                presence_penalty=0.5,
-                frequency_penalty=0.4,
-                logit_bias={"test-logit-bias": 0.3},
-                stream=True,
+                model_parameters={"max_tokens": 100, "extra-param": "value"},
                 streaming_callback=callback,
                 api_base_url="test-base-url",
-                openai_organization="test-orga-id",
             )
             assert component.api_key == "test-api-key"
             assert component.model_name == "gpt-4"
-            assert component.max_tokens == 20
-            assert component.temperature == 1
-            assert component.top_p == 5
-            assert component.n == 10
-            assert component.stop == ["test-stop-word"]
-            assert component.presence_penalty == 0.5
-            assert component.frequency_penalty == 0.4
-            assert component.logit_bias == {"test-logit-bias": 0.3}
-            assert component.stream is True
+            assert component.model_parameters == {
+                "max_tokens": 100,
+                "temperature": 0.7,
+                "top_p": 1,
+                "n": 1,
+                "stop": [],
+                "presence_penalty": 0,
+                "frequency_penalty": 0,
+                "logit_bias": {},
+                "stream": False,
+                "openai_organization": None,
+                "extra-param": "value",
+            }
             assert component.streaming_callback == callback
             assert component.api_base_url == "test-base-url"
-            assert component.openai_organization == "test-orga-id"
             assert component.max_tokens_limit == 8192
 
             tiktoken_patch.get_encoding.assert_called_once_with("cl100k_base")
@@ -86,66 +82,6 @@ class TestChatGPTBackend:
                 ChatGPTBackend(model_name="test-model-name")
 
     @pytest.mark.unit
-    def test_to_dict_default(self):
-        with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
-            component = ChatGPTBackend()
-            data = component.to_dict()
-            assert data == {
-                "api_key": None,
-                "model_name": "gpt-3.5-turbo",
-                "max_tokens": 500,
-                "temperature": 0.7,
-                "top_p": 1,
-                "n": 1,
-                "stop": [],
-                "presence_penalty": 0,
-                "frequency_penalty": 0,
-                "logit_bias": {},
-                "stream": False,
-                # FIXME serialize callback?
-                "api_base_url": "https://api.openai.com/v1",
-                "openai_organization": None,
-            }
-
-    @pytest.mark.unit
-    def test_to_dict_with_parameters(self):
-        with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
-            callback = lambda x: x
-            component = ChatGPTBackend(
-                api_key="test-api-key",
-                model_name="gpt-4",
-                max_tokens=20,
-                temperature=1,
-                top_p=5,
-                n=10,
-                stop=["test-stop-word"],
-                presence_penalty=0.5,
-                frequency_penalty=0.4,
-                logit_bias={"test-logit-bias": 0.3},
-                stream=True,
-                streaming_callback=callback,
-                api_base_url="test-base-url",
-                openai_organization="test-orga-id",
-            )
-            data = component.to_dict()
-            assert data == {
-                "api_key": "test-api-key",
-                "model_name": "gpt-4",
-                "max_tokens": 20,
-                "temperature": 1,
-                "top_p": 5,
-                "n": 10,
-                "stop": ["test-stop-word"],
-                "presence_penalty": 0.5,
-                "frequency_penalty": 0.4,
-                "logit_bias": {"test-logit-bias": 0.3},
-                "stream": True,
-                # FIXME serialize callback?
-                "api_base_url": "test-base-url",
-                "openai_organization": "test-orga-id",
-            }
-
-    @pytest.mark.unit
     def test_run_no_api_key(self):
         with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
             component = ChatGPTBackend()
@@ -164,7 +100,9 @@ class TestChatGPTBackend:
                     [{"metadata of": payload["messages"][1]["content"]}],
                 )
                 component = ChatGPTBackend(
-                    api_key="test-api-key", openai_organization="test_orga_id", api_base_url="test-base-url"
+                    api_key="test-api-key",
+                    model_parameters={"openai_organization": "test_orga_id"},
+                    api_base_url="test-base-url",
                 )
 
                 results = component.complete(
@@ -214,7 +152,7 @@ class TestChatGPTBackend:
                     [{"metadata of": payload["messages"][1]["content"]}],
                 )
                 callback = Mock()
-                component = ChatGPTBackend(api_key="test-api-key", stream=True, streaming_callback=callback)
+                component = ChatGPTBackend(api_key="test-api-key", streaming_callback=callback)
 
                 results = component.complete(
                     chat=[
