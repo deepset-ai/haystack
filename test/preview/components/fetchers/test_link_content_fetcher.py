@@ -10,7 +10,7 @@ class TestLinkContentFetcher:
         fetcher = LinkContentFetcher()
 
         # Call the fetch method with a valid URL
-        document = fetcher.fetch("https://www.example.com")
+        document = fetcher.run("https://www.example.com")
 
         # Assert that the document content is equal to the expected content
         assert document.content == "Example test response"
@@ -23,12 +23,12 @@ class TestLinkContentFetcher:
     #  is blocked.
     def test_fetch_valid_url_blocked_status_code(self):
         # Create an instance of LinkContentFetcher
-        fetcher = LinkContentFetcher()
+        fetcher = LinkContentFetcher(raise_on_failure=False)
         mock_response = Mock(status_code=403, text=None, headers={"Content-Type": "text/html"})
         # Call the fetch method with a valid URL
         with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
             mock_run.get.return_value = mock_response
-            document = fetcher.fetch("https://www.example.com")
+            document = fetcher.run("https://www.example.com")
 
         # Assert that the document content is an empty string
         assert document.content == ""
@@ -37,12 +37,12 @@ class TestLinkContentFetcher:
     #  HTTPStatus.INTERNAL_SERVER_ERROR status code.
     def test_fetch_valid_url_with_internal_server_error_status_code(self):
         # Create an instance of LinkContentFetcher
-        fetcher = LinkContentFetcher()
+        fetcher = LinkContentFetcher(raise_on_failure=False)
         mock_response = Mock(status_code=500, text="Example test response", headers={"Content-Type": "text/html"})
         # Call the fetch method with a valid URL
         with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
             mock_run.get.return_value = mock_response
-            document = fetcher.fetch("https://www.example.com")
+            document = fetcher.run("https://www.example.com")
 
         # Assert that the document content is an empty string
         assert document.content == ""

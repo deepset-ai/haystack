@@ -38,12 +38,10 @@ def binary_content_handler(response: Response) -> IO[bytes]:
 @component
 class LinkContentFetcher:
     """
-    LinkContentFetcher fetches content from a URL link
+    LinkContentFetcher fetches content from a URL link and converts it to a Document object.
     """
 
-    outgoing_edges = 1
-
-    _USER_AGENT = f"haystack/LinkContentRetriever/{__version__}"
+    _USER_AGENT = f"haystack/LinkContentFetcher/{__version__}"
 
     _REQUEST_HEADERS = {
         "accept": "*/*",
@@ -54,7 +52,7 @@ class LinkContentFetcher:
 
     def __init__(
         self,
-        raise_on_failure: Optional[bool] = False,
+        raise_on_failure: Optional[bool] = True,
         user_agents: Optional[List[str]] = None,
         retry_attempts: Optional[int] = None,
     ):
@@ -64,7 +62,8 @@ class LinkContentFetcher:
         :param raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
                          during content extraction. If False, the error is simply logged and the program continues.
                          Defaults to False.
-        :param user_agents: A list of user agents to use when fetching content. Defaults to None.
+        :param user_agents: A list of user agents to use when fetching content. Defaults to None, in which case a
+        default user agent is used.
         :param retry_attempts: The number of times to retry fetching content. Defaults to 2.
         """
         super().__init__()
@@ -97,7 +96,7 @@ class LinkContentFetcher:
         """
         return default_from_dict(cls, data)
 
-    def fetch(self, url: str, timeout: Optional[int] = 3, doc_kwargs: Optional[dict] = None) -> Document:
+    def run(self, url: str, timeout: Optional[int] = 3, doc_kwargs: Optional[dict] = None) -> Document:
         """
         Fetches content from a URL and converts it to a Document objects. If no content is extracted,
         an empty Document object is returned (if raise_on_failure is False).
@@ -126,18 +125,6 @@ class LinkContentFetcher:
             if self.raise_on_failure:
                 raise Exception(f"Couldn't retrieve content from {url}")
             return Document(content="")
-
-    def run(self, url: Optional[str] = None) -> Document:
-        """
-        Fetches content from a URL specified by url parameter and converts it to a Document object.
-
-        param url: a URL link to fetch content from.
-
-        return: Document object
-        """
-        if not url:
-            raise ValueError("LinkContentFetcher run requires the `url` parameter")
-        return self.fetch(url=url)
 
     def _register_content_handler(self, content_type: str, handler: Callable):
         """
