@@ -31,11 +31,12 @@ def build_pipeline(provider, API_KEY, document_store):
         )
     elif provider == "huggingface":
         # TODO: swap out for meta-llama/Llama-2-7b-chat-hf or the 40b model once supported in Haystack+HF API free tier
-        # The tiiuae/falcon-40b-instruct model cannot handle a complex prompt with references, so we use a very simple one
+        # The tiiuae/falcon-7b-instruct model cannot handle a complex prompt with references, so we use a very simple one
+        simple_QA = PromptTemplate(
+            prompt="deepset/question-answering", output_parser=AnswerParser(reference_pattern=r"Document\[(\d+)\]")
+        )
         prompt_node = PromptNode(
-            model_name_or_path="tiiuae/falcon-40b-instruct",
-            api_key=API_KEY,
-            default_prompt_template=PromptTemplate(prompt="deepset/question-answering"),
+            model_name_or_path="tiiuae/falcon-7b-instruct", api_key=API_KEY, default_prompt_template=simple_QA
         )
     elif provider == "openai":
         prompt_node = PromptNode(
