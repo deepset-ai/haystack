@@ -307,7 +307,7 @@ class TestChatGPTGenerator:
             )
 
     @pytest.mark.unit
-    def test_check_truncated_answers(caplog):
+    def test_check_truncated_answers(self, caplog):
         component = ChatGPTGenerator(api_key="test-api-key")
         metadata = [
             {"finish_reason": "stop"},
