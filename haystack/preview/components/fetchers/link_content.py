@@ -118,15 +118,10 @@ class LinkContentFetcher:
         if has_content:
             content_type = self._get_content_type(response)
             handler: Callable = self.handlers[content_type]
-            try:
-                extracted_content = handler(response)
-                extracted_doc["content"] = extracted_content
-                # TODO assign content_type to created document
-                return Document(**extracted_doc)
-            except Exception as e:
-                if self.raise_on_failure:
-                    raise e
-                logger.warning("failed to extract content from %s", response.url)
+            extracted_content = handler(response)
+            extracted_doc["content"] = extracted_content
+            # TODO assign content_type to created document
+            return Document(**extracted_doc)
         else:
             if self.raise_on_failure:
                 raise Exception(f"Couldn't retrieve content from {url}")
