@@ -87,7 +87,7 @@ class SerperDevSearchAPI:
 
         # we get the snippet from the json result and put it in the content field of the document
         organic = [
-            Document.from_dict({"metadata": {k: v for k, v in d.items() if k != "snippet"}, "content": d["snippet"]})
+            Document(metadata={k: v for k, v in d.items() if k != "snippet"}, content=d["snippet"])
             for d in json_result["organic"]
         ]
 
