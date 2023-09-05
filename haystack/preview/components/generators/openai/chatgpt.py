@@ -54,7 +54,11 @@ class ChatGPTGenerator:
 
         :param api_key: The OpenAI API key.
         :param model_name: The name of the model to use.
-        :param system_prompt: The prompt to be prepended to the user prompt.
+        :param system_prompt: An additional message to be sent to the LLM at the beginning of each conversation.
+            Typically, a conversation is formatted with a system message first, followed by alternating messages from
+            the 'user' (the "quesries") and the 'assistant' (the "responses"). The system message helps set the behavior
+            of the assistant. For example, you can modify the personality of the assistant or provide specific
+            instructions about how it should behave throughout the conversation.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function should accept two parameters: the token received from the stream and **kwargs.
             The callback function should return the token to be sent to the stream. If the callback function is not
@@ -152,7 +156,11 @@ class ChatGPTGenerator:
         :param prompts: The prompts to be sent to the generative model.
         :param api_key: The OpenAI API key.
         :param model_name: The name of the model to use.
-        :param system_prompt: The prompt to be prepended to the user prompt.
+        :param system_prompt: An additional message to be sent to the LLM at the beginning of each conversation.
+            Typically, a conversation is formatted with a system message first, followed by alternating messages from
+            the 'user' (the "quesries") and the 'assistant' (the "responses"). The system message helps set the behavior
+            of the assistant. For example, you can modify the personality of the assistant or provide specific
+            instructions about how it should behave throughout the conversation.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function should accept two parameters: the token received from the stream and **kwargs.
             The callback function should return the token to be sent to the stream. If the callback function is not
