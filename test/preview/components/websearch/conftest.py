@@ -95,7 +95,7 @@ example_serperdev_response = {
 
 
 @pytest.fixture
-def mock_web_search():
+def mock_serper_dev_search_result():
     with patch("haystack.preview.components.websearch.serper_dev.requests") as mock_run:
         mock_run.post.return_value = Mock(status_code=200, json=lambda: example_serperdev_response)
         yield mock_run

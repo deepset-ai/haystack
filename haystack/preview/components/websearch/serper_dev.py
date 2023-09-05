@@ -5,7 +5,6 @@ from typing import Dict, List, Optional, Any
 import requests
 
 from haystack.preview import Document, component, default_from_dict, default_to_dict
-from haystack.preview.components.websearch._utils import add_scores_to_results
 
 logger = logging.getLogger(__name__)
 
@@ -131,5 +130,4 @@ class SerperDevSearchAPI:
         documents = answer_box + organic + people_also_ask
 
         logger.debug("Serper Dev returned %s documents for the query '%s'", len(documents), query)
-        result_docs = documents[: self.top_k]
-        return add_scores_to_results(result_docs, len(answer_box) > 0)
+        return documents[: self.top_k]

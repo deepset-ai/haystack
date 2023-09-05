@@ -7,7 +7,7 @@ from haystack.preview import Document
 from haystack.preview.components.websearch.serper_dev import SerperDevSearchAPI
 
 
-class TestSerperDev:
+class TestSerperDevSearchAPI:
     @pytest.mark.unit
     def test_to_dict(self):
         component = SerperDevSearchAPI(api_key="test_key", top_k=10, allowed_domains=["test.com"])
@@ -41,7 +41,7 @@ class TestSerperDev:
 
     @pytest.mark.unit
     @pytest.mark.parametrize("top_k", [1, 5, 7])
-    def test_web_search_top_k(self, mock_web_search, top_k: int):
+    def test_web_search_top_k(self, mock_serper_dev_search_result, top_k: int):
         ws = SerperDevSearchAPI(api_key="some_invalid_key", top_k=top_k)
         results = ws.run(query="Who is the boyfriend of Olivia Wilde?")
         assert len(results) == top_k
