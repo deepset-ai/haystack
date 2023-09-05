@@ -306,17 +306,17 @@ class TestChatGPTGenerator:
                 stream=True,
             )
 
-
-@pytest.mark.unit
-def test_check_truncated_answers(caplog):
-    metadata = [
-        {"finish_reason": "stop"},
-        {"finish_reason": "content_filter"},
-        {"finish_reason": "length"},
-        {"finish_reason": "stop"},
-    ]
-    check_truncated_answers(metadata)
-    assert caplog.records[0].message == (
-        "2 out of the 4 completions have been truncated before reaching a natural "
-        "stopping point. Increase the max_tokens parameter to allow for longer completions."
-    )
+    @pytest.mark.unit
+    def test_check_truncated_answers(caplog):
+        component = ChatGPTGenerator(api_key="test-api-key")
+        metadata = [
+            {"finish_reason": "stop"},
+            {"finish_reason": "content_filter"},
+            {"finish_reason": "length"},
+            {"finish_reason": "stop"},
+        ]
+        component._check_truncated_answers(metadata)
+        assert caplog.records[0].message == (
+            "2 out of the 4 completions have been truncated before reaching a natural "
+            "stopping point. Increase the max_tokens parameter to allow for longer completions."
+        )

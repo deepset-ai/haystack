@@ -229,7 +229,7 @@ class ChatGPTGenerator:
 
                 all_replies.append(list(replies.values()))
                 all_metadata.append(list(metadata.values()))
-                check_truncated_answers(list(metadata.values()))
+                self.check_truncated_answers(list(metadata.values()))
 
             else:
                 metadata = [
@@ -244,24 +244,23 @@ class ChatGPTGenerator:
                 replies = [choice.message.content.strip() for choice in completion.choices]
                 all_replies.append(replies)
                 all_metadata.append(metadata)
-                check_truncated_answers(metadata)
+                self.check_truncated_answers(metadata)
 
         return {"replies": all_replies, "metadata": all_metadata}
 
+    def check_truncated_answers(self, metadata: List[List[Dict[str, Any]]]):
+        """
+        Check the `finish_reason` the answers returned by OpenAI completions endpoint.
+        If the `finish_reason` is `length`, log a warning to the user.
 
-def check_truncated_answers(metadata: List[List[Dict[str, Any]]]):
-    """
-    Check the `finish_reason` the answers returned by OpenAI completions endpoint.
-    If the `finish_reason` is `length`, log a warning to the user.
-
-    :param result: The result returned from the OpenAI API.
-    :param payload: The payload sent to the OpenAI API.
-    """
-    truncated_completions = sum(1 for meta in metadata if meta.get("finish_reason") != "stop")
-    if truncated_completions > 0:
-        logger.warning(
-            "%s out of the %s completions have been truncated before reaching a natural stopping point. "
-            "Increase the max_tokens parameter to allow for longer completions.",
-            truncated_completions,
-            len(metadata),
-        )
+        :param result: The result returned from the OpenAI API.
+        :param payload: The payload sent to the OpenAI API.
+        """
+        truncated_completions = sum(1 for meta in metadata if meta.get("finish_reason") != "stop")
+        if truncated_completions > 0:
+            logger.warning(
+                "%s out of the %s completions have been truncated before reaching a natural stopping point. "
+                "Increase the max_tokens parameter to allow for longer completions.",
+                truncated_completions,
+                len(metadata),
+            )
