@@ -110,8 +110,8 @@ class SerperDev:
             if answer_box_content:
                 answer_box = [
                     Document(
-                        content=answer_box_content, 
-                        metadata={"title": answer_dict.get("title", ""), "link": answer_dict.get("link", "")}
+                        content=answer_box_content,
+                        metadata={"title": answer_dict.get("title", ""), "link": answer_dict.get("link", "")},
                     )
                 ]
 
