@@ -22,10 +22,10 @@ TOKENS_PER_MESSAGE_OVERHEAD = 4
 def default_streaming_callback(chunk: Dict[str, Any]) -> Dict[str, Any]:
     """
     Default callback function for streaming responses from OpenAI API.
-    Prints the tokens to stdout as soon as they are received and returns the chunk unchanged.
+    Prints the tokens of the first completion to stdout as soon as they are received and returns the chunk unchanged.
     """
-    if chunk.choices.delta.content:
-        print(chunk.choices.delta.content, flush=True, end="")
+    if hasattr(chunk.choices[0].delta, "content"):
+        print(chunk.choices[0].delta.content, flush=True, end="")
     return chunk
 
 
@@ -80,6 +80,9 @@ class ChatGPTGenerator:
                 values are the bias to add to that token.
             - `openai_organization`: The OpenAI organization ID.
         """
+        if not api_key:
+            logger.warning("OpenAI API key is missing. You need to provide an API key to Pipeline.run().")
+
         self.api_key = api_key
         self.model_name = model_name
         self.system_prompt = system_prompt
@@ -178,11 +181,14 @@ class ChatGPTGenerator:
         See OpenAI documentation](https://platform.openai.com/docs/api-reference/chat) for more details.
         """
         api_key = api_key if api_key is not None else self.api_key
-        model_name = model_name if model_name is not None else self.model_name
+        if not api_key:
+            raise ValueError("OpenAI API key is missing. Please provide an API key.")
+
+        model_name = model_name or self.model_name
         system_prompt = system_prompt if system_prompt is not None else self.system_prompt
         model_parameters = model_parameters if model_parameters is not None else self.model_parameters
-        streaming_callback = streaming_callback if streaming_callback is not None else self.streaming_callback
-        api_base_url = api_base_url if api_base_url is not None else self.api_base_url
+        streaming_callback = streaming_callback or self.streaming_callback
+        api_base_url = api_base_url or self.api_base_url
 
         if system_prompt:
             system_message = ChatMessage(content=system_prompt, role="system")
@@ -215,9 +221,12 @@ class ChatGPTGenerator:
 
                         if hasattr(choice.delta, "content"):
                             replies[choice.index] += choice.delta.content
-                        metadata[choice.index].update(
-                            {"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason}
-                        )
+                        metadata[choice.index] = {
+                            "model": chunk.model,
+                            "index": choice.index,
+                            "finish_reason": choice.finish_reason,
+                        }
+
                 all_replies.append(list(replies.values()))
                 all_metadata.append(list(metadata.values()))
                 check_truncated_answers(list(metadata.values()))
@@ -228,7 +237,7 @@ class ChatGPTGenerator:
                         "model": completion.model,
                         "index": choice.index,
                         "finish_reason": choice.finish_reason,
-                        **completion.usage.__dict__,
+                        "usage": dict(completion.usage.items()),
                     }
                     for choice in completion.choices
                 ]

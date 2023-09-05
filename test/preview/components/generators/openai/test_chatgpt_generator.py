@@ -1,148 +1,320 @@
-from unittest.mock import patch
+from unittest.mock import patch, Mock
+from copy import deepcopy
 
 import pytest
+import openai
+from openai.util import convert_to_openai_object
 
 from haystack.preview.components.generators.openai.chatgpt import ChatGPTGenerator
 from haystack.preview.components.generators.openai.chatgpt import default_streaming_callback, check_truncated_answers
 
 
+def mock_openai_response(
+    messages: str, stream: bool, model: str = "gpt-3.5-turbo-0301", **kwargs
+) -> openai.ChatCompletion:
+    response = f"response for these messages --> {' - '.join(msg['role']+': '+msg['content'] for msg in messages)}"
+    base_dict = {
+        "id": "chatcmpl-7NaPEA6sgX7LnNPyKPbRlsyqLbr5V",
+        "object": "chat.completion",
+        "created": 1685855844,
+        "model": model,
+        "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+    }
+    base_dict["choices"] = [
+        {"message": {"role": "assistant", "content": response}, "finish_reason": "stop", "index": "0"}
+    ]
+    return convert_to_openai_object(deepcopy(base_dict))
+
+
+def mock_openai_stream_response(
+    messages: str, stream: bool, model: str = "gpt-3.5-turbo-0301", **kwargs
+) -> openai.ChatCompletion:
+    response = f"response for these messages --> {' - '.join(msg['role']+': '+msg['content'] for msg in messages)}"
+    base_dict = {
+        "id": "chatcmpl-7NaPEA6sgX7LnNPyKPbRlsyqLbr5V",
+        "object": "chat.completion",
+        "created": 1685855844,
+        "model": model,
+    }
+    base_dict["choices"] = [{"delta": {"role": "assistant"}, "finish_reason": None, "index": "0"}]
+    yield convert_to_openai_object(base_dict)
+    for token in response.split():
+        base_dict["choices"][0]["delta"] = {"content": token + " "}
+        yield convert_to_openai_object(base_dict)
+    base_dict["choices"] = [{"delta": {"content": ""}, "finish_reason": "stop", "index": "0"}]
+    yield convert_to_openai_object(base_dict)
+
+
 class TestChatGPTGenerator:
     @pytest.mark.unit
     def test_init_default(self, caplog):
-        with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
-            component = ChatGPTGenerator()
-            assert component.system_prompt is None
-            assert component.api_key is None
-            assert component.model_name == "gpt-3.5-turbo"
-            assert component.streaming_callback is None
-            assert component.api_base_url == "https://api.openai.com/v1"
-            assert component.model_parameters is None
+        component = ChatGPTGenerator()
+        assert component.system_prompt is None
+        assert component.api_key is None
+        assert component.model_name == "gpt-3.5-turbo"
+        assert component.streaming_callback is None
+        assert component.api_base_url == "https://api.openai.com/v1"
+        assert component.model_parameters is None
+        assert (
+            caplog.records[0].message == "OpenAI API key is missing. You need to provide an API key to Pipeline.run()."
+        )
 
     @pytest.mark.unit
     def test_init_with_parameters(self, caplog):
-        with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
-            callback = lambda x: x
-            component = ChatGPTGenerator(
-                api_key="test-api-key",
-                model_name="gpt-4",
-                system_prompt="test-system-prompt",
-                model_parameters={"max_tokens": 10, "some-test-param": "test-params"},
-                streaming_callback=callback,
-                api_base_url="test-base-url",
-            )
-            assert component.system_prompt == "test-system-prompt"
-            assert component.api_key == "test-api-key"
-            assert component.model_name == "gpt-4"
-            assert component.streaming_callback == callback
-            assert component.api_base_url == "test-base-url"
-            assert component.model_parameters == {"max_tokens": 10, "some-test-param": "test-params"}
+        callback = lambda x: x
+        component = ChatGPTGenerator(
+            api_key="test-api-key",
+            model_name="gpt-4",
+            system_prompt="test-system-prompt",
+            model_parameters={"max_tokens": 10, "some-test-param": "test-params"},
+            streaming_callback=callback,
+            api_base_url="test-base-url",
+        )
+        assert component.system_prompt == "test-system-prompt"
+        assert component.api_key == "test-api-key"
+        assert component.model_name == "gpt-4"
+        assert component.streaming_callback == callback
+        assert component.api_base_url == "test-base-url"
+        assert component.model_parameters == {"max_tokens": 10, "some-test-param": "test-params"}
+        assert not caplog.records
 
     @pytest.mark.unit
     def test_to_dict_default(self):
-        with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
-            component = ChatGPTGenerator()
-            data = component.to_dict()
-            assert data == {
-                "type": "ChatGPTGenerator",
-                "init_parameters": {
-                    "api_key": None,
-                    "model_name": "gpt-3.5-turbo",
-                    "system_prompt": None,
-                    "model_parameters": None,
-                    "streaming_callback": None,
-                    "api_base_url": "https://api.openai.com/v1",
-                },
-            }
+        component = ChatGPTGenerator()
+        data = component.to_dict()
+        assert data == {
+            "type": "ChatGPTGenerator",
+            "init_parameters": {
+                "api_key": None,
+                "model_name": "gpt-3.5-turbo",
+                "system_prompt": None,
+                "model_parameters": None,
+                "streaming_callback": None,
+                "api_base_url": "https://api.openai.com/v1",
+            },
+        }
 
     @pytest.mark.unit
     def test_to_dict_with_parameters(self):
-        with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
-            component = ChatGPTGenerator(
-                api_key="test-api-key",
-                model_name="gpt-4",
-                system_prompt="test-system-prompt",
-                model_parameters={"max_tokens": 10, "some-test-params": "test-params"},
-                streaming_callback=default_streaming_callback,
-                api_base_url="test-base-url",
-            )
-            data = component.to_dict()
-            assert data == {
-                "type": "ChatGPTGenerator",
-                "init_parameters": {
-                    "api_key": "test-api-key",
-                    "model_name": "gpt-4",
-                    "system_prompt": "test-system-prompt",
-                    "model_parameters": {"max_tokens": 10, "some-test-params": "test-params"},
-                    "api_base_url": "test-base-url",
-                    "streaming_callback": "haystack.preview.components.generators.openai.chatgpt.default_streaming_callback",
-                },
-            }
+        component = ChatGPTGenerator(
+            api_key="test-api-key",
+            model_name="gpt-4",
+            system_prompt="test-system-prompt",
+            model_parameters={"max_tokens": 10, "some-test-params": "test-params"},
+            streaming_callback=default_streaming_callback,
+            api_base_url="test-base-url",
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "ChatGPTGenerator",
+            "init_parameters": {
+                "api_key": "test-api-key",
+                "model_name": "gpt-4",
+                "system_prompt": "test-system-prompt",
+                "model_parameters": {"max_tokens": 10, "some-test-params": "test-params"},
+                "api_base_url": "test-base-url",
+                "streaming_callback": "haystack.preview.components.generators.openai.chatgpt.default_streaming_callback",
+            },
+        }
 
     @pytest.mark.unit
     def test_from_dict(self):
-        with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
-            data = {
-                "type": "ChatGPTGenerator",
-                "init_parameters": {
-                    "api_key": "test-api-key",
-                    "model_name": "gpt-4",
-                    "system_prompt": "test-system-prompt",
-                    "model_parameters": {"max_tokens": 10, "some-test-params": "test-params"},
-                    "api_base_url": "test-base-url",
-                    "streaming_callback": "haystack.preview.components.generators.openai.chatgpt.default_streaming_callback",
-                },
-            }
-            component = ChatGPTGenerator.from_dict(data)
-            assert component.system_prompt == "test-system-prompt"
-            assert component.api_key == "test-api-key"
-            assert component.model_name == "gpt-4"
-            assert component.streaming_callback == default_streaming_callback
-            assert component.api_base_url == "test-base-url"
-            assert component.model_parameters == {"max_tokens": 10, "some-test-params": "test-params"}
+        data = {
+            "type": "ChatGPTGenerator",
+            "init_parameters": {
+                "api_key": "test-api-key",
+                "model_name": "gpt-4",
+                "system_prompt": "test-system-prompt",
+                "model_parameters": {"max_tokens": 10, "some-test-params": "test-params"},
+                "api_base_url": "test-base-url",
+                "streaming_callback": "haystack.preview.components.generators.openai.chatgpt.default_streaming_callback",
+            },
+        }
+        component = ChatGPTGenerator.from_dict(data)
+        assert component.system_prompt == "test-system-prompt"
+        assert component.api_key == "test-api-key"
+        assert component.model_name == "gpt-4"
+        assert component.streaming_callback == default_streaming_callback
+        assert component.api_base_url == "test-base-url"
+        assert component.model_parameters == {"max_tokens": 10, "some-test-params": "test-params"}
 
     @pytest.mark.unit
     def test_run_no_api_key(self):
-        with patch("haystack.preview.llm_backends.openai.chatgpt.tiktoken") as tiktoken_patch:
-            component = ChatGPTGenerator()
-            with pytest.raises(ValueError, match="OpenAI API key is missing. Please provide an API key."):
-                component.run(prompts=["test"])
+        component = ChatGPTGenerator()
+        with pytest.raises(ValueError, match="OpenAI API key is missing. Please provide an API key."):
+            component.run(prompts=["test"])
 
     @pytest.mark.unit
     def test_run_no_system_prompt(self):
-        with patch("haystack.preview.components.generators.openai.chatgpt.ChatGPTBackend") as chatgpt_patch:
-            chatgpt_patch.return_value.complete.side_effect = lambda chat, **kwargs: (
-                [f"{msg.role}: {msg.content}" for msg in chat],
-                {"some_info": None},
-            )
+        with patch(
+            "haystack.preview.components.generators.openai.chatgpt.openai.ChatCompletion.create"
+        ) as chatgpt_patch:
+            chatgpt_patch.side_effect = mock_openai_response
             component = ChatGPTGenerator(api_key="test-api-key")
             results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
             assert results == {
-                "replies": [["user: test-prompt-1"], ["user: test-prompt-2"]],
-                "metadata": [{"some_info": None}, {"some_info": None}],
+                "replies": [
+                    ["response for these messages --> user: test-prompt-1"],
+                    ["response for these messages --> user: test-prompt-2"],
+                ],
+                "metadata": [
+                    [
+                        {
+                            "model": "gpt-3.5-turbo",
+                            "index": "0",
+                            "finish_reason": "stop",
+                            "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+                        }
+                    ],
+                    [
+                        {
+                            "model": "gpt-3.5-turbo",
+                            "index": "0",
+                            "finish_reason": "stop",
+                            "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+                        }
+                    ],
+                ],
             }
+            assert chatgpt_patch.call_count == 2
+            chatgpt_patch.assert_any_call(
+                model="gpt-3.5-turbo",
+                api_key="test-api-key",
+                messages=[{"role": "user", "content": "test-prompt-1"}],
+                stream=False,
+            )
+            chatgpt_patch.assert_any_call(
+                model="gpt-3.5-turbo",
+                api_key="test-api-key",
+                messages=[{"role": "user", "content": "test-prompt-2"}],
+                stream=False,
+            )
 
     @pytest.mark.unit
     def test_run_with_system_prompt(self):
-        with patch("haystack.preview.components.generators.openai.chatgpt.ChatGPTBackend") as chatgpt_patch:
-            chatgpt_patch.return_value.complete.side_effect = lambda chat, **kwargs: (
-                [f"{msg.role}: {msg.content}" for msg in chat],
-                {"some_info": None},
-            )
+        with patch(
+            "haystack.preview.components.generators.openai.chatgpt.openai.ChatCompletion.create"
+        ) as chatgpt_patch:
+            chatgpt_patch.side_effect = mock_openai_response
             component = ChatGPTGenerator(api_key="test-api-key", system_prompt="test-system-prompt")
             results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
             assert results == {
                 "replies": [
-                    ["system: test-system-prompt", "user: test-prompt-1"],
-                    ["system: test-system-prompt", "user: test-prompt-2"],
+                    ["response for these messages --> system: test-system-prompt - user: test-prompt-1"],
+                    ["response for these messages --> system: test-system-prompt - user: test-prompt-2"],
                 ],
-                "metadata": [{"some_info": None}, {"some_info": None}],
+                "metadata": [
+                    [
+                        {
+                            "model": "gpt-3.5-turbo",
+                            "index": "0",
+                            "finish_reason": "stop",
+                            "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+                        }
+                    ],
+                    [
+                        {
+                            "model": "gpt-3.5-turbo",
+                            "index": "0",
+                            "finish_reason": "stop",
+                            "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+                        }
+                    ],
+                ],
             }
+            assert chatgpt_patch.call_count == 2
+            chatgpt_patch.assert_any_call(
+                model="gpt-3.5-turbo",
+                api_key="test-api-key",
+                messages=[
+                    {"role": "system", "content": "test-system-prompt"},
+                    {"role": "user", "content": "test-prompt-1"},
+                ],
+                stream=False,
+            )
+            chatgpt_patch.assert_any_call(
+                model="gpt-3.5-turbo",
+                api_key="test-api-key",
+                messages=[
+                    {"role": "system", "content": "test-system-prompt"},
+                    {"role": "user", "content": "test-prompt-2"},
+                ],
+                stream=False,
+            )
+
+    @pytest.mark.unit
+    def test_run_with_parameters(self):
+        with patch(
+            "haystack.preview.components.generators.openai.chatgpt.openai.ChatCompletion.create"
+        ) as chatgpt_patch:
+            chatgpt_patch.side_effect = mock_openai_response
+            component = ChatGPTGenerator(api_key="test-api-key", model_parameters={"max_tokens": 10})
+            component.run(prompts=["test-prompt-1", "test-prompt-2"])
+            assert chatgpt_patch.call_count == 2
+            chatgpt_patch.assert_any_call(
+                model="gpt-3.5-turbo",
+                api_key="test-api-key",
+                messages=[{"role": "user", "content": "test-prompt-1"}],
+                stream=False,
+                max_tokens=10,
+            )
+            chatgpt_patch.assert_any_call(
+                model="gpt-3.5-turbo",
+                api_key="test-api-key",
+                messages=[{"role": "user", "content": "test-prompt-2"}],
+                stream=False,
+                max_tokens=10,
+            )
+
+    @pytest.mark.unit
+    def test_run_stream(self):
+        with patch(
+            "haystack.preview.components.generators.openai.chatgpt.openai.ChatCompletion.create"
+        ) as chatgpt_patch:
+            mock_callback = Mock()
+            mock_callback.side_effect = default_streaming_callback
+            chatgpt_patch.side_effect = mock_openai_stream_response
+            component = ChatGPTGenerator(
+                api_key="test-api-key", system_prompt="test-system-prompt", streaming_callback=mock_callback
+            )
+            results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
+            assert results == {
+                "replies": [
+                    ["response for these messages --> system: test-system-prompt - user: test-prompt-1 "],
+                    ["response for these messages --> system: test-system-prompt - user: test-prompt-2 "],
+                ],
+                "metadata": [
+                    [{"model": "gpt-3.5-turbo", "index": "0", "finish_reason": "stop"}],
+                    [{"model": "gpt-3.5-turbo", "index": "0", "finish_reason": "stop"}],
+                ],
+            }
+            # Calls count: (10 tokens per prompt + 1 token for the role + 1 empty termination token) * 2 prompts
+            assert mock_callback.call_count == 24
+            assert chatgpt_patch.call_count == 2
+            chatgpt_patch.assert_any_call(
+                model="gpt-3.5-turbo",
+                api_key="test-api-key",
+                messages=[
+                    {"role": "system", "content": "test-system-prompt"},
+                    {"role": "user", "content": "test-prompt-1"},
+                ],
+                stream=True,
+            )
+            chatgpt_patch.assert_any_call(
+                model="gpt-3.5-turbo",
+                api_key="test-api-key",
+                messages=[
+                    {"role": "system", "content": "test-system-prompt"},
+                    {"role": "user", "content": "test-prompt-2"},
+                ],
+                stream=True,
+            )
 
 
 @pytest.mark.unit
 def test_check_truncated_answers(caplog):
     metadata = [
-        {"finish_reason": "length"},
+        {"finish_reason": "stop"},
         {"finish_reason": "content_filter"},
         {"finish_reason": "length"},
         {"finish_reason": "stop"},
