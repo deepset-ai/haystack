@@ -1,4 +1,3 @@
-import inspect
 import io
 import logging
 from collections import defaultdict
@@ -74,9 +73,9 @@ class LinkContentFetcher:
         self.handlers: Dict[str, Callable] = defaultdict(lambda: text_content_handler)
 
         # register default content handlers that extract data from the response
-        self._register_content_handler("text/html", text_content_handler)
-        self._register_content_handler("text/plain", text_content_handler)
-        self._register_content_handler("application/pdf", binary_content_handler)
+        self.handlers["text/html"] = text_content_handler
+        self.handlers["text/plain"] = text_content_handler
+        self.handlers["application/pdf"] = binary_content_handler
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -125,24 +124,6 @@ class LinkContentFetcher:
             if self.raise_on_failure:
                 raise Exception(f"Couldn't retrieve content from {url}")
             return Document(content="")
-
-    def _register_content_handler(self, content_type: str, handler: Callable):
-        """
-        Register a new content handler for a specific content type.
-        If a handler for the given content type already exists, it will be overridden.
-
-        :param content_type: The content type for which the handler should be used.
-        :param handler: The handler function. This function should accept a requests.Response object parameter,
-        and return the extracted text, file-like object (or None).
-        """
-        if not callable(handler):
-            raise ValueError(f"handler must be a callable, but got {type(handler).__name__}")
-
-        params = inspect.signature(handler).parameters
-        if len(params) != 1 or list(params.keys()) != ["response"]:
-            raise ValueError(f"{content_type} handler must accept 'response: requests.Response' as a single parameter")
-
-        self.handlers[content_type] = handler
 
     def _get_response(self, url: str, timeout: Optional[int] = None) -> requests.Response:
         """
