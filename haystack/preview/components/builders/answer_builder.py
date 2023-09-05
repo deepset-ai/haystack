@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class AnswersBuilder:
+class AnswerBuilder:
     """
     A component to parse the output of a Generator to `Answer` objects using regular expressions.
     """
@@ -32,7 +32,7 @@ class AnswersBuilder:
                                   Default: `None`.
         """
         if pattern:
-            AnswersBuilder._check_num_groups_in_regex(pattern)
+            AnswerBuilder._check_num_groups_in_regex(pattern)
 
         self.pattern = pattern
         self.reference_pattern = reference_pattern
@@ -80,7 +80,7 @@ class AnswersBuilder:
             )
 
         if pattern:
-            AnswersBuilder._check_num_groups_in_regex(pattern)
+            AnswerBuilder._check_num_groups_in_regex(pattern)
 
         documents = documents or []
         pattern = pattern or self.pattern
@@ -90,10 +90,10 @@ class AnswersBuilder:
         for i, (query, reply_list, meta_list) in enumerate(zip(queries, replies, metadata)):
             doc_list = documents[i] if i < len(documents) else []
 
-            extracted_answer_strings = AnswersBuilder._extract_answer_strings(reply_list, pattern)
+            extracted_answer_strings = AnswerBuilder._extract_answer_strings(reply_list, pattern)
 
             if doc_list and reference_pattern:
-                reference_idxs = AnswersBuilder._extract_reference_idxs(reply_list, reference_pattern)
+                reference_idxs = AnswerBuilder._extract_reference_idxs(reply_list, reference_pattern)
             else:
                 reference_idxs = [[doc_idx for doc_idx, _ in enumerate(doc_list)] for _ in reply_list]
 
@@ -120,7 +120,7 @@ class AnswersBuilder:
         return default_to_dict(self, pattern=self.pattern, reference_pattern=self.reference_pattern)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AnswersBuilder":
+    def from_dict(cls, data: Dict[str, Any]) -> "AnswerBuilder":
         """
         Deserialize this component from a dictionary.
         """
