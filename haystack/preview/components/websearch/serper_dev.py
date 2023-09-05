@@ -109,11 +109,9 @@ class SerperDev:
                         break
             if answer_box_content:
                 answer_box = [
-                    Document.from_dict(
-                        {
-                            "content": answer_box_content,
-                            "metadata": {"title": answer_dict.get("title", ""), "link": answer_dict.get("link", "")},
-                        }
+                    Document(
+                        content=answer_box_content, 
+                        metadata={"title": answer_dict.get("title", ""), "link": answer_dict.get("link", "")}
                     )
                 ]
 
