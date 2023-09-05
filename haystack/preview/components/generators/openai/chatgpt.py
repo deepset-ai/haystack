@@ -260,7 +260,7 @@ class ChatGPTGenerator:
 
     def _check_truncated_answers(self, metadata: List[Dict[str, Any]]):
         """
-        Check the `finish_reason` the answers returned by OpenAI completions endpoint.
+        Check the `finish_reason` returned with the OpenAI completions.
         If the `finish_reason` is `length`, log a warning to the user.
 
         :param result: The result returned from the OpenAI API.
