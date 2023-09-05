@@ -57,7 +57,7 @@ class SerperDevSearchAPI:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
-    def run(self, query: str) -> List[Document]:
+    def run(self, query: str):
         """
         Search the SerperDev API for the given query and return the results as a list of Documents.
 
@@ -130,4 +130,4 @@ class SerperDevSearchAPI:
         documents = answer_box + organic + people_also_ask
 
         logger.debug("Serper Dev returned %s documents for the query '%s'", len(documents), query)
-        return documents[: self.top_k]
+        return {"documents": documents[: self.top_k]}
