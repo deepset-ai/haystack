@@ -1,0 +1,2 @@
+preview:
+  - Introduce `ChatGPTGenerator`, a class that can generate completions using OpenAI Chat models like ChatGPT and GPT4.

@@ -1,2 +1,0 @@
-preview:
-  - Introduce `ChatGPTBackend`, a class that will be used by LLM components to talk to OpenAI Chat models like ChatGPT and GPT4. Note that ChatGPTBackend itself is NOT a component.
