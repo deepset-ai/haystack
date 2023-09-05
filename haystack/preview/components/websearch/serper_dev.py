@@ -123,11 +123,9 @@ class SerperDev:
             for result in json_result["peopleAlsoAsk"]:
                 title = result.get("title", "")
                 people_also_ask.append(
-                    Document.from_dict(
-                        {
-                            "content": result["snippet"] if result.get("snippet") else title,
-                            "metadata": {"title": title, "link": result.get("link", None)},
-                        }
+                    Document(
+                        content=result["snippet"] if result.get("snippet") else title,
+                        metadata={"title": title, "link": result.get("link", None)},
                     )
                 )
 
