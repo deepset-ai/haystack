@@ -9,9 +9,7 @@ from haystack.preview.components.generators.openai.chatgpt import ChatGPTGenerat
 from haystack.preview.components.generators.openai.chatgpt import default_streaming_callback, check_truncated_answers
 
 
-def mock_openai_response(
-    messages: str, stream: bool, model: str = "gpt-3.5-turbo-0301", **kwargs
-) -> openai.ChatCompletion:
+def mock_openai_response(messages: str, model: str = "gpt-3.5-turbo-0301", **kwargs) -> openai.ChatCompletion:
     response = f"response for these messages --> {' - '.join(msg['role']+': '+msg['content'] for msg in messages)}"
     base_dict = {
         "id": "chatcmpl-7NaPEA6sgX7LnNPyKPbRlsyqLbr5V",
@@ -26,9 +24,7 @@ def mock_openai_response(
     return convert_to_openai_object(deepcopy(base_dict))
 
 
-def mock_openai_stream_response(
-    messages: str, stream: bool, model: str = "gpt-3.5-turbo-0301", **kwargs
-) -> openai.ChatCompletion:
+def mock_openai_stream_response(messages: str, model: str = "gpt-3.5-turbo-0301", **kwargs) -> openai.ChatCompletion:
     response = f"response for these messages --> {' - '.join(msg['role']+': '+msg['content'] for msg in messages)}"
     base_dict = {
         "id": "chatcmpl-7NaPEA6sgX7LnNPyKPbRlsyqLbr5V",
