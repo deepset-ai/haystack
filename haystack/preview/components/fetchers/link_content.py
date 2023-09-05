@@ -95,6 +95,7 @@ class LinkContentFetcher:
         """
         return default_from_dict(cls, data)
 
+    @component.output_types(documents=Document)
     def run(self, url: str, timeout: Optional[int] = 3, doc_kwargs: Optional[dict] = None) -> Document:
         """
         Fetches content from a URL and converts it to a Document objects. If no content is extracted,
@@ -106,7 +107,7 @@ class LinkContentFetcher:
         :return: List of Document objects or an empty list if no content is extracted.
         """
         if not self._is_valid_url(url):
-            raise InvalidURL("Invalid or missing URL: {}".format(url))
+            raise InvalidURL(f"Invalid or missing URL: '{url}'")
 
         doc_kwargs = doc_kwargs or {}
         extracted_doc: Dict[str, Any] = {"metadata": {"url": url, "timestamp": int(datetime.utcnow().timestamp())}}
@@ -158,7 +159,7 @@ class LinkContentFetcher:
             if self.raise_on_failure:
                 raise e
             # if we don't raise on failure, log it, and return a response object
-            logger.warning("Couldn't retrieve content from %s", url)
+            logger.debug("Couldn't retrieve content from %s", url)
             response = requests.Response()
         finally:
             self.current_user_agent_idx = 0
