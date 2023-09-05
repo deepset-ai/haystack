@@ -266,7 +266,7 @@ class ChatGPTGenerator:
         :param result: The result returned from the OpenAI API.
         :param payload: The payload sent to the OpenAI API.
         """
-        truncated_completions = sum([1 for meta in metadata if meta.get("finish_reason") != "stop"])
+        truncated_completions = sum(1 for meta in metadata if meta.get("finish_reason") != "stop")
         if truncated_completions > 0:
             logger.warning(
                 "%s out of the %s completions have been truncated before reaching a natural stopping point. "
