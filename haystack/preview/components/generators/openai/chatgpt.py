@@ -171,23 +171,11 @@ class ChatGPTGenerator:
 
         See OpenAI documentation](https://platform.openai.com/docs/api-reference/chat) for more details.
         """
-        api_key = api_key if api_key is not None else self.api_key
-        if not api_key:
-            raise ValueError("OpenAI API key is missing. Please provide an API key.")
-
-        model_name = model_name or self.model_name
-        system_prompt = system_prompt if system_prompt is not None else self.system_prompt
-        model_parameters = model_parameters if model_parameters is not None else self.model_parameters
-        streaming_callback = streaming_callback or self.streaming_callback
-        api_base_url = api_base_url or self.api_base_url
-
-        if system_prompt:
-            system_message = _ChatMessage(content=system_prompt, role="system")
         chats = []
         for prompt in prompts:
             message = _ChatMessage(content=prompt, role="user")
-            if system_prompt:
-                chats.append([system_message, message])
+            if self.system_prompt:
+                chats.append([_ChatMessage(content=self.system_prompt, role="system"), message])
             else:
                 chats.append([message])
 
@@ -197,17 +185,17 @@ class ChatGPTGenerator:
                 model=self.model_name,
                 api_key=self.api_key,
                 messages=[asdict(message) for message in chat],
-                stream=streaming_callback is not None,
-                **(self.model_parameters or model_parameters or {}),
+                stream=self.streaming_callback is not None,
+                **self.model_parameters,
             )
 
             replies: List[str]
             metadata: List[Dict[str, Any]]
-            if streaming_callback:
+            if self.streaming_callback:
                 replies_dict = {}
                 metadata_dict: Dict[str, Dict[str, Any]] = {}
                 for chunk in completion:
-                    chunk = streaming_callback(chunk)
+                    chunk = self.streaming_callback(chunk)
                     for choice in chunk.choices:
                         if choice.index not in replies_dict:
                             replies_dict[choice.index] = ""

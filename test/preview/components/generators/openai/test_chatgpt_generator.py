@@ -43,26 +43,24 @@ def mock_openai_stream_response(messages: str, model: str = "gpt-3.5-turbo-0301"
 
 class TestChatGPTGenerator:
     @pytest.mark.unit
-    def test_init_default(self, caplog):
-        component = ChatGPTGenerator()
+    def test_init_default(self):
+        component = ChatGPTGenerator(api_key="test-api-key")
         assert component.system_prompt is None
-        assert component.api_key is None
+        assert component.api_key == "test-api-key"
         assert component.model_name == "gpt-3.5-turbo"
         assert component.streaming_callback is None
         assert component.api_base_url == "https://api.openai.com/v1"
-        assert component.model_parameters is None
-        assert (
-            caplog.records[0].message == "OpenAI API key is missing. You need to provide an API key to Pipeline.run()."
-        )
+        assert component.model_parameters == {}
 
     @pytest.mark.unit
-    def test_init_with_parameters(self, caplog):
+    def test_init_with_parameters(self):
         callback = lambda x: x
         component = ChatGPTGenerator(
             api_key="test-api-key",
             model_name="gpt-4",
             system_prompt="test-system-prompt",
-            model_parameters={"max_tokens": 10, "some-test-param": "test-params"},
+            max_tokens=10,
+            some_test_param="test-params",
             streaming_callback=callback,
             api_base_url="test-base-url",
         )
@@ -71,20 +69,18 @@ class TestChatGPTGenerator:
         assert component.model_name == "gpt-4"
         assert component.streaming_callback == callback
         assert component.api_base_url == "test-base-url"
-        assert component.model_parameters == {"max_tokens": 10, "some-test-param": "test-params"}
-        assert not caplog.records
+        assert component.model_parameters == {"max_tokens": 10, "some_test_param": "test-params"}
 
     @pytest.mark.unit
     def test_to_dict_default(self):
-        component = ChatGPTGenerator()
+        component = ChatGPTGenerator(api_key="test-api-key")
         data = component.to_dict()
         assert data == {
             "type": "ChatGPTGenerator",
             "init_parameters": {
-                "api_key": None,
+                "api_key": "test-api-key",
                 "model_name": "gpt-3.5-turbo",
                 "system_prompt": None,
-                "model_parameters": None,
                 "streaming_callback": None,
                 "api_base_url": "https://api.openai.com/v1",
             },
@@ -96,7 +92,8 @@ class TestChatGPTGenerator:
             api_key="test-api-key",
             model_name="gpt-4",
             system_prompt="test-system-prompt",
-            model_parameters={"max_tokens": 10, "some-test-params": "test-params"},
+            max_tokens=10,
+            some_test_param="test-params",
             streaming_callback=default_streaming_callback,
             api_base_url="test-base-url",
         )
@@ -107,9 +104,35 @@ class TestChatGPTGenerator:
                 "api_key": "test-api-key",
                 "model_name": "gpt-4",
                 "system_prompt": "test-system-prompt",
-                "model_parameters": {"max_tokens": 10, "some-test-params": "test-params"},
+                "max_tokens": 10,
+                "some_test_param": "test-params",
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.preview.components.generators.openai.chatgpt.default_streaming_callback",
+            },
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_lambda_streaming_callback(self):
+        component = ChatGPTGenerator(
+            api_key="test-api-key",
+            model_name="gpt-4",
+            system_prompt="test-system-prompt",
+            max_tokens=10,
+            some_test_param="test-params",
+            streaming_callback=lambda x: x,
+            api_base_url="test-base-url",
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "ChatGPTGenerator",
+            "init_parameters": {
+                "api_key": "test-api-key",
+                "model_name": "gpt-4",
+                "system_prompt": "test-system-prompt",
+                "max_tokens": 10,
+                "some_test_param": "test-params",
+                "api_base_url": "test-base-url",
+                "streaming_callback": "test_chatgpt_generator.<lambda>",
             },
         }
 
@@ -121,7 +144,8 @@ class TestChatGPTGenerator:
                 "api_key": "test-api-key",
                 "model_name": "gpt-4",
                 "system_prompt": "test-system-prompt",
-                "model_parameters": {"max_tokens": 10, "some-test-params": "test-params"},
+                "max_tokens": 10,
+                "some_test_param": "test-params",
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.preview.components.generators.openai.chatgpt.default_streaming_callback",
             },
@@ -132,13 +156,7 @@ class TestChatGPTGenerator:
         assert component.model_name == "gpt-4"
         assert component.streaming_callback == default_streaming_callback
         assert component.api_base_url == "test-base-url"
-        assert component.model_parameters == {"max_tokens": 10, "some-test-params": "test-params"}
-
-    @pytest.mark.unit
-    def test_run_no_api_key(self):
-        component = ChatGPTGenerator()
-        with pytest.raises(ValueError, match="OpenAI API key is missing. Please provide an API key."):
-            component.run(prompts=["test"])
+        assert component.model_parameters == {"max_tokens": 10, "some_test_param": "test-params"}
 
     @pytest.mark.unit
     def test_run_no_system_prompt(self):
@@ -244,7 +262,7 @@ class TestChatGPTGenerator:
             "haystack.preview.components.generators.openai.chatgpt.openai.ChatCompletion.create"
         ) as chatgpt_patch:
             chatgpt_patch.side_effect = mock_openai_response
-            component = ChatGPTGenerator(api_key="test-api-key", model_parameters={"max_tokens": 10})
+            component = ChatGPTGenerator(api_key="test-api-key", max_tokens=10)
             component.run(prompts=["test-prompt-1", "test-prompt-2"])
             assert chatgpt_patch.call_count == 2
             chatgpt_patch.assert_any_call(
