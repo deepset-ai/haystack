@@ -99,8 +99,8 @@ class LinkContentFetcher:
 
     def fetch(self, url: str, timeout: Optional[int] = 3, doc_kwargs: Optional[dict] = None) -> Document:
         """
-        Fetches content from a URL and converts it into a list of Document objects. If no content is extracted,
-        an empty list is returned.
+        Fetches content from a URL and converts it to a Document objects. If no content is extracted,
+        an empty Document object is returned (if raise_on_failure is False).
 
         :param url: URL to fetch content from.
         :param timeout: Timeout in seconds for the request.
@@ -136,7 +136,7 @@ class LinkContentFetcher:
         return: Document object
         """
         if not url:
-            raise ValueError("LinkContentFetcher run requires the `query` parameter")
+            raise ValueError("LinkContentFetcher run requires the `url` parameter")
         return self.fetch(url=url)
 
     def _register_content_handler(self, content_type: str, handler: Callable):
@@ -146,7 +146,7 @@ class LinkContentFetcher:
 
         :param content_type: The content type for which the handler should be used.
         :param handler: The handler function. This function should accept a requests.Response object parameter,
-        and return the extracted text (or None).
+        and return the extracted text, file-like object (or None).
         """
         if not callable(handler):
             raise ValueError(f"handler must be a callable, but got {type(handler).__name__}")
