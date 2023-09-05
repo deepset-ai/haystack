@@ -6,7 +6,7 @@ from haystack.preview import GeneratedAnswer, Document
 from haystack.preview.components.builders.answer_builder import AnswerBuilder
 
 
-class TestAnswersBuilder:
+class TestAnswerBuilder:
     @pytest.mark.unit
     def test_to_dict(self):
         component = AnswerBuilder()
