@@ -13,7 +13,7 @@ class TestSerperDev:
         component = SerperDevSearchAPI(api_key="test_key", top_k=10, allowed_domains=["test.com"])
         data = component.to_dict()
         assert data == {
-            "type": "SerperDev",
+            "type": "SerperDevSearchAPI",
             "init_parameters": {
                 "api_key": "test_key",
                 "top_k": 10,
@@ -25,7 +25,7 @@ class TestSerperDev:
     @pytest.mark.unit
     def test_from_dict(self):
         data = {
-            "type": "SerperDev",
+            "type": "SerperDevSearchAPI",
             "init_parameters": {
                 "api_key": "test_key",
                 "top_k": 10,
