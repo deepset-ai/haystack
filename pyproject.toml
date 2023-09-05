@@ -80,6 +80,7 @@ dependencies = [
 
   # Preview
   "canals==0.7.0",
+  "openai",
 
   # Agent events
   "events",
