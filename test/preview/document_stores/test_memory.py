@@ -385,8 +385,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
             Document(content="Document 2", embedding=[1.0, 1.0, 1.0, 1.0]),
         ]
 
-        scores = docstore._compute_embedding_similarity_scores(
-            query_embedding=[0.1, 0.1, 0.1, 0.1], documents=docs, scale_score=False
+        scores = docstore._compute_query_embedding_similarity_scores(
+            embedding=[0.1, 0.1, 0.1, 0.1], documents=docs, scale_score=False
         )
         assert scores == [0.5, 1.0]
 
@@ -398,8 +398,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
             Document(content="Document 2", embedding=[1.0, 1.0, 1.0, 1.0]),
         ]
 
-        scores = docstore._compute_embedding_similarity_scores(
-            query_embedding=[0.1, 0.1, 0.1, 0.1], documents=docs, scale_score=False
+        scores = docstore._compute_query_embedding_similarity_scores(
+            embedding=[0.1, 0.1, 0.1, 0.1], documents=docs, scale_score=False
         )
         print(scores)
         assert scores == [0.1, 0.4]

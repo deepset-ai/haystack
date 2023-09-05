@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Add the `AnswerBuilder` component for Haystack 2.0 that creates Answer objects from the string output of Generators.
