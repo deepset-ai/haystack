@@ -27,7 +27,7 @@ def calculate_ranking_scores(list_items: List[Any], boost_first_factor: Optional
     return normalized_scores
 
 
-def score_results(
+def add_scores_to_results(
     results: List[Document], has_answer_box: Optional[bool] = False, boost_factor: Optional[int] = 5
 ) -> List[Document]:
     """
