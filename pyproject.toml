@@ -80,6 +80,7 @@ dependencies = [
 
   # Preview
   "canals==0.8.0",
+  "Jinja2",
 
   # Agent events
   "events",
