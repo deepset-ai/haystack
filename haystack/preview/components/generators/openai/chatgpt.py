@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 TOKENS_PER_MESSAGE_OVERHEAD = 4
 
 
-def default_streaming_callback(chunk: Dict[str, Any]) -> Dict[str, Any]:
+def default_streaming_callback(chunk):
     """
     Default callback function for streaming responses from OpenAI API.
     Prints the tokens of the first completion to stdout as soon as they are received and returns the chunk unchanged.
@@ -209,27 +209,29 @@ class ChatGPTGenerator:
                 stream=streaming_callback is not None,
                 **(self.model_parameters or model_parameters or {}),
             )
+
+            replies: List[str]
+            metadata: List[Dict[str, Any]]
             if streaming_callback:
-                replies = {}
-                metadata = {}
+                replies_dict = {}
+                metadata_dict: Dict[str, Dict[str, Any]] = {}
                 for chunk in completion:
                     chunk = streaming_callback(chunk)
                     for choice in chunk.choices:
-                        if choice.index not in replies:
-                            replies[choice.index] = ""
-                            metadata[choice.index] = {}
+                        if choice.index not in replies_dict:
+                            replies_dict[choice.index] = ""
+                            metadata_dict[choice.index] = {}
 
                         if hasattr(choice.delta, "content"):
-                            replies[choice.index] += choice.delta.content
-                        metadata[choice.index] = {
+                            replies_dict[choice.index] += choice.delta.content
+                        metadata_dict[choice.index] = {
                             "model": chunk.model,
                             "index": choice.index,
                             "finish_reason": choice.finish_reason,
                         }
-
-                all_replies.append(list(replies.values()))
-                all_metadata.append(list(metadata.values()))
-                self._check_truncated_answers(list(metadata.values()))
+                all_replies.append(list(replies_dict.values()))
+                all_metadata.append(list(metadata_dict.values()))
+                self._check_truncated_answers(list(metadata_dict.values()))
 
             else:
                 metadata = [
@@ -248,7 +250,7 @@ class ChatGPTGenerator:
 
         return {"replies": all_replies, "metadata": all_metadata}
 
-    def _check_truncated_answers(self, metadata: List[List[Dict[str, Any]]]):
+    def _check_truncated_answers(self, metadata: List[Dict[str, Any]]):
         """
         Check the `finish_reason` the answers returned by OpenAI completions endpoint.
         If the `finish_reason` is `length`, log a warning to the user.
@@ -256,7 +258,7 @@ class ChatGPTGenerator:
         :param result: The result returned from the OpenAI API.
         :param payload: The payload sent to the OpenAI API.
         """
-        truncated_completions = sum(1 for meta in metadata if meta.get("finish_reason") != "stop")
+        truncated_completions = sum([1 for meta in metadata if meta.get("finish_reason") != "stop"])
         if truncated_completions > 0:
             logger.warning(
                 "%s out of the %s completions have been truncated before reaching a natural stopping point. "
