@@ -98,13 +98,11 @@ class ChatGPTGenerator:
         Serialize this component to a dictionary.
         """
         if self.streaming_callback:
-            module = sys.modules.get(self.streaming_callback.__module__)
-            if not module:
-                raise ValueError("Could not locate the import module.")
-            if module == builtins:
+            module = self.streaming_callback.__module__
+            if module == "builtins":
                 callback_name = self.streaming_callback.__name__
             else:
-                callback_name = f"{module.__name__}.{self.streaming_callback.__name__}"
+                callback_name = f"{module}.{self.streaming_callback.__name__}"
         else:
             callback_name = None
 
