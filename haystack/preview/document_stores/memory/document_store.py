@@ -18,9 +18,10 @@ from haystack.preview.utils import expit
 logger = logging.getLogger(__name__)
 
 # document scores are essentially unbounded and will be scaled to values between 0 and 1 if scale_score is set to
-# True (default). Scaling uses the expit function (inverse of the logit function) after applying a SCALING_FACTOR. A
-# larger SCALING_FACTOR decreases scaled scores. For example, an input of 10 is scaled to 0.99 with SCALING_FACTOR=2
-# but to 0.78 with SCALING_FACTOR=8 (default). The defaults were chosen empirically. Increase the default if most
+# True (default). Scaling uses the expit function (inverse of the logit function) after applying a scaling factor
+# (e.g., BM25_SCALING_FACTOR for the bm25_retrieval method).
+# Larger scaling factor decreases scaled scores. For example, an input of 10 is scaled to 0.99 with BM25_SCALING_FACTOR=2
+# but to 0.78 with BM25_SCALING_FACTOR=8 (default). The defaults were chosen empirically. Increase the default if most
 # unscaled scores are larger than expected (>30) and otherwise would incorrectly all be mapped to scores ~1.
 BM25_SCALING_FACTOR = 8
 DOT_PRODUCT_SCALING_FACTOR = 100
@@ -289,11 +290,7 @@ class MemoryDocumentStore:
         :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
         :return: A list of the top 'k' documents most relevant to the query.
         """
-        if (
-            not isinstance(query_embedding, list)
-            or len(query_embedding) == 0
-            or not isinstance(query_embedding[0], float)
-        ):
+        if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
 
         filters = filters or {}
@@ -312,8 +309,8 @@ class MemoryDocumentStore:
                 "To generate embeddings, use a DocumentEmbedder."
             )
 
-        # if statement in the list comprehension is needed to avoid a mypy error
-        embedding_sizes = [len(doc.embedding) for doc in documents_with_embeddings if doc.embedding is not None]
+        # mypy complains that doc.embedding could be None, but we already excluded all Documents with None embedding
+        embedding_sizes = [len(doc.embedding) for doc in documents_with_embeddings]  # type: ignore[arg-type]
         if any(size != embedding_sizes[0] for size in embedding_sizes):
             raise ValueError(
                 "The embedding size of all Documents should be the same."
@@ -326,8 +323,8 @@ class MemoryDocumentStore:
                 "Please make sure that the query has been embedded with the same model as the Documents."
             )
 
-        scores = self._compute_embedding_similarity_scores(
-            query_embedding=query_embedding, documents=documents_with_embeddings, scale_score=scale_score
+        scores = self._compute_query_embedding_similarity_scores(
+            embedding=query_embedding, documents=documents_with_embeddings, scale_score=scale_score
         )
 
         # create Documents with the similarity score for the top k results
@@ -341,32 +338,32 @@ class MemoryDocumentStore:
 
         return top_documents
 
-    def _compute_embedding_similarity_scores(
-        self, query_embedding: List[float], documents: List[Document], scale_score: bool = True
+    def _compute_query_embedding_similarity_scores(
+        self, embedding: List[float], documents: List[Document], scale_score: bool = True
     ) -> List[float]:
         """
         Computes the similarity scores between the query embedding and the embeddings of the documents.
 
-        :param query_embedding: Embedding of the query.
+        :param embedding: Embedding of the query.
         :param documents: A list of Documents.
         :param scale_score: Whether to scale the scores of the Documents. Default is True.
         :return: A list of scores.
         """
 
-        query_embedding_arr = np.array(query_embedding)
-        if query_embedding_arr.ndim == 1:
-            query_embedding_arr = np.expand_dims(a=query_embedding_arr, axis=0)
+        query_embedding = np.array(embedding)
+        if query_embedding.ndim == 1:
+            query_embedding = np.expand_dims(a=query_embedding, axis=0)
 
-        document_embeddings_arr = np.array([doc.embedding for doc in documents])
-        if document_embeddings_arr.ndim == 1:
-            document_embeddings_arr = np.expand_dims(a=document_embeddings_arr, axis=0)
+        document_embeddings = np.array([doc.embedding for doc in documents])
+        if document_embeddings.ndim == 1:
+            document_embeddings = np.expand_dims(a=document_embeddings, axis=0)
 
         if self.embedding_similarity_function == "cosine":
             # cosine similarity is a normed dot product
-            query_embedding_arr /= np.linalg.norm(x=query_embedding_arr, axis=1, keepdims=True)
-            document_embeddings_arr /= np.linalg.norm(x=document_embeddings_arr, axis=1, keepdims=True)
+            query_embedding /= np.linalg.norm(x=query_embedding, axis=1, keepdims=True)
+            document_embeddings /= np.linalg.norm(x=document_embeddings, axis=1, keepdims=True)
 
-        scores = np.dot(a=query_embedding_arr, b=document_embeddings_arr.T)[0].tolist()
+        scores = np.dot(a=query_embedding, b=document_embeddings.T)[0].tolist()
 
         if scale_score:
             if self.embedding_similarity_function == "dot_product":
