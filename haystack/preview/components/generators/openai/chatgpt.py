@@ -56,7 +56,7 @@ class ChatGPTGenerator:
         :param model_name: The name of the model to use.
         :param system_prompt: An additional message to be sent to the LLM at the beginning of each conversation.
             Typically, a conversation is formatted with a system message first, followed by alternating messages from
-            the 'user' (the "quesries") and the 'assistant' (the "responses"). The system message helps set the behavior
+            the 'user' (the "queries") and the 'assistant' (the "responses"). The system message helps set the behavior
             of the assistant. For example, you can modify the personality of the assistant or provide specific
             instructions about how it should behave throughout the conversation.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
@@ -68,7 +68,7 @@ class ChatGPTGenerator:
             [documentation](https://platform.openai.com/docs/api-reference/chat) for more details. Some of the supported
             parameters:
             - `max_tokens`: The maximum number of tokens the output text can have.
-            - `temperature`: What sampling temperature to use. Higher values means the model will take more risks.
+            - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
                 Try 0.9 for more creative applications, and 0 (argmax sampling) for ones with a well-defined answer.
             - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
                 considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
@@ -158,7 +158,7 @@ class ChatGPTGenerator:
         :param model_name: The name of the model to use.
         :param system_prompt: An additional message to be sent to the LLM at the beginning of each conversation.
             Typically, a conversation is formatted with a system message first, followed by alternating messages from
-            the 'user' (the "quesries") and the 'assistant' (the "responses"). The system message helps set the behavior
+            the 'user' (the "queries") and the 'assistant' (the "responses"). The system message helps set the behavior
             of the assistant. For example, you can modify the personality of the assistant or provide specific
             instructions about how it should behave throughout the conversation.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
@@ -170,7 +170,7 @@ class ChatGPTGenerator:
             [documentation](https://platform.openai.com/docs/api-reference/chat) for more details. Some of the supported
             parameters:
             - `max_tokens`: The maximum number of tokens the output text can have.
-            - `temperature`: What sampling temperature to use. Higher values means the model will take more risks.
+            - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
                 Try 0.9 for more creative applications, and 0 (argmax sampling) for ones with a well-defined answer.
             - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
                 considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
