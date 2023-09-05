@@ -1,21 +1,21 @@
 from typing import Optional, List, Callable, Dict, Any
 
 import sys
-import builtins
 import logging
-from dataclasses import asdict
+from dataclasses import dataclass, asdict
 
 import openai
 
 from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
 
-from haystack.preview.dataclasses.chat_message import ChatMessage
-
 
 logger = logging.getLogger(__name__)
 
 
-TOKENS_PER_MESSAGE_OVERHEAD = 4
+@dataclass
+class _ChatMessage:
+    content: str
+    role: str
 
 
 def default_streaming_callback(chunk):
@@ -37,16 +37,14 @@ class ChatGPTGenerator:
     See [OpenAI ChatGPT API](https://platform.openai.com/docs/guides/chat) for more details.
     """
 
-    # TODO support function calling!
-
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str,
         model_name: str = "gpt-3.5-turbo",
         system_prompt: Optional[str] = None,
-        model_parameters: Optional[Dict[str, Any]] = None,
         streaming_callback: Optional[Callable] = None,
         api_base_url: str = "https://api.openai.com/v1",
+        **kwargs,
     ):
         """
         Creates an instance of ChatGPTGenerator for OpenAI's GPT-3.5 model.
@@ -63,9 +61,9 @@ class ChatGPTGenerator:
             The callback function should return the token to be sent to the stream. If the callback function is not
             provided, the token is printed to stdout.
         :param api_base_url: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
-        :param model_parameters: A dictionary of parameters to use for the model. See OpenAI
-            [documentation](https://platform.openai.com/docs/api-reference/chat) for more details. Some of the supported
-            parameters:
+        :param kwargs: Other parameters to use for the model. These parameters are all sent directly to the OpenAI
+            endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for more details.
+            Some of the supported parameters:
             - `max_tokens`: The maximum number of tokens the output text can have.
             - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
                 Try 0.9 for more creative applications, and 0 (argmax sampling) for ones with a well-defined answer.
@@ -83,13 +81,10 @@ class ChatGPTGenerator:
                 values are the bias to add to that token.
             - `openai_organization`: The OpenAI organization ID.
         """
-        if not api_key:
-            logger.warning("OpenAI API key is missing. You need to provide an API key to Pipeline.run().")
-
         self.api_key = api_key
         self.model_name = model_name
         self.system_prompt = system_prompt
-        self.model_parameters = model_parameters
+        self.model_parameters = kwargs
         self.streaming_callback = streaming_callback
         self.api_base_url = api_base_url
 
@@ -110,10 +105,10 @@ class ChatGPTGenerator:
             self,
             api_key=self.api_key,
             model_name=self.model_name,
-            model_parameters=self.model_parameters,
             system_prompt=self.system_prompt,
             streaming_callback=callback_name,
             api_base_url=self.api_base_url,
+            **self.model_parameters,
         )
 
     @classmethod
@@ -137,10 +132,7 @@ class ChatGPTGenerator:
         return default_from_dict(cls, data)
 
     @component.output_types(replies=List[List[str]], metadata=List[Dict[str, Any]])
-    def run(
-        self,
-        prompts: List[str],
-    ):
+    def run(self, prompts: List[str]):
         """
         Queries the LLM with the prompts to produce replies.
 
@@ -190,10 +182,10 @@ class ChatGPTGenerator:
         api_base_url = api_base_url or self.api_base_url
 
         if system_prompt:
-            system_message = ChatMessage(content=system_prompt, role="system")
+            system_message = _ChatMessage(content=system_prompt, role="system")
         chats = []
         for prompt in prompts:
-            message = ChatMessage(content=prompt, role="user")
+            message = _ChatMessage(content=prompt, role="user")
             if system_prompt:
                 chats.append([system_message, message])
             else:
