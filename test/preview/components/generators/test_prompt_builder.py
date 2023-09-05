@@ -35,3 +35,10 @@ def test_run_without_input():
     builder = PromptBuilder(template="This is a template without input")
     res = builder.run()
     assert res == {"prompt": "This is a template without input"}
+
+
+@pytest.mark.unit
+def test_run_with_missing_input():
+    builder = PromptBuilder(template="This is a {{ variable }}")
+    res = builder.run()
+    assert res == {"prompt": "This is a "}
