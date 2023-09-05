@@ -229,7 +229,7 @@ class ChatGPTGenerator:
 
                 all_replies.append(list(replies.values()))
                 all_metadata.append(list(metadata.values()))
-                self.check_truncated_answers(list(metadata.values()))
+                self._check_truncated_answers(list(metadata.values()))
 
             else:
                 metadata = [
@@ -244,11 +244,11 @@ class ChatGPTGenerator:
                 replies = [choice.message.content.strip() for choice in completion.choices]
                 all_replies.append(replies)
                 all_metadata.append(metadata)
-                self.check_truncated_answers(metadata)
+                self._check_truncated_answers(metadata)
 
         return {"replies": all_replies, "metadata": all_metadata}
 
-    def check_truncated_answers(self, metadata: List[List[Dict[str, Any]]]):
+    def _check_truncated_answers(self, metadata: List[List[Dict[str, Any]]]):
         """
         Check the `finish_reason` the answers returned by OpenAI completions endpoint.
         If the `finish_reason` is `length`, log a warning to the user.
