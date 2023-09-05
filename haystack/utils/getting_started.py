@@ -72,7 +72,7 @@ def add_example_data(document_store, dir):
         # For more details, see: https://haystack.deepset.ai/tutorials/08_preprocessing.
         # Be aware that some of your data will be sent to external APIs if you use this functionality!
         files_to_index = [dir + "/" + f for f in os.listdir(dir)]
-        logger.info(f"Adding {len(files_to_index)} number of files from local disk at {dir}.")
+        logger.info("Adding %s number of files from local disk at %s.", len(files_to_index), dir)
         docs = convert_files_to_docs(dir_path=dir)
 
     preprocessor = PreProcessor(
