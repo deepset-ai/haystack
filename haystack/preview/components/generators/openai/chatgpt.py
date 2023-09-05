@@ -140,12 +140,6 @@ class ChatGPTGenerator:
     def run(
         self,
         prompts: List[str],
-        api_key: Optional[str] = None,
-        model_name: str = "gpt-3.5-turbo",
-        system_prompt: Optional[str] = None,
-        model_parameters: Optional[Dict[str, Any]] = None,
-        streaming_callback: Optional[Callable] = None,
-        api_base_url: str = "https://api.openai.com/v1",
     ):
         """
         Queries the LLM with the prompts to produce replies.
