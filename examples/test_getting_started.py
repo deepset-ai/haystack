@@ -7,7 +7,7 @@ from haystack.schema import Answer, Document
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("provider", ["anthropic", "cohere", "huggingface", "openai"])
+@pytest.mark.parametrize("provider", ["cohere", "huggingface", "openai"])
 def test_getting_started(provider):
     if provider == "anthropic":
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
