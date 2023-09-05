@@ -9,7 +9,6 @@ import openai
 
 from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
 
-# from haystack.preview.llm_backends.openai.chatgpt import ChatGPTBackend
 from haystack.preview.dataclasses.chat_message import ChatMessage
 
 
