@@ -96,13 +96,12 @@ class SerperDev:
         if "answerBox" in json_result:
             answer_dict = json_result["answerBox"]
             highlighted_answers = answer_dict.get("snippetHighlighted")
-            answer_box_content = (
-                highlighted_answers[0]
-                if isinstance(highlighted_answers, list) and len(highlighted_answers) > 0
-                else highlighted_answers
-                if isinstance(highlighted_answers, str)
-                else None
-            )
+            answer_box_content = None
+            # Check if highlighted_answers is a list and has at least one element
+            if isinstance(highlighted_answers, list) and len(highlighted_answers) > 0:
+                answer_box_content = highlighted_answers[0]
+            elif isinstance(highlighted_answers, str):
+                answer_box_content = highlighted_answers
             if not answer_box_content:
                 for key in ["snippet", "answer", "title"]:
                     if key in answer_dict:
