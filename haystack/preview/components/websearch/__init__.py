@@ -1,1 +1,1 @@
-from haystack.preview.components.websearch.serper_dev import SerperDev
+from haystack.preview.components.websearch.serper_dev import SerperDevSearchAPI

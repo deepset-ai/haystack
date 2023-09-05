@@ -5,13 +5,13 @@ from typing import Dict, List, Optional, Any
 import requests
 
 from haystack.preview import Document, component, default_from_dict, default_to_dict
-from haystack.preview.components.websearch.utils import score_results
+from haystack.preview.components.websearch._utils import score_results
 
 logger = logging.getLogger(__name__)
 
 
 @component
-class SerperDev:
+class SerperDevSearchAPI:
     """
     Search engine using SerperDev API. See the [Serper Dev website](https://serper.dev/) for more details.
     """
@@ -29,6 +29,7 @@ class SerperDev:
         :param allowed_domains: List of domains to limit the search to.
         :param search_params: Additional parameters passed to the SerperDev API.
         For example, you can set 'num' to 20 to increase the number of search results.
+
         """
         if api_key is None:
             raise ValueError("API key for SerperDev API must be set.")
@@ -50,7 +51,7 @@ class SerperDev:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SerperDev":
+    def from_dict(cls, data: Dict[str, Any]) -> "SerperDevSearchAPI":
         """
         Deserialize this component from a dictionary.
         """
