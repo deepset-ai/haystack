@@ -8,6 +8,7 @@ import requests
 import tenacity
 import tiktoken
 from tiktoken.model import MODEL_TO_ENCODING, MODEL_PREFIX_TO_ENCODING
+from litellm import completion
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError, OpenAIUnauthorizedError
 from haystack.environment import (
@@ -128,16 +129,22 @@ def openai_request(
     :param timeout: The timeout length of the request. The default is 30s.
     :param read_response: Whether to read the response as JSON. The default is True.
     """
-    response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout, **kwargs)
+    response = completion(
+        force_timeout=timeout,
+        **payload,
+        **kwargs
+
+    )
+
     if read_response:
-        json_response = json.loads(response.text)
+        json_response = response
 
     if response.status_code != 200:
         openai_error: OpenAIError
         if response.status_code == 429:
-            openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
+            openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {str(response)}")
         elif response.status_code == 401:
-            openai_error = OpenAIUnauthorizedError(f"API key is invalid: {response.text}")
+            openai_error = OpenAIUnauthorizedError(f"API key is invalid: {str(response)}")
         else:
             openai_error = OpenAIError(
                 f"OpenAI returned an error.\n"
