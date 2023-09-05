@@ -6,7 +6,7 @@ import openai
 from openai.util import convert_to_openai_object
 
 from haystack.preview.components.generators.openai.chatgpt import ChatGPTGenerator
-from haystack.preview.components.generators.openai.chatgpt import default_streaming_callback, check_truncated_answers
+from haystack.preview.components.generators.openai.chatgpt import default_streaming_callback
 
 
 def mock_openai_response(messages: str, model: str = "gpt-3.5-turbo-0301", **kwargs) -> openai.ChatCompletion:
