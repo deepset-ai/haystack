@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 import copy
 import json
 import logging
 import operator
 from functools import reduce
 from itertools import islice
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Literal, Optional, Union
 
 import numpy as np
 from tqdm import tqdm
@@ -22,6 +23,13 @@ with LazyImport("Run 'pip install farm-haystack[pinecone]'") as pinecone_import:
 
 
 logger = logging.getLogger(__name__)
+
+TYPE_METADATA_FIELD = "doc_type"
+DOCUMENT_WITH_EMBEDDING = "vector"
+DOCUMENT_WITHOUT_EMBEDDING = "no-vector"
+LABEL = "label"
+
+DocTypeMetadata = Literal["vector", "no-vector", "label"]
 
 
 def _sanitize_index(index: Optional[str]) -> Optional[str]:
@@ -93,6 +101,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param replicas: The number of replicas. Replicas duplicate the index. They provide higher availability and
             throughput.
         :param shards: The number of shards to be used in the index. We recommend to use 1 shard per 1GB of data.
+        :param namespace: Optional namespace. If not specified, None is default.
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
             Can be helpful to disable in production deployments to keep the logs clean.
@@ -137,10 +146,10 @@ class PineconeDocumentStore(BaseDocumentStore):
         #   - documents with embeddings,
         #   - documents without embeddings,
         #   - labels
-        self.type_metadata_field = "doc_type"
-        self.document_with_embedding_metadata = "vector"
-        self.document_without_embedding_metadata = "no-vector"
-        self.label_metadata = "label"
+        self.type_metadata_field = TYPE_METADATA_FIELD
+        self.document_with_embedding_metadata = DOCUMENT_WITH_EMBEDDING
+        self.document_without_embedding_metadata = DOCUMENT_WITHOUT_EMBEDDING
+        self.label_metadata = LABEL
 
         # Pinecone index params
         self.replicas = replicas
@@ -283,42 +292,38 @@ class PineconeDocumentStore(BaseDocumentStore):
             self.all_ids[index] = set()
         self.all_ids[index] = self.all_ids[index].union(set(ids))
 
-    def _check_filters(self, filters: Optional[FilterType]) -> FilterType:
-        if not filters:
-            filters = {}
-        return filters
-
-    def _add_type_metadata_filter(self, filters: FilterType, type_value: Optional[str]) -> FilterType:
+    def _add_type_metadata_filter(self, filters: FilterType, type_value: Optional[DocTypeMetadata]) -> FilterType:
         """
         Add new filter for `doc_type` metadata field.
         """
         if type_value:
             new_type_filter = {self.type_metadata_field: {"$eq": type_value}}
-            if "$and" in filters:
-                if self.type_metadata_field in filters["$and"]:  # type: ignore
-                    current_type_filter = filters["$and"][self.type_metadata_field]  # type: ignore
-                    type_values = [type_value]
-                    if isinstance(current_type_filter, str):
-                        type_values.append(current_type_filter)
-                    elif isinstance(current_type_filter, dict):
-                        if "$eq" in current_type_filter:
-                            # current `doc_type` filter has single value
-                            type_values.append(current_type_filter["$eq"])
-                        else:
-                            # current `doc_type` filter has multiple values
-                            type_values.extend(current_type_filter["$in"])
-                    new_type_filter = {self.type_metadata_field: {"$in": type_values}}  # type: ignore
-                filters["$and"].update(new_type_filter)  # type: ignore
-            else:
+            if "$and" not in filters:
                 # extend filters with new `doc_type` filter and add $and operator
                 filters.update(new_type_filter)
                 all_filters = filters
-                filters = {"$and": all_filters}
+                return {"$and": all_filters}
+
+            if self.type_metadata_field in filters["$and"]:  # type: ignore
+                current_type_filter = filters["$and"][self.type_metadata_field]  # type: ignore
+                type_values = [type_value]
+                if isinstance(current_type_filter, str):
+                    type_values.append(current_type_filter)
+                elif isinstance(current_type_filter, dict):
+                    if "$eq" in current_type_filter:
+                        # current `doc_type` filter has single value
+                        type_values.append(current_type_filter["$eq"])
+                    else:
+                        # current `doc_type` filter has multiple values
+                        type_values.extend(current_type_filter["$in"])
+                new_type_filter = {self.type_metadata_field: {"$in": type_values}}  # type: ignore
+            filters["$and"].update(new_type_filter)  # type: ignore
+
         return filters
 
-    def _set_default_type_metadata(self, index: Optional[str], namespace: Optional[str] = None) -> str:
+    def _get_default_type_metadata(self, index: Optional[str], namespace: Optional[str] = None) -> str:
         """
-        Set default value for `doc_type` metadata filed. If there is at least one embedding, default value
+        Get default value for `doc_type` metadata filed. If there is at least one embedding, default value
         will be `vector`, otherwise it will be `no-vector`.
         """
         if self.get_embedding_count(index=index, namespace=namespace) > 0:
@@ -345,7 +350,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
         namespace: Optional[str] = None,
-        type_metadata: Optional[str] = None,
+        type_metadata: Optional[DocTypeMetadata] = None,
     ) -> int:
         """
         Return the count of documents in the document store.
@@ -378,7 +383,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param index: Optional index name to use for the query. If not provided, the default index name is used.
         :param only_documents_without_embedding: If set to `True`, only documents without embeddings are counted.
         :param headers: PineconeDocumentStore does not support headers.
-        :param namespace: Optional namespace to count documents from.
+        :param namespace: Optional namespace to count documents from. If not specified, None is default
         :param type_metadata: Optional value for `doc_type` metadata to reference documents that need to be counted.
             Parameter options:
                 - `"vector"`: Documents with embedding.
@@ -391,7 +396,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         index = self._index(index)
         self._index_connection_exists(index)
 
-        filters = self._check_filters(filters)
+        filters = filters or {}
         if not type_metadata:
             # add filter for `doc_type` metadata related to documents without embeddings
             filters = self._add_type_metadata_filter(filters, type_value=self.document_without_embedding_metadata)
@@ -413,7 +418,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         :param index: Optional index name to retrieve all documents from.
         :param filters: Filters are not supported for `get_embedding_count` in Pinecone.
-        :param namespace: Optional namespace to count embeddings from.
+        :param namespace: Optional namespace to count embeddings from. If not specified, None is default
         """
         if filters:
             raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
@@ -465,7 +470,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 - `"fail"`: An error is raised if the document ID of the document being added already exists.
         :param headers: PineconeDocumentStore does not support headers.
         :param labels: Tells us whether these records are labels or not. Defaults to False.
-        :param namespace: Optional namespace to write documents to.
+        :param namespace: Optional namespace to write documents to. If not specified, None is default
         :raises DuplicateDocumentError: Exception trigger on duplicate document.
         """
         if headers:
@@ -620,7 +625,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 ```
         :param batch_size: Number of documents to process at a time. When working with large number of documents,
             batching can help reduce memory footprint.
-        :param namespace: Optional namespace to retrieve document from.
+        :param namespace: Optional namespace to retrieve document from. If not specified, None is default
         """
         index = self._index(index)
         if index not in self.pinecone_indexes:
@@ -706,7 +711,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
-        type_metadata: Optional[str] = None,
+        type_metadata: Optional[DocTypeMetadata] = None,
         namespace: Optional[str] = None,
     ) -> List[Document]:
         """
@@ -743,14 +748,14 @@ class PineconeDocumentStore(BaseDocumentStore):
                            batching can help reduce memory footprint.
         :param headers: Pinecone does not support headers.
         :param type_metadata: Value of `doc_type` metadata that indicates which documents need to be retrieved.
-        :param namespace: Optional namespace to retrieve documents from.
+        :param namespace: Optional namespace to retrieve documents from. If not specified, None is default
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
         if not type_metadata:
             # set default value for `doc_type` metadata field
-            type_metadata = self._set_default_type_metadata(index, namespace)
+            type_metadata = self._get_default_type_metadata(index, namespace)
 
         result = self.get_all_documents_generator(
             index=index,
@@ -771,7 +776,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
         namespace: Optional[str] = None,
-        type_metadata: Optional[str] = None,
+        type_metadata: Optional[DocTypeMetadata] = None,
         include_type_metadata: Optional[bool] = False,
     ) -> Generator[Document, None, None]:
         """
@@ -809,7 +814,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: PineconeDocumentStore does not support headers.
-        :param namespace: Optional namespace to retrieve document from.
+        :param namespace: Optional namespace to retrieve document from. If not specified, None is default
         :param type_metadata: Value of `doc_type` metadata that indicates which documents need to be retrieved.
         :param include_type_metadata: Indicates if `doc_type` value will be included in document metadata or not.
             If not specified, `doc_type` field will be dropped from document metadata.
@@ -825,7 +830,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if not type_metadata:
             # set default value for `doc_type` metadata field
-            type_metadata = self._set_default_type_metadata(index, namespace)
+            type_metadata = self._get_default_type_metadata(index, namespace)
 
         ids = self._get_all_document_ids(index=index, type_metadata=type_metadata, filters=filters, namespace=namespace)
 
@@ -851,7 +856,7 @@ class PineconeDocumentStore(BaseDocumentStore):
     def _get_all_document_ids(
         self,
         index: Optional[str] = None,
-        type_metadata: Optional[str] = None,
+        type_metadata: Optional[DocTypeMetadata] = None,
         filters: Optional[FilterType] = None,
         namespace: Optional[str] = None,
     ) -> List[str]:
@@ -890,7 +895,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             batching can help reduce memory footprint.
         :param headers: Pinecone does not support headers.
         :param return_embedding: Optional flag to return the embedding of the document.
-        :param namespace: Optional namespace to retrieve document from.
+        :param namespace: Optional namespace to retrieve document from. If not specified, None is default
         :param include_type_metadata: Indicates if `doc_type` value will be included in document metadata or not.
             If not specified, `doc_type` field will be dropped from document metadata.
         """
@@ -946,7 +951,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param index: Optional index name to retrieve all documents from.
         :param headers: Pinecone does not support headers.
         :param return_embedding: Optional flag to return the embedding of the document.
-        :param namespace: Optional namespace to retrieve document from.
+        :param namespace: Optional namespace to retrieve document from. If not specified, None is default
         """
         documents = self.get_documents_by_id(
             ids=[id], index=index, headers=headers, return_embedding=return_embedding, namespace=namespace
@@ -980,7 +985,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         drop_ids: Optional[bool] = True,
         namespace: Optional[str] = None,
-        type_metadata: Optional[str] = None,
+        type_metadata: Optional[DocTypeMetadata] = None,
     ):
         """
         Delete documents from the document store.
@@ -1015,10 +1020,8 @@ class PineconeDocumentStore(BaseDocumentStore):
                 ```
         :param headers: PineconeDocumentStore does not support headers.
         :param drop_ids: Specifies if the locally stored IDs should be deleted. The default is True.
-        :param namespace: Optional namespace. If not specified, '' is default
+        :param namespace: Optional namespace. If not specified, None is default
         :param type_metadata: Optional value for `doc_type` metadata field as reference for documents to delete.
-            If not specified, default value is `vector` (reference to documents with embeddings) if at least one embedding exists,
-            otherwise value is `no-vector` (reference to documents without embeddings).
         :return None:
         """
         if headers:
@@ -1029,7 +1032,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if type_metadata:
             # add filter for `doc_type` metadata field
-            filters = self._check_filters(filters)
+            filters = filters or {}
             filters = self._add_type_metadata_filter(filters, type_metadata)
 
         pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
@@ -1085,7 +1088,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = True,
         namespace: Optional[str] = None,
-        type_metadata: Optional[str] = None,
+        type_metadata: Optional[DocTypeMetadata] = None,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1160,7 +1163,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
-        :param namespace: Optional namespace to query document from.
+        :param namespace: Optional namespace to query document from. If not specified, None is default
         :param type_metadata: Value of `doc_type` metadata that indicates which documents need to be queried.
         """
         if headers:
@@ -1182,7 +1185,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         if type_metadata is None:
             type_metadata = self.document_with_embedding_metadata
 
-        filters = self._check_filters(filters)
+        filters = filters or {}
         filters = self._add_type_metadata_filter(filters, type_metadata)
 
         pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
@@ -1314,13 +1317,17 @@ class PineconeDocumentStore(BaseDocumentStore):
         return bool(res["vectors"].get(id, False))
 
     def _get_ids(
-        self, index: str, type_metadata: Optional[str], filters: Optional[FilterType], namespace: Optional[str]
+        self,
+        index: str,
+        type_metadata: Optional[DocTypeMetadata],
+        filters: Optional[FilterType],
+        namespace: Optional[str],
     ) -> List[str]:
         """
         Retrieves a list of IDs that satisfy a particular filter condition (or any) using
         a dummy query embedding.
         """
-        filters = self._check_filters(filters)
+        filters = filters or {}
         filters = self._add_type_metadata_filter(filters, type_value=type_metadata)
         pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
 
@@ -1625,7 +1632,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self._index_connection_exists(index)
 
         # add filter for `doc_type` metadata field
-        filters = self._check_filters(filters)
+        filters = filters or {}
         filters = self._add_type_metadata_filter(filters, self.label_metadata)
 
         documents = self.get_all_documents(index=index, filters=filters, headers=headers, namespace=namespace)
