@@ -41,7 +41,7 @@ def mock_openai_stream_response(messages: str, model: str = "gpt-3.5-turbo-0301"
     yield convert_to_openai_object(base_dict)
 
 
-class TestChatGPTGenerator:
+class TestGPT35Generator:
     @pytest.mark.unit
     def test_init_default(self):
         component = GPT35Generator(api_key="test-api-key")
@@ -76,7 +76,7 @@ class TestChatGPTGenerator:
         component = GPT35Generator(api_key="test-api-key")
         data = component.to_dict()
         assert data == {
-            "type": "ChatGPTGenerator",
+            "type": "GPT35Generator",
             "init_parameters": {
                 "api_key": "test-api-key",
                 "model_name": "gpt-3.5-turbo",
@@ -99,7 +99,7 @@ class TestChatGPTGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "ChatGPTGenerator",
+            "type": "GPT35Generator",
             "init_parameters": {
                 "api_key": "test-api-key",
                 "model_name": "gpt-4",
@@ -124,7 +124,7 @@ class TestChatGPTGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "ChatGPTGenerator",
+            "type": "GPT35Generator",
             "init_parameters": {
                 "api_key": "test-api-key",
                 "model_name": "gpt-4",
@@ -139,7 +139,7 @@ class TestChatGPTGenerator:
     @pytest.mark.unit
     def test_from_dict(self):
         data = {
-            "type": "ChatGPTGenerator",
+            "type": "GPT35Generator",
             "init_parameters": {
                 "api_key": "test-api-key",
                 "model_name": "gpt-4",
