@@ -23,9 +23,9 @@ class MemoryBM25Retriever:
         Create a MemoryBM25Retriever component.
 
         :param document_store: An instance of MemoryDocumentStore.
-        :param filters: A dictionary with filters to narrow down the search space (default is None).
-        :param top_k: The maximum number of documents to retrieve (default is 10).
-        :param scale_score: Whether to scale the BM25 score or not (default is True).
+        :param filters: A dictionary with filters to narrow down the search space. Default is None.
+        :param top_k: The maximum number of documents to retrieve. Default is 10.
+        :param scale_score: Whether to scale the BM25 score or not. Default is True.
 
         :raises ValueError: If the specified top_k is not > 0.
         """
@@ -121,9 +121,9 @@ class MemoryEmbeddingRetriever:
         Create a MemoryEmbeddingRetriever component.
 
         :param document_store: An instance of MemoryDocumentStore.
-        :param filters: A dictionary with filters to narrow down the search space (default is None).
-        :param top_k: The maximum number of documents to retrieve (default is 10).
-        :param scale_score: Whether to scale the scores of the retrieved documents or not (default is True).
+        :param filters: A dictionary with filters to narrow down the search space. Default is None.
+        :param top_k: The maximum number of documents to retrieve. Default is 10.
+        :param scale_score: Whether to scale the scores of the retrieved documents or not. Default is True.
 
         :raises ValueError: If the specified top_k is not > 0.
         """
