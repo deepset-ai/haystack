@@ -79,7 +79,6 @@ class GPT35Generator:
                 Bigger values mean the model will be less likely to repeat the same token in the text.
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens and the
                 values are the bias to add to that token.
-            - `openai_organization`: The OpenAI organization ID.
         """
         self.api_key = api_key
         self.model_name = model_name
