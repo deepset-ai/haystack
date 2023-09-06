@@ -144,7 +144,7 @@ class TestSerperDevSearchAPI:
     @pytest.mark.parametrize("top_k", [1, 5, 7])
     def test_web_search_top_k(self, mock_serper_dev_search_result, top_k: int):
         ws = SerperDevWebSearch(api_key="some_invalid_key", top_k=top_k)
-        results = ws.run(query="Who is the boyfriend of Olivia Wilde?")
+        results = ws.run(query="Who is the boyfriend of Olivia Wilde?")["documents"]
         assert len(results) == top_k
         assert all(isinstance(doc, Document) for doc in results)
 
