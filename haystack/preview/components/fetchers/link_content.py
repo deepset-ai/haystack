@@ -59,14 +59,13 @@ class LinkContentFetcher:
         Creates a LinkContentFetcher instance.
 
         :param raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
-                         during content extraction. If False, the error is simply logged and the program continues.
-                         Defaults to False.
+            during content extraction. If False, the error is simply logged and the program continues.
+            Defaults to False.
         :param user_agents: A list of user agents to use when fetching content. Defaults to None, in which case a
-        default user agent is used.
+            default user agent is used.
         :param retry_attempts: The number of times to retry fetching content. Defaults to 2.
         :param timeout: The timeout in seconds for the request. Defaults to 3.
         """
-        super().__init__()
         self.raise_on_failure = raise_on_failure
         self.user_agents = user_agents or [DEFAULT_USER_AGENT]
         self.current_user_agent_idx: int = 0
@@ -106,6 +105,7 @@ class LinkContentFetcher:
             raise_on_failure=self.raise_on_failure,
             user_agents=self.user_agents,
             retry_attempts=self.retry_attempts,
+            timeout=self.timeout,
         )
 
     @classmethod
@@ -126,8 +126,6 @@ class LinkContentFetcher:
         :return: List of Document objects or an empty list if no content is extracted.
         """
         document_data: Dict[str, Any] = {"metadata": {"url": url, "timestamp": int(datetime.utcnow().timestamp())}}
-
-        response = None
         try:
             response = self._get_response(url)
             content_type = self._get_content_type(response)
