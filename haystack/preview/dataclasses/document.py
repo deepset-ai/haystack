@@ -13,13 +13,6 @@ import pandas
 logger = logging.getLogger(__name__)
 
 
-EQUALS_BY_TYPE = {
-    Path: lambda self, other: self.absolute() == other.absolute(),
-    numpy.ndarray: lambda self, other: self.shape == other.shape and (self == other).all(),
-    pandas.DataFrame: lambda self, other: self.equals(other),
-}
-
-
 def _safe_equals(obj_1, obj_2) -> bool:
     """
     Compares two dictionaries for equality, taking arrays, dataframes and other objects into account.
@@ -32,10 +25,12 @@ def _safe_equals(obj_1, obj_2) -> bool:
             return False
         return all(_safe_equals(obj_1[key], obj_2[key]) for key in obj_1)
 
-    for type_, equals in EQUALS_BY_TYPE.items():
-        if isinstance(obj_1, type_):
-            return equals(obj_1, obj_2)
-
+    if isinstance(obj_1, Path):
+        return obj_1.absolute() == obj_2.absolute()
+    if isinstance(obj_1, numpy.ndarray):
+        return obj_1.shape == obj_2.shape and (obj_1 == obj_2).all()
+    if isinstance(obj_1, pandas.DataFrame):
+        return obj_1.equals(obj_2)
     return obj_1 == obj_2
 
 
@@ -66,14 +61,10 @@ class DocumentDecoder(json.JSONDecoder):
         super().__init__(object_hook=object_hook or self.document_decoder)
 
     def document_decoder(self, dictionary):
-        # Decode content types
-        if "content_type" in dictionary:
-            if dictionary["content_type"] == "table":
-                dictionary["content"] = pandas.read_json(dictionary.get("content", None))
-            elif dictionary["content_type"] == "image":
-                dictionary["content"] = Path(dictionary.get("content", None))
-
-        # Decode embeddings
+        if "array" in dictionary and dictionary.get("array"):
+            dictionary["array"] = numpy.array(dictionary.get("array"))
+        if "dataframe" in dictionary and dictionary.get("dataframe"):
+            dictionary["dataframe"] = pandas.read_json(dictionary.get("dataframe", None))
         if "embedding" in dictionary and dictionary.get("embedding"):
             dictionary["embedding"] = numpy.array(dictionary.get("embedding"))
 
@@ -103,7 +94,7 @@ class Document:
     blob: Optional[bytes] = field(default=None)
     mime_type: str = field(default="text/plain")
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
-    id_hash_keys: List[str] = field(default=["text", "array", "dataframe", "blob"], hash=False)
+    id_hash_keys: List[str] = field(default_factory=lambda: ["text", "array", "dataframe", "blob"], hash=False)
     score: Optional[float] = field(default=None, compare=True)
     embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
 
