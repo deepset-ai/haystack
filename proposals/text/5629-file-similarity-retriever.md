@@ -112,6 +112,14 @@ FileSimilarityRetriever has the following parameters:
 - max_num_queries (optional): The maximum number of queries that should be run for a single file. If the number of query documents exceeds this limit, the query documents will be split into n parts so that n < max_num_queries and every nth document will be kept.
 - use_existing_embeddings: Whether to re-use the existing embeddings from the index. To optimize speed for the file similarity retrieval you should set this parameter to `True`. This way the FileSimilarityRetriever can run on the CPU.
 
+# Detailed design - updated
+
+During the proposal discussion, it was decided to break up the initial FileSimilarityRetriever into two sub-components in order to simplify the design and testing and also to make it possible to use only one of the sub-components, if needed, thus covering more use cases.
+
+The new design would go as follows:
+1) **DocumentFetcher** that gets all docs corresponding to a file based on a provided aggregation meta key and returns a list of docs to be used by one or two retrievers as input for batch retrieval.
+2) **DocumentAggregator** placed after the retriever(s) that aggregates the document list(s) using RRF into a single ranked list of files, which are put together based on file_ids of retrieved docs.
+
 # Drawbacks
 
 Since this is a relatively small addition without any effect on existing nodes, I do not see major reasons not to add this retriever. The only consideration when using this node is the need to have a metadata field for aggregating documents to file level. The default file_id meta field works well for that. It is also important to make sure that the document store is compatible with the chosen retrieval method(s), but that is the case when using any other retriever node as well.
