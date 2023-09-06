@@ -2,7 +2,8 @@ from haystack.preview.components.audio.whisper_local import LocalWhisperTranscri
 
 
 def test_whisper_local_transcriber(preview_samples_path):
-    comp = LocalWhisperTranscriber(model_name_or_path="tiny")
+    comp = LocalWhisperTranscriber(model_name_or_path="medium")
+    comp.warm_up()
     docs = comp.transcribe(
         audio_files=[
             preview_samples_path / "audio" / "this is the content of the document.wav",
