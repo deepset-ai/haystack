@@ -31,10 +31,10 @@ def default_streaming_callback(chunk):
 @component
 class GPT35Generator:
     """
-    ChatGPT LLM Generator.
+    LLM Generator compatible with GPT3.5 (ChatGPT) large language models.
 
-    Queries ChatGPT using OpenAI's GPT-3 ChatGPT API. Invocations are made using REST API.
-    See [OpenAI ChatGPT API](https://platform.openai.com/docs/guides/chat) for more details.
+    Queries the LLM using OpenAI's API. Invocations are made using OpenAI SDK ('openai' package)
+    See [OpenAI GPT3.5 API](https://platform.openai.com/docs/guides/chat) for more details.
     """
 
     def __init__(
@@ -47,7 +47,7 @@ class GPT35Generator:
         **kwargs,
     ):
         """
-        Creates an instance of ChatGPTGenerator for OpenAI's GPT-3.5 model.
+        Creates an instance of GPT35Generator for OpenAI's GPT-3.5 model.
 
         :param api_key: The OpenAI API key.
         :param model_name: The name of the model to use.

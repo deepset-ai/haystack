@@ -5,8 +5,8 @@ import pytest
 import openai
 from openai.util import convert_to_openai_object
 
-from haystack.preview.components.generators.openai.chatgpt import GPT35Generator
-from haystack.preview.components.generators.openai.chatgpt import default_streaming_callback
+from haystack.preview.components.generators.openai.gpt35 import GPT35Generator
+from haystack.preview.components.generators.openai.gpt35 import default_streaming_callback
 
 
 def mock_openai_response(messages: str, model: str = "gpt-3.5-turbo-0301", **kwargs) -> openai.ChatCompletion:
@@ -107,7 +107,7 @@ class TestGPT35Generator:
                 "max_tokens": 10,
                 "some_test_param": "test-params",
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.preview.components.generators.openai.chatgpt.default_streaming_callback",
+                "streaming_callback": "haystack.preview.components.generators.openai.gpt35.default_streaming_callback",
             },
         }
 
@@ -132,7 +132,7 @@ class TestGPT35Generator:
                 "max_tokens": 10,
                 "some_test_param": "test-params",
                 "api_base_url": "test-base-url",
-                "streaming_callback": "test_chatgpt_generator.<lambda>",
+                "streaming_callback": "test_gpt35_generator.<lambda>",
             },
         }
 
@@ -147,7 +147,7 @@ class TestGPT35Generator:
                 "max_tokens": 10,
                 "some_test_param": "test-params",
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.preview.components.generators.openai.chatgpt.default_streaming_callback",
+                "streaming_callback": "haystack.preview.components.generators.openai.gpt35.default_streaming_callback",
             },
         }
         component = GPT35Generator.from_dict(data)
@@ -160,8 +160,8 @@ class TestGPT35Generator:
 
     @pytest.mark.unit
     def test_run_no_system_prompt(self):
-        with patch("haystack.preview.components.generators.openai.chatgpt.openai.ChatCompletion") as chatgpt_patch:
-            chatgpt_patch.create.side_effect = mock_openai_response
+        with patch("haystack.preview.components.generators.openai.gpt35.openai.ChatCompletion") as gpt35_patch:
+            gpt35_patch.create.side_effect = mock_openai_response
             component = GPT35Generator(api_key="test-api-key")
             results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
             assert results == {
@@ -188,14 +188,14 @@ class TestGPT35Generator:
                     ],
                 ],
             }
-            assert chatgpt_patch.create.call_count == 2
-            chatgpt_patch.create.assert_any_call(
+            assert gpt35_patch.create.call_count == 2
+            gpt35_patch.create.assert_any_call(
                 model="gpt-3.5-turbo",
                 api_key="test-api-key",
                 messages=[{"role": "user", "content": "test-prompt-1"}],
                 stream=False,
             )
-            chatgpt_patch.create.assert_any_call(
+            gpt35_patch.create.assert_any_call(
                 model="gpt-3.5-turbo",
                 api_key="test-api-key",
                 messages=[{"role": "user", "content": "test-prompt-2"}],
@@ -204,8 +204,8 @@ class TestGPT35Generator:
 
     @pytest.mark.unit
     def test_run_with_system_prompt(self):
-        with patch("haystack.preview.components.generators.openai.chatgpt.openai.ChatCompletion") as chatgpt_patch:
-            chatgpt_patch.create.side_effect = mock_openai_response
+        with patch("haystack.preview.components.generators.openai.gpt35.openai.ChatCompletion") as gpt35_patch:
+            gpt35_patch.create.side_effect = mock_openai_response
             component = GPT35Generator(api_key="test-api-key", system_prompt="test-system-prompt")
             results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
             assert results == {
@@ -232,8 +232,8 @@ class TestGPT35Generator:
                     ],
                 ],
             }
-            assert chatgpt_patch.create.call_count == 2
-            chatgpt_patch.create.assert_any_call(
+            assert gpt35_patch.create.call_count == 2
+            gpt35_patch.create.assert_any_call(
                 model="gpt-3.5-turbo",
                 api_key="test-api-key",
                 messages=[
@@ -242,7 +242,7 @@ class TestGPT35Generator:
                 ],
                 stream=False,
             )
-            chatgpt_patch.create.assert_any_call(
+            gpt35_patch.create.assert_any_call(
                 model="gpt-3.5-turbo",
                 api_key="test-api-key",
                 messages=[
@@ -254,19 +254,19 @@ class TestGPT35Generator:
 
     @pytest.mark.unit
     def test_run_with_parameters(self):
-        with patch("haystack.preview.components.generators.openai.chatgpt.openai.ChatCompletion") as chatgpt_patch:
-            chatgpt_patch.create.side_effect = mock_openai_response
+        with patch("haystack.preview.components.generators.openai.gpt35.openai.ChatCompletion") as gpt35_patch:
+            gpt35_patch.create.side_effect = mock_openai_response
             component = GPT35Generator(api_key="test-api-key", max_tokens=10)
             component.run(prompts=["test-prompt-1", "test-prompt-2"])
-            assert chatgpt_patch.create.call_count == 2
-            chatgpt_patch.create.assert_any_call(
+            assert gpt35_patch.create.call_count == 2
+            gpt35_patch.create.assert_any_call(
                 model="gpt-3.5-turbo",
                 api_key="test-api-key",
                 messages=[{"role": "user", "content": "test-prompt-1"}],
                 stream=False,
                 max_tokens=10,
             )
-            chatgpt_patch.create.assert_any_call(
+            gpt35_patch.create.assert_any_call(
                 model="gpt-3.5-turbo",
                 api_key="test-api-key",
                 messages=[{"role": "user", "content": "test-prompt-2"}],
@@ -276,10 +276,10 @@ class TestGPT35Generator:
 
     @pytest.mark.unit
     def test_run_stream(self):
-        with patch("haystack.preview.components.generators.openai.chatgpt.openai.ChatCompletion") as chatgpt_patch:
+        with patch("haystack.preview.components.generators.openai.gpt35.openai.ChatCompletion") as gpt35_patch:
             mock_callback = Mock()
             mock_callback.side_effect = default_streaming_callback
-            chatgpt_patch.create.side_effect = mock_openai_stream_response
+            gpt35_patch.create.side_effect = mock_openai_stream_response
             component = GPT35Generator(
                 api_key="test-api-key", system_prompt="test-system-prompt", streaming_callback=mock_callback
             )
@@ -296,8 +296,8 @@ class TestGPT35Generator:
             }
             # Calls count: (10 tokens per prompt + 1 token for the role + 1 empty termination token) * 2 prompts
             assert mock_callback.call_count == 24
-            assert chatgpt_patch.create.call_count == 2
-            chatgpt_patch.create.assert_any_call(
+            assert gpt35_patch.create.call_count == 2
+            gpt35_patch.create.assert_any_call(
                 model="gpt-3.5-turbo",
                 api_key="test-api-key",
                 messages=[
@@ -306,7 +306,7 @@ class TestGPT35Generator:
                 ],
                 stream=True,
             )
-            chatgpt_patch.create.assert_any_call(
+            gpt35_patch.create.assert_any_call(
                 model="gpt-3.5-turbo",
                 api_key="test-api-key",
                 messages=[

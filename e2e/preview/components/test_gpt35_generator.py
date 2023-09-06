@@ -1,13 +1,13 @@
 import os
 import pytest
-from haystack.preview.components.generators.openai.chatgpt import GPT35Generator
+from haystack.preview.components.generators.openai.gpt35 import GPT35Generator
 
 
 @pytest.mark.skipif(
     not os.environ.get("OPENAI_API_KEY", None),
     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
-def test_chatgpt_generator_run():
+def test_gpt35_generator_run():
     component = GPT35Generator(api_key=os.environ.get("OPENAI_API_KEY"))
     results = component.run(
         prompts=["What's the capital of France?", "What's the capital of Germany?"], model_parameters={"n": 1}
@@ -32,7 +32,7 @@ def test_chatgpt_generator_run():
     not os.environ.get("OPENAI_API_KEY", None),
     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
-def test_chatgpt_generator_run_streaming():
+def test_gpt35_generator_run_streaming():
     class Callback:
         def __init__(self):
             self.responses = ""
@@ -57,8 +57,6 @@ def test_chatgpt_generator_run_streaming():
 
     assert len(results["metadata"]) == 2
     assert len(results["metadata"][0]) == 1
-
-    print(results["metadata"][0][0])
 
     assert "gpt-3.5-turbo" in results["metadata"][0][0]["model"]
     assert "stop" == results["metadata"][0][0]["finish_reason"]
