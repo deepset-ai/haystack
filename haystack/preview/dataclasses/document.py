@@ -1,4 +1,4 @@
-from typing import List, Any, Dict, Literal, Optional, Type
+from typing import List, Any, Dict, Optional, Type
 
 import json
 import hashlib
@@ -12,34 +12,12 @@ import pandas
 
 logger = logging.getLogger(__name__)
 
-ContentType = Literal["text", "table", "image", "audio"]
-
-PYTHON_TYPES_FOR_CONTENT: Dict[ContentType, type] = {
-    "text": str,
-    "table": pandas.DataFrame,
-    "image": Path,
-    "audio": Path,
-}
 
 EQUALS_BY_TYPE = {
     Path: lambda self, other: self.absolute() == other.absolute(),
     numpy.ndarray: lambda self, other: self.shape == other.shape and (self == other).all(),
     pandas.DataFrame: lambda self, other: self.equals(other),
 }
-
-
-def _create_id(
-    classname: str, content: Any, metadata: Optional[Dict[str, Any]] = None, id_hash_keys: Optional[List[str]] = None
-):
-    """
-    Creates a hash of the content given that acts as the document's ID.
-    """
-    if not metadata:
-        metadata = {}
-    content_to_hash = f"{classname}:{content}"
-    if id_hash_keys:
-        content_to_hash = ":".join([content_to_hash, *[str(metadata.get(key, "")) for key in id_hash_keys]])
-    return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
 
 
 def _safe_equals(obj_1, obj_2) -> bool:
@@ -110,27 +88,35 @@ class Document:
     Documents can be sorted by score, saved to/from dictionary and JSON, and are immutable.
 
     Immutability is due to the fact that the document's ID depends on its content, so upon changing the content, also
-    the ID should change.  To avoid keeping IDs in sync with the content by using properties, and asking docstores to
+    the ID should change. To avoid keeping IDs in sync with the content by using properties, and asking docstores to
     be aware of this corner case, we decide to make Documents immutable and remove the issue. If you need to modify a
     Document, consider using `to_dict()`, modifying the dict, and then create a new Document object using
     `Document.from_dict()`.
 
-    Note that `id_hash_keys` are referring to keys in the metadata. `content` is always included in the ID hash.
-    In case of file-based documents (images, audios), the content that is hashed is the file paths,
-    so if the file is moved, the hash is different, but if the file is modified without renaming it, the has will
-    not differ.
+    Note that `id_hash_keys` are referring to keys either in the metadata or in the document itself.
     """
 
     id: str = field(default_factory=str)
-    content: Any = field(default_factory=lambda: None)
-    content_type: ContentType = "text"
+    text: Optional[str] = field(default=None)
+    array: Optional[numpy.ndarray] = field(default=None)
+    dataframe: Optional[pandas.DataFrame] = field(default=None)
+    blob: Optional[bytes] = field(default=None)
+    mime_type: str = field(default="text/plain")
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
-    id_hash_keys: List[str] = field(default_factory=list, hash=False)
+    id_hash_keys: List[str] = field(default=["text", "array", "dataframe", "blob"], hash=False)
     score: Optional[float] = field(default=None, compare=True)
     embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
 
     def __str__(self):
-        return f"{self.__class__.__name__}('{self.content}')"
+        if self.text:
+            return f"{self.__class__.__name__}(mimetype: {self.mime_type}, text: '{self.text}')"
+        if self.array:
+            return f"{self.__class__.__name__}(mimetype: {self.mime_type}, array: '{self.array}')"
+        if self.dataframe:
+            return f"{self.__class__.__name__}(mimetype: {self.mime_type}, dataframe: '{self.dataframe}')"
+        if self.blob:
+            return f"{self.__class__.__name__}(mimetype: {self.mime_type}, binary only)"
+        return f"{self.__class__.__name__}(mimetype: {self.mime_type}, no content)"
 
     def __eq__(self, other):
         """
@@ -143,41 +129,31 @@ class Document:
 
     def __post_init__(self):
         """
-        Generate the ID based on the init parameters and make sure that `content_type` matches the actual type of
-        content.
+        Generate the ID based on the init parameters.
         """
-        # Validate content_type
-        if self.content_type not in PYTHON_TYPES_FOR_CONTENT:
-            raise ValueError(
-                f"Content type unknown: '{self.content_type}'. "
-                f"Choose among: {', '.join(PYTHON_TYPES_FOR_CONTENT.keys())}"
-            )
-        if not isinstance(self.content, PYTHON_TYPES_FOR_CONTENT[self.content_type]):
-            raise ValueError(
-                f"The type of content ({type(self.content)}) does not match the "
-                f"content type: '{self.content_type}' expects '{PYTHON_TYPES_FOR_CONTENT[self.content_type]}'."
-            )
         # Validate metadata
         for key in self.metadata:
             if key in [field.name for field in fields(self)]:
                 raise ValueError(f"Cannot name metadata fields as top-level document fields, like '{key}'.")
 
-        # Check if id_hash_keys are all present in the meta
-        for key in self.id_hash_keys:
-            if key not in self.metadata:
-                raise ValueError(
-                    f"'{key}' must be present in the metadata of the Document if you want to use it to generate the ID."
-                )
-        # Generate the ID
-        hashed_content = _create_id(
-            classname=self.__class__.__name__,
-            content=str(self.content),
-            metadata=self.metadata,
-            id_hash_keys=self.id_hash_keys,
-        )
-
         # Note: we need to set the id this way because the dataclass is frozen. See the docstring.
+        hashed_content = self._create_id()
         object.__setattr__(self, "id", hashed_content)
+
+    def _create_id(self):
+        """
+        Creates a hash of the content given that acts as the document's ID.
+        """
+        document_data = self.flatten()
+        contents = [self.__class__.__name__]
+        if self.id_hash_keys:
+            for key in self.id_hash_keys:
+                if key not in document_data:
+                    logger.info(f"ID hash key '{key}' not found in document.")
+                else:
+                    contents.append(str(document_data.get(key, None)))
+            content_to_hash = ":".join(contents)
+        return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
 
     def to_dict(self):
         """
@@ -187,9 +163,11 @@ class Document:
 
     def to_json(self, json_encoder: Optional[Type[DocumentEncoder]] = None, **json_kwargs):
         """
-        Saves the Document into a JSON string that can be later loaded back.
+        Saves the Document into a JSON string that can be later loaded back. Drops all binary data from the blob field.
         """
-        return json.dumps(self.to_dict(), cls=json_encoder or DocumentEncoder, **json_kwargs)
+        dictionary = self.to_dict()
+        del dictionary["blob"]
+        return json.dumps(dictionary, cls=json_encoder or DocumentEncoder, **json_kwargs)
 
     @classmethod
     def from_dict(cls, dictionary):
