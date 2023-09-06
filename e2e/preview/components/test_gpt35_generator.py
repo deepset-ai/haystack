@@ -31,6 +31,16 @@ def test_gpt35_generator_run():
     not os.environ.get("OPENAI_API_KEY", None),
     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
+def test_gpt35_generator_run_wrong_model_name():
+    component = GPT35Generator(model_name="something-obviously-wrong", api_key=os.environ.get("OPENAI_API_KEY"), n=1)
+    with pytest.raises(openai.InvalidRequestError, match="The model `something-obviously-wrong` does not exist"):
+        component.run(prompts=["What's the capital of France?"])
+
+
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
 def test_gpt35_generator_run_above_context_length():
     component = GPT35Generator(api_key=os.environ.get("OPENAI_API_KEY"), n=1)
     with pytest.raises(
