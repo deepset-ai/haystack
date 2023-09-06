@@ -4,15 +4,24 @@ from typing import Dict, List, Optional, Any
 
 import requests
 
-from haystack.preview import Document, component, default_from_dict, default_to_dict
+from haystack.preview import Document, component, default_from_dict, default_to_dict, ComponentError
 
 logger = logging.getLogger(__name__)
 
 
+SERPERDEV_BASE_URL = "https://google.serper.dev/search"
+
+
+class SerperDevError(ComponentError):
+    ...
+
+
 @component
-class SerperDevSearchAPI:
+class SerperDevWebSearch:
     """
-    Search engine using SerperDev API. See the [Serper Dev website](https://serper.dev/) for more details.
+    Search engine using SerperDev API. Given a query, it returns a list of URLs that are the most relevant.
+
+    See the [Serper Dev website](https://serper.dev/) for more details.
     """
 
     def __init__(
@@ -28,7 +37,7 @@ class SerperDevSearchAPI:
         :param allowed_domains: List of domains to limit the search to.
         :param search_params: Additional parameters passed to the SerperDev API.
         For example, you can set 'num' to 20 to increase the number of search results.
-
+        See the [Serper Dev website](https://serper.dev/) for more details.
         """
         if api_key is None:
             raise ValueError("API key for SerperDev API must be set.")
@@ -50,7 +59,7 @@ class SerperDevSearchAPI:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SerperDevSearchAPI":
+    def from_dict(cls, data: Dict[str, Any]) -> "SerperDevWebSearch":
         """
         Deserialize this component from a dictionary.
         """
@@ -66,21 +75,19 @@ class SerperDevSearchAPI:
         """
         query_prepend = "OR ".join(f"site:{domain} " for domain in self.allowed_domains) if self.allowed_domains else ""
 
-        url = "https://google.serper.dev/search"
-
         payload = json.dumps(
             {"q": query_prepend + query, "gl": "us", "hl": "en", "autocorrect": True, **self.search_params}
         )
         headers = {"X-API-KEY": self.api_key, "Content-Type": "application/json"}
 
         try:
-            response = requests.post(url, headers=headers, data=payload, timeout=30)
+            response = requests.post(SERPERDEV_BASE_URL, headers=headers, data=payload, timeout=30)
             response.raise_for_status()  # Will raise an HTTPError for bad responses
         except requests.Timeout:
             raise TimeoutError(f"Request to {self.__class__.__name__} timed out.")
 
         except requests.RequestException as e:
-            raise Exception(f"An error occurred while querying {self.__class__.__name__}. Error: {e}")
+            raise SerperDevError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e
 
         # If we reached this point, it means the request was successful and we can proceed
         json_result = response.json()
@@ -91,8 +98,8 @@ class SerperDevSearchAPI:
             for d in json_result["organic"]
         ]
 
-        answer_box = []
         # answer box is what search engine shows as a direct answer to the query
+        answer_box = []
         if "answerBox" in json_result:
             answer_dict = json_result["answerBox"]
             highlighted_answers = answer_dict.get("snippetHighlighted")
@@ -115,8 +122,8 @@ class SerperDevSearchAPI:
                     )
                 ]
 
-        people_also_ask = []
         # these are related questions that search engine shows
+        people_also_ask = []
         if "peopleAlsoAsk" in json_result:
             for result in json_result["peopleAlsoAsk"]:
                 title = result.get("title", "")
