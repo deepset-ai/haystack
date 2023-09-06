@@ -8,10 +8,8 @@ from haystack.preview.components.generators.openai.gpt35 import GPT35Generator
     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
 def test_gpt35_generator_run():
-    component = GPT35Generator(api_key=os.environ.get("OPENAI_API_KEY"))
-    results = component.run(
-        prompts=["What's the capital of France?", "What's the capital of Germany?"], model_parameters={"n": 1}
-    )
+    component = GPT35Generator(api_key=os.environ.get("OPENAI_API_KEY"), n=1)
+    results = component.run(prompts=["What's the capital of France?", "What's the capital of Germany?"])
 
     assert len(results["replies"]) == 2
     assert len(results["replies"][0]) == 1
@@ -42,10 +40,8 @@ def test_gpt35_generator_run_streaming():
             return chunk
 
     callback = Callback()
-    component = GPT35Generator(os.environ.get("OPENAI_API_KEY"), streaming_callback=callback)
-    results = component.run(
-        prompts=["What's the capital of France?", "What's the capital of Germany?"], model_parameters={"n": 1}
-    )
+    component = GPT35Generator(os.environ.get("OPENAI_API_KEY"), streaming_callback=callback, n=1)
+    results = component.run(prompts=["What's the capital of France?", "What's the capital of Germany?"])
 
     assert len(results["replies"]) == 2
     assert len(results["replies"][0]) == 1
