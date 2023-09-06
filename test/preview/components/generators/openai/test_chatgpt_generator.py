@@ -5,7 +5,7 @@ import pytest
 import openai
 from openai.util import convert_to_openai_object
 
-from haystack.preview.components.generators.openai.chatgpt import ChatGPTGenerator
+from haystack.preview.components.generators.openai.chatgpt import GPT35Generator
 from haystack.preview.components.generators.openai.chatgpt import default_streaming_callback
 
 
@@ -44,7 +44,7 @@ def mock_openai_stream_response(messages: str, model: str = "gpt-3.5-turbo-0301"
 class TestChatGPTGenerator:
     @pytest.mark.unit
     def test_init_default(self):
-        component = ChatGPTGenerator(api_key="test-api-key")
+        component = GPT35Generator(api_key="test-api-key")
         assert component.system_prompt is None
         assert component.api_key == "test-api-key"
         assert component.model_name == "gpt-3.5-turbo"
@@ -55,7 +55,7 @@ class TestChatGPTGenerator:
     @pytest.mark.unit
     def test_init_with_parameters(self):
         callback = lambda x: x
-        component = ChatGPTGenerator(
+        component = GPT35Generator(
             api_key="test-api-key",
             model_name="gpt-4",
             system_prompt="test-system-prompt",
@@ -73,7 +73,7 @@ class TestChatGPTGenerator:
 
     @pytest.mark.unit
     def test_to_dict_default(self):
-        component = ChatGPTGenerator(api_key="test-api-key")
+        component = GPT35Generator(api_key="test-api-key")
         data = component.to_dict()
         assert data == {
             "type": "ChatGPTGenerator",
@@ -88,7 +88,7 @@ class TestChatGPTGenerator:
 
     @pytest.mark.unit
     def test_to_dict_with_parameters(self):
-        component = ChatGPTGenerator(
+        component = GPT35Generator(
             api_key="test-api-key",
             model_name="gpt-4",
             system_prompt="test-system-prompt",
@@ -113,7 +113,7 @@ class TestChatGPTGenerator:
 
     @pytest.mark.unit
     def test_to_dict_with_lambda_streaming_callback(self):
-        component = ChatGPTGenerator(
+        component = GPT35Generator(
             api_key="test-api-key",
             model_name="gpt-4",
             system_prompt="test-system-prompt",
@@ -150,7 +150,7 @@ class TestChatGPTGenerator:
                 "streaming_callback": "haystack.preview.components.generators.openai.chatgpt.default_streaming_callback",
             },
         }
-        component = ChatGPTGenerator.from_dict(data)
+        component = GPT35Generator.from_dict(data)
         assert component.system_prompt == "test-system-prompt"
         assert component.api_key == "test-api-key"
         assert component.model_name == "gpt-4"
@@ -162,7 +162,7 @@ class TestChatGPTGenerator:
     def test_run_no_system_prompt(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.openai.ChatCompletion") as chatgpt_patch:
             chatgpt_patch.create.side_effect = mock_openai_response
-            component = ChatGPTGenerator(api_key="test-api-key")
+            component = GPT35Generator(api_key="test-api-key")
             results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
             assert results == {
                 "replies": [
@@ -206,7 +206,7 @@ class TestChatGPTGenerator:
     def test_run_with_system_prompt(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.openai.ChatCompletion") as chatgpt_patch:
             chatgpt_patch.create.side_effect = mock_openai_response
-            component = ChatGPTGenerator(api_key="test-api-key", system_prompt="test-system-prompt")
+            component = GPT35Generator(api_key="test-api-key", system_prompt="test-system-prompt")
             results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
             assert results == {
                 "replies": [
@@ -256,7 +256,7 @@ class TestChatGPTGenerator:
     def test_run_with_parameters(self):
         with patch("haystack.preview.components.generators.openai.chatgpt.openai.ChatCompletion") as chatgpt_patch:
             chatgpt_patch.create.side_effect = mock_openai_response
-            component = ChatGPTGenerator(api_key="test-api-key", max_tokens=10)
+            component = GPT35Generator(api_key="test-api-key", max_tokens=10)
             component.run(prompts=["test-prompt-1", "test-prompt-2"])
             assert chatgpt_patch.create.call_count == 2
             chatgpt_patch.create.assert_any_call(
@@ -280,7 +280,7 @@ class TestChatGPTGenerator:
             mock_callback = Mock()
             mock_callback.side_effect = default_streaming_callback
             chatgpt_patch.create.side_effect = mock_openai_stream_response
-            component = ChatGPTGenerator(
+            component = GPT35Generator(
                 api_key="test-api-key", system_prompt="test-system-prompt", streaming_callback=mock_callback
             )
             results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
@@ -318,7 +318,7 @@ class TestChatGPTGenerator:
 
     @pytest.mark.unit
     def test_check_truncated_answers(self, caplog):
-        component = ChatGPTGenerator(api_key="test-api-key")
+        component = GPT35Generator(api_key="test-api-key")
         metadata = [
             {"finish_reason": "stop"},
             {"finish_reason": "content_filter"},

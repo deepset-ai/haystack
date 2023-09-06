@@ -29,7 +29,7 @@ def default_streaming_callback(chunk):
 
 
 @component
-class ChatGPTGenerator:
+class GPT35Generator:
     """
     ChatGPT LLM Generator.
 
@@ -112,7 +112,7 @@ class ChatGPTGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ChatGPTGenerator":
+    def from_dict(cls, data: Dict[str, Any]) -> "GPT35Generator":
         """
         Deserialize this component from a dictionary.
         """
