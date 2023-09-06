@@ -86,7 +86,7 @@ class LocalWhisperTranscriber:
             transcription.
         """
         if self._model is None:
-            raise ComponentError("The component was not warmed up. Run `warm_up()` before calling `run()`.")
+            raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
 
         if whisper_params is None:
             whisper_params = self.whisper_params
