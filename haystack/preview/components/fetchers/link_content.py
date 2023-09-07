@@ -26,7 +26,7 @@ REQUEST_HEADERS = {
 }
 
 
-def text_content_handler(response: Response) -> Optional[str]:
+def text_content_handler(response: Response) -> Dict[str, str]:
     """
     :param response: Response object from the request.
     :return: The extracted text.
@@ -34,7 +34,7 @@ def text_content_handler(response: Response) -> Optional[str]:
     return {"text": response.text}
 
 
-def binary_content_handler(response: Response) -> IO[bytes]:
+def binary_content_handler(response: Response) -> Dict[str, IO[bytes]]:
     """
     :param response: Response object from the request.
     :return: The extracted binary file-like object.
@@ -71,9 +71,9 @@ class LinkContentFetcher:
         self.current_user_agent_idx: int = 0
         self.retry_attempts = retry_attempts
         self.timeout = timeout
-        self.handlers: Dict[str, Callable] = defaultdict(text_content_handler)
 
         # register default content handlers that extract data from the response
+        self.handlers: Dict[str, Callable[[Response], Dict[str, Any]]] = defaultdict(lambda: text_content_handler)
         self.handlers["text/html"] = text_content_handler
         self.handlers["text/plain"] = text_content_handler
         self.handlers["application/pdf"] = binary_content_handler
@@ -116,7 +116,7 @@ class LinkContentFetcher:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=Optional[Document])
-    def run(self, url: str) -> Document:
+    def run(self, url: str):
         """
         Fetches content from a URL and converts it to a Document objects. If no content is extracted,
         an empty Document object is returned (if raise_on_failure is False).
