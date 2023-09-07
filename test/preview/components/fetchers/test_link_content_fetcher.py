@@ -21,7 +21,7 @@ def mock_get_link_text_content():
 
 
 @pytest.fixture
-def mock_get_link_binary_content(test_files_path):
+def mock_get_link_content(test_files_path):
     with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
         mock_run.get.return_value = Mock(
             status_code=200,
@@ -93,20 +93,42 @@ class TestLinkContentFetcher:
         assert fetcher.retry_attempts == 1
 
     @pytest.mark.unit
-    def test_run_text(self, mock_get_link_text_content):
-        fetcher = LinkContentFetcher()
-        document = fetcher.run("https://www.example.com")["document"]
-        assert document.content == "Example test response"
-        assert document.metadata["url"] == "https://www.example.com"
-        assert "timestamp" in document.metadata
+    def test_run_text(self):
+        with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
+            mock_run.get.return_value = Mock(
+                status_code=200, text="Example test response", headers={"Content-Type": "text/plain"}
+            )
+            fetcher = LinkContentFetcher()
+            document = fetcher.run("https://www.example.com")["document"]
+            assert document.text == "Example test response"
+            assert document.metadata["url"] == "https://www.example.com"
+            assert "timestamp" in document.metadata
 
     @pytest.mark.unit
-    def test_run_binary(self, mock_get_link_binary_content, test_files_path):
-        fetcher = LinkContentFetcher()
-        document = fetcher.run("https://www.example.com")["document"]
-        assert document.content == io.BytesIO(open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb").read())
-        assert document.metadata["url"] == "https://www.example.com"
-        assert "timestamp" in document.metadata
+    def test_run_html(self):
+        with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
+            mock_run.get.return_value = Mock(
+                status_code=200, text="<h1>Example test response</h1>", headers={"Content-Type": "text/html"}
+            )
+            fetcher = LinkContentFetcher()
+            document = fetcher.run("https://www.example.com")["document"]
+            assert document.text == "<h1>Example test response</h1>"
+            assert document.metadata["url"] == "https://www.example.com"
+            assert "timestamp" in document.metadata
+
+    @pytest.mark.unit
+    def test_run_binary(self, test_files_path):
+        file_bytes = open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb").read()
+        with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
+            mock_run.get.return_value = Mock(
+                status_code=200, content=file_bytes, headers={"Content-Type": "application/pdf"}
+            )
+            fetcher = LinkContentFetcher()
+            document = fetcher.run("https://www.example.com")["document"]
+            # casting to list to make the blobs comparable
+            assert list(document.blob) == list(io.BytesIO(file_bytes))
+            assert document.metadata["url"] == "https://www.example.com"
+            assert "timestamp" in document.metadata
 
     @pytest.mark.unit
     def test_run_bad_status_code(self):

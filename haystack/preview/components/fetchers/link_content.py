@@ -31,7 +31,7 @@ def text_content_handler(response: Response) -> Optional[str]:
     :param response: Response object from the request.
     :return: The extracted text.
     """
-    return response.text
+    return {"text": response.text}
 
 
 def binary_content_handler(response: Response) -> IO[bytes]:
@@ -39,7 +39,7 @@ def binary_content_handler(response: Response) -> IO[bytes]:
     :param response: Response object from the request.
     :return: The extracted binary file-like object.
     """
-    return io.BytesIO(response.content)
+    return {"blob": io.BytesIO(response.content)}
 
 
 @component
@@ -129,9 +129,10 @@ class LinkContentFetcher:
         try:
             response = self._get_response(url)
             content_type = self._get_content_type(response)
+            document_data["mime_type"] = content_type
             handler: Callable = self.handlers[content_type]
-            document_data["content"] = handler(response)
-            return {"document": Document(**document_data)}  # TODO assign content_type to created document
+            document_data |= handler(response)
+            return {"document": Document(**document_data)}
 
         except Exception as e:
             if self.raise_on_failure:
