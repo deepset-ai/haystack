@@ -79,7 +79,10 @@ dependencies = [
   "jsonschema",
 
   # Preview
-  "canals==0.7.0",
+  "canals==0.8.0",
+  "openai",
+  "Jinja2",
+  "openai-whisper",  # FIXME https://github.com/deepset-ai/haystack/issues/5731
 
   # Agent events
   "events",
