@@ -12,7 +12,7 @@ from haystack.preview.document_stores.decorator import document_store
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.protocols import DuplicatePolicy, DocumentStore
 from haystack.preview.document_stores.memory._filters import match
-from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
+from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError, DocumentStoreError
 from haystack.preview.utils import expit
 
 logger = logging.getLogger(__name__)
@@ -298,7 +298,7 @@ class MemoryDocumentStore:
 
         documents_with_embeddings = [doc for doc in all_documents if doc.embedding is not None]
         if len(documents_with_embeddings) == 0:
-            logger.info(
+            logger.warning(
                 "No Documents found with embeddings. Returning empty list. "
                 "To generate embeddings, use a DocumentEmbedder."
             )
@@ -307,20 +307,6 @@ class MemoryDocumentStore:
             logger.info(
                 "Skipping some Documents that don't have an embedding. "
                 "To generate embeddings, use a DocumentEmbedder."
-            )
-
-        # mypy complains that doc.embedding could be None, but we already excluded all Documents with None embedding
-        embedding_sizes = [len(doc.embedding) for doc in documents_with_embeddings]  # type: ignore[arg-type]
-        if any(size != embedding_sizes[0] for size in embedding_sizes):
-            raise ValueError(
-                "The embedding size of all Documents should be the same."
-                "Please make sure that the Documents have been embedded with the same model."
-            )
-
-        if len(query_embedding) != embedding_sizes[0]:
-            raise ValueError(
-                "The embedding size of the query should be the same as the embedding size of the Documents."
-                "Please make sure that the query has been embedded with the same model as the Documents."
             )
 
         scores = self._compute_query_embedding_similarity_scores(
@@ -354,7 +340,15 @@ class MemoryDocumentStore:
         if query_embedding.ndim == 1:
             query_embedding = np.expand_dims(a=query_embedding, axis=0)
 
-        document_embeddings = np.array([doc.embedding for doc in documents])
+        try:
+            document_embeddings = np.array([doc.embedding for doc in documents])
+        except ValueError as e:
+            if "inhomogeneous shape" in str(e):
+                raise DocumentStoreError(
+                    "The embedding size of all Documents should be the same. "
+                    "Please make sure that the Documents have been embedded with the same model."
+                ) from e
+            raise e
         if document_embeddings.ndim == 1:
             document_embeddings = np.expand_dims(a=document_embeddings, axis=0)
 
@@ -363,7 +357,15 @@ class MemoryDocumentStore:
             query_embedding /= np.linalg.norm(x=query_embedding, axis=1, keepdims=True)
             document_embeddings /= np.linalg.norm(x=document_embeddings, axis=1, keepdims=True)
 
-        scores = np.dot(a=query_embedding, b=document_embeddings.T)[0].tolist()
+        try:
+            scores = np.dot(a=query_embedding, b=document_embeddings.T)[0].tolist()
+        except ValueError as e:
+            if "shapes" in str(e) and "not aligned" in str(e):
+                raise DocumentStoreError(
+                    "The embedding size of the query should be the same as the embedding size of the Documents. "
+                    "Please make sure that the query has been embedded with the same model as the Documents."
+                ) from e
+            raise e
 
         if scale_score:
             if self.embedding_similarity_function == "dot_product":

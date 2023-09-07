@@ -111,7 +111,7 @@ class AnswerBuilder:
 
             all_answers.append(answers_for_cur_query)
 
-        return all_answers
+        return {"answers": all_answers}
 
     def to_dict(self) -> Dict[str, Any]:
         """

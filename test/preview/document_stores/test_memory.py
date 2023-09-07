@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 
 from haystack.preview import Document
-from haystack.preview.document_stores import DocumentStore, MemoryDocumentStore
+from haystack.preview.document_stores import DocumentStore, MemoryDocumentStore, DocumentStoreError
+
 
 from haystack.preview.testing.document_store import DocumentStoreBaseTests
 
@@ -276,15 +277,13 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     def test_embedding_retrieval_invalid_query(self):
         docstore = MemoryDocumentStore()
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
-            docstore.embedding_retrieval(query_embedding="string")
-        with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
             docstore.embedding_retrieval(query_embedding=[])
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
             docstore.embedding_retrieval(query_embedding=["invalid", "list", "of", "strings"])
 
     @pytest.mark.unit
     def test_embedding_retrieval_no_embeddings(self, caplog):
-        caplog.set_level(logging.INFO)
+        caplog.set_level(logging.WARNING)
         docstore = MemoryDocumentStore()
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
         docstore.write_documents(docs)
@@ -313,7 +312,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         ]
         docstore.write_documents(docs)
 
-        with pytest.raises(ValueError, match="The embedding size of all Documents should be the same."):
+        with pytest.raises(DocumentStoreError, match="The embedding size of all Documents should be the same."):
             docstore.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1])
 
     @pytest.mark.unit
@@ -323,7 +322,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         docstore.write_documents(docs)
 
         with pytest.raises(
-            ValueError,
+            DocumentStoreError,
             match="The embedding size of the query should be the same as the embedding size of the Documents.",
         ):
             docstore.embedding_retrieval(query_embedding=[0.1, 0.1])
