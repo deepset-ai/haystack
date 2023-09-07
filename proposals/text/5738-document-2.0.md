@@ -1,8 +1,7 @@
 - Title: Document class for Haystack 2.0
 - Decision driver: ZanSara
 - Start Date: 2023-09-07
-- Proposal PR: (fill in after opening the PR)
-- Github Issue or Discussion: (only if available, link the original request for this change)
+- Proposal PR: 5738
 
 # Summary
 
