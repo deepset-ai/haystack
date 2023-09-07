@@ -24,3 +24,4 @@ from haystack.utils.experiment_tracking import (
 from haystack.utils.early_stopping import EarlyStopping
 from haystack.utils.labels import aggregate_labels
 from haystack.utils.batching import get_batches_from_generator
+from haystack.utils.getting_started import build_pipeline, add_example_data

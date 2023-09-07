@@ -44,14 +44,14 @@ class MemoryDocumentStore:
         Initializes the DocumentStore.
 
         :param bm25_tokenization_regex: The regular expression used to tokenize the text for BM25 retrieval.
-        :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", "BM25Plus".
+        :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
                                 For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
-                                You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25
+                                You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25.
                                 By default, no parameters are set.
         :param embedding_similarity_function: The similarity function used to compare Documents embeddings.
-                                              One of "dot_product" (default) and "cosine".
-                                              To choose the most appropriate function, you should look for information about your embedding model.
+                                              One of "dot_product" (default) or "cosine".
+                                              To choose the most appropriate function, look for information about your embedding model.
         """
         self.storage: Dict[str, Document] = {}
         self._bm25_tokenization_regex = bm25_tokenization_regex
@@ -156,8 +156,8 @@ class MemoryDocumentStore:
         }
         ```
 
-        :param filters: the filters to apply to the document list.
-        :return: a list of Documents that match the given filters.
+        :param filters: The filters to apply to the document list.
+        :return: A list of Documents that match the given filters.
         """
         if filters:
             return [doc for doc in self.storage.values() if match(conditions=filters, document=doc)]
@@ -167,12 +167,12 @@ class MemoryDocumentStore:
         """
         Writes (or overwrites) documents into the DocumentStore.
 
-        :param documents: a list of documents.
-        :param policy: documents with the same ID count as duplicates. When duplicates are met,
+        :param documents: A list of documents.
+        :param policy: Documents with the same ID count as duplicates. When duplicates are met,
             the DocumentStore can:
              - skip: keep the existing document and ignore the new one.
              - overwrite: remove the old document and write the new one.
-             - fail: an error is raised
+             - fail: an error is raised.
         :raises DuplicateError: Exception trigger on duplicate document if `policy=DuplicatePolicy.FAIL`
         :return: None
         """
@@ -193,10 +193,10 @@ class MemoryDocumentStore:
 
     def delete_documents(self, document_ids: List[str]) -> None:
         """
-        Deletes all documents with a matching document_ids from the DocumentStore.
+        Deletes all documents with matching document_ids from the DocumentStore.
         Fails with `MissingDocumentError` if no document with this id is present in the DocumentStore.
 
-        :param object_ids: the object_ids to delete
+        :param object_ids: The object_ids to delete.
         """
         for doc_id in document_ids:
             if not doc_id in self.storage.keys():
@@ -213,7 +213,7 @@ class MemoryDocumentStore:
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The number of top documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved documents. Default is True.
-        :return: A list of the top 'k' documents most relevant to the query.
+        :return: A list of the top_k documents most relevant to the query.
         """
         if not query:
             raise ValueError("Query should be a non-empty string")
@@ -288,7 +288,7 @@ class MemoryDocumentStore:
         :param top_k: The number of top documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved Documents. Default is True.
         :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
-        :return: A list of the top 'k' documents most relevant to the query.
+        :return: A list of the top_k documents most relevant to the query.
         """
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
