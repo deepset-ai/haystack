@@ -80,6 +80,7 @@ dependencies = [
 
   # Preview
   "canals==0.8.0",
+  "openai",
   "Jinja2",
   "openai-whisper",  # FIXME https://github.com/deepset-ai/haystack/issues/5731
 

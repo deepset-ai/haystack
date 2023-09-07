@@ -4,13 +4,14 @@ from haystack.preview.components.audio.whisper_local import LocalWhisperTranscri
 def test_whisper_local_transcriber(preview_samples_path):
     comp = LocalWhisperTranscriber(model_name_or_path="medium")
     comp.warm_up()
-    docs = comp.transcribe(
+    output = comp.run(
         audio_files=[
             preview_samples_path / "audio" / "this is the content of the document.wav",
             str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute()),
             open(preview_samples_path / "audio" / "answer.wav", "rb"),
         ]
     )
+    docs = output["documents"]
     assert len(docs) == 3
 
     assert "this is the content of the document." == docs[0].content.strip().lower()

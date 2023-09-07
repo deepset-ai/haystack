@@ -7,9 +7,6 @@
 
 ![image](../docs/img/annotation_tool.png)
 
-# Hosted version
- Signup here: [Haystack Annotation Tool](https://annotate.deepset.ai/login)
-
 # Local version  (Docker)
 
 1. Configure credentials & database in the [`docker-compose.yml`](https://github.com/deepset-ai/haystack/blob/main/annotation_tool/docker-compose.yml):
