@@ -13,15 +13,13 @@ def test_whisper_remote_transcriber(preview_samples_path):
     comp = RemoteWhisperTranscriber(api_key=os.environ.get("OPENAI_API_KEY"))
 
     output = comp.run(
-        RemoteWhisperTranscriber.Input(
-            audio_files=[
-                preview_samples_path / "audio" / "this is the content of the document.wav",
-                str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute()),
-                open(preview_samples_path / "audio" / "answer.wav", "rb"),
-            ]
-        )
+        audio_files=[
+            preview_samples_path / "audio" / "this is the content of the document.wav",
+            str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute()),
+            open(preview_samples_path / "audio" / "answer.wav", "rb"),
+        ]
     )
-    docs = output.documents
+    docs = output["documents"]
     assert len(docs) == 3
 
     assert "this is the content of the document." == docs[0].content.strip().lower()
