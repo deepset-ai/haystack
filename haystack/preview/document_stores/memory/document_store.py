@@ -212,7 +212,7 @@ class MemoryDocumentStore:
         lower_case_documents = []
         for doc in all_documents:
             if doc.text is None and doc.dataframe is None:
-                logger.info(f"Document '%s' has no text or dataframe content. Skipping it.", doc.id)
+                logger.info("Document '%s' has no text or dataframe content. Skipping it.", doc.id)
             else:
                 if doc.text is not None:
                     lower_case_documents.append(doc.text.lower())
