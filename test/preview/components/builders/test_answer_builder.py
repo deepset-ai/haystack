@@ -94,7 +94,7 @@ class TestAnswerBuilder:
             queries=["test query"],
             replies=[["Answer: AnswerString"]],
             metadata=[[{}]],
-            documents=[[Document(content="test doc 1"), Document(content="test doc 2")]],
+            documents=[[Document(text="test doc 1"), Document(text="test doc 2")]],
         )
         assert len(answers) == 1
         assert len(answers[0]) == 1
@@ -102,8 +102,8 @@ class TestAnswerBuilder:
         assert answers[0][0].metadata == {}
         assert answers[0][0].query == "test query"
         assert len(answers[0][0].documents) == 2
-        assert answers[0][0].documents[0].content == "test doc 1"
-        assert answers[0][0].documents[1].content == "test doc 2"
+        assert answers[0][0].documents[0].text == "test doc 1"
+        assert answers[0][0].documents[1].text == "test doc 2"
 
     def test_run_with_documents_with_reference_pattern(self):
         component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]")
@@ -111,7 +111,7 @@ class TestAnswerBuilder:
             queries=["test query"],
             replies=[["Answer: AnswerString[2]"]],
             metadata=[[{}]],
-            documents=[[Document(content="test doc 1"), Document(content="test doc 2")]],
+            documents=[[Document(text="test doc 1"), Document(text="test doc 2")]],
         )
         assert len(answers) == 1
         assert len(answers[0]) == 1
@@ -119,7 +119,7 @@ class TestAnswerBuilder:
         assert answers[0][0].metadata == {}
         assert answers[0][0].query == "test query"
         assert len(answers[0][0].documents) == 1
-        assert answers[0][0].documents[0].content == "test doc 2"
+        assert answers[0][0].documents[0].text == "test doc 2"
 
     def test_run_with_documents_with_reference_pattern_and_no_match(self, caplog):
         component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]")
@@ -128,7 +128,7 @@ class TestAnswerBuilder:
                 queries=["test query"],
                 replies=[["Answer: AnswerString[3]"]],
                 metadata=[[{}]],
-                documents=[[Document(content="test doc 1"), Document(content="test doc 2")]],
+                documents=[[Document(text="test doc 1"), Document(text="test doc 2")]],
             )
         assert len(answers) == 1
         assert len(answers[0]) == 1
@@ -144,9 +144,7 @@ class TestAnswerBuilder:
             queries=["test query"],
             replies=[["Answer: AnswerString[2][3]"]],
             metadata=[[{}]],
-            documents=[
-                [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
-            ],
+            documents=[[Document(text="test doc 1"), Document(text="test doc 2"), Document(text="test doc 3")]],
             reference_pattern="\\[(\\d+)\\]",
         )
         assert len(answers) == 1
@@ -155,5 +153,5 @@ class TestAnswerBuilder:
         assert answers[0][0].metadata == {}
         assert answers[0][0].query == "test query"
         assert len(answers[0][0].documents) == 2
-        assert answers[0][0].documents[0].content == "test doc 2"
-        assert answers[0][0].documents[1].content == "test doc 3"
+        assert answers[0][0].documents[0].text == "test doc 2"
+        assert answers[0][0].documents[1].text == "test doc 3"

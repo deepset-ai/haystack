@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.preview.components.generators.prompt_builder import PromptBuilder
+from haystack.preview.components.builders.prompt_builder import PromptBuilder
 
 
 @pytest.mark.unit
