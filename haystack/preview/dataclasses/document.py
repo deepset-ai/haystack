@@ -13,7 +13,7 @@ import pandas
 logger = logging.getLogger(__name__)
 
 
-def _safe_equals(obj_1, obj_2) -> bool:
+def _safe_equals(obj_1, obj_2) -> bool:  # pylint=: disable=too-many-return-statements
     """
     Compares two dictionaries for equality, taking arrays, dataframes and other objects into account.
     """
@@ -27,10 +27,13 @@ def _safe_equals(obj_1, obj_2) -> bool:
 
     if isinstance(obj_1, Path):
         return obj_1.absolute() == obj_2.absolute()
+
     if isinstance(obj_1, numpy.ndarray):
         return obj_1.shape == obj_2.shape and (obj_1 == obj_2).all()
+
     if isinstance(obj_1, pandas.DataFrame):
         return obj_1.equals(obj_2)
+
     return obj_1 == obj_2
 
 
@@ -140,10 +143,10 @@ class Document:
         if self.id_hash_keys:
             for key in self.id_hash_keys:
                 if key not in document_data:
-                    logger.info(f"ID hash key '{key}' not found in document.")
+                    logger.info(f"ID hash key '%s' not found in document.", key)
                 else:
                     contents.append(str(document_data.get(key, None)))
-            content_to_hash = ":".join(contents)
+        content_to_hash = ":".join(contents)
         return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
 
     def to_dict(self):
