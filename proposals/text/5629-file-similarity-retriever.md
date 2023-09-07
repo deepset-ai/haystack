@@ -19,7 +19,7 @@ The FileSimilarityRetriever would be instantiated as follows:
 	      primary_retriever = EmbeddingRetriever, # defined separately, see full pipeline example below
         top_k=30,
 	      file_aggregation_key = "file_id",
-          max_num_queries = 50
+        max_num_queries = 50
 	  )
 ```
 
@@ -92,11 +92,10 @@ When implemented as two sub-components (see the section **Detailed design - upda
     >>> then one or two retrievers here >>>
 
     DocumentAggregator = DocumentAggregator(
-        documents = documents,
+        top_k = 5,
         file_aggregation_key = "file_id",
         output = "top_document", # This new param is explained in Detailed design section below
-        keep_original_score = True,
-        top_k = 5,
+        keep_original_score = True
     )
 
 ```
@@ -143,20 +142,20 @@ FileSimilarityRetriever has the following parameters:
 During the proposal discussion, it was decided to break up the initial FileSimilarityRetriever into two sub-components in order to simplify the design and testing and also to make it possible to use only one of the sub-components, if needed, thus covering more use cases.
 
 The new design would go as follows:
-1) **DocumentFetcher** that gets all docs corresponding to a file based on a provided aggregation meta key and returns a list of docs to be used by one or two retrievers as input for batch retrieval.
-2) **DocumentAggregator** placed after the retriever(s) that aggregates the document list(s) using RRF into a single ranked list of files, which are put together based on file_ids of retrieved docs.
+- DocumentFetcher that gets all docs corresponding to a file based on a provided aggregation meta key and returns a list of docs to be used by one or two retrievers as input for batch retrieval.
+- DocumentAggregator placed after the retriever(s) that aggregates the document list(s) using RRF into a single ranked list of files, which are put together based on file_ids of retrieved docs.
 
-These sub-components will have the following params (for full explanation see **Detailed design** section above):
-- **DocumentFetcher**
+These sub-components will have the following params (for full explanation see Detailed design section above):
+- DocumentFetcher
   - document_store
   - file_aggregation_key
-  - max_num_docs (in the original version it was called max_num_queries) __optional__
-  __Note__: When researching how to change the params from the original implementation I found out there is no longer need for max_query_len that was required in the original FileSimilarityRetriever. It was implemented to not overshoot the max_clause_count limit in ElasticSearch settings but this got deprecated as of vs 8.0.0 according to their documentation - https://www.elastic.co/guide/en/elasticsearch/reference/current/search-settings.html
+  - max_num_docs: optional, in the original version it was called max_num_queries
+  Note: When researching how to change the params from the original implementation I found out there is no longer need for max_query_len that was required in the original FileSimilarityRetriever. It was implemented to not overshoot the max_clause_count limit in ElasticSearch settings but this got deprecated as of vs 8.0.0 according to their documentation - https://www.elastic.co/guide/en/elasticsearch/reference/current/search-settings.html
 
-- **DocumentAggregator**
-  - documents (can be a list or a list of list of docs)
-  - file_aggregation_key (default would be "file_id", but can be changed to e.g. "name")
-  - output (default "top_document", but can also be "file_aggregation_key")
+- DocumentAggregator
+  - documents: can be a list or a list of list of docs
+  - file_aggregation_key: default would be "file_id", but can be changed to e.g. "name"
+  - output: default "top_document", but can also be "file_aggregation_key"
   - keep_original_score
   - top_k = 5
 
