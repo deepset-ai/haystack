@@ -186,15 +186,15 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         docstore = MemoryDocumentStore(embedding_similarity_function="cosine")
         # Tests if the embedding retrieval method returns the correct document based on the input query embedding.
         docs = [
-            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(text="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
         ]
         docstore.write_documents(docs)
         results = docstore.embedding_retrieval(
             query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=1, filters={}, scale_score=False
         )
         assert len(results) == 1
-        assert results[0].content == "Haystack supports multiple languages"
+        assert results[0].text == "Haystack supports multiple languages"
 
     @pytest.mark.unit
     def test_embedding_retrieval_invalid_query(self):
@@ -208,7 +208,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     def test_embedding_retrieval_no_embeddings(self, caplog):
         caplog.set_level(logging.WARNING)
         docstore = MemoryDocumentStore()
-        docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
+        docs = [Document(text="Hello world"), Document(text="Haystack supports multiple languages")]
         docstore.write_documents(docs)
         results = docstore.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1])
         assert len(results) == 0
@@ -219,8 +219,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         caplog.set_level(logging.INFO)
         docstore = MemoryDocumentStore()
         docs = [
-            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(content="Haystack supports multiple languages"),
+            Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(text="Haystack supports multiple languages"),
         ]
         docstore.write_documents(docs)
         docstore.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1])
@@ -230,8 +230,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     def test_embedding_retrieval_documents_different_embedding_sizes(self):
         docstore = MemoryDocumentStore()
         docs = [
-            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0]),
+            Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(text="Haystack supports multiple languages", embedding=[1.0, 1.0]),
         ]
         docstore.write_documents(docs)
 
@@ -241,7 +241,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     @pytest.mark.unit
     def test_embedding_retrieval_query_documents_different_embedding_sizes(self):
         docstore = MemoryDocumentStore()
-        docs = [Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4])]
+        docs = [Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4])]
         docstore.write_documents(docs)
 
         with pytest.raises(
@@ -254,9 +254,9 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     def test_embedding_retrieval_with_different_top_k(self):
         docstore = MemoryDocumentStore()
         docs = [
-            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
-            Document(content="Python is a popular programming language", embedding=[0.5, 0.5, 0.5, 0.5]),
+            Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(text="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(text="Python is a popular programming language", embedding=[0.5, 0.5, 0.5, 0.5]),
         ]
         docstore.write_documents(docs)
 
@@ -270,9 +270,9 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     def test_embedding_retrieval_with_scale_score(self):
         docstore = MemoryDocumentStore()
         docs = [
-            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
-            Document(content="Python is a popular programming language", embedding=[0.5, 0.5, 0.5, 0.5]),
+            Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(text="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(text="Python is a popular programming language", embedding=[0.5, 0.5, 0.5, 0.5]),
         ]
         docstore.write_documents(docs)
 
@@ -288,8 +288,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     def test_embedding_retrieval_return_embedding(self):
         docstore = MemoryDocumentStore(embedding_similarity_function="cosine")
         docs = [
-            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(text="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
         ]
         docstore.write_documents(docs)
 
@@ -303,8 +303,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     def test_compute_cosine_similarity_scores(self):
         docstore = MemoryDocumentStore(embedding_similarity_function="cosine")
         docs = [
-            Document(content="Document 1", embedding=[1.0, 0.0, 0.0, 0.0]),
-            Document(content="Document 2", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(text="Document 1", embedding=[1.0, 0.0, 0.0, 0.0]),
+            Document(text="Document 2", embedding=[1.0, 1.0, 1.0, 1.0]),
         ]
 
         scores = docstore._compute_query_embedding_similarity_scores(
@@ -316,12 +316,11 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     def test_compute_dot_product_similarity_scores(self):
         docstore = MemoryDocumentStore(embedding_similarity_function="dot_product")
         docs = [
-            Document(content="Document 1", embedding=[1.0, 0.0, 0.0, 0.0]),
-            Document(content="Document 2", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(text="Document 1", embedding=[1.0, 0.0, 0.0, 0.0]),
+            Document(text="Document 2", embedding=[1.0, 1.0, 1.0, 1.0]),
         ]
 
         scores = docstore._compute_query_embedding_similarity_scores(
             embedding=[0.1, 0.1, 0.1, 0.1], documents=docs, scale_score=False
         )
-        print(scores)
         assert scores == [0.1, 0.4]
