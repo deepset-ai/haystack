@@ -1,0 +1,6 @@
+---
+preview:
+  - |
+    Add `embedding_retrieval` method to `MemoryDocumentStore`,
+    which allows to retrieve the relevant Documents, given a query embedding.
+    It will be called by the `MemoryEmbeddingRetriever`.
