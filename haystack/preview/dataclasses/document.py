@@ -121,7 +121,7 @@ class Document:
 
     def _create_id(self):
         """
-        Creates a hash of the content given that acts as the document's ID.
+        Creates a hash of the given content that acts as the document's ID.
         """
         document_data = self.flatten()
         contents = [self.__class__.__name__]
