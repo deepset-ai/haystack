@@ -63,7 +63,7 @@ class WebRetriever(BaseRetriever):
     ):
         """
         :param api_key: API key for the search engine provider.
-        :param search_engine_provider: Name of the search engine provider class, see `providers.py` for a list of supported providers.
+        :param search_engine_provider: Name of the search engine provider class. The options are "SerperDev" (default), "SerpAPI", "BingAPI" or "GoogleAPI"
         :param top_search_results: Number of top search results to be retrieved.
         :param top_k: Top k documents to be returned by the retriever.
         :param mode: Whether to return snippets, raw documents, or preprocessed documents. Snippets are the default.
