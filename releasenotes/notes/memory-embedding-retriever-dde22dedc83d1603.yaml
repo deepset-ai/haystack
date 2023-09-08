@@ -1,0 +1,6 @@
+---
+preview:
+  - |
+    Rename `MemoryRetriever` to `MemoryBM25Retriever`
+    Add `MemoryEmbeddingRetriever`, which takes as input a query embedding and
+    retrieves the most relevant Documents from a `MemoryDocumentStore`.
