@@ -3,13 +3,14 @@ from typing import Optional, Callable
 import logging
 
 from haystack.preview import component
+from haystack.preview.components.generators.openai.gpt35 import GPT35Generator
 
 
 logger = logging.getLogger(__name__)
 
 
 @component
-class GPT4Generator:
+class GPT4Generator(GPT35Generator):
     """
     LLM Generator compatible with GPT4 large language models.
 
