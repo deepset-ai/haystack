@@ -49,10 +49,9 @@ def test_gpt35_generator_run_above_context_length(generator_class):
     component = generator_class(api_key=os.environ.get("OPENAI_API_KEY"), n=1)
     with pytest.raises(
         openai.InvalidRequestError,
-        match="This model's maximum context length is 4097 tokens. However, your messages resulted in 70008 tokens. "
-        "Please reduce the length of the messages.",
+        match="However, your messages resulted in 35008 tokens. Please reduce the length of the messages.",
     ):
-        component.run(prompts=["What's the capital of France? " * 10_000])
+        component.run(prompts=["What's the capital of France? " * 5_000])
 
 
 @pytest.mark.skipif(
