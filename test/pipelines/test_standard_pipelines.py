@@ -90,4 +90,4 @@ def test_webqa_pipeline():
     assert isinstance(result, dict)
     assert len(result["results"]) == 1
     answer = result["results"][0]
-    assert "Stark" in answer or "NED" in answer
+    assert "stark" in answer.lower() or "ned" in answer.lower()
