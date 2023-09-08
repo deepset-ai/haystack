@@ -43,17 +43,16 @@ class TestMemoryRetrievers:
         with pytest.raises(ValueError, match="top_k must be > 0, but got -2"):
             retriever_cls(MemoryDocumentStore(), top_k=-2, scale_score=False)
 
-    @pytest.mark.parametrize("retriever_cls", [MemoryBM25Retriever, MemoryEmbeddingRetriever])
     @pytest.mark.unit
-    def test_to_dict(self, retriever_cls):
+    def test_bm25_retriever_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(MemoryDocumentStore,))
         document_store = MyFakeStore()
         document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}
-        component = retriever_cls(document_store=document_store)
+        component = MemoryBM25Retriever(document_store=document_store)
 
         data = component.to_dict()
         assert data == {
-            "type": retriever_cls.__name__,
+            "type": "MemoryBM25Retriever",
             "init_parameters": {
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": None,
@@ -62,23 +61,65 @@ class TestMemoryRetrievers:
             },
         }
 
-    @pytest.mark.parametrize("retriever_cls", [MemoryBM25Retriever, MemoryEmbeddingRetriever])
     @pytest.mark.unit
-    def test_to_dict_with_custom_init_parameters(self, retriever_cls):
+    def test_embedding_retriever_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(MemoryDocumentStore,))
         document_store = MyFakeStore()
         document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}
-        component = retriever_cls(
+        component = MemoryEmbeddingRetriever(document_store=document_store)
+
+        data = component.to_dict()
+        assert data == {
+            "type": "MemoryEmbeddingRetriever",
+            "init_parameters": {
+                "document_store": {"type": "MyFakeStore", "init_parameters": {}},
+                "filters": None,
+                "top_k": 10,
+                "scale_score": True,
+                "return_embedding": False,
+            },
+        }
+
+    @pytest.mark.unit
+    def test_bm25_retriever_to_dict_with_custom_init_parameters(self):
+        MyFakeStore = document_store_class("MyFakeStore", bases=(MemoryDocumentStore,))
+        document_store = MyFakeStore()
+        document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}
+        component = MemoryBM25Retriever(
             document_store=document_store, filters={"name": "test.txt"}, top_k=5, scale_score=False
         )
         data = component.to_dict()
         assert data == {
-            "type": retriever_cls.__name__,
+            "type": "MemoryBM25Retriever",
             "init_parameters": {
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
                 "scale_score": False,
+            },
+        }
+
+    @pytest.mark.unit
+    def test_embedding_retriever_to_dict_with_custom_init_parameters(self):
+        MyFakeStore = document_store_class("MyFakeStore", bases=(MemoryDocumentStore,))
+        document_store = MyFakeStore()
+        document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}
+        component = MemoryEmbeddingRetriever(
+            document_store=document_store,
+            filters={"name": "test.txt"},
+            top_k=5,
+            scale_score=False,
+            return_embedding=True,
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "MemoryEmbeddingRetriever",
+            "init_parameters": {
+                "document_store": {"type": "MyFakeStore", "init_parameters": {}},
+                "filters": {"name": "test.txt"},
+                "top_k": 5,
+                "scale_score": False,
+                "return_embedding": True,
             },
         }
 

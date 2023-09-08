@@ -116,6 +116,7 @@ class MemoryEmbeddingRetriever:
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         scale_score: bool = True,
+        return_embedding: bool = False,
     ):
         """
         Create a MemoryEmbeddingRetriever component.
@@ -124,6 +125,7 @@ class MemoryEmbeddingRetriever:
         :param filters: A dictionary with filters to narrow down the search space. Default is None.
         :param top_k: The maximum number of documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved documents or not. Default is True.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
 
         :raises ValueError: If the specified top_k is not > 0.
         """
@@ -138,6 +140,7 @@ class MemoryEmbeddingRetriever:
         self.filters = filters
         self.top_k = top_k
         self.scale_score = scale_score
+        self.return_embedding = return_embedding
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -145,7 +148,12 @@ class MemoryEmbeddingRetriever:
         """
         docstore = self.document_store.to_dict()
         return default_to_dict(
-            self, document_store=docstore, filters=self.filters, top_k=self.top_k, scale_score=self.scale_score
+            self,
+            document_store=docstore,
+            filters=self.filters,
+            top_k=self.top_k,
+            scale_score=self.scale_score,
+            return_embedding=self.return_embedding,
         )
 
     @classmethod
@@ -173,7 +181,6 @@ class MemoryEmbeddingRetriever:
         filters: Optional[Dict[str, Any]] = None,
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
-        # FIXME: return_embedding should simply be declared bool: False, but canals==0.8 raises a ValueError if it is not Optional and you do not pass it in the run() call of a Pipeline
         return_embedding: Optional[bool] = None,
     ):
         """
@@ -194,6 +201,8 @@ class MemoryEmbeddingRetriever:
             top_k = self.top_k
         if scale_score is None:
             scale_score = self.scale_score
+        if return_embedding is None:
+            return_embedding = self.return_embedding
 
         docs = []
         for query_embedding in queries_embeddings:
@@ -203,7 +212,7 @@ class MemoryEmbeddingRetriever:
                     filters=filters,
                     top_k=top_k,
                     scale_score=scale_score,
-                    return_embedding=bool(return_embedding),
+                    return_embedding=return_embedding,
                 )
             )
         return {"documents": docs}
