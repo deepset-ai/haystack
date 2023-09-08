@@ -92,11 +92,17 @@ class Document:
     embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
 
     def __str__(self):
-        text = self.text if len(self.text) < 100 else self.text[:100] + "..."
-        array = self.array.shape if self.array is not None else "None"
-        dataframe = self.dataframe.shape if self.dataframe is not None else "None"
-        blob = f"{len(self.blob)} bytes" if self.blob is not None else "None"
-        return f"{self.__class__.__name__}(mimetype: {self.mime_type}, text: '{text}', array: {array}, dataframe: {dataframe}, binary: {blob})"
+        fields = [f"mimetype: '{self.mime_type}'"]
+        if self.text is not None:
+            fields.append(f"text: '{self.text}'" if len(self.text) < 100 else f"text: '{self.text[:100]}...'")
+        if self.array is not None:
+            fields.append(f"array: {self.array.shape}")
+        if self.dataframe is not None:
+            fields.append(f"dataframe: {self.dataframe.shape}")
+        if self.blob is not None:
+            fields.append(f"blob: {len(self.blob)} bytes")
+        fields_str = ", ".join(fields)
+        return f"{self.__class__.__name__}(id={self.id}, {fields_str})"
 
     def __eq__(self, other):
         """

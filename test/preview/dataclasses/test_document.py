@@ -20,6 +20,32 @@ def test_document_is_immutable():
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
+    "doc,doc_str",
+    [
+        (Document(text="test text"), "text: 'test text'"),
+        (Document(array=np.zeros((3, 7))), "array: (3, 7)"),
+        (
+            Document(dataframe=pd.DataFrame([["John", 25], ["Martha", 34]], columns=["name", "age"])),
+            "dataframe: (2, 2)",
+        ),
+        (Document(blob=bytes("hello, test string".encode("utf-8"))), "blob: 18 bytes"),
+        (
+            Document(
+                text="test text",
+                array=np.zeros((3, 7)),
+                dataframe=pd.DataFrame([["John", 25], ["Martha", 34]], columns=["name", "age"]),
+                blob=bytes("hello, test string".encode("utf-8")),
+            ),
+            "text: 'test text', array: (3, 7), dataframe: (2, 2), blob: 18 bytes",
+        ),
+    ],
+)
+def test_document_str(doc, doc_str):
+    assert f"Document(id={doc.id}, mimetype: 'text/plain', {doc_str})" == str(doc)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
     "doc1_data,doc2_data",
     [
         [{"text": "test text"}, {"text": "test text", "mime_type": "text/plain"}],
