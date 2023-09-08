@@ -13,30 +13,6 @@ import pandas
 logger = logging.getLogger(__name__)
 
 
-def _safe_equals(obj_1, obj_2) -> bool:  # pylint: disable=too-many-return-statements
-    """
-    Compares two dictionaries for equality, taking arrays, dataframes and other objects into account.
-    """
-    if type(obj_1) != type(obj_2):
-        return False
-
-    if isinstance(obj_1, dict):
-        if obj_1.keys() != obj_2.keys():
-            return False
-        return all(_safe_equals(obj_1[key], obj_2[key]) for key in obj_1)
-
-    if isinstance(obj_1, Path):
-        return obj_1.absolute() == obj_2.absolute()
-
-    if isinstance(obj_1, numpy.ndarray):
-        return obj_1.shape == obj_2.shape and (obj_1 == obj_2).all()
-
-    if isinstance(obj_1, pandas.DataFrame):
-        return obj_1.equals(obj_2)
-
-    return obj_1 == obj_2
-
-
 class DocumentEncoder(json.JSONEncoder):
     """
     Encodes more exotic datatypes like pandas dataframes or file paths.
@@ -112,27 +88,28 @@ class Document:
     mime_type: str = field(default="text/plain")
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
     id_hash_keys: List[str] = field(default_factory=lambda: ["text", "array", "dataframe", "blob"], hash=False)
-    score: Optional[float] = field(default=None, compare=True)
+    score: Optional[float] = field(default=None, compare=False)
     embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
 
     def __str__(self):
-        if self.text:
-            return f"{self.__class__.__name__}(mimetype: {self.mime_type}, text: '{self.text}')"
-        if self.array:
-            return f"{self.__class__.__name__}(mimetype: {self.mime_type}, array: '{self.array}')"
-        if self.dataframe:
-            return f"{self.__class__.__name__}(mimetype: {self.mime_type}, dataframe: '{self.dataframe}')"
-        if self.blob:
-            return f"{self.__class__.__name__}(mimetype: {self.mime_type}, binary only)"
-        return f"{self.__class__.__name__}(mimetype: {self.mime_type}, no content)"
+        fields = [f"mimetype: '{self.mime_type}'"]
+        if self.text is not None:
+            fields.append(f"text: '{self.text}'" if len(self.text) < 100 else f"text: '{self.text[:100]}...'")
+        if self.array is not None:
+            fields.append(f"array: {self.array.shape}")
+        if self.dataframe is not None:
+            fields.append(f"dataframe: {self.dataframe.shape}")
+        if self.blob is not None:
+            fields.append(f"blob: {len(self.blob)} bytes")
+        fields_str = ", ".join(fields)
+        return f"{self.__class__.__name__}(id={self.id}, {fields_str})"
 
     def __eq__(self, other):
         """
-        Compares documents for equality. Compares `embedding` properly and checks the metadata taking care of
-        embeddings, paths, dataframes, nested dictionaries and other objects.
+        Compares documents for equality. Uses the id to check whether the documents are supposed to be the same.
         """
         if type(self) == type(other):
-            return _safe_equals(self.to_dict(), other.to_dict())
+            return self.id == other.id
         return False
 
     def __post_init__(self):
@@ -150,18 +127,26 @@ class Document:
 
     def _create_id(self):
         """
-        Creates a hash of the content given that acts as the document's ID.
+        Creates a hash of the given content that acts as the document's ID.
         """
         document_data = self.flatten()
         contents = [self.__class__.__name__]
+        missing_id_hash_keys = []
         if self.id_hash_keys:
             for key in self.id_hash_keys:
                 if key not in document_data:
-                    logger.info("ID hash key '%s' not found in document.", key)
+                    missing_id_hash_keys.append(key)
                 else:
-                    contents.append(str(document_data.get(key, None)))
+                    contents.append(str(document_data.get(key)))
         content_to_hash = ":".join(contents)
-        return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
+        doc_id = hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
+        if missing_id_hash_keys:
+            logger.warning(
+                "Document %s is missing the following id_hash_keys: %s. Using a hash of the remaining content as ID.",
+                doc_id,
+                missing_id_hash_keys,
+            )
+        return doc_id
 
     def to_dict(self):
         """

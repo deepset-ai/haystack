@@ -20,6 +20,32 @@ def test_document_is_immutable():
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
+    "doc,doc_str",
+    [
+        (Document(text="test text"), "text: 'test text'"),
+        (Document(array=np.zeros((3, 7))), "array: (3, 7)"),
+        (
+            Document(dataframe=pd.DataFrame([["John", 25], ["Martha", 34]], columns=["name", "age"])),
+            "dataframe: (2, 2)",
+        ),
+        (Document(blob=bytes("hello, test string".encode("utf-8"))), "blob: 18 bytes"),
+        (
+            Document(
+                text="test text",
+                array=np.zeros((3, 7)),
+                dataframe=pd.DataFrame([["John", 25], ["Martha", 34]], columns=["name", "age"]),
+                blob=bytes("hello, test string".encode("utf-8")),
+            ),
+            "text: 'test text', array: (3, 7), dataframe: (2, 2), blob: 18 bytes",
+        ),
+    ],
+)
+def test_document_str(doc, doc_str):
+    assert f"Document(id={doc.id}, mimetype: 'text/plain', {doc_str})" == str(doc)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
     "doc1_data,doc2_data",
     [
         [{"text": "test text"}, {"text": "test text", "mime_type": "text/plain"}],
@@ -71,10 +97,12 @@ def test_id_hash_keys_changes_id():
 
 
 @pytest.mark.unit
-def test_id_hash_keys_field_may_be_missing():
+def test_id_hash_keys_field_may_be_missing(caplog):
     doc1 = Document(text="test text", id_hash_keys=["something"])
     doc2 = Document(text="test text", id_hash_keys=["something else"])
     assert doc1.id == doc2.id
+    assert "is missing the following id_hash_keys: ['something']." in caplog.text
+    assert "is missing the following id_hash_keys: ['something else']." in caplog.text
 
 
 @pytest.mark.unit
@@ -93,70 +121,15 @@ def test_basic_equality_type_mismatch():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize(
-    "doc1,doc2",
-    [
-        [Document(text="test text"), Document(text="test text")],
-        [Document(text="test text", score=100), Document(text="test text", score=100)],
-        [
-            Document(text="test text", embedding=np.array([10, 10])),
-            Document(text="test text", embedding=np.array([10, 10])),
-        ],
-        [
-            Document(text="test text", metadata={"value": 1, "another": "value"}),
-            Document(text="test text", metadata={"value": 1, "another": "value"}),
-        ],
-        [
-            Document(text="test text", metadata={"value": {"another": "value"}}),
-            Document(text="test text", metadata={"value": {"another": "value"}}),
-        ],
-        [Document(array=np.array([1, 2])), Document(array=np.array([1, 2]))],
-        [Document(dataframe=pd.DataFrame([1, 2])), Document(dataframe=pd.DataFrame([1, 2]))],
-        [Document(blob=b"some bytes"), Document(blob=b"some bytes")],
-    ],
-)
-def test_simple_equality(doc1, doc2):
+def test_basic_equality_id():
+    doc1 = Document(text="test text")
+    doc2 = Document(text="test text")
+
     assert doc1 == doc2
 
+    object.__setattr__(doc1, "id", "1234")
+    object.__setattr__(doc2, "id", "5678")
 
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "doc1,doc2",
-    [
-        [Document(text="test text", score=100), Document(text="test text")],
-        [Document(text="test text", score=100), Document(text="test text", score=101)],
-        [Document(text="test text", embedding=np.array([10, 10])), Document(text="test text")],
-        [
-            Document(text="test text", embedding=np.array([10, 10])),
-            Document(text="test text", embedding=np.array([10, 11])),
-        ],
-        [
-            Document(text="test text", embedding=np.array([10, 10])),
-            Document(text="test text", embedding=np.array([[[10, 10]]])),
-        ],
-        [Document(text="test text", metadata={"value": 1, "another": "value"}), Document(text="test text")],
-        [
-            Document(text="test text", metadata={"value": 1, "another": "value"}),
-            Document(text="test text", metadata={"value": 1}),
-        ],
-        [
-            Document(text="test text", metadata={"value": 1, "another": "value"}),
-            Document(text="test text", metadata={"value": 2, "another": "value"}),
-        ],
-        [
-            Document(text="test text", metadata={"value": {"another": "value"}}),
-            Document(text="test text", metadata={"value": {"another": "valueee"}}),
-        ],
-        [
-            Document(text="test text", metadata={"value": {"another": "value"}}),
-            Document(text="test text", metadata={"value": {"another": "value", "extra": "field"}}),
-        ],
-        [Document(array=np.array([1, 2])), Document(array=np.array([1, 3]))],
-        [Document(dataframe=pd.DataFrame([1, 2])), Document(dataframe=pd.DataFrame([2, 1]))],
-        [Document(blob=b"some bytes"), Document("something else".encode())],
-    ],
-)
-def test_simple_inequality(doc1, doc2):
     assert doc1 != doc2
 
 

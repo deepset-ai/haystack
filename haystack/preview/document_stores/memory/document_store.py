@@ -181,6 +181,7 @@ class MemoryDocumentStore:
             or isinstance(documents, str)
             or any(not isinstance(doc, Document) for doc in documents)
         ):
+            print(documents)
             raise ValueError("Please provide a list of Documents.")
 
         for document in documents:
@@ -218,6 +219,11 @@ class MemoryDocumentStore:
         if not query:
             raise ValueError("Query should be a non-empty string")
 
+        content_type_filter = {"$or": {"text": {"$not": None}, "dataframe": {"$not": None}}}
+        if filters:
+            filters = {"$and": [content_type_filter, filters]}
+        else:
+            filters = content_type_filter
         all_documents = self.filter_documents(filters=filters)
 
         # Lowercase all documents
@@ -228,6 +234,13 @@ class MemoryDocumentStore:
             else:
                 if doc.text is not None:
                     lower_case_documents.append(doc.text.lower())
+                    if doc.dataframe is not None:
+                        logger.warning(
+                            "Document '%s' has both text and dataframe content. "
+                            "Using text content and skipping dataframe content.",
+                            doc.id,
+                        )
+                        continue
                 if doc.dataframe is not None:
                     str_content = doc.dataframe.astype(str)
                     csv_content = str_content.to_csv(index=False)

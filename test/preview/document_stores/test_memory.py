@@ -1,6 +1,7 @@
 import logging
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -76,7 +77,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
         docs = [Document(text="Hello world"), Document(text="Haystack supports multiple languages")]
         docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="What languages?", top_k=1, filters={})
+        results = docstore.bm25_retrieval(query="What languages?", top_k=1)
         assert len(results) == 1
         assert results[0].text == "Haystack supports multiple languages"
 
@@ -93,7 +94,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         # Tests if the bm25_retrieval method returns a document when the query is an empty string.
         docs = [Document(text="Hello world"), Document(text="Haystack supports multiple languages")]
         docstore.write_documents(docs)
-        with pytest.raises(ValueError, match=r"Query should be a non-empty string"):
+        with pytest.raises(ValueError, match="Query should be a non-empty string"):
             docstore.bm25_retrieval(query="", top_k=1)
 
     @pytest.mark.unit
@@ -180,6 +181,75 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         df = results[0].dataframe
         assert isinstance(df, pd.DataFrame)
         assert df.equals(table_content)
+
+    @pytest.mark.unit
+    def test_bm25_retrieval_with_text_and_table_content(self, docstore: DocumentStore, caplog):
+        table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
+        document = Document(text="Gardening", dataframe=table_content)
+        docs = [
+            document,
+            Document(text="Python"),
+            Document(text="Bird Watching"),
+            Document(text="Gardening"),
+            Document(text="Java"),
+        ]
+        docstore.write_documents(docs)
+        results = docstore.bm25_retrieval(query="Gardening", top_k=2)
+        assert document in results
+        assert "both text and dataframe content" in caplog.text
+        results = docstore.bm25_retrieval(query="Python", top_k=2)
+        assert document not in results
+
+    @pytest.mark.unit
+    def test_bm25_retrieval_default_filter_for_text_and_dataframes(self, docstore: DocumentStore):
+        docs = [
+            Document(array=np.array([1, 2, 3])),
+            Document(text="Gardening", array=np.array([1, 2, 3])),
+            Document(text="Bird watching"),
+        ]
+        docstore.write_documents(docs)
+        results = docstore.bm25_retrieval(query="doesn't matter, top_k is 10", top_k=10)
+        assert len(results) == 2
+
+    @pytest.mark.unit
+    def test_bm25_retrieval_with_filters(self, docstore: DocumentStore):
+        selected_document = Document(text="Gardening", array=np.array([1, 2, 3]), metadata={"selected": True})
+        docs = [Document(array=np.array([1, 2, 3])), selected_document, Document(text="Bird watching")]
+        docstore.write_documents(docs)
+        results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
+        assert results == [selected_document]
+
+    @pytest.mark.unit
+    def test_bm25_retrieval_with_filters_keeps_default_filters(self, docstore: DocumentStore):
+        docs = [
+            Document(array=np.array([1, 2, 3]), metadata={"selected": True}),
+            Document(text="Gardening", array=np.array([1, 2, 3])),
+            Document(text="Bird watching"),
+        ]
+        docstore.write_documents(docs)
+        results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
+        assert not len(results)
+
+    @pytest.mark.unit
+    def test_bm25_retrieval_with_filters_on_text_or_dataframe(self, docstore: DocumentStore):
+        document = Document(dataframe=pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web"]}))
+        docs = [
+            Document(array=np.array([1, 2, 3])),
+            Document(text="Gardening"),
+            Document(text="Bird watching"),
+            document,
+        ]
+        docstore.write_documents(docs)
+        results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"text": None})
+        assert results == [document]
+
+    @pytest.mark.unit
+    def test_bm25_retrieval_with_documents_with_mixed_content(self, docstore: DocumentStore):
+        double_document = Document(text="Gardening", array=np.array([1, 2, 3]))
+        docs = [Document(array=np.array([1, 2, 3])), double_document, Document(text="Bird watching")]
+        docstore.write_documents(docs)
+        results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"array": {"$not": None}})
+        assert results == [double_document]
 
     @pytest.mark.unit
     def test_embedding_retrieval(self):
