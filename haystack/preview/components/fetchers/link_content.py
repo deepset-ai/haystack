@@ -77,6 +77,7 @@ class LinkContentFetcher:
         self.handlers["text/html"] = text_content_handler
         self.handlers["text/plain"] = text_content_handler
         self.handlers["application/pdf"] = binary_content_handler
+        self.handlers["application/octet-stream"] = binary_content_handler
 
         @retry(
             reraise=True,
