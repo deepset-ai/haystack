@@ -131,7 +131,7 @@ class LinkContentFetcher:
             content_type = self._get_content_type(response)
             document_data["mime_type"] = content_type
             handler: Callable = self.handlers[content_type]
-            document_data |= handler(response)
+            document_data.update(handler(response))
             return {"document": Document(**document_data)}
 
         except Exception as e:
