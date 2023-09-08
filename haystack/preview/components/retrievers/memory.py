@@ -190,7 +190,7 @@ class MemoryEmbeddingRetriever:
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The maximum number of documents to return.
         :param scale_score: Whether to scale the scores of the retrieved documents or not.
-        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents.
         :return: The retrieved documents.
 
         :raises ValueError: If the specified DocumentStore is not found or is not a MemoryDocumentStore instance.
