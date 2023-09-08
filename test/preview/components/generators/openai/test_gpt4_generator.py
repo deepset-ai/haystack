@@ -6,7 +6,7 @@ from haystack.preview.components.generators.openai.gpt4 import GPT4Generator, AP
 from haystack.preview.components.generators.openai.gpt35 import default_streaming_callback
 
 
-class TestGPT35Generator:
+class TestGPT4Generator:
     @pytest.mark.unit
     def test_init_default(self):
         component = GPT4Generator(api_key="test-api-key")
