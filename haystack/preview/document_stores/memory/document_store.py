@@ -228,6 +228,13 @@ class MemoryDocumentStore:
             else:
                 if doc.text is not None:
                     lower_case_documents.append(doc.text.lower())
+                    if doc.dataframe is not None:
+                        logger.warning(
+                            "Document '%s' has both text and dataframe content. "
+                            "Using text content and skipping dataframe content.",
+                            doc.id,
+                        )
+                        continue
                 if doc.dataframe is not None:
                     str_content = doc.dataframe.astype(str)
                     csv_content = str_content.to_csv(index=False)

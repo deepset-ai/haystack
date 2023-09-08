@@ -182,6 +182,24 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         assert df.equals(table_content)
 
     @pytest.mark.unit
+    def test_bm25_retrieval_with_text_and_table_content(self, docstore: DocumentStore, caplog):
+        table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
+        document = Document(text="Gardening", dataframe=table_content)
+        docs = [
+            document,
+            Document(text="Python"),
+            Document(text="Bird Watching"),
+            Document(text="Gardening"),
+            Document(text="Java"),
+        ]
+        docstore.write_documents(docs)
+        results = docstore.bm25_retrieval(query="Gardening", top_k=2)
+        assert document in results
+        assert "both text and dataframe content" in caplog.text
+        results = docstore.bm25_retrieval(query="Python", top_k=2)
+        assert document not in results
+
+    @pytest.mark.unit
     def test_embedding_retrieval(self):
         docstore = MemoryDocumentStore(embedding_similarity_function="cosine")
         # Tests if the embedding retrieval method returns the correct document based on the input query embedding.
