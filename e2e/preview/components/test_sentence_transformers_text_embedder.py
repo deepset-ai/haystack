@@ -8,7 +8,7 @@ def cosine_sim(a, b):
 
 
 def test_sentence_transformers_text_embedder():
-    texts = ["Gyraffe is a long-necked animal", "I love animals", "Haystack is a great framework"]
+    texts = ["Giraffe is a long-necked animal", "I love animals", "Haystack is a great framework"]
 
     # Use a very small model for testing
     txt_embedder = SentenceTransformersTextEmbedder(model_name_or_path="paraphrase-albert-small-v2")

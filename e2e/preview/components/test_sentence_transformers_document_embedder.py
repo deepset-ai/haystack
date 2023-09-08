@@ -12,7 +12,7 @@ def cosine_sim(a, b):
 
 def test_sentence_transformers_document_embedder():
     docs = [
-        Document(content="Gyraffe is a long-necked animal", metadata={"topic": "animals"}),
+        Document(content="Giraffe is a long-necked animal", metadata={"topic": "animals"}),
         Document(content="I love animals", metadata={"topic": "animals"}),
         Document(content="Haystack is a great framework", metadata={"topic": "LLMs"}),
     ]
