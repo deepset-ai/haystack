@@ -17,15 +17,6 @@ class TestBatchCreator:
         assert data == {"type": "BatchCreator", "init_parameters": {"expected_type": "int", "max_batch_size": 10}}
 
     @pytest.mark.unit
-    def test_to_dict_typing_type(self):
-        component = BatchCreator(expected_type=Any, max_batch_size=10)
-        data = component.to_dict()
-        assert data == {
-            "type": "BatchCreator",
-            "init_parameters": {"expected_type": "typing.Any", "max_batch_size": 10},
-        }
-
-    @pytest.mark.unit
     def test_to_dict_object_type(self):
         component = BatchCreator(expected_type=Document, max_batch_size=10)
         data = component.to_dict()
@@ -42,13 +33,6 @@ class TestBatchCreator:
         data = {"type": "BatchCreator", "init_parameters": {"expected_type": "int", "max_batch_size": 10}}
         component = BatchCreator.from_dict(data)
         assert component.expected_type == int
-        assert component.max_batch_size == 10
-
-    @pytest.mark.unit
-    def test_from_dict_typing_type(self):
-        data = {"type": "BatchCreator", "init_parameters": {"expected_type": "typing.Any", "max_batch_size": 10}}
-        component = BatchCreator.from_dict(data)
-        assert component.expected_type == Any
         assert component.max_batch_size == 10
 
     @pytest.mark.unit

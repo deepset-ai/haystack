@@ -2,7 +2,6 @@ from typing import Optional, List
 
 import sys
 import builtins
-from math import inf
 
 from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
 
@@ -14,7 +13,7 @@ class BatchCreator:
     `release_batch` flag is set to True.
     """
 
-    # TODO support more complex input types like `Optional`, `Dict`, `List`, etc...
+    # TODO support types from the typing module
 
     def __init__(self, expected_type, max_batch_size: Optional[int] = 0):
         """
@@ -25,7 +24,7 @@ class BatchCreator:
             type to a list of this type.
 
             Keep in mind that only basic types (int, str, etc) and object types are currently supported by the
-            `to_dict` and `from_dict` methods. Complex types like `Dict`, `List`, etc... will fail.
+            `to_dict` and `from_dict` methods. Types from the `typing` module will fail.
 
         :param max_batch_size: The maximum size of the batch.
         """
@@ -36,6 +35,9 @@ class BatchCreator:
         self.batch: List[expected_type] = []
 
     def to_dict(self):
+        """
+        Returns a serializable dictionary representation of the component.
+        """
         module = self.expected_type.__module__
         if module == "builtins":
             type_name = self.expected_type.__name__
@@ -45,6 +47,9 @@ class BatchCreator:
 
     @classmethod
     def from_dict(cls, data):
+        """
+        Reconstructs the component from a serializable dictionary representation.
+        """
         if not "expected_type" in data["init_parameters"]:
             raise DeserializationError("The expected_type parameter for BatchCreator is missing.")
 
