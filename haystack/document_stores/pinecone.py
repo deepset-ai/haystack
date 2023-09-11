@@ -308,7 +308,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 current_type_filter = filters["$and"][self.type_metadata_field]  # type: ignore
                 type_values = [type_value]
                 if isinstance(current_type_filter, str):
-                    type_values.append(current_type_filter)
+                    type_values.append(current_type_filter)  # type: ignore
                 elif isinstance(current_type_filter, dict):
                     if "$eq" in current_type_filter:
                         # current `doc_type` filter has single value
@@ -399,10 +399,10 @@ class PineconeDocumentStore(BaseDocumentStore):
         filters = filters or {}
         if not type_metadata:
             # add filter for `doc_type` metadata related to documents without embeddings
-            filters = self._add_type_metadata_filter(filters, type_value=self.document_without_embedding_metadata)
+            filters = self._add_type_metadata_filter(filters, type_value=self.document_without_embedding_metadata)  # type: ignore
             if not only_documents_without_embedding:
                 # add filter for `doc_type` metadata related to documents with embeddings
-                filters = self._add_type_metadata_filter(filters, type_value=self.document_with_embedding_metadata)
+                filters = self._add_type_metadata_filter(filters, type_value=self.document_with_embedding_metadata)  # type: ignore
         else:
             # if value for `doc_type` metadata is specified, add filter with given value
             filters = self._add_type_metadata_filter(filters, type_value=type_metadata)
@@ -435,7 +435,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         Pinecone database.
         """
         if self.get_document_count(
-            index=index, type_metadata=self.document_with_embedding_metadata
+            index=index, type_metadata=self.document_with_embedding_metadata  # type: ignore
         ) != self.get_embedding_count(index=index):
             raise PineconeDocumentStoreError(
                 f"The number of documents present in Pinecone ({self.get_document_count(index=index)}) "
@@ -653,7 +653,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         documents = self.get_all_documents_generator(
             index=index,
-            type_metadata=type_value,
+            type_metadata=type_value,  # type: ignore
             filters=filters,
             return_embedding=False,
             batch_size=batch_size,
@@ -755,7 +755,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if not type_metadata:
             # set default value for `doc_type` metadata field
-            type_metadata = self._get_default_type_metadata(index, namespace)
+            type_metadata = self._get_default_type_metadata(index, namespace)  # type: ignore
 
         result = self.get_all_documents_generator(
             index=index,
@@ -830,7 +830,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if not type_metadata:
             # set default value for `doc_type` metadata field
-            type_metadata = self._get_default_type_metadata(index, namespace)
+            type_metadata = self._get_default_type_metadata(index, namespace)  # type: ignore
 
         ids = self._get_all_document_ids(index=index, type_metadata=type_metadata, filters=filters, namespace=namespace)
 
@@ -1183,7 +1183,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         # if `doc_type` metadata not set, set to documents with embeddings
         if type_metadata is None:
-            type_metadata = self.document_with_embedding_metadata
+            type_metadata = self.document_with_embedding_metadata  # type: ignore
 
         filters = filters or {}
         filters = self._add_type_metadata_filter(filters, type_metadata)
@@ -1590,7 +1590,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     index=index,
                     return_embedding=True,
                     namespace=namespace,
-                    type_metadata=type_metadata,
+                    type_metadata=type_metadata,  # type: ignore
                 )
                 update_ids = [doc.id for doc in docs]
             else:
@@ -1608,7 +1608,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     index=index,
                     return_embedding=True,
                     namespace=namespace,
-                    type_metadata=type_metadata,
+                    type_metadata=type_metadata,  # type: ignore
                 )
                 # Apply filter to update IDs, finding intersection
                 update_ids = list(set(update_ids).intersection({doc.id for doc in docs}))
@@ -1633,7 +1633,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         # add filter for `doc_type` metadata field
         filters = filters or {}
-        filters = self._add_type_metadata_filter(filters, self.label_metadata)
+        filters = self._add_type_metadata_filter(filters, self.label_metadata)  # type: ignore
 
         documents = self.get_all_documents(index=index, filters=filters, headers=headers, namespace=namespace)
         for doc in documents:
