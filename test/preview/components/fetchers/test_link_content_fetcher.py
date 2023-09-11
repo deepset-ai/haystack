@@ -43,6 +43,7 @@ class TestLinkContentFetcher:
             "text/html": text_content_handler,
             "text/plain": text_content_handler,
             "application/pdf": binary_content_handler,
+            "application/octet-stream": binary_content_handler,
         }
         assert hasattr(fetcher, "_get_response")
 
