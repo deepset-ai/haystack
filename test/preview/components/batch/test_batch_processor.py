@@ -1,79 +1,63 @@
-from typing import Any
-from unittest.mock import MagicMock
-
 import pytest
 
-from haystack.preview import Document, DeserializationError
-from haystack.preview.testing.factory import document_store_class
-from haystack.preview.components.batch.batch_creator import BatchCreator
-from haystack.preview.document_stores import DuplicatePolicy
+from haystack.preview import Document
+from haystack.preview.components.batch.batch_processor import BatchProcessor, BatchProcessorError
 
 
 class TestBatchCreator:
     @pytest.mark.unit
     def test_to_dict_builtin_type(self):
-        component = BatchCreator(expected_type=int, max_batch_size=10)
+        component = BatchProcessor(expected_type=int)
         data = component.to_dict()
-        assert data == {"type": "BatchCreator", "init_parameters": {"expected_type": "int", "max_batch_size": 10}}
+        assert data == {"type": "BatchProcessor", "init_parameters": {"expected_type": "int"}}
 
     @pytest.mark.unit
     def test_to_dict_object_type(self):
-        component = BatchCreator(expected_type=Document, max_batch_size=10)
+        component = BatchProcessor(expected_type=Document)
         data = component.to_dict()
         assert data == {
-            "type": "BatchCreator",
-            "init_parameters": {
-                "expected_type": "haystack.preview.dataclasses.document.Document",
-                "max_batch_size": 10,
-            },
+            "type": "BatchProcessor",
+            "init_parameters": {"expected_type": "haystack.preview.dataclasses.document.Document"},
         }
 
     @pytest.mark.unit
     def test_from_dict_builtin_type(self):
-        data = {"type": "BatchCreator", "init_parameters": {"expected_type": "int", "max_batch_size": 10}}
-        component = BatchCreator.from_dict(data)
+        data = {"type": "BatchProcessor", "init_parameters": {"expected_type": "int"}}
+        component = BatchProcessor.from_dict(data)
         assert component.expected_type == int
-        assert component.max_batch_size == 10
 
     @pytest.mark.unit
     def test_from_dict_object_type(self):
         data = {
-            "type": "BatchCreator",
-            "init_parameters": {
-                "expected_type": "haystack.preview.dataclasses.document.Document",
-                "max_batch_size": 10,
-            },
+            "type": "BatchProcessor",
+            "init_parameters": {"expected_type": "haystack.preview.dataclasses.document.Document"},
         }
-        component = BatchCreator.from_dict(data)
+        component = BatchProcessor.from_dict(data)
         assert component.expected_type == Document
-        assert component.max_batch_size == 10
 
     @pytest.mark.unit
-    def test_run_default(self):
-        component = BatchCreator(expected_type=int, max_batch_size=3)
-        assert component.batch == []
-
-        output = component.run(item=1)
-        assert output == {}
-        assert component.batch == [1]
-
-        output = component.run(item=2)
-        assert output == {}
-        assert component.batch == [1, 2]
-
-        output = component.run(item=3)
-        assert output == {"batch": [1, 2, 3]}
-        assert component.batch == []
+    def test_run_with_no_input(self):
+        component = BatchProcessor(expected_type=int)
+        output = component.run()
+        assert output == {"item": None, "current_batch": None}
 
     @pytest.mark.unit
-    def test_run_with_release_batch(self):
-        component = BatchCreator(expected_type=int, max_batch_size=10)
-        assert component.batch == []
+    def test_run_with_new_batch(self):
+        component = BatchProcessor(expected_type=int)
+        output = component.run(new_batch=[1, 2, 3])
+        assert output == {"item": 1, "current_batch": [2, 3]}
 
-        output = component.run(item=1)
-        assert output == {}
-        assert component.batch == [1]
+    @pytest.mark.unit
+    def test_run_with_current_batch(self):
+        component = BatchProcessor(expected_type=int)
+        output = component.run(current_batch=[1, 2, 3])
+        assert output == {"item": 1, "current_batch": [2, 3]}
 
-        output = component.run(item=2, release_batch=True)
-        assert output == {"batch": [1, 2]}
-        assert component.batch == []
+    @pytest.mark.unit
+    def test_run_with_new_and_current_batch(self):
+        component = BatchProcessor(expected_type=int)
+        with pytest.raises(
+            BatchProcessorError,
+            match="BatchProcessor received a new batch before the previous one was fully processed.",
+        ):
+            component.run(new_batch=[1, 2, 3], current_batch=[1, 2, 3])
