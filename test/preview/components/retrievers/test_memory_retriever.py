@@ -186,9 +186,9 @@ class TestMemoryRetrievers:
         top_k = 3
         ds = MemoryDocumentStore(embedding_similarity_function="cosine")
         docs = [
-            Document(content="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(content="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
-            Document(content="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
+            Document(text="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(text="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(text="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
         ]
         ds.write_documents(docs)
 
