@@ -1,0 +1,2 @@
+preview:
+  - - Adds `BatchProcessor` to ease the creation of batches in pipelines 2.0.

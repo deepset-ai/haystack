@@ -1,5 +1,4 @@
-from typing import Type, List, Optional
-from collections import OrderedDict
+from typing import List, Optional
 
 from haystack.preview import component, ComponentError, default_to_dict, default_from_dict, DeserializationError
 from haystack.preview.utils.marshalling import marshal_type, unmarshal_type
@@ -17,7 +16,7 @@ class BatchProcessor:
 
     # TODO support more complex input types like `Optional`, `Dict`, `List`, etc...
 
-    def __init__(self, expected_type: Type):
+    def __init__(self, expected_type):
         """
         Component to process batches of items. To use this component effectively, use the `item` output to send the
         batch item to the next component in the pipeline and connect the `current_batch` output of this component
