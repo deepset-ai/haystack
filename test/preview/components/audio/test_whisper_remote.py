@@ -87,7 +87,7 @@ class TestRemoteWhisperTranscriber:
 
             result = comp.run(audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"])
             expected = Document(
-                content="test transcription",
+                text="test transcription",
                 metadata={
                     "audio_file": preview_samples_path / "audio" / "this is the content of the document.wav",
                     "other_metadata": ["other", "meta", "data"],
@@ -111,7 +111,7 @@ class TestRemoteWhisperTranscriber:
                 ]
             )
             expected = Document(
-                content="test transcription",
+                text="test transcription",
                 metadata={
                     "audio_file": str(
                         (preview_samples_path / "audio" / "this is the content of the document.wav").absolute()
@@ -134,7 +134,7 @@ class TestRemoteWhisperTranscriber:
             with open(preview_samples_path / "audio" / "this is the content of the document.wav", "rb") as audio_stream:
                 result = comp.transcribe(audio_files=[audio_stream])
                 expected = Document(
-                    content="test transcription",
+                    text="test transcription",
                     metadata={"audio_file": "<<binary stream>>", "other_metadata": ["other", "meta", "data"]},
                 )
                 assert result == [expected]
