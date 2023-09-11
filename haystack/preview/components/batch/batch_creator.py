@@ -28,7 +28,7 @@ class BatchCreator:
         """
         self.expected_type = expected_type
         self.max_batch_size = max_batch_size
-        component.set_input_types(self, item=expected_type, release_batch=bool)
+        component.set_input_types(self, item=expected_type, release_batch=Optional[bool])
         component.set_output_types(self, batch=List[expected_type])
         self.batch: List[expected_type] = []
 

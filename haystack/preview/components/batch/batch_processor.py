@@ -1,4 +1,5 @@
 from typing import Type, List, Optional
+from collections import OrderedDict
 
 from haystack.preview import component, ComponentError, default_to_dict, default_from_dict, DeserializationError
 from haystack.preview.utils.marshalling import marshal_type, unmarshal_type
@@ -56,4 +57,4 @@ class BatchProcessor:
         if new_batch:
             current_batch = new_batch
         item = current_batch.pop(0) if current_batch else None
-        return {"item": item, "current_batch": current_batch}
+        return {"item": item, "current_batch": current_batch or None}
