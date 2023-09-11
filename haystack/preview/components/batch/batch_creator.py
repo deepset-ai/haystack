@@ -1,6 +1,8 @@
-from typing import Optional, Type, List
+from typing import Optional, List
+
 import sys
 import builtins
+from math import inf
 
 from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
 
@@ -14,7 +16,7 @@ class BatchCreator:
 
     # TODO support more complex input types like `Optional`, `Dict`, `List`, etc...
 
-    def __init__(self, expected_type: Type, max_batch_size: Optional[int] = 0):
+    def __init__(self, expected_type, max_batch_size: Optional[int] = 0):
         """
         Component to create batches of items. The batch is released when the batch size is reached or when the
         `release_batch` flag is set to True.
@@ -31,7 +33,7 @@ class BatchCreator:
         self.max_batch_size = max_batch_size
         component.set_input_types(self, item=expected_type, release_batch=bool)
         component.set_output_types(self, batch=List[expected_type])
-        self.batch = []
+        self.batch: List[expected_type] = []
 
     def to_dict(self):
         module = self.expected_type.__module__
@@ -62,7 +64,7 @@ class BatchCreator:
         data["init_parameters"]["expected_type"] = expected_type
         return default_from_dict(cls, data)
 
-    def run(self, item, release_batch: bool = False) -> List:
+    def run(self, item, release_batch: bool = False):
         """
         Simply accumulates the inputs items into a list. When the list reaches the max_batch_size or release_batch is
         set to True, outputs the batch and resets its state.
@@ -72,8 +74,9 @@ class BatchCreator:
         """
         self.batch.append(item)
 
-        if not release_batch and len(self.batch) < self.max_batch_size:
+        if not release_batch and (self.max_batch_size is not None and len(self.batch) < self.max_batch_size):
             return {}
+
         output = {"batch": self.batch}
         self.batch = []
         return output
