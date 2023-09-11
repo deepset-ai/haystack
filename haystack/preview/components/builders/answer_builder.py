@@ -90,12 +90,12 @@ class AnswerBuilder:
 
             answer_string = AnswerBuilder._extract_answer_string(reply, pattern)
             referenced_docs = []
-            for idx in reference_idxs:
-                if idx < len(documents):
-                    referenced_docs.append(documents[idx])
-                else:
-                    logger.warning("Document index '%s' referenced in Generator output is out of range. ", idx + 1)
-
+            if documents:
+                for idx in reference_idxs:
+                    if idx < len(documents):
+                        referenced_docs.append(documents[idx])
+                    else:
+                        logger.warning("Document index '%s' referenced in Generator output is out of range. ", idx + 1)
             answer = GeneratedAnswer(data=answer_string, query=query, documents=referenced_docs, metadata=meta)
             all_answers.append(answer)
 
