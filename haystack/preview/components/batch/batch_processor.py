@@ -1,8 +1,7 @@
 from typing import Type, List, Optional
-import sys
-import builtins
 
 from haystack.preview import component, ComponentError, default_to_dict, default_from_dict, DeserializationError
+from haystack.preview.utils.marshalling import marshal_type, unmarshal_type
 
 
 class BatchProcessorError(ComponentError):
@@ -32,32 +31,13 @@ class BatchProcessor:
         self.batch = None
 
     def to_dict(self):
-        module = self.expected_type.__module__
-        if module == "builtins":
-            type_name = self.expected_type.__name__
-        else:
-            type_name = f"{module}.{self.expected_type.__name__}"
-        return default_to_dict(self, expected_type=type_name, max_batch_size=self.max_batch_size)
+        return default_to_dict(self, expected_type=marshal_type(self.expected_type), max_batch_size=self.max_batch_size)
 
     @classmethod
     def from_dict(cls, data):
         if not "expected_type" in data["init_parameters"]:
-            raise DeserializationError("The expected_type parameter for BatchProcessor is missing.")
-
-        if "." not in data["init_parameters"]["expected_type"]:
-            expected_type = getattr(builtins, data["init_parameters"]["expected_type"], None)
-        else:
-            parts = data["init_parameters"]["expected_type"].split(".")
-            module_name = ".".join(parts[:-1])
-            type_name = parts[-1]
-            module = sys.modules.get(module_name, None)
-            if not module:
-                raise DeserializationError(f"Could not locate the module for the expected_type parameter: {module}")
-            expected_type = getattr(module, type_name, None)
-            if not expected_type:
-                raise DeserializationError(f"Could not locate the expected_type parameter type: {type_name}")
-
-        data["init_parameters"]["expected_type"] = expected_type
+            raise DeserializationError("The expected_type parameter for BatchCreator is missing.")
+        data["init_parameters"]["expected_type"] = unmarshal_type(data["init_parameters"]["expected_type"])
         return default_from_dict(cls, data)
 
     def run(self, batch, next: Optional[bool] = False):
