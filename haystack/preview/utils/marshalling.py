@@ -26,7 +26,10 @@ def unmarshal_type(type_name: str) -> Type:
     :return: The type itself.
     """
     if "." not in type_name:
-        return getattr(builtins, type_name, None)
+        type_ = getattr(builtins, type_name, None)
+        if not type_:
+            raise DeserializationError(f"Could not locate builtin called '{type_name}'")
+        return type_
 
     parts = type_name.split(".")
     module_name = ".".join(parts[:-1])
@@ -34,7 +37,7 @@ def unmarshal_type(type_name: str) -> Type:
 
     module = sys.modules.get(module_name, None)
     if not module:
-        raise DeserializationError(f"Could not locate the module for '{type_name}'")
+        raise DeserializationError(f"Could not locate the module '{module_name}'")
 
     type_ = getattr(module, type_name, None)
     if not type_:
