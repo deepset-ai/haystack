@@ -7,7 +7,7 @@ from typing import Dict, Union, Tuple, Optional, List
 import requests
 import tenacity
 import tiktoken
-from tiktoken.model import MODEL_TO_ENCODING, MODEL_PREFIX_TO_ENCODING
+from tiktoken.model import encoding_for_model  # MODEL_TO_ENCODING, MODEL_PREFIX_TO_ENCODING
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError, OpenAIUnauthorizedError
 from haystack.environment import (
@@ -70,13 +70,11 @@ def _openai_text_completion_tokenization_details(model_name: str):
     if model_name == "gpt-35-turbo":
         # covering the lack of support in Tiktoken. https://github.com/openai/tiktoken/pull/72
         model_tokenizer = "cl100k_base"
-    elif model_name in MODEL_TO_ENCODING:
-        model_tokenizer = MODEL_TO_ENCODING[model_name]
     else:
-        for model_prefix, tokenizer in MODEL_PREFIX_TO_ENCODING.items():
-            if model_name.startswith(model_prefix):
-                model_tokenizer = tokenizer
-                break
+        try:
+            model_tokenizer = encoding_for_model(model_name)
+        except KeyError:
+            pass
 
     if model_tokenizer:
         # Based on OpenAI models page, 'davinci' considers have 2049 tokens,
