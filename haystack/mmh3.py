@@ -22,8 +22,10 @@ else:
 del _sys
 
 
-def hash128(key, seed=0x0, x64arch=True):
+def hash128(key, seed=0x0, x64arch=True):  # noqa: C901,PLR0915
     """Implements 128bit murmur3 hash."""
+    # This function has a very high McCabe cyclomatic complexity score of 44
+    # (recommended is 10) and contains 212 statements (recommended is 50).
 
     def hash128_x64(key, seed):
         """Implements 128bit murmur3 hash for x64."""
@@ -153,8 +155,9 @@ def hash128(key, seed=0x0, x64arch=True):
 
         return h2 << 64 | h1
 
-    def hash128_x86(key, seed):
+    def hash128_x86(key, seed):  # noqa: PLR0915
         """Implements 128bit murmur3 hash for x86."""
+        # This function contains 125 statements (recommended is 50).
 
         def fmix(h):
             h ^= h >> 16
