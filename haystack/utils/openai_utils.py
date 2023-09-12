@@ -66,15 +66,10 @@ def _openai_text_completion_tokenization_details(model_name: str):
     tokenizer_name = "gpt2"
     max_tokens_limit = 2049  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
     model_tokenizer = None
-
-    if model_name == "gpt-35-turbo":
-        # covering the lack of support in Tiktoken. https://github.com/openai/tiktoken/pull/72
-        model_tokenizer = "cl100k_base"
-    else:
-        try:
-            model_tokenizer = encoding_for_model(model_name)
-        except KeyError:
-            pass
+    try:
+        model_tokenizer = encoding_for_model(model_name)
+    except KeyError:
+        pass
 
     if model_tokenizer:
         # Based on OpenAI models page, 'davinci' considers have 2049 tokens,
