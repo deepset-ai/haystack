@@ -7,7 +7,7 @@ from typing import Dict, Union, Tuple, Optional, List
 import requests
 import tenacity
 import tiktoken
-from tiktoken.model import encoding_for_model  # MODEL_TO_ENCODING, MODEL_PREFIX_TO_ENCODING
+from tiktoken.model import encoding_for_model
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError, OpenAIUnauthorizedError
 from haystack.environment import (
