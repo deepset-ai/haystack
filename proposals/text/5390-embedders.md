@@ -65,7 +65,7 @@ results = query_pipe.run(...)
 # Motivation
 
 The motivations behind this change were already provided in the previous proposals ([Embedding Retriever](3558-embedding_retriever.md) and [DocumentStores and Retrievers](4370-document_stores_and_retrievers.md)). Here is a summary:
-- Retrievers should't be responsible for embedding Documents.
+- Retrievers shouldn't be responsible for embedding Documents.
 - Currently, Retrievers have many parameters just to support and configure different underlying Encoders(≈Embedders).
 - Adding support for new embedding providers or strategies is difficult. It requires changing the Retriever code.
 

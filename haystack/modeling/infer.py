@@ -304,7 +304,7 @@ class Inferencer:
         :return: list of predictions
         """
         # whether to aggregate predictions across different samples (e.g. for QA on long texts)
-        # TODO remove or adjust after implmenting input objects properly
+        # TODO remove or adjust after implementing input objects properly
         # if set(dicts[0].keys()) == {"qas", "context"}:
         #     warnings.warn("QA Input dictionaries with [qas, context] as keys will be deprecated in the future",
         #                   DeprecationWarning)

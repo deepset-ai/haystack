@@ -47,7 +47,7 @@ On top of these issues, there is the tangential issue of `DocumentStore`s and th
 - `DocumentStore`s are nodes in theory, but in practice they can be added to `Pipeline`s only to receive documents to be stored. On the other hand, `DocumentStore`'s most prominent usecase is as a _source_ of documents, and currently they are not suited for this task without going through an intermediary, most often a `Retriever` class.
   - The relationship between `DocumentStore` and `Retriever` should be left as a topic for a separate proposal but kept in mind, because `Retriever`s currently act as the main interface for `DocumentStore`s into `Pipeline`s.
 
-This proposal tries to adress all the above point by taking a radical stance with:
+This proposal tries to address all the above point by taking a radical stance with:
 
 - A full reimplementation of the `Pipeline` class that does not limit itself to DAGs, can run branches in parallel, can skip branches and can process loops safely.
 
@@ -548,7 +548,7 @@ class MyNode:
             These values will be given to the `__init__` method of a new instance
             when the pipeline is deserialized.
 
-        The `__init__` must be extrememly lightweight, because it's a frequent
+        The `__init__` must be extremely lightweight, because it's a frequent
         operation during the construction and validation of the pipeline. If a node
         has some heavy state to initialize (models, backends, etc...) refer to the
         `warm_up()` method.
@@ -932,7 +932,7 @@ There are a number of drawbacks about the proposed approach:
 
 ## Known limitations
 
-- **Reusability of nodes across Pipelines in REST API.** Currently, REST API are designed in such a way that a separate worker is spawned for each pipeline deployed. That makes sharing node instances across them a non-starter. However, we believe this specific limitation can be adressed by a different approach to the problem, like splitting pipelines in a way that shared nodes are stored in a dedicated sub-pipeline and so on. We postpone addressing this problem when it arises, as we don't consider it blocking and workarounds can be found.
+- **Reusability of nodes across Pipelines in REST API.** Currently, REST API are designed in such a way that a separate worker is spawned for each pipeline deployed. That makes sharing node instances across them a non-starter. However, we believe this specific limitation can be addressed by a different approach to the problem, like splitting pipelines in a way that shared nodes are stored in a dedicated sub-pipeline and so on. We postpone addressing this problem when it arises, as we don't consider it blocking and workarounds can be found.
 
 # Adoption strategy
 
