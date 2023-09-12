@@ -155,7 +155,7 @@ class GPT35Generator:
         replies: List[str]
         metadata: List[Dict[str, Any]]
         if self.streaming_callback:
-            replies_dict = defaultdict(str)
+            replies_dict: Dict[str, str] = defaultdict(str)
             metadata_dict: Dict[str, Dict[str, Any]] = defaultdict(dict)
             for chunk in completion:
                 chunk = self.streaming_callback(chunk)
