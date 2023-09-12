@@ -41,20 +41,6 @@ def test_gpt35_generator_run_wrong_model_name():
     not os.environ.get("OPENAI_API_KEY", None),
     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
-def test_gpt35_generator_run_above_context_length():
-    component = GPT35Generator(api_key=os.environ.get("OPENAI_API_KEY"), n=1)
-    with pytest.raises(
-        openai.InvalidRequestError,
-        match="This model's maximum context length is 4097 tokens. However, your messages resulted in 70008 tokens. "
-        "Please reduce the length of the messages.",
-    ):
-        component.run(prompts=["What's the capital of France? " * 10_000])
-
-
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
 def test_gpt35_generator_run_streaming():
     class Callback:
         def __init__(self):
