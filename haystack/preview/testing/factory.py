@@ -34,7 +34,7 @@ def document_store_class(
 
     Create a DocumentStore class that returns a single document:
     ```python
-    doc = Document(id="fake_id", content="Fake content")
+    doc = Document(id="fake_id", text="Fake content")
     MyFakeStore = document_store_class("MyFakeComponent", documents=[doc])
     document_store = MyFakeStore()
     assert document_store.documents_count() == 1
@@ -51,7 +51,7 @@ def document_store_class(
 
     Create a DocumentStore class that returns a document and a custom count:
     ```python
-    doc = Document(id="fake_id", content="Fake content")
+    doc = Document(id="fake_id", text="Fake content")
     MyFakeStore = document_store_class("MyFakeComponent", documents=[doc], documents_count=100)
     document_store = MyFakeStore()
     assert document_store.documents_count() == 100
