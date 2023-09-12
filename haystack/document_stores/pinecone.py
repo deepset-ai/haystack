@@ -244,7 +244,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def _index_connection_exists(self, index: str, create: bool = False) -> Optional["pinecone.Index"]:
         """
-        Check does the index connection exist. If specified, create an index if it does not exist.
+        Check if the index connection exists. If specified, create an index if it does not exist yet.
 
         :param index: Index name.
         :param create: Indicates if an index needs to be created or not. If set to `True`, create an index
@@ -383,7 +383,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param index: Optional index name to use for the query. If not provided, the default index name is used.
         :param only_documents_without_embedding: If set to `True`, only documents without embeddings are counted.
         :param headers: PineconeDocumentStore does not support headers.
-        :param namespace: Optional namespace to count documents from. If not specified, None is default
+        :param namespace: Optional namespace to count documents from. If not specified, None is default.
         :param type_metadata: Optional value for `doc_type` metadata to reference documents that need to be counted.
             Parameter options:
                 - `"vector"`: Documents with embedding.
@@ -418,7 +418,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         :param index: Optional index name to retrieve all documents from.
         :param filters: Filters are not supported for `get_embedding_count` in Pinecone.
-        :param namespace: Optional namespace to count embeddings from. If not specified, None is default
+        :param namespace: Optional namespace to count embeddings from. If not specified, None is default.
         """
         if filters:
             raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
@@ -470,7 +470,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 - `"fail"`: An error is raised if the document ID of the document being added already exists.
         :param headers: PineconeDocumentStore does not support headers.
         :param labels: Tells us whether these records are labels or not. Defaults to False.
-        :param namespace: Optional namespace to write documents to. If not specified, None is default
+        :param namespace: Optional namespace to write documents to. If not specified, None is default.
         :raises DuplicateDocumentError: Exception trigger on duplicate document.
         """
         if headers:
@@ -625,7 +625,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 ```
         :param batch_size: Number of documents to process at a time. When working with large number of documents,
             batching can help reduce memory footprint.
-        :param namespace: Optional namespace to retrieve document from. If not specified, None is default
+        :param namespace: Optional namespace to retrieve document from. If not specified, None is default.
         """
         index = self._index(index)
         if index not in self.pinecone_indexes:
@@ -748,7 +748,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                            batching can help reduce memory footprint.
         :param headers: Pinecone does not support headers.
         :param type_metadata: Value of `doc_type` metadata that indicates which documents need to be retrieved.
-        :param namespace: Optional namespace to retrieve documents from. If not specified, None is default
+        :param namespace: Optional namespace to retrieve documents from. If not specified, None is default.
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -814,7 +814,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: PineconeDocumentStore does not support headers.
-        :param namespace: Optional namespace to retrieve document from. If not specified, None is default
+        :param namespace: Optional namespace to retrieve document from. If not specified, None is default.
         :param type_metadata: Value of `doc_type` metadata that indicates which documents need to be retrieved.
         :param include_type_metadata: Indicates if `doc_type` value will be included in document metadata or not.
             If not specified, `doc_type` field will be dropped from document metadata.
@@ -895,7 +895,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             batching can help reduce memory footprint.
         :param headers: Pinecone does not support headers.
         :param return_embedding: Optional flag to return the embedding of the document.
-        :param namespace: Optional namespace to retrieve document from. If not specified, None is default
+        :param namespace: Optional namespace to retrieve document from. If not specified, None is default.
         :param include_type_metadata: Indicates if `doc_type` value will be included in document metadata or not.
             If not specified, `doc_type` field will be dropped from document metadata.
         """
@@ -951,7 +951,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param index: Optional index name to retrieve all documents from.
         :param headers: Pinecone does not support headers.
         :param return_embedding: Optional flag to return the embedding of the document.
-        :param namespace: Optional namespace to retrieve document from. If not specified, None is default
+        :param namespace: Optional namespace to retrieve document from. If not specified, None is default.
         """
         documents = self.get_documents_by_id(
             ids=[id], index=index, headers=headers, return_embedding=return_embedding, namespace=namespace
@@ -1020,7 +1020,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 ```
         :param headers: PineconeDocumentStore does not support headers.
         :param drop_ids: Specifies if the locally stored IDs should be deleted. The default is True.
-        :param namespace: Optional namespace. If not specified, None is default
+        :param namespace: Optional namespace. If not specified, None is default.
         :param type_metadata: Optional value for `doc_type` metadata field as reference for documents to delete.
         :return None:
         """
@@ -1163,7 +1163,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
-        :param namespace: Optional namespace to query document from. If not specified, None is default
+        :param namespace: Optional namespace to query document from. If not specified, None is default.
         :param type_metadata: Value of `doc_type` metadata that indicates which documents need to be queried.
         """
         if headers:
