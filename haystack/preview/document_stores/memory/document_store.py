@@ -218,30 +218,32 @@ class MemoryDocumentStore:
         if not query:
             raise ValueError("Query should be a non-empty string")
 
-        # Get all documents that match the user's filters AND are either 'table' or 'text'.
-        # Raises an exception if the user was trying to include other content types.
-        if filters and "content_type" in filters:
-            content_types = filters["content_type"]
-            if isinstance(content_types, str):
-                content_types = [content_types]
-            if any(type_ not in ["text", "table"] for type_ in content_types):
-                raise ValueError(
-                    "MemoryDocumentStore can do BM25 retrieval on no other document type than text or table."
-                )
+        content_type_filter = {"$or": {"text": {"$not": None}, "dataframe": {"$not": None}}}
+        if filters:
+            filters = {"$and": [content_type_filter, filters]}
         else:
-            filters = filters or {}
-            filters = {**filters, "content_type": ["text", "table"]}
+            filters = content_type_filter
         all_documents = self.filter_documents(filters=filters)
 
         # Lowercase all documents
         lower_case_documents = []
         for doc in all_documents:
-            if doc.content_type == "text":
-                lower_case_documents.append(doc.content.lower())
-            elif doc.content_type == "table":
-                str_content = doc.content.astype(str)
-                csv_content = str_content.to_csv(index=False)
-                lower_case_documents.append(csv_content.lower())
+            if doc.text is None and doc.dataframe is None:
+                logger.info("Document '%s' has no text or dataframe content. Skipping it.", doc.id)
+            else:
+                if doc.text is not None:
+                    lower_case_documents.append(doc.text.lower())
+                    if doc.dataframe is not None:
+                        logger.warning(
+                            "Document '%s' has both text and dataframe content. "
+                            "Using text content and skipping dataframe content.",
+                            doc.id,
+                        )
+                        continue
+                if doc.dataframe is not None:
+                    str_content = doc.dataframe.astype(str)
+                    csv_content = str_content.to_csv(index=False)
+                    lower_case_documents.append(csv_content.lower())
 
         # Tokenize the entire content of the DocumentStore
         tokenized_corpus = [
