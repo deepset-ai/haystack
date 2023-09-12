@@ -278,7 +278,6 @@ packages = [
 line-length = 120
 skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
 
-
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
 load-plugins = "haystack_linter"
@@ -297,18 +296,14 @@ disable = [
   "too-few-public-methods",
   "raise-missing-from",
   "invalid-name",
-  "too-many-locals",
   "duplicate-code",
-  "too-many-arguments",
   "arguments-differ",
   "consider-using-f-string",
   "no-else-return",
   "attribute-defined-outside-init",
-  "too-many-instance-attributes",
   "super-with-arguments",
   "redefined-builtin",
   "abstract-method",
-  "too-many-branches",
   "unspecified-encoding",
   "unidiomatic-typecheck",
   "no-name-in-module",
@@ -321,12 +316,9 @@ disable = [
   "subprocess-run-check",
   "singleton-comparison",
   "consider-iterating-dictionary",
-  "too-many-nested-blocks",
   "undefined-loop-variable",
-  "too-many-statements",
   "consider-using-in",
   "bare-except",
-  "too-many-lines",
   "unexpected-keyword-arg",
   "simplifiable-if-expression",
   "use-list-literal",
@@ -338,7 +330,11 @@ disable = [
   "deprecated-method",
 ]
 [tool.pylint.'DESIGN']
-max-args=7
+max-args = 37  # Default is 5
+max-attributes = 27  # Default is 7
+max-branches = 33  # Default is 12
+max-locals = 44  # Default is 15
+max-statements = 205  # Default is 50
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines=6
 
