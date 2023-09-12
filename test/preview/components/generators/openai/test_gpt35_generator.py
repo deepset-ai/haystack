@@ -163,42 +163,22 @@ class TestGPT35Generator:
         with patch("haystack.preview.components.generators.openai.gpt35.openai.ChatCompletion") as gpt35_patch:
             gpt35_patch.create.side_effect = mock_openai_response
             component = GPT35Generator(api_key="test-api-key")
-            results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
+            results = component.run(prompt="test-prompt-1")
             assert results == {
-                "replies": [
-                    ["response for these messages --> user: test-prompt-1"],
-                    ["response for these messages --> user: test-prompt-2"],
-                ],
+                "replies": ["response for these messages --> user: test-prompt-1"],
                 "metadata": [
-                    [
-                        {
-                            "model": "gpt-3.5-turbo",
-                            "index": "0",
-                            "finish_reason": "stop",
-                            "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
-                        }
-                    ],
-                    [
-                        {
-                            "model": "gpt-3.5-turbo",
-                            "index": "0",
-                            "finish_reason": "stop",
-                            "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
-                        }
-                    ],
+                    {
+                        "model": "gpt-3.5-turbo",
+                        "index": "0",
+                        "finish_reason": "stop",
+                        "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+                    }
                 ],
             }
-            assert gpt35_patch.create.call_count == 2
-            gpt35_patch.create.assert_any_call(
+            gpt35_patch.create.assert_called_once_with(
                 model="gpt-3.5-turbo",
                 api_key="test-api-key",
                 messages=[{"role": "user", "content": "test-prompt-1"}],
-                stream=False,
-            )
-            gpt35_patch.create.assert_any_call(
-                model="gpt-3.5-turbo",
-                api_key="test-api-key",
-                messages=[{"role": "user", "content": "test-prompt-2"}],
                 stream=False,
             )
 
@@ -207,47 +187,24 @@ class TestGPT35Generator:
         with patch("haystack.preview.components.generators.openai.gpt35.openai.ChatCompletion") as gpt35_patch:
             gpt35_patch.create.side_effect = mock_openai_response
             component = GPT35Generator(api_key="test-api-key", system_prompt="test-system-prompt")
-            results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
+            results = component.run(prompt="test-prompt-1")
             assert results == {
-                "replies": [
-                    ["response for these messages --> system: test-system-prompt - user: test-prompt-1"],
-                    ["response for these messages --> system: test-system-prompt - user: test-prompt-2"],
-                ],
+                "replies": ["response for these messages --> system: test-system-prompt - user: test-prompt-1"],
                 "metadata": [
-                    [
-                        {
-                            "model": "gpt-3.5-turbo",
-                            "index": "0",
-                            "finish_reason": "stop",
-                            "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
-                        }
-                    ],
-                    [
-                        {
-                            "model": "gpt-3.5-turbo",
-                            "index": "0",
-                            "finish_reason": "stop",
-                            "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
-                        }
-                    ],
+                    {
+                        "model": "gpt-3.5-turbo",
+                        "index": "0",
+                        "finish_reason": "stop",
+                        "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+                    }
                 ],
             }
-            assert gpt35_patch.create.call_count == 2
-            gpt35_patch.create.assert_any_call(
+            gpt35_patch.create.assert_called_once_with(
                 model="gpt-3.5-turbo",
                 api_key="test-api-key",
                 messages=[
                     {"role": "system", "content": "test-system-prompt"},
                     {"role": "user", "content": "test-prompt-1"},
-                ],
-                stream=False,
-            )
-            gpt35_patch.create.assert_any_call(
-                model="gpt-3.5-turbo",
-                api_key="test-api-key",
-                messages=[
-                    {"role": "system", "content": "test-system-prompt"},
-                    {"role": "user", "content": "test-prompt-2"},
                 ],
                 stream=False,
             )
@@ -257,19 +214,11 @@ class TestGPT35Generator:
         with patch("haystack.preview.components.generators.openai.gpt35.openai.ChatCompletion") as gpt35_patch:
             gpt35_patch.create.side_effect = mock_openai_response
             component = GPT35Generator(api_key="test-api-key", max_tokens=10)
-            component.run(prompts=["test-prompt-1", "test-prompt-2"])
-            assert gpt35_patch.create.call_count == 2
-            gpt35_patch.create.assert_any_call(
+            component.run(prompt="test-prompt-1")
+            gpt35_patch.create.assert_called_once_with(
                 model="gpt-3.5-turbo",
                 api_key="test-api-key",
                 messages=[{"role": "user", "content": "test-prompt-1"}],
-                stream=False,
-                max_tokens=10,
-            )
-            gpt35_patch.create.assert_any_call(
-                model="gpt-3.5-turbo",
-                api_key="test-api-key",
-                messages=[{"role": "user", "content": "test-prompt-2"}],
                 stream=False,
                 max_tokens=10,
             )
@@ -283,35 +232,19 @@ class TestGPT35Generator:
             component = GPT35Generator(
                 api_key="test-api-key", system_prompt="test-system-prompt", streaming_callback=mock_callback
             )
-            results = component.run(prompts=["test-prompt-1", "test-prompt-2"])
+            results = component.run(prompt="test-prompt-1")
             assert results == {
-                "replies": [
-                    ["response for these messages --> system: test-system-prompt - user: test-prompt-1 "],
-                    ["response for these messages --> system: test-system-prompt - user: test-prompt-2 "],
-                ],
-                "metadata": [
-                    [{"model": "gpt-3.5-turbo", "index": "0", "finish_reason": "stop"}],
-                    [{"model": "gpt-3.5-turbo", "index": "0", "finish_reason": "stop"}],
-                ],
+                "replies": ["response for these messages --> system: test-system-prompt - user: test-prompt-1 "],
+                "metadata": [{"model": "gpt-3.5-turbo", "index": "0", "finish_reason": "stop"}],
             }
-            # Calls count: (10 tokens per prompt + 1 token for the role + 1 empty termination token) * 2 prompts
-            assert mock_callback.call_count == 24
-            assert gpt35_patch.create.call_count == 2
-            gpt35_patch.create.assert_any_call(
+            # Calls count: 10 tokens per prompt + 1 token for the role + 1 empty termination token
+            assert mock_callback.call_count == 12
+            gpt35_patch.create.assert_called_once_with(
                 model="gpt-3.5-turbo",
                 api_key="test-api-key",
                 messages=[
                     {"role": "system", "content": "test-system-prompt"},
                     {"role": "user", "content": "test-prompt-1"},
-                ],
-                stream=True,
-            )
-            gpt35_patch.create.assert_any_call(
-                model="gpt-3.5-turbo",
-                api_key="test-api-key",
-                messages=[
-                    {"role": "system", "content": "test-system-prompt"},
-                    {"role": "user", "content": "test-prompt-2"},
                 ],
                 stream=True,
             )

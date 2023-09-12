@@ -104,7 +104,7 @@ class SentenceTransformersDocumentEmbedder:
                 for key in self.metadata_fields_to_embed
                 if key in doc.metadata and doc.metadata[key]
             ]
-            text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.content])
+            text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.text or ""])
             texts_to_embed.append(text_to_embed)
 
         embeddings = self.embedding_backend.embed(

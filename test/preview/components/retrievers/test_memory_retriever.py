@@ -12,11 +12,11 @@ from haystack.preview.document_stores import MemoryDocumentStore
 @pytest.fixture()
 def mock_docs():
     return [
-        Document.from_dict({"content": "Javascript is a popular programming language"}),
-        Document.from_dict({"content": "Java is a popular programming language"}),
-        Document.from_dict({"content": "Python is a popular programming language"}),
-        Document.from_dict({"content": "Ruby is a popular programming language"}),
-        Document.from_dict({"content": "PHP is a popular programming language"}),
+        Document(text="Javascript is a popular programming language"),
+        Document(text="Java is a popular programming language"),
+        Document(text="Python is a popular programming language"),
+        Document(text="Ruby is a popular programming language"),
+        Document(text="PHP is a popular programming language"),
     ]
 
 
@@ -178,17 +178,17 @@ class TestMemoryRetrievers:
         assert len(result["documents"]) == 2
         assert len(result["documents"][0]) == top_k
         assert len(result["documents"][1]) == top_k
-        assert result["documents"][0][0].content == "PHP is a popular programming language"
-        assert result["documents"][1][0].content == "Java is a popular programming language"
+        assert result["documents"][0][0].text == "PHP is a popular programming language"
+        assert result["documents"][1][0].text == "Java is a popular programming language"
 
     @pytest.mark.unit
     def test_embedding_retriever_valid_run(self):
         top_k = 3
         ds = MemoryDocumentStore(embedding_similarity_function="cosine")
         docs = [
-            Document(content="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(content="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
-            Document(content="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
+            Document(text="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(text="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(text="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
         ]
         ds.write_documents(docs)
 
@@ -230,7 +230,7 @@ class TestMemoryRetrievers:
         assert "retriever" in result
         results_docs = result["retriever"]["documents"]
         assert results_docs
-        assert results_docs[0][0].content == query_result
+        assert results_docs[0][0].text == query_result
 
     @pytest.mark.integration
     def test_run_embedding_retriever_with_pipeline(self):
@@ -287,4 +287,4 @@ class TestMemoryRetrievers:
         results_docs = result["retriever"]["documents"]
         assert results_docs
         assert len(results_docs[0]) == top_k
-        assert results_docs[0][0].content == query_result
+        assert results_docs[0][0].text == query_result
