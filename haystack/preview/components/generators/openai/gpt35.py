@@ -2,6 +2,7 @@ from typing import Optional, List, Callable, Dict, Any
 
 import sys
 import logging
+from collections import defaultdict
 from dataclasses import dataclass, asdict
 
 import openai
@@ -154,15 +155,11 @@ class GPT35Generator:
         replies: List[str]
         metadata: List[Dict[str, Any]]
         if self.streaming_callback:
-            replies_dict = {}
-            metadata_dict: Dict[str, Dict[str, Any]] = {}
+            replies_dict = defaultdict(str)
+            metadata_dict: Dict[str, Dict[str, Any]] = defaultdict(dict)
             for chunk in completion:
                 chunk = self.streaming_callback(chunk)
                 for choice in chunk.choices:
-                    if choice.index not in replies_dict:
-                        replies_dict[choice.index] = ""
-                        metadata_dict[choice.index] = {}
-
                     if hasattr(choice.delta, "content"):
                         replies_dict[choice.index] += choice.delta.content
                     metadata_dict[choice.index] = {
