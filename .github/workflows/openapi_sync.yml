@@ -48,7 +48,7 @@ jobs:
           echo "id=$SPECS_ID" >> "$GITHUB_OUTPUT"
 
       - name: Sync OpenAPI specs
-        uses: readmeio/rdme@8.3.1
+        uses: readmeio/rdme@8.6.6
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
           README_API_DEFINITION_ID: ${{ steps.openapi-specs.outputs.id }}
