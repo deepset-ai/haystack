@@ -72,6 +72,8 @@ This is obviously an overtly simplistic example but the core concept remains.
 `inputs` must be a list of data that will be passed to either the `Pipeline` or the `Component`.
 `expected_outputs` could be a list with the same length of `inputs` or an empty list for blind evaluation.
 
+Blind in this context means running an evaluation without providing a list of expected output. This could be done for several reasons, like if we don't know what to expect as output, or to compare output of different components.
+
 `EvaluationResult` could either be a `Dict` or its own class, this is open to discussion. Either way it must be easy to save to disk. When saving the results to disk we can also include the `Pipeline` or `Component` in a serialized form.
 
 When evaluating a `Pipeline` we could also override its private `_run_component` function to evaluate every node it will run. This will 100% work for our implementation of `Pipeline`. If a user tries to evaluate a `Pipeline` that reimplements its own `run` method it might not be able to evaluate each `Component`. I believe this a worthy risky tradeoff.
