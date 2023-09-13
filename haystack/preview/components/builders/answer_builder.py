@@ -83,18 +83,21 @@ class AnswerBuilder:
 
         all_answers = []
         for reply, meta in zip(replies, metadata):
-            if documents and reference_pattern:
-                reference_idxs = AnswerBuilder._extract_reference_idxs(reply, reference_pattern)
-            else:
-                reference_idxs = [doc_idx for doc_idx, _ in enumerate(documents)] if documents else []
+            referenced_docs = []
+            if documents:
+                reference_idxs = []
+                if reference_pattern:
+                    reference_idxs = AnswerBuilder._extract_reference_idxs(reply, reference_pattern)
+                else:
+                    reference_idxs = [doc_idx for doc_idx, _ in enumerate(documents)]
+
+                for idx in reference_idxs:
+                    try:
+                        referenced_docs.append(documents[idx])
+                    except IndexError:
+                        logger.warning("Document index '%s' referenced in Generator output is out of range. ", idx + 1)
 
             answer_string = AnswerBuilder._extract_answer_string(reply, pattern)
-            referenced_docs = []
-            for idx in reference_idxs:
-                if idx < len(documents):
-                    referenced_docs.append(documents[idx])
-                else:
-                    logger.warning("Document index '%s' referenced in Generator output is out of range. ", idx + 1)
             answer = GeneratedAnswer(data=answer_string, query=query, documents=referenced_docs, metadata=meta)
             all_answers.append(answer)
 
