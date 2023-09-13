@@ -55,7 +55,7 @@ class BaseRanker(BaseComponent):
             for key in embed_meta_fields:
                 if key in doc.meta and doc.meta[key]:
                     if isinstance(doc.meta[key], list):
-                        meta_data_fields.extend([item for item in doc.meta[key]])
+                        meta_data_fields.extend(list(doc.meta[key]))
                     else:
                         meta_data_fields.append(doc.meta[key])
             # Convert to type string (e.g. for ints or floats)

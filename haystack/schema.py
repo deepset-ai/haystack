@@ -1486,7 +1486,7 @@ class EvaluationResult:
             gold_document_ids = [id for id in gold_document_ids if id != "00"]
 
             num_labels = len(gold_document_ids)
-            num_matched_labels = len(set(idx for idxs in relevant_rows["matched_label_idxs"] for idx in idxs))
+            num_matched_labels = len({idx for idxs in relevant_rows["matched_label_idxs"] for idx in idxs})
             num_missing_labels = num_labels - num_matched_labels
 
             relevance_criterion_ids = list(relevant_rows["document_id"].values)

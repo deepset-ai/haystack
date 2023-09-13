@@ -286,7 +286,7 @@ class PDFToTextConverter(BaseConverter):
                 document += page.get_text("text", textpage=partial_tp, sort=sort_by_position) + "\f"
         else:
             cpu = cpu_count() if isinstance(multiprocessing, bool) else multiprocessing
-            page_list = [i for i in range(start_page, end_page)]
+            page_list = list(range(start_page, end_page))
             cpu = cpu if len(page_list) > cpu else len(page_list)
             parts = divide(cpu, page_list)
             pages_mp = [(i, file_path, parts, sort_by_position, ocr, ocr_language) for i in range(cpu)]

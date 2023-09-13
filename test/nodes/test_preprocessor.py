@@ -237,7 +237,7 @@ def test_id_hash_keys_from_pipeline_params():
     preprocessor = PreProcessor(split_length=2, split_respect_sentence_boundary=False)
     output, _ = preprocessor.run(documents=[document_1, document_2], id_hash_keys=["content", "meta"])
     documents = output["documents"]
-    unique_ids = set(d.id for d in documents)
+    unique_ids = {d.id for d in documents}
 
     assert len(documents) == 4
     assert len(unique_ids) == 4

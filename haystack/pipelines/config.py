@@ -119,7 +119,7 @@ def build_component_dependency_graph(
     graph = nx.DiGraph()
     for component_name, component_definition in component_definitions.items():
         params = component_definition.get("params", {})
-        referenced_components: List[str] = list()
+        referenced_components: List[str] = []
         for param_value in params.values():
             # Currently we don't do any additional type validation here.
             # See https://github.com/deepset-ai/haystack/pull/2253#discussion_r815951591.

@@ -316,14 +316,13 @@ class DocumentStoreBaseTests:
         result = docstore.filter_documents(filters={"embedding": {"$nin": [embedding_ones, embedding_zeros]}})
         assert self.contains_same_docs(
             result,
-            [
-                doc
-                for doc in filterable_docs
+            list(
+                filterable_docs
                 or (
                     not np.array_equal(embedding_zeros, doc.embedding)  # type: ignore
                     and not np.array_equal(embedding_ones, doc.embedding)  # type: ignore
                 )
-            ],
+            ),
         )
 
     @pytest.mark.unit

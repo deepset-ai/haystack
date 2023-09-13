@@ -175,7 +175,7 @@ def contains_reader(pipeline: Pipeline) -> bool:
     Check if a pipeline contains a Reader component.
     :param pipeline: Pipeline
     """
-    components = [comp for comp in pipeline.components.values()]
+    components = list(pipeline.components.values())
     return any(isinstance(comp, BaseReader) for comp in components)
 
 
@@ -183,5 +183,5 @@ def contains_retriever(pipeline: Pipeline) -> bool:
     """
     Check if a pipeline contains a Retriever component.
     """
-    components = [comp for comp in pipeline.components.values()]
+    components = list(pipeline.components.values())
     return any(isinstance(comp, BaseRetriever) for comp in components)

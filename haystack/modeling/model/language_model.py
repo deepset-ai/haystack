@@ -108,14 +108,14 @@ class LanguageModel(nn.Module, ABC):
         if self._output_dims:
             return self._output_dims
 
-        for odn in OUTPUT_DIM_NAMES:
-            try:
+        try:
+            for odn in OUTPUT_DIM_NAMES:
                 value = getattr(self.model.config, odn, None)
                 if value:
                     self._output_dims = value
                     return value
-            except AttributeError:
-                raise ModelingError("Can't get the output dimension before loading the model.")
+        except AttributeError:
+            raise ModelingError("Can't get the output dimension before loading the model.")
 
         raise ModelingError("Could not infer the output dimensions of the language model.")
 

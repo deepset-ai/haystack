@@ -283,8 +283,8 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         assert all("name" in doc.meta for doc in transferred_documents)
         assert all(doc.id == doc._get_id(["content", "meta"]) for doc in transferred_documents)
 
-        original_content = set([doc.content for doc in original_documents])
-        transferred_content = set([doc.content for doc in transferred_documents])
+        original_content = {doc.content for doc in original_documents}
+        transferred_content = {doc.content for doc in transferred_documents}
         assert original_content == transferred_content
 
         # Test transferring docs with PreProcessor

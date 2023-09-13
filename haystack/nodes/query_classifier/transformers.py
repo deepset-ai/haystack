@@ -126,7 +126,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
 
         self.labels = labels
         if task == "text-classification":
-            labels_from_model = [label for label in self.model.model.config.id2label.values()]
+            labels_from_model = list(self.model.model.config.id2label.values())
             if set(labels) != set(labels_from_model):
                 raise ValueError(
                     f"For text-classification, the provided labels must match the model labels; only the order can differ.\n"

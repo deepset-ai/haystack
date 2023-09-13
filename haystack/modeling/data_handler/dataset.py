@@ -27,7 +27,7 @@ def flatten_rename(
     assert any(key in encoded_batch for key in keys), f"one of the keys {keys} is not in batch {encoded_batch.keys()}"
     features_flat = []
     for item in range(len(encoded_batch[keys[0]])):
-        feat_dict = {k: v for k, v in zip(renamed_keys, [encoded_batch[k][item] for k in keys])}
+        feat_dict = dict(zip(renamed_keys, [encoded_batch[k][item] for k in keys]))
         features_flat.append(feat_dict)
     return features_flat
 

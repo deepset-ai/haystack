@@ -168,7 +168,7 @@ class TransformersTranslator(BaseTranslator):
             return translated_texts[0]
         elif documents:
             if isinstance(documents, list) and isinstance(documents[0], str):
-                return [translated_text for translated_text in translated_texts]
+                return list(translated_texts)
 
             translated_documents: Union[
                 List[Document], List[Answer], List[str], List[Dict[str, Any]]

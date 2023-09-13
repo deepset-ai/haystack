@@ -394,7 +394,7 @@ def test_id_hash_keys_from_pipeline_params(samples_path):
     converter = TextConverter()
     output, _ = converter.run(file_paths=[doc_path, doc_path], meta=meta, id_hash_keys=["content", "meta"])
     documents = output["documents"]
-    unique_ids = set(d.id for d in documents)
+    unique_ids = {d.id for d in documents}
 
     assert len(documents) == 2
     assert len(unique_ids) == 2

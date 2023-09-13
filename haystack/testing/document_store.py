@@ -73,8 +73,8 @@ class DocumentStoreBaseTestAbstract:
         ds.write_documents(documents)
         docs = ds.get_all_documents()
         assert len(docs) == len(documents)
-        expected_ids = set(doc.id for doc in documents)
-        ids = set(doc.id for doc in docs)
+        expected_ids = {doc.id for doc in documents}
+        ids = {doc.id for doc in docs}
         assert ids == expected_ids
 
     @pytest.mark.integration

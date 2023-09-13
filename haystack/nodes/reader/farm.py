@@ -1153,10 +1153,10 @@ class FARMReader(BaseReader):
                             }
 
             # Get rid of the question key again (after we aggregated we don't need it anymore)
-            d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
+            d[str(doc_id)]["qas"] = list(aggregated_per_question.values())
 
         # Convert input format for FARM
-        farm_input = [v for v in d.values()]
+        farm_input = list(d.values())
         n_queries = len([y for x in farm_input for y in x["qas"]])
 
         # Create DataLoader that can be passed to the Evaluator

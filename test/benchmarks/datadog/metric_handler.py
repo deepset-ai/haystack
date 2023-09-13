@@ -118,7 +118,7 @@ class MetricsAPI:
     def send_custom_dd_metric(self, metric: CustomDatadogMetric) -> dict:
         datadog.initialize(api_key=self.datadog_api_key, api_host=self.datadog_host)
 
-        tags: List[str] = list(map(lambda t: str(t.value), metric.tags))
+        tags: List[str] = [str(t.value) for t in metric.tags]
         post_metric_response: Dict = datadog.api.Metric.send(
             metric=metric.name, points=[(metric.timestamp, metric.value)], tags=tags
         )
