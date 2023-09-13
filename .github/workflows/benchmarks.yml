@@ -19,7 +19,7 @@ jobs:
     outputs:
       cml_runner_id: ${{ steps.deploy.outputs.cml_runner_id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: iterative/setup-cml@v1
 
@@ -53,7 +53,7 @@ jobs:
     timeout-minutes: 2880
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Haystack + Datadog requirements
         run: |
@@ -101,7 +101,7 @@ jobs:
     timeout-minutes: 2880
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Haystack + Datadog requirements
         run: |
@@ -150,7 +150,7 @@ jobs:
     timeout-minutes: 2880
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Haystack + Datadog requirements
         run: |
@@ -199,7 +199,7 @@ jobs:
     timeout-minutes: 2880
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Haystack + Datadog requirements
         run: |
