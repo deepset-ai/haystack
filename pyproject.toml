@@ -278,6 +278,11 @@ packages = [
 line-length = 120
 skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
 
+[tool.codespell]
+ignore-words-list = "ans,astroid,nd,ned,nin,ue"
+quiet-level = 3
+skip = "test/nodes/*,test/others/*,test/samples/*"
+
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
 load-plugins = "haystack_linter"
@@ -330,7 +335,7 @@ disable = [
   "deprecated-method",
 ]
 [tool.pylint.'DESIGN']
-max-args = 37  # Default is 5
+max-args = 38  # Default is 5
 max-attributes = 27  # Default is 7
 max-branches = 34  # Default is 12
 max-locals = 45  # Default is 15

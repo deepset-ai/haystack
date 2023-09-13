@@ -484,7 +484,7 @@ def test_prompt_node_no_debug(prompt_model):
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
 
-    # debug explicitely False
+    # debug explicitly False
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")], debug=False)
     assert result.get("_debug", "No debug info") == "No debug info"
 
