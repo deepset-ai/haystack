@@ -829,7 +829,7 @@ def test_strings_to_answers_yaml(tmp_path):
 def test_strings_to_answers_with_reference_meta_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            rf"""
             version: ignore
             components:
             - name: shaper

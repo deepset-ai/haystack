@@ -578,7 +578,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert mocked_document_store.space_type == "innerproduct"
         with pytest.raises(
             DocumentStoreError,
-            match=f"Set `similarity` to one of '\['l2'\]' to properly use the embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'l2', it requires 'innerproduct'.",
+            match=rf"Set `similarity` to one of '\['l2'\]' to properly use the embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'l2', it requires 'innerproduct'.",
         ):
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
@@ -597,7 +597,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
         with pytest.raises(
             DocumentStoreError,
-            match=f"Set `similarity` to one of '\['dot_product'\]' to properly use the embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'innerproduct', it requires 'cosinesimil'.",
+            match=rf"Set `similarity` to one of '\['dot_product'\]' to properly use the embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'innerproduct', it requires 'cosinesimil'.",
         ):
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
