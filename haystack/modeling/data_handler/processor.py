@@ -387,7 +387,7 @@ class SquadProcessor(Processor):
         :param tokenizer: Used to split a sentence (str) into tokens.
         :param max_seq_len: Samples are truncated after this many tokens.
         :param data_dir: The directory in which the train and dev files can be found.
-                         If not available the dataset will be loaded automaticaly
+                         If not available the dataset will be loaded automatically
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
                          `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/main/haystack/basics/data_handler/utils.py>`_.
@@ -575,7 +575,7 @@ class SquadProcessor(Processor):
                 )
             except Exception as e:
                 logger.warning(
-                    "Could not devide document into passages. Document: %s\nWith error: %s",
+                    "Could not divide document into passages. Document: %s\nWith error: %s",
                     basket.raw["document_text"][:200],
                     e,
                 )
@@ -880,7 +880,7 @@ class TextSimilarityProcessor(Processor):
         :param max_seq_len_query: Query samples are truncated after this many tokens.
         :param max_seq_len_passage: Context/Passage Samples are truncated after this many tokens.
         :param data_dir: The directory in which the train and dev files can be found.
-                         If not available the dataset will be loaded automaticaly
+                         If not available the dataset will be loaded automatically
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
                          `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/main/haystack/basics/data_handler/utils.py>`_.
@@ -1038,7 +1038,7 @@ class TextSimilarityProcessor(Processor):
         # Take the dict and insert into our basket structure, this stages also adds an internal IDs
         baskets = self._fill_baskets(dicts, indices)
 
-        # Separat conversion of query
+        # Separate conversion of query
         baskets = self._convert_queries(baskets=baskets)
 
         # and context passages. When converting the context the label is also assigned.
@@ -1799,7 +1799,7 @@ class TextClassificationProcessor(Processor):
         :param max_seq_len: Samples are truncated after this many tokens.
         :type max_seq_len: int
         :param data_dir: The directory in which the train and dev files can be found.
-                         If not available the dataset will be loaded automaticaly
+                         If not available the dataset will be loaded automatically
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
                          `farm.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/FARM/blob/main/farm/data_handler/utils.py>`_.
@@ -2151,7 +2151,7 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
                         dev_labels[q["id"]] = q["answers"][0]["text"]
         not_included = set(list(dev_labels.keys())) - set(list(predictions_json.keys()))
         if len(not_included) > 0:
-            logger.info("There were missing predicitons for question ids: %s", list(not_included))
+            logger.info("There were missing predictions for question ids: %s", list(not_included))
         for x in not_included:
             predictions_json[x] = ""
 

@@ -568,7 +568,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
     def log_params(self):
         """
-        Logs parameteres to generic logger MlLogger
+        Logs parameters to generic logger MlLogger
         """
         params = {
             "lm_type": self.language_model.__class__.__name__,

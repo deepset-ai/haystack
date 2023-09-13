@@ -42,7 +42,7 @@ def exportable_to_yaml(init_func):
             for k, v in params.items():
                 self._component_config["params"][k] = v
 
-        # Call the actuall __init__ function with all the arguments
+        # Call the actual __init__ function with all the arguments
         init_func(self, *args, **kwargs)
 
     return wrapper_exportable_to_yaml
