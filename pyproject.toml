@@ -332,9 +332,11 @@ disable = [
 [tool.pylint.'DESIGN']
 max-args = 37  # Default is 5
 max-attributes = 27  # Default is 7
-max-branches = 33  # Default is 12
-max-locals = 44  # Default is 15
-max-statements = 205  # Default is 50
+max-branches = 34  # Default is 12
+max-locals = 45  # Default is 15
+max-module-lines = 2468  # Default is 1000
+max-nested-blocks = 7  # Default is 5
+max-statements = 206  # Default is 50
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines=6
 
@@ -369,6 +371,31 @@ ignore_missing_imports = true
 plugins = [
   "pydantic.mypy",
 ]
+
+[tool.ruff]
+ignore = [
+  "PLR1714",  # repeated-equality-comparison
+  "PLR5501",  # collapsible-else-if
+  "PLW0603",  # global-statement
+  "PLW1510",  # subprocess-run-without-check
+  "PLW2901",  # redefined-loop-name
+  "W605",     # invalid-escape-sequence
+]
+select = [
+  "C90",  # McCabe cyclomatic complexity
+  "PL",   # Pylint
+  "W",    # Pycodestyle warnings
+]
+
+[tool.ruff.mccabe]
+max-complexity = 28
+
+[tool.ruff.pylint]
+allow-magic-value-types = ["float", "int", "str"]
+max-args = 38  # Default is 5
+max-branches = 32  # Default is 12
+max-returns = 9  # Default is 6
+max-statements = 105  # Default is 50
 
 [tool.coverage.run]
 omit = [
