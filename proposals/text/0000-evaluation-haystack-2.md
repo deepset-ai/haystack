@@ -201,7 +201,7 @@ The same thing can be said for the `Pipeline` output. There will be multiple out
 
 Expected output specification suffers from the same issue of inputs specification. So making assumption to try and match expected output with the actual `Pipeline` output is still error prone but probably can be handled for really simple `Pipeline`s with only a single output `component`.
 
-Evaluation should be an advanced topic for users that know what they're actually doing. This might seem contradictory to what has been said above regarding approachability of the feature
+Evaluation should be an advanced topic for users that know what they're actually doing. This might seem contradictory to what has been said above regarding approachability of the feature but I believe this to be an easy to use but and hard to master feature.
 
 # Adoption strategy
 
