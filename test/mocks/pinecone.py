@@ -148,7 +148,7 @@ class Index:
                 }
         return response
 
-    def _filter(
+    def _filter(  # noqa: C901,PLR0912
         self,
         metadata: dict,
         filters: Optional[Union[FilterType, List[Optional[FilterType]]]],
@@ -158,6 +158,8 @@ class Index:
         """
         Mock filtering function
         """
+        # This function has a very high McCabe cyclomatic complexity score of 38
+        # (recommended is 10) and contains 55 branches (recommended is 12).
         bools = []
         if type(filters) is list:
             list_bools = []

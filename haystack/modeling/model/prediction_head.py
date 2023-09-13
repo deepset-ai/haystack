@@ -864,7 +864,7 @@ class QuestionAnsweringHead(PredictionHead):
         """
         Converts the passage level predictions to document level predictions. Note that on the doc level we
         don't have special tokens or question tokens. This means that a no answer
-        cannot be prepresented by a (0,0) qa_answer but will instead be represented by (-1, -1)
+        cannot be represented by a (0,0) qa_answer but will instead be represented by (-1, -1)
         """
         new_pred = []
         for qa_answer in pred:
@@ -891,7 +891,7 @@ class QuestionAnsweringHead(PredictionHead):
         """
         Converts the passage level labels to document level labels. Note that on the doc level we
         don't have special tokens or question tokens. This means that a no answer
-        cannot be prepresented by a (0,0) span but will instead be represented by (-1, -1)
+        cannot be represented by a (0,0) span but will instead be represented by (-1, -1)
         """
         new_label = []
         for start, end in label:

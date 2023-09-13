@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout base commit
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.base_ref }}
 
@@ -34,7 +34,7 @@ jobs:
           echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
 
       - name: Checkout HEAD commit
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           # This must be set to correctly checkout a fork
