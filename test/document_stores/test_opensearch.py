@@ -1248,9 +1248,9 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             with pytest.raises(DocumentStoreError, match="Last try of bulk indexing documents failed."):
                 mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
 
-            assert mocked_bulk.call_count == 3  # depth first search failes and cancels the whole bulk request
+            assert mocked_bulk.call_count == 3  # depth first search fails and cancels the whole bulk request
 
-            assert "Too Many Requeset" in caplog.text
+            assert "Too Many Requests" in caplog.text
             assert " Splitting the number of documents into two chunks with the same size" in caplog.text
 
     @pytest.mark.unit

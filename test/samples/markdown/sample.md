@@ -20,7 +20,7 @@ pip install farm-haystack
 ## Core Features
 
 -   **Latest models**: Utilize all latest transformer based models (e.g. BERT, RoBERTa, MiniLM) for extractive QA, generative QA and document retrieval.
--   **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter or modeling framwework.
+-   **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter or modeling framework.
 -   **Open**: 100% compatible with HuggingFace's model hub. Tight interfaces to other frameworks (e.g. Transformers, FARM, sentence-transformers)
 -   **Scalable**: Scale to millions of docs via retrievers, production-ready backends like Elasticsearch / FAISS and a fastAPI REST API
 -   **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling ...

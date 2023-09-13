@@ -141,7 +141,7 @@ def test_update_embeddings_table_text_retriever(tmp_path):
             assert doc.meta["meta_field"] == "value_table_0"
         np.testing.assert_array_almost_equal(documents[0].embedding, documents[1].embedding, decimal=4)
 
-        # Check if Documents wih different content (text) get different embedding
+        # Check if Documents with different content (text) get different embedding
         documents = ds.get_all_documents(
             filters={"meta_field": ["value_text_1", "value_text_2"]}, return_embedding=True
         )

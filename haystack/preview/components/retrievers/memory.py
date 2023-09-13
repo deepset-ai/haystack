@@ -68,10 +68,10 @@ class MemoryBM25Retriever:
         data["init_parameters"]["document_store"] = docstore
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[List[Document]])
+    @component.output_types(documents=List[Document])
     def run(
         self,
-        queries: List[str],
+        query: str,
         filters: Optional[Dict[str, Any]] = None,
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
@@ -94,11 +94,7 @@ class MemoryBM25Retriever:
         if scale_score is None:
             scale_score = self.scale_score
 
-        docs = []
-        for query in queries:
-            docs.append(
-                self.document_store.bm25_retrieval(query=query, filters=filters, top_k=top_k, scale_score=scale_score)
-            )
+        docs = self.document_store.bm25_retrieval(query=query, filters=filters, top_k=top_k, scale_score=scale_score)
         return {"documents": docs}
 
 
