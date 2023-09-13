@@ -195,9 +195,11 @@ input = {
 
 I believe this a worthy tradeoff as it gives huge amount of customization that wasn't possible in Haystack 1.x.
 
-Though to make it easy in any case to specify inputs for simple `Pipeline`s we can use the approach specified in the previous section.
-
 We could ease inputs specification in some cases as specified in the above section but that would make evaluation prone to errors. I believe that to be a dangerous approach as it could mean making evaluation "easier to use" at the cost of making it also more error prone if not done properly and with the correct safe guards.
+
+The same thing can be said for the `Pipeline` output. There will be multiple outputs most of the times since we're going to evaluate individual nodes and the whole `Pipeline` input with a single evaluation run. So the user must specify from which `component` the output should be expected from.
+
+Expected output specification suffers from the same issue of inputs specification. So making assumption to try and match expected output with the actual `Pipeline` output is still error prone but probably can be handled for really simple `Pipeline`s with only a single output `component`.
 
 Evaluation should be an advanced topic for users that know what they're actually doing. This might seem contradictory to what has been said above regarding approachability of the feature
 
