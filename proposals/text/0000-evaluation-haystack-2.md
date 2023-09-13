@@ -171,7 +171,7 @@ class MetricResult(dict):
 
 ### Ease input specification
 
-As it can be annoying having to specify the inputs and outputs for evaluation since we need to specify both the `component` name and its input name we could make some assumption when running `Pipeline`s.
+When declaring the input of a `Pipeline` we must specify both a `component` name and its input names. This can be annoying so we could simplify this by making certain assumptions.
 
 An approach to this problem could be letting the user skip the `component` name specification when declaring the `Pipeline` input. This could work up until the point the user changes their `Pipeline` to have multiple inputs with the same name.
 
