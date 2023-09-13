@@ -13,6 +13,9 @@ from haystack.preview import component, default_from_dict, default_to_dict, Dese
 logger = logging.getLogger(__name__)
 
 
+API_BASE_URL = "https://api.openai.com/v1"
+
+
 @dataclass
 class _ChatMessage:
     content: str
@@ -44,7 +47,7 @@ class GPT35Generator:
         model_name: str = "gpt-3.5-turbo",
         system_prompt: Optional[str] = None,
         streaming_callback: Optional[Callable] = None,
-        api_base_url: str = "https://api.openai.com/v1",
+        api_base_url: str = API_BASE_URL,
         **kwargs,
     ):
         """
