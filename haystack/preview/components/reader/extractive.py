@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 import math
 import bisect
-from haystack.preview import component, Document, ExtractedAnswer
+
+from haystack.preview import component, default_from_dict, default_to_dict, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
@@ -19,7 +20,7 @@ class ExtractiveReader:
 
     def __init__(
         self,
-        model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
+        model_name_or_path: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
         device: Optional[str] = None,
         top_k: Optional[int] = None,
         top_p: Optional[float] = None,
@@ -51,8 +52,8 @@ class ExtractiveReader:
         :param calibration_factor: Factor used for calibrating confidence scores
         """
         torch_and_transformers_import.check()
-        self.model = str(model)
-        self.model_ = None
+        self.model_name_or_path = str(model_name_or_path)
+        self.model = None
         self.device = device
         self.max_seq_length = max_seq_length
         self.top_k = top_k
@@ -63,14 +64,39 @@ class ExtractiveReader:
         self.no_answer = no_answer
         self.calibration_factor = calibration_factor
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        return default_to_dict(
+            self,
+            model_name_or_path=self.model_name_or_path,
+            device=self.device,
+            max_seq_length=self.max_seq_length,
+            top_k=self.top_k,
+            top_p=self.top_p,
+            stride=self.stride,
+            max_batch_size=self.max_batch_size,
+            answers_per_seq=self.answers_per_seq,
+            no_answer=self.no_answer,
+            calibration_factor=self.calibration_factor,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ExtractiveReader":
+        """
+        Deserialize this component from a dictionary.
+        """
+        return default_from_dict(cls, data)
+
     def warm_up(self):
-        if self.model_ is None:
+        if self.model is None:
             if torch.cuda.is_available():
                 self.device = self.device or "cuda:0"
             else:
                 self.device = self.device or "cpu:0"
-            self.model_ = AutoModelForQuestionAnswering.from_pretrained(self.model).to(self.device)
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model)
+            self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_name_or_path).to(self.device)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
 
     def _flatten(
         self, queries: List[str], documents: List[List[Document]]
@@ -182,7 +208,7 @@ class ExtractiveReader:
                 doc, data, probability, cur_start, cur_end = flat_answers_without_queries[i]
                 answer = ExtractedAnswer(
                     data=data,
-                    question=queries[query_id],
+                    query=queries[query_id],
                     metadata={},
                     document=doc,
                     probability=probability,
@@ -197,7 +223,7 @@ class ExtractiveReader:
             if no_answer:
                 no_answer_probability = math.prod(1 - answer.probability for answer in current_answers)
                 answer = ExtractedAnswer(
-                    data=None, question=queries[query_id], metadata={}, document=None, probability=no_answer_probability
+                    data=None, query=queries[query_id], metadata={}, document=None, probability=no_answer_probability
                 )
                 bisect.insort(current_answers, answer, key=lambda answer: -answer.probability)
             if top_p is not None:
@@ -251,7 +277,7 @@ class ExtractiveReader:
             cur_input_ids = input_ids[start_index:end_index]
             cur_attention_mask = attention_mask[start_index:end_index]
 
-            output = self.model_(input_ids=cur_input_ids, attention_mask=cur_attention_mask)  # type: ignore # we know that self._model can't be None
+            output = self.model(input_ids=cur_input_ids, attention_mask=cur_attention_mask)  # type: ignore # we know that self.model can't be None
             cur_start_logits = output.start_logits
             cur_end_logits = output.end_logits
             if num_batches != 1:
