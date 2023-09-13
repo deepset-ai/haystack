@@ -474,7 +474,7 @@ class SquadProcessor(Processor):
         max_answers = (
             self.max_answers
             if self.max_answers is not None
-            else max(max(len(basket.raw["answers"]) for basket in baskets), 1)
+            else max(*(len(basket.raw["answers"]) for basket in baskets), 1)
         )
 
         # Convert answers from string to token space, skip this step for inference
