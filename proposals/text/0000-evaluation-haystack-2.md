@@ -1,5 +1,5 @@
 - Title: Evaluation in Haystack 2.0
-- Decision driver: (your name here)
+- Decision driver: (Silvano Cerza, Julian Risch)
 - Start Date: 2023-08-23
 - Proposal PR: (fill in after opening the PR)
 - Github Issue or Discussion: https://github.com/deepset-ai/haystack/issues/5265
