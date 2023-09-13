@@ -38,6 +38,8 @@ metrics = result.calculate_metrics(Metric.SAS)
 metrics.save("path/to/file.csv")
 ```
 
+A more thorough example of a real use case can be found in the `0000-evaluation-haystack-2.py` file. It creates a small RAG Pipeline and shows how one would run evaluation on it.
+
 # Motivation
 
 Since the new version 2.x of Haystack is going toward a completely different approach to run `Pipeline`s and `component`s we also need to rework how we evaluate them.
