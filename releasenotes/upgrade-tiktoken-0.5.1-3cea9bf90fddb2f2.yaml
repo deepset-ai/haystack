@@ -1,0 +1,2 @@
+fixes:
+  - Upgrades tiktoken to 0.5.1 to account for a breaking release.
