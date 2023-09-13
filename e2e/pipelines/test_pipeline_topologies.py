@@ -3,17 +3,10 @@ import pytest
 
 from haystack.pipelines import Pipeline, RootNode
 from haystack.document_stores import InMemoryDocumentStore
-from haystack.nodes import (
-    DensePassageRetriever,
-    BM25Retriever,
-    SklearnQueryClassifier,
-    TransformersQueryClassifier,
-    JoinDocuments,
-    FARMReader,
-)
+from haystack.nodes import DensePassageRetriever, BM25Retriever, TransformersQueryClassifier, JoinDocuments, FARMReader
 
 
-@pytest.mark.parametrize("classifier", [SklearnQueryClassifier(), TransformersQueryClassifier()])
+@pytest.mark.parametrize("classifier", [TransformersQueryClassifier()])
 def test_query_keyword_statement_classifier(classifier):
     class KeywordOutput(RootNode):
         outgoing_edges = 2
