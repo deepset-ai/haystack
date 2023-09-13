@@ -6,7 +6,12 @@
 
 # Summary
 
-As a requirement for evaluation in Haystack 2.0, as a user, I want to:
+Given the below requirements we redefine how evaluation and metrics are handled in Haystack 2.x.
+
+Our goal is to lower the barrier of entry for new comers but also making it more flexible and extensible for more advanced and expert users.
+All this while making it more modular and easier to test and maintain.
+
+The requirements are:
 
 - compare the performance of different pipelines on level of pipeline outputs (user perspective, integrated eval)
   - while running the full pipeline we can store intermediate results and calculate metrics for each component that returns answers or documents
