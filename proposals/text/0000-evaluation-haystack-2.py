@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+# pylint: skip-file
 ###
 ### This is an example script of how to use the eval function to evaluate a RAG Pipeline.
 ### For more information see the relative proposal.
