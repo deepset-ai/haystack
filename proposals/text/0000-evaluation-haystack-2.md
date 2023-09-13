@@ -28,7 +28,7 @@ The requirements are:
 
 # Basic example
 
-```
+```python
 pipe = Pipeline()
 ...
 inputs = [{"component_name": {"query": "some question"}, ...}, ...]
@@ -59,7 +59,7 @@ All these goals merge also into another goal, maintainability. By making evaluat
 We'll implement an `eval` function that will be able to evaluate all `Pipeline`s and `Component`s.
 A minimal implementation could look like this:
 
-```
+```python
 def eval(runnable: Union[Pipeline, Component], inputs: List[Dict[str, Any]], expected_outputs: List[Dict[str, Any]]) -> EvaluationResult:
     outputs = []
     for input_ in inputs:
@@ -78,7 +78,7 @@ When evaluating a `Pipeline` we could also override its private `_run_component`
 
 Overriding `_run_component` would also give us the chance to simulate optimal component outputs. `eval` could also accept an optional `simulated_output` dictionary containing the outputs of one or more `Component` that are in the `Pipeline`. It would look similar to this:
 
-```
+```python
 simulated_output = {
   "component_name": {"answer": "120"},
   "another_component_name": {"metadata": {"id": 1}}
@@ -130,7 +130,7 @@ We shouldn't expect all input and output data to implement serialization methods
 Given the above information we should be able to implement a single method to calculate predeterminated metrics or even custom ones.
 Known metrics could be defined as an enum to ease discoverability and documentation.
 
-```
+```python
 class Metric(Enum):
     RECALL = "Recall"
     MRR = "Mean Reciprocal Rank"
@@ -142,7 +142,7 @@ class Metric(Enum):
 
 The method to calculate metrics could look similar to this:
 
-```
+```python
 MetricsResult = Dict[str, Dict[str, float]]
 MetricCalculator = Callable[..., MetricResult]
 
@@ -161,7 +161,7 @@ def calculate_metrics(self: EvaluationResult, metric: Union[Metric, MetricCalcul
 This gives the users the flexibility to easily calculate metrics that we support but also use custom logic to calculate any kind of metric given the available data.
 Since users will need to save their calculated metrics to file we could create a simple `MetricResult` class that simply wraps the generated metrics dictionary, something similar:
 
-```
+```python
 class MetricResult(dict):
     def save(self, file: Union[str, Path]):
         # Dump info to file here
@@ -175,13 +175,13 @@ An approach to this problem could be letting the user skip the `component` name 
 
 So given a `Pipeline` that has single input `component` name `foo` that takes a `query` as its input we can let the user specify the `eval` input like so:
 
-```
+```python
 eval(pipe, {"query": "This is the query"})
 ```
 
 If the user adds a new `component` name `bar` that also takes a `query` as input we'll make evaluation fail preventively since we cannot be sure whether both `component`s must take `query` as input and force explicit specification:
 
-```
+```python
 eval(pipe, {"foo": {"query": "This is the query"}, "bar": {"query": "This is the query"}})
 ```
 
@@ -191,7 +191,7 @@ The major drawback found from the feedback gathered is always the same, and it's
 
 Given that new `Pipeline` can have multiple inputs to different `component`s we must specify which component will take which input. As an example given a `Pipeline` with two input components called `foo` and `bar` that takes a `input_query` value we'll have to specify input as follow:
 
-```
+```python
 input = {
   "foo": {"input_query": "This my input query"},
   "bar": {"input_query": "This my input query"}
