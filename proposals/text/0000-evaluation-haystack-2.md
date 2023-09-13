@@ -16,7 +16,7 @@ The requirements are:
 - compare the performance of different pipelines on level of pipeline outputs (user perspective, integrated eval)
   - while running the full pipeline we can store intermediate results and calculate metrics for each component that returns answers or documents
 - find out which component is the performance bottleneck in one pipeline by evaluating subpipelines (isolated evaluation)
-- as above, get evaluation metrics for every component in a pipeline that returns or documents (ranker, retriever, reader, PromptNode)
+- as above, get evaluation metrics for every component in a pipeline that returns answer or documents (ranker, retriever, reader, PromptNode)
 - compare the performance of two components, for example two Readers, without the need to create a full retriever-reader pipeline
 - export evaluation results to a file (similar to Haystack 1.x but faster) and evaluation report
 - choose evaluation metrics from a list of metrics (e.g. F1, BLEU, ROUGE, Semantic Answer Similarity) based on the output type of a component
