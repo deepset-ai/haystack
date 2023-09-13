@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores.memory.errors import MemoryDocumentStoreFilterError
+from haystack.preview.errors import FilterError
 
 
 GT_TYPES = (int, float, np.number)
@@ -33,7 +33,7 @@ def and_operation(conditions: List[Any], document: Document, _current_key: str):
     :return: True if the document matches all the filters, False otherwise
     """
     for condition in conditions:
-        if not match(conditions=condition, document=document, _current_key=_current_key):
+        if not document_matches_filter(conditions=condition, document=document, _current_key=_current_key):
             return False
     return True
 
@@ -48,7 +48,7 @@ def or_operation(conditions: List[Any], document: Document, _current_key: str):
     :return: True if the document matches ano of the filters, False otherwise
     """
     for condition in conditions:
-        if match(conditions=condition, document=document, _current_key=_current_key):
+        if document_matches_filter(conditions=condition, document=document, _current_key=_current_key):
             return True
     return False
 
@@ -76,7 +76,7 @@ def _safe_gt(first: Any, second: Any) -> bool:
     Works only for numerical values and dates. Strings, lists, tables and tensors all raise exceptions.
     """
     if not isinstance(first, GT_TYPES) or not isinstance(second, GT_TYPES):
-        raise MemoryDocumentStoreFilterError(
+        raise FilterError(
             f"Can't evaluate '{type(first).__name__} > {type(second).__name__}'. "
             f"Convert these values into one of the following types: {[type_.__name__ for type_ in GT_TYPES]}"
         )
@@ -111,7 +111,7 @@ def in_operation(fields, field_name, value):
         return False
 
     if not isinstance(value, IN_TYPES):
-        raise MemoryDocumentStoreFilterError("$in accepts only iterable values like lists, sets and tuples.")
+        raise FilterError("$in accepts only iterable values like lists, sets and tuples.")
 
     return any(_safe_eq(fields[field_name], v) for v in value)
 
@@ -208,7 +208,7 @@ OPERATORS = {
 RESERVED_KEYS = [*LOGICAL_STATEMENTS.keys(), *OPERATORS.keys()]
 
 
-def match(conditions: Any, document: Document, _current_key=None):
+def document_matches_filter(conditions: Any, document: Document, _current_key=None):
     """
     This method applies the filters to any given document and returns True when the documents
     metadata matches the filters, False otherwise.
@@ -220,7 +220,7 @@ def match(conditions: Any, document: Document, _current_key=None):
     if isinstance(conditions, dict):
         # Check for malformed filters, like {"name": {"year": "2020"}}
         if _current_key and any(key not in RESERVED_KEYS for key in conditions.keys()):
-            raise MemoryDocumentStoreFilterError(
+            raise FilterError(
                 f"This filter ({{{_current_key}: {conditions}}}) seems to be malformed. "
                 "Comparisons between dictionaries are not currently supported. "
                 "Check the documentation to learn more about filters syntax."
@@ -241,7 +241,7 @@ def match(conditions: Any, document: Document, _current_key=None):
         # A comparison operator ($eq, $in, $gte, ...)
         if field_key in OPERATORS.keys():
             if not _current_key:
-                raise MemoryDocumentStoreFilterError(
+                raise FilterError(
                     "Filters can't start with an operator like $eq and $in. You have to specify the field name first. "
                     "See the examples in the documentation."
                 )
@@ -264,9 +264,7 @@ def match(conditions: Any, document: Document, _current_key=None):
         # The default operator for a {key: value} filter is $eq
         return eq_operation(fields=document.flatten(), field_name=_current_key, value=conditions)
 
-    raise MemoryDocumentStoreFilterError(
-        "Filters must be dictionaries or lists. See the examples in the documentation."
-    )
+    raise FilterError("Filters must be dictionaries or lists. See the examples in the documentation.")
 
 
 def _list_conditions(conditions: Any) -> List[Any]:
