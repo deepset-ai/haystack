@@ -2,7 +2,7 @@
 - Decision driver: (Silvano Cerza, Julian Risch)
 - Start Date: 2023-08-23
 - Proposal PR: #5794
-- Github Issue or Discussion: https://github.com/deepset-ai/haystack/issues/5265
+- Github Issue or Discussion: https://github.com/deepset-ai/haystack/issues/5628
 
 # Summary
 
