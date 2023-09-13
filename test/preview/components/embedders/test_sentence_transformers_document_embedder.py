@@ -157,7 +157,7 @@ class TestSentenceTransformersDocumentEmbedder:
         embedder.embedding_backend = MagicMock()
         embedder.embedding_backend.embed = lambda x, **kwargs: np.random.rand(len(x), 16).tolist()
 
-        documents = [Document(content=f"document number {i}") for i in range(5)]
+        documents = [Document(text=f"document number {i}") for i in range(5)]
 
         result = embedder.run(documents=documents)
 
@@ -193,7 +193,7 @@ class TestSentenceTransformersDocumentEmbedder:
         embedder.embedding_backend = MagicMock()
 
         documents = [
-            Document(content=f"document number {i}", metadata={"meta_field": f"meta_value {i}"}) for i in range(5)
+            Document(text=f"document number {i}", metadata={"meta_field": f"meta_value {i}"}) for i in range(5)
         ]
 
         embedder.run(documents=documents)
