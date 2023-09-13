@@ -10,7 +10,7 @@ jobs:
     name: Add new issues to project for triage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/add-to-project@v0.3.0
+      - uses: actions/add-to-project@v0.5.0
         with:
           project-url: https://github.com/orgs/deepset-ai/projects/5
           github-token: ${{ secrets.GH_PROJECT_PAT }}
