@@ -67,7 +67,11 @@ jobs:
           fi
 
       - name: Send event to Datadog
-        if: (success() || failure())
+        # This step would fail when running in PRs opened from forks since
+        # secrets are not accessible.
+        # To prevent showing bogus failures in those PRs we skip the step.
+        # The workflow will fail in any case if the actual check fails in the previous steps.
+        if: (success() || failure()) && github.repository == 'deepset-ai/haystack'
         uses: masci/datadog@v1
         with:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
@@ -137,7 +141,11 @@ jobs:
           fi
 
       - name: Send event to Datadog
-        if: (success() || failure())
+        # This step would fail when running in PRs opened from forks since
+        # secrets are not accessible.
+        # To prevent showing bogus failures in those PRs we skip the step.
+        # The workflow will fail in any case if the actual check fails in the previous steps.
+        if: (success() || failure()) && github.repository == 'deepset-ai/haystack'
         uses: masci/datadog@v1
         with:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
@@ -206,7 +214,11 @@ jobs:
           fi
 
       - name: Send event to Datadog
-        if: (success() || failure())
+        # This step would fail when running in PRs opened from forks since
+        # secrets are not accessible.
+        # To prevent showing bogus failures in those PRs we skip the step.
+        # The workflow will fail in any case if the actual check fails in the previous steps.
+        if: (success() || failure()) && github.repository == 'deepset-ai/haystack'
         uses: masci/datadog@v1
         with:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
@@ -275,7 +287,11 @@ jobs:
           fi
 
       - name: Send event to Datadog
-        if: (success() || failure())
+        # This step would fail when running in PRs opened from forks since
+        # secrets are not accessible.
+        # To prevent showing bogus failures in those PRs we skip the step.
+        # The workflow will fail in any case if the actual check fails in the previous steps.
+        if: (success() || failure()) && github.repository == 'deepset-ai/haystack'
         uses: masci/datadog@v1
         with:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
