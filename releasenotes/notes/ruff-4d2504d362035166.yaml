@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Use ruff in pre-commit to further limit code complexity.
