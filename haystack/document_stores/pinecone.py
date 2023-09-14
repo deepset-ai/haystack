@@ -147,22 +147,13 @@ class PineconeDocumentStore(BaseDocumentStore):
         self.progress_bar = progress_bar
         self.duplicate_documents = duplicate_documents
 
-        # Metadata field used for differentiation of:
-        #   - documents with embeddings,
-        #   - documents without embeddings,
-        #   - labels
-        self.type_metadata_field = TYPE_METADATA_FIELD
-        self.document_with_embedding_metadata = DOCUMENT_WITH_EMBEDDING
-        self.document_without_embedding_metadata = DOCUMENT_WITHOUT_EMBEDDING
-        self.label_metadata = LABEL
-
         # Pinecone index params
         self.replicas = replicas
         self.shards = shards
         self.namespace = namespace
 
         # Add necessary metadata fields to metadata_config
-        fields = ["label-id", "query", self.type_metadata_field]
+        fields = ["label-id", "query", TYPE_METADATA_FIELD]
         metadata_config["indexed"] += fields
         self.metadata_config = metadata_config
 
@@ -302,16 +293,16 @@ class PineconeDocumentStore(BaseDocumentStore):
         Add new filter for `doc_type` metadata field.
         """
         if type_value:
-            new_type_filter = {self.type_metadata_field: {EQ_OPERATOR: type_value}}
-            if AND_OPERATOR not in filters and self.type_metadata_field not in filters:
+            new_type_filter = {TYPE_METADATA_FIELD: {EQ_OPERATOR: type_value}}
+            if AND_OPERATOR not in filters and TYPE_METADATA_FIELD not in filters:
                 # extend filters with new `doc_type` filter and add $and operator
                 filters.update(new_type_filter)
                 all_filters = filters
                 return {AND_OPERATOR: all_filters}
 
             filters_content = filters[AND_OPERATOR] if AND_OPERATOR in filters else filters
-            if self.type_metadata_field in filters_content:  # type: ignore
-                current_type_filter = filters_content[self.type_metadata_field]  # type: ignore
+            if TYPE_METADATA_FIELD in filters_content:  # type: ignore
+                current_type_filter = filters_content[TYPE_METADATA_FIELD]  # type: ignore
                 type_values = {type_value}
                 if isinstance(current_type_filter, str):
                     type_values.add(current_type_filter)  # type: ignore
@@ -322,7 +313,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     else:
                         # current `doc_type` filter has multiple values
                         type_values.update(set(current_type_filter[IN_OPERATOR]))
-                new_type_filter = {self.type_metadata_field: {IN_OPERATOR: list(type_values)}}  # type: ignore
+                new_type_filter = {TYPE_METADATA_FIELD: {IN_OPERATOR: list(type_values)}}  # type: ignore
             filters_content.update(new_type_filter)  # type: ignore
 
         return filters
@@ -333,8 +324,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         will be `vector`, otherwise it will be `no-vector`.
         """
         if self.get_embedding_count(index=index, namespace=namespace) > 0:
-            return self.document_with_embedding_metadata
-        return self.document_without_embedding_metadata
+            return DOCUMENT_WITH_EMBEDDING
+        return DOCUMENT_WITHOUT_EMBEDDING
 
     def _get_vector_count(self, index: str, filters: Optional[FilterType], namespace: Optional[str]) -> int:
         res = self.pinecone_indexes[index].query(
@@ -403,10 +394,10 @@ class PineconeDocumentStore(BaseDocumentStore):
         filters = filters or {}
         if not type_metadata:
             # add filter for `doc_type` metadata related to documents without embeddings
-            filters = self._add_type_metadata_filter(filters, type_value=self.document_without_embedding_metadata)  # type: ignore
+            filters = self._add_type_metadata_filter(filters, type_value=DOCUMENT_WITHOUT_EMBEDDING)  # type: ignore
             if not only_documents_without_embedding:
                 # add filter for `doc_type` metadata related to documents with embeddings
-                filters = self._add_type_metadata_filter(filters, type_value=self.document_with_embedding_metadata)  # type: ignore
+                filters = self._add_type_metadata_filter(filters, type_value=DOCUMENT_WITH_EMBEDDING)  # type: ignore
         else:
             # if value for `doc_type` metadata is specified, add filter with given value
             filters = self._add_type_metadata_filter(filters, type_value=type_metadata)
@@ -430,7 +421,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         index = self._index(index)
         self._index_connection_exists(index)
 
-        pinecone_filters = self._meta_for_pinecone({self.type_metadata_field: self.document_with_embedding_metadata})
+        pinecone_filters = self._meta_for_pinecone({TYPE_METADATA_FIELD: DOCUMENT_WITH_EMBEDDING})
         return self._get_vector_count(index, filters=pinecone_filters, namespace=namespace)
 
     def _validate_index_sync(self, index: Optional[str] = None):
@@ -439,7 +430,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         Pinecone database.
         """
         if self.get_document_count(
-            index=index, type_metadata=self.document_with_embedding_metadata  # type: ignore
+            index=index, type_metadata=DOCUMENT_WITH_EMBEDDING  # type: ignore
         ) != self.get_embedding_count(index=index):
             raise PineconeDocumentStoreError(
                 f"The number of documents present in Pinecone ({self.get_document_count(index=index)}) "
@@ -501,11 +492,9 @@ class PineconeDocumentStore(BaseDocumentStore):
             add_vectors = False if document_objects[0].embedding is None else True
             # If these are not labels, we need to find the correct value for `doc_type` metadata field
             if not labels:
-                type_metadata = (
-                    self.document_with_embedding_metadata if add_vectors else self.document_without_embedding_metadata
-                )
+                type_metadata = DOCUMENT_WITH_EMBEDDING if add_vectors else DOCUMENT_WITHOUT_EMBEDDING
             else:
-                type_metadata = self.label_metadata
+                type_metadata = LABEL
             if not add_vectors:
                 # To store documents in Pinecone, we use dummy embeddings (to be replaced with real embeddings later)
                 embeddings_to_index = np.zeros((batch_size, self.embedding_dim), dtype="float32")
@@ -555,7 +544,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     metadata = [
                         self._meta_for_pinecone(
                             {
-                                self.type_metadata_field: type_metadata,  # add `doc_type` in metadata
+                                TYPE_METADATA_FIELD: type_metadata,  # add `doc_type` in metadata
                                 "content": doc.content,
                                 "content_type": doc.content_type,
                                 **doc.meta,
@@ -651,9 +640,9 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         # If embeddings don't exist or the user doesn't want to update existing embeddings, update dummy embeddings
         if self.get_embedding_count(index=index) == 0 or not update_existing_embeddings:
-            type_value = self.document_without_embedding_metadata
+            type_value = DOCUMENT_WITHOUT_EMBEDDING
         else:
-            type_value = self.document_with_embedding_metadata
+            type_value = DOCUMENT_WITH_EMBEDDING
 
         documents = self.get_all_documents_generator(
             index=index,
@@ -694,7 +683,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                                 "content_type": doc.content_type,
                                 **doc.meta,
                                 # set `doc_type` metadata field to `vector` since the dummy embedding is updated
-                                self.type_metadata_field: self.document_with_embedding_metadata,
+                                TYPE_METADATA_FIELD: DOCUMENT_WITH_EMBEDDING,
                             }
                         )
                     )
@@ -1024,8 +1013,8 @@ class PineconeDocumentStore(BaseDocumentStore):
             for _id in result["vectors"]:
                 vector_id_matrix.append(_id)
                 metadata = result["vectors"][_id]["metadata"]
-                if not include_type_metadata and self.type_metadata_field in metadata:
-                    metadata.pop(self.type_metadata_field)
+                if not include_type_metadata and TYPE_METADATA_FIELD in metadata:
+                    metadata.pop(TYPE_METADATA_FIELD)
                 meta_matrix.append(self._pinecone_meta_format(metadata))
                 if return_embedding:
                     embedding_matrix.append(result["vectors"][_id]["values"])
@@ -1287,7 +1276,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         # if `doc_type` metadata not set, set to documents with embeddings
         if type_metadata is None:
-            type_metadata = self.document_with_embedding_metadata  # type: ignore
+            type_metadata = DOCUMENT_WITH_EMBEDDING  # type: ignore
 
         filters = filters or {}
         filters = self._add_type_metadata_filter(filters, type_metadata)
@@ -1684,7 +1673,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         i = 0
         dummy_query = np.asarray(self.dummy_query)
 
-        type_metadata = self.label_metadata
+        type_metadata = LABEL
 
         while True:
             if ids is None:
@@ -1739,7 +1728,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         # add filter for `doc_type` metadata field
         filters = filters or {}
-        filters = self._add_type_metadata_filter(filters, self.label_metadata)  # type: ignore
+        filters = self._add_type_metadata_filter(filters, LABEL)  # type: ignore
 
         documents = self.get_all_documents(index=index, filters=filters, headers=headers, namespace=namespace)
         for doc in documents:
