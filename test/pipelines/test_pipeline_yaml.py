@@ -1122,7 +1122,7 @@ def test_load_yaml_unusual_chars_in_values(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w", encoding="utf-8") as tmp_file:
         tmp_file.write(
-            f"""
+            rf"""
             version: '1.9.0'
 
             components:

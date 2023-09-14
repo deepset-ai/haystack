@@ -331,7 +331,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             }
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -343,7 +343,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             "name": ["file_5.txt", "file_3.txt"],
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters_simplified)
 
     @pytest.mark.integration
@@ -357,7 +357,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             }
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -369,7 +369,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             "$or": {"name": ["file_5.txt", "file_3.txt"], "numeric_field": {"$lte": 5.0}},
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters_simplified)
 
     @pytest.mark.integration
@@ -385,7 +385,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                 },
             }
         }
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -399,7 +399,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                 "$and": {"numeric_field": {"$lte": 5.0}, "$not": {"meta_field": "test-2"}},
             },
         }
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters_simplified)
 
     @pytest.mark.integration
@@ -413,7 +413,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                 }
             }
         }
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]t' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]t' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -428,7 +428,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             ]
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration

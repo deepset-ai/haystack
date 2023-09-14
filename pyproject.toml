@@ -378,18 +378,38 @@ plugins = [
 ]
 
 [tool.ruff]
+select = [
+  "AIR",    # Airflow
+  "ASYNC",  # flake8-async
+  "C90",    # McCabe cyclomatic complexity
+  "CPY",    # flake8-copyright
+  "DJ",     # flake8-django
+  "E501",   # Long lines
+  "EXE",    # flake8-executable
+  "FURB",   # refurb
+  "INT",    # flake8-gettext
+  "PL",     # Pylint
+  "Q",      # flake8-quotes
+  "SLOT",   # flake8-slots
+  "T10",    # flake8-debugger
+  "W",      # pycodestyle
+  "YTT",    # flake8-2020
+  # "E",    # pycodestyle
+  # "F",    # Pyflakes
+  # "NPY",  # NumPy-specific rules
+  # "PD",   # pandas-vet
+  # "PERF", # Perflint
+  # "PT",   # flake8-pytest-style
+  # "UP",   # pyupgrade
+]
+line-length = 1486
+target-version = "py38"
 ignore = [
   "PLR1714",  # repeated-equality-comparison
   "PLR5501",  # collapsible-else-if
   "PLW0603",  # global-statement
   "PLW1510",  # subprocess-run-without-check
   "PLW2901",  # redefined-loop-name
-  "W605",     # invalid-escape-sequence
-]
-select = [
-  "C90",  # McCabe cyclomatic complexity
-  "PL",   # Pylint
-  "W",    # Pycodestyle warnings
 ]
 
 [tool.ruff.mccabe]
