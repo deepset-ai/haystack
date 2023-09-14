@@ -141,7 +141,7 @@ class ExtractiveReader:
         attention_mask: torch.Tensor,
         answers_per_seq: int,
         encodings: List[Encoding],
-    ) -> Tuple[List[List[Optional[int]]], List[List[Optional[int]]], torch.Tensor]:
+    ) -> Tuple[List[List[int]], List[List[int]], torch.Tensor]:
         mask = sequence_ids == 1
         mask = torch.logical_and(mask, attention_mask == 1)
         start = torch.where(mask, start, -torch.inf)
@@ -152,7 +152,6 @@ class ExtractiveReader:
         logits = start + end  # shape: (batch_size, seq_length (start), seq_length (end))
         mask = torch.ones(logits.shape[-2:], dtype=torch.bool, device=self.device)
         mask = torch.triu(mask)  # End shouldn't be before start
-        mask[0, :] = False  # TODO: Might not be necessary because of sequence id
         masked_logits = torch.where(mask, logits, -torch.inf)
         probabilities = torch.sigmoid(masked_logits * self.calibration_factor)
 
@@ -165,11 +164,11 @@ class ExtractiveReader:
         end_candidates = end_candidates.cpu()
 
         start_candidates = [
-            [encoding.token_to_chars(start)[0] if start != 0 else None for start in candidates]
+            [encoding.token_to_chars(start)[0].item() for start in candidates]
             for candidates, encoding in zip(start_candidates, encodings)
         ]
         end_candidates = [
-            [encoding.token_to_chars(end)[1] if end != 0 else None for end in candidates]
+            [encoding.token_to_chars(end)[1].item() for end in candidates]
             for candidates, encoding in zip(end_candidates, encodings)
         ]
         probabilities = candidates.values.cpu()
@@ -178,8 +177,8 @@ class ExtractiveReader:
 
     def _unflatten(
         self,
-        start: List[List[Optional[int]]],
-        end: List[List[Optional[int]]],
+        start: List[List[int]],
+        end: List[List[int]],
         probabilities: torch.Tensor,
         flattened_documents: List[Document],
         queries: List[str],
@@ -192,8 +191,6 @@ class ExtractiveReader:
     ) -> List[List[ExtractedAnswer]]:
         flat_answers_without_queries: List[Tuple[Document, Optional[str], float, Optional[int], Optional[int]]] = [
             (doc := flattened_documents[document_id], doc.content[start:end], probability.item(), start, end)
-            if start is not None and end is not None
-            else (flattened_documents[document_id], None, probability.item(), None, None)
             for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
                 document_ids, start, end, probabilities
             )
