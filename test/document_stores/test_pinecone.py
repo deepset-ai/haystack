@@ -1,20 +1,18 @@
-from typing import List, Union, Dict, Any
-
 import os
-import numpy as np
 from inspect import getmembers, isclass, isfunction
+from typing import Any, Dict, List, Union
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
-from haystack.document_stores.pinecone import pinecone
-from haystack.document_stores.pinecone import PineconeDocumentStore
-from haystack.schema import Document
+from haystack.document_stores.pinecone import DOCUMENT_WITH_EMBEDDING, PineconeDocumentStore, pinecone
 from haystack.errors import FilterError, PineconeDocumentStoreError
+from haystack.schema import Document
 from haystack.testing import DocumentStoreBaseTestAbstract
 
-from ..mocks import pinecone as pinecone_mock
 from ..conftest import MockBaseRetriever
+from ..mocks import pinecone as pinecone_mock
 
 # Set metadata fields used during testing for PineconeDocumentStore meta_config
 META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document"]
@@ -150,6 +148,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     #
     #  Tests
     #
+
     @pytest.mark.integration
     def test_doc_store_wrong_init(self):
         """
@@ -545,7 +544,8 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         assert doc_store_with_docs.get_document_count() == initial_document_count + 2
 
         # remove one of the documents with embedding
-        all_embedding_docs = doc_store_with_docs.get_all_documents(namespace="vectors")
+        all_embedding_docs = doc_store_with_docs.get_all_documents(type_metadata=DOCUMENT_WITH_EMBEDDING)
+
         doc_store_with_docs.delete_documents(ids=[all_embedding_docs[0].id])
 
         # since we deleted one doc, we expect initial_document_count + 1 documents in total
@@ -577,7 +577,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         assert doc_store_with_docs.get_document_count() == initial_document_count + 2
 
         # remove one of the documents without embedding
-        all_non_embedding_docs = doc_store_with_docs.get_all_documents(namespace="no-vectors")
+        all_non_embedding_docs = doc_store_with_docs.get_all_documents(type_metadata="no-vector")
         doc_store_with_docs.delete_documents(ids=[all_non_embedding_docs[0].id])
 
         # since we deleted one doc, we expect initial_document_count + 1 documents in total
@@ -656,6 +656,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         mocked_ds.write_documents([doc])
         call_args = mocked_ds.pinecone_indexes["document"].upsert.call_args.kwargs
         assert list(call_args["vectors"])[0][2] == {
+            "doc_type": "no-vector",
             "content": "test",
             "content_type": "text",
             "_split_overlap": '[{"doc_id": "test_id", "range": [0, 10]}]',
