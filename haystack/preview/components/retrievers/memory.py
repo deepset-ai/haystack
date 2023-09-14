@@ -173,7 +173,7 @@ class MemoryEmbeddingRetriever:
     @component.output_types(documents=List[List[Document]])
     def run(
         self,
-        queries_embeddings: List[List[float]],
+        query_embedding: List[float],
         filters: Optional[Dict[str, Any]] = None,
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
@@ -182,7 +182,7 @@ class MemoryEmbeddingRetriever:
         """
         Run the MemoryEmbeddingRetriever on the given input data.
 
-        :param queries_embeddings: Embeddings of the queries.
+        :param query_embedding: Embedding of the query.
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The maximum number of documents to return.
         :param scale_score: Whether to scale the scores of the retrieved documents or not.
@@ -200,15 +200,12 @@ class MemoryEmbeddingRetriever:
         if return_embedding is None:
             return_embedding = self.return_embedding
 
-        docs = []
-        for query_embedding in queries_embeddings:
-            docs.append(
-                self.document_store.embedding_retrieval(
-                    query_embedding=query_embedding,
-                    filters=filters,
-                    top_k=top_k,
-                    scale_score=scale_score,
-                    return_embedding=return_embedding,
-                )
-            )
+        docs = self.document_store.embedding_retrieval(
+            query_embedding=query_embedding,
+            filters=filters,
+            top_k=top_k,
+            scale_score=scale_score,
+            return_embedding=return_embedding,
+        )
+
         return {"documents": docs}
