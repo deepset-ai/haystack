@@ -233,7 +233,7 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
         faiss_index.nprobe = 2
         document_store = FAISSDocumentStore(
-            sql_url=f"sqlite:///", faiss_index=faiss_index, index=index, isolation_level="AUTOCOMMIT"
+            sql_url="sqlite:///", faiss_index=faiss_index, index=index, isolation_level="AUTOCOMMIT"
         )
 
         document_store.delete_documents()

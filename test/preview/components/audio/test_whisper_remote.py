@@ -156,7 +156,7 @@ class TestRemoteWhisperTranscriber:
                 "method": "post",
                 "url": "https://api.openai.com/v1/audio/transcriptions",
                 "data": {"model": "whisper-1"},
-                "headers": {"Authorization": f"Bearer whatever"},
+                "headers": {"Authorization": "Bearer whatever"},
                 "timeout": OPENAI_TIMEOUT,
             }
 
@@ -180,7 +180,7 @@ class TestRemoteWhisperTranscriber:
                 "method": "post",
                 "url": "https://api.openai.com/v1/audio/translations",
                 "data": {"model": "whisper-1"},
-                "headers": {"Authorization": f"Bearer whatever"},
+                "headers": {"Authorization": "Bearer whatever"},
                 "timeout": OPENAI_TIMEOUT,
             }
 
