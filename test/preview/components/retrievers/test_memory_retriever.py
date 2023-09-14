@@ -190,14 +190,11 @@ class TestMemoryRetrievers:
         ds.write_documents(docs)
 
         retriever = MemoryEmbeddingRetriever(ds, top_k=top_k)
-        result = retriever.run(queries_embeddings=[[0.2, 0.4, 0.6, 0.8], [0.1, 0.1, 0.1, 0.1]], return_embedding=True)
+        result = retriever.run(query_embedding=[0.1, 0.1, 0.1, 0.1], return_embedding=True)
 
         assert "documents" in result
-        assert len(result["documents"]) == 2
-        assert len(result["documents"][0]) == top_k
-        assert len(result["documents"][1]) == top_k
-        assert result["documents"][0][0].embedding == [0.1, 0.2, 0.3, 0.4]
-        assert result["documents"][1][0].embedding == [1.0, 1.0, 1.0, 1.0]
+        assert len(result["documents"]) == top_k
+        assert result["documents"][0].embedding == [1.0, 1.0, 1.0, 1.0]
 
     @pytest.mark.parametrize("retriever_cls", [MemoryBM25Retriever, MemoryEmbeddingRetriever])
     @pytest.mark.unit
@@ -244,22 +241,15 @@ class TestMemoryRetrievers:
         pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
         result: Dict[str, Any] = pipeline.run(
-            data={
-                "retriever": {
-                    "queries_embeddings": [[0.2, 0.4, 0.6, 0.8], [0.1, 0.1, 0.1, 0.1]],
-                    "return_embedding": True,
-                }
-            }
+            data={"retriever": {"query_embedding": [0.1, 0.1, 0.1, 0.1], "return_embedding": True}}
         )
 
         assert result
         assert "retriever" in result
         results_docs = result["retriever"]["documents"]
         assert results_docs
-        assert len(results_docs[0]) == top_k
-        assert len(results_docs[1]) == top_k
-        assert results_docs[0][0].embedding == [0.1, 0.2, 0.3, 0.4]
-        assert results_docs[1][0].embedding == [1.0, 1.0, 1.0, 1.0]
+        assert len(results_docs) == top_k
+        assert results_docs[0].embedding == [1.0, 1.0, 1.0, 1.0]
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
