@@ -222,7 +222,7 @@ class ExtractiveReader:
                 answer = ExtractedAnswer(
                     data=None, query=queries[query_id], metadata={}, document=None, probability=no_answer_probability
                 )
-                bisect.insort(current_answers, answer, key=lambda answer: -answer.probability)
+                bisect.insort(current_answers, answer, key=lambda answer: -answer.probability)  # type: ignore # type checker does not understand key parameter
             if top_p is not None:
                 p_sum = 0.0
                 for i, answer in enumerate(current_answers):
