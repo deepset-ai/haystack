@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix EntityExtractor output not JSON serializable.
