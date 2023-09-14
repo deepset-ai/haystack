@@ -80,22 +80,22 @@ class SentenceTransformersTextEmbedder:
                 model_name_or_path=self.model_name_or_path, device=self.device, use_auth_token=self.use_auth_token
             )
 
-    @component.output_types(embeddings=List[List[float]])
-    def run(self, texts: List[str]):
-        """Embed a list of strings."""
-        if not isinstance(texts, list) or not isinstance(texts[0], str):
+    @component.output_types(embedding=List[float])
+    def run(self, text: str):
+        """Embed a string."""
+        if not isinstance(text, str):
             raise TypeError(
-                "SentenceTransformersTextEmbedder expects a list of strings as input."
+                "SentenceTransformersTextEmbedder expects a string as input."
                 "In case you want to embed a list of Documents, please use the SentenceTransformersDocumentEmbedder."
             )
         if not hasattr(self, "embedding_backend"):
             raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
 
-        texts_to_embed = [self.prefix + text + self.suffix for text in texts]
-        embeddings = self.embedding_backend.embed(
-            texts_to_embed,
+        text_to_embed = self.prefix + text + self.suffix
+        embedding = self.embedding_backend.embed(
+            [text_to_embed],
             batch_size=self.batch_size,
             show_progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,
-        )
-        return {"embeddings": embeddings}
+        )[0]
+        return {"embedding": embedding}
