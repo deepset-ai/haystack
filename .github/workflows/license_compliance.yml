@@ -9,6 +9,9 @@ on:
   schedule:
     - cron: "0 0 * * *" # every day at midnight
 
+env:
+  CORE_DATADOG_API_KEY: ${{ secrets.CORE_DATADOG_API_KEY }}
+
 jobs:
   license_check_direct:
     name: Direct dependencies only
@@ -71,10 +74,10 @@ jobs:
         # secrets are not accessible.
         # To prevent showing bogus failures in those PRs we skip the step.
         # The workflow will fail in any case if the actual check fails in the previous steps.
-        if: (success() || failure()) && github.repository == 'deepset-ai/haystack'
+        if: (success() || failure()) && env.CORE_DATADOG_API_KEY != ''
         uses: masci/datadog@v1
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-key: ${{ env.CORE_DATADOG_API_KEY }}
           api-url: https://api.datadoghq.eu
           events: |
             - title: "${{ github.job }} in ${{ github.workflow }} workflow"
@@ -145,10 +148,10 @@ jobs:
         # secrets are not accessible.
         # To prevent showing bogus failures in those PRs we skip the step.
         # The workflow will fail in any case if the actual check fails in the previous steps.
-        if: (success() || failure()) && github.repository == 'deepset-ai/haystack'
+        if: (success() || failure()) && env.CORE_DATADOG_API_KEY != ''
         uses: masci/datadog@v1
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-key: ${{ env.CORE_DATADOG_API_KEY }}
           api-url: https://api.datadoghq.eu
           events: |
             - title: "${{ github.job }} in ${{ github.workflow }} workflow"
@@ -218,10 +221,10 @@ jobs:
         # secrets are not accessible.
         # To prevent showing bogus failures in those PRs we skip the step.
         # The workflow will fail in any case if the actual check fails in the previous steps.
-        if: (success() || failure()) && github.repository == 'deepset-ai/haystack'
+        if: (success() || failure()) && env.CORE_DATADOG_API_KEY != ''
         uses: masci/datadog@v1
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-key: ${{ env.CORE_DATADOG_API_KEY }}
           api-url: https://api.datadoghq.eu
           events: |
             - title: "${{ github.job }} in ${{ github.workflow }} workflow"
@@ -291,10 +294,10 @@ jobs:
         # secrets are not accessible.
         # To prevent showing bogus failures in those PRs we skip the step.
         # The workflow will fail in any case if the actual check fails in the previous steps.
-        if: (success() || failure()) && github.repository == 'deepset-ai/haystack'
+        if: (success() || failure()) && env.CORE_DATADOG_API_KEY != ''
         uses: masci/datadog@v1
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-key: ${{ env.CORE_DATADOG_API_KEY }}
           api-url: https://api.datadoghq.eu
           events: |
             - title: "${{ github.job }} in ${{ github.workflow }} workflow"

@@ -130,7 +130,7 @@ class FARMReader(BaseReader):
         :param confidence_threshold: Filters out predictions below confidence_threshold. Value should be between 0 and 1. Disabled by default.
         :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
         :param local_files_only: Whether to force checking for local files only (and forbid downloads)
-        :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
+        :param force_download: Whether to force a (re-)download even if the model exists locally in the cache.
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
                                `transformers-cli login` (stored in ~/.huggingface) will be used.

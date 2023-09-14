@@ -607,7 +607,7 @@ class Pipeline:
 
         return node_output
 
-    def run_batch(  # type: ignore
+    def run_batch(  # noqa: C901,PLR0912 type: ignore
         self,
         queries: Optional[List[str]] = None,
         file_paths: Optional[List[str]] = None,

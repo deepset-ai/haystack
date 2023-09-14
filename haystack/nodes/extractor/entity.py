@@ -317,7 +317,7 @@ class EntityExtractor(BaseComponent):
         offset_mapping = model_inputs.pop("offset_mapping", None)
         overflow_to_sample_mapping = model_inputs.pop("overflow_to_sample_mapping")
 
-        logits = self.model(**model_inputs)[0]
+        logits = self.model(**model_inputs)[0].to(torch.float64)
 
         return {
             "logits": logits,
@@ -766,8 +766,8 @@ class _EntityPostProcessor:
             "score": score,
             "word": word,
             "tokens": tokens,
-            "start": entities[0]["start"],
-            "end": entities[-1]["end"],
+            "start": int(entities[0]["start"]),
+            "end": int(entities[-1]["end"]),
         }
         return new_entity
 

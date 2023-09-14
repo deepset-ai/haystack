@@ -82,8 +82,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         :param port: port(s) of OpenSearch nodes
         :param username: username (standard authentication via http_auth)
         :param password: password (standard authentication via http_auth)
-        :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
-        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param api_key_id: ID of the API key (alternative authentication mode to the above http_auth)
+        :param api_key: Secret value of the API key (alternative authentication mode to the above http_auth)
         :param aws4auth: Authentication for usage with AWS OpenSearch Service (can be generated with the requests-aws4auth package)
         :param index: Name of index in OpenSearch to use for storing the documents that we want to search. If not existing yet, we will create one.
         :param label_index: Name of index in OpenSearch to use for storing labels. If not existing yet, we will create one.
@@ -1299,7 +1299,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         # adjust scores according to https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
         # and https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
 
-        # space type is required as criterion as there is no consistent similarity-to-space-type mapping accross knn engines
+        # space type is required as criterion as there is no consistent similarity-to-space-type mapping across knn engines
         if self.space_type == "innerproduct":
             if score > 1:
                 score = score - 1
@@ -1419,7 +1419,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
     def _recommended_ivf_train_size(self) -> int:
         """
-        Calculates the minumum recommended number of training samples for IVF training as suggested in FAISS docs.
+        Calculates the minimum recommended number of training samples for IVF training as suggested in FAISS docs.
         https://github.com/facebookresearch/faiss/wiki/FAQ#can-i-ignore-warning-clustering-xxx-points-to-yyy-centroids
         """
         min_points_per_cluster = 39

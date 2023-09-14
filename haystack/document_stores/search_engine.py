@@ -206,7 +206,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         except Exception as e:
             if hasattr(e, "status_code") and e.status_code == 429:  # type: ignore
                 logger.warning(
-                    "Failed to insert a batch of '%s' documents because of a 'Too Many Requeset' response. "
+                    "Failed to insert a batch of '%s' documents because of a 'Too Many Requests' response. "
                     "Splitting the number of documents into two chunks with the same size and retrying in %s seconds.",
                     len(documents),
                     _timeout,
