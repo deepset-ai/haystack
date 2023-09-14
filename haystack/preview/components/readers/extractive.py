@@ -164,11 +164,11 @@ class ExtractiveReader:
         end_candidates = end_candidates.cpu()
 
         start_candidates = [
-            [encoding.token_to_chars(start)[0].item() for start in candidates]
+            [encoding.token_to_chars(start)[0] for start in candidates]
             for candidates, encoding in zip(start_candidates, encodings)
         ]
         end_candidates = [
-            [encoding.token_to_chars(end)[1].item() for end in candidates]
+            [encoding.token_to_chars(end)[1] for end in candidates]
             for candidates, encoding in zip(end_candidates, encodings)
         ]
         probabilities = candidates.values.cpu()
@@ -255,7 +255,7 @@ class ExtractiveReader:
         stride = stride or self.stride
         max_batch_size = max_batch_size or self.max_batch_size
         answers_per_seq = answers_per_seq or self.answers_per_seq or top_k or 20
-        no_answer = no_answer or self.no_answer
+        no_answer = no_answer if no_answer is not None else self.no_answer
 
         flattened_queries, flattened_documents, query_ids = self._flatten(queries, documents)
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(

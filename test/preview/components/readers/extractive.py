@@ -4,6 +4,7 @@ from unittest.mock import patch, Mock
 import pytest
 
 import torch
+from transformers import pipeline
 
 from haystack.preview.components.readers import ExtractiveReader
 from haystack.preview import Document
@@ -157,7 +158,7 @@ def test_postprocess(mock_reader: ExtractiveReader):
     attention_mask = torch.ones((2, 8))
     attention_mask[0, :2] = 0
     encoding = Mock()
-    encoding.token_to_chars = lambda i: (i, i + 1)
+    encoding.token_to_chars = lambda i: (int(i), int(i) + 1)
 
     start_candidates, end_candidates, probs = mock_reader._postprocess(
         start, end, sequence_ids, attention_mask, 3, [encoding, encoding]
@@ -204,3 +205,63 @@ def test_unflatten(mock_reader: ExtractiveReader):
         assert no_answer.query == query
         assert no_answer.document is None
         assert no_answer.probability == pytest.approx(expected_no_answer)
+
+
+@pytest.mark.integration
+def test_t5():
+    reader = ExtractiveReader("TARUNBHATT/flan-t5-small-finetuned-squad")
+    reader.warm_up()
+    answers = reader.run(example_queries, example_documents, top_k=2)["answers"]
+    assert answers[0][0].data == "Angela Merkel"
+    assert answers[0][0].probability == pytest.approx(0.7764519453048706)
+    assert answers[0][1].data == "Olaf Scholz"
+    assert answers[0][1].probability == pytest.approx(0.7703777551651001)
+    assert answers[0][2].data is None
+    assert answers[0][2].probability == pytest.approx(0.051331606147570596)
+    assert answers[1][0].data == "Jerry"
+    assert answers[1][0].probability == pytest.approx(0.7413333654403687)
+    assert answers[1][1].data == "Olaf Scholz"
+    assert answers[1][1].probability == pytest.approx(0.7266613841056824)
+    assert answers[1][2].data is None
+    assert answers[1][2].probability == pytest.approx(0.0707035798685709)
+
+
+@pytest.mark.integration
+def test_roberta():
+    reader = ExtractiveReader("deepset/tinyroberta-squad2")
+    reader.warm_up()
+    answers = reader.run(example_queries, example_documents, top_k=2)["answers"]
+    assert answers[0][0].data == "Olaf Scholz"
+    assert answers[0][0].probability == pytest.approx(0.8614975214004517)
+    assert answers[0][1].data == "Angela Merkel"
+    assert answers[0][1].probability == pytest.approx(0.857952892780304)
+    assert answers[0][2].data is None
+    assert answers[0][2].probability == pytest.approx(0.0196738764278237)
+    assert answers[1][0].data == "Jerry"
+    assert answers[1][0].probability == pytest.approx(0.7048940658569336)
+    assert answers[1][1].data == "Olaf Scholz"
+    assert answers[1][1].probability == pytest.approx(0.6604189872741699)
+    assert answers[1][2].data is None
+    assert answers[1][2].probability == pytest.approx(0.1002123719777046)
+
+
+@pytest.mark.skip(reason="There is a bug in HF.")
+@pytest.mark.integration
+def test_matches_hf_pipeline():
+    reader = ExtractiveReader("deepset/tinyroberta-squad2")
+    reader.warm_up()
+    answers = reader.run(example_queries, [[example_documents[0][0]]], top_k=20, no_answer=False)["answers"][0]
+    answers_hf = pipeline("question-answering", model=reader.model, tokenizer=reader.tokenizer)(
+        question=example_queries[0],
+        context=example_documents[0][0].content,
+        max_answer_len=1_000,
+        handle_impossible_answer=False,
+        top_k=20,
+    )
+    assert len(answers) == len(answers_hf) == 20
+    for i, (answer, answer_hf) in enumerate(zip(answers, answers_hf)):
+        print(i)
+        print(answer, answer_hf)
+        assert answer.start == answer_hf["start"]
+        assert answer.end == answer_hf["end"]
+        assert answer.data == answer_hf["answer"]
