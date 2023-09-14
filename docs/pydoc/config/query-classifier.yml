@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/nodes/query_classifier]
-    modules: ["sklearn", "transformers"]
+    modules: ["transformers"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter

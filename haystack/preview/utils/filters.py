@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Union, Dict
 
 import numpy as np
 import pandas as pd
@@ -32,10 +32,10 @@ def and_operation(conditions: List[Any], document: Document, _current_key: str):
     :param _current_key: internal, don't use.
     :return: True if the document matches all the filters, False otherwise
     """
-    for condition in conditions:
-        if not document_matches_filter(conditions=condition, document=document, _current_key=_current_key):
-            return False
-    return True
+    return all(
+        document_matches_filter(conditions=condition, document=document, _current_key=_current_key)
+        for condition in conditions
+    )
 
 
 def or_operation(conditions: List[Any], document: Document, _current_key: str):
@@ -45,12 +45,12 @@ def or_operation(conditions: List[Any], document: Document, _current_key: str):
     :param conditions: the filters dictionary.
     :param document: the document to test.
     :param _current_key: internal, don't use.
-    :return: True if the document matches ano of the filters, False otherwise
+    :return: True if the document matches any of the filters, False otherwise
     """
-    for condition in conditions:
-        if document_matches_filter(conditions=condition, document=document, _current_key=_current_key):
-            return True
-    return False
+    return any(
+        document_matches_filter(conditions=condition, document=document, _current_key=_current_key)
+        for condition in conditions
+    )
 
 
 def _safe_eq(first: Any, second: Any) -> bool:
@@ -208,14 +208,17 @@ OPERATORS = {
 RESERVED_KEYS = [*LOGICAL_STATEMENTS.keys(), *OPERATORS.keys()]
 
 
-def document_matches_filter(conditions: Any, document: Document, _current_key=None):
+def document_matches_filter(conditions: Union[Dict, List], document: Document, _current_key=None):
     """
-    This method applies the filters to any given document and returns True when the documents
-    metadata matches the filters, False otherwise.
+    Check if a document's metadata matches the provided filter conditions.
 
-    :param conditions: the filters dictionary.
-    :param document: the document to test.
-    :return: True if the document matches the filters, False otherwise
+    This function evaluates the specified conditions against the metadata of the given document
+    and returns True if the conditions are met, otherwise it returns False.
+
+    :param conditions: A dictionary or list containing filter conditions to be applied to the document's metadata.
+    :param document: The document whose metadata will be evaluated against the conditions.
+    :param _current_key: internal parameter, don't use.
+    :return: True if the document's metadata matches the filter conditions, False otherwise.
     """
     if isinstance(conditions, dict):
         # Check for malformed filters, like {"name": {"year": "2020"}}
