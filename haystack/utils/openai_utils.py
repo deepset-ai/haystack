@@ -77,7 +77,7 @@ def _openai_text_completion_tokenization_details(model_name: str):
         if "text-davinci" in model_name:
             max_tokens_limit = 4097
             tokenizer_name = model_tokenizer
-        elif model_name.startswith("gpt-3.5-turbo-16k"):
+        elif model_name.startswith("gpt-3.5-turbo-16k") or model_name.startswith("gpt-35-turbo-16k"):
             max_tokens_limit = 16384
             tokenizer_name = model_tokenizer
         elif model_name.startswith("gpt-3"):
