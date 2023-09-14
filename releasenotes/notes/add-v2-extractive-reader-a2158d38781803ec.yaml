@@ -1,0 +1,7 @@
+---
+preview:
+  - |
+    This adds an ExtractiveReader for v2. It should be a replacement where
+    FARMReader would have been used before for inference.
+    The confidence scores are calculated differently from FARMReader because
+    each span is considered to be an independent binary classification task.
