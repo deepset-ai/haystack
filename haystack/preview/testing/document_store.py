@@ -7,7 +7,8 @@ import pandas as pd
 
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores import DocumentStore, DuplicatePolicy
-from haystack.preview.document_stores.errors import FilterError, MissingDocumentError, DuplicateDocumentError
+from haystack.preview.document_stores.errors import MissingDocumentError, DuplicateDocumentError
+from haystack.preview.errors import FilterError
 
 
 class DocumentStoreBaseTests:
