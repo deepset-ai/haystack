@@ -5,7 +5,7 @@ import pytest
 
 import torch
 
-from haystack.preview.components.reader import ExtractiveReader
+from haystack.preview.components.readers import ExtractiveReader
 from haystack.preview import Document
 
 
@@ -42,7 +42,7 @@ def mock_tokenizer():
         tokens.attention_mask = attention_mask
         return tokens
 
-    with patch("haystack.preview.components.reader.extractive.AutoTokenizer.from_pretrained") as tokenizer:
+    with patch("haystack.preview.components.readers.extractive.AutoTokenizer.from_pretrained") as tokenizer:
         tokenizer.return_value = mock_tokenize
         yield tokenizer
 
@@ -69,7 +69,7 @@ def mock_reader(mock_tokenizer):
             prediction.end_logits = end
             return prediction
 
-    with patch("haystack.preview.components.reader.extractive.AutoModelForQuestionAnswering.from_pretrained") as model:
+    with patch("haystack.preview.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained") as model:
         model.return_value = MockModel()
         reader = ExtractiveReader(model_name_or_path="mock-model", device="cpu:0")
         reader.warm_up()
