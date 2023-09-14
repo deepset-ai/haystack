@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import copy
 import json
 import logging
@@ -202,7 +200,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         shards: Optional[int] = 1,
         recreate_index: bool = False,
         metadata_config: Optional[Dict] = None,
-    ) -> pinecone.Index:
+    ) -> "pinecone.Index":
         """
         Create a new index for storing documents in case an index with the name
         doesn't exist already.
