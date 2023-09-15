@@ -235,14 +235,14 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
     def test_similarity_existing_index(self, similarity):
         """Testing non-matching similarity"""
         # create the document_store
-        document_store = WeaviateDocumentStore(
+        WeaviateDocumentStore(
             similarity=similarity, index=f"test_similarity_existing_index_{similarity}", recreate_index=True
         )
 
         # try to connect to the same document store but using the wrong similarity
         non_matching_similarity = "l2" if similarity == "cosine" else "cosine"
         with pytest.raises(ValueError, match=r"This index already exists in Weaviate with similarity .*"):
-            document_store2 = WeaviateDocumentStore(
+            WeaviateDocumentStore(
                 similarity=non_matching_similarity,
                 index=f"test_similarity_existing_index_{similarity}",
                 recreate_index=False,

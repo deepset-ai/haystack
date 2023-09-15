@@ -624,7 +624,7 @@ def test_tokenizer_loading_unsupported_model(mock_tokenizer, mock_config, mock_p
     mock_config.return_value = Mock(tokenizer_class=None)
 
     with caplog.at_level(logging.WARNING):
-        invocation_layer = HFLocalInvocationLayer("unsupported_model", trust_remote_code=True)
+        HFLocalInvocationLayer("unsupported_model", trust_remote_code=True)
         assert (
             "The transformers library doesn't know which tokenizer class should be "
             "loaded for the model unsupported_model. Therefore, the tokenizer will be loaded in Haystack's "
@@ -648,7 +648,7 @@ def test_tokenizer_loading_unsupported_model_with_initialized_model(
     model.config = Mock(tokenizer_class=None, _name_or_path="unsupported_model")
 
     with caplog.at_level(logging.WARNING):
-        invocation_layer = HFLocalInvocationLayer(model_name_or_path="unsupported", model=model, trust_remote_code=True)
+        HFLocalInvocationLayer(model_name_or_path="unsupported", model=model, trust_remote_code=True)
         assert (
             "The transformers library doesn't know which tokenizer class should be "
             "loaded for the model unsupported_model. Therefore, the tokenizer will be loaded in Haystack's "
@@ -671,7 +671,7 @@ def test_tokenizer_loading_unsupported_model_with_tokenizer_class_in_config(
     mock_config.return_value = Mock(tokenizer_class="Some-Supported-Tokenizer")
 
     with caplog.at_level(logging.WARNING):
-        invocation_layer = HFLocalInvocationLayer(model_name_or_path="unsupported_model", trust_remote_code=True)
+        HFLocalInvocationLayer(model_name_or_path="unsupported_model", trust_remote_code=True)
         assert not mock_tokenizer.called
         assert not caplog.text
 
