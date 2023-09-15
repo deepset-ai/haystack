@@ -3,7 +3,6 @@ import pytest
 import openai
 from openai.util import convert_to_openai_object
 import numpy as np
-from canals.errors import DeserializationError
 
 from haystack.preview.components.embedders.openai_text_embedder import OpenAITextEmbedder
 
@@ -25,9 +24,8 @@ class TestOpenAITextEmbedder:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAITextEmbedder()
 
-        assert embedder.api_key == "fake-api-key"
+        assert openai.api_key == "fake-api-key"
         assert embedder.model_name == "text-embedding-ada-002"
-        assert embedder.api_base_url == "https://api.openai.com/v1"
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
@@ -37,15 +35,14 @@ class TestOpenAITextEmbedder:
         embedder = OpenAITextEmbedder(
             api_key="fake-api-key",
             model_name="model",
-            api_base_url="https://custom-api-base-url.com",
             organization="fake-organization",
             prefix="prefix",
             suffix="suffix",
         )
-        assert embedder.api_key == "fake-api-key"
+        assert openai.api_key == "fake-api-key"
         assert embedder.model_name == "model"
-        assert embedder.api_base_url == "https://custom-api-base-url.com"
         assert embedder.organization == "fake-organization"
+        assert openai.organization == "fake-organization"
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
 
@@ -62,7 +59,6 @@ class TestOpenAITextEmbedder:
             "type": "OpenAITextEmbedder",
             "init_parameters": {
                 "model_name": "text-embedding-ada-002",
-                "api_base_url": "https://api.openai.com/v1",
                 "organization": None,
                 "prefix": "",
                 "suffix": "",
@@ -74,7 +70,6 @@ class TestOpenAITextEmbedder:
         component = OpenAITextEmbedder(
             api_key="fake-api-key",
             model_name="model",
-            api_base_url="https://custom-api-base-url.com",
             organization="fake-organization",
             prefix="prefix",
             suffix="suffix",
@@ -84,7 +79,6 @@ class TestOpenAITextEmbedder:
             "type": "OpenAITextEmbedder",
             "init_parameters": {
                 "model_name": "model",
-                "api_base_url": "https://custom-api-base-url.com",
                 "organization": "fake-organization",
                 "prefix": "prefix",
                 "suffix": "suffix",
@@ -98,17 +92,16 @@ class TestOpenAITextEmbedder:
             "type": "OpenAITextEmbedder",
             "init_parameters": {
                 "model_name": "model",
-                "api_base_url": "https://custom-api-base-url.com",
                 "organization": "fake-organization",
                 "prefix": "prefix",
                 "suffix": "suffix",
             },
         }
         component = OpenAITextEmbedder.from_dict(data)
-        assert component.api_key == "fake-api-key"
+        assert openai.api_key == "fake-api-key"
         assert component.model_name == "model"
-        assert component.api_base_url == "https://custom-api-base-url.com"
         assert component.organization == "fake-organization"
+        assert openai.organization == "fake-organization"
         assert component.prefix == "prefix"
         assert component.suffix == "suffix"
 
@@ -118,7 +111,6 @@ class TestOpenAITextEmbedder:
             "type": "OpenAITextEmbedder",
             "init_parameters": {
                 "model_name": "model",
-                "api_base_url": "https://custom-api-base-url.com",
                 "organization": "fake-organization",
                 "prefix": "prefix",
                 "suffix": "suffix",
