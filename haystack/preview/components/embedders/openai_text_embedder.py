@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Any
+import os
 
 import openai
-import os
 from canals.errors import DeserializationError
 
 from haystack.preview import component, default_to_dict, default_from_dict
