@@ -26,7 +26,7 @@ def test_squad_augmentation(samples_path):
 
 @pytest.mark.unit
 def test_squad_data_converts_df_to_data():
-    df = pd.DataFrame(
+    dataframe = pd.DataFrame(
         [["title", "context", "question", "id", "answer", 1, False]],
         columns=["title", "context", "question", "id", "answer_text", "answer_start", "is_impossible"],
     )
@@ -49,7 +49,7 @@ def test_squad_data_converts_df_to_data():
         }
     ]
 
-    result = SquadData.df_to_data(df)
+    result = SquadData.df_to_data(dataframe)
 
     assert result == expected_result
 

@@ -1267,7 +1267,7 @@ class Pipeline:
 
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
-                df = self._build_eval_dataframe(
+                eval_dataframe = self._build_eval_dataframe(
                     queries=[label.query],
                     query_labels_per_query=[label],
                     node_name=node_name,
@@ -1277,7 +1277,7 @@ class Pipeline:
                     context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
                     context_matching_min_length=context_matching_min_length,
                 )
-                eval_result.append(node_name, df)
+                eval_result.append(node_name, eval_dataframe)
 
         eval_result = self._add_sas_to_eval_result(
             sas_model_name_or_path=sas_model_name_or_path,
@@ -1404,7 +1404,7 @@ class Pipeline:
 
         for node_name in predictions_batches["_debug"].keys():
             node_output = predictions_batches["_debug"][node_name]["output"]
-            df = self._build_eval_dataframe(
+            eval_dataframe = self._build_eval_dataframe(
                 queries=predictions_batches["queries"],
                 query_labels_per_query=predictions_batches["labels"],
                 node_name=node_name,
@@ -1414,7 +1414,7 @@ class Pipeline:
                 context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
                 context_matching_min_length=context_matching_min_length,
             )
-            eval_result.append(node_name, df)
+            eval_result.append(node_name, eval_dataframe)
 
         eval_result = self._add_sas_to_eval_result(
             sas_model_name_or_path=sas_model_name_or_path,
@@ -1445,8 +1445,8 @@ class Pipeline:
         if sas_model_name_or_path is not None:
             for df in eval_result.node_results.values():
                 if len(df[df["type"] == "answer"]) > 0:
-                    gold_labels = df["gold_answers"].values
-                    predictions = [[a] for a in df["answer"].values]
+                    gold_labels = df["gold_answers"].to_numpy()
+                    predictions = [[a] for a in df["answer"].to_numpy()]
                     sas, _, pred_label_sas_grid = semantic_answer_similarity(
                         predictions=predictions,
                         gold_labels=gold_labels,
@@ -1790,7 +1790,7 @@ class Pipeline:
                     document_cols_to_keep = ["content", "id"]
                     df_docs = pd.DataFrame(documents, columns=document_cols_to_keep)
                     df_docs.map_rows = partial(df_docs.apply, axis=1)
-                    df_docs.rename(columns={"id": "document_id", "content": "context"}, inplace=True)
+                    df_docs.rename(columns={"id": "document_id", "content": "context"}, inplace=True)  # noqa: PD002
                     df_docs["gold_document_ids"] = [gold_document_ids] * len(df_docs)
                     df_docs["gold_answers"] = [gold_answers] * len(df_docs)
                     df_docs["gold_contexts"] = [gold_contexts] * len(df_docs)

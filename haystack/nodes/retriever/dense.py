@@ -1197,7 +1197,7 @@ class TableTextRetriever(DenseRetriever):
                                     if meta_field in doc.meta and isinstance(doc.meta[meta_field], str)
                                 ],
                                 "columns": doc.content.columns.tolist(),  # type: ignore
-                                "rows": doc.content.values.tolist(),  # type: ignore
+                                "rows": doc.content.to_numpy().tolist(),  # type: ignore
                                 "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
                                 "type": "table",
                                 "external_id": doc.id,

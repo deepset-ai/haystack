@@ -828,7 +828,7 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 def dataframe_to_list(df: pd.DataFrame) -> List[List]:
-    return [df.columns.tolist()] + df.values.tolist()
+    return [df.columns.tolist()] + df.to_numpy().tolist()
 
 
 def dataframe_from_list(list_df: List[List]) -> pd.DataFrame:
@@ -1494,7 +1494,7 @@ class EvaluationResult:
 
             num_retrieved = len(query_df["document_id"])
             num_retrieved_relevants = len(relevant_rows)
-            rank_retrieved_relevants = relevant_rows["rank"].values
+            rank_retrieved_relevants = relevant_rows["rank"].to_numpy()
 
             if num_labels == 0:
                 # For no_answer queries, we set all metrics to 1.0, to indicate that the retriever cannot improve the pipeline.
@@ -1614,12 +1614,12 @@ class EvaluationResult:
         node_results = {file.stem: pd.read_csv(file, **read_csv_kwargs) for file in csv_files}
         # backward compatibility mappings
         for df in node_results.values():
-            df.replace(to_replace=np.nan, value=None, inplace=True)
-            df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
+            df = df.replace(to_replace=np.nan, value=None)
+            df = df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"})
             # convert single document_id to list
             if "answer" in df.columns and "document_id" in df.columns and not "document_ids" in df.columns:
                 df["document_ids"] = df["document_id"].apply(lambda x: [x] if x not in [None, "None"] else [])
-                df.drop(columns=["document_id"], inplace=True)
+                df = df.drop(columns=["document_id"])
             if (
                 "answer" in df.columns
                 and "custom_document_id" in df.columns
@@ -1628,6 +1628,6 @@ class EvaluationResult:
                 df["custom_document_ids"] = df["custom_document_id"].apply(
                     lambda x: [x] if x not in [None, "None"] else []
                 )
-                df.drop(columns=["custom_document_id"], inplace=True)
+                df = df.drop(columns=["custom_document_id"])
         result = cls(node_results)
         return result

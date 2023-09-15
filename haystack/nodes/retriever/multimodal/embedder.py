@@ -34,7 +34,7 @@ DOCUMENT_CONVERTERS = {
     # NOTE: Keep this '?' cleaning step, it needs to be double-checked for impact on the inference results.
     "text": lambda doc: doc.content[:-1] if doc.content[-1] == "?" else doc.content,
     "table": lambda doc: " ".join(
-        doc.content.columns.tolist() + [cell for row in doc.content.values.tolist() for cell in row]
+        doc.content.columns.tolist() + [cell for row in doc.content.to_numpy().tolist() for cell in row]
     ),
     "image": lambda doc: Image.open(doc.content),
 }

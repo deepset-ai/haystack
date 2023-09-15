@@ -171,8 +171,7 @@ def export_answers_to_csv(agg_results: list, output_file):
             data["prediction_rank"].append(i + 1)
             data["prediction_context"].append(temp.context)
 
-    df = pd.DataFrame(data)
-    df.to_csv(output_file, index=False)
+    pd.DataFrame(data).to_csv(output_file, index=False)
 
 
 def convert_labels_to_squad(labels_file: str):

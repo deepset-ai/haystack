@@ -148,8 +148,7 @@ class SquadData:
                                     "document_id": document_id,
                                 }
                             )
-        df = pd.DataFrame.from_records(flat)
-        return df
+        return pd.DataFrame.from_records(flat)
 
     def count(self, unit="questions"):
         """
@@ -189,7 +188,7 @@ class SquadData:
         )
         answers = df_grouped_answers.progress_apply(cls._aggregate_answers).rename("answers")
         answers = pd.DataFrame(answers).reset_index()
-        df_aggregated_answers = pd.merge(df_aggregated_answers, answers)
+        df_aggregated_answers = df_aggregated_answers.merge(answers)
 
         # Aggregate the questions of each passage
         logger.info("Aggregating the questions of each paragraphs of each document")
@@ -197,14 +196,14 @@ class SquadData:
         df_aggregated_questions = df[["title", "context"]].drop_duplicates().reset_index()
         questions = df_grouped_questions.progress_apply(cls._aggregate_questions).rename("qas")
         questions = pd.DataFrame(questions).reset_index()
-        df_aggregated_questions = pd.merge(df_aggregated_questions, questions)
+        df_aggregated_questions = df_aggregated_questions.merge(questions)
 
         logger.info("Aggregating the paragraphs of each document")
         df_grouped_paragraphs = df_aggregated_questions.groupby(["title"])
         df_aggregated_paragraphs = df[["title"]].drop_duplicates().reset_index()
         paragraphs = df_grouped_paragraphs.progress_apply(cls._aggregate_passages).rename("paragraphs")
         paragraphs = pd.DataFrame(paragraphs).reset_index()
-        df_aggregated_paragraphs = pd.merge(df_aggregated_paragraphs, paragraphs)
+        df_aggregated_paragraphs = df_aggregated_paragraphs.merge(paragraphs)
 
         df_aggregated_paragraphs = df_aggregated_paragraphs[["title", "paragraphs"]]
         ret = df_aggregated_paragraphs.to_dict("records")

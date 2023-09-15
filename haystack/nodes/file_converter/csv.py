@@ -48,16 +48,16 @@ class CsvTextConverter(BaseConverter):
 
         docs: List[Document] = []
         for path in file_path:
-            df = pd.read_csv(path, encoding=encoding)
+            faq = pd.read_csv(path, encoding=encoding)
 
-            if len(df.columns) != 2 or df.columns[0] != "question" or df.columns[1] != "answer":
+            if len(faq.columns) != 2 or faq.columns[0] != "question" or faq.columns[1] != "answer":
                 raise ValueError("The CSV must contain two columns named 'question' and 'answer'")
 
-            df.fillna(value="", inplace=True)
-            df["question"] = df["question"].apply(lambda x: x.strip())
+            faq = faq.fillna(value="")
+            faq["question"] = faq["question"].apply(lambda x: x.strip())
 
-            df = df.rename(columns={"question": "content"})
-            docs_dicts = df.to_dict(orient="records")
+            faq = faq.rename(columns={"question": "content"})
+            docs_dicts = faq.to_dict(orient="records")
 
             for dictionary in docs_dicts:
                 if meta:

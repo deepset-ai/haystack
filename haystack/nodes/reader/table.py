@@ -410,7 +410,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):  # pylint
             answers = []
             for index, ans_coordinates_per_table in enumerate(answer_coordinates_batch):
                 if len(ans_coordinates_per_table) > 0:
-                    cells = [string_table.iat[coordinate] for coordinate in ans_coordinates_per_table]
+                    cells = [string_table.iloc[coordinate] for coordinate in ans_coordinates_per_table]
                     aggregator = aggregators.get(index, "")  # type: ignore
                     if aggregator == "NONE":
                         answer_str = ", ".join(cells)
@@ -539,7 +539,7 @@ class _TapasScoredEncoder:
         answers = []
         for answer_span_idx in top_k_answer_spans.indices:
             current_answer_span = possible_answer_spans[answer_span_idx]
-            answer_str = string_table.iat[current_answer_span[:2]]
+            answer_str = string_table.iloc[current_answer_span[:2]]
             answer_offsets: Union[List[Span], List[TableCell]]
             answer_offsets = _calculate_answer_offsets([current_answer_span[:2]])
             # As the general table score is more important for the final score, it is double weighted.
@@ -554,7 +554,7 @@ class _TapasScoredEncoder:
                     offsets_in_document=answer_offsets,
                     offsets_in_context=answer_offsets,
                     document_ids=[document.id],
-                    meta={"aggregation_operator": "NONE", "answer_cells": string_table.iat[current_answer_span[:2]]},
+                    meta={"aggregation_operator": "NONE", "answer_cells": string_table.iloc[current_answer_span[:2]]},
                 )
             )
 

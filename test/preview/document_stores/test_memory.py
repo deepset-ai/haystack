@@ -178,9 +178,9 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         results = docstore.bm25_retrieval(query="Java", top_k=1)
         assert len(results) == 1
 
-        df = results[0].dataframe
-        assert isinstance(df, pd.DataFrame)
-        assert df.equals(table_content)
+        results_0_dataframe = results[0].dataframe
+        assert isinstance(results_0_dataframe, pd.DataFrame)
+        assert results_0_dataframe.equals(table_content)
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_text_and_table_content(self, docstore: DocumentStore, caplog):

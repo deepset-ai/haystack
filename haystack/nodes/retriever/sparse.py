@@ -653,11 +653,11 @@ class TfidfRetriever(BaseRetriever):
         if not paragraphs or len(paragraphs) == 0:
             raise DocumentStoreError("Fit method called with empty document store")
 
-        df = pd.DataFrame.from_dict(paragraphs)
-        df["content"] = df["content"].apply(" ".join)
-        self.dataframes[index] = df
+        paragraphs_dataframe = pd.DataFrame.from_dict(paragraphs)
+        paragraphs_dataframe["content"] = paragraphs_dataframe["content"].apply(" ".join)
+        self.dataframes[index] = paragraphs_dataframe
 
-        tfidf_matrix = self.vectorizer.fit_transform(df["content"])
+        tfidf_matrix = self.vectorizer.fit_transform(paragraphs_dataframe["content"])
         self.tfidf_matrices[index] = tfidf_matrix
 
         self.document_counts[index] = document_store.get_document_count(index=index)
