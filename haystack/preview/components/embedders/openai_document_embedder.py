@@ -40,7 +40,8 @@ class OpenAIDocumentEmbedder:
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         :param batch_size: Number of Documents to encode at once.
-        :param progress_bar: Whether to show a progress bar or not. Can be helpful to disable in production deployments to keep the logs clean.
+        :param progress_bar: Whether to show a progress bar or not. Can be helpful to disable in production deployments
+                             to keep the logs clean.
         :param metadata_fields_to_embed: List of meta fields that should be embedded along with the Document text.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
@@ -90,7 +91,7 @@ class OpenAIDocumentEmbedder:
             meta_values_to_embed = [
                 str(doc.metadata[key])
                 for key in self.metadata_fields_to_embed
-                if key in doc.metadata and doc.metadata[key]
+                if key in doc.metadata and doc.metadata[key] is not None
             ]
 
             text_to_embed = (
@@ -133,6 +134,8 @@ class OpenAIDocumentEmbedder:
         """
         Embed a list of Documents.
         The embedding of each Document is stored in the `embedding` field of the Document.
+
+        :param documents: A list of Documents to embed.
         """
         if not isinstance(documents, list) or not isinstance(documents[0], Document):
             raise TypeError(
