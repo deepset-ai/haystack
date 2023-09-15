@@ -319,7 +319,7 @@ class DocumentStoreBaseTests:
             [
                 doc
                 for doc in filterable_docs
-                if not (np.array_equal(embedding_zeros, doc.embedding) or np.array_equal(embedding_ones, doc.embedding))
+                if not (np.array_equal(embedding_zeros, doc.embedding) or np.array_equal(embedding_ones, doc.embedding))  # type: ignore[arg-type]
             ],
         )
 
