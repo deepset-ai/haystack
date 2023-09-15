@@ -638,6 +638,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                     )
                     dummy_embed_warning_raised = True
 
+        # get the date properties of the index
+        date_fields = self._get_date_properties(index)
+
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
@@ -684,9 +687,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                                 property_value = doc.meta[property]
                             self._update_schema(property, property_value, index)
                             current_properties.append(property)
+                        # update the date fields as there might be new ones
+                        date_fields = self._get_date_properties(index)
 
                     # Weaviate requires dates to be in RFC3339 format
-                    date_fields = self._get_date_properties(index)
                     for date_field in date_fields:
                         _doc[date_field] = convert_date_to_rfc3339(_doc[date_field])
 
