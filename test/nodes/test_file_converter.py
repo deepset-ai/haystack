@@ -182,7 +182,7 @@ def test_pdf_parallel_ocr(Converter, samples_path):
 @fail_at_version(1, 18)
 def test_deprecated_encoding():
     with pytest.warns(DeprecationWarning):
-        converter = PDFToTextConverter(encoding="utf-8")
+        PDFToTextConverter(encoding="utf-8")
 
 
 @fail_at_version(1, 18)
@@ -195,7 +195,7 @@ def test_deprecated_encoding_in_convert_method(samples_path):
 @fail_at_version(1, 18)
 def test_deprecated_keep_physical_layout():
     with pytest.warns(DeprecationWarning):
-        converter = PDFToTextConverter(keep_physical_layout=True)
+        PDFToTextConverter(keep_physical_layout=True)
 
 
 @fail_at_version(1, 18)

@@ -144,7 +144,7 @@ class MetricsAPI:
             try:
                 response = self.send_custom_dd_metric(metric)
                 responses.append(response)
-            except ConnectionError as e:
+            except ConnectionError:
                 LOGGER.error(
                     f"Could not send custom metric even after retrying. "
                     f"metric_name={metric.name}, metric_value={metric.value}"
