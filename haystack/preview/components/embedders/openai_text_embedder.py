@@ -28,8 +28,8 @@ class OpenAITextEmbedder:
         """
         Create a OpenAITextEmbedder component.
 
-        :param api_key: The OpenAI API key.
-                        If not expressly provided, the API key will be read from the environment variable OPENAI_API_KEY.
+        :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
+                        environment variable OPENAI_API_KEY (recommended).
         :param model_name: The name of the model to use.
         :param api_base_url: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
         :param organization: The OpenAI-Organization ID, defaults to `None`. For more details, see OpenAI
@@ -41,11 +41,11 @@ class OpenAITextEmbedder:
         if api_key is None:
             try:
                 api_key = os.environ["OPENAI_API_KEY"]
-            except KeyError:
+            except KeyError as e:
                 raise ValueError(
                     "OpenAITextEmbedder expects an OpenAI API key. "
-                    "Please provide one using the api_key parameter or set the environment variable OPENAI_API_KEY."
-                )
+                    "Please provide one setting the environment variable OPENAI_API_KEY (recommended) or passing it explicitly."
+                ) from e
 
         self.api_key = api_key
         self.model_name = model_name
@@ -58,9 +58,10 @@ class OpenAITextEmbedder:
         """
         Serialize this component to a dictionary.
         """
+
+        # do not serialize api_key
         return default_to_dict(
             self,
-            api_key="OPENAI_API_KEY",
             model_name=self.model_name,
             api_base_url=self.api_base_url,
             organization=self.organization,
@@ -73,14 +74,6 @@ class OpenAITextEmbedder:
         """
         Deserialize this component from a dictionary.
         """
-        env_var_name = data["init_parameters"]["api_key"]
-        try:
-            data["init_parameters"]["api_key"] = os.environ[env_var_name]
-        except KeyError as e:
-            raise DeserializationError(
-                f"For deserialization, the OpenAITextEmbedder expects the api_key to be set as an environment variable named {env_var_name}"
-            ) from e
-
         return default_from_dict(cls, data)
 
     @component.output_types(embedding=List[float], metadata=Dict[str, Any])

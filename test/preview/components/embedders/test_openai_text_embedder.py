@@ -61,7 +61,6 @@ class TestOpenAITextEmbedder:
         assert data == {
             "type": "OpenAITextEmbedder",
             "init_parameters": {
-                "api_key": "OPENAI_API_KEY",
                 "model_name": "text-embedding-ada-002",
                 "api_base_url": "https://api.openai.com/v1",
                 "organization": None,
@@ -84,7 +83,6 @@ class TestOpenAITextEmbedder:
         assert data == {
             "type": "OpenAITextEmbedder",
             "init_parameters": {
-                "api_key": "OPENAI_API_KEY",
                 "model_name": "model",
                 "api_base_url": "https://custom-api-base-url.com",
                 "organization": "fake-organization",
@@ -99,7 +97,6 @@ class TestOpenAITextEmbedder:
         data = {
             "type": "OpenAITextEmbedder",
             "init_parameters": {
-                "api_key": "OPENAI_API_KEY",
                 "model_name": "model",
                 "api_base_url": "https://custom-api-base-url.com",
                 "organization": "fake-organization",
@@ -120,7 +117,6 @@ class TestOpenAITextEmbedder:
         data = {
             "type": "OpenAITextEmbedder",
             "init_parameters": {
-                "api_key": "OPENAI_API_KEY",
                 "model_name": "model",
                 "api_base_url": "https://custom-api-base-url.com",
                 "organization": "fake-organization",
@@ -128,10 +124,7 @@ class TestOpenAITextEmbedder:
                 "suffix": "suffix",
             },
         }
-        with pytest.raises(
-            DeserializationError,
-            match="For deserialization, the OpenAITextEmbedder expects the api_key to be set as an environment variable",
-        ):
+        with pytest.raises(ValueError, match="OpenAITextEmbedder expects an OpenAI API key"):
             OpenAITextEmbedder.from_dict(data)
 
     @pytest.mark.unit
