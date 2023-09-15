@@ -420,6 +420,7 @@ ignore = [
 max-complexity = 28
 
 [tool.ruff.per-file-ignores]
+"examples/basic_qa_pipeline.py" = ["C416"]
 "haystack/preview/testing/document_store.py" = ["F821"]
 "haystack/telemetry.py" = ["F821"]
 
