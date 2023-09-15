@@ -24,7 +24,7 @@ repos:
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.0.289
   hooks:
-  - id: ruff  
+  - id: ruff
 
 - repo: https://github.com/codespell-project/codespell
   rev: v2.2.5

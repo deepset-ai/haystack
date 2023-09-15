@@ -1,6 +1,6 @@
 ---
 enhancements:
   - |
-    Refactor PineconeDocumentStore to use metadata instead of namespaces 
-    for distinction between documents with embeddings, documents without 
+    Refactor PineconeDocumentStore to use metadata instead of namespaces
+    for distinction between documents with embeddings, documents without
     embeddings and labels
