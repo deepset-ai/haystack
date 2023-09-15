@@ -39,10 +39,10 @@ class OpenAIDocumentEmbedder:
         [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
-        :param batch_size: Number of strings to encode at once.
-        :param progress_bar: If true, displays progress bar during embedding.
-        :param metadata_fields_to_embed: List of meta fields that should be embedded along with the Document content.
-        :param embedding_separator: Separator used to concatenate the meta fields to the Document content.
+        :param batch_size: Number of Documents to encode at once.
+        :param progress_bar: Whether to show a progress bar or not. Can be helpful to disable in production deployments to keep the logs clean.
+        :param metadata_fields_to_embed: List of meta fields that should be embedded along with the Document text.
+        :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
 
         self.api_key = api_key
