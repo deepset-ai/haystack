@@ -578,7 +578,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert mocked_document_store.space_type == "innerproduct"
         with pytest.raises(
             DocumentStoreError,
-            match=f"Set `similarity` to one of '\['l2'\]' to properly use the embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'l2', it requires 'innerproduct'.",
+            match=rf"Set `similarity` to one of '\['l2'\]' to properly use the embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'l2', it requires 'innerproduct'.",
         ):
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
@@ -597,7 +597,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
         with pytest.raises(
             DocumentStoreError,
-            match=f"Set `similarity` to one of '\['dot_product'\]' to properly use the embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'innerproduct', it requires 'cosinesimil'.",
+            match=rf"Set `similarity` to one of '\['dot_product'\]' to properly use the embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'innerproduct', it requires 'cosinesimil'.",
         ):
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
@@ -1248,9 +1248,9 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             with pytest.raises(DocumentStoreError, match="Last try of bulk indexing documents failed."):
                 mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
 
-            assert mocked_bulk.call_count == 3  # depth first search failes and cancels the whole bulk request
+            assert mocked_bulk.call_count == 3  # depth first search fails and cancels the whole bulk request
 
-            assert "Too Many Requeset" in caplog.text
+            assert "Too Many Requests" in caplog.text
             assert " Splitting the number of documents into two chunks with the same size" in caplog.text
 
     @pytest.mark.unit

@@ -153,7 +153,7 @@ class LanguageModel(nn.Module, ABC):
         """
         Extracting vectors from a language model (for example, for extracting sentence embeddings).
         You can use different pooling strategies and layers by specifying them in the object attributes
-        `extraction_layer` and `extraction_strategy`. You should set both these attirbutes using the Inferencer:
+        `extraction_layer` and `extraction_strategy`. You should set both these attributes using the Inferencer:
         Example:  Inferencer(extraction_strategy='cls_token', extraction_layer=-1)
 
         :param logits: Tuple of (sequence_output, pooled_output) from the language model.

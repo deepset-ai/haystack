@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Remove `id` parameter from `Document` constructor as it was ignored and a new one was generated anyway.
+    This is a backwards incompatible change.

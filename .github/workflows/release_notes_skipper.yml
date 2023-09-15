@@ -1,0 +1,23 @@
+name: Check Release Notes
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - labeled
+      - unlabeled
+    paths-ignore:
+      - "**.py"
+      - "pyproject.toml"
+      - "!.github/**/*.py"
+      - "!rest_api/**/*.py"
+
+jobs:
+  reno:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip mandatory job
+        run: echo "Skipped!"

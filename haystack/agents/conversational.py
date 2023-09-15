@@ -107,6 +107,6 @@ class ConversationalAgent(Agent):
     def add_tool(self, tool: Tool):
         if len(self.tm.tools) == 0:
             raise AgentError(
-                "You cannot add tools after initializing the ConversationalAgent without any tools. If you want to add tools, reinitailize the ConversationalAgent and provide `tools`."
+                "You cannot add tools after initializing the ConversationalAgent without any tools. If you want to add tools, reinitialize the ConversationalAgent and provide `tools`."
             )
         return super().add_tool(tool)

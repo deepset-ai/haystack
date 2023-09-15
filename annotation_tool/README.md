@@ -24,7 +24,7 @@ The credentials should match in database image and application configuration.
     POSTGRES_USER: "somesafeuser"
     POSTGRES_PASSWORD: "somesafepassword"
     POSTGRES_DB: "databasename"
-    
+
     COOKIE_KEYS: "somesafecookiekeys"
     JWT_SECRET: "somesafesecret"
 

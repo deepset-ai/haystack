@@ -20,7 +20,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     from haystack.utils.torch_utils import ListDataset
 
 
-# supported models classes should be extended when HF image-to-text pipeline willl support more classes
+# supported models classes should be extended when HF image-to-text pipeline will support more classes
 # see https://github.com/huggingface/transformers/issues/21110
 SUPPORTED_MODELS_CLASSES = [
     "VisionEncoderDecoderModel",

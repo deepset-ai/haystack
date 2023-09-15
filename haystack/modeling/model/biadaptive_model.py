@@ -367,7 +367,7 @@ class BiAdaptiveModel(nn.Module):
 
     def log_params(self):
         """
-        Logs paramteres to generic logger MlLogger
+        Logs parameters to generic logger MlLogger
         """
         params = {
             "lm1_type": self.language_model1.__class__.__name__,

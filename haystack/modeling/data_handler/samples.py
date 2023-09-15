@@ -187,7 +187,7 @@ def offset_to_token_idx_vecorized(token_offsets, ch_idx):
     if ch_idx >= np.max(token_offsets):
         # idx must be including
         idx = np.argmax(token_offsets)
-    # looking for the first occurence of token_offsets larger than ch_idx and taking one position to the left.
+    # looking for the first occurrence of token_offsets larger than ch_idx and taking one position to the left.
     # This is needed to overcome n special_tokens at start of sequence
     # and failsafe matching (the character start might not always coincide with a token offset, e.g. when starting at whitespace)
     else:

@@ -11,7 +11,7 @@ from haystack.preview import default_from_dict, default_to_dict
 from haystack.preview.document_stores.decorator import document_store
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.protocols import DuplicatePolicy, DocumentStore
-from haystack.preview.document_stores.memory._filters import match
+from haystack.preview.utils.filters import document_matches_filter
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError, DocumentStoreError
 from haystack.preview.utils import expit
 
@@ -160,7 +160,7 @@ class MemoryDocumentStore:
         :return: A list of Documents that match the given filters.
         """
         if filters:
-            return [doc for doc in self.storage.values() if match(conditions=filters, document=doc)]
+            return [doc for doc in self.storage.values() if document_matches_filter(conditions=filters, document=doc)]
         return list(self.storage.values())
 
     def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
@@ -218,30 +218,32 @@ class MemoryDocumentStore:
         if not query:
             raise ValueError("Query should be a non-empty string")
 
-        # Get all documents that match the user's filters AND are either 'table' or 'text'.
-        # Raises an exception if the user was trying to include other content types.
-        if filters and "content_type" in filters:
-            content_types = filters["content_type"]
-            if isinstance(content_types, str):
-                content_types = [content_types]
-            if any(type_ not in ["text", "table"] for type_ in content_types):
-                raise ValueError(
-                    "MemoryDocumentStore can do BM25 retrieval on no other document type than text or table."
-                )
+        content_type_filter = {"$or": {"text": {"$not": None}, "dataframe": {"$not": None}}}
+        if filters:
+            filters = {"$and": [content_type_filter, filters]}
         else:
-            filters = filters or {}
-            filters = {**filters, "content_type": ["text", "table"]}
+            filters = content_type_filter
         all_documents = self.filter_documents(filters=filters)
 
         # Lowercase all documents
         lower_case_documents = []
         for doc in all_documents:
-            if doc.content_type == "text":
-                lower_case_documents.append(doc.content.lower())
-            elif doc.content_type == "table":
-                str_content = doc.content.astype(str)
-                csv_content = str_content.to_csv(index=False)
-                lower_case_documents.append(csv_content.lower())
+            if doc.text is None and doc.dataframe is None:
+                logger.info("Document '%s' has no text or dataframe content. Skipping it.", doc.id)
+            else:
+                if doc.text is not None:
+                    lower_case_documents.append(doc.text.lower())
+                    if doc.dataframe is not None:
+                        logger.warning(
+                            "Document '%s' has both text and dataframe content. "
+                            "Using text content and skipping dataframe content.",
+                            doc.id,
+                        )
+                        continue
+                if doc.dataframe is not None:
+                    str_content = doc.dataframe.astype(str)
+                    csv_content = str_content.to_csv(index=False)
+                    lower_case_documents.append(csv_content.lower())
 
         # Tokenize the entire content of the DocumentStore
         tokenized_corpus = [
@@ -268,6 +270,7 @@ class MemoryDocumentStore:
             doc = all_documents[i]
             doc_fields = doc.to_dict()
             doc_fields["score"] = docs_scores[i]
+            del doc_fields["id"]
             return_document = Document(**doc_fields)
             return_documents.append(return_document)
         return return_documents
@@ -320,6 +323,7 @@ class MemoryDocumentStore:
             doc_fields["score"] = score
             if return_embedding is False:
                 doc_fields["embedding"] = None
+            del doc_fields["id"]
             top_documents.append(Document(**doc_fields))
 
         return top_documents
