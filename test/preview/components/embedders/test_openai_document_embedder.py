@@ -1,5 +1,6 @@
 from unittest.mock import patch
 import pytest
+from typing import List
 import numpy as np
 import openai
 from openai.util import convert_to_openai_object
@@ -9,7 +10,7 @@ from haystack.preview.components.embedders.openai_document_embedder import OpenA
 
 
 def mock_openai_response(
-    input: list[str], model: str = "text-embedding-ada-002", **kwargs
+    input: List[str], model: str = "text-embedding-ada-002", **kwargs
 ) -> openai.openai_object.OpenAIObject:
     dict_response = {
         "object": "list",
