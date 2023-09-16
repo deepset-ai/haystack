@@ -106,7 +106,9 @@ class Document:
 
         allowed_hash_key_attributes = ["content", "content_type", "score", "meta", "embedding"]
 
-        if id_hash_keys is not None and not all(key in allowed_hash_key_attributes or key.startswith("meta.") for key in id_hash_keys):
+        if id_hash_keys is not None and not all(
+            key in allowed_hash_key_attributes or key.startswith("meta.") for key in id_hash_keys
+        ):
             raise ValueError(
                 f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
                 f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}) or "
@@ -182,7 +184,7 @@ class Document:
                 continue
                 # Convert pd.DataFrame to list of rows for serialization
             if k == "content" and self.content_type == "table" and isinstance(self.content, DataFrame):
-                    v = dataframe_to_list(self.content)
+                v = dataframe_to_list(self.content)
             k = k if k not in inv_field_map else inv_field_map[k]
             _doc[k] = v
         return _doc

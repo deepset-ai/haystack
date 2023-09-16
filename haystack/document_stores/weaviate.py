@@ -1149,7 +1149,12 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             query_output = self.weaviate_client.query.raw(gql_query)
 
         results = []
-        if query_output and "data" in query_output and "Get" in query_output.get("data") and query_output.get("data").get("Get").get(index):
+        if (
+            query_output
+            and "data" in query_output
+            and "Get" in query_output.get("data")
+            and query_output.get("data").get("Get").get(index)
+        ):
             results = query_output.get("data").get("Get").get(index)
 
         # We retrieve the JSON properties from the schema and convert them back to the Python dicts
@@ -1416,7 +1421,12 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             )
 
         results = []
-        if query_output and "data" in query_output and "Get" in query_output.get("data") and query_output.get("data").get("Get").get(index):
+        if (
+            query_output
+            and "data" in query_output
+            and "Get" in query_output.get("data")
+            and query_output.get("data").get("Get").get(index)
+        ):
             results = query_output.get("data").get("Get").get(index)
 
         # We retrieve the JSON properties from the schema and convert them back to the Python dicts

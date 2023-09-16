@@ -37,14 +37,12 @@ class DirectLoggingChecker(BaseChecker):
         self._function_stack.pop()
 
     def visit_call(self, node: nodes.Call) -> None:
-        if isinstance(node.func, nodes.Attribute) and isinstance(node.func.expr, nodes.Name) and node.func.expr.name == "logging" and node.func.attrname in [
-            "debug",
-            "info",
-            "warning",
-            "error",
-            "critical",
-            "exception",
-        ]:
+        if (
+            isinstance(node.func, nodes.Attribute)
+            and isinstance(node.func.expr, nodes.Name)
+            and node.func.expr.name == "logging"
+            and node.func.attrname in ["debug", "info", "warning", "error", "critical", "exception"]
+        ):
             self.add_message("no-direct-logging", args=node.func.attrname, node=node)
 
 
@@ -70,7 +68,12 @@ class NoLoggingConfigurationChecker(BaseChecker):
         self._function_stack.pop()
 
     def visit_call(self, node: nodes.Call) -> None:
-        if isinstance(node.func, nodes.Attribute) and isinstance(node.func.expr, nodes.Name) and node.func.expr.name == "logging" and node.func.attrname in ["basicConfig"]:
+        if (
+            isinstance(node.func, nodes.Attribute)
+            and isinstance(node.func.expr, nodes.Name)
+            and node.func.expr.name == "logging"
+            and node.func.attrname in ["basicConfig"]
+        ):
             self.add_message("no-logging-basicconfig", node=node)
 
 

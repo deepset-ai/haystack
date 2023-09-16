@@ -90,7 +90,9 @@ class TestTextfileToDocument:
     def test_run_warning_for_invalid_language(self, preview_samples_path, caplog):
         file_path = preview_samples_path / "txt" / "doc_1.txt"
         converter = TextFileToDocument()
-        with patch("haystack.preview.components.file_converters.txt.langdetect.detect", return_value="en"), caplog.at_level(logging.WARNING):
+        with patch(
+            "haystack.preview.components.file_converters.txt.langdetect.detect", return_value="en"
+        ), caplog.at_level(logging.WARNING):
             output = converter.run(paths=[file_path], valid_languages=["de"])
             assert (
                 f"Text from file {file_path} is not in one of the valid languages: ['de']. "

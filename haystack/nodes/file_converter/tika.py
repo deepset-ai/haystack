@@ -169,7 +169,12 @@ class TikaConverter(BaseConverter):
                 digits = [word for word in words if any(i.isdigit() for i in word)]
 
                 # remove lines having > 40% of words as digits AND not ending with a period(.)
-                if remove_numeric_tables and words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
+                if (
+                    remove_numeric_tables
+                    and words
+                    and len(digits) / len(words) > 0.4
+                    and not line.strip().endswith(".")
+                ):
                     logger.debug("Removing line '%s' from %s", line, file_path)
                     continue
 

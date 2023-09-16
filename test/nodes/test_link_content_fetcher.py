@@ -226,7 +226,9 @@ def test_fetch_exception_during_content_extraction_raise_on_failure(caplog, mock
     url = "https://www.example.com"
     r = LinkContentFetcher(raise_on_failure=True)
 
-    with patch("boilerpy3.extractors.ArticleExtractor.get_content", side_effect=Exception("Could not extract content")), pytest.raises(Exception, match="Could not extract content"):
+    with patch(
+        "boilerpy3.extractors.ArticleExtractor.get_content", side_effect=Exception("Could not extract content")
+    ), pytest.raises(Exception, match="Could not extract content"):
         r.fetch(url=url)
 
 
@@ -253,7 +255,9 @@ def test_fetch_exception_during_request_get_raise_on_failure(caplog):
     url = "https://www.example.com"
     r = LinkContentFetcher(raise_on_failure=True)
 
-    with patch("haystack.nodes.retriever.link_content.requests.get", side_effect=requests.RequestException()), pytest.raises(requests.RequestException):
+    with patch(
+        "haystack.nodes.retriever.link_content.requests.get", side_effect=requests.RequestException()
+    ), pytest.raises(requests.RequestException):
         r.fetch(url=url)
 
 
