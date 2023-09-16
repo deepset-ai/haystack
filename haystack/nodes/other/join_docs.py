@@ -82,7 +82,7 @@ class JoinDocuments(JoinNode):
                     "score would be `-infinity`."
                 )
         else:
-            sorted_docs = [(k, v) for k, v in scores_map.items()]
+            sorted_docs = list(scores_map.items())
 
         if not top_k_join:
             top_k_join = self.top_k_join
