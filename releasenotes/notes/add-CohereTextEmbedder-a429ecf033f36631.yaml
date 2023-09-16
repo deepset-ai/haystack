@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Add `CohereTextEmbedder`, a component that uses Cohere embedding models to embed strings into vectors.
