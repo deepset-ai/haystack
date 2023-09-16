@@ -345,7 +345,7 @@ class TestPromptTemplateSyntax:
         self, prompt_text: str, documents: List[Document], query: str, expected_prompts: List[str]
     ):
         prompt_template = PromptTemplate(prompt_text)
-        prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
+        prompts = list(prompt_template.fill(documents=documents, query=query))
         assert prompts == expected_prompts
 
     @pytest.mark.unit
@@ -372,7 +372,7 @@ class TestPromptTemplateSyntax:
     )
     def test_join(self, prompt_text: str, documents: List[Document], expected_prompts: List[str]):
         prompt_template = PromptTemplate(prompt_text)
-        prompts = [prompt for prompt in prompt_template.fill(documents=documents)]
+        prompts = list(prompt_template.fill(documents=documents))
         assert prompts == expected_prompts
 
     @pytest.mark.unit
@@ -405,7 +405,7 @@ class TestPromptTemplateSyntax:
     )
     def test_to_strings(self, prompt_text: str, documents: List[Document], expected_prompts: List[str]):
         prompt_template = PromptTemplate(prompt_text)
-        prompts = [prompt for prompt in prompt_template.fill(documents=documents)]
+        prompts = list(prompt_template.fill(documents=documents))
         assert prompts == expected_prompts
 
     @pytest.mark.unit
@@ -466,7 +466,7 @@ class TestPromptTemplateSyntax:
         self, prompt_text: str, documents: List[Document], query: str, expected_prompts: List[str]
     ):
         prompt_template = PromptTemplate(prompt_text)
-        prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
+        prompts = list(prompt_template.fill(documents=documents, query=query))
         assert prompts == expected_prompts
 
     def test_prompt_template_remove_template_params(self):

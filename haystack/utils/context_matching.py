@@ -147,7 +147,7 @@ def match_context(
 
         matches = (candidate for candidate in candidate_scores if candidate.score > threshold)
         sorted_matches = sorted(matches, key=lambda candidate: candidate.score, reverse=True)
-        match_list = list((candidate_score.candidate_id, candidate_score.score) for candidate_score in sorted_matches)
+        match_list = [(candidate_score.candidate_id, candidate_score.score) for candidate_score in sorted_matches]
 
         return match_list
 
@@ -208,13 +208,13 @@ def match_contexts(
         if show_progress:
             candidate_scores = tqdm(candidate_scores)
 
-        match_lists: List[List[Tuple[str, float]]] = list()
+        match_lists: List[List[Tuple[str, float]]] = []
         matches = (candidate for candidate in candidate_scores if candidate.score > threshold)
         group_sorted_matches = sorted(matches, key=lambda candidate: candidate.context_id)
         grouped_matches = groupby(group_sorted_matches, key=lambda candidate: candidate.context_id)
         for context_id, group in grouped_matches:
             sorted_group = sorted(group, key=lambda candidate: candidate.score, reverse=True)
-            match_list = list((candiate_score.candidate_id, candiate_score.score) for candiate_score in sorted_group)
+            match_list = [(candiate_score.candidate_id, candiate_score.score) for candiate_score in sorted_group]
             match_lists.insert(context_id, match_list)
 
         return match_lists
