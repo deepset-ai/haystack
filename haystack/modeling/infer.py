@@ -14,6 +14,7 @@ from haystack.modeling.utils import initialize_device_settings, set_all_seeds
 from haystack.modeling.data_handler.inputs import QAInput
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
 from haystack.modeling.model.predictions import QAPred
+import contextlib
 
 
 logger = logging.getLogger(__name__)
@@ -340,10 +341,8 @@ class Inferencer:
 
         if return_json:
             # TODO this try catch should be removed when all tasks return prediction objects
-            try:
+            with contextlib.suppress(AttributeError):
                 preds_all = [x.to_json() for x in preds_all]
-            except AttributeError:
-                pass
 
         return preds_all
 

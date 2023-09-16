@@ -228,9 +228,8 @@ def elasticsearch_index_to_document_store(
         content = record["_source"].pop(original_content_field, "")
         if content:
             meta = {}
-            if original_name_field is not None:
-                if original_name_field in record["_source"]:
-                    meta["name"] = record["_source"].pop(original_name_field)
+            if original_name_field is not None and original_name_field in record["_source"]:
+                meta["name"] = record["_source"].pop(original_name_field)
             # Only add selected metadata fields
             if included_metadata_fields is not None:
                 for metadata_field in included_metadata_fields:
