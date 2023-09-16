@@ -457,10 +457,7 @@ class TfidfRetriever(BaseRetriever):
     def _calc_scores(self, queries: List[str], index: str) -> List[Dict[int, float]]:
         question_vector = self.vectorizer.transform(queries)
         doc_scores_per_query = self.tfidf_matrices[index].dot(question_vector.T).T.toarray()
-        doc_scores_per_query = [
-            [(doc_idx, doc_score) for doc_idx, doc_score in enumerate(doc_scores)]
-            for doc_scores in doc_scores_per_query
-        ]
+        doc_scores_per_query = [list(enumerate(doc_scores)) for doc_scores in doc_scores_per_query]
         indices_and_scores: List[Dict] = [
             OrderedDict(sorted(query_idx_scores, key=lambda tup: tup[1], reverse=True))
             for query_idx_scores in doc_scores_per_query

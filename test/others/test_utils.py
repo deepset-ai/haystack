@@ -546,7 +546,7 @@ def test_list_files_on_deepset_cloud():
         )
 
     client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
-    files = [f for f in client.list_files()]
+    files = list(client.list_files())
     assert len(files) == 2
     assert files[0]["name"] == "sample_pdf_1.pdf"
     assert files[1]["name"] == "sample_pdf_2.pdf"

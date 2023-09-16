@@ -160,7 +160,7 @@ def test_deduplication_for_overlapping_documents(reader):
     prediction = reader.predict(query="Where does Carla live?", documents=docs, top_k=5)
 
     # Check that there are no duplicate answers
-    assert len(set(ans.answer for ans in prediction["answers"])) == len(prediction["answers"])
+    assert len({ans.answer for ans in prediction["answers"]}) == len(prediction["answers"])
 
 
 @pytest.mark.integration
