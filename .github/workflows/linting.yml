@@ -68,9 +68,10 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Pylint and Haystack Linter
+      - name: Install Haystack
         run: |
-          pip install pylint ./haystack-linter
+          pip install ".[all,dev]"
+          pip install ./haystack-linter
 
       - name: Pylint
         if: steps.files.outputs.any_changed == 'true'
