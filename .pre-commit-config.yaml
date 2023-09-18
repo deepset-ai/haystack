@@ -21,6 +21,18 @@ repos:
   hooks:
   - id: black-jupyter
 
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.0.290
+  hooks:
+  - id: ruff
+
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.2.5
+  hooks:
+  - id: codespell
+    additional_dependencies:
+      - tomli
+
 - repo: https://github.com/rhysd/actionlint
   rev: v1.6.25
   hooks:

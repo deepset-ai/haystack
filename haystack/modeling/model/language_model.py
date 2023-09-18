@@ -108,14 +108,14 @@ class LanguageModel(nn.Module, ABC):
         if self._output_dims:
             return self._output_dims
 
-        for odn in OUTPUT_DIM_NAMES:
-            try:
+        try:
+            for odn in OUTPUT_DIM_NAMES:
                 value = getattr(self.model.config, odn, None)
                 if value:
                     self._output_dims = value
                     return value
-            except AttributeError:
-                raise ModelingError("Can't get the output dimension before loading the model.")
+        except AttributeError:
+            raise ModelingError("Can't get the output dimension before loading the model.")
 
         raise ModelingError("Could not infer the output dimensions of the language model.")
 
@@ -153,7 +153,7 @@ class LanguageModel(nn.Module, ABC):
         """
         Extracting vectors from a language model (for example, for extracting sentence embeddings).
         You can use different pooling strategies and layers by specifying them in the object attributes
-        `extraction_layer` and `extraction_strategy`. You should set both these attirbutes using the Inferencer:
+        `extraction_layer` and `extraction_strategy`. You should set both these attributes using the Inferencer:
         Example:  Inferencer(extraction_strategy='cls_token', extraction_layer=-1)
 
         :param logits: Tuple of (sequence_output, pooled_output) from the language model.

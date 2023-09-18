@@ -7,7 +7,8 @@ import pandas as pd
 
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores import DocumentStore, DuplicatePolicy
-from haystack.preview.document_stores.errors import FilterError, MissingDocumentError, DuplicateDocumentError
+from haystack.preview.document_stores.errors import MissingDocumentError, DuplicateDocumentError
+from haystack.preview.errors import FilterError
 
 
 class DocumentStoreBaseTests:
@@ -318,10 +319,7 @@ class DocumentStoreBaseTests:
             [
                 doc
                 for doc in filterable_docs
-                or (
-                    not np.array_equal(embedding_zeros, doc.embedding)  # type: ignore
-                    and not np.array_equal(embedding_ones, doc.embedding)  # type: ignore
-                )
+                if not (np.array_equal(embedding_zeros, doc.embedding) or np.array_equal(embedding_ones, doc.embedding))  # type: ignore[arg-type]
             ],
         )
 

@@ -1,20 +1,18 @@
-from typing import List, Union, Dict, Any
-
 import os
-import numpy as np
 from inspect import getmembers, isclass, isfunction
+from typing import Any, Dict, List, Union
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
-from haystack.document_stores.pinecone import pinecone
-from haystack.document_stores.pinecone import PineconeDocumentStore
-from haystack.schema import Document
+from haystack.document_stores.pinecone import DOCUMENT_WITH_EMBEDDING, PineconeDocumentStore, pinecone
 from haystack.errors import FilterError, PineconeDocumentStoreError
+from haystack.schema import Document
 from haystack.testing import DocumentStoreBaseTestAbstract
 
-from ..mocks import pinecone as pinecone_mock
 from ..conftest import MockBaseRetriever
+from ..mocks import pinecone as pinecone_mock
 
 # Set metadata fields used during testing for PineconeDocumentStore meta_config
 META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document"]
@@ -150,6 +148,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     #
     #  Tests
     #
+
     @pytest.mark.integration
     def test_doc_store_wrong_init(self):
         """
@@ -196,12 +195,12 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
 
     @pytest.mark.skip
     @pytest.mark.integration
-    def test_ne_filters(self, ds, documents):
+    def test_ne_filters(self, ds, documents):  # noqa: F811
         pass
 
     @pytest.mark.skip
     @pytest.mark.integration
-    def test_nin_filters(self, ds, documents):
+    def test_nin_filters(self, ds, documents):  # noqa: F811
         pass
 
     @pytest.mark.skip
@@ -332,7 +331,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             }
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -344,7 +343,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             "name": ["file_5.txt", "file_3.txt"],
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters_simplified)
 
     @pytest.mark.integration
@@ -358,7 +357,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             }
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -370,7 +369,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             "$or": {"name": ["file_5.txt", "file_3.txt"], "numeric_field": {"$lte": 5.0}},
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters_simplified)
 
     @pytest.mark.integration
@@ -386,7 +385,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                 },
             }
         }
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -400,7 +399,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                 "$and": {"numeric_field": {"$lte": 5.0}, "$not": {"meta_field": "test-2"}},
             },
         }
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters_simplified)
 
     @pytest.mark.integration
@@ -414,7 +413,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                 }
             }
         }
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]t' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]t' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -429,7 +428,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             ]
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -440,7 +439,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             "meta_field": "multilayer-test",
         }
         doc = Document(
-            content=f"Multilayered dict", meta=multilayer_meta, embedding=np.random.rand(768).astype(np.float32)
+            content="Multilayered dict", meta=multilayer_meta, embedding=np.random.rand(768).astype(np.float32)
         )
 
         doc_store_with_docs.write_documents([doc])
@@ -467,7 +466,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         We expect 1 doc with an embeddings because all documents in already written in doc_store_with_docs contain no
         embeddings.
         """
-        doc = Document(content=f"Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc = Document(content="Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
         doc_store_with_docs.write_documents([doc])
         assert doc_store_with_docs.get_embedding_count() == 1
 
@@ -486,7 +485,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         assert doc_store_with_docs.get_document_count() == initial_document_count
 
         # document with embedding is written to doc_store_with_docs
-        doc = Document(content=f"Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc = Document(content="Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
         doc_store_with_docs.write_documents([doc])
 
         # so we expect initial_document_count + 1 documents in total
@@ -510,7 +509,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         assert doc_store_with_docs.get_document_count() == initial_document_count
 
         # document without embedding is written to doc_store_with_docs
-        doc = Document(content=f"Doc without embedding")
+        doc = Document(content="Doc without embedding")
         doc_store_with_docs.write_documents([doc])
 
         # we now expect initial_document_count + 1 documents in total
@@ -537,15 +536,16 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         assert doc_store_with_docs.get_document_count() == initial_document_count
 
         # two documents with embedding are written to doc_store_with_docs
-        doc_1 = Document(content=f"Doc with embedding 1", embedding=np.random.rand(768).astype(np.float32))
-        doc_2 = Document(content=f"Doc with embedding 2", embedding=np.random.rand(768).astype(np.float32))
+        doc_1 = Document(content="Doc with embedding 1", embedding=np.random.rand(768).astype(np.float32))
+        doc_2 = Document(content="Doc with embedding 2", embedding=np.random.rand(768).astype(np.float32))
         doc_store_with_docs.write_documents([doc_1, doc_2])
 
         # total number is initial_document_count + 2
         assert doc_store_with_docs.get_document_count() == initial_document_count + 2
 
         # remove one of the documents with embedding
-        all_embedding_docs = doc_store_with_docs.get_all_documents(namespace="vectors")
+        all_embedding_docs = doc_store_with_docs.get_all_documents(type_metadata=DOCUMENT_WITH_EMBEDDING)
+
         doc_store_with_docs.delete_documents(ids=[all_embedding_docs[0].id])
 
         # since we deleted one doc, we expect initial_document_count + 1 documents in total
@@ -569,15 +569,15 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         assert doc_store_with_docs.get_document_count() == initial_document_count
 
         # two documents without embedding are written to doc_store_with_docs
-        doc_1 = Document(content=f"Doc with embedding 1", embedding=None)
-        doc_2 = Document(content=f"Doc with embedding 2", embedding=None)
+        doc_1 = Document(content="Doc with embedding 1", embedding=None)
+        doc_2 = Document(content="Doc with embedding 2", embedding=None)
         doc_store_with_docs.write_documents([doc_1, doc_2])
 
         # total number is initial_document_count + 2
         assert doc_store_with_docs.get_document_count() == initial_document_count + 2
 
         # remove one of the documents without embedding
-        all_non_embedding_docs = doc_store_with_docs.get_all_documents(namespace="no-vectors")
+        all_non_embedding_docs = doc_store_with_docs.get_all_documents(type_metadata="no-vector")
         doc_store_with_docs.delete_documents(ids=[all_non_embedding_docs[0].id])
 
         # since we deleted one doc, we expect initial_document_count + 1 documents in total
@@ -656,6 +656,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         mocked_ds.write_documents([doc])
         call_args = mocked_ds.pinecone_indexes["document"].upsert.call_args.kwargs
         assert list(call_args["vectors"])[0][2] == {
+            "doc_type": "no-vector",
             "content": "test",
             "content_type": "text",
             "_split_overlap": '[{"doc_id": "test_id", "range": [0, 10]}]',

@@ -45,7 +45,7 @@ def test_filetype_classifier_many_files_mixed_extensions(tmp_path):
 @pytest.mark.unit
 def test_filetype_classifier_unsupported_extension(tmp_path):
     node = FileTypeClassifier()
-    test_file = tmp_path / f"test.really_weird_extension"
+    test_file = tmp_path / "test.really_weird_extension"
     with pytest.raises(ValueError):
         node.run(test_file)
 
@@ -53,16 +53,16 @@ def test_filetype_classifier_unsupported_extension(tmp_path):
 @pytest.mark.unit
 def test_filetype_classifier_custom_extensions(tmp_path):
     node = FileTypeClassifier(supported_types=["my_extension"])
-    test_file = tmp_path / f"test.my_extension"
+    test_file = tmp_path / "test.my_extension"
     output, edge = node.run(test_file)
-    assert edge == f"output_1"
+    assert edge == "output_1"
     assert output == {"file_paths": [test_file]}
 
 
 @pytest.mark.unit
 def test_filetype_classifier_duplicate_custom_extensions():
     with pytest.raises(ValueError):
-        FileTypeClassifier(supported_types=[f"my_extension", "my_extension"])
+        FileTypeClassifier(supported_types=["my_extension", "my_extension"])
 
 
 @pytest.mark.unit
@@ -102,7 +102,7 @@ def test_filetype_classifier_text_files_without_extension_no_magic(monkeypatch, 
     node = FileTypeClassifier(supported_types=[""])
 
     with caplog.at_level(logging.ERROR):
-        node.run(samples_path / "extensionless_files" / f"pdf_file")
+        node.run(samples_path / "extensionless_files" / "pdf_file")
         assert "'python-magic' is not installed" in caplog.text
 
 
@@ -120,7 +120,7 @@ def test_filetype_classifier_media_extensions_positive(tmp_path):
 def test_filetype_classifier_media_extensions_negative(tmp_path):
     node = FileTypeClassifier(supported_types=DEFAULT_MEDIA_TYPES)
 
-    test_file = tmp_path / f"test.txt"
+    test_file = tmp_path / "test.txt"
     with pytest.raises(ValueError, match="Files of type 'txt'"):
         node.run(test_file)
 
@@ -137,7 +137,7 @@ def test_filetype_classifier_estimate_media_extensions(tmp_path):
     shutil.copy(test_file, new_file_path)
 
     output, edge = node.run(new_file_path)
-    assert edge == f"output_5"
+    assert edge == "output_5"
     assert output == {"file_paths": [Path(new_file_path)]}
 
 
@@ -166,5 +166,5 @@ def test_filetype_classifier_batched_same_media_extensions(tmp_path):
 
     # we should be able to pass a list of files with the same extension
     output, edge = node.run_batch(test_files)
-    assert edge == f"output_1"
+    assert edge == "output_1"
     assert output == {"file_paths": test_files}

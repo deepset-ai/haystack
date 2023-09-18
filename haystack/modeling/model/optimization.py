@@ -142,7 +142,7 @@ def initialize_optimizer(
     # Adjust for parallel training
     model, optimizer = optimize_model(model, device, local_rank, optimizer, distributed)
 
-    # Get learning rate schedule - moved below to supress warning
+    # Get learning rate schedule - moved below to suppress warning
     scheduler = get_scheduler(optimizer, schedule_opts)
 
     return model, optimizer, scheduler

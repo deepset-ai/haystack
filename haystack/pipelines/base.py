@@ -284,7 +284,7 @@ class Pipeline:
         index_config = index_pipeline.get_config()
         pipelines = query_config["pipelines"] + index_config["pipelines"]
         all_components = query_config["components"] + index_config["components"]
-        distinct_components = [c for c in {component["name"]: component for component in all_components}.values()]
+        distinct_components = list({component["name"]: component for component in all_components}.values())
         document_stores = [c for c in distinct_components if c["type"].endswith("DocumentStore")]
         for document_store in document_stores:
             if document_store["type"] != "DeepsetCloudDocumentStore":
@@ -607,7 +607,7 @@ class Pipeline:
 
         return node_output
 
-    def run_batch(  # type: ignore
+    def run_batch(  # noqa: C901,PLR0912 type: ignore
         self,
         queries: Optional[List[str]] = None,
         file_paths: Optional[List[str]] = None,
@@ -827,10 +827,10 @@ class Pipeline:
             logger.info("Cropping dataset from %s to %s documents", len(corpus), num_documents)
             corpus = dict(itertools.islice(corpus.items(), num_documents))
             # Remove queries that don't contain the remaining documents
-            corpus_ids = set(list(corpus.keys()))
+            corpus_ids = set(corpus.keys())
             qrels_new = {}
             for query_id, document_rel_dict in qrels.items():
-                document_rel_ids_intersection = list(corpus_ids & set(list(document_rel_dict.keys())))
+                document_rel_ids_intersection = list(corpus_ids & set(document_rel_dict.keys()))
                 # If there are no remaining documents related to the query, delete the query
                 if len(document_rel_ids_intersection) == 0:
                     del queries[query_id]
@@ -1957,7 +1957,7 @@ class Pipeline:
         matches = self.get_nodes_by_class(class_type=BaseDocumentStore)
         if len(matches) == 0:
             matches = list(
-                set(retriever.document_store for retriever in self.get_nodes_by_class(class_type=BaseRetriever))
+                {retriever.document_store for retriever in self.get_nodes_by_class(class_type=BaseRetriever)}
             )
 
         if len(matches) > 1:

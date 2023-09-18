@@ -73,7 +73,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                                     exists.
         :param use_gpu: Whether to use a GPU or the CPU for calculating embedding similarity.
                         Falls back to CPU if no GPU is available.
-        :param scoring_batch_size: Batch size of documents to calculate similarity for. Very small batch sizes are inefficent.
+        :param scoring_batch_size: Batch size of documents to calculate similarity for. Very small batch sizes are inefficient.
                                    Very large batch sizes can overrun GPU memory. In general you want to make sure
                                    you have at least `embedding_dim`*`scoring_batch_size`*4 bytes available in GPU memory.
                                    Since the data is originally stored in CPU memory there is little risk of overruning memory
