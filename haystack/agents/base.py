@@ -2,30 +2,30 @@ from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable, Callable
 from hashlib import md5
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Union, Dict, Any, Tuple
 
 from events import Events
 
-from haystack import Answer, BaseComponent, Document, Pipeline
-from haystack.agents.agent_step import AgentStep
+from haystack import Pipeline, BaseComponent, Answer, Document
 from haystack.agents.memory import Memory, NoMemory
-from haystack.agents.types import AgentTokenStreamingHandler, Color
+from haystack.telemetry import send_event
+from haystack.agents.agent_step import AgentStep
+from haystack.agents.types import Color, AgentTokenStreamingHandler
 from haystack.agents.utils import print_text, react_parameter_resolver
-from haystack.nodes import BaseRetriever, PromptNode, PromptTemplate
+from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.pipelines import (
     BaseStandardPipeline,
-    DocumentSearchPipeline,
     ExtractiveQAPipeline,
-    FAQPipeline,
+    DocumentSearchPipeline,
     GenerativeQAPipeline,
-    RetrieverQuestionGenerationPipeline,
     SearchSummarizationPipeline,
+    FAQPipeline,
     TranslationWrapperPipeline,
+    RetrieverQuestionGenerationPipeline,
     WebQAPipeline,
 )
-from haystack.telemetry import send_event
 
 logger = logging.getLogger(__name__)
 
