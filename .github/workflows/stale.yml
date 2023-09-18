@@ -7,7 +7,7 @@ jobs:
   proposals:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@v6
+      - uses: actions/stale@v8
         with:
           only-labels: 'proposal'
           stale-pr-message: 'This proposal is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 10 days.'

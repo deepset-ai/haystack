@@ -407,24 +407,24 @@ def test_extractive_qa_eval_answer_document_scope_combinations(reader, retriever
 
     # valid values for non default answer_scopes
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer", answer_scope="context")
-        metrics = eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_or_answer", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" not in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_and_context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_and_context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_or_context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_or_context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
 

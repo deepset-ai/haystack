@@ -11,7 +11,7 @@ from haystack.preview import default_from_dict, default_to_dict
 from haystack.preview.document_stores.decorator import document_store
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.protocols import DuplicatePolicy, DocumentStore
-from haystack.preview.document_stores.memory._filters import match
+from haystack.preview.utils.filters import document_matches_filter
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError, DocumentStoreError
 from haystack.preview.utils import expit
 
@@ -160,7 +160,7 @@ class MemoryDocumentStore:
         :return: A list of Documents that match the given filters.
         """
         if filters:
-            return [doc for doc in self.storage.values() if match(conditions=filters, document=doc)]
+            return [doc for doc in self.storage.values() if document_matches_filter(conditions=filters, document=doc)]
         return list(self.storage.values())
 
     def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
@@ -270,6 +270,7 @@ class MemoryDocumentStore:
             doc = all_documents[i]
             doc_fields = doc.to_dict()
             doc_fields["score"] = docs_scores[i]
+            del doc_fields["id"]
             return_document = Document(**doc_fields)
             return_documents.append(return_document)
         return return_documents
@@ -322,6 +323,7 @@ class MemoryDocumentStore:
             doc_fields["score"] = score
             if return_embedding is False:
                 doc_fields["embedding"] = None
+            del doc_fields["id"]
             top_documents.append(Document(**doc_fields))
 
         return top_documents

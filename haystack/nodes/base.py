@@ -42,7 +42,7 @@ def exportable_to_yaml(init_func):
             for k, v in params.items():
                 self._component_config["params"][k] = v
 
-        # Call the actuall __init__ function with all the arguments
+        # Call the actual __init__ function with all the arguments
         init_func(self, *args, **kwargs)
 
     return wrapper_exportable_to_yaml
@@ -96,7 +96,7 @@ class BaseComponent(ABC):
     @property
     def utilized_components(self) -> List[BaseComponent]:
         if "params" not in self._component_config:
-            return list()
+            return []
         return [param for param in self._component_config["params"].values() if isinstance(param, BaseComponent)]
 
     @property
@@ -229,7 +229,7 @@ class BaseComponent(ABC):
                     if "debug" in value.keys():
                         self.debug = value.pop("debug")
 
-                    for _k, _v in value.items():
+                    for _k in value.keys():
                         if _k not in run_signature_args:
                             raise Exception(f"Invalid parameter '{_k}' for the node '{self.name}'.")
 

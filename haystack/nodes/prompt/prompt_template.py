@@ -66,7 +66,7 @@ PROMPTHUB_CACHE_PATH = os.environ.get(
 #
 # After some discussion we deemed the change to be too breaking for existing
 # use cases and which steps would have been necessary to migrate to the
-# new API in case someone was using an harcoded template we decided to
+# new API in case someone was using an hardcoded template we decided to
 # bring them back.
 #
 # So for the time being this must live here, no new template must be added

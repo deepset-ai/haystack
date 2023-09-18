@@ -183,7 +183,7 @@ def test_get_prompt_template_wrong_template_name(mock_model):
 
         mock_prompthub.fetch.side_effect = not_found
         node = PromptNode()
-        with pytest.raises(ValueError, match="not supported") as e:
+        with pytest.raises(ValueError, match="not supported"):
             node.get_prompt_template("some-unsupported-template")
 
 
@@ -484,7 +484,7 @@ def test_prompt_node_no_debug(prompt_model):
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
 
-    # debug explicitely False
+    # debug explicitly False
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")], debug=False)
     assert result.get("_debug", "No debug info") == "No debug info"
 

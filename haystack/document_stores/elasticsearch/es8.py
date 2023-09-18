@@ -79,8 +79,8 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         :param port: port(s) of elasticsearch nodes
         :param username: username (standard authentication via http_auth)
         :param password: password (standard authentication via http_auth)
-        :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
-        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param api_key_id: ID of the API key (alternative authentication mode to the above http_auth)
+        :param api_key: Secret value of the API key (alternative authentication mode to the above http_auth)
         :param aws4auth: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
         :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
         :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.

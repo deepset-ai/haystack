@@ -2,6 +2,7 @@ from typing import Optional, List, Callable, Dict, Any
 
 import sys
 import logging
+from collections import defaultdict
 from dataclasses import dataclass, asdict
 
 import openai
@@ -10,6 +11,9 @@ from haystack.preview import component, default_from_dict, default_to_dict, Dese
 
 
 logger = logging.getLogger(__name__)
+
+
+API_BASE_URL = "https://api.openai.com/v1"
 
 
 @dataclass
@@ -43,7 +47,7 @@ class GPT35Generator:
         model_name: str = "gpt-3.5-turbo",
         system_prompt: Optional[str] = None,
         streaming_callback: Optional[Callable] = None,
-        api_base_url: str = "https://api.openai.com/v1",
+        api_base_url: str = API_BASE_URL,
         **kwargs,
     ):
         """
@@ -130,70 +134,59 @@ class GPT35Generator:
             data["init_parameters"]["streaming_callback"] = streaming_callback
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[List[str]], metadata=List[Dict[str, Any]])
-    def run(self, prompts: List[str]):
+    @component.output_types(replies=List[str], metadata=List[Dict[str, Any]])
+    def run(self, prompt: str):
         """
         Queries the LLM with the prompts to produce replies.
 
         :param prompts: The prompts to be sent to the generative model.
         """
-        chats = []
-        for prompt in prompts:
-            message = _ChatMessage(content=prompt, role="user")
-            if self.system_prompt:
-                chats.append([_ChatMessage(content=self.system_prompt, role="system"), message])
-            else:
-                chats.append([message])
+        message = _ChatMessage(content=prompt, role="user")
+        if self.system_prompt:
+            chat = [_ChatMessage(content=self.system_prompt, role="system"), message]
+        else:
+            chat = [message]
 
-        all_replies, all_metadata = [], []
-        for chat in chats:
-            completion = openai.ChatCompletion.create(
-                model=self.model_name,
-                api_key=self.api_key,
-                messages=[asdict(message) for message in chat],
-                stream=self.streaming_callback is not None,
-                **self.model_parameters,
-            )
+        completion = openai.ChatCompletion.create(
+            model=self.model_name,
+            api_key=self.api_key,
+            messages=[asdict(message) for message in chat],
+            stream=self.streaming_callback is not None,
+            **self.model_parameters,
+        )
 
-            replies: List[str]
-            metadata: List[Dict[str, Any]]
-            if self.streaming_callback:
-                replies_dict = {}
-                metadata_dict: Dict[str, Dict[str, Any]] = {}
-                for chunk in completion:
-                    chunk = self.streaming_callback(chunk)
-                    for choice in chunk.choices:
-                        if choice.index not in replies_dict:
-                            replies_dict[choice.index] = ""
-                            metadata_dict[choice.index] = {}
-
-                        if hasattr(choice.delta, "content"):
-                            replies_dict[choice.index] += choice.delta.content
-                        metadata_dict[choice.index] = {
-                            "model": chunk.model,
-                            "index": choice.index,
-                            "finish_reason": choice.finish_reason,
-                        }
-                all_replies.append(list(replies_dict.values()))
-                all_metadata.append(list(metadata_dict.values()))
-                self._check_truncated_answers(list(metadata_dict.values()))
-
-            else:
-                metadata = [
-                    {
-                        "model": completion.model,
+        replies: List[str]
+        metadata: List[Dict[str, Any]]
+        if self.streaming_callback:
+            replies_dict: Dict[str, str] = defaultdict(str)
+            metadata_dict: Dict[str, Dict[str, Any]] = defaultdict(dict)
+            for chunk in completion:
+                chunk = self.streaming_callback(chunk)
+                for choice in chunk.choices:
+                    if hasattr(choice.delta, "content"):
+                        replies_dict[choice.index] += choice.delta.content
+                    metadata_dict[choice.index] = {
+                        "model": chunk.model,
                         "index": choice.index,
                         "finish_reason": choice.finish_reason,
-                        "usage": dict(completion.usage.items()),
                     }
-                    for choice in completion.choices
-                ]
-                replies = [choice.message.content.strip() for choice in completion.choices]
-                all_replies.append(replies)
-                all_metadata.append(metadata)
-                self._check_truncated_answers(metadata)
+            replies = list(replies_dict.values())
+            metadata = list(metadata_dict.values())
+            self._check_truncated_answers(metadata)
+            return {"replies": replies, "metadata": metadata}
 
-        return {"replies": all_replies, "metadata": all_metadata}
+        metadata = [
+            {
+                "model": completion.model,
+                "index": choice.index,
+                "finish_reason": choice.finish_reason,
+                "usage": dict(completion.usage.items()),
+            }
+            for choice in completion.choices
+        ]
+        replies = [choice.message.content.strip() for choice in completion.choices]
+        self._check_truncated_answers(metadata)
+        return {"replies": replies, "metadata": metadata}
 
     def _check_truncated_answers(self, metadata: List[Dict[str, Any]]):
         """

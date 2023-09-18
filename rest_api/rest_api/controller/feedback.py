@@ -46,7 +46,7 @@ def get_feedback(index: Optional[str] = None):
 @router.delete("/feedback")
 def delete_feedback(index: Optional[str] = None):
     """
-    This endpoint allows the API user to delete all the feedback that has been sumbitted through the
+    This endpoint allows the API user to delete all the feedback that has been submitted through the
     `POST /feedback` endpoint.
     """
     all_labels = document_store.get_all_labels(index=index)
