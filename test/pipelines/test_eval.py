@@ -537,10 +537,10 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path, eval_labels):
 
     # all expected columns are part of the evaluation result dataframe
     assert sorted(expected_reader_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(reader_result.columns)
+        reader_result.columns
     )
     assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(retriever_result.columns)
+        retriever_result.columns
     )
 
     assert (
@@ -676,10 +676,10 @@ def test_generative_qa_eval(retriever_with_docs, tmp_path, eval_labels):
 
     # all expected columns are part of the evaluation result dataframe
     assert sorted(expected_generator_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(generator_result.columns)
+        generator_result.columns
     )
     assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(retriever_result.columns)
+        retriever_result.columns
     )
 
     assert generator_result["prompt"].iloc[0] is not None
@@ -777,10 +777,10 @@ def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path, eval_lab
 
     # all expected columns are part of the evaluation result dataframe
     assert sorted(expected_generator_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(generator_result.columns)
+        generator_result.columns
     )
     assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(retriever_result.columns)
+        retriever_result.columns
     )
 
     assert generator_result["prompt"].iloc[0] is not None

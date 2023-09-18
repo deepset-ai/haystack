@@ -732,7 +732,7 @@ class QuestionAnsweringHead(PredictionHead):
             all_basket_labels = {k: self.reduce_labels(v) for k, v in all_basket_labels.items()}
 
         # Return aggregated predictions in order as a list of lists
-        keys = [k for k in all_basket_preds]
+        keys = list(all_basket_preds)
         aggregated_preds = [all_basket_preds[k] for k in keys]
         if labels:
             labels = [all_basket_labels[k] for k in keys]

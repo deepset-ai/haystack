@@ -107,7 +107,7 @@ def get_benchmark_type_tag(reader_tag, retriever_tag, document_store_tag):
 def collect_metrics_from_json_files(folder_path):
     benchmark_metrics = parse_benchmark_files(folder_path)
     metrics_to_send_to_dd = []
-    for benchmark_name, metrics in benchmark_metrics.items():
+    for metrics in benchmark_metrics.values():
         indexing_metrics = metrics["indexing"]
         querying_metrics = metrics["querying"]
         config = metrics["config"]

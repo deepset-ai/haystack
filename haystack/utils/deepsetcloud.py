@@ -902,7 +902,7 @@ class EvaluationSetClient:
         """
         evaluation_sets_response = self._get_evaluation_sets(workspace=workspace)
 
-        return [eval_set for eval_set in evaluation_sets_response]
+        return list(evaluation_sets_response)
 
     def _get_evaluation_sets(self, workspace: Optional[str] = None) -> Generator:
         url = self._build_workspace_url(workspace=workspace)
@@ -1166,7 +1166,7 @@ class EvaluationRunClient:
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_runs"
         response = self.client.get_with_auto_paging(eval_run_url, headers=headers)
-        return [eval_run for eval_run in response]
+        return list(response)
 
     def delete_eval_run(self, eval_run_name: str, workspace: Optional[str] = None, headers: Optional[dict] = None):
         """
@@ -1279,7 +1279,7 @@ class EvaluationRunClient:
         workspace_url = self._build_workspace_url(workspace)
         eval_run_prediction_url = f"{workspace_url}/eval_runs/{eval_run_name}/nodes/{node_name}/predictions"
         response = self.client.get_with_auto_paging(eval_run_prediction_url, headers=headers)
-        return [prediction for prediction in response]
+        return list(response)
 
     def _build_workspace_url(self, workspace: Optional[str] = None):
         if workspace is None:

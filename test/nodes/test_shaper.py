@@ -937,7 +937,7 @@ def test_strings_to_answers_after_prompt_node_yaml(tmp_path):
     )
     results = result["answers"]
     assert len(results) == 4
-    assert any([True for r in results if "Berlin" in r.answer])
+    assert any(True for r in results if "Berlin" in r.answer)
     for answer in results[:2]:
         assert answer.document_ids == ["123"]
         assert (
@@ -1527,7 +1527,7 @@ def test_with_multiple_prompt_nodes(tmp_path):
     )
     results = result["answers"]
     assert len(results) == 2
-    assert any([True for r in results if "Berlin" in r.answer])
+    assert any(True for r in results if "Berlin" in r.answer)
 
 
 @pytest.mark.unit
