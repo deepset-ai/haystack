@@ -1,9 +1,6 @@
 from unittest.mock import patch
 import pytest
-
 from cohere.responses.embeddings import Embeddings
-
-
 from haystack.preview.components.embedders.cohere_text_embedder import CohereTextEmbedder
 
 
