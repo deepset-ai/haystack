@@ -47,7 +47,8 @@ class TestOpenAITextEmbedder:
         assert embedder.suffix == "suffix"
 
     @pytest.mark.unit
-    def test_init_fail_wo_api_key(self):
+    def test_init_fail_wo_api_key(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="OpenAITextEmbedder expects an OpenAI API key"):
             OpenAITextEmbedder()
 
@@ -106,7 +107,8 @@ class TestOpenAITextEmbedder:
         assert component.suffix == "suffix"
 
     @pytest.mark.unit
-    def test_from_dict_fail_wo_env_var(self):
+    def test_from_dict_fail_wo_env_var(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         data = {
             "type": "OpenAITextEmbedder",
             "init_parameters": {
