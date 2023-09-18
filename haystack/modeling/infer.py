@@ -1,21 +1,20 @@
-from typing import List, Optional, Dict, Union, Set, Any
-
-import os
+import contextlib
 import logging
-from tqdm import tqdm
+import os
+from typing import Any, Dict, List, Optional, Set, Union
+
 import torch
-from torch.utils.data.sampler import SequentialSampler
 from torch.utils.data import Dataset
+from torch.utils.data.sampler import SequentialSampler
+from tqdm import tqdm
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
-from haystack.modeling.data_handler.processor import Processor, InferenceProcessor
-from haystack.modeling.data_handler.samples import SampleBasket
-from haystack.modeling.utils import initialize_device_settings, set_all_seeds
 from haystack.modeling.data_handler.inputs import QAInput
+from haystack.modeling.data_handler.processor import InferenceProcessor, Processor
+from haystack.modeling.data_handler.samples import SampleBasket
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
 from haystack.modeling.model.predictions import QAPred
-import contextlib
-
+from haystack.modeling.utils import initialize_device_settings, set_all_seeds
 
 logger = logging.getLogger(__name__)
 
