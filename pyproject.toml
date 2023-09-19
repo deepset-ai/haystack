@@ -381,13 +381,16 @@ plugins = [
 select = [
   "AIR",    # Airflow
   "ASYNC",  # flake8-async
+  "C4",     # flake8-comprehensions
   "C90",    # McCabe cyclomatic complexity
   "CPY",    # flake8-copyright
   "DJ",     # flake8-django
   "E501",   # Long lines
   "EXE",    # flake8-executable
+  "F",      # Pyflakes
   "FURB",   # refurb
   "INT",    # flake8-gettext
+  "PERF",   # Perflint
   "PL",     # Pylint
   "Q",      # flake8-quotes
   "SLOT",   # flake8-slots
@@ -395,16 +398,17 @@ select = [
   "W",      # pycodestyle
   "YTT",    # flake8-2020
   # "E",    # pycodestyle
-  # "F",    # Pyflakes
   # "NPY",  # NumPy-specific rules
   # "PD",   # pandas-vet
-  # "PERF", # Perflint
   # "PT",   # flake8-pytest-style
   # "UP",   # pyupgrade
 ]
 line-length = 1486
 target-version = "py38"
 ignore = [
+  "F401",     # unused-import
+  "PERF401",	# Use a list comprehension to create a transformed list
+  "PERF203",	# `try`-`except` within a loop incurs performance overhead
   "PLR1714",  # repeated-equality-comparison
   "PLR5501",  # collapsible-else-if
   "PLW0603",  # global-statement
@@ -414,6 +418,11 @@ ignore = [
 
 [tool.ruff.mccabe]
 max-complexity = 28
+
+[tool.ruff.per-file-ignores]
+"examples/basic_qa_pipeline.py" = ["C416"]
+"haystack/preview/testing/document_store.py" = ["C416", "F821"]
+"haystack/telemetry.py" = ["F821"]
 
 [tool.ruff.pylint]
 allow-magic-value-types = ["float", "int", "str"]

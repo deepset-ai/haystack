@@ -202,7 +202,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                 formatted_prediction = {
                     "label": prediction["labels"][0],
                     "score": prediction["scores"][0],
-                    "details": {label: score for label, score in zip(prediction["labels"], prediction["scores"])},
+                    "details": dict(zip(prediction["labels"], prediction["scores"])),
                 }
             elif self.task == "text-classification":
                 formatted_prediction = {
