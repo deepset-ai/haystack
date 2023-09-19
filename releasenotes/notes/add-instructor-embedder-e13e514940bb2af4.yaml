@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Add Instructor Embedder.
+    Adds support for the INSTRUCTOR family of Embedding Models. They tailor the embeddings for different tasks and domains using a prompt (instruction) for each embedding.
