@@ -231,7 +231,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        valid_model = model_name_or_path in ["ada", "babbage", "davinci", "curie"] or any(
+        valid_model = model_name_or_path in ["ada", "babbage", "davinci", "curie", "gpt-3.5-turbo-instruct"] or any(
             m in model_name_or_path for m in ["-ada-", "-babbage-", "-davinci-", "-curie-"]
         )
         return valid_model and not has_azure_parameters(**kwargs)
