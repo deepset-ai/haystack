@@ -118,7 +118,7 @@ class MetricsAPI:
     def send_custom_dd_metric(self, metric: CustomDatadogMetric) -> dict:
         datadog.initialize(api_key=self.datadog_api_key, api_host=self.datadog_host)
 
-        tags: List[str] = list(map(lambda t: str(t.value), metric.tags))
+        tags: List[str] = [str(t.value) for t in metric.tags]
         post_metric_response: Dict = datadog.api.Metric.send(
             metric=metric.name, points=[(metric.timestamp, metric.value)], tags=tags
         )
@@ -144,7 +144,7 @@ class MetricsAPI:
             try:
                 response = self.send_custom_dd_metric(metric)
                 responses.append(response)
-            except ConnectionError as e:
+            except ConnectionError:
                 LOGGER.error(
                     f"Could not send custom metric even after retrying. "
                     f"metric_name={metric.name}, metric_value={metric.value}"

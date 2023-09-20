@@ -284,7 +284,7 @@ class Pipeline:
         index_config = index_pipeline.get_config()
         pipelines = query_config["pipelines"] + index_config["pipelines"]
         all_components = query_config["components"] + index_config["components"]
-        distinct_components = [c for c in {component["name"]: component for component in all_components}.values()]
+        distinct_components = list({component["name"]: component for component in all_components}.values())
         document_stores = [c for c in distinct_components if c["type"].endswith("DocumentStore")]
         for document_store in document_stores:
             if document_store["type"] != "DeepsetCloudDocumentStore":
@@ -538,9 +538,8 @@ class Pipeline:
             # Apply debug attributes to the node input params
             # NOTE: global debug attributes will override the value specified
             # in each node's params dictionary.
-            if debug is None and node_input:
-                if node_input.get("params", {}):
-                    debug = params.get("debug", None)  # type: ignore
+            if debug is None and node_input and node_input.get("params", {}):
+                debug = params.get("debug", None)  # type: ignore
             if debug is not None:
                 if not node_input.get("params", None):
                     node_input["params"] = {}
@@ -709,9 +708,8 @@ class Pipeline:
 
             # Apply debug attributes to the node input params
             # NOTE: global debug attributes will override the value specified in each node's params dictionary.
-            if debug is None and node_input:
-                if node_input.get("params", {}):
-                    debug = params.get("debug", None)  # type: ignore
+            if debug is None and node_input and node_input.get("params", {}):
+                debug = params.get("debug", None)  # type: ignore
             if debug is not None:
                 if not node_input.get("params", None):
                     node_input["params"] = {}
@@ -827,10 +825,10 @@ class Pipeline:
             logger.info("Cropping dataset from %s to %s documents", len(corpus), num_documents)
             corpus = dict(itertools.islice(corpus.items(), num_documents))
             # Remove queries that don't contain the remaining documents
-            corpus_ids = set(list(corpus.keys()))
+            corpus_ids = set(corpus.keys())
             qrels_new = {}
             for query_id, document_rel_dict in qrels.items():
-                document_rel_ids_intersection = list(corpus_ids & set(list(document_rel_dict.keys())))
+                document_rel_ids_intersection = list(corpus_ids & set(document_rel_dict.keys()))
                 # If there are no remaining documents related to the query, delete the query
                 if len(document_rel_ids_intersection) == 0:
                     del queries[query_id]
@@ -1957,7 +1955,7 @@ class Pipeline:
         matches = self.get_nodes_by_class(class_type=BaseDocumentStore)
         if len(matches) == 0:
             matches = list(
-                set(retriever.document_store for retriever in self.get_nodes_by_class(class_type=BaseRetriever))
+                {retriever.document_store for retriever in self.get_nodes_by_class(class_type=BaseRetriever)}
             )
 
         if len(matches) > 1:
@@ -2285,22 +2283,21 @@ class Pipeline:
         """
         Validates the node names provided in the 'params' arg of run/run_batch method.
         """
-        if params:
-            if not all(node_id in self.graph.nodes for node_id in params.keys()):
-                # Might be a non-targeted param. Verify that too
-                not_a_node = set(params.keys()) - set(self.graph.nodes)
-                # "debug" will be picked up by _dispatch_run, see its code
-                # "add_isolated_node_eval" is set by pipeline.eval / pipeline.eval_batch
-                valid_global_params = {"debug", "add_isolated_node_eval"}
-                for node_id in self.graph.nodes:
-                    run_signature_args = self._get_run_node_signature(node_id)
-                    valid_global_params |= set(run_signature_args)
-                invalid_keys = [key for key in not_a_node if key not in valid_global_params]
+        if params and not all(node_id in self.graph.nodes for node_id in params.keys()):
+            # Might be a non-targeted param. Verify that too
+            not_a_node = set(params.keys()) - set(self.graph.nodes)
+            # "debug" will be picked up by _dispatch_run, see its code
+            # "add_isolated_node_eval" is set by pipeline.eval / pipeline.eval_batch
+            valid_global_params = {"debug", "add_isolated_node_eval"}
+            for node_id in self.graph.nodes:
+                run_signature_args = self._get_run_node_signature(node_id)
+                valid_global_params |= set(run_signature_args)
+            invalid_keys = [key for key in not_a_node if key not in valid_global_params]
 
-                if invalid_keys:
-                    raise ValueError(
-                        f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline."
-                    )
+            if invalid_keys:
+                raise ValueError(
+                    f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline."
+                )
 
     def _get_run_node_signature(self, node_id: str):
         return inspect.signature(self.graph.nodes[node_id]["component"].run).parameters.keys()

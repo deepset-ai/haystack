@@ -183,7 +183,7 @@ def test_get_prompt_template_wrong_template_name(mock_model):
 
         mock_prompthub.fetch.side_effect = not_found
         node = PromptNode()
-        with pytest.raises(ValueError, match="not supported") as e:
+        with pytest.raises(ValueError, match="not supported"):
             node.get_prompt_template("some-unsupported-template")
 
 

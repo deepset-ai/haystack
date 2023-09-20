@@ -382,10 +382,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             self.index_type in ["ivf", "ivf_pq"]
             and not index.startswith(".")
             and not self._ivf_model_exists(index=index)
-        ):
-            if self.get_embedding_count(index=index, headers=headers) >= self.ivf_train_size:
-                train_docs = self.get_all_documents(index=index, return_embedding=True, headers=headers)
-                self._train_ivf_index(index=index, documents=train_docs, headers=headers)
+        ) and self.get_embedding_count(index=index, headers=headers) >= self.ivf_train_size:
+            train_docs = self.get_all_documents(index=index, return_embedding=True, headers=headers)
+            self._train_ivf_index(index=index, documents=train_docs, headers=headers)
 
     def _embed_documents(self, documents: List[Document], retriever: DenseRetriever) -> np.ndarray:
         """
@@ -1215,11 +1214,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def _ivf_model_exists(self, index: str) -> bool:
         if self._index_exists(".opensearch-knn-models"):
             response = self.client.transport.perform_request("GET", "/_plugins/_knn/models/_search")
-            existing_ivf_models = set(
+            existing_ivf_models = {
                 model["_source"]["model_id"]
                 for model in response["hits"]["hits"]
                 if model["_source"]["state"] != "failed"
-            )
+            }
         else:
             existing_ivf_models = set()
 
@@ -1461,7 +1460,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         """
         if self._index_exists(".opensearch-knn-models"):
             response = self.client.transport.perform_request("GET", "/_plugins/_knn/models/_search")
-            existing_ivf_models = set(model["_source"]["model_id"] for model in response["hits"]["hits"])
+            existing_ivf_models = {model["_source"]["model_id"] for model in response["hits"]["hits"]}
             if f"{index}-ivf" in existing_ivf_models:
                 self.client.transport.perform_request("DELETE", f"/_plugins/_knn/models/{index}-ivf")
 

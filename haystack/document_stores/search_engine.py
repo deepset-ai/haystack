@@ -1620,9 +1620,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self._index_delete(index)
 
     def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
-        if logger.isEnabledFor(logging.DEBUG):
-            if self.client.indices.exists_alias(name=index_name):
-                logger.debug("Index name %s is an alias.", index_name)
+        if logger.isEnabledFor(logging.DEBUG) and self.client.indices.exists_alias(name=index_name):
+            logger.debug("Index name %s is an alias.", index_name)
 
         return self.client.indices.exists(index=index_name, headers=headers)
 

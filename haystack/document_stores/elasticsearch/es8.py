@@ -299,9 +299,10 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         return client
 
     def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
-        if logger.isEnabledFor(logging.DEBUG):
-            if self.client.options(headers=headers).indices.exists_alias(name=index_name):
-                logger.debug("Index name %s is an alias.", index_name)
+        if logger.isEnabledFor(logging.DEBUG) and self.client.options(headers=headers).indices.exists_alias(
+            name=index_name
+        ):
+            logger.debug("Index name %s is an alias.", index_name)
 
         return self.client.options(headers=headers).indices.exists(index=index_name)
 

@@ -16,15 +16,15 @@ repos:
     - id: trailing-whitespace  # trims trailing whitespace
       args: [--markdown-linebreak-ext=md]
 
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.0.289
-  hooks:
-  - id: ruff
-
 - repo: https://github.com/psf/black
   rev: 23.9.1
   hooks:
   - id: black-jupyter
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.0.290
+  hooks:
+  - id: ruff
 
 - repo: https://github.com/codespell-project/codespell
   rev: v2.2.5

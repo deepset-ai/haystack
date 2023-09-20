@@ -182,7 +182,7 @@ def test_pdf_parallel_ocr(Converter, samples_path):
 @fail_at_version(1, 18)
 def test_deprecated_encoding():
     with pytest.warns(DeprecationWarning):
-        converter = PDFToTextConverter(encoding="utf-8")
+        PDFToTextConverter(encoding="utf-8")
 
 
 @fail_at_version(1, 18)
@@ -195,7 +195,7 @@ def test_deprecated_encoding_in_convert_method(samples_path):
 @fail_at_version(1, 18)
 def test_deprecated_keep_physical_layout():
     with pytest.warns(DeprecationWarning):
-        converter = PDFToTextConverter(keep_physical_layout=True)
+        PDFToTextConverter(keep_physical_layout=True)
 
 
 @fail_at_version(1, 18)
@@ -394,7 +394,7 @@ def test_id_hash_keys_from_pipeline_params(samples_path):
     converter = TextConverter()
     output, _ = converter.run(file_paths=[doc_path, doc_path], meta=meta, id_hash_keys=["content", "meta"])
     documents = output["documents"]
-    unique_ids = set(d.id for d in documents)
+    unique_ids = {d.id for d in documents}
 
     assert len(documents) == 2
     assert len(unique_ids) == 2
