@@ -1,7 +1,6 @@
 import logging
 from typing import List, Optional, Dict, Any, Union
 from pathlib import Path
-from tqdm import tqdm
 
 from haystack.preview.lazy_imports import LazyImport
 from haystack.preview import Document, component, default_to_dict, default_from_dict
@@ -42,12 +41,7 @@ class PyPDFToDocument:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
-    def run(
-        self,
-        paths: List[Union[str, Path]],
-        id_hash_keys: Optional[List[str]] = None,
-        progress_bar: Optional[bool] = None,
-    ):
+    def run(self, paths: List[Union[str, Path]], id_hash_keys: Optional[List[str]] = None):
         """
         Convert PDF files to Documents.
 
