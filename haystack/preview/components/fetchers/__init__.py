@@ -1,0 +1,1 @@
+from haystack.preview.components.fetchers.link_content import LinkContentFetcher
