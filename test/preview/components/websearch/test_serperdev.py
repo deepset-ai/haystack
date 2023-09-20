@@ -148,8 +148,6 @@ class TestSerperDevSearchAPI:
         results = ws.run(query="Who is the boyfriend of Olivia Wilde?")
         documents = results["documents"]
         links = results["links"]
-        print(documents)
-        print(links)
         assert len(documents) == len(links) == top_k
         assert all(isinstance(doc, Document) for doc in documents)
         assert all(isinstance(link, str) for link in links)
