@@ -336,11 +336,11 @@ disable = [
 ]
 [tool.pylint.'DESIGN']
 max-args = 38  # Default is 5
-max-attributes = 27  # Default is 7
+max-attributes = 28  # Default is 7
 max-branches = 34  # Default is 12
 max-locals = 45  # Default is 15
 max-module-lines = 2468  # Default is 1000
-max-nested-blocks = 7  # Default is 5
+max-nested-blocks = 9  # Default is 5
 max-statements = 206  # Default is 50
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines=6
@@ -393,6 +393,7 @@ select = [
   "PERF",   # Perflint
   "PL",     # Pylint
   "Q",      # flake8-quotes
+  "SIM",    # flake8-simplify
   "SLOT",   # flake8-slots
   "T10",    # flake8-debugger
   "W",      # pycodestyle
@@ -407,13 +408,16 @@ line-length = 1486
 target-version = "py38"
 ignore = [
   "F401",     # unused-import
-  "PERF401",	# Use a list comprehension to create a transformed list
   "PERF203",	# `try`-`except` within a loop incurs performance overhead
+  "PERF401",	# Use a list comprehension to create a transformed list
   "PLR1714",  # repeated-equality-comparison
   "PLR5501",  # collapsible-else-if
   "PLW0603",  # global-statement
   "PLW1510",  # subprocess-run-without-check
   "PLW2901",  # redefined-loop-name
+  "SIM108",   # if-else-block-instead-of-if-exp
+  "SIM115",   # open-file-with-context-handler
+  "SIM118",   # in-dict-keys
 ]
 
 [tool.ruff.mccabe]
@@ -428,6 +432,7 @@ max-complexity = 28
 allow-magic-value-types = ["float", "int", "str"]
 max-args = 38  # Default is 5
 max-branches = 32  # Default is 12
+max-public-methods = 90  # Default is 20
 max-returns = 9  # Default is 6
 max-statements = 105  # Default is 50
 
