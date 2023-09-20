@@ -266,8 +266,6 @@ class ExtractiveReader:
 
         top_k = top_k or self.top_k
         confidence_threshold = confidence_threshold or self.confidence_threshold
-        if top_k is None:
-            top_k = 10
         max_seq_length = max_seq_length or self.max_seq_length
         stride = stride or self.stride
         max_batch_size = max_batch_size or self.max_batch_size
