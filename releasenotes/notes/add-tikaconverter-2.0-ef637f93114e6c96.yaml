@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Add TikaFileToDocument component to convert files of different types to Documents.
