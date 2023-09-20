@@ -97,7 +97,7 @@ class ExtractiveReader:
             self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_name_or_path).to(self.device)
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
 
-    def _flatten(
+    def _flatten_documents(
         self, queries: List[str], documents: List[List[Document]]
     ) -> Tuple[List[str], List[Document], List[int]]:
         flattened_queries = [query for documents_, query in zip(documents, queries) for _ in documents_]
@@ -174,7 +174,7 @@ class ExtractiveReader:
 
         return start_candidates, end_candidates, probabilities
 
-    def _unflatten(
+    def _nest_answers(
         self,
         start: List[List[int]],
         end: List[List[int]],
@@ -257,7 +257,7 @@ class ExtractiveReader:
         answers_per_seq = answers_per_seq or self.answers_per_seq or top_k or 20
         no_answer = no_answer if no_answer is not None else self.no_answer
 
-        flattened_queries, flattened_documents, query_ids = self._flatten(queries, documents)
+        flattened_queries, flattened_documents, query_ids = self._flatten_documents(queries, documents)
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
             flattened_queries, flattened_documents, max_seq_length, query_ids, stride
         )
@@ -290,7 +290,7 @@ class ExtractiveReader:
             start_logits, end_logits, sequence_ids, attention_mask, answers_per_seq, encodings
         )
 
-        answers = self._unflatten(
+        answers = self._nest_answers(
             start,
             end,
             probabilities,
