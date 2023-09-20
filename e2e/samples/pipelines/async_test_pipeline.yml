@@ -1,0 +1,60 @@
+# This pipeline has been automatically migrated to conform to Haystack 1.15.1.
+# Please check that the pipeline is still working as expected.
+# In this version: split by paragraphs, new prompt (simplified, opinions rather than facts)
+
+version: "1.15.1"
+
+components:
+  - name: DocumentStore
+    type: ElasticsearchDocumentStore
+  - name: BM25Retriever
+    type: BM25Retriever
+    params:
+      document_store: DocumentStore
+      top_k: 30
+  - name: JoinDocuments
+    type: JoinDocuments
+    params:
+      top_k_join: 30
+      join_mode: reciprocal_rank_fusion
+  - name: Reranker
+    type: SentenceTransformersRanker
+    params:
+      model_name_or_path: svalabs/cross-electra-ms-marco-german-uncased
+      top_k: 8
+  - name: QueryClassifier
+    type: TransformersQueryClassifier
+    params:
+      model_name_or_path: deepset/deberta-v3-base-injection
+      labels: ["LEGIT", "INJECTION"]
+  - name: qa_template
+    params:
+      output_parser:
+        type: AnswerParser
+      prompt: "Given this context answer the question:{new_line}\
+        '''{join(documents, delimiter=new_line, pattern='Rede[$idx], Datum: $date, Dies ist die Rede von: $politician_name (Partei: $faction): <$content>')}'''{new_line}\
+        Question: {query}{new_line}\
+        Answer:  {new_line}"
+    type: PromptTemplate
+  - name: PromptNode
+    type: Sleeper
+  - name: FileTypeClassifier
+    type: FileTypeClassifier
+  - name: TextConverter
+    type: TextConverter
+  - name: PDFConverter
+    type: PDFToTextConverter
+
+pipelines:
+  - name: query
+    nodes:
+      - name: QueryClassifier
+        inputs: [Query]
+      - name: BM25Retriever
+        inputs: [QueryClassifier.output_1]
+      - name: JoinDocuments
+        inputs: [BM25Retriever]
+      - name: Reranker
+        inputs: [JoinDocuments]
+      - name: PromptNode
+        inputs: [Reranker]
