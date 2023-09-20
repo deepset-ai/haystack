@@ -260,7 +260,6 @@ def test_roberta():
     # assert answers[1][2].probability == pytest.approx(0.1002123719777046)
 
 
-@pytest.mark.skip(reason="There is a bug in HF.")
 @pytest.mark.integration
 def test_matches_hf_pipeline():
     reader = ExtractiveReader("deepset/tinyroberta-squad2")
@@ -268,15 +267,15 @@ def test_matches_hf_pipeline():
     answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
         "answers"
     ]  # [0] Remove first two indices when batching support is reintroduced
-    answers_hf = pipeline("question-answering", model=reader.model, tokenizer=reader.tokenizer)(
+    answers_hf = pipeline("question-answering", model=reader.model, tokenizer=reader.tokenizer, align_to_words=False)(
         question=example_queries[0],
-        content=example_documents[0][0].text,
+        context=example_documents[0][0].text,
         max_answer_len=1_000,
         handle_impossible_answer=False,
         top_k=20,
     )
     assert len(answers) == len(answers_hf) == 20
-    for i, (answer, answer_hf) in enumerate(zip(answers, answers_hf)):
+    for answer, answer_hf in zip(answers, answers_hf):
         assert answer.start == answer_hf["start"]
         assert answer.end == answer_hf["end"]
         assert answer.data == answer_hf["answer"]

@@ -15,15 +15,16 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
 @component
 class ExtractiveReader:
     """
-    A component for performing extractive QA
+    A component for performing extractive QA.
+    Every possible answer span is assigned a confidence score independent of other answer spans. This fixes a common issue of other implementations which make comparisons across documents harder by normalising each document's answers independently.
     """
 
     def __init__(
         self,
         model_name_or_path: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
         device: Optional[str] = None,
-        top_k: Optional[int] = None,
-        top_p: Optional[float] = None,
+        top_k: int = 20,
+        confidence_threshold: Optional[float] = None,
         max_seq_length: int = 384,
         stride: int = 128,
         max_batch_size: Optional[int] = None,
@@ -38,8 +39,8 @@ class ExtractiveReader:
             Default: `'deepset/roberta-base-squad2-distilled'`
         :param device: Pytorch device string. Uses GPU by default if available
         :param top_k: Number of answers to return per query.
-            If neither top_k nor top_p is set by the user, top_k will default to 10
-        :param top_p: Probability mass that should be contained in returned samples (nucleus sampling)
+            It is required even if confidence_threshold is set. Defaults to 20.
+        :param confidence_threshold: Answers with a confidence score below this value will not be returned
         :param max_seq_length: Maximum number of tokens.
             If exceeded by a sequence, the sequence will be split.
             Default: 384
@@ -57,7 +58,7 @@ class ExtractiveReader:
         self.device = device
         self.max_seq_length = max_seq_length
         self.top_k = top_k
-        self.top_p = top_p
+        self.confidence_threshold = confidence_threshold
         self.stride = stride
         self.max_batch_size = max_batch_size
         self.answers_per_seq = answers_per_seq
@@ -74,7 +75,7 @@ class ExtractiveReader:
             device=self.device,
             max_seq_length=self.max_seq_length,
             top_k=self.top_k,
-            top_p=self.top_p,
+            confidence_threshold=self.confidence_threshold,
             stride=self.stride,
             max_batch_size=self.max_batch_size,
             answers_per_seq=self.answers_per_seq,
@@ -101,6 +102,9 @@ class ExtractiveReader:
     def _flatten_documents(
         self, queries: List[str], documents: List[List[Document]]
     ) -> Tuple[List[str], List[Document], List[int]]:
+        """
+        Flattens queries and documents so all query-document pairs are arranged along one batch axis.
+        """
         flattened_queries = [query for documents_, query in zip(documents, queries) for _ in documents_]
         flattened_documents = [document for documents_ in documents for document in documents_]
         query_ids = [i for i, documents_ in enumerate(documents) for _ in documents_]
@@ -109,6 +113,9 @@ class ExtractiveReader:
     def _preprocess(
         self, queries: List[str], documents: List[Document], max_seq_length: int, query_ids: List[int], stride: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, List[Encoding], List[int], List[int]]:
+        """
+        Split and tokenise documents and preserve structures by returning mappings to query and document ids.
+        """
         texts = []
         document_ids = []
         for i, doc in enumerate(documents):
@@ -152,6 +159,9 @@ class ExtractiveReader:
         answers_per_seq: int,
         encodings: List[Encoding],
     ) -> Tuple[List[List[int]], List[List[int]], torch.Tensor]:
+        """
+        Turn start and end logits into confidence scores for each answer span. Unlike most other implementations, there is no normalisation in each split to make the scores more comparable across different splits. The top k answer spans are returned.
+        """
         mask = sequence_ids == 1
         mask = torch.logical_and(mask, attention_mask == 1)
         start = torch.where(mask, start, -torch.inf)
@@ -194,11 +204,14 @@ class ExtractiveReader:
         queries: List[str],
         answers_per_seq: int,
         top_k: Optional[int],
-        top_p: Optional[float],
+        confidence_threshold: Optional[float],
         query_ids: List[int],
         document_ids: List[int],
         no_answer: bool,
     ) -> List[List[ExtractedAnswer]]:
+        """
+        Reconstructs the nested structure that existed before flattening. Also computes a no answer probability. This probability is different from most other implementations because it does not consider the no answer logit introduced with SQuAD 2. Instead, it just computes the probability that the answer does not exist in the top k or top p.
+        """
         flat_answers_without_queries = []
         for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
             document_ids, start, end, probabilities
@@ -215,9 +228,8 @@ class ExtractiveReader:
                 answer["query"] = queries[query_id]
                 current_answers.append(ExtractedAnswer(**answer))
                 i += 1
-            if top_k is not None:
-                current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
-                current_answers = current_answers[:top_k]
+            current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
+            current_answers = current_answers[:top_k]
             if no_answer:
                 no_answer_probability = math.prod(1 - answer.probability for answer in current_answers)
                 answer_ = ExtractedAnswer(
@@ -225,13 +237,8 @@ class ExtractiveReader:
                 )
                 current_answers.append(answer_)
             current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
-            if top_p is not None:
-                p_sum = 0.0
-                for i, answer_ in enumerate(current_answers):
-                    p_sum += answer_.probability
-                    if p_sum >= top_p:
-                        current_answers = current_answers[: i + 1]
-                        break
+            if confidence_threshold is not None:
+                current_answers = [answer for answer in current_answers if answer.probability >= confidence_threshold]
             nested_answers.append(current_answers)
 
         return nested_answers
@@ -242,21 +249,24 @@ class ExtractiveReader:
         query: str,
         document: List[Document],
         top_k: Optional[int] = None,
-        top_p: Optional[float] = None,
+        confidence_threshold: Optional[float] = None,
         max_seq_length: Optional[int] = None,
         stride: Optional[int] = None,
         max_batch_size: Optional[int] = None,
         answers_per_seq: Optional[int] = None,
         no_answer: Optional[bool] = None,
     ):
+        """
+        Performs extractive QA on the given documents using the given query.
+        """
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2
         documents = [document]
         if self.model is None:
             raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
 
         top_k = top_k or self.top_k
-        top_p = top_p or self.top_p
-        if top_k is None and top_p is None:
+        confidence_threshold = confidence_threshold or self.confidence_threshold
+        if top_k is None:
             top_k = 10
         max_seq_length = max_seq_length or self.max_seq_length
         stride = stride or self.stride
@@ -305,7 +315,7 @@ class ExtractiveReader:
             queries,
             answers_per_seq,
             top_k,
-            top_p,
+            confidence_threshold,
             query_ids,
             document_ids,
             no_answer,
