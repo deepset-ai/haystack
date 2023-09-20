@@ -194,9 +194,6 @@ class BaseComponent(ABC):
     ):
         pass
 
-    async def _adispatch_run(self, **kwargs) -> Tuple[Dict, str]:
-        return await self._adispatch_run_general(self.run, **kwargs)
-
     def _dispatch_run(self, **kwargs) -> Tuple[Dict, str]:
         """
         The Pipelines call this method when run() is executed. This method in turn executes the _dispatch_run_general()
