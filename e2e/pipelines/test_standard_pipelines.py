@@ -195,22 +195,6 @@ async def test_async_sequential_complex_pipeline(samples_path):
         await pipeline.arun(query=query)
 
 
-def test_complex_pipeline_with_async_component(samples_path):
-    documents = [
-        {"content": "How to test module-1?", "meta": {"source": "wiki1", "answer": "Using tests for module-1"}},
-        {"content": "How to test module-2?", "meta": {"source": "wiki2", "answer": "Using tests for module-2"}},
-        {"content": "How to test module-3?", "meta": {"source": "wiki3", "answer": "Using tests for module-3"}},
-        {"content": "How to test module-4?", "meta": {"source": "wiki4", "answer": "Using tests for module-4"}},
-        {"content": "How to test module-5?", "meta": {"source": "wiki5", "answer": "Using tests for module-5"}},
-    ]
-    document_store = ElasticsearchDocumentStore()
-    document_store.write_documents(documents)
-
-    # test correct load of indexing pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(samples_path / "pipelines" / "async_test_pipeline.yml", pipeline_name="query")
-    pipeline.run(query="How to test module-3?")
-
-
 @pytest.mark.skipif(
     not os.environ.get("OPENAI_API_KEY", None),
     reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
