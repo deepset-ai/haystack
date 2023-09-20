@@ -1,0 +1,3 @@
+---
+preview:
+  - Add `Join`, a small component that can be used to join lists and other types supporting the + operator.
