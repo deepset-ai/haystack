@@ -206,7 +206,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         except Exception as e:
             if hasattr(e, "status_code") and e.status_code == 429:  # type: ignore
                 logger.warning(
-                    "Failed to insert a batch of '%s' documents because of a 'Too Many Requeset' response. "
+                    "Failed to insert a batch of '%s' documents because of a 'Too Many Requests' response. "
                     "Splitting the number of documents into two chunks with the same size and retrying in %s seconds.",
                     len(documents),
                     _timeout,
@@ -1620,9 +1620,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self._index_delete(index)
 
     def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
-        if logger.isEnabledFor(logging.DEBUG):
-            if self.client.indices.exists_alias(name=index_name):
-                logger.debug("Index name %s is an alias.", index_name)
+        if logger.isEnabledFor(logging.DEBUG) and self.client.indices.exists_alias(name=index_name):
+            logger.debug("Index name %s is an alias.", index_name)
 
         return self.client.indices.exists(index=index_name, headers=headers)
 

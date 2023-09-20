@@ -13,6 +13,7 @@ on:
       - ready_for_review
     paths:
       - "e2e/**/*.py"
+      - ".github/workflows/e2e.yml"
 
 env:
   PYTHON_VERSION: "3.8"
@@ -34,14 +35,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install dependencies
-      run: sudo apt install ffmpeg  # for local Whisper tests
+      run: |
+        sudo apt-get update
+        sudo apt install ffmpeg  # for local Whisper tests
 
     - name: Run Elasticsearch
       run: |

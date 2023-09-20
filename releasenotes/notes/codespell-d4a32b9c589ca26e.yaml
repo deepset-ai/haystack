@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+     ci: Fix typos discovered by codespell running in pre-commit.

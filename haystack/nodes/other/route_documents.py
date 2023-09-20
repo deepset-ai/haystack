@@ -50,12 +50,11 @@ class RouteDocuments(BaseComponent):
         self.metadata_values = metadata_values
         self.return_remaining = return_remaining
 
-        if self.split_by != "content_type":
-            if self.metadata_values is None or len(self.metadata_values) == 0:
-                raise ValueError(
-                    "If split_by is set to the name of a metadata field, provide metadata_values if you want to split "
-                    "a list of Documents by a metadata field."
-                )
+        if self.split_by != "content_type" and (self.metadata_values is None or len(self.metadata_values) == 0):
+            raise ValueError(
+                "If split_by is set to the name of a metadata field, provide metadata_values if you want to split "
+                "a list of Documents by a metadata field."
+            )
 
     @classmethod
     def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:

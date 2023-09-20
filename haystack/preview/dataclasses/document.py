@@ -63,8 +63,7 @@ class Document:
     Document, consider using `to_dict()`, modifying the dict, and then create a new Document object using
     `Document.from_dict()`.
 
-    :param id: Unique identifier for the document. Do not provide this value when initializing a document: it will be
-        generated based on the document's attributes (see id_hash_keys).
+    :param id: Unique identifier for the document. Generated based on the document's attributes (see id_hash_keys).
     :param text: Text of the document, if the document contains text.
     :param array: Array of numbers associated with the document, if the document contains matrix data like image,
         audio, video, and such.
@@ -80,7 +79,7 @@ class Document:
     :param embedding: Vector representation of the document.
     """
 
-    id: str = field(default_factory=str)
+    id: str = field(default_factory=str, init=False)
     text: Optional[str] = field(default=None)
     array: Optional[numpy.ndarray] = field(default=None)
     dataframe: Optional[pandas.DataFrame] = field(default=None)

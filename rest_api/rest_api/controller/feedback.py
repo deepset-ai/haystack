@@ -46,7 +46,7 @@ def get_feedback(index: Optional[str] = None):
 @router.delete("/feedback")
 def delete_feedback(index: Optional[str] = None):
     """
-    This endpoint allows the API user to delete all the feedback that has been sumbitted through the
+    This endpoint allows the API user to delete all the feedback that has been submitted through the
     `POST /feedback` endpoint.
     """
     all_labels = document_store.get_all_labels(index=index)
@@ -177,7 +177,7 @@ def export_feedback(
             start = squad_label["paragraphs"][0]["qas"][0]["answers"][0]["answer_start"]
             answer = squad_label["paragraphs"][0]["qas"][0]["answers"][0]["text"]
             context = squad_label["paragraphs"][0]["context"]
-            if not context[start : start + len(answer)] == answer:
+            if context[start : start + len(answer)] != answer:
                 logger.error(
                     "Skipping invalid squad label as string via offsets ('%s') does not match answer string ('%s') ",
                     context[start : start + len(answer)],

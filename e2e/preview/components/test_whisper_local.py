@@ -14,14 +14,14 @@ def test_whisper_local_transcriber(preview_samples_path):
     docs = output["documents"]
     assert len(docs) == 3
 
-    assert "this is the content of the document." == docs[0].content.strip().lower()
+    assert docs[0].text.strip().lower() == "this is the content of the document."
     assert preview_samples_path / "audio" / "this is the content of the document.wav" == docs[0].metadata["audio_file"]
 
-    assert "the context for this answer is here." == docs[1].content.strip().lower()
+    assert docs[1].text.strip().lower() == "the context for this answer is here."
     assert (
         str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute())
         == docs[1].metadata["audio_file"]
     )
 
-    assert "answer." == docs[2].content.strip().lower()
-    assert "<<binary stream>>" == docs[2].metadata["audio_file"]
+    assert docs[2].text.strip().lower() == "answer."
+    assert docs[2].metadata["audio_file"] == "<<binary stream>>"
