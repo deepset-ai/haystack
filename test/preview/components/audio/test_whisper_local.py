@@ -157,7 +157,7 @@ class TestLocalWhisperTranscriber:
         assert results == [expected]
 
     @pytest.mark.integration
-    def test_whisper_local_transcriber(preview_samples_path):
+    def test_whisper_local_transcriber(self, preview_samples_path):
         comp = LocalWhisperTranscriber(model_name_or_path="medium")
         comp.warm_up()
         output = comp.run(
