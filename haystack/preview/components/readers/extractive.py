@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 import math
-import bisect
 
 from haystack.preview import component, default_from_dict, default_to_dict, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
@@ -214,15 +213,16 @@ class ExtractiveReader:
                 )
                 current_answers.append(answer)
                 i += 1
-            current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
             if top_k is not None:
+                current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
                 current_answers = current_answers[:top_k]
             if no_answer:
                 no_answer_probability = math.prod(1 - answer.probability for answer in current_answers)
                 answer = ExtractedAnswer(
                     data=None, query=queries[query_id], metadata={}, document=None, probability=no_answer_probability
                 )
-                bisect.insort(current_answers, answer, key=lambda answer: -answer.probability)  # type: ignore # type checker does not understand key parameter
+                current_answers.append(answer)
+            current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
             if top_p is not None:
                 p_sum = 0.0
                 for i, answer in enumerate(current_answers):
