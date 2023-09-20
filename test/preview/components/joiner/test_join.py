@@ -9,7 +9,14 @@ class TestJoin:
     @pytest.mark.unit
     def test_join_to_dict(self):
         comp = Join(inputs_count=2, inputs_type=str)
-        assert comp.to_dict() == {"type": "Join", "init_parameters": {"inputs_count": 2, "inputs_type": str}}
+        assert comp.to_dict() == {"type": "Join", "init_parameters": {"inputs_count": 2, "inputs_type": "str"}}
+
+    @pytest.mark.unit
+    def test_join_from_dict(self):
+        data = {"type": "Join", "init_parameters": {"inputs_count": 2, "inputs_type": "str"}}
+        comp = Join.from_dict(data)
+        assert comp.inputs_count == 2
+        assert comp.inputs_type == str
 
     @pytest.mark.unit
     def test_join_list(self):

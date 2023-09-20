@@ -1,5 +1,6 @@
 from typing import Type
-from haystack.preview import component, default_from_dict, default_to_dict
+from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
+from haystack.preview.utils import marshal_type, unmarshal_type
 
 
 @component
@@ -22,10 +23,13 @@ class Join:
         component.set_output_types(self, output=inputs_type)
 
     def to_dict(self):
-        return default_to_dict(self, inputs_count=self.inputs_count, inputs_type=self.inputs_type)
+        return default_to_dict(self, inputs_count=self.inputs_count, inputs_type=marshal_type(self.inputs_type))
 
     @classmethod
     def from_dict(cls, data):
+        if not "inputs_type" in data["init_parameters"]:
+            raise DeserializationError("The inputs_type parameter for Join is missing.")
+        data["init_parameters"]["inputs_type"] = unmarshal_type(data["init_parameters"]["inputs_type"])
         return default_from_dict(cls, data)
 
     def run(self, **kwargs):
