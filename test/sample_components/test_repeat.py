@@ -2,17 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from sample_components import Repeat
+from canals.serialization import component_to_dict, component_from_dict
 
 
 def test_to_dict():
     component = Repeat(outputs=["first", "second"])
-    res = component.to_dict()
+    res = component_to_dict(component)
     assert res == {"type": "Repeat", "init_parameters": {"outputs": ["first", "second"]}}
 
 
 def test_from_dict():
     data = {"type": "Repeat", "init_parameters": {"outputs": ["first", "second"]}}
-    component = Repeat.from_dict(data)
+    component = component_from_dict(Repeat, data)
     assert component.outputs == ["first", "second"]
 
 

@@ -2,17 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from sample_components import Concatenate
+from canals.serialization import component_to_dict, component_from_dict
 
 
 def test_to_dict():
     component = Concatenate()
-    res = component.to_dict()
+    res = component_to_dict(component)
     assert res == {"type": "Concatenate", "init_parameters": {}}
 
 
 def test_from_dict():
     data = {"type": "Concatenate", "init_parameters": {}}
-    component = Concatenate.from_dict(data)
+    component = component_from_dict(Concatenate, data)
     assert component
 
 

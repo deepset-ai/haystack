@@ -3,17 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from sample_components import Sum
+from canals.serialization import component_to_dict, component_from_dict
 
 
 def test_to_dict():
     component = Sum(inputs=["first", "second"])
-    res = component.to_dict()
+    res = component_to_dict(component)
     assert res == {"type": "Sum", "init_parameters": {"inputs": ["first", "second"]}}
 
 
 def test_from_dict():
     data = {"type": "Sum", "init_parameters": {"inputs": ["first", "second"]}}
-    component = Sum.from_dict(data)
+    component = component_from_dict(Sum, data)
     assert component.inputs == ["first", "second"]
 
 

@@ -3,17 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from sample_components import Double
+from canals.serialization import component_to_dict, component_from_dict
 
 
 def test_to_dict():
     component = Double()
-    res = component.to_dict()
+    res = component_to_dict(component)
     assert res == {"type": "Double", "init_parameters": {}}
 
 
 def test_from_dict():
     data = {"type": "Double", "init_parameters": {}}
-    component = Double.from_dict(data)
+    component = component_from_dict(Double, data)
     assert component
 
 

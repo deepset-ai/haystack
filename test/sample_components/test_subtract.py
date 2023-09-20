@@ -2,17 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from sample_components import Subtract
+from canals.serialization import component_to_dict, component_from_dict
 
 
 def test_to_dict():
     component = Subtract()
-    res = component.to_dict()
+    res = component_to_dict(component)
     assert res == {"type": "Subtract", "init_parameters": {}}
 
 
 def test_from_dict():
     data = {"type": "Subtract", "init_parameters": {}}
-    component = Subtract.from_dict(data)
+    component = component_from_dict(Subtract, data)
     assert component
 
 

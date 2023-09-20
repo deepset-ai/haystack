@@ -2,17 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from sample_components import Parity
+from canals.serialization import component_to_dict, component_from_dict
 
 
 def test_to_dict():
     component = Parity()
-    res = component.to_dict()
+    res = component_to_dict(component)
     assert res == {"type": "Parity", "init_parameters": {}}
 
 
 def test_from_dict():
     data = {"type": "Parity", "init_parameters": {}}
-    component = Parity.from_dict(data)
+    component = component_from_dict(Parity, data)
     assert component
 
 
