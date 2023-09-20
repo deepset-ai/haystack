@@ -148,7 +148,7 @@ def test_delete_docs_with_filters(document_store, retriever):
     documents = document_store.get_all_documents()
     assert len(documents) == 3
     assert document_store.get_embedding_count() == 3
-    assert all("2021" == doc.meta["year"] for doc in documents)
+    assert all(doc.meta["year"] == "2021" for doc in documents)
 
 
 @pytest.mark.integration
@@ -224,7 +224,7 @@ def test_get_docs_with_filters_one_value(document_store, retriever):
     documents = document_store.get_all_documents(filters={"year": ["2020"]})
 
     assert len(documents) == 3
-    assert all("2020" == doc.meta["year"] for doc in documents)
+    assert all(doc.meta["year"] == "2020" for doc in documents)
 
 
 @pytest.mark.integration
@@ -252,9 +252,9 @@ def test_get_docs_with_many_filters(document_store, retriever):
     documents = document_store.get_all_documents(filters={"month": ["01"], "year": ["2020"]})
 
     assert len(documents) == 1
-    assert "name_1" == documents[0].meta["name"]
-    assert "01" == documents[0].meta["month"]
-    assert "2020" == documents[0].meta["year"]
+    assert documents[0].meta["name"] == "name_1"
+    assert documents[0].meta["month"] == "01"
+    assert documents[0].meta["year"] == "2020"
 
 
 @pytest.mark.integration

@@ -676,9 +676,8 @@ class QuestionAnsweringHead(PredictionHead):
             qa_name = "qas"
         elif "question" in raw_dict:
             qa_name = "question"
-        if qa_name:
-            if type(raw_dict[qa_name][0]) == dict:
-                return raw_dict[qa_name][0]["question"]
+        if qa_name and type(raw_dict[qa_name][0]) == dict:
+            return raw_dict[qa_name][0]["question"]
         return try_get(question_names, raw_dict)
 
     def aggregate_preds(self, preds, passage_start_t, ids, seq_2_start_t=None, labels=None):

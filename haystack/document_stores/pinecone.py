@@ -487,7 +487,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             documents=document_objects, index=index, duplicate_documents=duplicate_documents
         )
         if document_objects:
-            add_vectors = False if document_objects[0].embedding is None else True
+            add_vectors = document_objects[0].embedding is not None
             # If these are not labels, we need to find the correct value for `doc_type` metadata field
             if not labels:
                 type_metadata = DOCUMENT_WITH_EMBEDDING if add_vectors else DOCUMENT_WITHOUT_EMBEDDING
