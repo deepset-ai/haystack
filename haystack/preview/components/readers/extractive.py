@@ -205,38 +205,30 @@ class ExtractiveReader:
         ):
             for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_):
                 doc = flattened_documents[document_id]
-                flat_answers_without_queries.append((doc, doc.text[start_:end_], probability.item(), start_, end_))  # type: ignore # doc.text cannot be None, because those documents are filtered when preprocessing. However, mypy doesn't know that.
+                flat_answers_without_queries.append({"data": doc.text[start_:end_], "document": doc, "probability": probability.item(), "start": start_, "end": end_, "metadata": {}})  # type: ignore # doc.text cannot be None, because those documents are filtered when preprocessing. However, mypy doesn't know that.
         i = 0
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):
             current_answers = []
             while i < len(flat_answers_without_queries) and query_ids[i // answers_per_seq] == query_id:
-                doc, data, probability, cur_start, cur_end = flat_answers_without_queries[i]
-                answer = ExtractedAnswer(
-                    data=data,
-                    query=queries[query_id],
-                    metadata={},
-                    document=doc,
-                    probability=probability,
-                    start=cur_start,
-                    end=cur_end,
-                )
-                current_answers.append(answer)
+                answer = flat_answers_without_queries[i]
+                answer["query"] = queries[query_id]
+                current_answers.append(ExtractedAnswer(**answer))
                 i += 1
             if top_k is not None:
                 current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
                 current_answers = current_answers[:top_k]
             if no_answer:
                 no_answer_probability = math.prod(1 - answer.probability for answer in current_answers)
-                answer = ExtractedAnswer(
+                answer_ = ExtractedAnswer(
                     data=None, query=queries[query_id], metadata={}, document=None, probability=no_answer_probability
                 )
-                current_answers.append(answer)
+                current_answers.append(answer_)
             current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
             if top_p is not None:
                 p_sum = 0.0
-                for i, answer in enumerate(current_answers):
-                    p_sum += answer.probability
+                for i, answer_ in enumerate(current_answers):
+                    p_sum += answer_.probability
                     if p_sum >= top_p:
                         current_answers = current_answers[: i + 1]
                         break
