@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 import math
 
-from haystack.preview import component, default_from_dict, default_to_dict, Document, ExtractedAnswer
+from haystack.preview import component, default_from_dict, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
@@ -108,7 +108,7 @@ class ExtractiveReader:
     def _preprocess(
         self, queries: List[str], documents: List[Document], max_seq_length: int, query_ids: List[int], stride: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, List[Encoding], List[int], List[int]]:
-        encodings = self.tokenizer(
+        encodings_pt = self.tokenizer(
             queries,
             [document.content for document in documents],
             padding=True,
@@ -119,13 +119,13 @@ class ExtractiveReader:
             stride=stride,
         )
 
-        input_ids = encodings.input_ids.to(self.device)
-        attention_mask = encodings.attention_mask.to(self.device)
+        input_ids = encodings_pt.input_ids.to(self.device)
+        attention_mask = encodings_pt.attention_mask.to(self.device)
 
-        query_ids = [query_ids[index] for index in encodings.overflow_to_sample_mapping]
-        document_ids = encodings.overflow_to_sample_mapping
+        query_ids = [query_ids[index] for index in encodings_pt.overflow_to_sample_mapping]
+        document_ids = encodings_pt.overflow_to_sample_mapping
 
-        encodings = encodings.encodings
+        encodings = encodings_pt.encodings
         sequence_ids = torch.tensor(
             [[id_ if id_ is not None else -1 for id_ in encoding.sequence_ids] for encoding in encodings]
         ).to(self.device)
@@ -188,14 +188,13 @@ class ExtractiveReader:
         document_ids: List[int],
         no_answer: bool,
     ) -> List[List[ExtractedAnswer]]:
-        flat_answers_without_queries: List[Tuple[Document, Optional[str], float, Optional[int], Optional[int]]] = [
-            (doc := flattened_documents[document_id], doc.content[start:end], probability.item(), start, end)
-            for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
-                document_ids, start, end, probabilities
-            )
-            for start, end, probability in zip(start_candidates_, end_candidates_, probabilities_)
-        ]
-
+        flat_answers_without_queries = []
+        for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
+            document_ids, start, end, probabilities
+        ):
+            for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_):
+                doc = flattened_documents[document_id]
+                flat_answers_without_queries.append((doc, doc.content[start_:end_], probability.item(), start_, end_))
         i = 0
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):
@@ -247,6 +246,9 @@ class ExtractiveReader:
         answers_per_seq: Optional[int] = None,
         no_answer: Optional[bool] = None,
     ):
+        if self.model is None:
+            raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
+
         top_k = top_k or self.top_k
         top_p = top_p or self.top_p
         if top_k is None and top_p is None:

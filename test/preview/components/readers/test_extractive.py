@@ -104,8 +104,8 @@ def test_output(mock_reader: ExtractiveReader):
 
 
 @pytest.mark.unit
-def test_flatten(mock_reader: ExtractiveReader):
-    queries, docs, query_ids = mock_reader._flatten(example_queries, example_documents)
+def test_flatten_documents(mock_reader: ExtractiveReader):
+    queries, docs, query_ids = mock_reader._flatten_documents(example_queries, example_documents)
     i = 0
     for j, query in enumerate(example_queries):
         for doc in example_documents[j]:
@@ -181,7 +181,7 @@ def test_postprocess(mock_reader: ExtractiveReader):
 
 
 @pytest.mark.unit
-def test_unflatten(mock_reader: ExtractiveReader):
+def test_nest_answers(mock_reader: ExtractiveReader):
     start = list(range(5))
     end = [i + 5 for i in start]
     start = [start] * 6
@@ -189,7 +189,7 @@ def test_unflatten(mock_reader: ExtractiveReader):
     probabilities = torch.arange(5).unsqueeze(0) / 5 + torch.arange(6).unsqueeze(-1) / 25
     query_ids = [0] * 3 + [1] * 3
     document_ids = list(range(3)) * 2
-    nested_answers = mock_reader._unflatten(
+    nested_answers = mock_reader._nest_answers(
         start, end, probabilities, example_documents[0], example_queries, 5, 3, None, query_ids, document_ids, True
     )
     expected_no_answers = [0.2 * 0.16 * 0.12, 0]
@@ -260,8 +260,6 @@ def test_matches_hf_pipeline():
     )
     assert len(answers) == len(answers_hf) == 20
     for i, (answer, answer_hf) in enumerate(zip(answers, answers_hf)):
-        print(i)
-        print(answer, answer_hf)
         assert answer.start == answer_hf["start"]
         assert answer.end == answer_hf["end"]
         assert answer.data == answer_hf["answer"]
