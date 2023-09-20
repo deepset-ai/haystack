@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from functools import wraps
 import inspect
 import logging
+import asyncio
 
 from haystack.schema import Document, MultiLabel
 from haystack.errors import PipelineSchemaError
@@ -193,6 +194,9 @@ class BaseComponent(ABC):
     ):
         pass
 
+    async def _adispatch_run(self, **kwargs) -> Tuple[Dict, str]:
+        return await self._adispatch_run_general(self.run, **kwargs)
+
     def _dispatch_run(self, **kwargs) -> Tuple[Dict, str]:
         """
         The Pipelines call this method when run() is executed. This method in turn executes the _dispatch_run_general()
@@ -243,6 +247,70 @@ class BaseComponent(ABC):
                 run_inputs[key] = value
 
         output, stream = run_method(**run_inputs, **run_params)
+
+        # Collect debug information
+        debug_info = {}
+        if getattr(self, "debug", None):
+            # Include input
+            debug_info["input"] = {**run_inputs, **run_params}
+            debug_info["input"]["debug"] = self.debug
+            # Include output, exclude _debug to avoid recursion
+            filtered_output = {key: value for key, value in output.items() if key != "_debug"}
+            debug_info["output"] = filtered_output
+        # Include custom debug info
+        custom_debug = output.get("_debug", {})
+        if custom_debug:
+            debug_info["runtime"] = custom_debug
+
+        # append _debug information from nodes
+        all_debug = arguments.get("_debug", {})
+        if debug_info:
+            all_debug[self.name] = debug_info
+        if all_debug:
+            output["_debug"] = all_debug
+
+        # add "extra" args that were not used by the node, but not the 'inputs' value
+        for k, v in arguments.items():
+            if k not in output.keys() and k != "inputs":
+                output[k] = v
+
+        output["params"] = params
+        return output, stream
+
+    async def _adispatch_run_general(self, run_method: Callable, **kwargs):
+        """
+        THIS IS ASYNC
+        """
+        arguments = deepcopy(kwargs)
+        params = arguments.get("params") or {}
+
+        run_signature_args = inspect.signature(run_method).parameters.keys()
+
+        run_params: Dict[str, Any] = {}
+        for key, value in params.items():
+            if key == self.name:  # targeted params for this node
+                if isinstance(value, dict):
+                    # Extract debug attributes
+                    if "debug" in value.keys():
+                        self.debug = value.pop("debug")
+
+                    for _k, _v in value.items():
+                        if _k not in run_signature_args:
+                            raise Exception(f"Invalid parameter '{_k}' for the node '{self.name}'.")
+
+                run_params.update(**value)
+            elif key in run_signature_args:  # global params
+                run_params[key] = value
+
+        run_inputs = {}
+        for key, value in arguments.items():
+            if key in run_signature_args:
+                run_inputs[key] = value
+
+        if inspect.isawaitable(run_method):
+            output, stream = await run_method(**run_inputs, **run_params)
+        else:
+            output, stream = run_method(**run_inputs, **run_params)
 
         # Collect debug information
         debug_info = {}
