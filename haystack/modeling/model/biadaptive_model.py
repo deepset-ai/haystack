@@ -322,7 +322,7 @@ class BiAdaptiveModel(nn.Module):
                     output2 = None
 
                 embedding1, embedding2 = head(output1, output2)
-                all_logits.append(tuple([embedding1, embedding2]))
+                all_logits.append((embedding1, embedding2))
         else:
             # just return LM output (e.g. useful for extracting embeddings at inference time)
             all_logits.append((pooled_output))

@@ -595,7 +595,7 @@ class BaseDocumentStore(BaseComponent):
         :param index: name of the index
         :return: A list of Haystack Document objects.
         """
-        _hash_ids: Set = set([])
+        _hash_ids: Set = set()
         _documents: List[Document] = []
 
         for document in documents:

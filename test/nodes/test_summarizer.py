@@ -46,7 +46,7 @@ def test_summarization_no_docs(summarizer):
 
 
 @pytest.mark.unit
-def test_summarization_no_docs(summarizer):
+def test_summarization_no_docs_min_max(summarizer):
     summarizer.min_length = 10
     summarizer.max_length = 1
     with pytest.raises(ValueError, match="min_length cannot be greater than max_length"):

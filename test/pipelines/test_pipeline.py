@@ -729,7 +729,7 @@ def test_pipeline_classify_type(tmp_path):
     # previously misclassified as "UnknownPipeline"
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
                version: ignore
                components:
                - name: document_store
@@ -760,7 +760,7 @@ def test_pipeline_classify_type(tmp_path):
     # previously misclassified as "UnknownPipeline"
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
                version: ignore
                components:
                - name: document_store
@@ -796,7 +796,7 @@ def test_pipeline_classify_type(tmp_path):
     # previously misclassified as "UnknownPipeline"
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
                version: ignore
                components:
                - name: document_store
@@ -1390,7 +1390,7 @@ def test_failed_deploy_on_deepset_cloud():
             )
     with pytest.raises(
         DeepsetCloudError,
-        match=f"Deployment of pipeline config 'test_new_non_existing_pipeline' failed. "
+        match="Deployment of pipeline config 'test_new_non_existing_pipeline' failed. "
         "This might be caused by an exception in deepset Cloud or a runtime error in the pipeline. "
         "You can try to run this pipeline locally first.",
     ):
@@ -1421,7 +1421,7 @@ def test_unexpected_failed_deploy_on_deepset_cloud():
             )
     with pytest.raises(
         DeepsetCloudError,
-        match=f"Deployment of pipeline config 'test_new_non_existing_pipeline' failed. "
+        match="Deployment of pipeline config 'test_new_non_existing_pipeline' failed. "
         "This might be caused by an exception in deepset Cloud or a runtime error in the pipeline. "
         "You can try to run this pipeline locally first.",
     ):

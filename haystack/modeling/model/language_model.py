@@ -108,14 +108,14 @@ class LanguageModel(nn.Module, ABC):
         if self._output_dims:
             return self._output_dims
 
-        for odn in OUTPUT_DIM_NAMES:
-            try:
+        try:
+            for odn in OUTPUT_DIM_NAMES:
                 value = getattr(self.model.config, odn, None)
                 if value:
                     self._output_dims = value
                     return value
-            except AttributeError:
-                raise ModelingError("Can't get the output dimension before loading the model.")
+        except AttributeError:
+            raise ModelingError("Can't get the output dimension before loading the model.")
 
         raise ModelingError("Could not infer the output dimensions of the language model.")
 
@@ -189,11 +189,7 @@ class LanguageModel(nn.Module, ABC):
         elif self.extraction_strategy == "per_token":
             vecs = sequence_output.cpu().numpy()
 
-        elif self.extraction_strategy == "reduce_mean":
-            vecs = self._pool_tokens(
-                sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token  # type: ignore [arg-type]   # type: ignore [arg-type]
-            )
-        elif self.extraction_strategy == "reduce_max":
+        elif self.extraction_strategy in ("reduce_mean", "reduce_max"):
             vecs = self._pool_tokens(
                 sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token  # type: ignore [arg-type]   # type: ignore [arg-type]
             )

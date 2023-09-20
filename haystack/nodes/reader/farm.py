@@ -1153,10 +1153,10 @@ class FARMReader(BaseReader):
                             }
 
             # Get rid of the question key again (after we aggregated we don't need it anymore)
-            d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
+            d[str(doc_id)]["qas"] = list(aggregated_per_question.values())
 
         # Convert input format for FARM
-        farm_input = [v for v in d.values()]
+        farm_input = list(d.values())
         n_queries = len([y for x in farm_input for y in x["qas"]])
 
         # Create DataLoader that can be passed to the Evaluator
@@ -1398,11 +1398,8 @@ class FARMReader(BaseReader):
     @staticmethod
     def _check_no_answer(c: "QACandidate"):
         # check for correct value in "answer"
-        if c.offset_answer_start == 0 and c.offset_answer_end == 0:
-            if c.answer != "no_answer":
-                logger.error(
-                    "Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'"
-                )
+        if c.offset_answer_start == 0 and c.offset_answer_end == 0 and c.answer != "no_answer":
+            logger.error("Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'")
         return c.answer == "no_answer"
 
     def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):

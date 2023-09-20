@@ -174,7 +174,7 @@ class Processor(ABC):
             config = json.load(f)
         config["inference"] = True
         # init tokenizer
-        if "lower_case" in config.keys():
+        if "lower_case" in config:
             logger.warning(
                 "Loading tokenizer from deprecated config. "
                 "If you used `custom_vocab` or `never_split_chars`, this won't work anymore."
@@ -488,9 +488,8 @@ class SquadProcessor(Processor):
         dataset, tensor_names, baskets = self._create_dataset(baskets)
 
         # Logging
-        if indices:
-            if 0 in indices:
-                self._log_samples(n_samples=1, baskets=baskets)
+        if indices and 0 in indices:
+            self._log_samples(n_samples=1, baskets=baskets)
 
         # During inference we need to keep the information contained in baskets.
         if return_baskets:
@@ -1249,7 +1248,7 @@ class TextSimilarityProcessor(Processor):
                     "Couldn't find title although `embed_title` is set to True for DPR. Using title='' now. Related passage text: '%s' ",
                     ctx,
                 )
-            res.append(tuple((title, ctx)))
+            res.append((title, ctx))
         return res
 
 
@@ -1762,7 +1761,7 @@ class TableTextSimilarityProcessor(Processor):
         for meta, ctx in zip(meta_fields, texts):
             if meta is None:
                 meta = ""
-            res.append(tuple((meta, ctx)))
+            res.append((meta, ctx))
         return res
 
 
@@ -2111,12 +2110,12 @@ class UnlabeledTextProcessor(Processor):
             truncation=True,
             max_length=self.max_seq_len,
         )
-        names = [key for key in tokens]
+        names = list(tokens)
         inputs = [tokens[key] for key in tokens]
-        if not "padding_mask" in names:
+        if "padding_mask" not in names:
             index = names.index("attention_mask")
             names[index] = "padding_mask"
-        if not "segment_ids" in names:
+        if "segment_ids" not in names:
             index = names.index("token_type_ids")
             names[index] = "segment_ids"
 
@@ -2149,7 +2148,7 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
                         dev_labels[q["id"]] = "is_impossible"
                     else:
                         dev_labels[q["id"]] = q["answers"][0]["text"]
-        not_included = set(list(dev_labels.keys())) - set(list(predictions_json.keys()))
+        not_included = dev_labels.keys() - predictions_json.keys()
         if len(not_included) > 0:
             logger.info("There were missing predictions for question ids: %s", list(not_included))
         for x in not_included:

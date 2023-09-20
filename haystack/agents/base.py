@@ -346,7 +346,7 @@ class Agent:
                         You can only pass parameters to tools that are pipelines, but not nodes.
         """
         try:
-            if not self.hash == self.last_hash:
+            if self.hash != self.last_hash:
                 self.last_hash = self.hash
                 send_event(event_name="Agent", event_properties={"llm.agent_hash": self.hash})
         except Exception as exc:

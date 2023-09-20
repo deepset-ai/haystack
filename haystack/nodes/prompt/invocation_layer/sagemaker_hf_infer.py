@@ -249,9 +249,8 @@ class SageMakerHFInferenceInvocationLayer(SageMakerBaseInvocationLayer):
         if isinstance(response, list):
             for sublist in response:
                 yield from self._unwrap_response(sublist)
-        elif isinstance(response, dict):
-            if "generated_text" in response or "generated_texts" in response:
-                yield response
+        elif isinstance(response, dict) and ("generated_text" in response or "generated_texts" in response):
+            yield response
 
     @classmethod
     def get_test_payload(cls) -> Dict[str, str]:

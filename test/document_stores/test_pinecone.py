@@ -195,12 +195,12 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
 
     @pytest.mark.skip
     @pytest.mark.integration
-    def test_ne_filters(self, ds, documents):
+    def test_ne_filters(self, ds, documents):  # noqa: F811
         pass
 
     @pytest.mark.skip
     @pytest.mark.integration
-    def test_nin_filters(self, ds, documents):
+    def test_nin_filters(self, ds, documents):  # noqa: F811
         pass
 
     @pytest.mark.skip
@@ -284,7 +284,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.integration
     def test_get_all_documents_extended_filter_ne(self, doc_store_with_docs: PineconeDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$ne": "test-1"}})
-        assert all("test-1" != d.meta.get("meta_field", None) for d in retrieved_docs)
+        assert all(d.meta.get("meta_field", None) != "test-1" for d in retrieved_docs)
 
     @pytest.mark.integration
     def test_get_all_documents_extended_filter_nin(self, doc_store_with_docs: PineconeDocumentStore):
@@ -439,7 +439,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             "meta_field": "multilayer-test",
         }
         doc = Document(
-            content=f"Multilayered dict", meta=multilayer_meta, embedding=np.random.rand(768).astype(np.float32)
+            content="Multilayered dict", meta=multilayer_meta, embedding=np.random.rand(768).astype(np.float32)
         )
 
         doc_store_with_docs.write_documents([doc])
@@ -466,7 +466,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         We expect 1 doc with an embeddings because all documents in already written in doc_store_with_docs contain no
         embeddings.
         """
-        doc = Document(content=f"Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc = Document(content="Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
         doc_store_with_docs.write_documents([doc])
         assert doc_store_with_docs.get_embedding_count() == 1
 
@@ -485,7 +485,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         assert doc_store_with_docs.get_document_count() == initial_document_count
 
         # document with embedding is written to doc_store_with_docs
-        doc = Document(content=f"Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc = Document(content="Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
         doc_store_with_docs.write_documents([doc])
 
         # so we expect initial_document_count + 1 documents in total
@@ -509,7 +509,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         assert doc_store_with_docs.get_document_count() == initial_document_count
 
         # document without embedding is written to doc_store_with_docs
-        doc = Document(content=f"Doc without embedding")
+        doc = Document(content="Doc without embedding")
         doc_store_with_docs.write_documents([doc])
 
         # we now expect initial_document_count + 1 documents in total
@@ -536,8 +536,8 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         assert doc_store_with_docs.get_document_count() == initial_document_count
 
         # two documents with embedding are written to doc_store_with_docs
-        doc_1 = Document(content=f"Doc with embedding 1", embedding=np.random.rand(768).astype(np.float32))
-        doc_2 = Document(content=f"Doc with embedding 2", embedding=np.random.rand(768).astype(np.float32))
+        doc_1 = Document(content="Doc with embedding 1", embedding=np.random.rand(768).astype(np.float32))
+        doc_2 = Document(content="Doc with embedding 2", embedding=np.random.rand(768).astype(np.float32))
         doc_store_with_docs.write_documents([doc_1, doc_2])
 
         # total number is initial_document_count + 2
@@ -569,8 +569,8 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         assert doc_store_with_docs.get_document_count() == initial_document_count
 
         # two documents without embedding are written to doc_store_with_docs
-        doc_1 = Document(content=f"Doc with embedding 1", embedding=None)
-        doc_2 = Document(content=f"Doc with embedding 2", embedding=None)
+        doc_1 = Document(content="Doc with embedding 1", embedding=None)
+        doc_2 = Document(content="Doc with embedding 2", embedding=None)
         doc_store_with_docs.write_documents([doc_1, doc_2])
 
         # total number is initial_document_count + 2

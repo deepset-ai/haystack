@@ -485,14 +485,16 @@ class Crawler(BaseComponent):
                 )
                 continue
 
-            if sub_link and not (already_found_links and sub_link in already_found_links):
-                if self._is_internal_url(base_url=base_url, sub_link=sub_link) and (
-                    not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
-                ):
-                    if filter_pattern is not None:
-                        if filter_pattern.search(sub_link):
-                            sub_links.add(sub_link)
-                    else:
+            if (
+                sub_link
+                and not (already_found_links and sub_link in already_found_links)
+                and self._is_internal_url(base_url=base_url, sub_link=sub_link)
+                and (not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link))
+            ):
+                if filter_pattern is not None:
+                    if filter_pattern.search(sub_link):
                         sub_links.add(sub_link)
+                else:
+                    sub_links.add(sub_link)
 
         return sub_links
