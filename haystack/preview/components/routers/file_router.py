@@ -10,12 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class FileExtensionClassifier:
+class FileExtensionRouter:
     """
-    A component that classifies files based on their MIME types read from their file extensions. This component
+    A component that routes files based on their MIME types read from their file extensions. This component
     does not read the file contents, but rather uses the file extension to determine the MIME type of the file.
 
-    The FileExtensionClassifier takes a list of file paths and groups them by their MIME types.
+    The FileExtensionRouter takes a list of file paths and groups them by their MIME types.
     The list of MIME types to consider is provided during the initialization of the component.
 
     This component is particularly useful when working with a large number of files, and you
@@ -24,9 +24,9 @@ class FileExtensionClassifier:
 
     def __init__(self, mime_types: List[str]):
         """
-        Initialize the FileExtensionClassifier.
+        Initialize the FileExtensionRouter.
 
-        :param mime_types: A list of file mime types to consider when classifying
+        :param mime_types: A list of file mime types to consider when routing
         files (e.g. ["text/plain", "audio/x-wav", "image/jpeg"]).
         """
         if not mime_types:
@@ -48,7 +48,7 @@ class FileExtensionClassifier:
         return default_to_dict(self, mime_types=self.mime_types)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "FileExtensionClassifier":
+    def from_dict(cls, data: Dict[str, Any]) -> "FileExtensionRouter":
         """
         Deserialize this component from a dictionary.
         """
@@ -56,13 +56,13 @@ class FileExtensionClassifier:
 
     def run(self, paths: List[Union[str, Path]]):
         """
-        Run the FileExtensionClassifier.
+        Run the FileExtensionRouter.
 
         This method takes the input data, iterates through the provided file paths, checks the file
         mime type of each file, and groups the file paths by their mime types.
 
-        :param paths: The input data containing the file paths to classify.
-        :return: The output data containing the classified file paths.
+        :param paths: The input data containing the file paths to route.
+        :return: The output data containing the routed file paths.
         """
         mime_types = defaultdict(list)
         for path in paths:
