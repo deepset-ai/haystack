@@ -11,18 +11,20 @@ from haystack.preview import default_from_dict, default_to_dict
 from haystack.preview.document_stores.decorator import document_store
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.protocols import DuplicatePolicy, DocumentStore
-from haystack.preview.document_stores.memory._filters import match
-from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
+from haystack.preview.utils.filters import document_matches_filter
+from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError, DocumentStoreError
 from haystack.preview.utils import expit
 
 logger = logging.getLogger(__name__)
 
 # document scores are essentially unbounded and will be scaled to values between 0 and 1 if scale_score is set to
-# True (default). Scaling uses the expit function (inverse of the logit function) after applying a SCALING_FACTOR. A
-# larger SCALING_FACTOR decreases scaled scores. For example, an input of 10 is scaled to 0.99 with SCALING_FACTOR=2
-# but to 0.78 with SCALING_FACTOR=8 (default). The default was chosen empirically. Increase the default if most
+# True (default). Scaling uses the expit function (inverse of the logit function) after applying a scaling factor
+# (e.g., BM25_SCALING_FACTOR for the bm25_retrieval method).
+# Larger scaling factor decreases scaled scores. For example, an input of 10 is scaled to 0.99 with BM25_SCALING_FACTOR=2
+# but to 0.78 with BM25_SCALING_FACTOR=8 (default). The defaults were chosen empirically. Increase the default if most
 # unscaled scores are larger than expected (>30) and otherwise would incorrectly all be mapped to scores ~1.
-SCALING_FACTOR = 8
+BM25_SCALING_FACTOR = 8
+DOT_PRODUCT_SCALING_FACTOR = 100
 
 
 @document_store
@@ -36,9 +38,20 @@ class MemoryDocumentStore:
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
         bm25_parameters: Optional[Dict] = None,
+        embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
     ):
         """
         Initializes the DocumentStore.
+
+        :param bm25_tokenization_regex: The regular expression used to tokenize the text for BM25 retrieval.
+        :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
+        :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
+                                For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
+                                You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25.
+                                By default, no parameters are set.
+        :param embedding_similarity_function: The similarity function used to compare Documents embeddings.
+                                              One of "dot_product" (default) or "cosine".
+                                              To choose the most appropriate function, look for information about your embedding model.
         """
         self.storage: Dict[str, Document] = {}
         self._bm25_tokenization_regex = bm25_tokenization_regex
@@ -48,6 +61,7 @@ class MemoryDocumentStore:
             raise ValueError(f"BM25 algorithm '{bm25_algorithm}' not found.")
         self.bm25_algorithm = algorithm_class
         self.bm25_parameters = bm25_parameters or {}
+        self.embedding_similarity_function = embedding_similarity_function
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -58,6 +72,7 @@ class MemoryDocumentStore:
             bm25_tokenization_regex=self._bm25_tokenization_regex,
             bm25_algorithm=self.bm25_algorithm.__name__,
             bm25_parameters=self.bm25_parameters,
+            embedding_similarity_function=self.embedding_similarity_function,
         )
 
     @classmethod
@@ -141,23 +156,23 @@ class MemoryDocumentStore:
         }
         ```
 
-        :param filters: the filters to apply to the document list.
-        :return: a list of Documents that match the given filters.
+        :param filters: The filters to apply to the document list.
+        :return: A list of Documents that match the given filters.
         """
         if filters:
-            return [doc for doc in self.storage.values() if match(conditions=filters, document=doc)]
+            return [doc for doc in self.storage.values() if document_matches_filter(conditions=filters, document=doc)]
         return list(self.storage.values())
 
     def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
         """
         Writes (or overwrites) documents into the DocumentStore.
 
-        :param documents: a list of documents.
-        :param policy: documents with the same ID count as duplicates. When duplicates are met,
+        :param documents: A list of documents.
+        :param policy: Documents with the same ID count as duplicates. When duplicates are met,
             the DocumentStore can:
              - skip: keep the existing document and ignore the new one.
              - overwrite: remove the old document and write the new one.
-             - fail: an error is raised
+             - fail: an error is raised.
         :raises DuplicateError: Exception trigger on duplicate document if `policy=DuplicatePolicy.FAIL`
         :return: None
         """
@@ -178,10 +193,10 @@ class MemoryDocumentStore:
 
     def delete_documents(self, document_ids: List[str]) -> None:
         """
-        Deletes all documents with a matching document_ids from the DocumentStore.
+        Deletes all documents with matching document_ids from the DocumentStore.
         Fails with `MissingDocumentError` if no document with this id is present in the DocumentStore.
 
-        :param object_ids: the object_ids to delete
+        :param object_ids: The object_ids to delete.
         """
         for doc_id in document_ids:
             if not doc_id in self.storage.keys():
@@ -198,38 +213,37 @@ class MemoryDocumentStore:
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The number of top documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved documents. Default is True.
-        :return: A list of the top 'k' documents most relevant to the query.
+        :return: A list of the top_k documents most relevant to the query.
         """
         if not query:
             raise ValueError("Query should be a non-empty string")
 
-        # Get all documents that match the user's filters AND are either 'table' or 'text'.
-        # Raises an exception if the user was trying to include other content types.
-        if filters and "content_type" in filters:
-            content_types = filters["content_type"]
-            if isinstance(content_types, str):
-                content_types = [content_types]
-            if any(type_ not in ["text", "table"] for type_ in content_types):
-                raise ValueError(
-                    "MemoryDocumentStore can do BM25 retrieval on no other document type than text or table."
-                )
+        content_type_filter = {"$or": {"text": {"$not": None}, "dataframe": {"$not": None}}}
+        if filters:
+            filters = {"$and": [content_type_filter, filters]}
         else:
-            filters = filters or {}
-            filters = {**filters, "content_type": ["text", "table"]}
+            filters = content_type_filter
         all_documents = self.filter_documents(filters=filters)
-
-        # FIXME: remove this guard after resolving https://github.com/deepset-ai/canals/issues/33
-        top_k = top_k if top_k is not None else 10
 
         # Lowercase all documents
         lower_case_documents = []
         for doc in all_documents:
-            if doc.content_type == "text":
-                lower_case_documents.append(doc.content.lower())
-            elif doc.content_type == "table":
-                str_content = doc.content.astype(str)
-                csv_content = str_content.to_csv(index=False)
-                lower_case_documents.append(csv_content.lower())
+            if doc.text is None and doc.dataframe is None:
+                logger.info("Document '%s' has no text or dataframe content. Skipping it.", doc.id)
+            else:
+                if doc.text is not None:
+                    lower_case_documents.append(doc.text.lower())
+                    if doc.dataframe is not None:
+                        logger.warning(
+                            "Document '%s' has both text and dataframe content. "
+                            "Using text content and skipping dataframe content.",
+                            doc.id,
+                        )
+                        continue
+                if doc.dataframe is not None:
+                    str_content = doc.dataframe.astype(str)
+                    csv_content = str_content.to_csv(index=False)
+                    lower_case_documents.append(csv_content.lower())
 
         # Tokenize the entire content of the DocumentStore
         tokenized_corpus = [
@@ -246,7 +260,7 @@ class MemoryDocumentStore:
         # get scores for the query against the corpus
         docs_scores = bm25_scorer.get_scores(tokenized_query)
         if scale_score:
-            docs_scores = [expit(float(score / SCALING_FACTOR)) for score in docs_scores]
+            docs_scores = [expit(float(score / BM25_SCALING_FACTOR)) for score in docs_scores]
         # get the last top_k indexes and reverse them
         top_docs_positions = np.argsort(docs_scores)[-top_k:][::-1]
 
@@ -256,6 +270,111 @@ class MemoryDocumentStore:
             doc = all_documents[i]
             doc_fields = doc.to_dict()
             doc_fields["score"] = docs_scores[i]
+            del doc_fields["id"]
             return_document = Document(**doc_fields)
             return_documents.append(return_document)
         return return_documents
+
+    def embedding_retrieval(
+        self,
+        query_embedding: List[float],
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: int = 10,
+        scale_score: bool = True,
+        return_embedding: bool = False,
+    ) -> List[Document]:
+        """
+        Retrieves documents that are most similar to the query embedding using a vector similarity metric.
+
+        :param query_embedding: Embedding of the query.
+        :param filters: A dictionary with filters to narrow down the search space.
+        :param top_k: The number of top documents to retrieve. Default is 10.
+        :param scale_score: Whether to scale the scores of the retrieved Documents. Default is True.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
+        :return: A list of the top_k documents most relevant to the query.
+        """
+        if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
+            raise ValueError("query_embedding should be a non-empty list of floats.")
+
+        filters = filters or {}
+        all_documents = self.filter_documents(filters=filters)
+
+        documents_with_embeddings = [doc for doc in all_documents if doc.embedding is not None]
+        if len(documents_with_embeddings) == 0:
+            logger.warning(
+                "No Documents found with embeddings. Returning empty list. "
+                "To generate embeddings, use a DocumentEmbedder."
+            )
+            return []
+        elif len(documents_with_embeddings) < len(all_documents):
+            logger.info(
+                "Skipping some Documents that don't have an embedding. "
+                "To generate embeddings, use a DocumentEmbedder."
+            )
+
+        scores = self._compute_query_embedding_similarity_scores(
+            embedding=query_embedding, documents=documents_with_embeddings, scale_score=scale_score
+        )
+
+        # create Documents with the similarity score for the top k results
+        top_documents = []
+        for doc, score in sorted(zip(documents_with_embeddings, scores), key=lambda x: x[1], reverse=True)[:top_k]:
+            doc_fields = doc.to_dict()
+            doc_fields["score"] = score
+            if return_embedding is False:
+                doc_fields["embedding"] = None
+            del doc_fields["id"]
+            top_documents.append(Document(**doc_fields))
+
+        return top_documents
+
+    def _compute_query_embedding_similarity_scores(
+        self, embedding: List[float], documents: List[Document], scale_score: bool = True
+    ) -> List[float]:
+        """
+        Computes the similarity scores between the query embedding and the embeddings of the documents.
+
+        :param embedding: Embedding of the query.
+        :param documents: A list of Documents.
+        :param scale_score: Whether to scale the scores of the Documents. Default is True.
+        :return: A list of scores.
+        """
+
+        query_embedding = np.array(embedding)
+        if query_embedding.ndim == 1:
+            query_embedding = np.expand_dims(a=query_embedding, axis=0)
+
+        try:
+            document_embeddings = np.array([doc.embedding for doc in documents])
+        except ValueError as e:
+            if "inhomogeneous shape" in str(e):
+                raise DocumentStoreError(
+                    "The embedding size of all Documents should be the same. "
+                    "Please make sure that the Documents have been embedded with the same model."
+                ) from e
+            raise e
+        if document_embeddings.ndim == 1:
+            document_embeddings = np.expand_dims(a=document_embeddings, axis=0)
+
+        if self.embedding_similarity_function == "cosine":
+            # cosine similarity is a normed dot product
+            query_embedding /= np.linalg.norm(x=query_embedding, axis=1, keepdims=True)
+            document_embeddings /= np.linalg.norm(x=document_embeddings, axis=1, keepdims=True)
+
+        try:
+            scores = np.dot(a=query_embedding, b=document_embeddings.T)[0].tolist()
+        except ValueError as e:
+            if "shapes" in str(e) and "not aligned" in str(e):
+                raise DocumentStoreError(
+                    "The embedding size of the query should be the same as the embedding size of the Documents. "
+                    "Please make sure that the query has been embedded with the same model as the Documents."
+                ) from e
+            raise e
+
+        if scale_score:
+            if self.embedding_similarity_function == "dot_product":
+                scores = [expit(float(score / DOT_PRODUCT_SCALING_FACTOR)) for score in scores]
+            elif self.embedding_similarity_function == "cosine":
+                scores = [(score + 1) / 2 for score in scores]
+
+        return scores

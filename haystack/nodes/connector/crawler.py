@@ -95,7 +95,7 @@ class Crawler(BaseComponent):
                  3) ["--remote-debugging-port=9222"]
                     This option enables remote debug over HTTP.
             See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
-            If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
+            If your crawler fails, raising a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
         """
         selenium_import.check()
         super().__init__()
@@ -485,14 +485,16 @@ class Crawler(BaseComponent):
                 )
                 continue
 
-            if sub_link and not (already_found_links and sub_link in already_found_links):
-                if self._is_internal_url(base_url=base_url, sub_link=sub_link) and (
-                    not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
-                ):
-                    if filter_pattern is not None:
-                        if filter_pattern.search(sub_link):
-                            sub_links.add(sub_link)
-                    else:
+            if (
+                sub_link
+                and not (already_found_links and sub_link in already_found_links)
+                and self._is_internal_url(base_url=base_url, sub_link=sub_link)
+                and (not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link))
+            ):
+                if filter_pattern is not None:
+                    if filter_pattern.search(sub_link):
                         sub_links.add(sub_link)
+                else:
+                    sub_links.add(sub_link)
 
         return sub_links

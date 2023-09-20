@@ -7,7 +7,6 @@ from typing import Dict, Union, Tuple, Optional, List
 import requests
 import tenacity
 import tiktoken
-from tiktoken.model import MODEL_TO_ENCODING, MODEL_PREFIX_TO_ENCODING
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError, OpenAIUnauthorizedError
 from haystack.environment import (
@@ -65,18 +64,10 @@ def _openai_text_completion_tokenization_details(model_name: str):
     """
     tokenizer_name = "gpt2"
     max_tokens_limit = 2049  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
-    model_tokenizer = None
-
-    if model_name == "gpt-35-turbo":
-        # covering the lack of support in Tiktoken. https://github.com/openai/tiktoken/pull/72
-        model_tokenizer = "cl100k_base"
-    elif model_name in MODEL_TO_ENCODING:
-        model_tokenizer = MODEL_TO_ENCODING[model_name]
-    else:
-        for model_prefix, tokenizer in MODEL_PREFIX_TO_ENCODING.items():
-            if model_name.startswith(model_prefix):
-                model_tokenizer = tokenizer
-                break
+    try:
+        model_tokenizer = tiktoken.encoding_name_for_model(model_name)
+    except KeyError:
+        model_tokenizer = None
 
     if model_tokenizer:
         # Based on OpenAI models page, 'davinci' considers have 2049 tokens,
@@ -86,7 +77,7 @@ def _openai_text_completion_tokenization_details(model_name: str):
         if "text-davinci" in model_name:
             max_tokens_limit = 4097
             tokenizer_name = model_tokenizer
-        elif model_name.startswith("gpt-3.5-turbo-16k"):
+        elif model_name.startswith("gpt-3.5-turbo-16k") or model_name.startswith("gpt-35-turbo-16k"):
             max_tokens_limit = 16384
             tokenizer_name = model_tokenizer
         elif model_name.startswith("gpt-3"):

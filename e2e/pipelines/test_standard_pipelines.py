@@ -161,7 +161,7 @@ def test_webqa_pipeline():
     assert isinstance(result, dict)
     assert len(result["results"]) == 1
     answer = result["results"][0]
-    assert "Stark" in answer or "NED" in answer
+    assert "stark" in answer.lower() or "ned" in answer.lower()
 
 
 def test_faq_pipeline_batch():
@@ -306,7 +306,7 @@ def test_summarization_pipeline():
     output = pipeline.run(query=query, params={"Retriever": {"top_k": 1}})
     answers = output["answers"]
     assert len(answers) == 1
-    assert "The Eiffel Tower is one of the world's tallest structures." == answers[0]["answer"].strip()
+    assert answers[0]["answer"].strip() == "The Eiffel Tower is one of the world's tallest structures."
 
 
 def test_summarization_pipeline_one_summary():

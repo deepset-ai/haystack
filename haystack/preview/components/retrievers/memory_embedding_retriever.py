@@ -5,9 +5,9 @@ from haystack.preview.document_stores import MemoryDocumentStore, document_store
 
 
 @component
-class MemoryRetriever:
+class MemoryEmbeddingRetriever:
     """
-    A component for retrieving documents from a MemoryDocumentStore using the BM25 algorithm.
+    A component for retrieving documents from a MemoryDocumentStore using a vector similarity metric.
 
     Needs to be connected to a MemoryDocumentStore to run.
     """
@@ -18,14 +18,16 @@ class MemoryRetriever:
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         scale_score: bool = True,
+        return_embedding: bool = False,
     ):
         """
-        Create a MemoryRetriever component.
+        Create a MemoryEmbeddingRetriever component.
 
         :param document_store: An instance of MemoryDocumentStore.
-        :param filters: A dictionary with filters to narrow down the search space (default is None).
-        :param top_k: The maximum number of documents to retrieve (default is 10).
-        :param scale_score: Whether to scale the BM25 score or not (default is True).
+        :param filters: A dictionary with filters to narrow down the search space. Default is None.
+        :param top_k: The maximum number of documents to retrieve. Default is 10.
+        :param scale_score: Whether to scale the scores of the retrieved documents or not. Default is True.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
 
         :raises ValueError: If the specified top_k is not > 0.
         """
@@ -40,6 +42,7 @@ class MemoryRetriever:
         self.filters = filters
         self.top_k = top_k
         self.scale_score = scale_score
+        self.return_embedding = return_embedding
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -47,11 +50,16 @@ class MemoryRetriever:
         """
         docstore = self.document_store.to_dict()
         return default_to_dict(
-            self, document_store=docstore, filters=self.filters, top_k=self.top_k, scale_score=self.scale_score
+            self,
+            document_store=docstore,
+            filters=self.filters,
+            top_k=self.top_k,
+            scale_score=self.scale_score,
+            return_embedding=self.return_embedding,
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MemoryRetriever":
+    def from_dict(cls, data: Dict[str, Any]) -> "MemoryEmbeddingRetriever":
         """
         Deserialize this component from a dictionary.
         """
@@ -71,19 +79,20 @@ class MemoryRetriever:
     @component.output_types(documents=List[List[Document]])
     def run(
         self,
-        queries: List[str],
+        query_embedding: List[float],
         filters: Optional[Dict[str, Any]] = None,
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
+        return_embedding: Optional[bool] = None,
     ):
         """
-        Run the MemoryRetriever on the given input data.
+        Run the MemoryEmbeddingRetriever on the given input data.
 
-        :param query: The query string for the retriever.
+        :param query_embedding: Embedding of the query.
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The maximum number of documents to return.
-        :param scale_score: Whether to scale the BM25 scores or not.
-        :param document_stores: A dictionary mapping DocumentStore names to instances.
+        :param scale_score: Whether to scale the scores of the retrieved documents or not.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents.
         :return: The retrieved documents.
 
         :raises ValueError: If the specified DocumentStore is not found or is not a MemoryDocumentStore instance.
@@ -94,10 +103,15 @@ class MemoryRetriever:
             top_k = self.top_k
         if scale_score is None:
             scale_score = self.scale_score
+        if return_embedding is None:
+            return_embedding = self.return_embedding
 
-        docs = []
-        for query in queries:
-            docs.append(
-                self.document_store.bm25_retrieval(query=query, filters=filters, top_k=top_k, scale_score=scale_score)
-            )
+        docs = self.document_store.embedding_retrieval(
+            query_embedding=query_embedding,
+            filters=filters,
+            top_k=top_k,
+            scale_score=scale_score,
+            return_embedding=return_embedding,
+        )
+
         return {"documents": docs}

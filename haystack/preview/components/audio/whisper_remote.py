@@ -111,7 +111,7 @@ class RemoteWhisperTranscriber:
             content = transcript.pop("text")
             if not isinstance(audio, (str, Path)):
                 audio = "<<binary stream>>"
-            doc = Document(content=content, metadata={"audio_file": audio, **transcript})
+            doc = Document(text=content, metadata={"audio_file": audio, **transcript})
             documents.append(doc)
         return documents
 

@@ -1,0 +1,2 @@
+preview:
+  - Introduce `GPT35Generator`, a class that can generate completions using OpenAI Chat models like GPT3.5 and GPT4.

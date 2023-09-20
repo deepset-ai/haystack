@@ -93,7 +93,7 @@ class TestLocalWhisperTranscriber:
         }
         results = comp.run(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
         expected = Document(
-            content="test transcription",
+            text="test transcription",
             metadata={
                 "audio_file": SAMPLES_PATH / "audio" / "this is the content of the document.wav",
                 "other_metadata": ["other", "meta", "data"],
@@ -113,7 +113,7 @@ class TestLocalWhisperTranscriber:
             audio_files=[str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute())]
         )
         expected = Document(
-            content="test transcription",
+            text="test transcription",
             metadata={
                 "audio_file": str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute()),
                 "other_metadata": ["other", "meta", "data"],
@@ -131,7 +131,7 @@ class TestLocalWhisperTranscriber:
         }
         results = comp.transcribe(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
         expected = Document(
-            content="test transcription",
+            text="test transcription",
             metadata={
                 "audio_file": SAMPLES_PATH / "audio" / "this is the content of the document.wav",
                 "other_metadata": ["other", "meta", "data"],
@@ -151,7 +151,7 @@ class TestLocalWhisperTranscriber:
             audio_files=[open(SAMPLES_PATH / "audio" / "this is the content of the document.wav", "rb")]
         )
         expected = Document(
-            content="test transcription",
+            text="test transcription",
             metadata={"audio_file": "<<binary stream>>", "other_metadata": ["other", "meta", "data"]},
         )
         assert results == [expected]

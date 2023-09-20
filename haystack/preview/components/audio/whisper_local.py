@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 import whisper
 
-from haystack.preview import component, Document, default_to_dict, default_from_dict
+from haystack.preview import component, Document, default_to_dict, default_from_dict, ComponentError
 
 
 logger = logging.getLogger(__name__)
@@ -85,6 +85,9 @@ class LocalWhisperTranscriber:
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
         """
+        if self._model is None:
+            raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
+
         if whisper_params is None:
             whisper_params = self.whisper_params
 
@@ -111,7 +114,7 @@ class LocalWhisperTranscriber:
             content = transcript.pop("text")
             if not isinstance(audio, (str, Path)):
                 audio = "<<binary stream>>"
-            doc = Document(content=content, metadata={"audio_file": audio, **transcript})
+            doc = Document(text=content, metadata={"audio_file": audio, **transcript})
             documents.append(doc)
         return documents
 

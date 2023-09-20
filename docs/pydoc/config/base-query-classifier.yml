@@ -25,4 +25,3 @@ renderer:
     add_method_class_prefix: true
     add_member_class_prefix: false
     filename: query_classifier_api.md
-
