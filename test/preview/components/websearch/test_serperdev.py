@@ -189,7 +189,7 @@ class TestSerperDevSearchAPI:
         reason="Export an env var called SERPERDEV_API_KEY containing the SerperDev API key to run this test.",
     )
     @pytest.mark.integration
-    def test_web_search():
+    def test_web_search(self):
         ws = SerperDevWebSearch(api_key=os.environ.get("SERPERDEV_API_KEY", None), top_k=10)
         results = ws.run(query="Who is the boyfriend of Olivia Wilde?")
         documents = results["documents"]
