@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 
 from haystack.preview import component, Document, default_from_dict, default_to_dict, DeserializationError
-from haystack.preview.document_stores import DocumentStore, DuplicatePolicy, document_store
+from haystack.preview.document_stores import DocumentStore, document_store
 
 
 @component
