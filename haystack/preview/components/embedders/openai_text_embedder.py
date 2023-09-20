@@ -21,7 +21,7 @@ class OpenAITextEmbedder:
         suffix: str = "",
     ):
         """
-        Create a OpenAITextEmbedder component.
+        Create an OpenAITextEmbedder component.
 
         :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
                         environment variable OPENAI_API_KEY (recommended).
@@ -72,7 +72,7 @@ class OpenAITextEmbedder:
         """Embed a string."""
         if not isinstance(text, str):
             raise TypeError(
-                "OpenAITextEmbedder expects a string as input."
+                "OpenAITextEmbedder expects a string as an input."
                 "In case you want to embed a list of Documents, please use the OpenAIDocumentEmbedder."
             )
 
