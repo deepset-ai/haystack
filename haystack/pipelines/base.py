@@ -469,7 +469,9 @@ class Pipeline:
         return self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
 
     async def _arun_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
-        return await self.graph.nodes[node_id]["component"]._adispatch_run(**node_input)
+        return await self.graph.nodes[node_id]["component"]._adispatch_run_general(
+            self.graph.nodes[node_id]["component"].run, **node_input
+        )
 
     def run(  # type: ignore
         self,
