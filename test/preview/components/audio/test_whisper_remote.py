@@ -217,7 +217,7 @@ class TestRemoteWhisperTranscriber:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_whisper_remote_transcriber(preview_samples_path):
+    def test_whisper_remote_transcriber(self, preview_samples_path):
         comp = RemoteWhisperTranscriber(api_key=os.environ.get("OPENAI_API_KEY"))
 
         output = comp.run(
