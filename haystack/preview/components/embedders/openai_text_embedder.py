@@ -38,7 +38,7 @@ class OpenAITextEmbedder:
             except KeyError as e:
                 raise ValueError(
                     "OpenAITextEmbedder expects an OpenAI API key. "
-                    "Please provide one setting the environment variable OPENAI_API_KEY (recommended) or passing it explicitly."
+                    "Set the OPENAI_API_KEY environment variable (recommended) or pass it explicitly."
                 ) from e
 
         self.model_name = model_name
