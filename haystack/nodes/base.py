@@ -243,7 +243,10 @@ class BaseComponent(ABC):
             if key in run_signature_args:
                 run_inputs[key] = value
 
-        output, stream = run_method(**run_inputs, **run_params)
+        try:
+            output, stream = asyncio.run(run_method(**run_inputs, **run_params))
+        except ValueError:
+            output, stream = run_method(**run_inputs, **run_params)
 
         # Collect debug information
         debug_info = {}
