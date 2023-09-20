@@ -74,7 +74,7 @@ def _safe_gt(first: Any, second: Any) -> bool:
     """
     Checks if first is bigger than second.
 
-    Works only for numerical values and dates. Strings, lists, tables and tensors all raise exceptions.
+    Works only for numerical values and dates in ISO format (YYYY-MM-DD). Strings, lists, tables and tensors all raise exceptions.
     """
     if not isinstance(first, GT_TYPES) or not isinstance(second, GT_TYPES):
         try:
