@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
@@ -157,6 +158,7 @@ class TestLocalWhisperTranscriber:
         assert results == [expected]
 
     @pytest.mark.integration
+    @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
     def test_whisper_local_transcriber(self, preview_samples_path):
         comp = LocalWhisperTranscriber(model_name_or_path="medium")
         comp.warm_up()
