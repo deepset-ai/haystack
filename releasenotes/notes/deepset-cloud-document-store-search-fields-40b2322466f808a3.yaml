@@ -1,4 +1,4 @@
 ---
 features:
   - |
-    `DeepsetCloudDocumentStore` supports searching multiple fields in sparse queries. This enables you to search meta fields as well when using `BM25Retriever`. For example set `search_fields=["content", "title"]` to search the `title` meta field along with the document `content`. 
+    `DeepsetCloudDocumentStore` supports searching multiple fields in sparse queries. This enables you to search meta fields as well when using `BM25Retriever`. For example set `search_fields=["content", "title"]` to search the `title` meta field along with the document `content`.

@@ -1,7 +1,6 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 
-from haystack.preview import component
-from haystack.preview import Document
+from haystack.preview import component, Document, default_to_dict, default_from_dict
 from haystack.preview.embedding_backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
@@ -19,6 +18,8 @@ class SentenceTransformersDocumentEmbedder:
         model_name_or_path: str = "sentence-transformers/all-mpnet-base-v2",
         device: Optional[str] = None,
         use_auth_token: Union[bool, str, None] = None,
+        prefix: str = "",
+        suffix: str = "",
         batch_size: int = 32,
         progress_bar: bool = True,
         normalize_embeddings: bool = False,
@@ -33,6 +34,8 @@ class SentenceTransformersDocumentEmbedder:
         :param use_auth_token: The API token used to download private models from Hugging Face.
                         If this parameter is set to `True`, then the token generated when running
                         `transformers-cli login` (stored in ~/.huggingface) will be used.
+        :param prefix: A string to add to the beginning of each Document text before embedding.
+        :param suffix: A string to add to the end of each Document text before embedding.
         :param batch_size: Number of strings to encode at once.
         :param progress_bar: If true, displays progress bar during embedding.
         :param normalize_embeddings: If set to true, returned vectors will have length 1.
@@ -42,13 +45,40 @@ class SentenceTransformersDocumentEmbedder:
 
         self.model_name_or_path = model_name_or_path
         # TODO: remove device parameter and use Haystack's device management once migrated
-        self.device = device
+        self.device = device or "cpu"
         self.use_auth_token = use_auth_token
+        self.prefix = prefix
+        self.suffix = suffix
         self.batch_size = batch_size
         self.progress_bar = progress_bar
         self.normalize_embeddings = normalize_embeddings
         self.metadata_fields_to_embed = metadata_fields_to_embed or []
         self.embedding_separator = embedding_separator
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        return default_to_dict(
+            self,
+            model_name_or_path=self.model_name_or_path,
+            device=self.device,
+            use_auth_token=self.use_auth_token,
+            prefix=self.prefix,
+            suffix=self.suffix,
+            batch_size=self.batch_size,
+            progress_bar=self.progress_bar,
+            normalize_embeddings=self.normalize_embeddings,
+            metadata_fields_to_embed=self.metadata_fields_to_embed,
+            embedding_separator=self.embedding_separator,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersDocumentEmbedder":
+        """
+        Deserialize this component from a dictionary.
+        """
+        return default_from_dict(cls, data)
 
     def warm_up(self):
         """
@@ -82,7 +112,9 @@ class SentenceTransformersDocumentEmbedder:
                 for key in self.metadata_fields_to_embed
                 if key in doc.metadata and doc.metadata[key]
             ]
-            text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.content])
+            text_to_embed = (
+                self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.text or ""]) + self.suffix
+            )
             texts_to_embed.append(text_to_embed)
 
         embeddings = self.embedding_backend.embed(
@@ -96,6 +128,7 @@ class SentenceTransformersDocumentEmbedder:
         for doc, emb in zip(documents, embeddings):
             doc_as_dict = doc.to_dict()
             doc_as_dict["embedding"] = emb
+            del doc_as_dict["id"]
             documents_with_embeddings.append(Document.from_dict(doc_as_dict))
 
         return {"documents": documents_with_embeddings}

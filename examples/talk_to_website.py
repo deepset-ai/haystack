@@ -5,7 +5,7 @@ from typing import Dict, Any
 from haystack import Pipeline
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.nodes import PromptNode, PromptTemplate, TopPSampler
-from haystack.nodes.ranker.lost_in_the_middle import LostInTheMiddleRanker
+from haystack.nodes.ranker import LostInTheMiddleRanker
 from haystack.nodes.retriever.web import WebRetriever
 
 search_key = os.environ.get("SERPERDEV_API_KEY")

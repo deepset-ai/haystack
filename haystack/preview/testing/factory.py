@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional, Tuple, Type, List, Union
 
+from haystack.preview import default_to_dict, default_from_dict
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores import document_store, DocumentStore, DuplicatePolicy
 
@@ -33,7 +34,7 @@ def document_store_class(
 
     Create a DocumentStore class that returns a single document:
     ```python
-    doc = Document(id="fake_id", content="Fake content")
+    doc = Document(id="fake_id", text="Fake content")
     MyFakeStore = document_store_class("MyFakeComponent", documents=[doc])
     document_store = MyFakeStore()
     assert document_store.documents_count() == 1
@@ -50,7 +51,7 @@ def document_store_class(
 
     Create a DocumentStore class that returns a document and a custom count:
     ```python
-    doc = Document(id="fake_id", content="Fake content")
+    doc = Document(id="fake_id", text="Fake content")
     MyFakeStore = document_store_class("MyFakeComponent", documents=[doc], documents_count=100)
     document_store = MyFakeStore()
     assert document_store.documents_count() == 100
@@ -96,11 +97,16 @@ def document_store_class(
     def delete_documents(self, document_ids: List[str]) -> None:
         return
 
+    def to_dict(self) -> Dict[str, Any]:
+        return default_to_dict(self)
+
     fields = {
         "count_documents": count_documents,
         "filter_documents": filter_documents,
         "write_documents": write_documents,
         "delete_documents": delete_documents,
+        "to_dict": to_dict,
+        "from_dict": classmethod(default_from_dict),
     }
 
     if extra_fields is not None:

@@ -136,5 +136,8 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        valid_model = any(m for m in ["gpt-3.5-turbo", "gpt-4"] if m in model_name_or_path)
+        valid_model = (
+            any(m for m in ["gpt-3.5-turbo", "gpt-4"] if m in model_name_or_path)
+            and not "gpt-3.5-turbo-instruct" in model_name_or_path
+        )
         return valid_model and not has_azure_parameters(**kwargs)

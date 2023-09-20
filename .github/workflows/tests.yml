@@ -32,7 +32,7 @@ jobs:
   black:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -131,7 +131,7 @@ jobs:
             dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -211,7 +211,7 @@ jobs:
         ports:
           - 9200:9200
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -274,7 +274,7 @@ jobs:
         ports:
           - 9200:9200
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -328,7 +328,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -390,7 +390,7 @@ jobs:
         ports:
           - 9200:9200
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -444,7 +444,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -498,7 +498,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -562,7 +562,7 @@ jobs:
         ports:
           - 8080:8080
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -616,7 +616,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -672,7 +672,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -726,7 +726,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -780,7 +780,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -792,6 +792,61 @@ jobs:
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "integration" test/agents
+
+      - name: Calculate alert data
+        id: calculator
+        shell: bash
+        if: (success() || failure()) && github.ref_name == 'main'
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
+
+      - name: Send event to Datadog
+        if: (success() || failure()) && github.ref_name == 'main'
+        uses: masci/datadog@v1
+        with:
+          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-url: https://api.datadoghq.eu
+          events: |
+            - title: "${{ github.workflow }} workflow"
+              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
+              alert_type: "${{ steps.calculator.outputs.alert_type }}"
+              source_type_name: "Github"
+              host: ${{ github.repository_owner }}
+              tags:
+                - "project:${{ github.repository }}"
+                - "job:${{ github.job }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
+                - "branch:${{ github.ref_name }}"
+                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  integration-tests-preview:
+    name: Integration / Preview / ${{ matrix.os }}
+    needs:
+      - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Haystack
+        # FIXME Use haystack-ai dependency list
+        run: pip install .[dev,inference] langdetect
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "integration" test/preview
 
       - name: Calculate alert data
         id: calculator
@@ -843,6 +898,7 @@ jobs:
       - integration-tests-memory
       - integration-tests-promptnode
       - integration-tests-agents
+      - integration-tests-preview
 
     steps:
       - name: Finisher

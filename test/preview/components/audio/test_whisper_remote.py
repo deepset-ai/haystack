@@ -1,3 +1,4 @@
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -25,6 +26,56 @@ class TestRemoteWhisperTranscriber:
             RemoteWhisperTranscriber(api_key=None)
 
     @pytest.mark.unit
+    def test_to_dict(self):
+        transcriber = RemoteWhisperTranscriber(api_key="test")
+        data = transcriber.to_dict()
+        assert data == {
+            "type": "RemoteWhisperTranscriber",
+            "init_parameters": {
+                "model_name": "whisper-1",
+                "api_key": "test",
+                "api_base": "https://api.openai.com/v1",
+                "whisper_params": {},
+            },
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_custom_init_parameters(self):
+        transcriber = RemoteWhisperTranscriber(
+            api_key="test",
+            model_name="whisper-1",
+            api_base="https://my.api.base/something_else/v3",
+            whisper_params={"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+        )
+        data = transcriber.to_dict()
+        assert data == {
+            "type": "RemoteWhisperTranscriber",
+            "init_parameters": {
+                "model_name": "whisper-1",
+                "api_key": "test",
+                "api_base": "https://my.api.base/something_else/v3",
+                "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+            },
+        }
+
+    @pytest.mark.unit
+    def test_from_dict(self):
+        data = {
+            "type": "RemoteWhisperTranscriber",
+            "init_parameters": {
+                "model_name": "whisper-1",
+                "api_key": "test",
+                "api_base": "https://my.api.base/something_else/v3",
+                "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+            },
+        }
+        transcriber = RemoteWhisperTranscriber.from_dict(data)
+        assert transcriber.model_name == "whisper-1"
+        assert transcriber.api_key == "test"
+        assert transcriber.api_base == "https://my.api.base/something_else/v3"
+        assert transcriber.whisper_params == {"return_segments": True, "temperature": [0.1, 0.6, 0.8]}
+
+    @pytest.mark.unit
     def test_run_with_path(self, preview_samples_path):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -36,7 +87,7 @@ class TestRemoteWhisperTranscriber:
 
             result = comp.run(audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"])
             expected = Document(
-                content="test transcription",
+                text="test transcription",
                 metadata={
                     "audio_file": preview_samples_path / "audio" / "this is the content of the document.wav",
                     "other_metadata": ["other", "meta", "data"],
@@ -60,7 +111,7 @@ class TestRemoteWhisperTranscriber:
                 ]
             )
             expected = Document(
-                content="test transcription",
+                text="test transcription",
                 metadata={
                     "audio_file": str(
                         (preview_samples_path / "audio" / "this is the content of the document.wav").absolute()
@@ -83,7 +134,7 @@ class TestRemoteWhisperTranscriber:
             with open(preview_samples_path / "audio" / "this is the content of the document.wav", "rb") as audio_stream:
                 result = comp.transcribe(audio_files=[audio_stream])
                 expected = Document(
-                    content="test transcription",
+                    text="test transcription",
                     metadata={"audio_file": "<<binary stream>>", "other_metadata": ["other", "meta", "data"]},
                 )
                 assert result == [expected]
@@ -105,7 +156,7 @@ class TestRemoteWhisperTranscriber:
                 "method": "post",
                 "url": "https://api.openai.com/v1/audio/transcriptions",
                 "data": {"model": "whisper-1"},
-                "headers": {"Authorization": f"Bearer whatever"},
+                "headers": {"Authorization": "Bearer whatever"},
                 "timeout": OPENAI_TIMEOUT,
             }
 
@@ -129,7 +180,7 @@ class TestRemoteWhisperTranscriber:
                 "method": "post",
                 "url": "https://api.openai.com/v1/audio/translations",
                 "data": {"model": "whisper-1"},
-                "headers": {"Authorization": f"Bearer whatever"},
+                "headers": {"Authorization": "Bearer whatever"},
                 "timeout": OPENAI_TIMEOUT,
             }
 
@@ -160,3 +211,35 @@ class TestRemoteWhisperTranscriber:
 
         transcriber.transcribe(audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"])
         assert mock_request.call_args.kwargs["url"] == "https://fake_api_base.com/audio/transcriptions"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_whisper_remote_transcriber(preview_samples_path):
+        comp = RemoteWhisperTranscriber(api_key=os.environ.get("OPENAI_API_KEY"))
+
+        output = comp.run(
+            audio_files=[
+                preview_samples_path / "audio" / "this is the content of the document.wav",
+                str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute()),
+                open(preview_samples_path / "audio" / "answer.wav", "rb"),
+            ]
+        )
+        docs = output["documents"]
+        assert len(docs) == 3
+
+        assert docs[0].text.strip().lower() == "this is the content of the document."
+        assert (
+            preview_samples_path / "audio" / "this is the content of the document.wav" == docs[0].metadata["audio_file"]
+        )
+
+        assert docs[1].text.strip().lower() == "the context for this answer is here."
+        assert (
+            str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute())
+            == docs[1].metadata["audio_file"]
+        )
+
+        assert docs[2].text.strip().lower() == "answer."
+        assert docs[2].metadata["audio_file"] == "<<binary stream>>"

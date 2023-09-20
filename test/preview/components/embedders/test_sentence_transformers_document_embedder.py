@@ -13,28 +13,120 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_init_default(self):
         embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
         assert embedder.model_name_or_path == "model"
-        assert embedder.device is None
+        assert embedder.device == "cpu"
         assert embedder.use_auth_token is None
+        assert embedder.prefix == ""
+        assert embedder.suffix == ""
         assert embedder.batch_size == 32
         assert embedder.progress_bar is True
         assert embedder.normalize_embeddings is False
+        assert embedder.metadata_fields_to_embed == []
+        assert embedder.embedding_separator == "\n"
 
     @pytest.mark.unit
     def test_init_with_parameters(self):
         embedder = SentenceTransformersDocumentEmbedder(
             model_name_or_path="model",
-            device="cpu",
+            device="cuda",
             use_auth_token=True,
+            prefix="prefix",
+            suffix="suffix",
             batch_size=64,
             progress_bar=False,
             normalize_embeddings=True,
+            metadata_fields_to_embed=["test_field"],
+            embedding_separator=" | ",
         )
         assert embedder.model_name_or_path == "model"
-        assert embedder.device == "cpu"
+        assert embedder.device == "cuda"
         assert embedder.use_auth_token is True
+        assert embedder.prefix == "prefix"
+        assert embedder.suffix == "suffix"
         assert embedder.batch_size == 64
         assert embedder.progress_bar is False
         assert embedder.normalize_embeddings is True
+        assert embedder.metadata_fields_to_embed == ["test_field"]
+        assert embedder.embedding_separator == " | "
+
+    @pytest.mark.unit
+    def test_to_dict(self):
+        component = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
+        data = component.to_dict()
+        assert data == {
+            "type": "SentenceTransformersDocumentEmbedder",
+            "init_parameters": {
+                "model_name_or_path": "model",
+                "device": "cpu",
+                "use_auth_token": None,
+                "prefix": "",
+                "suffix": "",
+                "batch_size": 32,
+                "progress_bar": True,
+                "normalize_embeddings": False,
+                "embedding_separator": "\n",
+                "metadata_fields_to_embed": [],
+            },
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_custom_init_parameters(self):
+        component = SentenceTransformersDocumentEmbedder(
+            model_name_or_path="model",
+            device="cuda",
+            use_auth_token="the-token",
+            prefix="prefix",
+            suffix="suffix",
+            batch_size=64,
+            progress_bar=False,
+            normalize_embeddings=True,
+            metadata_fields_to_embed=["meta_field"],
+            embedding_separator=" - ",
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "SentenceTransformersDocumentEmbedder",
+            "init_parameters": {
+                "model_name_or_path": "model",
+                "device": "cuda",
+                "use_auth_token": "the-token",
+                "prefix": "prefix",
+                "suffix": "suffix",
+                "batch_size": 64,
+                "progress_bar": False,
+                "normalize_embeddings": True,
+                "embedding_separator": " - ",
+                "metadata_fields_to_embed": ["meta_field"],
+            },
+        }
+
+    @pytest.mark.unit
+    def test_from_dict(self):
+        data = {
+            "type": "SentenceTransformersDocumentEmbedder",
+            "init_parameters": {
+                "model_name_or_path": "model",
+                "device": "cuda",
+                "use_auth_token": "the-token",
+                "prefix": "prefix",
+                "suffix": "suffix",
+                "batch_size": 64,
+                "progress_bar": False,
+                "normalize_embeddings": False,
+                "embedding_separator": " - ",
+                "metadata_fields_to_embed": ["meta_field"],
+            },
+        }
+        component = SentenceTransformersDocumentEmbedder.from_dict(data)
+        assert component.model_name_or_path == "model"
+        assert component.device == "cuda"
+        assert component.use_auth_token == "the-token"
+        assert component.prefix == "prefix"
+        assert component.suffix == "suffix"
+        assert component.batch_size == 64
+        assert component.progress_bar is False
+        assert component.normalize_embeddings is False
+        assert component.metadata_fields_to_embed == ["meta_field"]
+        assert component.embedding_separator == " - "
 
     @pytest.mark.unit
     @patch(
@@ -45,7 +137,7 @@ class TestSentenceTransformersDocumentEmbedder:
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model_name_or_path="model", device=None, use_auth_token=None
+            model_name_or_path="model", device="cpu", use_auth_token=None
         )
 
     @pytest.mark.unit
@@ -65,7 +157,7 @@ class TestSentenceTransformersDocumentEmbedder:
         embedder.embedding_backend = MagicMock()
         embedder.embedding_backend.embed = lambda x, **kwargs: np.random.rand(len(x), 16).tolist()
 
-        documents = [Document(content=f"document number {i}") for i in range(5)]
+        documents = [Document(text=f"document number {i}") for i in range(5)]
 
         result = embedder.run(documents=documents)
 
@@ -101,7 +193,7 @@ class TestSentenceTransformersDocumentEmbedder:
         embedder.embedding_backend = MagicMock()
 
         documents = [
-            Document(content=f"document number {i}", metadata={"meta_field": f"meta_value {i}"}) for i in range(5)
+            Document(text=f"document number {i}", metadata={"meta_field": f"meta_value {i}"}) for i in range(5)
         ]
 
         embedder.run(documents=documents)
@@ -113,6 +205,36 @@ class TestSentenceTransformersDocumentEmbedder:
                 "meta_value 2\ndocument number 2",
                 "meta_value 3\ndocument number 3",
                 "meta_value 4\ndocument number 4",
+            ],
+            batch_size=32,
+            show_progress_bar=True,
+            normalize_embeddings=False,
+        )
+
+    @pytest.mark.unit
+    def test_prefix_suffix(self):
+        embedder = SentenceTransformersDocumentEmbedder(
+            model_name_or_path="model",
+            prefix="my_prefix ",
+            suffix=" my_suffix",
+            metadata_fields_to_embed=["meta_field"],
+            embedding_separator="\n",
+        )
+        embedder.embedding_backend = MagicMock()
+
+        documents = [
+            Document(text=f"document number {i}", metadata={"meta_field": f"meta_value {i}"}) for i in range(5)
+        ]
+
+        embedder.run(documents=documents)
+
+        embedder.embedding_backend.embed.assert_called_once_with(
+            [
+                "my_prefix meta_value 0\ndocument number 0 my_suffix",
+                "my_prefix meta_value 1\ndocument number 1 my_suffix",
+                "my_prefix meta_value 2\ndocument number 2 my_suffix",
+                "my_prefix meta_value 3\ndocument number 3 my_suffix",
+                "my_prefix meta_value 4\ndocument number 4 my_suffix",
             ],
             batch_size=32,
             show_progress_bar=True,

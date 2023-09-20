@@ -57,6 +57,13 @@ def test_prompt_handler_negative():
     }
 
 
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.handlers.AutoTokenizer.from_pretrained")
+def test_prompt_handler_model_max_length_set_in_tokenizer(mock_tokenizer):
+    prompt_handler = DefaultPromptHandler(model_name_or_path="model_path", model_max_length=10, max_length=3)
+    assert prompt_handler.tokenizer.model_max_length == 10
+
+
 @pytest.mark.integration
 def test_prompt_handler_basics():
     handler = DefaultPromptHandler(model_name_or_path="gpt2", model_max_length=20, max_length=10)
@@ -64,6 +71,9 @@ def test_prompt_handler_basics():
 
     handler = DefaultPromptHandler(model_name_or_path="gpt2", model_max_length=20)
     assert handler.max_length == 100
+
+    # test model_max_length is set in tokenizer
+    assert handler.tokenizer.model_max_length == 20
 
 
 @pytest.mark.integration
