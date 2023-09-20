@@ -6,7 +6,6 @@ from haystack.preview import Document, DeserializationError
 from haystack.preview.testing.factory import document_store_class
 from haystack.preview.document_stores.memory import MemoryDocumentStore
 from haystack.preview.components.caching.url_cache_checker import UrlCacheChecker
-from haystack.preview.document_stores import DuplicatePolicy
 
 
 class TestUrlCacheChecker:
@@ -83,4 +82,4 @@ class TestUrlCacheChecker:
         docstore.write_documents(documents)
         checker = UrlCacheChecker(docstore)
         results = checker.run(urls=["https://example.com/1", "https://example.com/5"])
-        assert results == {"found": [documents[0], documents[2]], "missing": ["https://example.com/5"]}
+        assert results == {"hits": [documents[0], documents[2]], "misses": ["https://example.com/5"]}

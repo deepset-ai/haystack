@@ -7,16 +7,13 @@ from haystack.preview.document_stores import DocumentStore, document_store
 @component
 class UrlCacheChecker:
     """
-    A component that check if a document coming from a given URL is already present in the store.
-
-    Can be used to implement a caching functionality with a Document Store in web retrieval pipelines.
+    A component checks for the presence of a document from a specific URL in the store. UrlCacheChecker can thus
+    implement caching functionality within web retrieval pipelines that use a Document Store.
     """
 
     def __init__(self, document_store: DocumentStore, url_field: str = "url"):
         """
         Create a UrlCacheChecker component.
-
-        :param policy: The policy to use when encountering duplicate documents (default is DuplicatePolicy.FAIL).
         """
         self.document_store = document_store
         self.url_field = url_field
@@ -45,10 +42,11 @@ class UrlCacheChecker:
         data["init_parameters"]["document_store"] = docstore
         return default_from_dict(cls, data)
 
-    @component.output_types(found=List[Document], missing=List[str])
+    @component.output_types(hits=List[Document], misses=List[str])
     def run(self, urls: List[str]):
         """
-        Checks if any document coming from the given URL is already present in the store and if so, returns it.
+        Checks if any document coming from the given URL is already present in the store. If matching documents are
+        found, they are returned. If not, the URL is returned as a miss.
 
         :param urls: All the URLs the documents may be coming from to hit this cache.
         """
@@ -62,4 +60,4 @@ class UrlCacheChecker:
                 found_documents.extend(found)
             else:
                 missing_urls.append(url)
-        return {"found": found_documents, "missing": missing_urls}
+        return {"hits": found_documents, "misses": missing_urls}
