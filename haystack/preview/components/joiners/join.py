@@ -37,7 +37,7 @@ class Join:
             raise ValueError(f"Join expected {self.inputs_count} inputs, but got {len(kwargs)}")
 
         values = list(kwargs.values())
-        output = values.pop()
-        for values in values:
+        output = values[0]
+        for values in values[1:]:
             output += values
         return {"output": output}
