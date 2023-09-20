@@ -10,20 +10,19 @@ class TestPyPDFToDocument:
     def test_to_dict(self):
         component = PyPDFToDocument()
         data = component.to_dict()
-        assert data == {"type": "PyPDFToDocument", "init_parameters": {"id_hash_keys": [], "progress_bar": True}}
+        assert data == {"type": "PyPDFToDocument", "init_parameters": {"id_hash_keys": []}}
 
     @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
-        component = PyPDFToDocument(id_hash_keys=["name"], progress_bar=False)
+        component = PyPDFToDocument(id_hash_keys=["name"])
         data = component.to_dict()
-        assert data == {"type": "PyPDFToDocument", "init_parameters": {"id_hash_keys": ["name"], "progress_bar": False}}
+        assert data == {"type": "PyPDFToDocument", "init_parameters": {"id_hash_keys": ["name"]}}
 
     @pytest.mark.unit
     def test_from_dict(self):
-        data = {"type": "PyPDFToDocument", "init_parameters": {"id_hash_keys": ["name"], "progress_bar": False}}
+        data = {"type": "PyPDFToDocument", "init_parameters": {"id_hash_keys": ["name"]}}
         component = PyPDFToDocument.from_dict(data)
         assert component.id_hash_keys == ["name"]
-        assert not component.progress_bar
 
     @pytest.mark.unit
     def test_run(self, preview_samples_path):

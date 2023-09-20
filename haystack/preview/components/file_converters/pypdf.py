@@ -19,22 +19,20 @@ class PyPDFToDocument:
     A component for converting a PDF file to a Document.
     """
 
-    def __init__(self, id_hash_keys: Optional[List[str]] = None, progress_bar: bool = True):
+    def __init__(self, id_hash_keys: Optional[List[str]] = None):
         """
         Create a PyPDFToDocument component.
 
         :param id_hash_keys: Generate the Document ID from a custom list of strings that refer to the Document's
             attributes. Default: `None`
-        :param progress_bar: Whether to show a progress bar for the conversion process. Default: `True`
         """
         self.id_hash_keys = id_hash_keys or []
-        self.progress_bar = progress_bar
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(self, id_hash_keys=self.id_hash_keys, progress_bar=self.progress_bar)
+        return default_to_dict(self, id_hash_keys=self.id_hash_keys)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "PyPDFToDocument":
@@ -56,13 +54,10 @@ class PyPDFToDocument:
         :param paths: A list of paths to PDF files.
         :param id_hash_keys: Generate the Document ID from a custom list of strings that refer to the Document's
             attributes. Default: `None`
-        :param progress_bar: Whether to show a progress bar for the conversion process. Default: `True`
         """
         id_hash_keys = id_hash_keys or self.id_hash_keys
-        progress_bar = progress_bar or self.progress_bar
-
         documents = []
-        for path in tqdm(paths, total=len(paths), desc="Converting PDF files", disable=not progress_bar):
+        for path in paths:
             try:
                 text = self._read_pdf_file(path)
             except Exception as e:
