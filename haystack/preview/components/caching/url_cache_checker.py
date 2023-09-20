@@ -43,7 +43,6 @@ class UrlCacheChecker:
         docstore = docstore_class.from_dict(init_params["document_store"])
 
         data["init_parameters"]["document_store"] = docstore
-        data["init_parameters"]["policy"] = DuplicatePolicy[data["init_parameters"]["policy"]]
         return default_from_dict(cls, data)
 
     @component.output_types(found=List[Document], missing=List[str])
@@ -60,7 +59,7 @@ class UrlCacheChecker:
             filters = {self.url_field: url}
             found = self.document_store.filter_documents(filters=filters)
             if found:
-                found_documents.append(found)
+                found_documents.extend(found)
             else:
                 missing_urls.append(url)
         return {"found": found_documents, "missing": missing_urls}
