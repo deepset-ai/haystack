@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - async-experiment
     tags:
       - "v[0-9].[0-9]+.[0-9]+*"
 
