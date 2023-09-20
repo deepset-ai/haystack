@@ -1,4 +1,5 @@
 from typing import List, Any, Union, Dict
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -73,13 +74,18 @@ def _safe_gt(first: Any, second: Any) -> bool:
     """
     Checks if first is bigger than second.
 
-    Works only for numerical values and dates. Strings, lists, tables and tensors all raise exceptions.
+    Works only for numerical values and dates in ISO format (YYYY-MM-DD). Strings, lists, tables and tensors all raise exceptions.
     """
     if not isinstance(first, GT_TYPES) or not isinstance(second, GT_TYPES):
-        raise FilterError(
-            f"Can't evaluate '{type(first).__name__} > {type(second).__name__}'. "
-            f"Convert these values into one of the following types: {[type_.__name__ for type_ in GT_TYPES]}"
-        )
+        try:
+            first = datetime.fromisoformat(first)
+            second = datetime.fromisoformat(second)
+        except (ValueError, TypeError):
+            raise FilterError(
+                f"Can't evaluate '{type(first).__name__} > {type(second).__name__}'. "
+                f"Convert these values into one of the following types: {[type_.__name__ for type_ in GT_TYPES]} "
+                f"or a datetime string in ISO 8601 format."
+            )
     return bool(first > second)
 
 

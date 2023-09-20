@@ -841,7 +841,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,inference]
+        # FIXME Use haystack-ai dependency list
+        run: pip install .[dev,inference] langdetect
 
       - name: Run tests
         run: |
