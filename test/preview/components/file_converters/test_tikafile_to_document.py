@@ -2,13 +2,13 @@ from unittest.mock import patch
 
 import pytest
 
-from haystack.preview.components.file_converters.tika import TikaFileToDocument
+from haystack.preview.components.file_converters.tika import TikaDocumentConverter
 
 
-class TestTikaFileToDocument:
+class TestTikaDocumentConverter:
     @pytest.mark.unit
     def test_to_dict(self):
-        component = TikaFileToDocument()
+        component = TikaDocumentConverter()
         data = component.to_dict()
         assert data == {
             "type": "TikaFileToDocument",
@@ -17,7 +17,7 @@ class TestTikaFileToDocument:
 
     @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
-        component = TikaFileToDocument(tika_url="http://localhost:1234/tika", id_hash_keys=["text", "category"])
+        component = TikaDocumentConverter(tika_url="http://localhost:1234/tika", id_hash_keys=["text", "category"])
         data = component.to_dict()
         assert data == {
             "type": "TikaFileToDocument",
@@ -30,13 +30,13 @@ class TestTikaFileToDocument:
             "type": "TikaFileToDocument",
             "init_parameters": {"tika_url": "http://localhost:9998/tika", "id_hash_keys": ["text", "category"]},
         }
-        component = TikaFileToDocument.from_dict(data)
+        component = TikaDocumentConverter.from_dict(data)
         assert component.tika_url == "http://localhost:9998/tika"
         assert component.id_hash_keys == ["text", "category"]
 
     @pytest.mark.unit
     def test_run(self):
-        component = TikaFileToDocument()
+        component = TikaDocumentConverter()
         with patch("haystack.preview.components.file_converters.tika.tika_parser.from_file") as mock_tika_parser:
             mock_tika_parser.return_value = {"content": "Content of mock_file.pdf"}
             documents = component.run(paths=["mock_file.pdf"])["documents"]
@@ -46,7 +46,7 @@ class TestTikaFileToDocument:
 
     @pytest.mark.unit
     def test_run_logs_warning_if_content_empty(self, caplog):
-        component = TikaFileToDocument()
+        component = TikaDocumentConverter()
         with patch("haystack.preview.components.file_converters.tika.tika_parser.from_file") as mock_tika_parser:
             mock_tika_parser.return_value = {"content": ""}
             with caplog.at_level("WARNING"):
@@ -55,7 +55,7 @@ class TestTikaFileToDocument:
 
     @pytest.mark.unit
     def test_run_logs_error(self, caplog):
-        component = TikaFileToDocument()
+        component = TikaDocumentConverter()
         with patch("haystack.preview.components.file_converters.tika.tika_parser.from_file") as mock_tika_parser:
             mock_tika_parser.side_effect = Exception("Some error")
             with caplog.at_level("ERROR"):
@@ -64,7 +64,7 @@ class TestTikaFileToDocument:
 
     @pytest.mark.integration
     def test_run_with_txt_files(self, preview_samples_path):
-        component = TikaFileToDocument(tika_url="http://tika:9998/tika")
+        component = TikaDocumentConverter(tika_url="http://tika:9998/tika")
         output = component.run(
             paths=[preview_samples_path / "txt" / "doc_1.txt", preview_samples_path / "txt" / "doc_2.txt"]
         )
@@ -75,7 +75,7 @@ class TestTikaFileToDocument:
 
     @pytest.mark.integration
     def test_run_with_pdf_file(self, preview_samples_path):
-        component = TikaFileToDocument(tika_url="http://tika:9998/tika")
+        component = TikaDocumentConverter(tika_url="http://tika:9998/tika")
         output = component.run(
             paths=[preview_samples_path / "pdf" / "sample_pdf_1.pdf", preview_samples_path / "pdf" / "sample_pdf_2.pdf"]
         )
@@ -93,7 +93,7 @@ class TestTikaFileToDocument:
 
     @pytest.mark.integration
     def test_run_with_docx_file(self, preview_samples_path):
-        component = TikaFileToDocument(tika_url="http://tika:9998/tika")
+        component = TikaDocumentConverter(tika_url="http://tika:9998/tika")
         output = component.run(paths=[preview_samples_path / "docx" / "sample_docx.docx"])
         documents = output["documents"]
         assert len(documents) == 1

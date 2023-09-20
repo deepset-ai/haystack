@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class TikaFileToDocument:
+class TikaDocumentConverter:
     """
     A component for converting files of different types (pdf, docx, html, etc.) to Documents.
     This component uses [Apache Tika](https://tika.apache.org/) for parsing the files and, therefore,
@@ -22,7 +22,7 @@ class TikaFileToDocument:
 
     def __init__(self, tika_url: str = "http://localhost:9998/tika", id_hash_keys: Optional[List[str]] = None):
         """
-        Create a TikaFileToDocument component.
+        Create a TikaDocumentConverter component.
 
         :param tika_url: URL of the Tika server. Default: `"http://localhost:9998/tika"`
         :param id_hash_keys: Generate the Document ID from a custom list of strings that refer to the Document's
@@ -79,7 +79,7 @@ class TikaFileToDocument:
         return default_to_dict(self, tika_url=self.tika_url, id_hash_keys=self.id_hash_keys)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TikaFileToDocument":
+    def from_dict(cls, data: Dict[str, Any]) -> "TikaDocumentConverter":
         """
         Deserialize this component from a dictionary.
         """
