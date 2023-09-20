@@ -59,16 +59,15 @@ class TikaDocumentConverter:
                 parsed_file = tika_parser.from_file(path.as_posix(), self.tika_url)
                 extracted_text = parsed_file["content"]
                 if not extracted_text:
-                    logger.warning(f"Skipping file at '{str(path)}' as Tika was not able to extract any content.")
+                    logger.warning("Skipping file at '%s' as Tika was not able to extract any content.", str(path))
                     continue
-                document = (
-                    Document(text=extracted_text, id_hash_keys=id_hash_keys)
-                    if id_hash_keys
-                    else Document(text=extracted_text)
-                )
+                if id_hash_keys:
+                    document = Document(text=extracted_text, id_hash_keys=id_hash_keys)
+                else:
+                    document = Document(text=extracted_text)
                 documents.append(document)
             except Exception as e:
-                logger.error(f"Could not convert file at '{str(path)}' to Document. Error: {e}")
+                logger.error("Could not convert file at '%s' to Document. Error: %s", str(path), e)
 
         return {"documents": documents}
 
