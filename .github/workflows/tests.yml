@@ -841,7 +841,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,all]
+        run: pip install .[dev,inference]
 
       - name: Run tests
         run: |
