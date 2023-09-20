@@ -7,7 +7,7 @@ from haystack.preview.utils.filters import document_matches_filter
 @component
 class MetadataRouter:
     """
-    A component that routes documents to different edges based on their metadata and specified rules.
+    A component that routes documents to different connections based on the content of their fields.
     """
 
     def __init__(self, rules: Dict[str, Dict]):
@@ -15,7 +15,7 @@ class MetadataRouter:
         Initialize the MetadataRouter.
 
         :param rules: A dictionary of rules that specify which edge to route a document to based on its metadata.
-                      The keys of the dictionary are the names of the edges, and the values are dictionaries that
+                      The keys of the dictionary are the names of the output connections, and the values are dictionaries that
                       follow the format of filtering expressions in Haystack. For example:
                       ```python
                       {
@@ -31,9 +31,9 @@ class MetadataRouter:
 
     def run(self, documents: List[Document]):
         """
-        Run the MetadataRouter. This method routes the documents to different edges based on their metadata and
+        Run the MetadataRouter. This method routes the documents to different edges based on their fields content and
         the rules specified during initialization. If a document does not match any of the rules, it is routed to
-        an edge named "unmatched".
+        a connection named "unmatched".
 
         :param documents: A list of documents to route to different edges.
         """
