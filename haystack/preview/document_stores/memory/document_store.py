@@ -181,7 +181,6 @@ class MemoryDocumentStore:
             or isinstance(documents, str)
             or any(not isinstance(doc, Document) for doc in documents)
         ):
-            print(documents)
             raise ValueError("Please provide a list of Documents.")
 
         for document in documents:
