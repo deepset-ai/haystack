@@ -833,6 +833,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    services:
+      tika:
+        image: apache/tika:2.9.9.0
+        ports:
+          - 9998:9998
     steps:
       - uses: actions/checkout@v4
 
@@ -841,7 +846,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,inference]
+        run: pip install .[dev,inference,file-conversion]
 
       - name: Run tests
         run: |
