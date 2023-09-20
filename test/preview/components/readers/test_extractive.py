@@ -80,22 +80,24 @@ def mock_reader(mock_tokenizer):
 example_queries = ["Who is the chancellor of Germany?", "Who is the head of the department?"]
 example_documents = [
     [
-        Document(content="Angela Merkel was the chancellor of Germany."),
-        Document(content="Olaf Scholz is the chancellor of Germany"),
-        Document(content="Jerry is the head of the department."),
+        Document(text="Angela Merkel was the chancellor of Germany."),
+        Document(text="Olaf Scholz is the chancellor of Germany"),
+        Document(text="Jerry is the head of the department."),
     ]
 ] * 2
 
 
 @pytest.mark.unit
 def test_output(mock_reader: ExtractiveReader):
-    answers = mock_reader.run(example_queries, example_documents, top_k=3)["answers"][0]
+    answers = mock_reader.run(example_queries[0], example_documents[0], top_k=3)[
+        "answers"
+    ]  # [0] Uncomment and remove first two indices when batching support is reintroduced
     doc_ids = set()
     no_answer_prob = 1
     for doc, answer in zip(example_documents[0], answers[:3]):
         assert answer.start == 11
         assert answer.end == 16
-        assert answer.data == doc.content[11:16]
+        assert answer.data == doc.text[11:16]
         assert answer.probability == pytest.approx(1 / (1 + exp(-2 * mock_reader.calibration_factor)))
         no_answer_prob *= 1 - answer.probability
         doc_ids.add(doc.id)
@@ -131,7 +133,7 @@ def test_preprocess(mock_reader: ExtractiveReader):
 
 def test_preprocess_splitting(mock_reader: ExtractiveReader):
     _, _, seq_ids, _, query_ids, doc_ids = mock_reader._preprocess(
-        example_queries * 4, example_documents[0] + [Document(content="a" * 64)], 96, [1, 1, 1, 1], 0
+        example_queries * 4, example_documents[0] + [Document(text="a" * 64)], 96, [1, 1, 1, 1], 0
     )
     assert seq_ids.shape[0] == 5
     assert query_ids == [1, 1, 1, 1, 1]
@@ -211,38 +213,51 @@ def test_nest_answers(mock_reader: ExtractiveReader):
 def test_t5():
     reader = ExtractiveReader("TARUNBHATT/flan-t5-small-finetuned-squad")
     reader.warm_up()
-    answers = reader.run(example_queries, example_documents, top_k=2)["answers"]
-    assert answers[0][0].data == "Angela Merkel"
-    assert answers[0][0].probability == pytest.approx(0.7764519453048706)
-    assert answers[0][1].data == "Olaf Scholz"
-    assert answers[0][1].probability == pytest.approx(0.7703777551651001)
-    assert answers[0][2].data is None
-    assert answers[0][2].probability == pytest.approx(0.051331606147570596)
-    assert answers[1][0].data == "Jerry"
-    assert answers[1][0].probability == pytest.approx(0.7413333654403687)
-    assert answers[1][1].data == "Olaf Scholz"
-    assert answers[1][1].probability == pytest.approx(0.7266613841056824)
-    assert answers[1][2].data is None
-    assert answers[1][2].probability == pytest.approx(0.0707035798685709)
+    answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
+        "answers"
+    ]  # remove indices when batching support is reintroduced
+    assert answers[0].data == "Angela Merkel"
+    assert answers[0].probability == pytest.approx(0.7764519453048706)
+    assert answers[1].data == "Olaf Scholz"
+    assert answers[1].probability == pytest.approx(0.7703777551651001)
+    assert answers[2].data is None
+    assert answers[2].probability == pytest.approx(0.051331606147570596)
+    # Uncomment assertions below when batching is reintroduced
+    # assert answers[0][2].probability == pytest.approx(0.051331606147570596)
+    # assert answers[1][0].data == "Jerry"
+    # assert answers[1][0].probability == pytest.approx(0.7413333654403687)
+    # assert answers[1][1].data == "Olaf Scholz"
+    # assert answers[1][1].probability == pytest.approx(0.7266613841056824)
+    # assert answers[1][2].data is None
+    # assert answers[1][2].probability == pytest.approx(0.0707035798685709)
 
 
 @pytest.mark.integration
 def test_roberta():
     reader = ExtractiveReader("deepset/tinyroberta-squad2")
     reader.warm_up()
-    answers = reader.run(example_queries, example_documents, top_k=2)["answers"]
-    assert answers[0][0].data == "Olaf Scholz"
-    assert answers[0][0].probability == pytest.approx(0.8614975214004517)
-    assert answers[0][1].data == "Angela Merkel"
-    assert answers[0][1].probability == pytest.approx(0.857952892780304)
-    assert answers[0][2].data is None
-    assert answers[0][2].probability == pytest.approx(0.0196738764278237)
-    assert answers[1][0].data == "Jerry"
-    assert answers[1][0].probability == pytest.approx(0.7048940658569336)
-    assert answers[1][1].data == "Olaf Scholz"
-    assert answers[1][1].probability == pytest.approx(0.6604189872741699)
-    assert answers[1][2].data is None
-    assert answers[1][2].probability == pytest.approx(0.1002123719777046)
+    answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
+        "answers"
+    ]  # remove indices when batching is reintroduced
+    assert answers[0].data == "Olaf Scholz"
+    assert answers[0].probability == pytest.approx(0.8614975214004517)
+    assert answers[1].data == "Angela Merkel"
+    assert answers[1].probability == pytest.approx(0.857952892780304)
+    assert answers[2].data is None
+    assert answers[2].probability == pytest.approx(0.0196738764278237)
+    # uncomment assertions below when there is batching in v2
+    # assert answers[0][0].data == "Olaf Scholz"
+    # assert answers[0][0].probability == pytest.approx(0.8614975214004517)
+    # assert answers[0][1].data == "Angela Merkel"
+    # assert answers[0][1].probability == pytest.approx(0.857952892780304)
+    # assert answers[0][2].data is None
+    # assert answers[0][2].probability == pytest.approx(0.0196738764278237)
+    # assert answers[1][0].data == "Jerry"
+    # assert answers[1][0].probability == pytest.approx(0.7048940658569336)
+    # assert answers[1][1].data == "Olaf Scholz"
+    # assert answers[1][1].probability == pytest.approx(0.6604189872741699)
+    # assert answers[1][2].data is None
+    # assert answers[1][2].probability == pytest.approx(0.1002123719777046)
 
 
 @pytest.mark.skip(reason="There is a bug in HF.")
@@ -250,10 +265,12 @@ def test_roberta():
 def test_matches_hf_pipeline():
     reader = ExtractiveReader("deepset/tinyroberta-squad2")
     reader.warm_up()
-    answers = reader.run(example_queries, [[example_documents[0][0]]], top_k=20, no_answer=False)["answers"][0]
+    answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
+        "answers"
+    ]  # [0] Remove first two indices when batching support is reintroduced
     answers_hf = pipeline("question-answering", model=reader.model, tokenizer=reader.tokenizer)(
         question=example_queries[0],
-        context=example_documents[0][0].content,
+        content=example_documents[0][0].text,
         max_answer_len=1_000,
         handle_impossible_answer=False,
         top_k=20,

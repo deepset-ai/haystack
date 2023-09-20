@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 import math
+import warnings
 
 from haystack.preview import component, default_from_dict, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
@@ -108,9 +109,19 @@ class ExtractiveReader:
     def _preprocess(
         self, queries: List[str], documents: List[Document], max_seq_length: int, query_ids: List[int], stride: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, List[Encoding], List[int], List[int]]:
+        texts = []
+        document_ids = []
+        for i, doc in enumerate(documents):
+            if doc.text is None:
+                warnings.warn(
+                    f"Document with id {doc.id} was passed to ExtractiveReader, but does not contain any text. It will be ignored."
+                )
+                continue
+            texts.append(doc.text)
+            document_ids.append(i)
         encodings_pt = self.tokenizer(
             queries,
-            [document.content for document in documents],
+            [document.text for document in documents],
             padding=True,
             truncation=True,
             max_length=max_seq_length,
@@ -123,7 +134,7 @@ class ExtractiveReader:
         attention_mask = encodings_pt.attention_mask.to(self.device)
 
         query_ids = [query_ids[index] for index in encodings_pt.overflow_to_sample_mapping]
-        document_ids = encodings_pt.overflow_to_sample_mapping
+        document_ids = [document_ids[sample_id] for sample_id in encodings_pt.overflow_to_sample_mapping]
 
         encodings = encodings_pt.encodings
         sequence_ids = torch.tensor(
@@ -194,7 +205,7 @@ class ExtractiveReader:
         ):
             for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_):
                 doc = flattened_documents[document_id]
-                flat_answers_without_queries.append((doc, doc.content[start_:end_], probability.item(), start_, end_))
+                flat_answers_without_queries.append((doc, doc.text[start_:end_], probability.item(), start_, end_))  # type: ignore # doc.text cannot be None, because those documents are filtered when preprocessing. However, mypy doesn't know that.
         i = 0
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):
@@ -233,11 +244,11 @@ class ExtractiveReader:
 
         return nested_answers
 
-    @component.output_types(answers=List[List[ExtractedAnswer]])
+    @component.output_types(answers=List[ExtractedAnswer])
     def run(
         self,
-        queries: List[str],
-        documents: List[List[Document]],
+        query: str,
+        document: List[Document],
         top_k: Optional[int] = None,
         top_p: Optional[float] = None,
         max_seq_length: Optional[int] = None,
@@ -246,6 +257,8 @@ class ExtractiveReader:
         answers_per_seq: Optional[int] = None,
         no_answer: Optional[bool] = None,
     ):
+        queries = [query]  # Temporary solution until we have decided what batching should look like in v2
+        documents = [document]
         if self.model is None:
             raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
 
@@ -306,4 +319,4 @@ class ExtractiveReader:
             no_answer,
         )
 
-        return {"answers": answers}
+        return {"answers": answers[0]}  # same temporary batching fix as above
