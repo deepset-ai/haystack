@@ -307,9 +307,9 @@ class BaseComponent(ABC):
             if key in run_signature_args:
                 run_inputs[key] = value
 
-        if inspect.isawaitable(run_method):
+        try:
             output, stream = await run_method(**run_inputs, **run_params)
-        else:
+        except TypeError:
             output, stream = run_method(**run_inputs, **run_params)
 
         # Collect debug information
