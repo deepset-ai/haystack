@@ -786,9 +786,6 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
-        run: sudo apt install ffmpeg  # for local Whisper tests
-
       - name: Install Haystack
         run: pip install .[dev,preprocessing,inference]
 
@@ -842,6 +839,11 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install ffmpeg  # for local Whisper tests
 
       - name: Install Haystack
         # FIXME Use haystack-ai dependency list
