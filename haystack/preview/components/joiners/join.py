@@ -1,5 +1,5 @@
 from typing import Type
-from haystack.preview import component
+from haystack.preview import component, default_from_dict, default_to_dict
 
 
 @component
@@ -14,10 +14,23 @@ class Join:
         :param inputs_count: the number of inputs to expect.
         :param inputs_type: the type of the inputs. Every type that supports the + operator works.
         """
+        self.inputs_count = inputs_count
+        self.inputs_type = inputs_type
         component.set_input_types({f"input_{i}": inputs_type for i in range(inputs_count)})
         component.set_output_types(output=inputs_type)
 
+    def to_dict(self):
+        return default_to_dict(self, inputs_count=self.inputs_count, inputs_type=self.inputs_type)
+
+    @classmethod
+    def from_dict(self, data):
+        return default_from_dict(self, data)
+
     def run(self, **kwargs):
+        """
+        Joins together a group of inputs of the same type. Works with every type that supports the + operator,
+        like lists, strings, etc.
+        """
         output = []
         for values in kwargs.values():
             output += values
