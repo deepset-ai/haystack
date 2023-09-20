@@ -11,7 +11,7 @@ class TestTikaDocumentConverter:
         component = TikaDocumentConverter()
         data = component.to_dict()
         assert data == {
-            "type": "TikaFileToDocument",
+            "type": "TikaDocumentConverter",
             "init_parameters": {"tika_url": "http://localhost:9998/tika", "id_hash_keys": []},
         }
 
@@ -20,14 +20,14 @@ class TestTikaDocumentConverter:
         component = TikaDocumentConverter(tika_url="http://localhost:1234/tika", id_hash_keys=["text", "category"])
         data = component.to_dict()
         assert data == {
-            "type": "TikaFileToDocument",
+            "type": "TikaDocumentConverter",
             "init_parameters": {"tika_url": "http://localhost:1234/tika", "id_hash_keys": ["text", "category"]},
         }
 
     @pytest.mark.unit
     def test_from_dict(self):
         data = {
-            "type": "TikaFileToDocument",
+            "type": "TikaDocumentConverter",
             "init_parameters": {"tika_url": "http://localhost:9998/tika", "id_hash_keys": ["text", "category"]},
         }
         component = TikaDocumentConverter.from_dict(data)
