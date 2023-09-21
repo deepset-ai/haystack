@@ -270,7 +270,7 @@ class TestGPT35Generator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_gpt35_generator_run():
+    def test_gpt35_generator_run(self):
         component = GPT35Generator(api_key=os.environ.get("OPENAI_API_KEY"), n=1)
         results = component.run(prompt="What's the capital of France?")
         assert len(results["replies"]) == 1
@@ -284,7 +284,7 @@ class TestGPT35Generator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_gpt35_generator_run_wrong_model_name():
+    def test_gpt35_generator_run_wrong_model_name(self):
         component = GPT35Generator(
             model_name="something-obviously-wrong", api_key=os.environ.get("OPENAI_API_KEY"), n=1
         )
@@ -296,7 +296,7 @@ class TestGPT35Generator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_gpt35_generator_run_streaming():
+    def test_gpt35_generator_run_streaming(self):
         class Callback:
             def __init__(self):
                 self.responses = ""
