@@ -106,15 +106,16 @@ class Document:
 
         allowed_hash_key_attributes = ["content", "content_type", "score", "meta", "embedding"]
 
-        if id_hash_keys is not None:
-            if not all(key in allowed_hash_key_attributes or key.startswith("meta.") for key in id_hash_keys):
-                raise ValueError(
-                    f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
-                    f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}) or "
-                    f"a key of meta with a maximum depth of 1 (like meta.url). "
-                    "See [Custom id hashing on documentstore level](https://github.com/deepset-ai/haystack/pull/1910) and "
-                    "[Allow more flexible Document id hashing](https://github.com/deepset-ai/haystack/issues/4317) for details"
-                )
+        if id_hash_keys is not None and not all(
+            key in allowed_hash_key_attributes or key.startswith("meta.") for key in id_hash_keys
+        ):
+            raise ValueError(
+                f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
+                f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}) or "
+                f"a key of meta with a maximum depth of 1 (like meta.url). "
+                "See [Custom id hashing on documentstore level](https://github.com/deepset-ai/haystack/pull/1910) and "
+                "[Allow more flexible Document id hashing](https://github.com/deepset-ai/haystack/issues/4317) for details"
+            )
         # We store id_hash_keys to be able to clone documents, for example when splitting them during pre-processing
         self.id_hash_keys = id_hash_keys or ["content"]
 
@@ -181,10 +182,9 @@ class Document:
             # Exclude internal fields (Pydantic, ...) fields from the conversion process
             if k.startswith("__"):
                 continue
-            if k == "content":
                 # Convert pd.DataFrame to list of rows for serialization
-                if self.content_type == "table" and isinstance(self.content, DataFrame):
-                    v = dataframe_to_list(self.content)
+            if k == "content" and self.content_type == "table" and isinstance(self.content, DataFrame):
+                v = dataframe_to_list(self.content)
             k = k if k not in inv_field_map else inv_field_map[k]
             _doc[k] = v
         return _doc

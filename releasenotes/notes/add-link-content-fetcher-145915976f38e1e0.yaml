@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Adds LinkContentFetcher component to Haystack 2.0. LinkContentFetcher fetches content from a given URL and
+    converts it into a Document object, which can then be used within the Haystack 2.0 pipeline.

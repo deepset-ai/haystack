@@ -14,9 +14,7 @@ def clean_wiki_text(text: str) -> str:
     lines = text.split("\n")
     cleaned = []
     for l in lines:
-        if len(l) > 30:
-            cleaned.append(l)
-        elif l[:2] == "==" and l[-2:] == "==":
+        if len(l) > 30 or (l[:2] == "==" and l[-2:] == "=="):
             cleaned.append(l)
     text = "\n".join(cleaned)
 

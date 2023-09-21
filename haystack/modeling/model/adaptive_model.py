@@ -644,7 +644,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             model=model_name,
             output=output_path / "model.onnx",
             opset=opset_version,
-            use_external_format=True if model_type == "XLMRoberta" else False,
+            use_external_format=model_type == "XLMRoberta",
             use_auth_token=use_auth_token,
         )
 

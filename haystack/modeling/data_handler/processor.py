@@ -488,9 +488,8 @@ class SquadProcessor(Processor):
         dataset, tensor_names, baskets = self._create_dataset(baskets)
 
         # Logging
-        if indices:
-            if 0 in indices:
-                self._log_samples(n_samples=1, baskets=baskets)
+        if indices and 0 in indices:
+            self._log_samples(n_samples=1, baskets=baskets)
 
         # During inference we need to keep the information contained in baskets.
         if return_baskets:
