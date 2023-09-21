@@ -835,7 +835,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     services:
       tika:
-        image: apache/tika:2.9.9.0
+        image: apache/tika:2.9.0.0
         ports:
           - 9998:9998
     steps:
