@@ -5,7 +5,7 @@ from pathlib import Path
 from haystack.preview.lazy_imports import LazyImport
 from haystack.preview import Document, component, default_to_dict, default_from_dict
 
-with LazyImport("Run 'pip install pypdf'") as pypdf:
+with LazyImport("Run 'pip install pypdf'") as pypdf_import:
     from pypdf import PdfReader
 
 
@@ -25,6 +25,7 @@ class PyPDFToDocument:
         :param id_hash_keys: Generate the Document ID from a custom list of strings that refer to the Document's
             attributes. Default: `None`
         """
+        pypdf_import.check()
         self.id_hash_keys = id_hash_keys or []
 
     def to_dict(self) -> Dict[str, Any]:
