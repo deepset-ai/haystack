@@ -840,6 +840,12 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Install dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update
+          sudo apt install ffmpeg  # for local Whisper tests
+
       - name: Install Haystack
         # FIXME Use haystack-ai dependency list
         run: pip install .[dev,inference] langdetect
