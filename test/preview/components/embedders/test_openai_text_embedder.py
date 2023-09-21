@@ -147,5 +147,5 @@ class TestOpenAITextEmbedder:
 
         list_integers_input = [1, 2, 3]
 
-        with pytest.raises(TypeError, match="OpenAITextEmbedder expects a string as input"):
+        with pytest.raises(TypeError, match="OpenAITextEmbedder expects a string as an input"):
             embedder.run(text=list_integers_input)
