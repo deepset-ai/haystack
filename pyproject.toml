@@ -128,6 +128,9 @@ faiss-gpu = [
 weaviate = [
   "weaviate-client>2",
 ]
+qdrant = [
+  "qdrant-haystack>=1.0.10",
+]
 only-pinecone = [
   "pinecone-client>=2.0.11,<3",
 ]
