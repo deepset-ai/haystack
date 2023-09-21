@@ -284,7 +284,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.integration
     def test_get_all_documents_extended_filter_ne(self, doc_store_with_docs: PineconeDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$ne": "test-1"}})
-        assert all("test-1" != d.meta.get("meta_field", None) for d in retrieved_docs)
+        assert all(d.meta.get("meta_field", None) != "test-1" for d in retrieved_docs)
 
     @pytest.mark.integration
     def test_get_all_documents_extended_filter_nin(self, doc_store_with_docs: PineconeDocumentStore):

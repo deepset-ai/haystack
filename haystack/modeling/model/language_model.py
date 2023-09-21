@@ -189,11 +189,7 @@ class LanguageModel(nn.Module, ABC):
         elif self.extraction_strategy == "per_token":
             vecs = sequence_output.cpu().numpy()
 
-        elif self.extraction_strategy == "reduce_mean":
-            vecs = self._pool_tokens(
-                sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token  # type: ignore [arg-type]   # type: ignore [arg-type]
-            )
-        elif self.extraction_strategy == "reduce_max":
+        elif self.extraction_strategy in ("reduce_mean", "reduce_max"):
             vecs = self._pool_tokens(
                 sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token  # type: ignore [arg-type]   # type: ignore [arg-type]
             )

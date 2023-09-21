@@ -17,7 +17,7 @@ def test_gpt35_generator_run(generator_class, model_name):
     assert "Paris" in results["replies"][0]
     assert len(results["metadata"]) == 1
     assert model_name in results["metadata"][0]["model"]
-    assert "stop" == results["metadata"][0]["finish_reason"]
+    assert results["metadata"][0]["finish_reason"] == "stop"
 
 
 @pytest.mark.skipif(
@@ -54,6 +54,6 @@ def test_gpt35_generator_run_streaming(generator_class, model_name):
 
     assert len(results["metadata"]) == 1
     assert model_name in results["metadata"][0]["model"]
-    assert "stop" == results["metadata"][0]["finish_reason"]
+    assert results["metadata"][0]["finish_reason"] == "stop"
 
     assert callback.responses == results["replies"][0]
