@@ -3,4 +3,4 @@ preview:
   - |
     Add `CohereTextEmbedder`, a component that uses Cohere embedding models to embed strings into vectors.
   - |
-    Add `CohereDocumentEmbedder`, a component that uses Cohere embedding models to embeds a list of Documents..
+    Add `CohereDocumentEmbedder`, a component that uses Cohere embedding models to embeds a list of Documents.
