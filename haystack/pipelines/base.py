@@ -611,7 +611,7 @@ class Pipeline:
 
         return node_output
 
-    async def arun(  # noqa: C901,PLR0912 type: ignore
+    async def _arun(  # noqa: C901,PLR0912 type: ignore
         self,
         query: Optional[str] = None,
         file_paths: Optional[List[str]] = None,

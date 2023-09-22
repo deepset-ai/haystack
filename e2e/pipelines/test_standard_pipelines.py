@@ -128,12 +128,12 @@ async def test_query_and_indexing_pipeline(samples_path):
     pipeline = Pipeline.load_from_yaml(
         samples_path / "pipelines" / "test.haystack-pipeline.yml", pipeline_name="indexing_pipeline"
     )
-    await pipeline.arun(file_paths=samples_path / "pipelines" / "sample_pdf_1.pdf")
+    await pipeline._arun(file_paths=samples_path / "pipelines" / "sample_pdf_1.pdf")
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
         samples_path / "pipelines" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
     )
-    prediction = await pipeline.arun(
+    prediction = await pipeline._arun(
         query="Who made the PDF specification?", params={"Retriever": {"top_k": 2}, "Reader": {"top_k": 1}}
     )
     assert prediction["query"] == "Who made the PDF specification?"
@@ -164,7 +164,7 @@ async def test_async_concurrent_complex_pipeline(samples_path):
     ]
     futures = []
     for query in queries:
-        future = pipeline.arun(query=query)
+        future = pipeline._arun(query=query)
         futures.append(future)
 
     await asyncio.gather(*futures)
@@ -192,7 +192,7 @@ async def test_async_sequential_complex_pipeline(samples_path):
         "How to test module-5?",
     ]
     for query in queries:
-        await pipeline.arun(query=query)
+        await pipeline._arun(query=query)
 
 
 @pytest.mark.skipif(
