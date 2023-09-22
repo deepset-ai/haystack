@@ -33,12 +33,12 @@ def default_streaming_callback(chunk):
 
 
 @component
-class GPT35Generator:
+class GPTGenerator:
     """
-    LLM Generator compatible with GPT3.5 (ChatGPT) large language models.
+    LLM Generator compatible with GPT (ChatGPT) large language models.
 
     Queries the LLM using OpenAI's API. Invocations are made using OpenAI SDK ('openai' package)
-    See [OpenAI GPT3.5 API](https://platform.openai.com/docs/guides/chat) for more details.
+    See [OpenAI GPT API](https://platform.openai.com/docs/guides/chat) for more details.
     """
 
     def __init__(
@@ -115,7 +115,7 @@ class GPT35Generator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "GPT35Generator":
+    def from_dict(cls, data: Dict[str, Any]) -> "GPTGenerator":
         """
         Deserialize this component from a dictionary.
         """

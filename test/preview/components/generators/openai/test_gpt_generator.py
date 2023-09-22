@@ -6,8 +6,8 @@ import pytest
 import openai
 from openai.util import convert_to_openai_object
 
-from haystack.preview.components.generators.openai.gpt35 import GPT35Generator
-from haystack.preview.components.generators.openai.gpt35 import default_streaming_callback
+from haystack.preview.components.generators.openai.gpt import GPTGenerator
+from haystack.preview.components.generators.openai.gpt import default_streaming_callback
 
 
 def mock_openai_response(messages: str, model: str = "gpt-3.5-turbo-0301", **kwargs) -> openai.ChatCompletion:
@@ -45,7 +45,7 @@ def mock_openai_stream_response(messages: str, model: str = "gpt-3.5-turbo-0301"
 class TestGPT35Generator:
     @pytest.mark.unit
     def test_init_default(self):
-        component = GPT35Generator(api_key="test-api-key")
+        component = GPTGenerator(api_key="test-api-key")
         assert component.system_prompt is None
         assert component.api_key == "test-api-key"
         assert component.model_name == "gpt-3.5-turbo"
@@ -56,7 +56,7 @@ class TestGPT35Generator:
     @pytest.mark.unit
     def test_init_with_parameters(self):
         callback = lambda x: x
-        component = GPT35Generator(
+        component = GPTGenerator(
             api_key="test-api-key",
             model_name="gpt-4",
             system_prompt="test-system-prompt",
@@ -74,7 +74,7 @@ class TestGPT35Generator:
 
     @pytest.mark.unit
     def test_to_dict_default(self):
-        component = GPT35Generator(api_key="test-api-key")
+        component = GPTGenerator(api_key="test-api-key")
         data = component.to_dict()
         assert data == {
             "type": "GPT35Generator",
@@ -89,7 +89,7 @@ class TestGPT35Generator:
 
     @pytest.mark.unit
     def test_to_dict_with_parameters(self):
-        component = GPT35Generator(
+        component = GPTGenerator(
             api_key="test-api-key",
             model_name="gpt-4",
             system_prompt="test-system-prompt",
@@ -114,7 +114,7 @@ class TestGPT35Generator:
 
     @pytest.mark.unit
     def test_to_dict_with_lambda_streaming_callback(self):
-        component = GPT35Generator(
+        component = GPTGenerator(
             api_key="test-api-key",
             model_name="gpt-4",
             system_prompt="test-system-prompt",
@@ -151,7 +151,7 @@ class TestGPT35Generator:
                 "streaming_callback": "haystack.preview.components.generators.openai.gpt35.default_streaming_callback",
             },
         }
-        component = GPT35Generator.from_dict(data)
+        component = GPTGenerator.from_dict(data)
         assert component.system_prompt == "test-system-prompt"
         assert component.api_key == "test-api-key"
         assert component.model_name == "gpt-4"
@@ -163,7 +163,7 @@ class TestGPT35Generator:
     def test_run_no_system_prompt(self):
         with patch("haystack.preview.components.generators.openai.gpt35.openai.ChatCompletion") as gpt35_patch:
             gpt35_patch.create.side_effect = mock_openai_response
-            component = GPT35Generator(api_key="test-api-key")
+            component = GPTGenerator(api_key="test-api-key")
             results = component.run(prompt="test-prompt-1")
             assert results == {
                 "replies": ["response for these messages --> user: test-prompt-1"],
@@ -187,7 +187,7 @@ class TestGPT35Generator:
     def test_run_with_system_prompt(self):
         with patch("haystack.preview.components.generators.openai.gpt35.openai.ChatCompletion") as gpt35_patch:
             gpt35_patch.create.side_effect = mock_openai_response
-            component = GPT35Generator(api_key="test-api-key", system_prompt="test-system-prompt")
+            component = GPTGenerator(api_key="test-api-key", system_prompt="test-system-prompt")
             results = component.run(prompt="test-prompt-1")
             assert results == {
                 "replies": ["response for these messages --> system: test-system-prompt - user: test-prompt-1"],
@@ -214,7 +214,7 @@ class TestGPT35Generator:
     def test_run_with_parameters(self):
         with patch("haystack.preview.components.generators.openai.gpt35.openai.ChatCompletion") as gpt35_patch:
             gpt35_patch.create.side_effect = mock_openai_response
-            component = GPT35Generator(api_key="test-api-key", max_tokens=10)
+            component = GPTGenerator(api_key="test-api-key", max_tokens=10)
             component.run(prompt="test-prompt-1")
             gpt35_patch.create.assert_called_once_with(
                 model="gpt-3.5-turbo",
@@ -230,7 +230,7 @@ class TestGPT35Generator:
             mock_callback = Mock()
             mock_callback.side_effect = default_streaming_callback
             gpt35_patch.create.side_effect = mock_openai_stream_response
-            component = GPT35Generator(
+            component = GPTGenerator(
                 api_key="test-api-key", system_prompt="test-system-prompt", streaming_callback=mock_callback
             )
             results = component.run(prompt="test-prompt-1")
@@ -252,7 +252,7 @@ class TestGPT35Generator:
 
     @pytest.mark.unit
     def test_check_truncated_answers(self, caplog):
-        component = GPT35Generator(api_key="test-api-key")
+        component = GPTGenerator(api_key="test-api-key")
         metadata = [
             {"finish_reason": "stop"},
             {"finish_reason": "content_filter"},
@@ -271,7 +271,7 @@ class TestGPT35Generator:
     )
     @pytest.mark.integration
     def test_gpt35_generator_run(self):
-        component = GPT35Generator(api_key=os.environ.get("OPENAI_API_KEY"), n=1)
+        component = GPTGenerator(api_key=os.environ.get("OPENAI_API_KEY"), n=1)
         results = component.run(prompt="What's the capital of France?")
         assert len(results["replies"]) == 1
         assert "Paris" in results["replies"][0]
@@ -285,9 +285,7 @@ class TestGPT35Generator:
     )
     @pytest.mark.integration
     def test_gpt35_generator_run_wrong_model_name(self):
-        component = GPT35Generator(
-            model_name="something-obviously-wrong", api_key=os.environ.get("OPENAI_API_KEY"), n=1
-        )
+        component = GPTGenerator(model_name="something-obviously-wrong", api_key=os.environ.get("OPENAI_API_KEY"), n=1)
         with pytest.raises(openai.InvalidRequestError, match="The model `something-obviously-wrong` does not exist"):
             component.run(prompt="What's the capital of France?")
 
@@ -306,7 +304,7 @@ class TestGPT35Generator:
                 return chunk
 
         callback = Callback()
-        component = GPT35Generator(os.environ.get("OPENAI_API_KEY"), streaming_callback=callback, n=1)
+        component = GPTGenerator(os.environ.get("OPENAI_API_KEY"), streaming_callback=callback, n=1)
         results = component.run(prompt="What's the capital of France?")
 
         assert len(results["replies"]) == 1
