@@ -79,7 +79,7 @@ class Document:
     :param embedding: Vector representation of the document.
     """
 
-    id: Optional[str] = field(default=None)
+    id: str = field(default="")
     text: Optional[str] = field(default=None)
     array: Optional[numpy.ndarray] = field(default=None)
     dataframe: Optional[pandas.DataFrame] = field(default=None)
@@ -121,7 +121,7 @@ class Document:
                 raise ValueError(f"Cannot name metadata fields as top-level document fields, like '{key}'.")
 
         # Note: we need to set the id this way because the dataclass is frozen. See the docstring.
-        if self.id is None:
+        if self.id == "":
             object.__setattr__(self, "id", self._create_id())
 
     def _create_id(self):
