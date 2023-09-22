@@ -380,6 +380,7 @@ def test_from_json_custom_decoder():
     assert doc == Document.from_json(
         json.dumps(
             {
+                "id": doc.id,
                 "text": "test text",
                 "array": None,
                 "dataframe": None,
