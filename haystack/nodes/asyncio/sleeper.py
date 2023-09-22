@@ -8,6 +8,10 @@ from haystack.nodes.base import BaseComponent
 
 
 class Sleeper(BaseComponent):
+    """
+    Simple component that sleeps for a random amount of time and then returns a dummy answer.
+    """
+
     outgoing_edges: int = 1
 
     def __init__(
