@@ -276,7 +276,17 @@ class BaseComponent(ABC):
 
     async def _adispatch_run_general(self, run_method: Callable, **kwargs):
         """
-        THIS IS ASYNC
+        This is the async version of _dispatch_run_general and is used indirectly by Pipeline._arun().
+        When actually running the node it tries to run it asynchronously, if that fails fall back to a synchronous run.
+        This makes it possible to run a pipeline asynchronously with a mix of async and sync nodes.
+
+        This method takes care of the following:
+          - inspect run_method's signature to validate if all necessary arguments are available
+          - pop `debug` and sets them on the instance to control debug output
+          - call run_method with the corresponding arguments and gather output
+          - collate `_debug` information if present
+          - merge component output with the preceding output and pass it on to the subsequent Component in the Pipeline
+
         """
         arguments = deepcopy(kwargs)
         params = arguments.get("params") or {}
