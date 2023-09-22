@@ -52,7 +52,7 @@ class OpenAITextEmbedder:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        This method overrides the default serializer in order to avoid leaking the `api_key` value passed to the constructor.
         """
 
         # do not serialize api_key
