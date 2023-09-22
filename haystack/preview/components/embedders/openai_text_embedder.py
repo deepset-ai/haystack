@@ -52,10 +52,10 @@ class OpenAITextEmbedder:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        This method overrides the default serializer in order to avoid leaking the `api_key` value passed to the constructor.
+        This method overrides the default serializer in order to avoid leaking the `api_key` value passed
+        to the constructor.
         """
 
-        # do not serialize api_key
         return default_to_dict(
             self, model_name=self.model_name, organization=self.organization, prefix=self.prefix, suffix=self.suffix
         )
