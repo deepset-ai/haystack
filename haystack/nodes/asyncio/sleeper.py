@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Tuple, Union, Any
+from typing import Optional, List, Dict, Tuple, Union, Any, Literal
 import asyncio
 
 import numpy as np
@@ -18,7 +18,7 @@ class Sleeper(BaseComponent):
         self,
         mean_sleep_in_seconds: float = 10,
         sleep_scale: float = 1.0,
-        answer_type: str = "generative",
+        answer_type: Literal["generative", "extractive", "other"] = "generative",
         answer_score: Optional[float] = None,
         answer: str = "Placeholder",
     ) -> None:
@@ -29,14 +29,14 @@ class Sleeper(BaseComponent):
         self._answer = answer
         self._answer_score = answer_score
 
-    async def run(
+    async def run(  # type: ignore
         self,
         query: Optional[str] = None,
         file_paths: Optional[List[str]] = None,
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
-    ) -> Tuple[Dict, str]:
+    ):
         if query is None:
             return {"answers": []}, "output_1"
 
@@ -51,7 +51,7 @@ class Sleeper(BaseComponent):
         }, "output_1"
 
     # pylint: disable=too-many-arguments
-    def run_batch(
+    def run_batch(  # type: ignore
         self,
         queries: Optional[Union[str, List[str]]] = None,
         file_paths: Optional[List[str]] = None,
@@ -60,14 +60,14 @@ class Sleeper(BaseComponent):
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
-    ) -> Tuple[Dict, str]:
+    ):
         queries = queries or []
         query_list: List[str] = [queries] if isinstance(queries, str) else queries
         result: Dict[Any, Any] = {"answers": [], "queries": []}
 
         for query in query_list:
-            iteration_result, _ = self.run(query=query)
-            result["answers"].append(iteration_result["answers"])
+            iteration_result, _ = self.run(query=query)  # type: ignore
+            result["answers"].append(iteration_result["answers"])  # type: ignore
             result["queries"].append(query)
 
         return result, "output_1"
