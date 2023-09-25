@@ -201,7 +201,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[preview,dev] langdetect transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0 pypdf openai-whisper
+        run: pip install .[preview,dev] langdetect transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0 pypdf openai-whisper tika
 
       - name: Run
         run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/preview
