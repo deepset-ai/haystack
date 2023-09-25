@@ -76,7 +76,7 @@ class MemoryEmbeddingRetriever:
         data["init_parameters"]["document_store"] = docstore
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[List[Document]])
+    @component.output_types(documents=List[Document])
     def run(
         self,
         query_embedding: List[float],

@@ -128,7 +128,6 @@ class SentenceTransformersDocumentEmbedder:
         for doc, emb in zip(documents, embeddings):
             doc_as_dict = doc.to_dict()
             doc_as_dict["embedding"] = emb
-            del doc_as_dict["id"]
             documents_with_embeddings.append(Document.from_dict(doc_as_dict))
 
         return {"documents": documents_with_embeddings}

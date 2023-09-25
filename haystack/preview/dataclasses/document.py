@@ -63,7 +63,7 @@ class Document:
     Document, consider using `to_dict()`, modifying the dict, and then create a new Document object using
     `Document.from_dict()`.
 
-    :param id: Unique identifier for the document. Generated based on the document's attributes (see id_hash_keys).
+    :param id: Unique identifier for the document. When not set, it's generated based on the document's attributes (see id_hash_keys).
     :param text: Text of the document, if the document contains text.
     :param array: Array of numbers associated with the document, if the document contains matrix data like image,
         audio, video, and such.
@@ -79,7 +79,7 @@ class Document:
     :param embedding: Vector representation of the document.
     """
 
-    id: str = field(default_factory=str, init=False)
+    id: str = field(default="")
     text: Optional[str] = field(default=None)
     array: Optional[numpy.ndarray] = field(default=None)
     dataframe: Optional[pandas.DataFrame] = field(default=None)
@@ -121,8 +121,8 @@ class Document:
                 raise ValueError(f"Cannot name metadata fields as top-level document fields, like '{key}'.")
 
         # Note: we need to set the id this way because the dataclass is frozen. See the docstring.
-        hashed_content = self._create_id()
-        object.__setattr__(self, "id", hashed_content)
+        if self.id == "":
+            object.__setattr__(self, "id", self._create_id())
 
     def _create_id(self):
         """
