@@ -848,7 +848,7 @@ jobs:
 
       - name: Install Haystack
         # FIXME Use haystack-ai dependency list
-        run: pip install .[dev,inference] langdetect
+        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0 pypdf openai-whisper
 
       - name: Run tests
         run: |
