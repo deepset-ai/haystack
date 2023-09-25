@@ -118,7 +118,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev]
+        run: pip install .[dev,preview]
 
       - name: Run
         run: pytest --cov-report xml:coverage.xml --cov="${{ matrix.type }}" -m "${{ matrix.type }}" test/preview
@@ -130,7 +130,7 @@ jobs:
         uses: coverallsapp/github-action@v2
         with:
           path-to-lcov: coverage.xml
-          flag-name: preview
+          flag-name: ${{ matrix.type }}
           parallel: true
 
       - name: Calculate alert data
