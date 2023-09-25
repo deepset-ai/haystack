@@ -3,12 +3,11 @@ from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal, get_args
 import logging
 from pathlib import Path
 
-import torch
-
 from haystack.preview import component, Document, default_to_dict, default_from_dict, ComponentError
 from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install openai-whisper'") as whisper_import:
+    import torch
     import whisper
 
 
