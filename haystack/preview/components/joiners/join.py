@@ -1,5 +1,5 @@
 from typing import Type
-from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
+from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError, ComponentError
 from haystack.preview.utils import marshal_type, unmarshal_type
 
 
@@ -42,6 +42,11 @@ class Join:
 
         values = list(kwargs.values())
         output = values[0]
-        for values in values[1:]:
-            output += values
+        try:
+            for values in values[1:]:
+                output += values
+        except TypeError:
+            raise ComponentError(
+                f"Join expected inputs of a type that supports the + operator, but got: {[type(v) for v in values]}"
+            )
         return {"output": output}
