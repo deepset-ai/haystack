@@ -915,7 +915,6 @@ jobs:
           sudo apt install ffmpeg  # for local Whisper tests
 
       - name: Install Haystack
-        # FIXME Use haystack-ai dependency list
         run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0 pypdf openai-whisper tika
 
       - name: Run tests
