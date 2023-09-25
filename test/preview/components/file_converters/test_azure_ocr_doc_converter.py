@@ -9,12 +9,12 @@ from haystack.preview.components.file_converters.azure import AzureOCRDocumentCo
 class TestAzureOCRDocumentConverter:
     @pytest.mark.unit
     def test_to_dict(self):
-        component = AzureOCRDocumentConverter(endpoint="test_endpoint", credential_key="test_credential_key")
+        component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
         data = component.to_dict()
         assert data == {
             "type": "AzureOCRDocumentConverter",
             "init_parameters": {
-                "credential_key": "test_credential_key",
+                "api_key": "test_credential_key",
                 "endpoint": "test_endpoint",
                 "id_hash_keys": [],
                 "model_id": "prebuilt-read",
@@ -27,7 +27,7 @@ class TestAzureOCRDocumentConverter:
         data = {
             "type": "AzureOCRDocumentConverter",
             "init_parameters": {
-                "credential_key": "test_credential_key",
+                "api_key": "test_credential_key",
                 "endpoint": "test_endpoint",
                 "id_hash_keys": [],
                 "model_id": "prebuilt-read",
@@ -36,7 +36,7 @@ class TestAzureOCRDocumentConverter:
         }
         component = AzureOCRDocumentConverter.from_dict(data)
         assert component.endpoint == "test_endpoint"
-        assert component.credential_key == "test_credential_key"
+        assert component.api_key == "test_credential_key"
         assert component.id_hash_keys == []
         assert component.model_id == "prebuilt-read"
         assert component.save_json is False
@@ -47,7 +47,7 @@ class TestAzureOCRDocumentConverter:
             mock_result = Mock(pages=[Mock(lines=[Mock(content="mocked line 1"), Mock(content="mocked line 2")])])
             mock_azure_client.return_value.begin_analyze_document.return_value.result.return_value = mock_result
 
-            component = AzureOCRDocumentConverter(endpoint="test_endpoint", credential_key="test_credential_key")
+            component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
             output = component.run(paths=[preview_samples_path / "pdf" / "sample_pdf_1.pdf"])
             document = output["documents"][0]
             assert document.text == "mocked line 1\nmocked line 2\n\f"
