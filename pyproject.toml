@@ -83,6 +83,7 @@ dependencies = [
   "openai",
   "Jinja2",
   "openai-whisper",  # FIXME https://github.com/deepset-ai/haystack/issues/5731
+  "pypdf",
 
   # Agent events
   "events",
