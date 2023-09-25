@@ -30,7 +30,6 @@ jobs:
         folder:
           - "document_search"
           - "pipelines"
-          - "preview"
 
     runs-on: ubuntu-latest
 
