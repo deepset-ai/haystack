@@ -69,6 +69,10 @@ def test_bm25_rag_pipeline():
         assert hasattr(generated_answer, "metadata")
 
 
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
 def test_embedding_retrieval_rag_pipeline():
     document_store = MemoryDocumentStore()
 
@@ -132,7 +136,3 @@ def test_embedding_retrieval_rag_pipeline():
         assert generated_answer.query == question
         assert hasattr(generated_answer, "documents")
         assert hasattr(generated_answer, "metadata")
-
-
-if __name__ == "__main__":
-    test_embedding_retrieval_rag_pipeline()
