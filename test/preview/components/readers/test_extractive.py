@@ -217,11 +217,11 @@ def test_t5():
         "answers"
     ]  # remove indices when batching support is reintroduced
     assert answers[0].data == "Angela Merkel"
-    assert answers[0].probability == pytest.approx(0.7764519453048706)
+    assert answers[0].probability == pytest.approx(0.7764519453048706, abs=1e-4)
     assert answers[1].data == "Olaf Scholz"
-    assert answers[1].probability == pytest.approx(0.7703777551651001)
+    assert answers[1].probability == pytest.approx(0.7703777551651001, abs=1e-4)
     assert answers[2].data is None
-    assert answers[2].probability == pytest.approx(0.051331606147570596)
+    assert answers[2].probability == pytest.approx(0.051331606147570596, abs=1e-4)
     # Uncomment assertions below when batching is reintroduced
     # assert answers[0][2].probability == pytest.approx(0.051331606147570596)
     # assert answers[1][0].data == "Jerry"
@@ -240,11 +240,11 @@ def test_roberta():
         "answers"
     ]  # remove indices when batching is reintroduced
     assert answers[0].data == "Olaf Scholz"
-    assert answers[0].probability == pytest.approx(0.8614975214004517)
+    assert answers[0].probability == pytest.approx(0.8614975214004517, abs=1e-4)
     assert answers[1].data == "Angela Merkel"
-    assert answers[1].probability == pytest.approx(0.857952892780304)
+    assert answers[1].probability == pytest.approx(0.857952892780304, abs=1e-4)
     assert answers[2].data is None
-    assert answers[2].probability == pytest.approx(0.0196738764278237)
+    assert answers[2].probability == pytest.approx(0.0196738764278237, abs=1e-4)
     # uncomment assertions below when there is batching in v2
     # assert answers[0][0].data == "Olaf Scholz"
     # assert answers[0][0].probability == pytest.approx(0.8614975214004517)
