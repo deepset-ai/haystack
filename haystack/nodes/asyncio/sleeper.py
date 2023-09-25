@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Tuple, Union, Any, Literal
+from typing import Optional, List, Dict, Union, Any, Literal
 import asyncio
 
 import numpy as np
@@ -29,6 +29,7 @@ class Sleeper(BaseComponent):
         self._answer = answer
         self._answer_score = answer_score
 
+    # pylint: disable=invalid-overridden-method
     async def run(  # type: ignore
         self,
         query: Optional[str] = None,

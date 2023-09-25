@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from functools import wraps
 import inspect
 import logging
-import asyncio
 
 from haystack.schema import Document, MultiLabel
 from haystack.errors import PipelineSchemaError
