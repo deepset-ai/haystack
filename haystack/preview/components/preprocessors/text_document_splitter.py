@@ -13,10 +13,7 @@ class TextDocumentSplitter:
     """
 
     def __init__(
-        self,
-        split_by: Optional[Literal["word", "sentence", "passage"]] = "word",
-        split_length: int = 200,
-        split_overlap: int = 0,
+        self, split_by: Literal["word", "sentence", "passage"] = "word", split_length: int = 200, split_overlap: int = 0
     ):
         """
         :param split_by: The unit by which the document should be split. Choose from "word", "sentence", "passage".
@@ -32,8 +29,8 @@ class TextDocumentSplitter:
         self,
         document: Document,
         split_by: Optional[Literal["word", "sentence", "passage"]],
-        split_length: int,
-        split_overlap: int,
+        split_length: Optional[int],
+        split_overlap: Optional[int],
     ):
         """
         # split the document by split_by after split_length units with an overlap of split_overlap units
@@ -44,6 +41,13 @@ class TextDocumentSplitter:
         :param split_overlap: the number of units that each split should overlap
         :return: a list of documents with the split texts
         """
+        if split_by is None:
+            split_by = self.split_by
+        if split_length is None:
+            split_length = self.split_length
+        if split_overlap is None:
+            split_overlap = self.split_overlap
+
         units, split_at = self._split_into_units(document.text, split_by)
         text_splits = self._concatenate_units(units, split_length, split_overlap, split_at)
         documents = [Document(text=txt, metadata=document.metadata) for txt in text_splits]
@@ -70,7 +74,7 @@ class TextDocumentSplitter:
             split_at = "\n\n"
         elif split_by == "sentence":
             elements = self._split_sentences(text)
-            split_at = ""  # whitespace will be preserved while splitting text into sentences
+            split_at = "."
         elif split_by == "word":
             elements = text.split(" ")
             split_at = " "
@@ -93,3 +97,11 @@ class TextDocumentSplitter:
             if len(txt) > 0:
                 text_splits.append(txt)
         return text_splits
+
+    def _split_sentences(self, text: str) -> List[str]:
+        """
+        Split text into sentences. Naive implementation that splits by ".".
+        :param text: The text to split.
+        :return: The list of sentences.
+        """
+        return text.split(".")
