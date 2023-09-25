@@ -64,7 +64,7 @@ class TestTikaDocumentConverter:
 
     @pytest.mark.integration
     def test_run_with_txt_files(self, preview_samples_path):
-        component = TikaDocumentConverter(tika_url="http://tika:9998/tika")
+        component = TikaDocumentConverter()
         output = component.run(
             paths=[preview_samples_path / "txt" / "doc_1.txt", preview_samples_path / "txt" / "doc_2.txt"]
         )
@@ -75,7 +75,7 @@ class TestTikaDocumentConverter:
 
     @pytest.mark.integration
     def test_run_with_pdf_file(self, preview_samples_path):
-        component = TikaDocumentConverter(tika_url="http://tika:9998/tika")
+        component = TikaDocumentConverter()
         output = component.run(
             paths=[preview_samples_path / "pdf" / "sample_pdf_1.pdf", preview_samples_path / "pdf" / "sample_pdf_2.pdf"]
         )
@@ -93,7 +93,7 @@ class TestTikaDocumentConverter:
 
     @pytest.mark.integration
     def test_run_with_docx_file(self, preview_samples_path):
-        component = TikaDocumentConverter(tika_url="http://tika:9998/tika")
+        component = TikaDocumentConverter()
         output = component.run(paths=[preview_samples_path / "docx" / "sample_docx.docx"])
         documents = output["documents"]
         assert len(documents) == 1
