@@ -7,7 +7,7 @@ from haystack.preview import component, Document, default_to_dict, default_from_
 
 
 with LazyImport(
-    message="Run 'pip install farm-haystack[file-conversion]' or 'pip install azure-ai-formrecognizer>=3.2.0b2'"
+    message="Run 'pip install azure-ai-formrecognizer>=3.2.0b2'"
 ) as azure_import:
     from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
     from azure.core.credentials import AzureKeyCredential
