@@ -4,9 +4,12 @@ import logging
 from pathlib import Path
 
 import torch
-import whisper
 
 from haystack.preview import component, Document, default_to_dict, default_from_dict, ComponentError
+from haystack.preview.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install openai-whisper'") as whisper_import:
+    import whisper
 
 
 logger = logging.getLogger(__name__)
@@ -38,6 +41,7 @@ class LocalWhisperTranscriber:
             - `large-v2`
         :param device: Name of the torch device to use for inference. If None, CPU is used.
         """
+        whisper_import.check()
         if model_name_or_path not in get_args(WhisperLocalModel):
             raise ValueError(
                 f"Model name '{model_name_or_path}' not recognized. Choose one among: "

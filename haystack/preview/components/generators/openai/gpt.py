@@ -5,9 +5,11 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass, asdict
 
-import openai
-
 from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
+from haystack.preview.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install openai'") as openai_import:
+    import openai
 
 
 logger = logging.getLogger(__name__)
@@ -84,6 +86,7 @@ class GPTGenerator:
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens and the
                 values are the bias to add to that token.
         """
+        openai_import.check()
         self.api_key = api_key
         self.model_name = model_name
         self.system_prompt = system_prompt
