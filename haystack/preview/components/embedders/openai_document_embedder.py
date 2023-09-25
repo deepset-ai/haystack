@@ -1,13 +1,11 @@
 from typing import List, Optional, Dict, Any, Tuple
+import os
 
 import openai
 from tqdm import tqdm
 
 
 from haystack.preview import component, Document, default_to_dict, default_from_dict
-
-
-API_BASE_URL = "https://api.openai.com/v1"
 
 
 @component
@@ -19,9 +17,8 @@ class OpenAIDocumentEmbedder:
 
     def __init__(
         self,
-        api_key: str,
+        api_key: Optional[str] = None,
         model_name: str = "text-embedding-ada-002",
-        api_base_url: str = API_BASE_URL,
         organization: Optional[str] = None,
         prefix: str = "",
         suffix: str = "",
@@ -46,9 +43,16 @@ class OpenAIDocumentEmbedder:
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
 
-        self.api_key = api_key
+        if api_key is None:
+            try:
+                api_key = os.environ["OPENAI_API_KEY"]
+            except KeyError as e:
+                raise ValueError(
+                    "OpenAIDocumentEmbedder expects an OpenAI API key. "
+                    "Set the OPENAI_API_KEY environment variable (recommended) or pass it explicitly."
+                ) from e
+
         self.model_name = model_name
-        self.api_base_url = api_base_url
         self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
@@ -57,15 +61,18 @@ class OpenAIDocumentEmbedder:
         self.metadata_fields_to_embed = metadata_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
+        openai.api_key = api_key
+        if organization is not None:
+            openai.organization = organization
+
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        This method overrides the default serializer in order to avoid leaking the `api_key` value passed
+        to the constructor.
         """
         return default_to_dict(
             self,
-            api_key=self.api_key,
             model_name=self.model_name,
-            api_base_url=self.api_base_url,
             organization=self.organization,
             prefix=self.prefix,
             suffix=self.suffix,
@@ -142,10 +149,6 @@ class OpenAIDocumentEmbedder:
                 "OpenAIDocumentEmbedder expects a list of Documents as input."
                 "In case you want to embed a string, please use the OpenAITextEmbedder."
             )
-
-        openai.api_key = self.api_key
-        if self.organization is not None:
-            openai.organization = self.organization
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 

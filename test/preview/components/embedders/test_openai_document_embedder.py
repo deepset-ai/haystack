@@ -26,12 +26,13 @@ def mock_openai_response(
 
 class TestOpenAIDocumentEmbedder:
     @pytest.mark.unit
-    def test_init_default(self):
-        embedder = OpenAIDocumentEmbedder(api_key="fake-api-key")
+    def test_init_default(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        embedder = OpenAIDocumentEmbedder()
 
-        assert embedder.api_key == "fake-api-key"
+        assert openai.api_key == "fake-api-key"
+
         assert embedder.model_name == "text-embedding-ada-002"
-        assert embedder.api_base_url == "https://api.openai.com/v1"
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
@@ -45,7 +46,6 @@ class TestOpenAIDocumentEmbedder:
         embedder = OpenAIDocumentEmbedder(
             api_key="fake-api-key",
             model_name="model",
-            api_base_url="https://my-api.com",
             organization="my-org",
             prefix="prefix",
             suffix="suffix",
@@ -54,10 +54,11 @@ class TestOpenAIDocumentEmbedder:
             metadata_fields_to_embed=["test_field"],
             embedding_separator=" | ",
         )
-        assert embedder.api_key == "fake-api-key"
-        assert embedder.model_name == "model"
-        assert embedder.api_base_url == "https://my-api.com"
+        assert openai.api_key == "fake-api-key"
+        assert openai.organization == "my-org"
+
         assert embedder.organization == "my-org"
+        assert embedder.model_name == "model"
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
         assert embedder.batch_size == 64
@@ -66,15 +67,19 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.embedding_separator == " | "
 
     @pytest.mark.unit
+    def test_init_fail_wo_api_key(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        with pytest.raises(ValueError, match="OpenAIDocumentEmbedder expects an OpenAI API key"):
+            OpenAIDocumentEmbedder()
+
+    @pytest.mark.unit
     def test_to_dict(self):
         component = OpenAIDocumentEmbedder(api_key="fake-api-key")
         data = component.to_dict()
         assert data == {
             "type": "OpenAIDocumentEmbedder",
             "init_parameters": {
-                "api_key": "fake-api-key",
                 "model_name": "text-embedding-ada-002",
-                "api_base_url": "https://api.openai.com/v1",
                 "organization": None,
                 "prefix": "",
                 "suffix": "",
@@ -90,7 +95,6 @@ class TestOpenAIDocumentEmbedder:
         component = OpenAIDocumentEmbedder(
             api_key="fake-api-key",
             model_name="model",
-            api_base_url="https://my-api.com",
             organization="my-org",
             prefix="prefix",
             suffix="suffix",
@@ -103,9 +107,7 @@ class TestOpenAIDocumentEmbedder:
         assert data == {
             "type": "OpenAIDocumentEmbedder",
             "init_parameters": {
-                "api_key": "fake-api-key",
                 "model_name": "model",
-                "api_base_url": "https://my-api.com",
                 "organization": "my-org",
                 "prefix": "prefix",
                 "suffix": "suffix",
@@ -117,13 +119,12 @@ class TestOpenAIDocumentEmbedder:
         }
 
     @pytest.mark.unit
-    def test_from_dict(self):
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
             "type": "OpenAIDocumentEmbedder",
             "init_parameters": {
-                "api_key": "fake-api-key",
                 "model_name": "model",
-                "api_base_url": "https://my-api.com",
                 "organization": "my-org",
                 "prefix": "prefix",
                 "suffix": "suffix",
@@ -134,16 +135,35 @@ class TestOpenAIDocumentEmbedder:
             },
         }
         component = OpenAIDocumentEmbedder.from_dict(data)
-        assert component.api_key == "fake-api-key"
+        assert openai.api_key == "fake-api-key"
         assert component.model_name == "model"
-        assert component.api_base_url == "https://my-api.com"
         assert component.organization == "my-org"
+        assert openai.organization == "my-org"
         assert component.prefix == "prefix"
         assert component.suffix == "suffix"
         assert component.batch_size == 64
         assert component.progress_bar is False
         assert component.metadata_fields_to_embed == ["test_field"]
         assert component.embedding_separator == " | "
+
+    @pytest.mark.unit
+    def test_from_dict_fail_wo_env_var(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        data = {
+            "type": "OpenAIDocumentEmbedder",
+            "init_parameters": {
+                "model_name": "model",
+                "organization": "my-org",
+                "prefix": "prefix",
+                "suffix": "suffix",
+                "batch_size": 64,
+                "progress_bar": False,
+                "metadata_fields_to_embed": ["test_field"],
+                "embedding_separator": " | ",
+            },
+        }
+        with pytest.raises(ValueError, match="OpenAIDocumentEmbedder expects an OpenAI API key"):
+            OpenAIDocumentEmbedder.from_dict(data)
 
     @pytest.mark.unit
     def test_prepare_texts_to_embed_w_metadata(self):
