@@ -237,7 +237,7 @@ def test_id_hash_keys_from_pipeline_params():
     preprocessor = PreProcessor(split_length=2, split_respect_sentence_boundary=False)
     output, _ = preprocessor.run(documents=[document_1, document_2], id_hash_keys=["content", "meta"])
     documents = output["documents"]
-    unique_ids = set(d.id for d in documents)
+    unique_ids = {d.id for d in documents}
 
     assert len(documents) == 4
     assert len(unique_ids) == 4
@@ -528,12 +528,12 @@ def test_preprocessor_very_long_document(caplog):
     preproc = PreProcessor(
         clean_empty_lines=False, clean_header_footer=False, clean_whitespace=False, split_by=None, max_chars_check=10
     )
-    documents = [Document(content=str(i) + (f"." * i)) for i in range(0, 30, 3)]
+    documents = [Document(content=str(i) + ("." * i)) for i in range(0, 30, 3)]
     results = preproc.process(documents)
     assert len(results) == 19
     assert any(d.content.startswith(".") for d in results)
     assert any(not d.content.startswith(".") for d in results)
-    assert f"characters long after preprocessing, where the maximum length should be 10." in caplog.text
+    assert "characters long after preprocessing, where the maximum length should be 10." in caplog.text
 
 
 @pytest.mark.unit

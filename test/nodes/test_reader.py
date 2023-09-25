@@ -160,14 +160,14 @@ def test_deduplication_for_overlapping_documents(reader):
     prediction = reader.predict(query="Where does Carla live?", documents=docs, top_k=5)
 
     # Check that there are no duplicate answers
-    assert len(set(ans.answer for ans in prediction["answers"])) == len(prediction["answers"])
+    assert len({ans.answer for ans in prediction["answers"]}) == len(prediction["answers"])
 
 
 @pytest.mark.integration
 def test_model_download_options():
     # download disabled and model is not cached locally
     with pytest.raises(OSError):
-        impossible_reader = FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True, num_processes=0)
+        FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True, num_processes=0)
 
 
 @pytest.mark.integration
@@ -226,17 +226,15 @@ def test_top_k(reader, docs, top_k):
 def test_farm_reader_invalid_params():
     # invalid max_seq_len (greater than model maximum seq length)
     with pytest.raises(Exception):
-        reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=513)
+        FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=513)
 
     # invalid max_seq_len (max_seq_len >= doc_stride)
     with pytest.raises(Exception):
-        reader = FARMReader(
-            model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=129, doc_stride=128
-        )
+        FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=129, doc_stride=128)
 
     # invalid doc_stride (doc_stride >= (max_seq_len - max_query_length))
     with pytest.raises(Exception):
-        reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, doc_stride=999)
+        FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, doc_stride=999)
 
 
 def test_farm_reader_update_params(docs):

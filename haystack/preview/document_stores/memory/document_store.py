@@ -270,7 +270,6 @@ class MemoryDocumentStore:
             doc = all_documents[i]
             doc_fields = doc.to_dict()
             doc_fields["score"] = docs_scores[i]
-            del doc_fields["id"]
             return_document = Document(**doc_fields)
             return_documents.append(return_document)
         return return_documents
@@ -323,7 +322,6 @@ class MemoryDocumentStore:
             doc_fields["score"] = score
             if return_embedding is False:
                 doc_fields["embedding"] = None
-            del doc_fields["id"]
             top_documents.append(Document(**doc_fields))
 
         return top_documents

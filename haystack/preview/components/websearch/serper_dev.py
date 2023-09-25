@@ -65,13 +65,12 @@ class SerperDevWebSearch:
         """
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=List[Document], links=List[str])
     def run(self, query: str):
         """
-        Search the SerperDev API for the given query and return the results as a list of Documents.
+        Search the SerperDev API for the given query and return the results as a list of Documents and a list of links.
 
         :param query: Query string.
-        :return: List[Document]
         """
         query_prepend = "OR ".join(f"site:{domain} " for domain in self.allowed_domains) if self.allowed_domains else ""
 
@@ -136,5 +135,7 @@ class SerperDevWebSearch:
 
         documents = answer_box + organic + people_also_ask
 
+        links = [result["link"] for result in json_result["organic"]]
+
         logger.debug("Serper Dev returned %s documents for the query '%s'", len(documents), query)
-        return {"documents": documents[: self.top_k]}
+        return {"documents": documents[: self.top_k], "links": links[: self.top_k]}

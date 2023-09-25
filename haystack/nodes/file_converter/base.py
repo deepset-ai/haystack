@@ -202,15 +202,14 @@ class BaseConverter(BaseComponent):
         for file_path, file_meta in tqdm(
             zip(file_paths, meta), total=len(file_paths), disable=not self.progress_bar, desc="Converting files"
         ):
-            for doc in self.convert(
+            documents += self.convert(
                 file_path=file_path,
                 meta=file_meta,
                 remove_numeric_tables=remove_numeric_tables,
                 valid_languages=valid_languages,
                 encoding=encoding,
                 id_hash_keys=id_hash_keys,
-            ):
-                documents.append(doc)
+            )
 
         # Cleanup ligatures
         for document in documents:

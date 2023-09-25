@@ -1,3 +1,4 @@
+import os
 from unittest.mock import Mock, patch
 
 import pytest
@@ -144,9 +145,13 @@ class TestSerperDevSearchAPI:
     @pytest.mark.parametrize("top_k", [1, 5, 7])
     def test_web_search_top_k(self, mock_serper_dev_search_result, top_k: int):
         ws = SerperDevWebSearch(api_key="some_invalid_key", top_k=top_k)
-        results = ws.run(query="Who is the boyfriend of Olivia Wilde?")["documents"]
-        assert len(results) == top_k
-        assert all(isinstance(doc, Document) for doc in results)
+        results = ws.run(query="Who is the boyfriend of Olivia Wilde?")
+        documents = results["documents"]
+        links = results["links"]
+        assert len(documents) == len(links) == top_k
+        assert all(isinstance(doc, Document) for doc in documents)
+        assert all(isinstance(link, str) for link in links)
+        assert all(link.startswith("http") for link in links)
 
     @pytest.mark.unit
     @patch("requests.post")
@@ -176,3 +181,18 @@ class TestSerperDevSearchAPI:
 
         with pytest.raises(SerperDevError):
             ws.run(query="Who is the boyfriend of Olivia Wilde?")
+
+    @pytest.mark.skipif(
+        not os.environ.get("SERPERDEV_API_KEY", None),
+        reason="Export an env var called SERPERDEV_API_KEY containing the SerperDev API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_web_search(self):
+        ws = SerperDevWebSearch(api_key=os.environ.get("SERPERDEV_API_KEY", None), top_k=10)
+        results = ws.run(query="Who is the boyfriend of Olivia Wilde?")
+        documents = results["documents"]
+        links = results["documents"]
+        assert len(documents) == len(links) == 10
+        assert all(isinstance(doc, Document) for doc in results)
+        assert all(isinstance(link, str) for link in links)
+        assert all(link.startswith("http") for link in links)
