@@ -28,9 +28,9 @@ class TextDocumentSplitter:
     def run(
         self,
         document: Document,
-        split_by: Optional[Literal["word", "sentence", "passage"]],
-        split_length: Optional[int],
-        split_overlap: Optional[int],
+        split_by: Optional[Literal["word", "sentence", "passage"]] = None,
+        split_length: Optional[int] = None,
+        split_overlap: Optional[int] = None,
     ):
         """
         # split the document by split_by after split_length units with an overlap of split_overlap units
@@ -48,6 +48,8 @@ class TextDocumentSplitter:
         if split_overlap is None:
             split_overlap = self.split_overlap
 
+        if document.text is None:
+            raise ValueError("TextDocumentSplitter only works with text documents but document.text is None.")
         units, split_at = self._split_into_units(document.text, split_by)
         text_splits = self._concatenate_units(units, split_length, split_overlap, split_at)
         documents = [Document(text=txt, metadata=document.metadata) for txt in text_splits]
