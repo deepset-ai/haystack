@@ -23,13 +23,13 @@ RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 class CohereRanker(BaseRanker):
     """
-    Re-Ranking can be used on top of a retriever to boost the performance for document search.
-    This is particularly useful if the retriever has a high recall but is bad in sorting the documents by relevance.
+    You can use re-ranking on top of a Retriever to boost the performance for document search.
+    This is particularly useful if the Retriever has a high recall but is bad in sorting the documents by relevance.
 
-    Cohere models are trained with a context length of 510 tokens - the model takes into account both the input
+    Cohere models are trained with a context length of 512 tokens - the model takes into account both the input
     from the query and document. If your query is larger than 256 tokens, it will be truncated to the first 256 tokens.
 
-    Cohere breaks down a query-document pair into 510 token chunks. For example, if your query is 50 tokens and your
+    Cohere breaks down a query-document pair into 512 token chunks. For example, if your query is 50 tokens and your
     document is 1024 tokens, your document will be broken into the following chunks:
     ```bash
     relevance_score_1 = <query[0,50], document[0,460]>
@@ -55,7 +55,7 @@ class CohereRanker(BaseRanker):
         :param api_key: Cohere API key.
         :param model_name_or_path: Cohere model name. Check the list of supported models in the [Cohere documentation](https://docs.cohere.com/docs/models).
         :param top_k: The maximum number of documents to return.
-        :param max_chunks_per_doc: If your document exceeds 512 tokens, this will determine the maximum number of
+        :param max_chunks_per_doc: If your document exceeds 512 tokens, this determines the maximum number of
             chunks a document can be split into. If None, the default of 10 is used.
             For example, if your document is 6000 tokens, with the default of 10, the document will be split into 10
             chunks each of 512 tokens and the last 880 tokens will be disregarded.
@@ -190,7 +190,7 @@ class CohereRanker(BaseRanker):
         """
         Use Cohere Reranking endpoint to re-rank the supplied lists of Documents.
 
-        Returns a lists of Documents sorted by (desc.) similarity with the corresponding queries.
+        Returns a lists of Documents sorted by (descending) similarity with the corresponding queries.
 
         - If you provide a list containing a single query...
 

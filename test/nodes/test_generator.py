@@ -77,7 +77,7 @@ def test_openai_answer_generator_custom_template(haystack_openai_config, docs):
 
     lfqa_prompt = PromptTemplate(
         """Synthesize a comprehensive answer from your knowledge and the following topk most relevant paragraphs and
-        the given question.\n===\Paragraphs: {context}\n===\n{query}"""
+        the given question.\n===\\Paragraphs: {context}\n===\n{query}"""
     )
     node = OpenAIAnswerGenerator(
         api_key=haystack_openai_config["api_key"],

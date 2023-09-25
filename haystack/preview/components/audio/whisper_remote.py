@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from haystack.preview.utils import request_with_retry
-from haystack.preview import component, Document
+from haystack.preview import component, Document, default_to_dict, default_from_dict
 
 logger = logging.getLogger(__name__)
 
@@ -49,17 +49,29 @@ class RemoteWhisperTranscriber:
         if not api_key:
             raise ValueError("API key is None.")
 
+        self.model_name = model_name
         self.api_key = api_key
         self.api_base = api_base
         self.whisper_params = whisper_params or {}
 
-        self.model_name = model_name
-        self.init_parameters = {
-            "api_key": self.api_key,
-            "model_name": self.model_name,
-            "api_base": self.api_base,
-            "whisper_params": self.whisper_params,
-        }
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        return default_to_dict(
+            self,
+            model_name=self.model_name,
+            api_key=self.api_key,
+            api_base=self.api_base,
+            whisper_params=self.whisper_params,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "RemoteWhisperTranscriber":
+        """
+        Deserialize this component from a dictionary.
+        """
+        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
     def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None):
@@ -99,7 +111,7 @@ class RemoteWhisperTranscriber:
             content = transcript.pop("text")
             if not isinstance(audio, (str, Path)):
                 audio = "<<binary stream>>"
-            doc = Document(content=content, metadata={"audio_file": audio, **transcript})
+            doc = Document(text=content, metadata={"audio_file": audio, **transcript})
             documents.append(doc)
         return documents
 

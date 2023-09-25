@@ -82,9 +82,10 @@ def test_tool_invocation():
         assert tool.run("input") == "mock"
 
     # now fail if results key is not present
-    with unittest.mock.patch("haystack.pipelines.Pipeline.run", return_value={"no_results": "mock"}):
-        with pytest.raises(ValueError, match="Tool ToolA returned result"):
-            assert tool.run("input")
+    with unittest.mock.patch("haystack.pipelines.Pipeline.run", return_value={"no_results": "mock"}), pytest.raises(
+        ValueError, match="Tool ToolA returned result"
+    ):
+        assert tool.run("input")
 
     # now try tool with a correct output variable
     tool = Tool(name="ToolA", pipeline_or_node=p, description="Tool A Description", output_variable="no_results")

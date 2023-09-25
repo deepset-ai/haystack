@@ -6,14 +6,14 @@ from haystack.preview.dataclasses.document import Document
 @dataclass(frozen=True)
 class Answer:
     data: Any
-    question: str
+    query: str
     metadata: Dict[str, Any]
 
 
 @dataclass(frozen=True)
 class ExtractedAnswer(Answer):
     data: Optional[str]
-    document: Document
+    document: Optional[Document]
     probability: float
     start: Optional[int] = None
     end: Optional[int] = None

@@ -206,10 +206,10 @@ def test_retrieve_uses_cache(mock_web_search):
         SearchResult("https://www.yahoo.com/", "Some text", 0.43, "2"),
     ]
     cached_docs = [Document("doc1"), Document("doc2")]
-    with patch.object(wr, "_check_cache", return_value=(cached_links, cached_docs)) as mock_check_cache:
-        with patch.object(wr, "_save_to_cache") as mock_save_cache:
-            with patch.object(wr, "_scrape_links", return_value=[]):
-                result = wr.retrieve("query")
+    with patch.object(wr, "_check_cache", return_value=(cached_links, cached_docs)) as mock_check_cache, patch.object(
+        wr, "_save_to_cache"
+    ) as mock_save_cache, patch.object(wr, "_scrape_links", return_value=[]):
+        result = wr.retrieve("query")
 
     # checking cache is always called
     mock_check_cache.assert_called()
@@ -228,9 +228,10 @@ def test_retrieve_saves_to_cache(mock_web_search):
     wr = WebRetriever(api_key="fake_key", cache_document_store=MockDocumentStore(), mode="preprocessed_documents")
     web_docs = [Document("doc1"), Document("doc2"), Document("doc3")]
 
-    with patch.object(wr, "_save_to_cache") as mock_save_cache:
-        with patch.object(wr, "_scrape_links", return_value=web_docs):
-            wr.retrieve("query")
+    with patch.object(wr, "_save_to_cache") as mock_save_cache, patch.object(
+        wr, "_scrape_links", return_value=web_docs
+    ):
+        wr.retrieve("query")
 
     mock_save_cache.assert_called()
 
