@@ -87,17 +87,15 @@ dependencies = [
 [project.optional-dependencies]
 preview = [
   "canals==0.8.0",
-  "requests",  # needed by canals
+  "requests",
   "pandas",
   "rank_bm25",
   "tqdm",
   "tenacity",
   "lazy-imports",
-  "openai",
+
   "Jinja2",
-  "openai-whisper",  # FIXME https://github.com/deepset-ai/haystack/issues/5731
-  "sentence-transformers>=2.2.0",  # FIXME should be an optional dependency listed in a specific subgroup
-  "pypdf", # FIXME should be an optional dependency listed in a specific subgroup
+  "openai",
 ]
 inference = [
   "transformers[torch,sentencepiece]==4.32.1",

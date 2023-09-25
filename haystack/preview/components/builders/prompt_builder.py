@@ -1,9 +1,11 @@
 from typing import Dict, Any
 
-from jinja2 import Template, meta
-
 from haystack.preview import component
 from haystack.preview import default_to_dict, default_from_dict
+from haystack.preview.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install jinja2'") as jinja_import:
+    from jinja2 import Template, meta
 
 
 @component
@@ -27,6 +29,7 @@ class PromptBuilder:
         :param template: Jinja2 template string, e.g. "Summarize this document: {documents}\nSummary:"
         :type template: str
         """
+        jinja_import.check()
         self._template_string = template
         self.template = Template(template)
         ast = self.template.environment.parse(template)
