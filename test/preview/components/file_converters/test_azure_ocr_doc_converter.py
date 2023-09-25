@@ -59,7 +59,7 @@ class TestAzureOCRDocumentConverter:
     )
     def test_run_with_pdf_file(self, preview_samples_path):
         component = AzureOCRDocumentConverter(
-            endpoint=os.environ["AZURE_FORMRECOGNIZER_ENDPOINT"], credential_key=os.environ["AZURE_FORMRECOGNIZER_KEY"]
+            endpoint=os.environ["AZURE_FORMRECOGNIZER_ENDPOINT"], api_key=os.environ["AZURE_FORMRECOGNIZER_KEY"]
         )
         output = component.run(paths=[preview_samples_path / "pdf" / "sample_pdf_1.pdf"])
         documents = output["documents"]
@@ -76,7 +76,7 @@ class TestAzureOCRDocumentConverter:
     )
     def test_with_image_file(self, preview_samples_path):
         component = AzureOCRDocumentConverter(
-            endpoint=os.environ["AZURE_FORMRECOGNIZER_ENDPOINT"], credential_key=os.environ["AZURE_FORMRECOGNIZER_KEY"]
+            endpoint=os.environ["AZURE_FORMRECOGNIZER_ENDPOINT"], api_key=os.environ["AZURE_FORMRECOGNIZER_KEY"]
         )
         output = component.run(paths=[preview_samples_path / "images" / "haystack-logo.png"])
         documents = output["documents"]
@@ -90,7 +90,7 @@ class TestAzureOCRDocumentConverter:
     )
     def test_run_with_docx_file(self, preview_samples_path):
         component = AzureOCRDocumentConverter(
-            endpoint=os.environ["AZURE_FORMRECOGNIZER_ENDPOINT"], credential_key=os.environ["AZURE_FORMRECOGNIZER_KEY"]
+            endpoint=os.environ["AZURE_FORMRECOGNIZER_ENDPOINT"], api_key=os.environ["AZURE_FORMRECOGNIZER_KEY"]
         )
         output = component.run(paths=[preview_samples_path / "docx" / "sample_docx.docx"])
         documents = output["documents"]
