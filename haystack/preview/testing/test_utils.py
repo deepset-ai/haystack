@@ -1,11 +1,7 @@
 import os
 import random
 import numpy as np
-
-from haystack.preview.lazy_imports import LazyImport
-
-with LazyImport(message="Run 'pip install torch'") as torch_import:
-    import torch
+import torch
 
 
 def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
@@ -18,8 +14,6 @@ def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
     :param seed:number to use as seed
     :param deterministic_cudnn: Enable for full reproducibility when using CUDA. Caution: might slow down training.
     """
-    torch_import.check()
-
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
