@@ -894,8 +894,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
+    services:
+      tika:
+        image: apache/tika:2.9.0.0
+        ports:
+          - 9998:9998
     steps:
       - uses: actions/checkout@v4
 
@@ -911,7 +916,7 @@ jobs:
 
       - name: Install Haystack
         # FIXME Use haystack-ai dependency list
-        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0 pypdf openai-whisper
+        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0 pypdf openai-whisper tika
 
       - name: Run tests
         run: |
