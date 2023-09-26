@@ -68,7 +68,11 @@ class TopPSampler:
         self.top_p = top_p
         self.score_field = score_field
         self.device = device
-        self.cross_encoder = CrossEncoder(model_name_or_path, device=device)
+        self.cross_encoder = None
+
+    def warm_up(self):
+        if self.cross_encoder is None:
+            self.cross_encoder = CrossEncoder(self.model_name_or_path, device=self.device)
 
     def to_dict(self) -> Dict[str, Any]:
         """

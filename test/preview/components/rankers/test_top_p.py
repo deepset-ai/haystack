@@ -53,10 +53,11 @@ class TestTopP:
         """
         Test if the component runs correctly.
         """
-        ranker = TopPSampler(top_p=0.95)
+        sampler = TopPSampler(top_p=0.95)
+        sampler.warm_up()
         docs = [Document(text="Sarajevo"), Document(text="Berlin")]
         query = "City in Bosnia and Herzegovina"
-        output = ranker.run(query=query, documents=docs)
+        output = sampler.run(query=query, documents=docs)
         docs = output["documents"]
         assert len(docs) == 1
         assert docs[0].text == "Sarajevo"
