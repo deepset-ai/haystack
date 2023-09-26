@@ -19,9 +19,9 @@ with LazyImport(
 
 
 @component
-class TopP:
+class TopPSampler:
     """
-    Ranks documents based on the cumulative probability of the similarity scores between the
+    Selects documents based on the cumulative probability of the similarity scores between the
     query and the documents using top p sampling.
 
     Top p sampling selects a subset of the most relevant data points from a larger set of data. The technique
@@ -34,9 +34,18 @@ class TopP:
     way to efficiently select the most relevant documents based on their similarity to a given query.
 
     Usage example:
-    ## TODO
+    ```
+    from haystack.preview import Document
+    from haystack.preview.components.samplers import TopPSampler
 
-
+    sampler = TopPSampler(top_p=0.95)
+    docs = [Document(text="Paris"), Document(text="Berlin")]
+    query = "City in Germany"
+    output = sampler.run(query=query, documents=docs)
+    docs = output["documents"]
+    assert len(docs) == 1
+    assert docs[0].text == "Berlin"
+    ```
     """
 
     def __init__(
@@ -76,7 +85,7 @@ class TopP:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TopP":
+    def from_dict(cls, data: Dict[str, Any]) -> "TopPSampler":
         """
         Deserialize this component from a dictionary.
         """
