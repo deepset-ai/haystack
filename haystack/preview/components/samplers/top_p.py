@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
 
 import numpy as np
+from haystack.preview import ComponentError
+
 from haystack.lazy_imports import LazyImport
 from haystack.preview import Document, component, default_from_dict, default_to_dict
 
@@ -111,6 +113,11 @@ class TopPSampler:
 
         if not documents:
             return []
+
+        if self.cross_encoder is None:
+            raise ComponentError(
+                f"The component {self.__class__.__name__} not warmed up. Run 'warm_up()' before calling 'run()'."
+            )
 
         # prepare the data for the cross encoder
         query_doc_pairs = [[query, doc.text] for doc in documents]
