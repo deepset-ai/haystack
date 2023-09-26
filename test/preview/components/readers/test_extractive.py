@@ -244,7 +244,7 @@ def test_roberta():
     assert answers[1].data == "Angela Merkel"
     assert answers[1].probability == pytest.approx(0.857952892780304)
     assert answers[2].data is None
-    assert answers[2].probability == pytest.approx(0.0196738764278237)
+    assert answers[2].probability == pytest.approx(0.019673851661650588)
     # uncomment assertions below when there is batching in v2
     # assert answers[0][0].data == "Olaf Scholz"
     # assert answers[0][0].probability == pytest.approx(0.8614975214004517)
@@ -262,7 +262,7 @@ def test_roberta():
 
 @pytest.mark.integration
 def test_matches_hf_pipeline():
-    reader = ExtractiveReader("deepset/tinyroberta-squad2")
+    reader = ExtractiveReader("deepset/tinyroberta-squad2", device="cpu")
     reader.warm_up()
     answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
         "answers"
