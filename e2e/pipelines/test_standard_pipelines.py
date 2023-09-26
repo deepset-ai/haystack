@@ -14,7 +14,7 @@ from haystack.pipelines import (
     SearchSummarizationPipeline,
 )
 from haystack.nodes import EmbeddingRetriever, PromptNode, BM25Retriever, TransformersSummarizer
-from haystack.nodes.asyncio.sleeper import Sleeper  # noqa
+from haystack.nodes.asyncio.sleeper import Sleeper  # noqa # pylint: disable=unused-import
 from haystack.schema import Document
 
 
