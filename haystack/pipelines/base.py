@@ -469,9 +469,16 @@ class Pipeline:
         return self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
 
     async def _arun_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
-        return await self.graph.nodes[node_id]["component"]._adispatch_run_general(
-            self.graph.nodes[node_id]["component"].run, **node_input
-        )
+        node = self.graph.nodes[node_id]["component"]
+        # If a component has a `arun` method, prefer that one over `run`
+        if hasattr(node, "arun") and callable(node.arun):
+            run_method = node.arun
+        else:
+            # note this might or might not be async, but `_adispatch_run_general`
+            # will work in both cases. This is a safe fall-back.
+            run_method = node.run
+
+        return await node._adispatch_run_general(run_method, **node_input)
 
     def run(  # type: ignore
         self,
