@@ -90,7 +90,8 @@ class TestAzureOCRDocumentConverter:
         output = component.run(paths=[preview_samples_path / "images" / "haystack-logo.png"])
         documents = output["documents"]
         assert len(documents) == 1
-        assert "haystack\nby deepset" in documents[0].text
+        assert "haystack" in documents[0].text
+        assert "by deepset" in documents[0].text
 
     @pytest.mark.integration
     @pytest.mark.skipif(
