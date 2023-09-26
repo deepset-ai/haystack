@@ -199,7 +199,7 @@ metrics = [  # for metrics
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
   # Pin setuptools_scm to prevent errors in Windows tests while installing seqeval
   # https://github.com/deepset-ai/haystack/issues/5889
-  "setuptools_scm<8.0",
+  "setuptools_scm<8.0; platform_system == 'Windows'",
   "seqeval",
   "mlflow",
 ]
