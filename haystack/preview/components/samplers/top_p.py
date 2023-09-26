@@ -54,6 +54,7 @@ class TopPSampler:
         device: Optional[str] = "cpu",
     ):
         """
+        Creates an instance of TopPSampler.
 
         :param model_name_or_path: Path to a pre-trained sentence-transformers model.
         :param top_p: Cumulative probability threshold for filtering the documents (usually between 0.9 and 0.99).
