@@ -8,8 +8,8 @@ from haystack.preview import component, Document, default_from_dict, default_to_
 @component
 class TextDocumentSplitter:
     """
-    Split a list of text documents into a list of text documents with shorter texts.
-    This is useful for splitting documents with long texts that otherwise would not fit into the maximum text length of language models
+    Splits a list of text documents into a list of text documents with shorter texts.
+    This is useful for splitting documents with long texts that otherwise would not fit into the maximum text length of language models.
     """
 
     def __init__(
@@ -35,10 +35,10 @@ class TextDocumentSplitter:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
-        # split the documents by split_by after split_length units with an overlap of split_overlap units
-        # return a list of documents with the split texts
-        :param documents: the documents to split
-        :return: a list of documents with the split texts
+        Splits the documents by split_by after split_length units with an overlap of split_overlap units.
+        Returns a list of documents with the split texts.
+        :param documents: The documents to split.
+        :return: A list of documents with the split texts.
         """
 
         if not documents or not isinstance(documents, list) or not isinstance(documents[0], Document):
