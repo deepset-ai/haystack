@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 from typing import List, Union, Optional, Dict, Any
 
@@ -24,12 +23,7 @@ class AzureOCRDocumentConverter:
     """
 
     def __init__(
-        self,
-        endpoint: str,
-        api_key: str,
-        model_id: str = "prebuilt-read",
-        save_json: bool = False,
-        id_hash_keys: Optional[List[str]] = None,
+        self, endpoint: str, api_key: str, model_id: str = "prebuilt-read", id_hash_keys: Optional[List[str]] = None
     ):
         """
         Create an AzureOCRDocumentConverter component.
@@ -38,7 +32,6 @@ class AzureOCRDocumentConverter:
         :param api_key: The key of your Azure resource.
         :param model_id: The model ID of the model you want to use. Please refer to [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
             for a list of available models. Default: `"prebuilt-read"`.
-        :param save_json: Whether to save the JSON output of the Azure API. Default: `False`.
         :param id_hash_keys: Generate the Document ID from a custom list of strings that refer to the Document's
             attributes. If you want to ensure you don't have duplicate Documents in your Document Store but texts are not
             unique, you can pass the name of the metadata to use when building the document ID (like
@@ -53,26 +46,27 @@ class AzureOCRDocumentConverter:
         self.endpoint = endpoint
         self.api_key = api_key
         self.model_id = model_id
-        self.save_json = save_json
         self.id_hash_keys = id_hash_keys or []
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=List[Document], azure=List[Dict])
     def run(self, paths: List[Union[str, Path]]):
         """
         Convert files to Documents using Azure's Document Intelligence service.
 
+        This component creates two outputs: `documents` and `raw_azure_response`. The `documents` output contains
+        a list of Documents that were created from the files. The `raw_azure_response` output contains a list of
+        the raw responses from Azure's Document Intelligence service.
+
         :param paths: Paths to the files to convert.
         """
         documents = []
+        azure_output = []
         for path in paths:
             path = Path(path)
             with open(path, "rb") as file:
                 poller = self.document_analysis_client.begin_analyze_document(model_id=self.model_id, document=file)
                 result = poller.result()
-
-            if self.save_json:
-                with open(path.with_suffix(".json"), "w") as json_file:
-                    json.dump(result.to_dict(), json_file, indent=2)
+                azure_output.append(result.to_dict())
 
             file_suffix = path.suffix
             document = AzureOCRDocumentConverter._convert_azure_result_to_document(
@@ -80,19 +74,14 @@ class AzureOCRDocumentConverter:
             )
             documents.append(document)
 
-        return {"documents": documents}
+        return {"documents": documents, "raw_azure_response": azure_output}
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
         """
         return default_to_dict(
-            self,
-            endpoint=self.endpoint,
-            api_key=self.api_key,
-            model_id=self.model_id,
-            save_json=self.save_json,
-            id_hash_keys=self.id_hash_keys,
+            self, endpoint=self.endpoint, api_key=self.api_key, model_id=self.model_id, id_hash_keys=self.id_hash_keys
         )
 
     @classmethod
