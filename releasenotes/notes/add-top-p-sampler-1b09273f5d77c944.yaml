@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Adds TopPSampler component - selects documents based on the cumulative probability of the similarity scores between the
+    query and the documents.
