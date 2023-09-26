@@ -201,7 +201,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[preview,dev] langdetect transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0 pypdf openai-whisper tika
+        run: pip install .[preview,dev] langdetect transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0 pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run
         run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/preview
@@ -901,6 +901,9 @@ jobs:
         image: apache/tika:2.9.0.0
         ports:
           - 9998:9998
+    env:
+      CORE_AZURE_CS_ENDPOINT: ${{ secrets.CORE_AZURE_CS_ENDPOINT }}
+      CORE_AZURE_CS_API_KEY: ${{ secrets.CORE_AZURE_CS_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -915,7 +918,7 @@ jobs:
           sudo apt install ffmpeg  # for local Whisper tests
 
       - name: Install Haystack
-        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0 pypdf openai-whisper tika
+        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run tests
         run: |
