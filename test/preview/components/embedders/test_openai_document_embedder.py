@@ -313,6 +313,7 @@ class TestOpenAIDocumentEmbedder:
     def test_run_wrong_input_format(self):
         embedder = OpenAIDocumentEmbedder(api_key="fake-api-key")
 
+        # wrong formats
         string_input = "text"
         list_integers_input = [1, 2, 3]
 
@@ -321,3 +322,8 @@ class TestOpenAIDocumentEmbedder:
 
         with pytest.raises(TypeError, match="OpenAIDocumentEmbedder expects a list of Documents as input"):
             embedder.run(documents=list_integers_input)
+
+        # empty list is ok
+        empty_list_input = []
+        result = embedder.run(documents=empty_list_input)
+        assert result is not None

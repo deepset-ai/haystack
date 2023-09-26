@@ -144,7 +144,7 @@ class OpenAIDocumentEmbedder:
 
         :param documents: A list of Documents to embed.
         """
-        if not isinstance(documents, list) or not isinstance(documents[0], Document):
+        if not isinstance(documents, list) or (len(documents) > 0 and not isinstance(documents[0], Document)):
             raise TypeError(
                 "OpenAIDocumentEmbedder expects a list of Documents as input."
                 "In case you want to embed a string, please use the OpenAITextEmbedder."
