@@ -8,7 +8,7 @@ from tqdm import tqdm
 from haystack.preview.lazy_imports import LazyImport
 from haystack.preview import Document, component, default_to_dict, default_from_dict
 
-with LazyImport("Run 'pip install farm-haystack[preprocessing]'") as langdetect_import:
+with LazyImport("Run 'pip install langdetect'") as langdetect_import:
     import langdetect
 
 
