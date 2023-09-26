@@ -838,6 +838,9 @@ jobs:
         image: apache/tika:2.9.0.0
         ports:
           - 9998:9998
+    env:
+      CORE_AZURE_CS_ENDPOINT: ${{ secrets.CORE_AZURE_CS_ENDPOINT }}
+      CORE_AZURE_CS_API_KEY: ${{ secrets.CORE_AZURE_CS_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
