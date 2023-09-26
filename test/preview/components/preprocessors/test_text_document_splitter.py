@@ -11,39 +11,66 @@ class TestTextDocumentSplitter:
             ValueError, match="TextDocumentSplitter only works with text documents but document.text is None."
         ):
             splitter = TextDocumentSplitter()
-            splitter.run(document=Document())
+            splitter.run(documents=[Document()])
 
     @pytest.mark.unit
-    def test_unsupported_split_option(self):
-        with pytest.raises(
-            NotImplementedError, match="PreProcessor only supports 'passage', 'sentence' or 'word' split_by options."
-        ):
-            splitter = TextDocumentSplitter()
-            splitter.run(document=Document(text="text"), split_by="unsupported")
+    def test_unsupported_split_by(self):
+        with pytest.raises(ValueError, match="split_by must be one of 'word', 'sentence' or 'passage'."):
+            TextDocumentSplitter(split_by="unsupported")
+
+    @pytest.mark.unit
+    def test_unsupported_split_length(self):
+        with pytest.raises(ValueError, match="split_length must be greater than 0."):
+            TextDocumentSplitter(split_length=0)
+
+    @pytest.mark.unit
+    def test_unsupported_split_overlap(self):
+        with pytest.raises(ValueError, match="split_overlap must be greater than or equal to 0."):
+            TextDocumentSplitter(split_overlap=-1)
 
     @pytest.mark.unit
     def test_split_by_word(self):
-        splitter = TextDocumentSplitter()
+        splitter = TextDocumentSplitter(split_by="word", split_length=10)
         result = splitter.run(
-            document=Document(
-                text="This is a text with some words. There is a second sentence. And there is a third sentence."
-            ),
-            split_by="word",
-            split_length=10,
+            documents=[
+                Document(
+                    text="This is a text with some words. There is a second sentence. And there is a third sentence."
+                )
+            ]
         )
         assert len(result["documents"]) == 2
         assert result["documents"][0].text == "This is a text with some words. There is a"
         assert result["documents"][1].text == "second sentence. And there is a third sentence."
 
     @pytest.mark.unit
-    def test_split_by_sentence(self):
-        splitter = TextDocumentSplitter()
+    def test_split_by_word_multiple_input_docs(self):
+        splitter = TextDocumentSplitter(split_by="word", split_length=10)
         result = splitter.run(
-            document=Document(
-                text="This is a text with some words. There is a second sentence. And there is a third sentence."
-            ),
-            split_by="sentence",
-            split_length=1,
+            documents=[
+                Document(
+                    text="This is a text with some words. There is a second sentence. And there is a third sentence."
+                ),
+                Document(
+                    text="This is a different text with some words. There is a second sentence. And there is a third sentence. And there is a fourth sentence."
+                ),
+            ]
+        )
+        assert len(result["documents"]) == 5
+        assert result["documents"][0].text == "This is a text with some words. There is a"
+        assert result["documents"][1].text == "second sentence. And there is a third sentence."
+        assert result["documents"][2].text == "This is a different text with some words. There is"
+        assert result["documents"][3].text == "a second sentence. And there is a third sentence. And"
+        assert result["documents"][4].text == "there is a fourth sentence."
+
+    @pytest.mark.unit
+    def test_split_by_sentence(self):
+        splitter = TextDocumentSplitter(split_by="sentence", split_length=1)
+        result = splitter.run(
+            documents=[
+                Document(
+                    text="This is a text with some words. There is a second sentence. And there is a third sentence."
+                )
+            ]
         )
         assert len(result["documents"]) == 3
         assert result["documents"][0].text == "This is a text with some words"
@@ -52,13 +79,13 @@ class TestTextDocumentSplitter:
 
     @pytest.mark.unit
     def test_split_by_passage(self):
-        splitter = TextDocumentSplitter()
+        splitter = TextDocumentSplitter(split_by="passage", split_length=1)
         result = splitter.run(
-            document=Document(
-                text="This is a text with some words. There is a second sentence.\n\nAnd there is a third sentence.\n\n And another passage."
-            ),
-            split_by="passage",
-            split_length=1,
+            documents=[
+                Document(
+                    text="This is a text with some words. There is a second sentence.\n\nAnd there is a third sentence.\n\n And another passage."
+                )
+            ]
         )
         assert len(result["documents"]) == 3
         assert result["documents"][0].text == "This is a text with some words. There is a second sentence."
@@ -67,14 +94,13 @@ class TestTextDocumentSplitter:
 
     @pytest.mark.unit
     def test_split_by_word_with_overlap(self):
-        splitter = TextDocumentSplitter()
+        splitter = TextDocumentSplitter(split_by="word", split_length=10, split_overlap=2)
         result = splitter.run(
-            document=Document(
-                text="This is a text with some words. There is a second sentence. And there is a third sentence."
-            ),
-            split_by="word",
-            split_length=10,
-            split_overlap=2,
+            documents=[
+                Document(
+                    text="This is a text with some words. There is a second sentence. And there is a third sentence."
+                )
+            ]
         )
         assert len(result["documents"]) == 2
         assert result["documents"][0].text == "This is a text with some words. There is a"
