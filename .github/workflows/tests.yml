@@ -831,8 +831,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
+    services:
+      tika:
+        image: apache/tika:2.9.0.0
+        ports:
+          - 9998:9998
     steps:
       - uses: actions/checkout@v4
 
@@ -848,7 +853,7 @@ jobs:
 
       - name: Install Haystack
         # FIXME Use haystack-ai dependency list
-        run: pip install .[dev,inference] langdetect
+        run: pip install .[dev,inference,file-conversion] langdetect
 
       - name: Run tests
         run: |
