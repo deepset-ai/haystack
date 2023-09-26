@@ -57,10 +57,10 @@ class TopPSampler:
     ):
         """
 
-        :param model_name_or_path: Path to a pretrained sentence-transformers model.
+        :param model_name_or_path: Path to a pre-trained sentence-transformers model.
         :param top_p: Cumulative probability threshold for filtering the documents (usually between 0.9 and 0.99).
         `False` ensures at least one document is returned. If `strict` is set to `True`, then no documents are returned.
-        :param score_field: The name of the field that should be used to store the scores a document's meta data.
+        :param score_field: The name of the field that should be used to store the scores in a document's metadata.
         :param devices: List of torch devices (for example, cuda:0, cpu, mps) to limit inference to specific devices.
         """
         torch_and_transformers_import.check()
