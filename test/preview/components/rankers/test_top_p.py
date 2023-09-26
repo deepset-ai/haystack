@@ -2,17 +2,9 @@ import pytest
 
 from haystack.preview import Document
 from haystack.preview.components.samplers.top_p import TopPSampler
-from haystack.preview.lazy_imports import LazyImport
-
-with LazyImport(
-    message="Run 'pip install transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0'"
-) as torch_and_transformers_import:
-    from torch import device
 
 
 class TestTopP:
-    torch_and_transformers_import.check()
-
     @pytest.mark.integration
     def test_to_dict(self):
         component = TopPSampler()
@@ -22,7 +14,7 @@ class TestTopP:
             "init_parameters": {
                 "top_p": 1.0,
                 "score_field": "score",
-                "devices": [device(type="cpu")],
+                "device": "cpu",
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
             },
         }
@@ -36,7 +28,7 @@ class TestTopP:
             "init_parameters": {
                 "top_p": 0.92,
                 "score_field": "score",
-                "devices": [device(type="cpu")],
+                "device": "cpu",
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
             },
         }
@@ -48,7 +40,7 @@ class TestTopP:
             "init_parameters": {
                 "top_p": 0.9,
                 "score_field": "score",
-                "devices": [device(type="cpu")],
+                "device": "cpu",
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
             },
         }
@@ -56,6 +48,7 @@ class TestTopP:
         assert component.model_name_or_path == "cross-encoder/ms-marco-MiniLM-L-6-v2"
         assert component.top_p == 0.9
 
+    @pytest.mark.integration
     def test_run(self):
         """
         Test if the component runs correctly.

@@ -13,9 +13,7 @@ logger = logging.getLogger(__name__)
 with LazyImport(
     message="Run 'pip install transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0'"
 ) as torch_and_transformers_import:
-    import torch
     from sentence_transformers import CrossEncoder
-    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 @component
@@ -53,7 +51,7 @@ class TopPSampler:
         model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         top_p: Optional[float] = 1.0,
         score_field: Optional[str] = "score",
-        devices: Optional[List[Union[str, "torch.device"]]] = None,
+        device: Optional[str] = "cpu",
     ):
         """
 
@@ -61,7 +59,7 @@ class TopPSampler:
         :param top_p: Cumulative probability threshold for filtering the documents (usually between 0.9 and 0.99).
         `False` ensures at least one document is returned. If `strict` is set to `True`, then no documents are returned.
         :param score_field: The name of the field that should be used to store the scores in a document's metadata.
-        :param devices: List of torch devices (for example, cuda:0, cpu, mps) to limit inference to specific devices.
+        :param device: torch device (for example, cuda:0, cpu, mps) to limit inference to a specific device.
         """
         torch_and_transformers_import.check()
         super().__init__()
@@ -69,8 +67,8 @@ class TopPSampler:
         self.model_name_or_path = model_name_or_path
         self.top_p = top_p
         self.score_field = score_field
-        self.devices, _ = initialize_device_settings(devices=devices)
-        self.cross_encoder = CrossEncoder(model_name_or_path, device=str(self.devices[0]))
+        self.device = device
+        self.cross_encoder = CrossEncoder(model_name_or_path, device=device)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -80,7 +78,7 @@ class TopPSampler:
             self,
             top_p=self.top_p,
             score_field=self.score_field,
-            devices=self.devices,
+            device=self.device,
             model_name_or_path=self.model_name_or_path,
         )
 
