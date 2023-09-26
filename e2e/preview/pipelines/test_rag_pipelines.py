@@ -34,9 +34,7 @@ def test_bm25_rag_pipeline():
     \nAnswer:
     """
 
-    indexing_pipeline = Pipeline()
-    indexing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="document_writer")
-    indexing_pipeline.run({"document_writer": {"documents": documents}})
+    document_store.write_documents(documents)
 
     rag_pipeline = Pipeline()
     rag_pipeline.add_component(instance=MemoryBM25Retriever(document_store=document_store), name="retriever")
