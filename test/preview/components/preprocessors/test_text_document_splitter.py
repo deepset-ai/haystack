@@ -14,6 +14,18 @@ class TestTextDocumentSplitter:
             splitter.run(documents=[Document()])
 
     @pytest.mark.unit
+    def test_single_doc(self):
+        with pytest.raises(TypeError, match="TextDocumentSplitter expects a List of Documents as input."):
+            splitter = TextDocumentSplitter()
+            splitter.run(documents=Document())
+
+    @pytest.mark.unit
+    def test_empty_list(self):
+        with pytest.raises(TypeError, match="TextDocumentSplitter expects a List of Documents as input."):
+            splitter = TextDocumentSplitter()
+            splitter.run(documents=[])
+
+    @pytest.mark.unit
     def test_unsupported_split_by(self):
         with pytest.raises(ValueError, match="split_by must be one of 'word', 'sentence' or 'passage'."):
             TextDocumentSplitter(split_by="unsupported")
@@ -134,3 +146,12 @@ class TestTextDocumentSplitter:
         assert splitter.split_by == "passage"
         assert splitter.split_length == 100
         assert splitter.split_overlap == 1
+
+    @pytest.mark.unit
+    def test_source_id_stored_in_metadata(self):
+        splitter = TextDocumentSplitter(split_by="word", split_length=10)
+        doc1 = Document(text="This is a text with some words.")
+        doc2 = Document(text="This is a different text with some words.")
+        result = splitter.run(documents=[doc1, doc2])
+        assert result["documents"][0].metadata["source_id"] == doc1.id
+        assert result["documents"][1].metadata["source_id"] == doc2.id
