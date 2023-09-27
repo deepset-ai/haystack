@@ -60,9 +60,8 @@ class TopPSampler:
         scoring will be performed, and it is assumed that documents already have scores in the metadata specified under
         the `score_field` key.
         :param top_p: Cumulative probability threshold for filtering the documents (usually between 0.9 and 0.99).
-        `False` ensures at least one document is returned. If `strict` is set to `True`, then no documents are returned.
         :param score_field: The name of the field that should be used to store the scores in a document's metadata.
-        :param device: torch device (for example, cuda:0, cpu, mps) to limit inference to a specific device.
+        :param device: torch device (for example, cuda:0, cpu, mps) to limit model inference to a specific device.
         """
         torch_and_transformers_import.check()
         super().__init__()
@@ -75,7 +74,10 @@ class TopPSampler:
         self.tokenizer = None
 
     def warm_up(self):
-        if self.model_name_or_path and not self.has_scoring_model():
+        """
+        Warm up the model and tokenizer used in scoring the documents.
+        """
+        if self.model_name_or_path and not self._has_scoring_model():
             self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name_or_path)
             self.model = self.model.to(self.device)
             self.model.eval()
@@ -121,19 +123,19 @@ class TopPSampler:
             raise ComponentError(f"top_p must be between 0 and 1. Got {top_p}.")
 
         # If a model path is provided but the model isn't loaded
-        if self.model_name_or_path and not self.has_scoring_model():
+        if self.model_name_or_path and not self._has_scoring_model():
             raise ComponentError(
                 f"The component {self.__class__.__name__} not warmed up. Run 'warm_up()' before calling 'run()'."
             )
 
         # If no model is provided, ensure documents have pre-computed scores
-        if not self.model_name_or_path and not self.have_scores(documents):
+        if not self.model_name_or_path and not self._have_scores(documents):
             raise ComponentError(
                 f"The component {self.__class__.__name__} requires similarity scores in the documents' metadata. "
                 "Either set 'model_name_or_path' to score documents or add scores to the documents."
             )
 
-        docs_need_scoring = self.has_scoring_model() and not self.have_scores(documents)
+        docs_need_scoring = self._has_scoring_model() and not self._have_scores(documents)
         if docs_need_scoring:
             query_doc_pairs = [[query, doc.text] for doc in documents]
             features = self.tokenizer(
@@ -144,7 +146,7 @@ class TopPSampler:
             with torch.inference_mode():
                 similarity_scores = self.model(**features).logits.squeeze()  # type: ignore
         else:
-            similarity_scores = torch.tensor(self.collect_scores(documents), dtype=torch.float32)
+            similarity_scores = torch.tensor(self._collect_scores(documents), dtype=torch.float32)
 
         # Apply softmax normalization to the similarity scores
         probs = torch.exp(similarity_scores) / torch.sum(torch.exp(similarity_scores))
@@ -173,7 +175,7 @@ class TopPSampler:
 
         return {"documents": selected_docs}
 
-    def collect_scores(self, documents: List[Document]) -> List[float]:
+    def _collect_scores(self, documents: List[Document]) -> List[float]:
         """
         Collect the scores from the documents' metadata.
         :param documents: List of Documents.
@@ -184,7 +186,7 @@ class TopPSampler:
 
         return [d.metadata[self.score_field] for d in documents]
 
-    def have_scores(self, documents: List[Document]) -> bool:
+    def _have_scores(self, documents: List[Document]) -> bool:
         """
         Check if the documents have scores in their metadata.
         :param documents: List of Documents.
@@ -192,7 +194,7 @@ class TopPSampler:
         """
         return all(self.score_field in d.metadata for d in documents)
 
-    def has_scoring_model(self) -> bool:
+    def _has_scoring_model(self) -> bool:
         """
         Check if the component has a scoring model.
         :return: True if the component has a scoring model, False otherwise.
