@@ -919,7 +919,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 # to a temporary namespace and query again for new items. We repeat this process until all embeddings
                 # have been retrieved.
                 target_namespace = f"{namespace}-copy" if namespace is not None else "copy"
-                all_ids: Set[str] = set()
+                all_ids: Set[str] = set()  # type: ignore
                 vector_id_matrix = ["dummy-id"]
                 with tqdm(
                     total=document_count, disable=not self.progress_bar, position=0, unit=" ids", desc="Retrieving IDs"
@@ -934,7 +934,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                             batch_size=batch_size,
                         )
                         # Save IDs
-                        all_ids = all_ids.union(set(vector_id_matrix))
+                        all_ids = all_ids.union(set(vector_id_matrix))  # type: ignore
                         # Move these IDs to new namespace
                         self._move_documents_by_id_namespace(
                             ids=vector_id_matrix,
