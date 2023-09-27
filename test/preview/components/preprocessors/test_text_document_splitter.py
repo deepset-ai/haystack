@@ -8,7 +8,7 @@ class TestTextDocumentSplitter:
     @pytest.mark.unit
     def test_non_text_document(self):
         with pytest.raises(
-            ValueError, match="TextDocumentSplitter only works with text documents but document.text is None."
+            ValueError, match="TextDocumentSplitter only works with text documents but document.text for document ID"
         ):
             splitter = TextDocumentSplitter()
             splitter.run(documents=[Document()])
@@ -51,7 +51,7 @@ class TestTextDocumentSplitter:
             ]
         )
         assert len(result["documents"]) == 2
-        assert result["documents"][0].text == "This is a text with some words. There is a"
+        assert result["documents"][0].text == "This is a text with some words. There is a "
         assert result["documents"][1].text == "second sentence. And there is a third sentence."
 
     @pytest.mark.unit
@@ -68,10 +68,10 @@ class TestTextDocumentSplitter:
             ]
         )
         assert len(result["documents"]) == 5
-        assert result["documents"][0].text == "This is a text with some words. There is a"
+        assert result["documents"][0].text == "This is a text with some words. There is a "
         assert result["documents"][1].text == "second sentence. And there is a third sentence."
-        assert result["documents"][2].text == "This is a different text with some words. There is"
-        assert result["documents"][3].text == "a second sentence. And there is a third sentence. And"
+        assert result["documents"][2].text == "This is a different text with some words. There is "
+        assert result["documents"][3].text == "a second sentence. And there is a third sentence. And "
         assert result["documents"][4].text == "there is a fourth sentence."
 
     @pytest.mark.unit
@@ -85,9 +85,9 @@ class TestTextDocumentSplitter:
             ]
         )
         assert len(result["documents"]) == 3
-        assert result["documents"][0].text == "This is a text with some words"
-        assert result["documents"][1].text == " There is a second sentence"
-        assert result["documents"][2].text == " And there is a third sentence"
+        assert result["documents"][0].text == "This is a text with some words."
+        assert result["documents"][1].text == " There is a second sentence."
+        assert result["documents"][2].text == " And there is a third sentence."
 
     @pytest.mark.unit
     def test_split_by_passage(self):
@@ -100,8 +100,8 @@ class TestTextDocumentSplitter:
             ]
         )
         assert len(result["documents"]) == 3
-        assert result["documents"][0].text == "This is a text with some words. There is a second sentence."
-        assert result["documents"][1].text == "And there is a third sentence."
+        assert result["documents"][0].text == "This is a text with some words. There is a second sentence.\n\n"
+        assert result["documents"][1].text == "And there is a third sentence.\n\n"
         assert result["documents"][2].text == " And another passage."
 
     @pytest.mark.unit
@@ -115,7 +115,7 @@ class TestTextDocumentSplitter:
             ]
         )
         assert len(result["documents"]) == 2
-        assert result["documents"][0].text == "This is a text with some words. There is a"
+        assert result["documents"][0].text == "This is a text with some words. There is a "
         assert result["documents"][1].text == "is a second sentence. And there is a third sentence."
 
     @pytest.mark.unit
