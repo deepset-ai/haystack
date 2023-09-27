@@ -28,14 +28,14 @@ def test_draw_pygraphviz(tmp_path, test_files):
     assert filecmp.cmp(tmp_path / "test_pipe.jpg", test_files / "pipeline_draw" / "pygraphviz.jpg")
 
 
-def test_draw_mermaid_img(tmp_path, test_files):
+def test_draw_mermaid_image(tmp_path, test_files):
     pipe = Pipeline()
     pipe.add_component("comp1", Double())
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
     pipe.connect("comp2", "comp1")
 
-    _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="mermaid-img")
+    _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="mermaid-image")
     assert os.path.exists(tmp_path / "test_pipe.jpg")
     assert filecmp.cmp(tmp_path / "test_pipe.jpg", test_files / "mermaid_mock" / "test_response.png")
 
@@ -59,7 +59,7 @@ def test_draw_mermaid_img_failing_request(tmp_path):
         mock_get.return_value = mock_response
 
         with pytest.raises(PipelineDrawingError, match="There was an issue with https://mermaid.ink/"):
-            _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="mermaid-img")
+            _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="mermaid-image")
 
 
 def test_draw_mermaid_txt(tmp_path):
@@ -76,20 +76,12 @@ def test_draw_mermaid_txt(tmp_path):
         == """
 %%{ init: {'theme': 'neutral' } }%%
 
-stateDiagram-v2
+graph TD;
 
-comp1:::components: <b>comp1</b><br><small><i>AddFixedValue(add=3)</i></small>
-comp2:::components: <b>comp2</b><br><small><i>Double()</i></small>
+comp1["<b>comp1</b><br><small><i>AddFixedValue<br><br>Optional inputs:<ul style='text-align:left;'><li>add (Optional[int])</li></ul></i></small>"]:::component -- "result -> value<br><small><i>int</i></small>" --> comp2["<b>comp2</b><br><small><i>Double</i></small>"]:::component
+comp2["<b>comp2</b><br><small><i>Double</i></small>"]:::component -- "value -> value<br><small><i>int</i></small>" --> comp1["<b>comp1</b><br><small><i>AddFixedValue<br><br>Optional inputs:<ul style='text-align:left;'><li>add (Optional[int])</li></ul></i></small>"]:::component
 
-note left of comp1
-    add <small><i>Optional[int]</i></small>
-end note
-
-comp1 --> comp2 : result -> value  <small><i>(int)</i></small>
-comp2 --> comp1 : value -> value  <small><i>(int)</i></small>
-[*] --> comp1 : add  <small><i>(Optional[int])</i></small>
-
-classDef components text-align:center;
+classDef component text-align:center;
 """
     )
 

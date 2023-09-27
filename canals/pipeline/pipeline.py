@@ -338,15 +338,15 @@ class Pipeline:
         except KeyError as exc:
             raise ValueError(f"Component named {name} not found in the pipeline.") from exc
 
-    def draw(self, path: Path, engine: RenderingEngines = "mermaid-img") -> None:
+    def draw(self, path: Path, engine: RenderingEngines = "mermaid-image") -> None:
         """
         Draws the pipeline. Requires either `graphviz` as a system dependency, or an internet connection for Mermaid.
         Run `pip install canals[graphviz]` or `pip install canals[mermaid]` to install missing dependencies.
 
         Args:
             path: where to save the diagram.
-            engine: which format to save the graph as. Accepts 'graphviz', 'mermaid-text', 'mermaid-img'.
-                Default is 'mermaid-img'.
+            engine: which format to save the graph as. Accepts 'graphviz', 'mermaid-text', 'mermaid-image'.
+                Default is 'mermaid-image'.
 
         Returns:
             None
@@ -360,7 +360,7 @@ class Pipeline:
             for comp, data in self.graph.nodes(data=True)
         }
         print(sockets)
-        _draw(graph=deepcopy(self.graph), path=path, engine=engine)
+        _draw(graph=networkx.MultiDiGraph(self.graph), path=path, engine=engine)
 
     def warm_up(self):
         """

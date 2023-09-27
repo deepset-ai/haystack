@@ -3,14 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 import base64
-import json
 
 import requests
 import networkx
 
 from canals.errors import PipelineDrawingError
 from canals.utils import _type_name
-from canals.serialization import component_to_dict
 
 logger = logging.getLogger(__name__)
 
@@ -18,15 +16,11 @@ logger = logging.getLogger(__name__)
 MERMAID_STYLED_TEMPLATE = """
 %%{{ init: {{'theme': 'neutral' }} }}%%
 
-stateDiagram-v2
-
-{states}
-
-{notes}
+graph TD;
 
 {connections}
 
-classDef components text-align:center;
+classDef component text-align:center;
 """
 
 
@@ -66,54 +60,43 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     Converts a Networkx graph into Mermaid syntax. The output of this function can be used in the documentation
     with `mermaid` codeblocks and it will be automatically rendered.
     """
-    init_params = {}
-    for name, comp in graph.nodes(data="instance"):
-        if name in ["input", "output"]:
-            continue
-        data = component_to_dict(comp)
-        params = [f"{k}={json.dumps(v)}" for k, v in data.get("init_parameters", {}).items()]
-        init_params[name] = ",<br>".join(params)
-    states = "\n".join(
-        [
-            f"{comp}:::components: <b>{comp}</b><br><small><i>{type(data['instance']).__name__}({init_params[comp]})</i></small>"
-            for comp, data in graph.nodes(data=True)
-            if comp not in ["input", "output"]
-        ]
-    )
     sockets = {
-        comp: "\n".join(
+        comp: "".join(
             [
-                f"{name} <small><i>{_type_name(socket.type)}</i></small>"
+                f"<li>{name} ({_type_name(socket.type)})</li>"
                 for name, socket in data.get("input_sockets", {}).items()
                 if socket.is_optional and socket.sender is None
             ]
         )
         for comp, data in graph.nodes(data=True)
     }
-    notes = "\n".join(
-        [
-            f"note left of {comp}\n    {sockets[comp]}\nend note"
-            for comp in graph.nodes
-            if comp not in ["input", "output"] and sockets[comp] != ""
-        ]
-    )
+    optional_inputs = {
+        comp: f"<br><br>Optional inputs:<ul style='text-align:left;'>{sockets}</ul>" if sockets else ""
+        for comp, sockets in sockets.items()
+    }
+
+    states = {
+        comp: f"{comp}[\"<b>{comp}</b><br><small><i>{type(data['instance']).__name__}{optional_inputs[comp]}</i></small>\"]:::component"
+        for comp, data in graph.nodes(data=True)
+        if comp not in ["input", "output"]
+    }
 
     connections_list = [
-        f"{from_comp} --> {to_comp} : {conn_data['label']}  <small><i>({conn_data['conn_type']})</i></small>"
+        f"{states[from_comp]} -- \"{conn_data['label']}<br><small><i>{conn_data['conn_type']}</i></small>\" --> {states[to_comp]}"
         for from_comp, to_comp, conn_data in graph.edges(data=True)
         if from_comp != "input" and to_comp != "output"
     ]
     input_connections = [
-        f"[*] --> {to_comp} : {conn_data['label']}  <small><i>({conn_data['conn_type']})</i></small>"
+        f"i{{*}} -- \"{conn_data['label']}<br><small><i>{conn_data['conn_type']}</i></small>\" --> {states[to_comp]}"
         for _, to_comp, conn_data in graph.out_edges("input", data=True)
     ]
     output_connections = [
-        f"{from_comp} --> [*]  : {conn_data['label']}  <small><i>({conn_data['conn_type']})</i></small>"
+        f"{states[from_comp]} -- \"{conn_data['label']}<br><small><i>{conn_data['conn_type']}</i></small>\"--> o{{*}}"
         for from_comp, _, conn_data in graph.in_edges("output", data=True)
     ]
     connections = "\n".join(connections_list + input_connections + output_connections)
 
-    graph_styled = MERMAID_STYLED_TEMPLATE.format(states=states, notes=notes, connections=connections)
+    graph_styled = MERMAID_STYLED_TEMPLATE.format(connections=connections)
     logger.debug("Mermaid diagram:\n%s", graph_styled)
 
     return graph_styled
