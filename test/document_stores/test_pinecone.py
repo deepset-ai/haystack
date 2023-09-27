@@ -57,6 +57,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             pass
 
         pinecone.init = MagicMock()
+        pinecone.describe_index = MagicMock()
         DSMock._create_index = MagicMock()
         mocked_ds = DSMock(api_key="MOCK")
 
