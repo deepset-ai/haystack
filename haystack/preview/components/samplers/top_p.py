@@ -111,7 +111,8 @@ class TopPSampler:
         :param query: Query string.
         :param documents: List of Documents.
         :param top_p: Cumulative probability threshold for filtering the documents. If not provided, the top_p value
-        set during TopPSampler initialization is used.
+        set during TopPSampler initialization is used. If top_p is not provided at initialization then top_p will
+        default to 1.0
         :return: List of Documents sorted by (desc.) similarity with the query.
         """
         if not documents:
