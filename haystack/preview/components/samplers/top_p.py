@@ -2,7 +2,6 @@ import logging
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
 
-import numpy as np
 from haystack.preview import ComponentError
 
 from haystack.lazy_imports import LazyImport
@@ -12,10 +11,9 @@ from haystack.preview import Document, component, default_from_dict, default_to_
 logger = logging.getLogger(__name__)
 
 
-with LazyImport(
-    message="Run 'pip install transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0'"
-) as torch_and_transformers_import:
-    from sentence_transformers import CrossEncoder
+with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]==4.32.1'") as torch_and_transformers_import:
+    import torch
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
 @component
@@ -50,15 +48,17 @@ class TopPSampler:
 
     def __init__(
         self,
-        model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        model_name_or_path: Optional[Union[str, Path]] = None,
         top_p: Optional[float] = 1.0,
-        score_field: Optional[str] = "score",
+        score_field: Optional[str] = "similarity_score",
         device: Optional[str] = "cpu",
     ):
         """
         Creates an instance of TopPSampler.
 
-        :param model_name_or_path: Path to a pre-trained sentence-transformers model.
+        :param model_name_or_path: Path to a pre-trained sentence-transformers model. If not specified, no document
+        scoring will be performed, and it is assumed that documents already have scores in the metadata specified under
+        the `score_field` key.
         :param top_p: Cumulative probability threshold for filtering the documents (usually between 0.9 and 0.99).
         `False` ensures at least one document is returned. If `strict` is set to `True`, then no documents are returned.
         :param score_field: The name of the field that should be used to store the scores in a document's metadata.
@@ -71,11 +71,14 @@ class TopPSampler:
         self.top_p = top_p
         self.score_field = score_field
         self.device = device
-        self.cross_encoder = None
+        self.model = None
+        self.tokenizer = None
 
     def warm_up(self):
-        if self.cross_encoder is None:
-            self.cross_encoder = CrossEncoder(self.model_name_or_path, device=self.device)
+        if self.model_name_or_path and (self.model is None and self.tokenizer is None):
+            self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name_or_path)
+            self.model.eval()
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -114,41 +117,66 @@ class TopPSampler:
         if not documents:
             return []
 
-        if self.cross_encoder is None:
+        if self.model_name_or_path and self.model is None:
             raise ComponentError(
                 f"The component {self.__class__.__name__} not warmed up. Run 'warm_up()' before calling 'run()'."
             )
+        if not self.model_name_or_path and not self.has_scores(documents):
+            raise ComponentError(
+                f"The component {self.__class__.__name__} requires scores in the documents' metadata. "
+                f"Either set 'model_name_or_path' to scored documents or add scores to the documents."
+            )
 
-        # prepare the data for the cross encoder
-        query_doc_pairs = [[query, doc.text] for doc in documents]
+        needs_scoring = self.model_name_or_path and not self.has_scores(documents)
+        if needs_scoring:
+            # prepare the data for the model
+            query_doc_pairs = [[query, doc.text] for doc in documents]
+            features = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt")
 
-        # compute the similarity scores for these combinations
-        similarity_scores = self.cross_encoder.predict(query_doc_pairs)
+            with torch.no_grad():
+                similarity_scores = self.model(**features).logits.squeeze()
+        else:
+            similarity_scores = torch.tensor(self.collect_scores(documents), dtype=torch.float32)
 
         # Apply softmax normalization to the similarity scores
-        probs = np.exp(similarity_scores) / np.sum(np.exp(similarity_scores))
+        probs = torch.exp(similarity_scores) / torch.sum(torch.exp(similarity_scores))
 
         # Sort the probabilities and calculate their cumulative sum
-        sorted_probs = np.sort(probs)[::-1]
-        cumulative_probs = np.cumsum(sorted_probs)
+        sorted_probs, sorted_indices = torch.sort(probs, descending=True)
+        cumulative_probs = torch.cumsum(sorted_probs, dim=0)
 
         # Find the indices with cumulative probabilities that exceed top_p
-        top_p_indices = np.where(cumulative_probs <= top_p)[0]
+        top_p_indices = torch.where(cumulative_probs <= top_p)[0]
 
         # Map the selected indices back to their original indices
-        original_indices = np.argsort(probs)[::-1][top_p_indices]
-        # and select the top_p responses
-        selected_docs = [documents[i] for i in original_indices]
+        original_indices = sorted_indices[top_p_indices]
+        selected_docs = [documents[i.item()] for i in original_indices]
 
-        # low p resulted in no documents being selected, then
+        # If low p resulted in no documents being selected, then
         # return at least one document
         if not selected_docs:
-            highest_prob_indices = np.argsort(probs)[::-1]
-            selected_docs = [documents[highest_prob_indices[0]]]
+            highest_prob_indices = torch.argsort(probs, descending=True)
+            selected_docs = [documents[highest_prob_indices[0].item()]]
 
-        # include prob scores in the results
-        if self.score_field:
+        # Include prob scores in the results
+        if self.score_field and needs_scoring:
             for idx, doc in enumerate(selected_docs):
-                doc.metadata[self.score_field] = str(sorted_probs[idx])
+                doc.metadata[self.score_field] = str(sorted_probs[idx].item())
 
         return {"documents": selected_docs}
+
+    def collect_scores(self, documents: List[Document]) -> List[float]:
+        """
+        Collect the scores from the documents' metadata.
+        :param documents: List of Documents.
+        :return: List of scores.
+        """
+        return [d.metadata[self.score_field] for d in documents]
+
+    def has_scores(self, documents: List[Document]) -> bool:
+        """
+        Check if the documents have scores in their metadata.
+        :param documents: List of Documents.
+        :return: True if the documents have scores in their metadata, False otherwise.
+        """
+        return all(self.score_field in d.metadata for d in documents)

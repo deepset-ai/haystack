@@ -7,13 +7,13 @@ from haystack.preview.components.samplers.top_p import TopPSampler
 class TestTopP:
     @pytest.mark.integration
     def test_to_dict(self):
-        component = TopPSampler()
+        component = TopPSampler(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
         data = component.to_dict()
         assert data == {
             "type": "TopPSampler",
             "init_parameters": {
                 "top_p": 1.0,
-                "score_field": "score",
+                "score_field": "similarity_score",
                 "device": "cpu",
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
             },
@@ -27,9 +27,9 @@ class TestTopP:
             "type": "TopPSampler",
             "init_parameters": {
                 "top_p": 0.92,
-                "score_field": "score",
+                "score_field": "similarity_score",
                 "device": "cpu",
-                "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+                "model_name_or_path": None,
             },
         }
 
@@ -39,7 +39,7 @@ class TestTopP:
             "type": "TopPSampler",
             "init_parameters": {
                 "top_p": 0.9,
-                "score_field": "score",
+                "score_field": "similarity_score",
                 "device": "cpu",
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
             },
@@ -53,9 +53,27 @@ class TestTopP:
         """
         Test if the component runs correctly.
         """
+        sampler = TopPSampler(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", top_p=0.95)
+        sampler.warm_up()
+        docs = [Document(text="Berlin"), Document(text="Belgrade"), Document(text="Sarajevo")]
+        query = "City in Bosnia and Herzegovina"
+        output = sampler.run(query=query, documents=docs)
+        docs = output["documents"]
+        assert len(docs) == 1
+        assert docs[0].text == "Sarajevo"
+
+    @pytest.mark.integration
+    def test_run_scores(self):
+        """
+        Test if the component runs correctly with scores already in the metadata.
+        """
         sampler = TopPSampler(top_p=0.95)
         sampler.warm_up()
-        docs = [Document(text="Sarajevo"), Document(text="Berlin")]
+        docs = [
+            Document(text="Berlin", metadata={"similarity_score": -10.6}),
+            Document(text="Belgrade", metadata={"similarity_score": -8.9}),
+            Document(text="Sarajevo", metadata={"similarity_score": -4.6}),
+        ]
         query = "City in Bosnia and Herzegovina"
         output = sampler.run(query=query, documents=docs)
         docs = output["documents"]
