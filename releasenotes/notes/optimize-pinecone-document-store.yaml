@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Optimize particular methods from PineconeDocumentStore (delete_documents and _get_vector_count)
