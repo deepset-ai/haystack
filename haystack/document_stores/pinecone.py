@@ -18,7 +18,6 @@ from haystack.schema import Answer, Document, FilterType, Label, Span
 
 with LazyImport("Run 'pip install farm-haystack[pinecone]'") as pinecone_import:
     import pinecone
-    from pinecone.core.client.exceptions import ApiException
 
 logger = logging.getLogger(__name__)
 
@@ -362,7 +361,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         if vector_count >= self.top_k_limit:
             logger.warning(
                 "Current index type 'Starter' doesn't support features 'Namespace' and metadata filtering as part of describe_index_stats operation. "
-                f"Limit for fetching documents in 'Starter' index type is {self.top_k_limit}."
+                "Limit for fetching documents in 'Starter' index type is %s.",
+                self.top_k_limit,
             )
         return vector_count
 
@@ -909,7 +909,8 @@ class PineconeDocumentStore(BaseDocumentStore):
                 # Due to missing support for Namespace in Starter Pinecone index type, retrieve up to 10000 vectors
                 logger.warning(
                     "Current index type 'Starter' doesn't support 'Namespace' feature. "
-                    f"Limit for fetching documents in 'Starter' index type is {self.top_k_limit}."
+                    "Limit for fetching documents in 'Starter' index type is %s.",
+                    self.top_k_limit,
                 )
                 all_ids = self._get_ids(
                     index=index, filters=filters, type_metadata=type_metadata, batch_size=self.top_k_limit
