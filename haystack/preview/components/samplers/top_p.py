@@ -75,7 +75,7 @@ class TopPSampler:
         self.tokenizer = None
 
     def warm_up(self):
-        if self.model_name_or_path and (self.model is None and self.tokenizer is None):
+        if self.model_name_or_path and not self.has_scoring_model():
             self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name_or_path)
             self.model = self.model.to(self.device)
             self.model.eval()
@@ -136,11 +136,13 @@ class TopPSampler:
         docs_need_scoring = self.has_scoring_model() and not self.have_scores(documents)
         if docs_need_scoring:
             query_doc_pairs = [[query, doc.text] for doc in documents]
-            features = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(
+            features = self.tokenizer(
+                query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
+            ).to(  # type: ignore
                 self.device
             )
             with torch.inference_mode():
-                similarity_scores = self.model(**features).logits.squeeze()
+                similarity_scores = self.model(**features).logits.squeeze()  # type: ignore
         else:
             similarity_scores = torch.tensor(self.collect_scores(documents), dtype=torch.float32)
 
@@ -162,7 +164,7 @@ class TopPSampler:
         # return at least one document
         if not selected_docs:
             highest_prob_indices = torch.argsort(probs, descending=True)
-            selected_docs = [documents[highest_prob_indices[0].item()]]
+            selected_docs = [documents[int(highest_prob_indices[0].item())]]
 
         # Include prob scores in the results
         if self.score_field and docs_need_scoring:
@@ -177,6 +179,9 @@ class TopPSampler:
         :param documents: List of Documents.
         :return: List of scores.
         """
+        if not self.score_field:
+            raise ComponentError("Cannot collect document scores if score_field init parameter is not set.")
+
         return [d.metadata[self.score_field] for d in documents]
 
     def have_scores(self, documents: List[Document]) -> bool:
