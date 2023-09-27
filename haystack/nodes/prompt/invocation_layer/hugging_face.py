@@ -259,7 +259,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 gen_dict.pop("transformers_version", None)
                 model_input_kwargs.update(gen_dict)
 
-            is_text_generation = "text-generation" == self.task_name
+            is_text_generation = self.task_name == "text-generation"
             # Prefer return_full_text is False for text-generation (unless explicitly set)
             # Thus only generated text is returned (excluding prompt)
             if is_text_generation and "return_full_text" not in model_input_kwargs:

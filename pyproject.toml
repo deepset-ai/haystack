@@ -78,12 +78,6 @@ dependencies = [
   # Schema validation
   "jsonschema",
 
-  # Preview
-  "canals==0.8.0",
-  "openai",
-  "Jinja2",
-  "openai-whisper",  # FIXME https://github.com/deepset-ai/haystack/issues/5731
-
   # Agent events
   "events",
 
@@ -91,6 +85,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+preview = [
+  "canals==0.8.0",
+  "requests",
+  "pandas",
+  "rank_bm25",
+  "tqdm",
+  "tenacity",
+  "lazy-imports",
+
+  "Jinja2",
+  "openai",
+]
 inference = [
   "transformers[torch,sentencepiece]==4.32.1",
   "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
@@ -191,6 +197,9 @@ onnx-gpu = [
 metrics = [  # for metrics
   "scipy>=1.3.2",
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
+  # Pin setuptools_scm to prevent errors in Windows tests while installing seqeval
+  # https://github.com/deepset-ai/haystack/issues/5889
+  "setuptools_scm<8.0; platform_system == 'Windows'",
   "seqeval",
   "mlflow",
 ]
@@ -239,11 +248,11 @@ formatting = [
 ]
 
 all = [
-  "farm-haystack[inference,docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws]",
+  "farm-haystack[inference,docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,preview]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[inference,docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics,aws]",
+  "farm-haystack[inference,docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics,aws,preview]",
 ]
 
 [project.scripts]
@@ -336,11 +345,11 @@ disable = [
 ]
 [tool.pylint.'DESIGN']
 max-args = 38  # Default is 5
-max-attributes = 27  # Default is 7
+max-attributes = 28  # Default is 7
 max-branches = 34  # Default is 12
 max-locals = 45  # Default is 15
 max-module-lines = 2468  # Default is 1000
-max-nested-blocks = 7  # Default is 5
+max-nested-blocks = 9  # Default is 5
 max-statements = 206  # Default is 50
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines=6
@@ -393,6 +402,7 @@ select = [
   "PERF",   # Perflint
   "PL",     # Pylint
   "Q",      # flake8-quotes
+  "SIM",    # flake8-simplify
   "SLOT",   # flake8-slots
   "T10",    # flake8-debugger
   "W",      # pycodestyle
@@ -407,13 +417,16 @@ line-length = 1486
 target-version = "py38"
 ignore = [
   "F401",     # unused-import
-  "PERF401",	# Use a list comprehension to create a transformed list
   "PERF203",	# `try`-`except` within a loop incurs performance overhead
+  "PERF401",	# Use a list comprehension to create a transformed list
   "PLR1714",  # repeated-equality-comparison
   "PLR5501",  # collapsible-else-if
   "PLW0603",  # global-statement
   "PLW1510",  # subprocess-run-without-check
   "PLW2901",  # redefined-loop-name
+  "SIM108",   # if-else-block-instead-of-if-exp
+  "SIM115",   # open-file-with-context-handler
+  "SIM118",   # in-dict-keys
 ]
 
 [tool.ruff.mccabe]
@@ -428,6 +441,7 @@ max-complexity = 28
 allow-magic-value-types = ["float", "int", "str"]
 max-args = 38  # Default is 5
 max-branches = 32  # Default is 12
+max-public-methods = 90  # Default is 20
 max-returns = 9  # Default is 6
 max-statements = 105  # Default is 50
 

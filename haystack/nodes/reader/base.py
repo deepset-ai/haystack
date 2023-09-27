@@ -198,11 +198,10 @@ class BaseReader(BaseComponent):
 
             # Add corresponding document_name and more meta data, if an answer contains the document_id
             answer_iterator = itertools.chain.from_iterable(results_label_input["answers"])
-            if isinstance(documents[0], Document):
-                if isinstance(queries, list):
-                    answer_iterator = itertools.chain.from_iterable(
-                        itertools.chain.from_iterable(results_label_input["answers"])
-                    )
+            if isinstance(documents[0], Document) and isinstance(queries, list):
+                answer_iterator = itertools.chain.from_iterable(
+                    itertools.chain.from_iterable(results_label_input["answers"])
+                )
             flattened_documents = []
             for doc_list in documents:
                 if isinstance(doc_list, list):

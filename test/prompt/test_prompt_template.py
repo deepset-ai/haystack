@@ -118,12 +118,13 @@ def test_prompt_templates_from_file(tmp_path):
 
 @pytest.mark.unit
 def test_prompt_templates_on_the_fly():
-    with patch("haystack.nodes.prompt.prompt_template.yaml") as mocked_yaml:
-        with patch("haystack.nodes.prompt.prompt_template.prompthub") as mocked_ph:
-            p = PromptTemplate("This is a test prompt. Use your knowledge to answer this question: {question}")
-            assert p.name == "custom-at-query-time"
-            mocked_ph.fetch.assert_not_called()
-            mocked_yaml.safe_load.assert_not_called()
+    with patch("haystack.nodes.prompt.prompt_template.yaml") as mocked_yaml, patch(
+        "haystack.nodes.prompt.prompt_template.prompthub"
+    ) as mocked_ph:
+        p = PromptTemplate("This is a test prompt. Use your knowledge to answer this question: {question}")
+        assert p.name == "custom-at-query-time"
+        mocked_ph.fetch.assert_not_called()
+        mocked_yaml.safe_load.assert_not_called()
 
 
 @pytest.mark.unit

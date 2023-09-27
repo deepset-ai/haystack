@@ -38,7 +38,7 @@ def test_supports_correct_model_names():
 
 @pytest.mark.unit
 def test_does_not_support_wrong_model_names():
-    for model_name in ["got-3.5-turbo", "wrong_model_name"]:
+    for model_name in ["got-3.5-turbo", "wrong_model_name", "gpt-3.5-turbo-instruct"]:
         assert not ChatGPTInvocationLayer.supports(model_name)
 
 
