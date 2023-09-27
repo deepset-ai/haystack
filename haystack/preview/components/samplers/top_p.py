@@ -77,6 +77,7 @@ class TopPSampler:
     def warm_up(self):
         if self.model_name_or_path and (self.model is None and self.tokenizer is None):
             self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name_or_path)
+            self.model = self.model.to(self.device)
             self.model.eval()
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
 
@@ -111,29 +112,34 @@ class TopPSampler:
         set during TopPSampler initialization is used.
         :return: List of Documents sorted by (desc.) similarity with the query.
         """
-        if top_p is None:
-            top_p = self.top_p if self.top_p else 1.0
-
         if not documents:
-            return []
+            return {"documents": []}
 
-        if self.model_name_or_path and self.model is None:
+        top_p = top_p or self.top_p or 1.0  # default to 1.0 if both are None
+
+        if not 0 <= top_p <= 1:
+            raise ComponentError(f"top_p must be between 0 and 1. Got {top_p}.")
+
+        # If a model path is provided but the model isn't loaded
+        if self.model_name_or_path and not self.has_scoring_model():
             raise ComponentError(
                 f"The component {self.__class__.__name__} not warmed up. Run 'warm_up()' before calling 'run()'."
             )
-        if not self.model_name_or_path and not self.has_scores(documents):
+
+        # If no model is provided, ensure documents have pre-computed scores
+        if not self.model_name_or_path and not self.have_scores(documents):
             raise ComponentError(
-                f"The component {self.__class__.__name__} requires scores in the documents' metadata. "
-                f"Either set 'model_name_or_path' to scored documents or add scores to the documents."
+                f"The component {self.__class__.__name__} requires similarity scores in the documents' metadata. "
+                "Either set 'model_name_or_path' to score documents or add scores to the documents."
             )
 
-        needs_scoring = self.model_name_or_path and not self.has_scores(documents)
-        if needs_scoring:
-            # prepare the data for the model
+        docs_need_scoring = self.has_scoring_model() and not self.have_scores(documents)
+        if docs_need_scoring:
             query_doc_pairs = [[query, doc.text] for doc in documents]
-            features = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt")
-
-            with torch.no_grad():
+            features = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(
+                self.device
+            )
+            with torch.inference_mode():
                 similarity_scores = self.model(**features).logits.squeeze()
         else:
             similarity_scores = torch.tensor(self.collect_scores(documents), dtype=torch.float32)
@@ -159,7 +165,7 @@ class TopPSampler:
             selected_docs = [documents[highest_prob_indices[0].item()]]
 
         # Include prob scores in the results
-        if self.score_field and needs_scoring:
+        if self.score_field and docs_need_scoring:
             for idx, doc in enumerate(selected_docs):
                 doc.metadata[self.score_field] = str(sorted_probs[idx].item())
 
@@ -173,10 +179,17 @@ class TopPSampler:
         """
         return [d.metadata[self.score_field] for d in documents]
 
-    def has_scores(self, documents: List[Document]) -> bool:
+    def have_scores(self, documents: List[Document]) -> bool:
         """
         Check if the documents have scores in their metadata.
         :param documents: List of Documents.
         :return: True if the documents have scores in their metadata, False otherwise.
         """
         return all(self.score_field in d.metadata for d in documents)
+
+    def has_scoring_model(self) -> bool:
+        """
+        Check if the component has a scoring model.
+        :return: True if the component has a scoring model, False otherwise.
+        """
+        return self.model is not None and self.tokenizer is not None

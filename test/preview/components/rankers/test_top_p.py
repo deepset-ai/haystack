@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.preview import Document
+from haystack.preview import Document, ComponentError
 from haystack.preview.components.samplers.top_p import TopPSampler
 
 
@@ -79,3 +79,44 @@ class TestTopP:
         docs = output["documents"]
         assert len(docs) == 1
         assert docs[0].text == "Sarajevo"
+
+    #  Returns an empty list if no documents are provided
+    @pytest.mark.integration
+    def test_returns_empty_list_if_no_documents_are_provided(self):
+        sampler = TopPSampler()
+        sampler.warm_up()
+        output = sampler.run(query="City in Germany", documents=[])
+        assert output["documents"] == []
+
+    #  Raises ComponentError if model is not warmed up
+    @pytest.mark.integration
+    def test_raises_component_error_if_model_not_warmed_up(self):
+        sampler = TopPSampler()
+
+        with pytest.raises(ComponentError):
+            sampler.run(query="query", documents=[Document(text="document")])
+
+    #  Raises ComponentError if model_name_or_path is not set and documents do not have scores
+    @pytest.mark.integration
+    def test_raises_component_error_if_model_name_or_path_not_set_and_documents_do_not_have_scores(self):
+        sampler = TopPSampler(model_name_or_path=None)
+        sampler.warm_up()
+        docs = [Document(text="Paris"), Document(text="Berlin")]
+        query = "City in Germany"
+
+        with pytest.raises(ComponentError):
+            sampler.run(query=query, documents=docs)
+
+    #  Returns at least one document if top_p is set to 0
+    @pytest.mark.integration
+    def test_returns_at_least_one_document_if_top_p_is_set_to_0(self):
+        sampler = TopPSampler(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", top_p=0)
+        sampler.warm_up()
+
+        docs = [Document(text="Paris"), Document(text="Berlin")]
+        query = "City in Germany"
+        output = sampler.run(query=query, documents=docs)
+        filtered_docs = output["documents"]
+
+        # Assert that at least one document is returned
+        assert len(filtered_docs) >= 1
