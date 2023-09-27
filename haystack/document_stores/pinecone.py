@@ -352,7 +352,11 @@ class PineconeDocumentStore(BaseDocumentStore):
         # Due to missing support for metadata filtering in `describe_index_stats()` method for `gcp-starter`,
         # use dummy query for getting vector count
         res = self.pinecone_indexes[index].query(
-            self.dummy_query, top_k=self.top_k_limit, include_values=False, include_metadata=False, filter=filters
+            self.dummy_query,
+            top_k=self.top_k_limit,
+            include_values=False,
+            include_metadata=False,
+            filter=pinecone_syntax_filter,
         )
         vector_count = len(res["matches"])
         if vector_count >= self.top_k_limit:
