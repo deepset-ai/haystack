@@ -1,4 +1,4 @@
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods,too-many-lines
 
 from __future__ import annotations
 
@@ -468,6 +468,18 @@ class Pipeline:
     def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
         return self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
 
+    async def _arun_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
+        node = self.graph.nodes[node_id]["component"]
+        # If a component has a `arun` method, prefer that one over `run`
+        if hasattr(node, "arun") and callable(node.arun):
+            run_method = node.arun
+        else:
+            # note this might or might not be async, but `_adispatch_run_general`
+            # will work in both cases. This is a safe fall-back.
+            run_method = node.run
+
+        return await node._adispatch_run_general(run_method, **node_input)
+
     def run(  # type: ignore
         self,
         query: Optional[str] = None,
@@ -553,6 +565,144 @@ class Pipeline:
                     logger.debug("Running node '%s` with input: %s", node_id, node_input)
                     start = time()
                     node_output, stream_id = self._run_node(node_id, node_input)
+                    if "_debug" in node_output and node_id in node_output["_debug"]:
+                        node_output["_debug"][node_id]["exec_time_ms"] = round((time() - start) * 1000, 2)
+                except Exception as e:
+                    # The input might be a really large object with thousands of embeddings.
+                    # If you really want to see it, raise the log level.
+                    logger.debug("Exception while running node '%s' with input %s", node_id, node_input)
+                    raise Exception(
+                        f"Exception while running node '{node_id}': {e}\nEnable debug logging to see the data that was passed when the pipeline failed."
+                    ) from e
+                queue.pop(node_id)
+                #
+                if stream_id == "split":
+                    for stream_id in [key for key in node_output.keys() if key.startswith("output_")]:
+                        current_node_output = {k: v for k, v in node_output.items() if not k.startswith("output_")}
+                        current_docs = node_output.pop(stream_id)
+                        current_node_output["documents"] = current_docs
+                        next_nodes = self.get_next_nodes(node_id, stream_id)
+                        for n in next_nodes:
+                            queue[n] = current_node_output
+                else:
+                    next_nodes = self.get_next_nodes(node_id, stream_id)
+                    for n in next_nodes:  # add successor nodes with corresponding inputs to the queue
+                        if queue.get(n):  # concatenate inputs if it's a join node
+                            existing_input = queue[n]
+                            if "inputs" not in existing_input.keys():
+                                updated_input: dict = {"inputs": [existing_input, node_output], "params": params}
+                                if "_debug" in existing_input.keys() or "_debug" in node_output.keys():
+                                    updated_input["_debug"] = {
+                                        **existing_input.get("_debug", {}),
+                                        **node_output.get("_debug", {}),
+                                    }
+                                if query:
+                                    updated_input["query"] = query
+                                if file_paths:
+                                    updated_input["file_paths"] = file_paths
+                                if labels:
+                                    updated_input["labels"] = labels
+                                if documents:
+                                    updated_input["documents"] = documents
+                                if meta:
+                                    updated_input["meta"] = meta
+                            else:
+                                existing_input["inputs"].append(node_output)
+                                updated_input = existing_input
+                            queue[n] = updated_input
+                        else:
+                            queue[n] = node_output
+                i = 0
+            else:
+                i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
+
+        return node_output
+
+    async def _arun(  # noqa: C901,PLR0912 type: ignore
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[Union[dict, List[dict]]] = None,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None,
+    ):
+        """
+        Runs the Pipeline, one node at a time.
+
+        :param query: The search query (for query pipelines only).
+        :param file_paths: The files to index (for indexing pipelines only).
+        :param labels: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
+        :param documents: A list of Document objects to be processed by the Pipeline Nodes.
+        :param meta: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
+        :param params: A dictionary of parameters that you want to pass to the nodes.
+                       To pass a parameter to all Nodes, use: `{"top_k": 10}`.
+                       To pass a parameter to targeted Nodes, run:
+                        `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
+        :param debug: Specifies whether the Pipeline should instruct Nodes to collect debug information
+                      about their execution. By default, this information includes the input parameters
+                      the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
+        """
+        self.runs += 1
+
+        send_pipeline_event(
+            pipeline=self,
+            query=query,
+            file_paths=file_paths,
+            labels=labels,
+            documents=documents,
+            meta=meta,
+            params=params,
+            debug=debug,
+        )
+
+        # validate the node names
+        self._validate_node_names_in_params(params=params)
+
+        root_node = self.root_node
+        if not root_node:
+            raise PipelineError("Cannot run a pipeline with no nodes.")
+
+        node_output = None
+        queue: Dict[str, Any] = {
+            root_node: {"root_node": root_node, "params": params}
+        }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
+        if query is not None:
+            queue[root_node]["query"] = query
+        if file_paths:
+            queue[root_node]["file_paths"] = file_paths
+        if labels:
+            queue[root_node]["labels"] = labels
+        if documents:
+            queue[root_node]["documents"] = documents
+        if meta:
+            queue[root_node]["meta"] = meta
+
+        i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
+        while queue:
+            node_id = list(queue.keys())[i]
+            node_input = queue[node_id]
+            node_input["node_id"] = node_id
+
+            # Apply debug attributes to the node input params
+            # NOTE: global debug attributes will override the value specified
+            # in each node's params dictionary.
+            if debug is None and node_input and node_input.get("params", {}):
+                debug = params.get("debug", None)  # type: ignore
+            if debug is not None:
+                if not node_input.get("params", None):
+                    node_input["params"] = {}
+                if node_id not in node_input["params"].keys():
+                    node_input["params"][node_id] = {}
+                node_input["params"][node_id]["debug"] = debug
+
+            predecessors = set(nx.ancestors(self.graph, node_id))
+            if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
+                try:
+                    logger.debug("Running node '%s` with input: %s", node_id, node_input)
+                    start = time()
+                    node_output, stream_id = await self._arun_node(node_id, node_input)
                     if "_debug" in node_output and node_id in node_output["_debug"]:
                         node_output["_debug"][node_id]["exec_time_ms"] = round((time() - start) * 1000, 2)
                 except Exception as e:
