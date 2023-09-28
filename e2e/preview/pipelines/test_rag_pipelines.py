@@ -15,7 +15,7 @@ from haystack.preview.components.builders.prompt_builder import PromptBuilder
     not os.environ.get("OPENAI_API_KEY", None),
     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
-def test_bm25_rag_pipeline():
+def test_bm25_rag_pipeline(tmp_path):
     document_store = MemoryDocumentStore()
 
     documents = [
@@ -47,6 +47,11 @@ def test_bm25_rag_pipeline():
     rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
     rag_pipeline.connect("retriever", "answer_builder.documents")
 
+    rag_pipeline.draw(tmp_path / "test_bm25_rag_pipeline.png")
+
+    serialized_pipeline = rag_pipeline.to_dict()
+    rag_pipeline = Pipeline.from_dict(serialized_pipeline)
+
     questions = ["Who lives in Paris?", "Who lives in Berlin?", "Who lives in Rome?"]
     answers_spywords = ["Jean", "Mark", "Giorgio"]
 
@@ -71,7 +76,7 @@ def test_bm25_rag_pipeline():
     not os.environ.get("OPENAI_API_KEY", None),
     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
-def test_embedding_retrieval_rag_pipeline():
+def test_embedding_retrieval_rag_pipeline(tmp_path):
     document_store = MemoryDocumentStore()
 
     documents = [
@@ -114,6 +119,11 @@ def test_embedding_retrieval_rag_pipeline():
     rag_pipeline.connect("llm.replies", "answer_builder.replies")
     rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
     rag_pipeline.connect("retriever", "answer_builder.documents")
+
+    rag_pipeline.draw(tmp_path / "test_embedding_rag_pipeline.png")
+
+    serialized_pipeline = rag_pipeline.to_dict()
+    rag_pipeline = Pipeline.from_dict(serialized_pipeline)
 
     questions = ["Who lives in Paris?", "Who lives in Berlin?", "Who lives in Rome?"]
     answers_spywords = ["Jean", "Mark", "Giorgio"]

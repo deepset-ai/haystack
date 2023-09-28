@@ -4,7 +4,7 @@ from haystack.preview.components.retrievers import MemoryBM25Retriever
 from haystack.preview.components.readers import ExtractiveReader
 
 
-def test_extractive_qa_pipeline():
+def test_extractive_qa_pipeline(tmp_path):
     document_store = MemoryDocumentStore()
 
     documents = [
@@ -19,6 +19,11 @@ def test_extractive_qa_pipeline():
     qa_pipeline.add_component(instance=MemoryBM25Retriever(document_store=document_store), name="retriever")
     qa_pipeline.add_component(instance=ExtractiveReader(model_name_or_path="deepset/tinyroberta-squad2"), name="reader")
     qa_pipeline.connect("retriever", "reader")
+
+    qa_pipeline.draw(tmp_path / "test_extractive_qa_pipeline.png")
+
+    serialized_pipeline = qa_pipeline.to_dict()
+    qa_pipeline = Pipeline.from_dict(serialized_pipeline)
 
     questions = ["Who lives in Paris?", "Who lives in Berlin?", "Who lives in Rome?"]
     answers_spywords = ["Jean", "Mark", "Giorgio"]
