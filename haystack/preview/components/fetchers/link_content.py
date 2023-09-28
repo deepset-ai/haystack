@@ -1,17 +1,17 @@
 import io
 import logging
 from collections import defaultdict
-from datetime import datetime
-from typing import Optional, Dict, List, Callable, Any, IO
+from concurrent.futures import ThreadPoolExecutor
+from typing import Optional, Dict, List, Callable, Any, Tuple
 
 import requests
 from requests import Response
 from requests.exceptions import HTTPError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryCallState
-from haystack.preview import component, default_from_dict, default_to_dict
 
 from haystack import __version__
-from haystack.preview import Document
+from haystack.preview import component, default_from_dict, default_to_dict
+from haystack.preview.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
 
@@ -26,20 +26,20 @@ REQUEST_HEADERS = {
 }
 
 
-def text_content_handler(response: Response) -> Dict[str, str]:
+def text_content_handler(response: Response) -> ByteStream:
     """
     :param response: Response object from the request.
     :return: The extracted text.
     """
-    return {"text": response.text}
+    return ByteStream.from_string(response.text)
 
 
-def binary_content_handler(response: Response) -> Dict[str, IO[bytes]]:
+def binary_content_handler(response: Response) -> ByteStream:
     """
     :param response: Response object from the request.
     :return: The extracted binary file-like object.
     """
-    return {"blob": io.BytesIO(response.content)}
+    return ByteStream(data=response.content)
 
 
 @component
@@ -73,7 +73,7 @@ class LinkContentFetcher:
         self.timeout = timeout
 
         # register default content handlers that extract data from the response
-        self.handlers: Dict[str, Callable[[Response], Dict[str, Any]]] = defaultdict(lambda: text_content_handler)
+        self.handlers: Dict[str, Callable[[Response], ByteStream]] = defaultdict(lambda: text_content_handler)
         self.handlers["text/html"] = text_content_handler
         self.handlers["text/plain"] = text_content_handler
         self.handlers["application/pdf"] = binary_content_handler
@@ -116,33 +116,51 @@ class LinkContentFetcher:
         """
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=Optional[Document])
-    def run(self, url: str):
+    @component.output_types(streams=Dict[str, List[io.BytesIO]])
+    def run(self, urls: List[str]):
+        streams: Dict[str, List[ByteStream]] = defaultdict(list)
+        if not urls:
+            return {"streams": streams}
+
+        # don't use multithreading if there's only one URL
+        if len(urls) == 1:
+            content_type, stream = self.fetch(urls[0])
+            if content_type and stream:
+                streams[content_type].append(stream)
+        else:
+            with ThreadPoolExecutor() as executor:
+                results = executor.map(self.fetch, urls)
+
+            for content_type, stream in results:
+                if content_type and stream:
+                    streams[content_type].append(stream)
+
+        return {"streams": streams}
+
+    def fetch(self, url: str) -> Tuple[str, ByteStream]:
         """
         Fetches content from a URL and converts it to a Document objects. If no content is extracted,
         an empty Document object is returned (if raise_on_failure is False).
 
         :param url: URL to fetch content from.
-        :param timeout: Timeout in seconds for the request.
-        :return: List of Document objects or an empty list if no content is extracted.
+        :return: A tuple containing the content type and the corresponding ByteStream
         """
-        document_data: Dict[str, Any] = {"metadata": {"url": url, "timestamp": int(datetime.utcnow().timestamp())}}
+        content_type: str = "text/html"
+        stream: ByteStream = ByteStream(data=b"")
         try:
             response = self._get_response(url)
             content_type = self._get_content_type(response)
-            document_data["mime_type"] = content_type
             handler: Callable = self.handlers[content_type]
-            document_data.update(handler(response))
-            return {"document": Document(**document_data)}
-
+            stream = handler(response)
         except Exception as e:
             if self.raise_on_failure:
                 raise e
             logger.debug("Couldn't retrieve content from %s", url)
-            return {"document": None}
 
         finally:
             self.current_user_agent_idx = 0
+
+        return content_type, stream
 
     def _get_content_type(self, response: Response):
         """
