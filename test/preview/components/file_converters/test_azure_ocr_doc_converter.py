@@ -63,10 +63,8 @@ class TestAzureOCRDocumentConverter:
             }
 
     @pytest.mark.integration
-    @pytest.mark.skipif(
-        "CORE_AZURE_CS_ENDPOINT" not in os.environ and "CORE_AZURE_CS_API_KEY" not in os.environ,
-        reason="Azure credentials not available",
-    )
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
     def test_run_with_pdf_file(self, preview_samples_path):
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=os.environ["CORE_AZURE_CS_API_KEY"]
@@ -79,10 +77,8 @@ class TestAzureOCRDocumentConverter:
         assert "Page 4 of Sample PDF" in documents[0].text
 
     @pytest.mark.integration
-    @pytest.mark.skipif(
-        "CORE_AZURE_CS_ENDPOINT" not in os.environ and "CORE_AZURE_CS_API_KEY" not in os.environ,
-        reason="Azure credentials not available",
-    )
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
     def test_with_image_file(self, preview_samples_path):
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=os.environ["CORE_AZURE_CS_API_KEY"]
@@ -94,10 +90,8 @@ class TestAzureOCRDocumentConverter:
         assert "by deepset" in documents[0].text
 
     @pytest.mark.integration
-    @pytest.mark.skipif(
-        "CORE_AZURE_CS_ENDPOINT" not in os.environ and "CORE_AZURE_CS_API_KEY" not in os.environ,
-        reason="Azure credentials not available",
-    )
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
     def test_run_with_docx_file(self, preview_samples_path):
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=os.environ["CORE_AZURE_CS_API_KEY"]
