@@ -42,7 +42,7 @@ class AnswerBuilder:
         self,
         query: str,
         replies: List[str],
-        metadata: List[Dict[str, Any]],
+        metadata: Optional[List[Dict[str, Any]]] = None,
         documents: Optional[List[Document]] = None,
         pattern: Optional[str] = None,
         reference_pattern: Optional[str] = None,
@@ -73,8 +73,11 @@ class AnswerBuilder:
                                   If not specified, no parsing is done, and all documents are referenced.
                                   Default: `None`.
         """
-        if len(replies) != len(metadata):
+        if not metadata:
+            metadata = [{}] * len(replies)
+        elif len(replies) != len(metadata):
             raise ValueError(f"Number of replies ({len(replies)}), and metadata ({len(metadata)}) must match.")
+
         if pattern:
             AnswerBuilder._check_num_groups_in_regex(pattern)
 
