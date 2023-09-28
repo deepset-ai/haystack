@@ -52,7 +52,8 @@ class AnswerBuilder:
 
         :param query: The query used in the prompts for the Generator. A strings.
         :param replies: The output of the Generator. A list of strings.
-        :param metadata: The metadata returned by the Generator. A list of dictionaries.
+        :param metadata: The metadata returned by the Generator. An optional list of dictionaries. If not specified,
+                            the generated answer will contain no metadata.
         :param documents: The documents used as input to the Generator. A list of `Document` objects. If
                           `documents` are specified, they are added to the `Answer` objects.
                           If both `documents` and `reference_pattern` are specified, the documents referenced in the
