@@ -29,7 +29,8 @@ class OpenAIDocumentEmbedder:
     ):
         """
         Create a OpenAIDocumentEmbedder component.
-        :param api_key: The OpenAI API key.
+        :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
+                        environment variable OPENAI_API_KEY (recommended).
         :param model_name: The name of the model to use.
         :param api_base_url: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
         :param organization: The OpenAI-Organization ID, defaults to `None`. For more details, see OpenAI
@@ -144,7 +145,7 @@ class OpenAIDocumentEmbedder:
 
         :param documents: A list of Documents to embed.
         """
-        if not isinstance(documents, list) or (len(documents) > 0 and not isinstance(documents[0], Document)):
+        if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
                 "OpenAIDocumentEmbedder expects a list of Documents as input."
                 "In case you want to embed a string, please use the OpenAITextEmbedder."

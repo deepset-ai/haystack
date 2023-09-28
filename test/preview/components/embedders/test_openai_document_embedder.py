@@ -323,7 +323,12 @@ class TestOpenAIDocumentEmbedder:
         with pytest.raises(TypeError, match="OpenAIDocumentEmbedder expects a list of Documents as input"):
             embedder.run(documents=list_integers_input)
 
-        # empty list is ok
+    @pytest.mark.unit
+    def test_run_on_empty_list(self):
+        embedder = OpenAIDocumentEmbedder(api_key="fake-api-key")
+
         empty_list_input = []
         result = embedder.run(documents=empty_list_input)
-        assert result is not None
+
+        assert result["documents"] is not None
+        assert not result["documents"]  # empty list
