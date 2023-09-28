@@ -1,4 +1,5 @@
 import os
+import json
 import pytest
 
 from haystack.preview import Pipeline, Document
@@ -16,6 +17,7 @@ from haystack.preview.components.builders.prompt_builder import PromptBuilder
     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
 def test_bm25_rag_pipeline(tmp_path):
+    # Create the RAG pipeline
     prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
@@ -36,12 +38,18 @@ def test_bm25_rag_pipeline(tmp_path):
     rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
     rag_pipeline.connect("retriever", "answer_builder.documents")
 
+    # Draw the pipeline
     rag_pipeline.draw(tmp_path / "test_bm25_rag_pipeline.png")
 
-    # TODO write to JSON to make sure it's actually serializable
-    serialized_pipeline = rag_pipeline.to_dict()
-    rag_pipeline = Pipeline.from_dict(serialized_pipeline)
+    # Serialize the pipeline to JSON
+    with open(tmp_path / "test_bm25_rag_pipeline.json", "w") as f:
+        json.dump(rag_pipeline.to_dict(), f)
 
+    # Load the pipeline back
+    with open(tmp_path / "test_bm25_rag_pipeline.json", "r") as f:
+        rag_pipeline = Pipeline.from_dict(json.load(f))
+
+    # Populate the document store
     documents = [
         Document(text="My name is Jean and I live in Paris."),
         Document(text="My name is Mark and I live in Berlin."),
@@ -49,6 +57,7 @@ def test_bm25_rag_pipeline(tmp_path):
     ]
     rag_pipeline.get_component("retriever").document_store.write_documents(documents)
 
+    # Query and assert
     questions = ["Who lives in Paris?", "Who lives in Berlin?", "Who lives in Rome?"]
     answers_spywords = ["Jean", "Mark", "Giorgio"]
 
@@ -74,6 +83,7 @@ def test_bm25_rag_pipeline(tmp_path):
     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
 def test_embedding_retrieval_rag_pipeline(tmp_path):
+    # Create the RAG pipeline
     prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
@@ -101,12 +111,18 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
     rag_pipeline.connect("retriever", "answer_builder.documents")
 
+    # Draw the pipeline
     rag_pipeline.draw(tmp_path / "test_embedding_rag_pipeline.png")
 
-    # TODO write to JSON to make sure it's actually serializable
-    serialized_pipeline = rag_pipeline.to_dict()
-    rag_pipeline = Pipeline.from_dict(serialized_pipeline)
+    # Serialize the pipeline to JSON
+    with open(tmp_path / "test_bm25_rag_pipeline.json", "w") as f:
+        json.dump(rag_pipeline.to_dict(), f)
 
+    # Load the pipeline back
+    with open(tmp_path / "test_bm25_rag_pipeline.json", "r") as f:
+        rag_pipeline = Pipeline.from_dict(json.load(f))
+
+    # Populate the document store
     documents = [
         Document(text="My name is Jean and I live in Paris."),
         Document(text="My name is Mark and I live in Berlin."),
@@ -122,6 +138,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     indexing_pipeline.connect("document_embedder", "document_writer")
     indexing_pipeline.run({"document_embedder": {"documents": documents}})
 
+    # Query and assert
     questions = ["Who lives in Paris?", "Who lives in Berlin?", "Who lives in Rome?"]
     answers_spywords = ["Jean", "Mark", "Giorgio"]
 
