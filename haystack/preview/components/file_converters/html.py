@@ -64,7 +64,7 @@ class HTMLToDocument:
                 logger.warning("Could not extract raw txt from %s. Skipping it. Error message: %s", path, conversion_e)
                 continue
 
-            document = Document(text=text)
+            document = Document(text=text, id_hash_keys=self.id_hash_keys)
             documents.append(document)
 
         return {"documents": documents}
