@@ -20,7 +20,7 @@ env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
-  e2e:
+  run:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
