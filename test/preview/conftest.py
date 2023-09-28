@@ -1,6 +1,10 @@
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 import pytest
+
+from haystack.preview.testing.test_utils import set_all_seeds
+
+set_all_seeds(0)
 
 
 @pytest.fixture()

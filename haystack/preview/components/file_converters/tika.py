@@ -6,7 +6,7 @@ from haystack.preview.lazy_imports import LazyImport
 from haystack.preview import component, Document, default_to_dict, default_from_dict
 
 
-with LazyImport("Run 'pip install farm-haystack[file-conversion]' or 'pip install tika'") as tika_import:
+with LazyImport("Run 'pip install tika'") as tika_import:
     from tika import parser as tika_parser
 
 logger = logging.getLogger(__name__)
