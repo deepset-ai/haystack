@@ -13,7 +13,7 @@ on:
       - ready_for_review
     paths:
       - "e2e/**/*.py"
-      - "!e2e/preview/**/*.py"
+      - "!e2e/preview/**/*.py"   # See e2e_preview.yml
       - ".github/workflows/e2e.yml"
 
 env:
