@@ -5,18 +5,8 @@ from haystack.preview.components.readers import ExtractiveReader
 
 
 def test_extractive_qa_pipeline(tmp_path):
-    document_store = MemoryDocumentStore()
-
-    documents = [
-        Document(text="My name is Jean and I live in Paris."),
-        Document(text="My name is Mark and I live in Berlin."),
-        Document(text="My name is Giorgio and I live in Rome."),
-    ]
-
-    document_store.write_documents(documents)
-
     qa_pipeline = Pipeline()
-    qa_pipeline.add_component(instance=MemoryBM25Retriever(document_store=document_store), name="retriever")
+    qa_pipeline.add_component(instance=MemoryBM25Retriever(document_store=MemoryDocumentStore()), name="retriever")
     qa_pipeline.add_component(instance=ExtractiveReader(model_name_or_path="deepset/tinyroberta-squad2"), name="reader")
     qa_pipeline.connect("retriever", "reader")
 
@@ -25,6 +15,13 @@ def test_extractive_qa_pipeline(tmp_path):
     # TODO write to JSON to make sure it's actually serializable
     serialized_pipeline = qa_pipeline.to_dict()
     qa_pipeline = Pipeline.from_dict(serialized_pipeline)
+
+    documents = [
+        Document(text="My name is Jean and I live in Paris."),
+        Document(text="My name is Mark and I live in Berlin."),
+        Document(text="My name is Giorgio and I live in Rome."),
+    ]
+    qa_pipeline.get_component("retriever").document_store.write_documents(documents)
 
     questions = ["Who lives in Paris?", "Who lives in Berlin?", "Who lives in Rome?"]
     answers_spywords = ["Jean", "Mark", "Giorgio"]
