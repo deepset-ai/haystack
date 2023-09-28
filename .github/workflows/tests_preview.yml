@@ -179,6 +179,7 @@ jobs:
         run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       # Services are unavailable on Windows: must run the container manually
+      # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idservices
       - name: Run Tika
         run: docker run -p 9998:9998 apache/tika:1.28.4
 
