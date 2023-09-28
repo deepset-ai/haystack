@@ -42,15 +42,13 @@ class HTMLToDocument:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
-    def run(self, paths: List[Union[str, Path]], id_hash_keys: Optional[List[str]] = None):
+    def run(self, paths: List[Union[str, Path]]):
         """
         Convert HTML files to Documents.
 
         :param paths: A list of paths to HTML files.
-        :param id_hash_keys: Generate the Document ID from a custom list of strings that refer to the Document's
-            attributes. Default: `None`
+        :return: A list of Documents.
         """
-        id_hash_keys = id_hash_keys or self.id_hash_keys
         documents = []
         extractor = extractors.ArticleExtractor(raise_on_failure=False)
         for path in paths:
@@ -66,7 +64,7 @@ class HTMLToDocument:
                 logger.warning("Could not extract raw txt from %s. Skipping it. Error message: %s", path, conversion_e)
                 continue
 
-            document = Document(text=text, id_hash_keys=id_hash_keys)
+            document = Document(text=text)
             documents.append(document)
 
         return {"documents": documents}
