@@ -114,7 +114,6 @@ jobs:
           - nodes
           - agents
           - cli
-          - preview
           - prompt
           - pipelines
           - utils
@@ -151,6 +150,70 @@ jobs:
         with:
           path-to-lcov: coverage.xml
           flag-name: ${{ matrix.topic }}
+          parallel: true
+
+      - name: Calculate alert data
+        id: calculator
+        shell: bash
+        if: (success() || failure()) && github.ref_name == 'main'
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
+
+      - name: Send event to Datadog
+        if: (success() || failure()) && github.ref_name == 'main'
+        uses: masci/datadog@v1
+        with:
+          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-url: https://api.datadoghq.eu
+          events: |
+            - title: "${{ github.workflow }} workflow"
+              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
+              alert_type: "${{ steps.calculator.outputs.alert_type }}"
+              source_type_name: "Github"
+              host: ${{ github.repository_owner }}
+              tags:
+                - "project:${{ github.repository }}"
+                - "job:${{ github.job }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
+                - "branch:${{ github.ref_name }}"
+                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  unit-tests-preview:
+    name: Unit / preview / ${{ matrix.os }}
+    needs: black
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Haystack
+        run: pip install .[preview,dev] langdetect transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0 pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
+
+      - name: Run
+        run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/preview
+
+      - name: Coveralls Parallel
+        # We upload only coverage for ubuntu as handling both os
+        # complicates the workflow too much for little to no gain
+        if: matrix.os == 'ubuntu-latest'
+        uses: coverallsapp/github-action@v2
+        with:
+          path-to-lcov: coverage.xml
+          flag-name: preview
           parallel: true
 
       - name: Calculate alert data
@@ -838,6 +901,9 @@ jobs:
         image: apache/tika:2.9.0.0
         ports:
           - 9998:9998
+    env:
+      CORE_AZURE_CS_ENDPOINT: ${{ secrets.CORE_AZURE_CS_ENDPOINT }}
+      CORE_AZURE_CS_API_KEY: ${{ secrets.CORE_AZURE_CS_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -852,8 +918,7 @@ jobs:
           sudo apt install ffmpeg  # for local Whisper tests
 
       - name: Install Haystack
-        # FIXME Use haystack-ai dependency list
-        run: pip install .[dev,inference,file-conversion] langdetect
+        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run tests
         run: |

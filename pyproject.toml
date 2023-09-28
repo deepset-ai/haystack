@@ -78,13 +78,6 @@ dependencies = [
   # Schema validation
   "jsonschema",
 
-  # Preview
-  "canals==0.8.0",
-  "openai",
-  "Jinja2",
-  "openai-whisper",  # FIXME https://github.com/deepset-ai/haystack/issues/5731
-  "pypdf",
-
   # Agent events
   "events",
 
@@ -92,6 +85,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+preview = [
+  "canals==0.8.0",
+  "requests",
+  "pandas",
+  "rank_bm25",
+  "tqdm",
+  "tenacity",
+  "lazy-imports",
+
+  "Jinja2",
+  "openai",
+]
 inference = [
   "transformers[torch,sentencepiece]==4.32.1",
   "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
@@ -192,6 +197,9 @@ onnx-gpu = [
 metrics = [  # for metrics
   "scipy>=1.3.2",
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
+  # Pin setuptools_scm to prevent errors in Windows tests while installing seqeval
+  # https://github.com/deepset-ai/haystack/issues/5889
+  "setuptools_scm<8.0; platform_system == 'Windows'",
   "seqeval",
   "mlflow",
 ]
@@ -240,11 +248,11 @@ formatting = [
 ]
 
 all = [
-  "farm-haystack[inference,docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws]",
+  "farm-haystack[inference,docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,preview]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[inference,docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics,aws]",
+  "farm-haystack[inference,docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics,aws,preview]",
 ]
 
 [project.scripts]

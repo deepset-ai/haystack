@@ -6,7 +6,9 @@ import warnings
 from haystack.preview import component, default_from_dict, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
 
-with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+with LazyImport(
+    "Run 'pip install transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0'"
+) as torch_and_transformers_import:
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
     from tokenizers import Encoding
     import torch
