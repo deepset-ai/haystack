@@ -37,6 +37,20 @@ class TestHTMLToDocument:
         assert "Haystack" in docs[0].text
 
     @pytest.mark.unit
+    def test_run_wrong_file_type(self, preview_samples_path, caplog):
+        """
+        Test if the component runs correctly when an input file is not of the expected type.
+        """
+        paths = [preview_samples_path / "audio" / "answer.wav"]
+        converter = HTMLToDocument()
+        with caplog.at_level(logging.WARNING):
+            output = converter.run(paths=paths)
+            assert "codec can't decode byte" in caplog.text
+
+        docs = output["documents"]
+        assert docs == []
+
+    @pytest.mark.unit
     def test_run_error_handling(self, preview_samples_path, caplog):
         """
         Test if the component correctly handles errors.
@@ -44,5 +58,6 @@ class TestHTMLToDocument:
         paths = ["non_existing_file.html"]
         converter = HTMLToDocument()
         with caplog.at_level(logging.WARNING):
-            converter.run(paths=paths)
+            result = converter.run(paths=paths)
             assert "Could not read file non_existing_file.html" in caplog.text
+            assert result["documents"] == []
