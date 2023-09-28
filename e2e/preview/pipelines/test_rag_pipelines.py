@@ -49,6 +49,7 @@ def test_bm25_rag_pipeline(tmp_path):
 
     rag_pipeline.draw(tmp_path / "test_bm25_rag_pipeline.png")
 
+    # TODO write to JSON to make sure it's actually serializable
     serialized_pipeline = rag_pipeline.to_dict()
     rag_pipeline = Pipeline.from_dict(serialized_pipeline)
 
@@ -122,6 +123,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
 
     rag_pipeline.draw(tmp_path / "test_embedding_rag_pipeline.png")
 
+    # TODO write to JSON to make sure it's actually serializable
     serialized_pipeline = rag_pipeline.to_dict()
     rag_pipeline = Pipeline.from_dict(serialized_pipeline)
 

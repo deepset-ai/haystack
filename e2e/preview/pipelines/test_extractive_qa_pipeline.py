@@ -22,6 +22,7 @@ def test_extractive_qa_pipeline(tmp_path):
 
     qa_pipeline.draw(tmp_path / "test_extractive_qa_pipeline.png")
 
+    # TODO write to JSON to make sure it's actually serializable
     serialized_pipeline = qa_pipeline.to_dict()
     qa_pipeline = Pipeline.from_dict(serialized_pipeline)
 
