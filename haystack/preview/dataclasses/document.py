@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentEncoder(json.JSONEncoder):
-    """
-    Encodes more exotic datatypes like pandas dataframes or file paths.
-    """
+    """Encodes more exotic datatypes like pandas dataframes or file paths."""
 
     def default(self, obj):
         if isinstance(obj, numpy.ndarray):
