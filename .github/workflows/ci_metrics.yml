@@ -4,8 +4,10 @@ on:
   workflow_run:
     workflows:
       - "end-to-end"
+      - "end-to-end (Preview)"
       - "Linting"
       - "Tests"
+      - "Tests (Preview)"
       - "REST API Tests"
     types:
       - completed

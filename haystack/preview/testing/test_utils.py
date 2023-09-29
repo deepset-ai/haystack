@@ -1,7 +1,10 @@
 import os
 import random
+import logging
 import numpy as np
-import torch
+
+
+logger = logging.getLogger(__name__)
 
 
 def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
@@ -16,9 +19,16 @@ def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
     """
     random.seed(seed)
     np.random.seed(seed)
-    torch.manual_seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
-    torch.cuda.manual_seed_all(seed)
-    if deterministic_cudnn:
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+
+    try:
+        import torch
+
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        if deterministic_cudnn:
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+
+    except (ImportError, ModuleNotFoundError) as exc:
+        logger.info("Could not set PyTorch seed because torch is not installed. Exception: %s", exc)
