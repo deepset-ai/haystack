@@ -1,18 +1,15 @@
 import os
 import logging
 from typing import Optional, Union, List, Dict, Any, Tuple
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import patch, Mock, MagicMock, AsyncMock
 
 import pytest
 from prompthub import Prompt
-from transformers import GenerationConfig, TextStreamer
 
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt.prompt_template import LEGACY_DEFAULT_TEMPLATES
 from haystack.nodes.prompt.invocation_layer import (
-    HFLocalInvocationLayer,
-    DefaultTokenStreamingHandler,
     AzureChatGPTInvocationLayer,
     AzureOpenAIInvocationLayer,
     OpenAIInvocationLayer,
@@ -1098,3 +1095,83 @@ def test_prompt_node_warns_about_missing_documents(mock_model, caplog):
             "Expected prompt parameter 'documents' to be provided but it is missing. "
             "Continuing with an empty list of documents." in caplog.text
         )
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test__prepare_invocation_context_is_empty(mock_model):
+    node = PromptNode()
+    node.get_prompt_template = MagicMock(return_value="Test Template")
+
+    kwargs = {
+        "query": "query",
+        "file_paths": ["foo", "bar"],
+        "labels": ["label", "another"],
+        "documents": ["A", "B"],
+        "meta": {"meta_key": "meta_value"},
+        "prompt_template": "my-test-prompt",
+        "invocation_context": None,
+        "generation_kwargs": {"gen_key": "gen_value"},
+    }
+
+    invocation_context = node._prepare(**kwargs)
+
+    node.get_prompt_template.assert_called_once_with("my-test-prompt")
+    assert invocation_context == {
+        "query": "query",
+        "file_paths": ["foo", "bar"],
+        "labels": ["label", "another"],
+        "documents": ["A", "B"],
+        "meta": {"meta_key": "meta_value"},
+        "prompt_template": "Test Template",
+        "gen_key": "gen_value",
+    }
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test__prepare_invocation_context_was_passed(mock_model):
+    node = PromptNode()
+
+    # Test invocation_context is left untouched
+    invocation_context = {
+        "query": "query",
+        "file_paths": ["foo", "bar"],
+        "labels": ["label", "another"],
+        "documents": ["A", "B"],
+        "meta": {"meta_key": "meta_value"},
+        "prompt_template": "my-test-prompt",
+        "invocation_context": None,
+    }
+    kwargs = {
+        "query": None,
+        "file_paths": None,
+        "labels": None,
+        "documents": None,
+        "meta": None,
+        "prompt_template": None,
+        "invocation_context": invocation_context,
+        "generation_kwargs": None,
+    }
+
+    assert node._prepare(**kwargs) == invocation_context
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+async def test_arun(mock_model):
+    node = PromptNode()
+    node._aprompt = AsyncMock()
+    await node.arun("a query")
+    node._aprompt.assert_awaited_once_with(prompt_collector=[], query="a query", prompt_template=None)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+async def test_aprompt(mock_model):
+    node = PromptNode()
+    mock_model.return_value.ainvoke = AsyncMock()
+    await node._aprompt(PromptTemplate("test template"))
+    mock_model.return_value.ainvoke.assert_awaited_once()
