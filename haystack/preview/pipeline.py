@@ -1,9 +1,10 @@
+import os
 from typing import Any, Dict
 from pathlib import Path
 import logging
 import canals
 
-from haystack.preview.telemetry import send_event
+from haystack.preview.telemetry import send_event, HAYSTACK_TELEMETRY_ENABLED
 
 
 logger = logging.getLogger(__name__)
@@ -22,11 +23,12 @@ class Pipeline(canals.Pipeline):
         :raises PipelineRuntimeError: if the any of the components fail or return unexpected output.
         """
         try:
-            pipeline_description = self.to_dict()
-            components = {}
-            for component_name, component in pipeline_description["components"].items():
-                components[component_name] = component["type"]
-            send_event("Pipeline (2.x)", {"components": components})
+            if os.environ.get(HAYSTACK_TELEMETRY_ENABLED, "True") == "False":
+                pipeline_description = self.to_dict()
+                components = {}
+                for component_name, component in pipeline_description["components"].items():
+                    components[component_name] = component["type"]
+                send_event("Pipeline (2.x)", {"components": components})
         except Exception as e:
             logger.warning(f"Error sending telemetry event: {e}")
 

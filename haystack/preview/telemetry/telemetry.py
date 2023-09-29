@@ -175,7 +175,7 @@ def tutorial_running(tutorial_id: str):
     send_event(event_name="Tutorial", event_properties={"tutorial.id": tutorial_id})
 
 
-if os.environ.get("HAYSTACK_TELEMETRY_ENABLED", "True") == "False":
+if os.environ.get(HAYSTACK_TELEMETRY_ENABLED, "True") == "False":
     telemetry = None  # type: ignore
 else:
     telemetry = Telemetry()
