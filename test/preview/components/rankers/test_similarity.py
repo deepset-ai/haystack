@@ -11,11 +11,7 @@ class TestSimilarityRanker:
         data = component.to_dict()
         assert data == {
             "type": "SimilarityRanker",
-            "init_parameters": {
-                "score_field": "similarity_score",
-                "device": "cpu",
-                "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
-            },
+            "init_parameters": {"device": "cpu", "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2"},
         }
 
     @pytest.mark.integration
@@ -24,22 +20,14 @@ class TestSimilarityRanker:
         data = component.to_dict()
         assert data == {
             "type": "SimilarityRanker",
-            "init_parameters": {
-                "score_field": "similarity_score",
-                "device": "cpu",
-                "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
-            },
+            "init_parameters": {"device": "cpu", "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2"},
         }
 
     @pytest.mark.integration
     def test_from_dict(self):
         data = {
             "type": "SimilarityRanker",
-            "init_parameters": {
-                "score_field": "similarity_score",
-                "device": "cpu",
-                "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
-            },
+            "init_parameters": {"device": "cpu", "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2"},
         }
         component = SimilarityRanker.from_dict(data)
         assert component.model_name_or_path == "cross-encoder/ms-marco-MiniLM-L-6-v2"

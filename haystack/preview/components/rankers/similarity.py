@@ -24,14 +24,14 @@ class SimilarityRanker:
     Usage example:
     ```
     from haystack.preview import Document
-    from haystack.preview.components.samplers import SimilarityRanker
+    from haystack.preview.components.rankers import SimilarityRanker
 
-    sampler = SimilarityRanker(top_p=0.95)
+    sampler = SimilarityRanker()
     docs = [Document(text="Paris"), Document(text="Berlin")]
     query = "City in Germany"
     output = sampler.run(query=query, documents=docs)
     docs = output["documents"]
-    assert len(docs) == 1
+    assert len(docs) == 2
     assert docs[0].text == "Berlin"
     ```
     """
@@ -39,23 +39,18 @@ class SimilarityRanker:
     def __init__(
         self,
         model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-        score_field: Optional[str] = "similarity_score",
         device: Optional[str] = "cpu",
     ):
         """
         Creates an instance of SimilarityRanker.
 
-        :param model_name_or_path: Path to a pre-trained sentence-transformers model. If not specified, no document
-        scoring will be performed, and it is assumed that documents already have scores in the metadata specified under
-        the `score_field` key.
-        :param score_field: The name of the field that should be used to store the scores in a document's metadata.
+        :param model_name_or_path: Path to a pre-trained sentence-transformers model.
         :param device: torch device (for example, cuda:0, cpu, mps) to limit model inference to a specific device.
         """
         torch_and_transformers_import.check()
         super().__init__()
 
         self.model_name_or_path = model_name_or_path
-        self.score_field = score_field
         self.device = device
         self.model = None
         self.tokenizer = None
@@ -74,9 +69,7 @@ class SimilarityRanker:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(
-            self, score_field=self.score_field, device=self.device, model_name_or_path=self.model_name_or_path
-        )
+        return default_to_dict(self, device=self.device, model_name_or_path=self.model_name_or_path)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SimilarityRanker":
