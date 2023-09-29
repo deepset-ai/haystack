@@ -106,6 +106,7 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -152,7 +153,7 @@ jobs:
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
 
-  integration-tests:
+  integration-tests-linux:
     name: Integration / ${{ matrix.os }}
     needs: unit-tests
     strategy:
@@ -160,8 +161,13 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - windows-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
+    services:
+      tika:
+        image: apache/tika:2.9.0.0
+        ports:
+          - 9998:9998
     steps:
       - uses: actions/checkout@v3
 
@@ -169,20 +175,72 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
+      - name: Install dependencies (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update
           sudo apt install ffmpeg  # for local Whisper tests
 
+      - name: Install dependencies (macos-latest)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install ffmpeg  # for local Whisper tests
+
       - name: Install Haystack
         run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
 
-      # Services are unavailable on Windows and don't support 'if'. Must run the container manually.
-      # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idservices
-      - name: Run Tika
-        if: matrix.os == 'ubuntu-latest'
-        run: docker run -p 9998:9998 apache/tika:2.9.0.0
+      - name: Run
+        run: pytest --maxfail=5 -m "integration" test/preview
+
+      - name: Calculate alert data
+        id: calculator
+        shell: bash
+        if: (success() || failure()) && github.ref_name == 'main'
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
+
+      - name: Send event to Datadog
+        if: (success() || failure()) && github.ref_name == 'main'
+        uses: masci/datadog@v1
+        with:
+          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-url: https://api.datadoghq.eu
+          events: |
+            - title: "${{ github.workflow }} workflow"
+              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
+              alert_type: "${{ steps.calculator.outputs.alert_type }}"
+              source_type_name: "Github"
+              host: ${{ github.repository_owner }}
+              tags:
+                - "project:${{ github.repository }}"
+                - "job:${{ github.job }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
+                - "branch:${{ github.ref_name }}"
+                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+
+  # Services are unavailable on Windows runners, don't support 'if', and Tika seems impossible to run on Windows CI in
+  # general. In addition many other tests don't run on Windows anyway (Whisper local tests for example), so for now
+  # we keep a separate CI.
+  # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idservices
+  integration-tests-windows:
+    name: Integration / windows-latest
+    needs: unit-tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Haystack
+        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test/preview
