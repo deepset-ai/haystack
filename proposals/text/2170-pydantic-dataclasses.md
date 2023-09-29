@@ -39,7 +39,7 @@ Chosen option: **1**, because our initial concerns about speed proved negligible
 if typing.TYPE_CHECKING:
     from dataclasses import dataclass
 else:
-    from pydantic.dataclasses import dataclass
+    from pydantic.v1.dataclasses import dataclass
 ```
 
 ## Pros and Cons of the Options
@@ -54,7 +54,7 @@ else:
 if typing.TYPE_CHECKING:
     from dataclasses import dataclass
 else:
-    from pydantic.dataclasses import dataclass
+    from pydantic.v1.dataclasses import dataclass
 ```
 
 * Bad, because it introduces an additional dependency to Haystack (negligible)
