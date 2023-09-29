@@ -1,29 +1,33 @@
 from __future__ import annotations
-
-import ast
 import csv
 import hashlib
 import inspect
-import json
+
+from typing import Any, Optional, Dict, List, Union, Literal
+
+from pathlib import Path
+from uuid import uuid4
 import logging
 import time
+import json
+import ast
 from dataclasses import asdict
-from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
-from uuid import uuid4
 
 import numpy as np
-import pandas as pd
 from numpy import ndarray
+import pandas as pd
 from pandas import DataFrame
+
 from pydantic.v1 import BaseConfig, Field
+from pydantic.v1.json import pydantic_encoder
 
 # We are using Pydantic dataclasses instead of vanilla Python's
 # See #1598 for the reasons behind this choice & performance considerations
 from pydantic.v1.dataclasses import dataclass
-from pydantic.v1.json import pydantic_encoder
+
 
 from haystack.mmh3 import hash128
+
 
 logger = logging.getLogger(__name__)
 

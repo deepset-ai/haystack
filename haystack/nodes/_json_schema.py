@@ -1,10 +1,11 @@
-import inspect
-import json
-import logging
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
+
 import os
 import sys
+import json
+import inspect
+import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
 import pydantic.v1.schema
 from pydantic.v1 import BaseConfig, BaseSettings, Required, SecretStr, create_model
@@ -16,6 +17,7 @@ from pydantic.v1.typing import ForwardRef, evaluate_forwardref, is_callable_type
 from haystack import __version__ as haystack_version
 from haystack.errors import PipelineSchemaError
 from haystack.nodes.base import BaseComponent
+
 
 logger = logging.getLogger(__name__)
 

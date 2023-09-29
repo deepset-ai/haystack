@@ -1,16 +1,18 @@
-import json
+from typing import Dict, Any
+
 import logging
 import time
-from typing import Any, Dict
+import json
 
-from fastapi import APIRouter, FastAPI
 from pydantic.v1 import BaseConfig
-
+from fastapi import FastAPI, APIRouter
 import haystack
 from haystack import Pipeline
+
+from rest_api.utils import get_app, get_pipelines
 from rest_api.config import LOG_LEVEL
 from rest_api.schema import QueryRequest, QueryResponse
-from rest_api.utils import get_app, get_pipelines
+
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
 logger = logging.getLogger("haystack")
