@@ -9,6 +9,7 @@ To avoid unnecessary work on either side, please stick to the following process:
 4. Once you have commits to publish, create a draft pull request with the initial sketch of the implementation and ask for feedback. **Do not wait until the feature is complete!** If this is your first pull request and you wonder how to actually create a pull request, checkout [this manual](https://opensource.com/article/19/7/create-pull-request-github).
 5. Verify that all tests in the CI pass (and add new ones if you implement anything new).
 
+
 ## Setting up your development environment
 
 Even though Haystack runs on Linux, MacOS and Windows, we current we mostly support development on Linux and MacOS. Windows contributors might encounter issues. To work around these, consider using [WSL](https://docs.microsoft.com/en-us/windows/wsl/about) for contributing to Haystack.
@@ -53,7 +54,6 @@ pip install --upgrade pip
 # Install Haystack in editable mode
 pip install -e '.[dev]'
 ```
-
 Note that the `.[dev]` part is enough in many development scenarios when adding minor code fixes. However, if your changes require a schema change, then you'll need to install all dependencies with `pip install -e '.[all,dev]' ` command. Introducing new components or changing their interface requires a schema change.
 This will install all the dependencies you need to work on the codebase, plus testing and formatting dependencies.
 
@@ -87,14 +87,13 @@ Update API documentation (slow)..........................................Passed
 Note: If you prefer you can run this hook before `git push` instead of `git commit`. To do so, install the hook with `pre-commit install --hook-type pre-push`
 
 Note: pre-commit hooks might fail. If that happens to you and you can't understand why, please do the following:
-
 - Ask for help by opening an issue or reaching out on our Discord channel. We usually give some feedback within a day for most questions.
 - As the last resort, if you are desperate and everything failed, ask Git to skip the hook with `git commit --no-verify`. This command will suspend all pre-commit hooks and let you push in all cases. The CI might fail, but at that point we will be able to help.
 - In case of further issues pushing your changes, please uninstall the hook with `pre-commit uninstall -t pre-commit -t pre-push` and review your Git setup.
 
 ## Proposing "Substantial" Changes
 
-Most of the changes to Haystack, including bug fixes and small improvements, are implemented through the normal Pull Request workflow, according to these contribution guidelines.
+Most of the changes to Haystack, including bug fixes and small improvements, are implemented through the normal Pull Request workflow, according to these  contribution guidelines.
 
 Some changes, though, are "substantial", and these are the ones we want to put through a bit of a design process to make sure we're all on the same page before we invest the time into the actual implementation of a new feature or a deep refactoring.
 
@@ -111,7 +110,6 @@ Please check the [Proposals design process](/proposals) if you think your contri
 To ease the review process, please follow the instructions in this paragraph when creating a Pull Request.
 
 ### PR Title
-
 We use elements from the [conventional commit convention](https://www.conventionalcommits.org/en/v1.0.0/) for our
 PR titles. Your PR title should follow the same structure of commit type, scope, and description as the convention
 specifies:
@@ -121,7 +119,6 @@ specifies:
 ```
 
 Common types are:
-
 - `feat` (for enhancements)
 - `bug` (for bug fixes)
 - `docs` (for changes to the documentation)
@@ -133,13 +130,11 @@ If your change is breaking backwards compatibility (e.g. introducing a new requi
 to indicate that your PR contains breaking changes.
 
 Examples:
-
 - `feat: add pinecone document store`
 - `bug: fix MultiLabel serialization`
 - `feat!: make all document store methods async`
 
 ### PR Description
-
 Please use the existing [pull request template](https://github.com/deepset-ai/haystack/blob/main/.github/pull_request_template.md)
 for describing and documenting your changes:
 
@@ -150,7 +145,6 @@ for describing and documenting your changes:
 - How did you test the change?
 
 ### Release notes
-
 Each PR should include a file under the `releasenotes/notes` path created with `reno`, unless the PR doesn't have any
 impact on Haystack behavior, for example: tests and documentation updates, changes in code comments or docstrings,
 changes to the CI/CD systems. PRs that don't require a release note file must be labeled with `ignore-for-release-notes`
@@ -158,25 +152,21 @@ by a maintainer in order to bypass the CI check.
 
 Say your PR is for bumping the `transformers` version in the `pyproject.toml` file. To create the corresponding release
 note, from the root of the repo run:
-
 ```
 $ reno new bump-transformers-to-4-31
 loaded configuration file ./releasenotes/config.yaml
 Created new notes file in releasenotes/notes/bump-transformers-to-4-31-a645334d57eab673.yaml
 ```
-
 `reno` will create the file appending a unique id to the name of the release note you provided (in this case,
 `bump-transformers-to-4-31`). You don't need to worry about duplicated entries, but be sure to use meaningful names
 so it's easier to find the file later. You can now edit the file to add the release note. In the file, you will find multiple
 sections along with an explanation of what they're for. Normally, you only need to fill one section; in this case, you
 would fill the `enhancements` section to describe the change:
-
 ```yaml
 enhancements:
   - |
     Upgrade transformers to the latest version 4.31.0 so that Haystack can support the new LLama2 models.
 ```
-
 You can now add the file to the git repo and commit your changes. Your release note will be reviewed along with the
 code you changed.
 
@@ -205,6 +195,7 @@ To do so, please verify that "Allow edits and access to secrets by maintainers" 
 
 ![Allow access to your branch to maintainers](docs/img/first_time_contributor_enable_access.png)
 
+
 ## Running the tests
 
 Tests will automatically run in our CI for every commit you push to your PR on Github. This is usually the most convenient
@@ -216,7 +207,6 @@ root folder would also execute the rest API tests, that require specific depende
 You can control which tests to run using Pytest markers, let's see how.
 
 ### Running a subset of tests (recommended)
-
 In most cases you rather want to run a **subset of tests** locally that are related to your dev, and the most important
 option to reduce the number of tests in a meaningful way, is to run tests only for a list of **selected document stores**.
 This is possible by adding the `--document_store_type` arg to your `pytest` command (possible values are: `"elasticsearch, faiss, memory, weaviate, pinecone"`).
@@ -224,21 +214,18 @@ This is possible by adding the `--document_store_type` arg to your `pytest` comm
 For example, calling `pytest . --document_store_type="memory"` will run all the document store tests using the
 InMemoryDocumentStore only, skipping the others (the logs will show which ones). The `InMemoryDocument` store is a very
 good starting point as it doesn't require any external resource:
-
-```bash
+```
 pytest . --document_store_type="memory"
 ```
 
 You can also run the tests using a **combination of document stores**, provided the corresponding services are up and
 running in your local environment. For example, Elasticsearch must be running before launching the following:
-
-```bash
+```
 pytest . --document_store_type="memory,elasticsearch"
 ```
 
 **Note:** we recommend using Docker containers to run document stores locally:
-
-```bash
+```
 # Elasticsearch
 docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
 
@@ -250,14 +237,12 @@ docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JA
 ```
 
 Tests can be also run **individually**:
-
-```bash
+```
 pytest -v test_retriever.py::test_dpr_embedding
 ```
 
 Or you can select a **logical subset of tests** via markers and the optional "not" keyword:
-
-```bash
+```
 pytest -m not elasticsearch
 pytest -m elasticsearch
 pytest -m generator
@@ -267,13 +252,11 @@ pytest -m not slow
 ```
 
 ### Running all the tests
-
 **Important**: If you want to run **all** the tests locally, you'll need **all** document stores running in the background
 before you run the tests. Many of the tests will then be executed multiple times with different document stores.
 
 To run all tests, from the `/test` folder just run:
-
-```bash
+```
 pytest
 ```
 
@@ -282,7 +265,6 @@ pytest
 We formally define three scopes for tests in Haystack with different requirements and purposes:
 
 ### Unit test
-
 - Tests a single logical concept
 - Execution time is a few milliseconds
 - Any external resource is mocked
@@ -293,7 +275,6 @@ We formally define three scopes for tests in Haystack with different requirement
 - **Goal: being confident in merging code**
 
 ### Integration test
-
 - Tests a single logical concept
 - Execution time is a few seconds
 - It uses external resources that must be available before execution
@@ -305,7 +286,6 @@ We formally define three scopes for tests in Haystack with different requirement
 - **Goal: being confident in merging code**
 
 ### End to End (e2e) test
-
 - Tests a sequence of multiple logical concepts
 - Execution time has no limits (can be always on)
 - Can use inference
@@ -319,18 +299,16 @@ We formally define three scopes for tests in Haystack with different requirement
 - **Goal: being confident in releasing Haystack**
 
 > **Note**: migrating the existing tests into these new categories is still in progress. Please ask the maintainers if you are in doubt about how to
-> classify your tests or where to place them.
+classify your tests or where to place them.
 
 If you are writing a test that depend on a document store, there are a few conventions to define on which document store
 type this test should/can run:
 
 ### Option 1: The test should run on all document stores / those supplied in the CLI arg `--document_store_type`:
-
 Use one of the fixtures `document_store` or `document_store_with_docs` or `document_store_type`.
 Do not parameterize it yourself.
 
 Example:
-
 ```
 def test_write_with_duplicate_doc_ids(document_store):
         ...
@@ -340,11 +318,9 @@ def test_write_with_duplicate_doc_ids(document_store):
 ```
 
 ### Option 2: The test is only compatible with certain document stores:
-
 Some tests you don't want to run on all possible document stores. Either because the test is specific to one/few doc store(s) or the test is not really document store related and it's enough to test it on one document store and speed up the execution time.
 
 Example:
-
 ```
 # Currently update_document_meta() is not implemented for InMemoryDocStore so it's not listed here as an option
 
@@ -354,9 +330,7 @@ def test_update_meta(document_store):
 ```
 
 ### Option 3: The test is not using a `document_store`/ fixture, but still has a hard requirement for a certain document store:
-
 Example:
-
 ```
 @pytest.mark.elasticsearch
 def test_elasticsearch_custom_fields(elasticsearch_fixture):
@@ -375,22 +349,20 @@ All checks and autoformatting happen on the CI, so in general you don't need to 
 However, should you prefer to execute them locally, here are a few details about the setup.
 
 ### Black
-
 Black runs with no other configuration than increasing line length to 120 characters. Its configuration can be found in `pyproject.toml`.
 
 You can run it with `python -m black .` from the root folder.
 
 ### Mypy
-
 Mypy currently runs with limited configuration options that can be found at the bottom of `pyproject.toml`.
 
 You can run it with `python -m mypy haystack/ rest_api/` from the root folder.
 
 ### Pylint
-
 Pylint is still being integrated in Haystack. The current exclusion list is very long, and can be found in `pyproject.toml`.
 
 You can run it with `python -m pylint haystack/ rest_api/ -ry` from the root folder.
+
 
 ## Contributor Licence Agreement (CLA)
 
