@@ -1,0 +1,21 @@
+# If you change this name also do it in tests_preview.yml
+name: Tests (Preview)
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths-ignore:
+      - "haystack/preview/**/*.py"
+      - "test/preview/**/*.py"
+
+jobs:
+  catch-all:
+    name: Catch-all check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip preview tests
+        run: echo "Skipped!"
