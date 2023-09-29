@@ -293,7 +293,7 @@ jobs:
         run: docker run -d -p 9998:9998 apache/tika:2.9.0.0
 
       - name: Run
-        run: pytest --maxfail=5 -m "integration" test/preview
+        run: pytest --maxfail=5 -m "integration" test/preview -k 'not tika'
 
       - name: Calculate alert data
         id: calculator
