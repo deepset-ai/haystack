@@ -1,15 +1,13 @@
 loaders:
-  - type: python
+  - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/nodes/file_converter]
     modules:
       [
-        "base",
         "csv",
         "docx",
         "image",
         "markdown",
         "pdf",
-        "pdf_ocr",
         "parsr",
         "azure",
         "tika",

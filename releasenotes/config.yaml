@@ -1,0 +1,50 @@
+default_branch: main
+collapse_pre_releases: true
+template: |
+  ---
+  prelude: >
+      Replace this text with content to appear at the top of the section for this
+      release. This is equivalent to the "Highlights" section we used before.
+      The prelude might repeat some details that are also present in other notes
+      from the same release, that's ok. Not every release note requires a prelude,
+      use it only to describe major features or notable changes.
+  upgrade:
+    - |
+      List upgrade notes here, or remove this section.
+      Upgrade notes should be rare: only list known/potential breaking changes,
+      or major changes that require user action before the upgrade.
+      Notes here must include steps that users can follow to 1. know if they're
+      affected and 2. handle the change gracefully on their end.
+  features:
+    - |
+      List new features here, or remove this section.
+  enhancements:
+    - |
+      List new behavior that is too small to be
+      considered a new feature, or remove this section.
+  issues:
+    - |
+      List known issues here, or remove this section. For example, if some change is experimental or known to not work in some cases, it should be mentioned here.
+  deprecations:
+    - |
+      List deprecations notes here, or remove this section. Deprecations should not be used for something that is removed in the release, use upgrade section instead. Deprecation should allow time for users to make necessary changes for the removal to happen in a future release.
+  security:
+    - |
+      Add security notes here, or remove this section.
+  fixes:
+    - |
+      Add normal bug fixes here, or remove this section.
+  preview:
+    - |
+      Add changes to Haystack version 2, or remove this section.
+      Haystack version 2 can be found under haystack/preview.
+sections:
+  # The prelude section is implicitly included.
+  - [upgrade, Upgrade Notes]
+  - [features, New Features]
+  - [enhancements, Enhancement Notes]
+  - [issues, Known Issues]
+  - [deprecations, Deprecation Notes]
+  - [security, Security Notes]
+  - [fixes, Bug Fixes]
+  - [preview, Haystack 2.0 preview]

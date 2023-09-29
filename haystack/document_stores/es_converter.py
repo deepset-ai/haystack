@@ -1,18 +1,15 @@
 from typing import Dict, Optional, List, Union
 
-from tqdm.auto import tqdm
-
-try:
-    from elasticsearch.helpers import scan
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "elasticsearch", ie)
+from tqdm import tqdm
 
 from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.nodes.preprocessor.preprocessor import PreProcessor
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install farm-haystack[elasticsearch]'") as es_import:
+    from elasticsearch.helpers import scan
 
 
 def open_search_index_to_document_store(
@@ -75,8 +72,8 @@ def open_search_index_to_document_store(
     :param port: Ports(s) of OpenSearch nodes.
     :param username: Username (standard authentication via http_auth).
     :param password: Password (standard authentication via http_auth).
-    :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth).
-    :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth).
+    :param api_key_id: ID of the API key (alternative authentication mode to the above http_auth).
+    :param api_key: Secret value of the API key (alternative authentication mode to the above http_auth).
     :param aws4auth: Authentication for usage with AWS OpenSearch
         (can be generated with the requests-aws4auth package).
     :param scheme: `"https"` or `"http"`, protocol used to connect to your OpenSearch instance.
@@ -174,8 +171,8 @@ def elasticsearch_index_to_document_store(
     :param port: Ports(s) of Elasticsearch nodes.
     :param username: Username (standard authentication via http_auth).
     :param password: Password (standard authentication via http_auth).
-    :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth).
-    :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth).
+    :param api_key_id: ID of the API key (alternative authentication mode to the above http_auth).
+    :param api_key: Secret value of the API key (alternative authentication mode to the above http_auth).
     :param aws4auth: Authentication for usage with AWS Elasticsearch
         (can be generated with the requests-aws4auth package).
     :param scheme: `"https"` or `"http"`, protocol used to connect to your Elasticsearch instance.
@@ -185,6 +182,8 @@ def elasticsearch_index_to_document_store(
     :param timeout: Number of seconds after which an Elasticsearch request times out.
     :param use_system_proxy: Whether to use system proxy.
     """
+    es_import.check()
+
     # This import cannot be at the beginning of the file, as this would result in a circular import
     from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 
@@ -229,9 +228,8 @@ def elasticsearch_index_to_document_store(
         content = record["_source"].pop(original_content_field, "")
         if content:
             meta = {}
-            if original_name_field is not None:
-                if original_name_field in record["_source"]:
-                    meta["name"] = record["_source"].pop(original_name_field)
+            if original_name_field is not None and original_name_field in record["_source"]:
+                meta["name"] = record["_source"].pop(original_name_field)
             # Only add selected metadata fields
             if included_metadata_fields is not None:
                 for metadata_field in included_metadata_fields:

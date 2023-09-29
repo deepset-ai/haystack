@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Allow loading Tokenizers for prompt models not natively supported by transformers by setting `trust_remote_code` to `True`.

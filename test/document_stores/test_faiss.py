@@ -205,6 +205,25 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         assert {int(doc.meta["vector_id"]) for doc in docs_from_index_b} == {0, 1, 2, 3}
 
     @pytest.mark.integration
+    def test_dont_update_existing_embeddings(self, ds, docs):
+        retriever = MockDenseRetriever(document_store=ds)
+        first_doc_id = docs[0].id
+
+        for i in range(1, 4):
+            ds.write_documents(docs[:i])
+            ds.update_embeddings(retriever=retriever, update_existing_embeddings=False)
+
+            assert ds.get_document_count() == i
+            assert ds.get_embedding_count() == i
+            assert ds.get_document_by_id(id=first_doc_id).meta["vector_id"] == "0"
+
+            # Check if the embeddings of the first document remain unchanged after multiple updates
+            if i == 1:
+                first_doc_embedding = ds.get_document_by_id(id=first_doc_id).embedding
+            else:
+                assert np.array_equal(ds.get_document_by_id(id=first_doc_id).embedding, first_doc_embedding)
+
+    @pytest.mark.integration
     def test_passing_index_from_outside(self, documents_with_embeddings, tmp_path):
         d = 768
         nlist = 2
@@ -214,7 +233,7 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
         faiss_index.nprobe = 2
         document_store = FAISSDocumentStore(
-            sql_url=f"sqlite:///", faiss_index=faiss_index, index=index, isolation_level="AUTOCOMMIT"
+            sql_url="sqlite:///", faiss_index=faiss_index, index=index, isolation_level="AUTOCOMMIT"
         )
 
         document_store.delete_documents()

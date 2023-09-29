@@ -6,16 +6,15 @@ from itertools import groupby
 from multiprocessing.pool import Pool
 from collections import namedtuple
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
+
+from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__file__)
 
 
-try:
+with LazyImport("Run 'pip install farm-haystack[metrics]' or 'pip install rapidfuzz'") as rapidfuzz_import:
     from rapidfuzz import fuzz
-except ImportError as exc:
-    logger.debug("rapidfuzz could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue.")
-    fuzz = None  # type: ignore
 
 
 _CandidateScore = namedtuple("_CandidateScore", ["context_id", "candidate_id", "score"])
@@ -55,10 +54,7 @@ def calculate_context_similarity(
                                  we cut the context on the same side, recalculate the score and take the mean of both.
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
     """
-    if not fuzz:
-        raise ImportError(
-            "rapidfuzz could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue."
-        )
+    rapidfuzz_import.check()
     # we need to handle short contexts/contents (e.g single word)
     # as they produce high scores by matching if the chars of the word are contained in the other one
     # this has to be done after normalizing
@@ -151,7 +147,7 @@ def match_context(
 
         matches = (candidate for candidate in candidate_scores if candidate.score > threshold)
         sorted_matches = sorted(matches, key=lambda candidate: candidate.score, reverse=True)
-        match_list = list((candidate_score.candidate_id, candidate_score.score) for candidate_score in sorted_matches)
+        match_list = [(candidate_score.candidate_id, candidate_score.score) for candidate_score in sorted_matches]
 
         return match_list
 
@@ -212,13 +208,13 @@ def match_contexts(
         if show_progress:
             candidate_scores = tqdm(candidate_scores)
 
-        match_lists: List[List[Tuple[str, float]]] = list()
+        match_lists: List[List[Tuple[str, float]]] = []
         matches = (candidate for candidate in candidate_scores if candidate.score > threshold)
         group_sorted_matches = sorted(matches, key=lambda candidate: candidate.context_id)
         grouped_matches = groupby(group_sorted_matches, key=lambda candidate: candidate.context_id)
         for context_id, group in grouped_matches:
             sorted_group = sorted(group, key=lambda candidate: candidate.score, reverse=True)
-            match_list = list((candiate_score.candidate_id, candiate_score.score) for candiate_score in sorted_group)
+            match_list = [(candiate_score.candidate_id, candiate_score.score) for candiate_score in sorted_group]
             match_lists.insert(context_id, match_list)
 
         return match_lists

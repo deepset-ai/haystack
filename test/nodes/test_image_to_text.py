@@ -88,15 +88,6 @@ def test_image_to_text_not_image_document(image_to_text):
 def test_image_to_text_unsupported_model_after_loading():
     with pytest.raises(
         ValueError,
-        match="The model 'deepset/minilm-uncased-squad2' \(class 'BertForQuestionAnswering'\) is not supported for ImageToText",
+        match=r"The model 'deepset/minilm-uncased-squad2' \(class 'BertForQuestionAnswering'\) is not supported for ImageToText",
     ):
         _ = TransformersImageToText(model_name_or_path="deepset/minilm-uncased-squad2")
-
-
-@pytest.mark.integration
-def test_image_to_text_unsupported_model_before_loading():
-    with pytest.raises(
-        ValueError,
-        match=r"The model '.*' \(class '.*'\) is not supported for ImageToText. The supported classes are: \['VisionEncoderDecoderModel'\]",
-    ):
-        _ = TransformersImageToText(model_name_or_path="Salesforce/blip-image-captioning-base")

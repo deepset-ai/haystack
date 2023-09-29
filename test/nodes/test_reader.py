@@ -1,7 +1,7 @@
 import math
 import os
 from pathlib import Path
-from shutil import rmtree
+from unittest.mock import patch
 
 import pytest
 
@@ -160,14 +160,14 @@ def test_deduplication_for_overlapping_documents(reader):
     prediction = reader.predict(query="Where does Carla live?", documents=docs, top_k=5)
 
     # Check that there are no duplicate answers
-    assert len(set(ans.answer for ans in prediction["answers"])) == len(prediction["answers"])
+    assert len({ans.answer for ans in prediction["answers"]}) == len(prediction["answers"])
 
 
 @pytest.mark.integration
 def test_model_download_options():
     # download disabled and model is not cached locally
     with pytest.raises(OSError):
-        impossible_reader = FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True, num_processes=0)
+        FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True, num_processes=0)
 
 
 @pytest.mark.integration
@@ -226,17 +226,15 @@ def test_top_k(reader, docs, top_k):
 def test_farm_reader_invalid_params():
     # invalid max_seq_len (greater than model maximum seq length)
     with pytest.raises(Exception):
-        reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=513)
+        FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=513)
 
     # invalid max_seq_len (max_seq_len >= doc_stride)
     with pytest.raises(Exception):
-        reader = FARMReader(
-            model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=129, doc_stride=128
-        )
+        FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=129, doc_stride=128)
 
     # invalid doc_stride (doc_stride >= (max_seq_len - max_query_length))
     with pytest.raises(Exception):
-        reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, doc_stride=999)
+        FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, doc_stride=999)
 
 
 def test_farm_reader_update_params(docs):
@@ -431,6 +429,36 @@ def test_no_answer_reader_skips_empty_documents(no_answer_reader):
     assert predictions["answers"][1][1].answer == "Carla"  # answer given for 2nd query as usual
 
 
+@pytest.mark.integration
+def test_reader_training_returns_eval(tmp_path, samples_path):
+    max_seq_len = 16
+    max_query_length = 8
+    reader = FARMReader(
+        model_name_or_path="deepset/tinyroberta-squad2",
+        use_gpu=False,
+        num_processes=0,
+        max_seq_len=max_seq_len,
+        doc_stride=2,
+        max_query_length=max_query_length,
+    )
+
+    save_dir = f"{tmp_path}/test_dpr_training"
+    reader.train(
+        data_dir=str(samples_path / "squad"),
+        train_filename="tiny.json",
+        dev_filename="tiny.json",
+        n_epochs=1,
+        batch_size=1,
+        grad_acc_steps=1,
+        evaluate_every=0,
+        save_dir=save_dir,
+        max_seq_len=max_seq_len,
+        max_query_length=max_query_length,
+    )
+    assert reader.inferencer.model.training is False
+
+
+@pytest.mark.integration
 def test_reader_training(tmp_path, samples_path):
     max_seq_len = 16
     max_query_length = 8
@@ -466,3 +494,23 @@ def test_reader_long_document(reader):
     res = reader.predict(query="Where does Christelle live?", documents=docs)
     assert res["answers"][0].offsets_in_document[0].start >= 0
     assert res["answers"][0].offsets_in_document[0].end >= 0
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.reader.farm.QAInferencer")
+def test_farmreader_predict_preprocessor_batching(mocked_qa_inferencer, docs):
+    reader = FARMReader(model_name_or_path="mocked_model", preprocessing_batch_size=2)
+    reader.predict(query="sample query", documents=docs)
+
+    # We expect 3 calls to the QAInferencer (5 docs / 2 batch_size)
+    assert reader.inferencer.inference_from_objects.call_count == 3
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.reader.farm.QAInferencer")
+def test_farmreader_predict_batch_preprocessor_batching(mocked_qa_inferencer, docs):
+    reader = FARMReader(model_name_or_path="mocked_model", preprocessing_batch_size=2)
+    reader.predict_batch(queries=["sample query 1", "sample_query_2"], documents=docs)
+
+    # We expect 5 calls to the QAInferencer (2 queries * 5 docs / 2 batch_size)
+    assert reader.inferencer.inference_from_objects.call_count == 5

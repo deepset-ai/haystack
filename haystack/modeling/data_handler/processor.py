@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import requests
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from torch.utils.data import TensorDataset
 import transformers
 from transformers import PreTrainedTokenizer, AutoTokenizer
@@ -34,7 +34,6 @@ from haystack.modeling.data_handler.samples import (
 )
 from haystack.modeling.data_handler.input_features import sample_to_features_text
 from haystack.utils.experiment_tracking import Tracker as tracker
-
 
 DOWNSTREAM_TASK_MAP = {
     "squad20": "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-downstream/squad20.tar.gz",
@@ -175,7 +174,7 @@ class Processor(ABC):
             config = json.load(f)
         config["inference"] = True
         # init tokenizer
-        if "lower_case" in config.keys():
+        if "lower_case" in config:
             logger.warning(
                 "Loading tokenizer from deprecated config. "
                 "If you used `custom_vocab` or `never_split_chars`, this won't work anymore."
@@ -381,14 +380,14 @@ class SquadProcessor(Processor):
         doc_stride: int = 128,
         max_query_length: int = 64,
         proxies: Optional[dict] = None,
-        max_answers: int = 6,
+        max_answers: Optional[int] = None,
         **kwargs,
     ):
         """
         :param tokenizer: Used to split a sentence (str) into tokens.
         :param max_seq_len: Samples are truncated after this many tokens.
         :param data_dir: The directory in which the train and dev files can be found.
-                         If not available the dataset will be loaded automaticaly
+                         If not available the dataset will be loaded automatically
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
                          `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/main/haystack/basics/data_handler/utils.py>`_.
@@ -403,7 +402,9 @@ class SquadProcessor(Processor):
         :param max_query_length: Maximum length of the question (in number of subword tokens)
         :param proxies: proxy configuration to allow downloads of remote datasets.
                         Format as in  "requests" library: https://2.python-requests.org//en/latest/user/advanced/#proxies
-        :param max_answers: number of answers to be converted. QA dev or train sets can contain multi-way annotations, which are converted to arrays of max_answer length
+        :param max_answers: Number of answers to be converted. QA sets can contain multi-way annotations, which are converted to arrays of max_answer length.
+                            Adjusts to maximum number of answers in the first processed datasets if not set.
+                            Truncates or pads to max_answer length if set.
         :param kwargs: placeholder for passing generic parameters
         """
         self.ph_output_type = "per_token_squad"
@@ -469,20 +470,26 @@ class SquadProcessor(Processor):
         # Split documents into smaller passages to fit max_seq_len
         baskets = self._split_docs_into_passages(baskets)
 
+        # Determine max_answers if not set
+        max_answers = (
+            self.max_answers
+            if self.max_answers is not None
+            else max(*(len(basket.raw["answers"]) for basket in baskets), 1)
+        )
+
         # Convert answers from string to token space, skip this step for inference
         if not return_baskets:
-            baskets = self._convert_answers(baskets)
+            baskets = self._convert_answers(baskets, max_answers)
 
         # Convert internal representation (nested baskets + samples with mixed types) to pytorch features (arrays of numbers)
-        baskets = self._passages_to_pytorch_features(baskets, return_baskets)
+        baskets = self._passages_to_pytorch_features(baskets, return_baskets, max_answers)
 
         # Convert features into pytorch dataset, this step also removes potential errors during preprocessing
         dataset, tensor_names, baskets = self._create_dataset(baskets)
 
         # Logging
-        if indices:
-            if 0 in indices:
-                self._log_samples(n_samples=1, baskets=baskets)
+        if indices and 0 in indices:
+            self._log_samples(n_samples=1, baskets=baskets)
 
         # During inference we need to keep the information contained in baskets.
         if return_baskets:
@@ -567,7 +574,7 @@ class SquadProcessor(Processor):
                 )
             except Exception as e:
                 logger.warning(
-                    "Could not devide document into passages. Document: %s\nWith error: %s",
+                    "Could not divide document into passages. Document: %s\nWith error: %s",
                     basket.raw["document_text"][:200],
                     e,
                 )
@@ -607,7 +614,7 @@ class SquadProcessor(Processor):
 
         return baskets
 
-    def _convert_answers(self, baskets: List[SampleBasket]):
+    def _convert_answers(self, baskets: List[SampleBasket], max_answers: int):
         """
         Converts answers that are pure strings into the token based representation with start and end token offset.
         Can handle multiple answers per question document pair as is common for development/text sets
@@ -617,7 +624,7 @@ class SquadProcessor(Processor):
             for sample in basket.samples:  # type: ignore
                 # Dealing with potentially multiple answers (e.g. Squad dev set)
                 # Initializing a numpy array of shape (max_answers, 2), filled with -1 for missing values
-                label_idxs = np.full((self.max_answers, 2), fill_value=-1)
+                label_idxs = np.full((max_answers, 2), fill_value=-1)
 
                 if error_in_answer or (len(basket.raw["answers"]) == 0):
                     # If there are no answers we set
@@ -625,6 +632,14 @@ class SquadProcessor(Processor):
                 else:
                     # For all other cases we use start and end token indices, that are relative to the passage
                     for i, answer in enumerate(basket.raw["answers"]):
+                        if i >= max_answers:
+                            logger.warning(
+                                "Found a sample with more answers (%d) than "
+                                "max_answers (%d). These will be ignored.",
+                                len(basket.raw["answers"]),
+                                max_answers,
+                            )
+                            break
                         # Calculate start and end relative to document
                         answer_len_c = len(answer["text"])
                         answer_start_c = answer["answer_start"]
@@ -691,7 +706,7 @@ class SquadProcessor(Processor):
 
         return baskets
 
-    def _passages_to_pytorch_features(self, baskets: List[SampleBasket], return_baskets: bool):
+    def _passages_to_pytorch_features(self, baskets: List[SampleBasket], return_baskets: bool, max_answers: int):
         """
         Convert internal representation (nested baskets + samples with mixed types) to python features (arrays of numbers).
         We first join question and passages into one large vector.
@@ -769,7 +784,7 @@ class SquadProcessor(Processor):
                     len(input_ids) == len(padding_mask) == len(segment_ids) == len(start_of_word) == len(span_mask)
                 )
                 id_check = len(sample_id) == 3
-                label_check = return_baskets or len(sample.tokenized.get("labels", [])) == self.max_answers  # type: ignore
+                label_check = return_baskets or len(sample.tokenized.get("labels", [])) == max_answers  # type: ignore
                 # labels are set to -100 when answer cannot be found
                 label_check2 = return_baskets or np.all(sample.tokenized["labels"] > -99)  # type: ignore
                 if len_check and id_check and label_check and label_check2:
@@ -864,7 +879,7 @@ class TextSimilarityProcessor(Processor):
         :param max_seq_len_query: Query samples are truncated after this many tokens.
         :param max_seq_len_passage: Context/Passage Samples are truncated after this many tokens.
         :param data_dir: The directory in which the train and dev files can be found.
-                         If not available the dataset will be loaded automaticaly
+                         If not available the dataset will be loaded automatically
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
                          `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/main/haystack/basics/data_handler/utils.py>`_.
@@ -1022,7 +1037,7 @@ class TextSimilarityProcessor(Processor):
         # Take the dict and insert into our basket structure, this stages also adds an internal IDs
         baskets = self._fill_baskets(dicts, indices)
 
-        # Separat conversion of query
+        # Separate conversion of query
         baskets = self._convert_queries(baskets=baskets)
 
         # and context passages. When converting the context the label is also assigned.
@@ -1233,7 +1248,7 @@ class TextSimilarityProcessor(Processor):
                     "Couldn't find title although `embed_title` is set to True for DPR. Using title='' now. Related passage text: '%s' ",
                     ctx,
                 )
-            res.append(tuple((title, ctx)))
+            res.append((title, ctx))
         return res
 
 
@@ -1746,7 +1761,7 @@ class TableTextSimilarityProcessor(Processor):
         for meta, ctx in zip(meta_fields, texts):
             if meta is None:
                 meta = ""
-            res.append(tuple((meta, ctx)))
+            res.append((meta, ctx))
         return res
 
 
@@ -1783,7 +1798,7 @@ class TextClassificationProcessor(Processor):
         :param max_seq_len: Samples are truncated after this many tokens.
         :type max_seq_len: int
         :param data_dir: The directory in which the train and dev files can be found.
-                         If not available the dataset will be loaded automaticaly
+                         If not available the dataset will be loaded automatically
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
                          `farm.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/FARM/blob/main/farm/data_handler/utils.py>`_.
@@ -2095,12 +2110,12 @@ class UnlabeledTextProcessor(Processor):
             truncation=True,
             max_length=self.max_seq_len,
         )
-        names = [key for key in tokens]
+        names = list(tokens)
         inputs = [tokens[key] for key in tokens]
-        if not "padding_mask" in names:
+        if "padding_mask" not in names:
             index = names.index("attention_mask")
             names[index] = "padding_mask"
-        if not "segment_ids" in names:
+        if "segment_ids" not in names:
             index = names.index("token_type_ids")
             names[index] = "segment_ids"
 
@@ -2133,9 +2148,9 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
                         dev_labels[q["id"]] = "is_impossible"
                     else:
                         dev_labels[q["id"]] = q["answers"][0]["text"]
-        not_included = set(list(dev_labels.keys())) - set(list(predictions_json.keys()))
+        not_included = dev_labels.keys() - predictions_json.keys()
         if len(not_included) > 0:
-            logger.info("There were missing predicitons for question ids: %s", list(not_included))
+            logger.info("There were missing predictions for question ids: %s", list(not_included))
         for x in not_included:
             predictions_json[x] = ""
 

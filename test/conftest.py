@@ -1,5 +1,4 @@
 import warnings
-from datetime import timedelta
 from typing import Any, List, Optional, Dict, Union
 
 import gc
@@ -8,8 +7,8 @@ from pathlib import Path
 import os
 import re
 from functools import wraps
+from unittest.mock import patch
 
-import requests_cache
 import responses
 import posthog
 
@@ -22,7 +21,6 @@ from haystack.document_stores import (
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
     WeaviateDocumentStore,
-    MilvusDocumentStore,
     PineconeDocumentStore,
     OpenSearchDocumentStore,
     FAISSDocumentStore,
@@ -34,7 +32,6 @@ from haystack.nodes import (
     BaseSummarizer,
     BaseTranslator,
     DenseRetriever,
-    RAGenerator,
     FilterRetriever,
     BM25Retriever,
     TfidfRetriever,
@@ -50,7 +47,7 @@ from haystack.nodes import (
     PromptTemplate,
 )
 from haystack.nodes.prompt import PromptNode
-from haystack.schema import Document, FilterType
+from haystack.schema import Document, FilterType, MultiLabel, Label, Span
 
 from .mocks import pinecone as pinecone_mock
 
@@ -79,9 +76,8 @@ META_FIELDS = [
 # Disable telemetry reports when running tests
 posthog.disabled = True
 
-# Cache requests (e.g. huggingface model) to circumvent load protection
-# See https://requests-cache.readthedocs.io/en/stable/user_guide/filtering.html
-requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
+# Disable caching from prompthub to avoid polluting the local environment.
+os.environ["PROMPTHUB_CACHE_ENABLED"] = "false"
 
 
 def fail_at_version(target_major, target_minor):
@@ -97,7 +93,7 @@ def fail_at_version(target_major, target_minor):
     of target_major and/or target_minor.
     If the current version has `rc0` set the test won't fail but only issue a warning, this
     is done because we use `rc0` to mark the development version in `main`. If we wouldn't
-    do this tests would continuosly fail in main.
+    do this tests would continuously fail in main.
 
     ```python
     from ..conftest import fail_at_version
@@ -138,11 +134,8 @@ def pytest_collection_modifyitems(config, items):
         "ocr": [pytest.mark.ocr, pytest.mark.integration],
         "elasticsearch": [pytest.mark.elasticsearch],
         "faiss": [pytest.mark.faiss],
-        "milvus": [pytest.mark.milvus, pytest.mark.skip],
         "weaviate": [pytest.mark.weaviate],
         "pinecone": [pytest.mark.pinecone],
-        # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
-        "graphdb": [pytest.mark.integration],
     }
     for item in items:
         for name, markers in name_to_markers.items():
@@ -178,7 +171,7 @@ def infer_required_doc_store(item, keywords):
     # 2. if the test name contains the docstore name, we use that
     # 3. use an arbitrary one by calling set.pop()
     required_doc_store = None
-    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "milvus", "weaviate", "pinecone"}
+    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "weaviate", "pinecone"}
     docstore_markers = set(keywords).intersection(all_doc_stores)
     if len(docstore_markers) > 1:
         # if parameterized infer the docstore from the parameter
@@ -329,7 +322,7 @@ class MockBaseRetriever(MockRetriever):
 
 
 class MockSeq2SegGenerator(BaseGenerator):
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int], max_tokens: Optional[int]) -> Dict:
         pass
 
 
@@ -402,9 +395,8 @@ class MockPromptNode(PromptNode):
 
     def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None]) -> Optional[PromptTemplate]:
         if prompt_template == "think-step-by-step":
-            return PromptTemplate(
-                name="think-step-by-step",
-                prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
+            p = PromptTemplate(
+                "You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
                 "correctly, you have access to the following tools:\n\n"
                 "{tool_names_with_descriptions}\n\n"
                 "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
@@ -421,10 +413,11 @@ class MockPromptNode(PromptNode):
                 "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
                 "---\n\n"
                 "Question: {query}\n"
-                "Thought: Let's think step-by-step, I first need to {generated_text}",
+                "Thought: Let's think step-by-step, I first need to {generated_text}"
             )
+            p.name = "think-step-by-step"
         else:
-            return PromptTemplate(name="", prompt_text="")
+            return PromptTemplate("test prompt")
 
 
 @pytest.fixture
@@ -447,24 +440,49 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
             "name": "filename2",
             "date_field": "2019-10-01",
             "numeric_field": 5.0,
+            "list_field": ["item0.1", "item0.2"],
         },
         # "dict" format
         {
             "content": "My name is Carla and I live in Berlin",
-            "meta": {"meta_field": "test1", "name": "filename1", "date_field": "2020-03-01", "numeric_field": 5.5},
+            "meta": {
+                "meta_field": "test1",
+                "name": "filename1",
+                "date_field": "2020-03-01",
+                "numeric_field": 5.5,
+                "list_field": ["item1.1", "item1.2"],
+            },
         },
         # Document object
         Document(
             content="My name is Christelle and I live in Paris",
-            meta={"meta_field": "test3", "name": "filename3", "date_field": "2018-10-01", "numeric_field": 4.5},
+            meta={
+                "meta_field": "test3",
+                "name": "filename3",
+                "date_field": "2018-10-01",
+                "numeric_field": 4.5,
+                "list_field": ["item2.1", "item2.2"],
+            },
         ),
         Document(
             content="My name is Camila and I live in Madrid",
-            meta={"meta_field": "test4", "name": "filename4", "date_field": "2021-02-01", "numeric_field": 3.0},
+            meta={
+                "meta_field": "test4",
+                "name": "filename4",
+                "date_field": "2021-02-01",
+                "numeric_field": 3.0,
+                "list_field": ["item3.1", "item3.2"],
+            },
         ),
         Document(
             content="My name is Matteo and I live in Rome",
-            meta={"meta_field": "test5", "name": "filename5", "date_field": "2019-01-01", "numeric_field": 0.0},
+            meta={
+                "meta_field": "test5",
+                "name": "filename5",
+                "date_field": "2019-01-01",
+                "numeric_field": 0.0,
+                "list_field": ["item4.1", "item4.2"],
+            },
         ),
     ]
 
@@ -481,6 +499,43 @@ def gc_cleanup(request):
     """
     yield
     gc.collect()
+
+
+@pytest.fixture
+def eval_labels() -> List[MultiLabel]:
+    EVAL_LABELS = [
+        MultiLabel(
+            labels=[
+                Label(
+                    query="Who lives in Berlin?",
+                    answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]),
+                    document=Document(
+                        id="a0747b83aea0b60c4b114b15476dd32d",
+                        content_type="text",
+                        content="My name is Carla and I live in Berlin",
+                    ),
+                    is_correct_answer=True,
+                    is_correct_document=True,
+                    origin="gold-label",
+                )
+            ]
+        ),
+        MultiLabel(
+            labels=[
+                Label(
+                    query="Who lives in Munich?",
+                    answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]),
+                    document=Document(
+                        id="something_else", content_type="text", content="My name is Carla and I live in Munich"
+                    ),
+                    is_correct_answer=True,
+                    is_correct_document=True,
+                    origin="gold-label",
+                )
+            ]
+        ),
+    ]
+    return EVAL_LABELS
 
 
 @pytest.fixture
@@ -514,11 +569,6 @@ def deepset_cloud_fixture():
 
 
 @pytest.fixture
-def rag_generator():
-    return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
-
-
-@pytest.fixture
 def question_generator():
     return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
@@ -543,17 +593,16 @@ def reader(request):
 @pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
 def table_reader_and_param(request):
     if request.param == "tapas_small":
-        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq", return_table_cell=True), request.param
+        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq"), request.param
     elif request.param == "tapas_base":
-        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq", return_table_cell=True), request.param
+        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq"), request.param
     elif request.param == "tapas_scored":
-        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader", return_table_cell=True), request.param
+        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader"), request.param
     elif request.param == "rci":
         return (
             RCIReader(
                 row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
                 column_model_name_or_path="michaelrglass/albert-base-rci-wikisql-col",
-                return_table_cell=True,
             ),
             request.param,
         )
@@ -662,7 +711,7 @@ def mock_pinecone(monkeypatch):
         monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "weaviate", "pinecone"])
 def document_store_with_docs(request, docs, tmp_path, monkeypatch):
     if request.param == "pinecone":
         mock_pinecone(monkeypatch)
@@ -769,18 +818,6 @@ def get_document_store(
             isolation_level="AUTOCOMMIT",
         )
 
-    elif document_store_type == "milvus":
-        document_store = MilvusDocumentStore(
-            embedding_dim=embedding_dim,
-            sql_url=get_sql_url(tmp_path),
-            return_embedding=True,
-            embedding_field=embedding_field,
-            index=index,
-            similarity=similarity,
-            isolation_level="AUTOCOMMIT",
-            recreate_index=recreate_index,
-        )
-
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
             index=index, similarity=similarity, embedding_dim=embedding_dim, recreate_index=recreate_index
@@ -845,6 +882,11 @@ def samples_path():
     return Path(__file__).parent / "samples"
 
 
+@pytest.fixture
+def preview_samples_path():
+    return Path(__file__).parent / "preview" / "test_files"
+
+
 @pytest.fixture(autouse=True)
 def request_blocker(request: pytest.FixtureRequest, monkeypatch):
     """
@@ -855,5 +897,14 @@ def request_blocker(request: pytest.FixtureRequest, monkeypatch):
     marker = request.node.get_closest_marker("unit")
     if marker is None:
         return
-    monkeypatch.delattr("requests.sessions.Session")
-    monkeypatch.delattr("requests_cache.session.CachedSession")
+
+    def urlopen_mock(self, method, url, *args, **kwargs):
+        raise RuntimeError(f"The test was about to {method} {self.scheme}://{self.host}{url}")
+
+    monkeypatch.setattr("urllib3.connectionpool.HTTPConnectionPool.urlopen", urlopen_mock)
+
+
+@pytest.fixture
+def mock_auto_tokenizer():
+    with patch("transformers.AutoTokenizer.from_pretrained", autospec=True) as mock_from_pretrained:
+        yield mock_from_pretrained

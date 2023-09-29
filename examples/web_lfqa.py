@@ -1,6 +1,7 @@
+import logging
 import os
 
-from haystack.nodes import PromptNode, PromptTemplate
+from haystack.nodes import PromptNode, PromptTemplate, TopPSampler
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.pipelines import WebQAPipeline
 
@@ -20,14 +21,11 @@ Your answer should be in your own words and be no longer than 50 words.
 """
 
 prompt_node = PromptNode(
-    "text-davinci-003",
-    default_prompt_template=PromptTemplate("lfqa", prompt_text=prompt_text),
-    api_key=openai_key,
-    max_length=256,
+    "text-davinci-003", default_prompt_template=PromptTemplate(prompt_text), api_key=openai_key, max_length=256
 )
 
-web_retriever = WebRetriever(api_key=search_key, top_search_results=2, mode="preprocessed_documents")
-pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=prompt_node)
+web_retriever = WebRetriever(api_key=search_key, top_search_results=5, mode="preprocessed_documents", top_k=30)
+pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=prompt_node, sampler=TopPSampler(top_p=0.8))
 
 # Long-Form QA requiring multiple context paragraphs for the synthesis of an elaborate generative answer
 questions = [
@@ -35,6 +33,13 @@ questions = [
     "What are the advantages of PromptNode in Haystack?",
     "What PromptModelInvocationLayer implementations are available in Haystack?",
 ]
+
+# Avoid all failed html parsing logs
+logger = logging.getLogger("haystack.nodes.retriever.link_content")
+logger.setLevel(logging.CRITICAL)
+logger = logging.getLogger("boilerpy3")
+logger.setLevel(logging.CRITICAL)
+
 
 for q in questions:
     print(f"Question: {q}")

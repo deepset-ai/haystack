@@ -1,14 +1,14 @@
-import uuid
 import json
+import uuid
 from unittest import mock
 
-import pytest
 import numpy as np
+import pytest
+import weaviate
 
 from haystack.document_stores.weaviate import WeaviateDocumentStore
 from haystack.schema import Document
 from haystack.testing import DocumentStoreBaseTestAbstract
-from haystack.document_stores import weaviate
 
 embedding_dim = 768
 
@@ -64,17 +64,10 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         """
         This fixture provides an instance of the WeaviateDocumentStore equipped with a mocked Weaviate client.
         """
-
-        class DSMock(WeaviateDocumentStore):
-            pass
-
-        mocked_client = mock.MagicMock()
-        mocked_client.Client().is_ready.return_value = True
-        mocked_client.Client().schema.contains.return_value = False
-        weaviate.client = mocked_client
-        mocked_ds = DSMock()
-
-        return mocked_ds
+        with mock.patch("haystack.document_stores.weaviate.client") as mocked_client:
+            mocked_client.Client().is_ready.return_value = True
+            mocked_client.Client().schema.contains.return_value = False
+            yield WeaviateDocumentStore()
 
     @pytest.mark.skip(reason="Weaviate does not support labels")
     @pytest.mark.integration
@@ -242,14 +235,14 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
     def test_similarity_existing_index(self, similarity):
         """Testing non-matching similarity"""
         # create the document_store
-        document_store = WeaviateDocumentStore(
+        WeaviateDocumentStore(
             similarity=similarity, index=f"test_similarity_existing_index_{similarity}", recreate_index=True
         )
 
         # try to connect to the same document store but using the wrong similarity
         non_matching_similarity = "l2" if similarity == "cosine" else "cosine"
         with pytest.raises(ValueError, match=r"This index already exists in Weaviate with similarity .*"):
-            document_store2 = WeaviateDocumentStore(
+            WeaviateDocumentStore(
                 similarity=non_matching_similarity,
                 index=f"test_similarity_existing_index_{similarity}",
                 recreate_index=False,
@@ -273,6 +266,35 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         """
         ds.write_documents(documents)
         assert ds.get_embedding_count() == 9
+
+    @pytest.mark.unit
+    def test__get_auth_secret(self):
+        # Test with username and password
+        secret = WeaviateDocumentStore._get_auth_secret("user", "pass", scope="some_scope")
+        assert isinstance(secret, weaviate.AuthClientPassword)
+
+        # Test with api key
+        secret = WeaviateDocumentStore._get_auth_secret(api_key="wcs_api_key")
+        assert isinstance(secret, weaviate.AuthApiKey)
+
+        # Test with no authentication method
+        secret = WeaviateDocumentStore._get_auth_secret()
+        assert secret is None
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "embedded_options, expected_options",
+        [
+            (None, weaviate.EmbeddedOptions()),
+            (
+                {"hostname": "http://localhost", "port": "8080"},
+                weaviate.EmbeddedOptions(hostname="http://localhost", port="8080"),
+            ),
+        ],
+    )
+    def test__get_embedded_options(self, embedded_options, expected_options):
+        options = WeaviateDocumentStore._get_embedded_options(embedded_options)
+        assert options == expected_options
 
     @pytest.mark.unit
     def test__get_current_properties(self, mocked_ds):
@@ -436,3 +458,9 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         )
         retrieved_docs = mocked_ds.get_all_documents()
         assert retrieved_docs[0].meta["list_dict_field"] == [{"key": "value"}, {"key": "value"}]
+
+    @pytest.mark.unit
+    def test_write_documents_req_for_each_batch(self, mocked_ds, documents):
+        mocked_ds.batch_size = 2
+        mocked_ds.write_documents(documents)
+        assert mocked_ds.weaviate_client.batch.create_objects.call_count == 5

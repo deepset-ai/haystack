@@ -75,7 +75,7 @@ topic:weaviate:
 - test/document_stores/test_weaviate.py
 topic:elasticsearch:
 - haystack/document_stores/search_engine.py
-- haystack/document_stores/elasticsearch.py
+- haystack/document_stores/elasticsearch/*
 - test/document_stores/test_elasticsearch.py
 topic:opensearch:
 - haystack/document_stores/search_engine.py
@@ -95,12 +95,6 @@ topic:pinecone:
 topic:knowledge_graph:
 - haystack/document_stores/memory_knowledgegraph.py
 - test/document_stores/test_knowledge_graph.py
-topic:milvus:
-- haystack/document_stores/milvus.py
-- test/document_stores/test_milvus.py
 topic:dc_document_store:
 - haystack/document_stores/deepsetcloud.py
 - test/document_stores/test_deepsetcloud.py
-topic:graphdb:
-- haystack/document_stores/graphdb.py
-- test/document_stores/test_knowledge_graph.py

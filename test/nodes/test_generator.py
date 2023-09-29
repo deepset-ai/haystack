@@ -1,136 +1,54 @@
-import sys
-from typing import List
-from unittest.mock import patch
+from unittest.mock import patch, create_autospec
 
 import pytest
-
-from haystack.schema import Document
-from haystack.nodes.answer_generator import Seq2SeqGenerator, OpenAIAnswerGenerator, RAGenerator
-from haystack.pipelines import GenerativeQAPipeline
+from haystack import Pipeline
+from haystack.schema import Document, Answer
+from haystack.nodes.answer_generator import OpenAIAnswerGenerator
 from haystack.nodes import PromptTemplate
 
 import logging
-from ..conftest import fail_at_version
 
 
 @pytest.mark.unit
-@fail_at_version(1, 18)
-def test_seq2seq_deprecation():
-    with pytest.warns(DeprecationWarning):
-        try:
-            Seq2SeqGenerator("non_existing_model/model")
-        except OSError:
-            pass
+@patch("haystack.nodes.answer_generator.openai.openai_request")
+def test_no_openai_organization(mock_request):
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        generator = OpenAIAnswerGenerator(api_key="fake_api_key")
+    assert generator.openai_organization is None
+
+    generator.predict(query="test query", documents=[Document(content="test document")])
+    assert "OpenAI-Organization" not in mock_request.call_args.kwargs["headers"]
 
 
 @pytest.mark.unit
-@fail_at_version(1, 18)
-def test_rag_deprecation():
-    with pytest.warns(DeprecationWarning):
-        try:
-            RAGenerator("non_existing_model/model")
-        except OSError:
-            pass
+@patch("haystack.nodes.answer_generator.openai.openai_request")
+def test_openai_organization(mock_request):
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        generator = OpenAIAnswerGenerator(api_key="fake_api_key", openai_organization="fake_organization")
+    assert generator.openai_organization == "fake_organization"
+
+    generator.predict(query="test query", documents=[Document(content="test document")])
+    assert mock_request.call_args.kwargs["headers"]["OpenAI-Organization"] == "fake_organization"
 
 
-@pytest.mark.integration
-@pytest.mark.generator
-def test_rag_token_generator(rag_generator, docs_with_true_emb):
-    query = "What is capital of the Germany?"
-    generated_docs = rag_generator.predict(query=query, documents=docs_with_true_emb, top_k=1)
-    answers = generated_docs["answers"]
-    assert len(answers) == 1
-    assert "berlin" in answers[0].answer
+@pytest.mark.unit
+@patch("haystack.nodes.answer_generator.openai.openai_request")
+def test_openai_answer_generator_default_api_base(mock_request):
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        generator = OpenAIAnswerGenerator(api_key="fake_api_key")
+    assert generator.api_base == "https://api.openai.com/v1"
+    generator.predict(query="test query", documents=[Document(content="test document")])
+    assert mock_request.call_args.kwargs["url"] == "https://api.openai.com/v1/completions"
 
 
-@pytest.mark.integration
-@pytest.mark.generator
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
-def test_generator_pipeline(document_store, retriever, rag_generator, docs_with_true_emb):
-    document_store.write_documents(docs_with_true_emb)
-    query = "What is capital of the Germany?"
-    pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
-    output = pipeline.run(query=query, params={"Generator": {"top_k": 2}, "Retriever": {"top_k": 1}})
-    answers = output["answers"]
-    assert len(answers) == 2
-    assert "berlin" in answers[0].answer
-    for doc_idx, document in enumerate(output["documents"]):
-        assert document.id == answers[0].document_ids[doc_idx]
-        assert document.meta == answers[0].meta["doc_metas"][doc_idx]
-
-
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
-@pytest.mark.integration
-@pytest.mark.generator
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["retribert", "dpr_lfqa"], indirect=True)
-@pytest.mark.parametrize("lfqa_generator", ["yjernite/bart_eli5", "vblagoje/bart_lfqa"], indirect=True)
-@pytest.mark.embedding_dim(128)
-def test_lfqa_pipeline(document_store, retriever, lfqa_generator, docs_with_true_emb):
-    # reuse existing DOCS but regenerate embeddings with retribert
-    docs: List[Document] = []
-    for d in docs_with_true_emb:
-        docs.append(Document(content=d.content))
-    document_store.write_documents(docs)
-    document_store.update_embeddings(retriever)
-    query = "Tell me about Berlin?"
-    pipeline = GenerativeQAPipeline(generator=lfqa_generator, retriever=retriever)
-    output = pipeline.run(query=query, params={"top_k": 1})
-    answers = output["answers"]
-    assert len(answers) == 1, answers
-    assert "Germany" in answers[0].answer, answers[0].answer
-
-
-@pytest.mark.integration
-@pytest.mark.generator
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
-@pytest.mark.embedding_dim(128)
-def test_lfqa_pipeline_unknown_converter(document_store, retriever, docs_with_true_emb):
-    # reuse existing DOCS but regenerate embeddings with retribert
-    docs: List[Document] = []
-    for d in docs_with_true_emb:
-        docs.append(Document(content=d.content))
-    document_store.write_documents(docs)
-    document_store.update_embeddings(retriever)
-    seq2seq = Seq2SeqGenerator(model_name_or_path="patrickvonplaten/t5-tiny-random")
-    query = "Tell me about Berlin?"
-    pipeline = GenerativeQAPipeline(retriever=retriever, generator=seq2seq)
-
-    # raises exception as we don't have converter for "patrickvonplaten/t5-tiny-random" in Seq2SeqGenerator
-    with pytest.raises(Exception) as exception_info:
-        output = pipeline.run(query=query, params={"top_k": 1})
-    assert "doesn't have input converter registered for patrickvonplaten/t5-tiny-random" in str(exception_info.value)
-
-
-@pytest.mark.integration
-@pytest.mark.generator
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
-@pytest.mark.embedding_dim(128)
-def test_lfqa_pipeline_invalid_converter(document_store, retriever, docs_with_true_emb):
-    # reuse existing DOCS but regenerate embeddings with retribert
-    docs: List[Document] = []
-    for d in docs_with_true_emb:
-        docs.append(Document(content=d.content))
-    document_store.write_documents(docs)
-    document_store.update_embeddings(retriever)
-
-    class _InvalidConverter:
-        def __call__(self, some_invalid_para: str, another_invalid_param: str) -> None:
-            pass
-
-    seq2seq = Seq2SeqGenerator(
-        model_name_or_path="patrickvonplaten/t5-tiny-random", input_converter=_InvalidConverter()
-    )
-    query = "This query will fail due to InvalidConverter used"
-    pipeline = GenerativeQAPipeline(retriever=retriever, generator=seq2seq)
-
-    # raises exception as we are using invalid method signature in _InvalidConverter
-    with pytest.raises(Exception) as exception_info:
-        output = pipeline.run(query=query, params={"top_k": 1})
-    assert "does not have a valid __call__ method signature" in str(exception_info.value)
+@pytest.mark.unit
+@patch("haystack.nodes.answer_generator.openai.openai_request")
+def test_openai_answer_generator_custom_api_base(mock_request):
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        generator = OpenAIAnswerGenerator(api_key="fake_api_key", api_base="https://fake_api_base.com")
+    assert generator.api_base == "https://fake_api_base.com"
+    generator.predict(query="test query", documents=[Document(content="test document")])
+    assert mock_request.call_args.kwargs["url"] == "https://fake_api_base.com/completions"
 
 
 @pytest.mark.integration
@@ -158,10 +76,8 @@ def test_openai_answer_generator_custom_template(haystack_openai_config, docs):
         pytest.skip("No API key found, skipping test")
 
     lfqa_prompt = PromptTemplate(
-        name="lfqa",
-        prompt_text="""
-        Synthesize a comprehensive answer from your knowledge and the following topk most relevant paragraphs and the given question.
-        \n===\Paragraphs: {context}\n===\n{query}""",
+        """Synthesize a comprehensive answer from your knowledge and the following topk most relevant paragraphs and
+        the given question.\n===\\Paragraphs: {context}\n===\n{query}"""
     )
     node = OpenAIAnswerGenerator(
         api_key=haystack_openai_config["api_key"],
@@ -218,3 +134,65 @@ def test_build_prompt_within_max_length():
 
         assert len(prompt_docs) == 1
         assert prompt_docs[0] == documents[0]
+
+
+@pytest.mark.unit
+def test_openai_answer_generator_pipeline_max_tokens():
+    """
+    tests that the max_tokens parameter is passed to the generator component in the pipeline
+    """
+    question = "What is New York City like?"
+    mocked_response = "Forget NYC, I was generated by the mock method."
+    nyc_docs = [Document(content="New York is a cool and amazing city to live in the United States of America.")]
+    pipeline = Pipeline()
+
+    # mock load_openai_tokenizer to avoid accessing the internet to init tiktoken
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        openai_generator = OpenAIAnswerGenerator(api_key="fake_api_key", model="text-babbage-001", top_k=1)
+
+        pipeline.add_node(component=openai_generator, name="generator", inputs=["Query"])
+        openai_generator.run = create_autospec(openai_generator.run)
+        openai_generator.run.return_value = ({"answers": mocked_response}, "output_1")
+
+        result = pipeline.run(query=question, documents=nyc_docs, params={"generator": {"max_tokens": 3}})
+        assert result["answers"] == mocked_response
+        openai_generator.run.assert_called_with(query=question, documents=nyc_docs, max_tokens=3)
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.answer_generator.openai.OpenAIAnswerGenerator.predict")
+def test_openai_answer_generator_run_with_labels_and_isolated_node_eval(patched_predict, eval_labels):
+    label = eval_labels[0]
+    query = label.query
+    document = label.labels[0].document
+
+    patched_predict.return_value = {
+        "answers": [Answer(answer=label.labels[0].answer.answer, document_ids=[document.id])]
+    }
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        openai_generator = OpenAIAnswerGenerator(api_key="fake_api_key", model="text-babbage-001", top_k=1)
+        result, _ = openai_generator.run(query=query, documents=[document], labels=label, add_isolated_node_eval=True)
+
+    assert "answers_isolated" in result
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.answer_generator.base.BaseGenerator.predict_batch")
+def test_openai_answer_generator_run_batch_with_labels_and_isolated_node_eval(patched_predict_batch, eval_labels):
+    queries = [label.query for label in eval_labels]
+    documents = [[label.labels[0].document] for label in eval_labels]
+
+    patched_predict_batch.return_value = {
+        "queries": queries,
+        "answers": [
+            [Answer(answer=label.labels[0].answer.answer, document_ids=[label.labels[0].document.id])]
+            for label in eval_labels
+        ],
+    }
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        openai_generator = OpenAIAnswerGenerator(api_key="fake_api_key", model="text-babbage-001", top_k=1)
+        result, _ = openai_generator.run_batch(
+            queries=queries, documents=documents, labels=eval_labels, add_isolated_node_eval=True
+        )
+
+    assert "answers_isolated" in result

@@ -173,6 +173,7 @@ def test_global_debug_attributes_override_node_ones(document_store_with_docs, tm
     assert prediction["_debug"]["Reader"]["output"]
 
 
+@pytest.mark.unit
 def test_missing_top_level_arg():
     pipeline = Pipeline()
     pipeline.add_node(component=MockRetriever(), name="Retriever", inputs=["Query"])
@@ -183,6 +184,7 @@ def test_missing_top_level_arg():
     assert "Must provide a 'query' parameter" in str(exc.value)
 
 
+@pytest.mark.unit
 def test_unexpected_top_level_arg():
     pipeline = Pipeline()
     pipeline.add_node(component=MockRetriever(), name="Retriever", inputs=["Query"])
@@ -193,6 +195,7 @@ def test_unexpected_top_level_arg():
     assert "run() got an unexpected keyword argument 'invalid_query'" in str(exc.value)
 
 
+@pytest.mark.unit
 def test_unexpected_node_arg():
     pipeline = Pipeline()
     pipeline.add_node(component=MockRetriever(), name="Retriever", inputs=["Query"])
@@ -203,6 +206,7 @@ def test_unexpected_node_arg():
     assert "Invalid parameter 'invalid' for the node 'Retriever'" in str(exc.value)
 
 
+@pytest.mark.unit
 def test_debug_info_propagation():
     class A(RootNode):
         def run(self):

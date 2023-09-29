@@ -1,4 +1,6 @@
 import logging
+from unittest.mock import patch
+
 import pytest
 import sys
 from copy import deepcopy
@@ -19,6 +21,16 @@ from haystack.pipelines.standard_pipelines import (
 )
 from haystack.nodes.translator.transformers import TransformersTranslator
 from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
+
+
+@pytest.mark.unit
+@patch("haystack.pipelines.base.Pipeline.run_batch")
+def test_eval_batch_add_isolated_node_eval_passed_to_run_batch(mock_run_batch):
+    pipeline = Pipeline()
+    pipeline.eval_batch(labels=EVAL_LABELS, add_isolated_node_eval=True)
+    _, kwargs = mock_run_batch.call_args
+    assert "add_isolated_node_eval" in kwargs["params"]
+    assert kwargs["params"]["add_isolated_node_eval"] is True
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
@@ -395,24 +407,24 @@ def test_extractive_qa_eval_answer_document_scope_combinations(reader, retriever
 
     # valid values for non default answer_scopes
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer", answer_scope="context")
-        metrics = eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_or_answer", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" not in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_and_context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_and_context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_or_context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_or_context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
 

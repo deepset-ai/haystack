@@ -1,0 +1,41 @@
+loaders:
+  - type: python
+    search_path: [../../../haystack/nodes/prompt/invocation_layer]
+    modules:
+      [
+        "anthropic_claude",
+        "azure_chatgpt",
+        "azure_open_ai",
+        "chatgpt",
+        "cohere",
+        "hugging_face",
+        "hugging_face_inference",
+        "open_ai",
+        "sagemaker_base",
+        "sagemaker_hf_infer",
+        "sagemaker_hf_text_gen",
+        "sagemaker_meta",
+      ]
+    ignore_when_discovered: ["__init__"]
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+  type: renderers.ReadmeRenderer
+  excerpt: Enables use of Large Language Models from different providers with PromptNode.
+  category_slug: haystack-classes
+  title: Invocation Layers API
+  slug: invocation-layers-api
+  order: 117
+  parent_doc_slug: prompt-node-api
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: invocation_layers_api.md

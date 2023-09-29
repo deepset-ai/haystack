@@ -38,7 +38,7 @@ from torch.nn import functional as F
 from transformers import AutoModelForMaskedLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
 import requests
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 
 logger = logging.getLogger(__name__)

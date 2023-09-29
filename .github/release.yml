@@ -29,12 +29,10 @@ changelog:
         - topic:document_store
         - topic:elasticsearch
         - topic:faiss
-        - topic:milvus
         - topic:weaviate
         - topic:pinecone
         - topic:sql
         - topic:knowledge_graph
-        - topic:graphdb
     - title: REST API
       labels:
         - topic:api

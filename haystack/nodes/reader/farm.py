@@ -1,3 +1,5 @@
+# pylint: disable=ungrouped-imports
+
 from typing import List, Optional, Dict, Any, Union, Callable, Tuple
 
 import logging
@@ -8,30 +10,34 @@ import os
 import tempfile
 from time import perf_counter
 
-import torch
 from huggingface_hub import create_repo, HfFolder, Repository
 
 from haystack.errors import HaystackError
-from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
-from haystack.modeling.data_handler.processor import SquadProcessor, Processor
-from haystack.modeling.data_handler.dataloader import NamedDataLoader
-from haystack.modeling.data_handler.inputs import QAInput, Question
-from haystack.modeling.infer import QAInferencer
-from haystack.modeling.model.optimization import initialize_optimizer
-from haystack.modeling.model.predictions import QAPred, QACandidate
-from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.training import Trainer, DistillationTrainer, TinyBERTDistillationTrainer
-from haystack.modeling.evaluation import Evaluator
-from haystack.modeling.utils import set_all_seeds, initialize_device_settings
-
 from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
+from haystack.utils import get_batches_from_generator
 from haystack.utils.early_stopping import EarlyStopping
 from haystack.telemetry import send_event
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
+    from haystack.modeling.data_handler.processor import SquadProcessor, Processor
+    from haystack.modeling.data_handler.dataloader import NamedDataLoader
+    from haystack.modeling.data_handler.inputs import QAInput, Question
+    from haystack.modeling.infer import QAInferencer
+    from haystack.modeling.model.optimization import initialize_optimizer
+    from haystack.modeling.model.predictions import QAPred, QACandidate
+    from haystack.modeling.model.adaptive_model import AdaptiveModel
+    from haystack.modeling.training import Trainer, DistillationTrainer, TinyBERTDistillationTrainer
+    from haystack.modeling.evaluation import Evaluator
+    from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 
 class FARMReader(BaseReader):
@@ -52,7 +58,7 @@ class FARMReader(BaseReader):
         context_window_size: int = 150,
         batch_size: int = 50,
         use_gpu: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         no_ans_boost: float = 0.0,
         return_no_answer: bool = False,
         top_k: int = 10,
@@ -70,6 +76,7 @@ class FARMReader(BaseReader):
         force_download=False,
         use_auth_token: Optional[Union[str, bool]] = None,
         max_query_length: int = 64,
+        preprocessing_batch_size: Optional[int] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
@@ -123,14 +130,19 @@ class FARMReader(BaseReader):
         :param confidence_threshold: Filters out predictions below confidence_threshold. Value should be between 0 and 1. Disabled by default.
         :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
         :param local_files_only: Whether to force checking for local files only (and forbid downloads)
-        :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
+        :param force_download: Whether to force a (re-)download even if the model exists locally in the cache.
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param max_query_length: Maximum length of the question in number of tokens.
+        :param preprocessing_batch_size: Number of query-document pairs to be preprocessed (= tokenized, put into
+                                         tensors, etc.) at once. If `None` (default), all query-document pairs are
+                                         preprocessed at once.
         """
+        torch_and_transformers_import.check()
+
         super().__init__()
 
         self.devices, self.n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
@@ -168,6 +180,7 @@ class FARMReader(BaseReader):
         self.use_confidence_scores = use_confidence_scores
         self.confidence_threshold = confidence_threshold
         self.model_name_or_path = model_name_or_path  # Used in distillation, see DistillationDataSilo._get_checksum()
+        self.preprocessing_batch_size = preprocessing_batch_size
 
     def _training_procedure(
         self,
@@ -176,7 +189,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: Optional[List[torch.device]] = None,
+        devices: Optional[List["torch.device"]] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -195,12 +208,12 @@ class FARMReader(BaseReader):
         caching: bool = False,
         cache_path: Path = Path("cache/data_silo"),
         distillation_loss_weight: float = 0.5,
-        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
+        distillation_loss: Union[str, Callable[["torch.Tensor", "torch.Tensor"], "torch.Tensor"]] = "kl_div",
         temperature: float = 1.0,
         tinybert: bool = False,
-        processor: Optional[Processor] = None,
+        processor: Optional["Processor"] = None,
         grad_acc_steps: int = 1,
-        early_stopping: Optional[EarlyStopping] = None,
+        early_stopping: Optional["EarlyStopping"] = None,
         distributed: bool = False,
         doc_stride: Optional[int] = None,
         max_query_length: Optional[int] = None,
@@ -365,7 +378,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: Optional[List[torch.device]] = None,
+        devices: Optional[List["torch.device"]] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -472,7 +485,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: Optional[List[torch.device]] = None,
+        devices: Optional[List["torch.device"]] = None,
         batch_size: int = 10,
         teacher_batch_size: Optional[int] = None,
         n_epochs: int = 2,
@@ -490,11 +503,11 @@ class FARMReader(BaseReader):
         caching: bool = False,
         cache_path: Path = Path("cache/data_silo"),
         distillation_loss_weight: float = 0.5,
-        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
+        distillation_loss: Union[str, Callable[["torch.Tensor", "torch.Tensor"], "torch.Tensor"]] = "kl_div",
         temperature: float = 1.0,
-        processor: Optional[Processor] = None,
+        processor: Optional["Processor"] = None,
         grad_acc_steps: int = 1,
-        early_stopping: Optional[EarlyStopping] = None,
+        early_stopping: Optional["EarlyStopping"] = None,
     ):
         """
         Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -602,7 +615,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: Optional[List[torch.device]] = None,
+        devices: Optional[List["torch.device"]] = None,
         batch_size: int = 10,
         teacher_batch_size: Optional[int] = None,
         n_epochs: int = 5,
@@ -619,12 +632,12 @@ class FARMReader(BaseReader):
         checkpoints_to_keep: int = 3,
         caching: bool = False,
         cache_path: Path = Path("cache/data_silo"),
-        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse",
+        distillation_loss: Union[str, Callable[["torch.Tensor", "torch.Tensor"], "torch.Tensor"]] = "mse",
         distillation_loss_weight: float = 0.5,
         temperature: float = 1.0,
-        processor: Optional[Processor] = None,
+        processor: Optional["Processor"] = None,
         grad_acc_steps: int = 1,
-        early_stopping: Optional[EarlyStopping] = None,
+        early_stopping: Optional["EarlyStopping"] = None,
     ):
         """
         The first stage of distillation finetuning as described in the TinyBERT paper:
@@ -844,9 +857,12 @@ class FARMReader(BaseReader):
         if batch_size is not None:
             self.inferencer.batch_size = batch_size
         # Make predictions on all document-query pairs
-        predictions = self.inferencer.inference_from_objects(
-            objects=inputs, return_json=False, multiprocessing_chunksize=10
-        )
+        predictions = []
+        for input_batch in get_batches_from_generator(inputs, self.preprocessing_batch_size):
+            cur_predictions = self.inferencer.inference_from_objects(
+                objects=input_batch, return_json=False, multiprocessing_chunksize=10
+            )
+            predictions.extend(cur_predictions)
 
         # Group predictions together
         grouped_predictions = []
@@ -887,7 +903,7 @@ class FARMReader(BaseReader):
                          'answer': 'Eddard,',
                          'context': "She travels with her father, Eddard, to King's Landing when he is",
                          'score': 0.9787139466668613,
-                         'offsets_in_context': [Span(start=29, end=35],
+                         'offsets_in_document': [Span(start=29, end=35],
                          'offsets_in_context': [Span(start=347, end=353],
                          'document_id': '88d1ed769d003939d3a0d28034464ab2'
                          ),...
@@ -910,9 +926,12 @@ class FARMReader(BaseReader):
 
         # get answers from QA model
         # TODO: Need fix in FARM's `to_dict` function of `QAInput` class
-        predictions = self.inferencer.inference_from_objects(
-            objects=inputs, return_json=False, multiprocessing_chunksize=1
-        )
+        predictions = []
+        for input_batch in get_batches_from_generator(inputs, self.preprocessing_batch_size):
+            cur_predictions = self.inferencer.inference_from_objects(
+                objects=input_batch, return_json=False, multiprocessing_chunksize=1
+            )
+            predictions.extend(cur_predictions)
         # Deduplicate same answers resulting from Document split overlap
         predictions = self._deduplicate_predictions(predictions, documents)
         # assemble answers from all the different documents & format them.
@@ -926,7 +945,7 @@ class FARMReader(BaseReader):
         self,
         data_dir: Union[Path, str],
         test_filename: str,
-        device: Optional[Union[str, torch.device]] = None,
+        device: Optional[Union[str, "torch.device"]] = None,
         calibrate_conf_scores: bool = False,
     ):
         """
@@ -1002,7 +1021,7 @@ class FARMReader(BaseReader):
     def eval(
         self,
         document_store: BaseDocumentStore,
-        device: Optional[Union[str, torch.device]] = None,
+        device: Optional[Union[str, "torch.device"]] = None,
         label_index: str = "label",
         doc_index: str = "eval_document",
         label_origin: str = "gold-label",
@@ -1134,10 +1153,10 @@ class FARMReader(BaseReader):
                             }
 
             # Get rid of the question key again (after we aggregated we don't need it anymore)
-            d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
+            d[str(doc_id)]["qas"] = list(aggregated_per_question.values())
 
         # Convert input format for FARM
-        farm_input = [v for v in d.values()]
+        farm_input = list(d.values())
         n_queries = len([y for x in farm_input for y in x["qas"]])
 
         # Create DataLoader that can be passed to the Evaluator
@@ -1175,7 +1194,7 @@ class FARMReader(BaseReader):
         }
         return results
 
-    def _extract_answers_of_predictions(self, predictions: List[QAPred], top_k: Optional[int] = None):
+    def _extract_answers_of_predictions(self, predictions: List["QAPred"], top_k: Optional[int] = None):
         # Assemble answers from all the different documents and format them.
         # For the 'no answer' option, we collect all no_ans_gaps and decide how likely
         # a no answer is based on all no_ans_gaps values across all documents
@@ -1233,7 +1252,7 @@ class FARMReader(BaseReader):
 
     def _preprocess_batch_queries_and_docs(
         self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
-    ) -> Tuple[List[QAInput], List[int], bool]:
+    ) -> Tuple[List["QAInput"], List[int], bool]:
         # Convert input to FARM format
         inputs = []
         number_of_docs = []
@@ -1270,7 +1289,7 @@ class FARMReader(BaseReader):
 
         return inputs, number_of_docs, single_doc_list
 
-    def _deduplicate_predictions(self, predictions: List[QAPred], documents: List[Document]) -> List[QAPred]:
+    def _deduplicate_predictions(self, predictions: List["QAPred"], documents: List[Document]) -> List["QAPred"]:
         overlapping_docs = self._identify_overlapping_docs(documents)
         if not overlapping_docs:
             return predictions
@@ -1314,7 +1333,7 @@ class FARMReader(BaseReader):
 
     @staticmethod
     def _is_duplicate_answer(
-        ans: QACandidate, ans_overlap: Dict, pot_dupl_ans: QACandidate, pot_dupl_ans_overlap: Dict
+        ans: "QACandidate", ans_overlap: Dict, pot_dupl_ans: "QACandidate", pot_dupl_ans_overlap: Dict
     ) -> bool:
         answer_start_in_overlap = ans.offset_answer_start - ans_overlap["range"][0]
         answer_end_in_overlap = ans.offset_answer_end - ans_overlap["range"][0]
@@ -1328,7 +1347,7 @@ class FARMReader(BaseReader):
         )
 
     @staticmethod
-    def _qa_cand_in_overlap(cand: QACandidate, overlap: Dict) -> bool:
+    def _qa_cand_in_overlap(cand: "QACandidate", overlap: Dict) -> bool:
         if cand.offset_answer_start < overlap["range"][0] or cand.offset_answer_end > overlap["range"][1]:
             return False
         return True
@@ -1349,7 +1368,7 @@ class FARMReader(BaseReader):
     def calibrate_confidence_scores(
         self,
         document_store: BaseDocumentStore,
-        device: Optional[Union[str, torch.device]] = None,
+        device: Optional[Union[str, "torch.device"]] = None,
         label_index: str = "label",
         doc_index: str = "eval_document",
         label_origin: str = "gold_label",
@@ -1377,13 +1396,10 @@ class FARMReader(BaseReader):
         )
 
     @staticmethod
-    def _check_no_answer(c: QACandidate):
+    def _check_no_answer(c: "QACandidate"):
         # check for correct value in "answer"
-        if c.offset_answer_start == 0 and c.offset_answer_end == 0:
-            if c.answer != "no_answer":
-                logger.error(
-                    "Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'"
-                )
+        if c.offset_answer_start == 0 and c.offset_answer_end == 0 and c.answer != "no_answer":
+            logger.error("Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'")
         return c.answer == "no_answer"
 
     def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):

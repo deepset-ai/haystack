@@ -1,7 +1,7 @@
 loaders:
-  - type: python
+  - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/nodes/prompt]
-    modules: 
+    modules:
       [
         "prompt_node",
         "prompt_model",

@@ -3,12 +3,7 @@ from abc import ABC
 from copy import deepcopy
 from functools import wraps
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import Any, Dict, List, Optional, Union, Literal
 
 from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.nodes.answer_generator.base import BaseGenerator

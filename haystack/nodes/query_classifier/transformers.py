@@ -2,15 +2,21 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Any
 
-import torch
-from transformers import pipeline
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
-from haystack.modeling.utils import initialize_device_settings
-from haystack.utils.torch_utils import ListDataset
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from transformers import pipeline
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
+    from haystack.utils.torch_utils import ListDataset
+
 
 DEFAULT_LABELS = ["LABEL_1", "LABEL_0"]
 
@@ -71,7 +77,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model, for example 'shahrukhx01/bert-mini-finetune-question-detection'.
@@ -96,6 +102,8 @@ class TransformersQueryClassifier(BaseQueryClassifier):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
+        torch_and_transformers_import.check()
+
         if labels is None:
             labels = DEFAULT_LABELS
         super().__init__()
@@ -113,12 +121,12 @@ class TransformersQueryClassifier(BaseQueryClassifier):
             tokenizer=tokenizer,
             device=resolved_devices[0],
             revision=model_version,
-            use_auth_token=use_auth_token,
+            token=use_auth_token,
         )
 
         self.labels = labels
         if task == "text-classification":
-            labels_from_model = [label for label in self.model.model.config.id2label.values()]
+            labels_from_model = list(self.model.model.config.id2label.values())
             if set(labels) != set(labels_from_model):
                 raise ValueError(
                     f"For text-classification, the provided labels must match the model labels; only the order can differ.\n"

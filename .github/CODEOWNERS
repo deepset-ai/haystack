@@ -4,7 +4,8 @@
 # in the repo. Unless a later match takes precedence,
 # @deepset-ai/core-engineering will be requested for review
 # when someone opens a pull request.
-*            @deepset-ai/core-engineering
+*                       @deepset-ai/core-engineering
 
 # Documentation
-*.md         @deepset-ai/documentation @deepset-ai/core-engineering
+*.md                    @deepset-ai/documentation @deepset-ai/core-engineering
+releasenotes/notes/*    @deepset-ai/documentation @deepset-ai/core-engineering

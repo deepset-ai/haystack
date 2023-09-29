@@ -201,5 +201,63 @@ class HuggingFaceInferenceLimitError(HuggingFaceInferenceError):
 class HuggingFaceInferenceUnauthorizedError(HuggingFaceInferenceError):
     """Exception for issues that occur in the HuggingFace inference node due to unauthorized access"""
 
+
+class SageMakerInferenceError(NodeError):
+    """Exception for issues that occur in the SageMaker inference node"""
+
+    def __init__(
+        self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False
+    ):
+        super().__init__(message=message, send_message_in_event=send_message_in_event)
+        self.status_code = status_code
+
+
+class SageMakerConfigurationError(NodeError):
+    """Exception raised when SageMaker node is not configured correctly"""
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, send_message_in_event=send_message_in_event)
+
+
+class SageMakerModelNotReadyError(SageMakerInferenceError):
+    """Exception for when a model is still under provisioning"""
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, status_code=429, send_message_in_event=send_message_in_event)
+
+
+class AnthropicError(NodeError):
+    """Exception for issues that occur in the Anthropic APIs"""
+
+    def __init__(
+        self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False
+    ):
+        super().__init__(message=message, send_message_in_event=send_message_in_event)
+        self.status_code = status_code
+
+
+class AnthropicRateLimitError(AnthropicError):
+    """
+    Rate limit error for Anthropic API (status code 429)
+    See https://console.anthropic.com/docs/api/errors
+    """
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, status_code=429, send_message_in_event=send_message_in_event)
+
+
+class AnthropicUnauthorizedError(AnthropicError):
+    """
+    Unauthorized error for Anthropic API (status code 401)
+    https://console.anthropic.com/docs/api/errors
+    """
+
     def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
         super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)
+
+
+class CohereInferenceLimitError(CohereError):
+    """Exception for issues that occur in the Cohere inference node due to rate limiting"""
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, status_code=429, send_message_in_event=send_message_in_event)

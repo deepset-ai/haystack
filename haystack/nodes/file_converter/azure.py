@@ -5,16 +5,20 @@ from collections import defaultdict
 import json
 import copy
 
-from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
-from azure.core.credentials import AzureKeyCredential
 import pandas as pd
 
+from haystack.lazy_imports import LazyImport
 from haystack.nodes.file_converter.base import BaseConverter
 from haystack.errors import HaystackError
 from haystack.schema import Document
 
-
 logger = logging.getLogger(__name__)
+
+with LazyImport(
+    message="Run 'pip install farm-haystack[file-conversion]' or 'pip install " "azure-ai-formrecognizer>=3.2.0b2'"
+) as azure_import:
+    from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
+    from azure.core.credentials import AzureKeyCredential
 
 
 class AzureConverter(BaseConverter):
@@ -70,6 +74,9 @@ class AzureConverter(BaseConverter):
         :param add_page_number: Adds the number of the page a table occurs in to the Document's meta field
                                 `"page"`.
         """
+        # ensure the required dependencies were actually imported
+        azure_import.check()
+
         super().__init__(valid_languages=valid_languages, id_hash_keys=id_hash_keys)
 
         self.document_analysis_client = DocumentAnalysisClient(
@@ -179,7 +186,7 @@ class AzureConverter(BaseConverter):
 
     def _convert_tables_and_text(
         self,
-        result: AnalyzeResult,
+        result: "AnalyzeResult",
         meta: Optional[Dict[str, Any]],
         valid_languages: Optional[List[str]],
         file_path: Path,
@@ -196,7 +203,7 @@ class AzureConverter(BaseConverter):
                 if not isinstance(table.content, pd.DataFrame):
                     raise HaystackError("Document's content field must be of type 'pd.DataFrame'.")
                 for _, row in table.content.iterrows():
-                    for _, cell in row.items():
+                    for cell in row.values():
                         file_text += f" {cell}"
             if not self.validate_language(file_text, valid_languages):
                 logger.warning(
@@ -209,7 +216,7 @@ class AzureConverter(BaseConverter):
         return docs
 
     def _convert_tables(
-        self, result: AnalyzeResult, meta: Optional[Dict[str, Any]], id_hash_keys: Optional[List[str]] = None
+        self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]], id_hash_keys: Optional[List[str]] = None
     ) -> List[Document]:
         converted_tables: List[Document] = []
 
@@ -310,7 +317,7 @@ class AzureConverter(BaseConverter):
         return converted_tables
 
     def _convert_text(
-        self, result: AnalyzeResult, meta: Optional[Dict[str, str]], id_hash_keys: Optional[List[str]] = None
+        self, result: "AnalyzeResult", meta: Optional[Dict[str, str]], id_hash_keys: Optional[List[str]] = None
     ) -> Document:
         text = ""
         table_spans_by_page = defaultdict(list)

@@ -4,7 +4,7 @@ version: ignore
 
 components:    # define all the building-blocks for Pipeline
   - name: DocumentStore
-    type: ElasticsearchDocumentStore  # consider using MilvusDocumentStore or WeaviateDocumentStore for scaling to large number of documents
+    type: ElasticsearchDocumentStore  # consider using WeaviateDocumentStore for scaling to large number of documents
     params:
       host: localhost
   - name: Retriever

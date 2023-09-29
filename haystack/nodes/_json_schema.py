@@ -160,7 +160,9 @@ def handle_optional_params(param_fields: List[inspect.Parameter], params_schema:
         else:
             anyof_list = param_dict.pop("anyOf", None)
             if anyof_list is not None:
-                anyof_list = list(sorted(anyof_list, key=lambda x: x["type"]))
+                anyof_list = sorted(
+                    [item for item in anyof_list if item and "type" in item.keys()], key=lambda x: x["type"]
+                )
                 anyof_list.append({"type": "null"})
                 param_dict["anyOf"] = anyof_list
     return params_schema
@@ -203,7 +205,7 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
     param_fields.pop(0)
     param_fields_kwargs: Dict[str, Any] = {}
 
-    # Read all the paramteres extracted from the __init__ method with type and default value
+    # Read all the parameters extracted from the __init__ method with type and default value
     for param in param_fields:
         annotation = Any
         if param.annotation != param.empty:

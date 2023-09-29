@@ -1,0 +1,46 @@
+version: ignore
+
+components:
+  - name: DocumentStore
+    type: OpenSearchDocumentStore
+    params:
+      host: opensearch
+      port: 9200
+      batch_size: 1000
+      similarity: cosine
+      embedding_dim: 384
+  - name: TextConverter
+    type: TextConverter
+  - name: Retriever
+    type: EmbeddingRetriever
+    params:
+      document_store: DocumentStore
+      embedding_model: sentence-transformers/multi-qa-MiniLM-L6-cos-v1
+      top_k: 10
+  - name: Reader
+    type: FARMReader
+    params:
+      model_name_or_path: deepset/tinyroberta-squad2
+      top_k: 10
+      preprocessing_batch_size: 1000
+
+pipelines:
+  - name: indexing
+    nodes:
+      - name: TextConverter
+        inputs: [File]
+      - name: Retriever
+        inputs: [TextConverter]
+      - name: DocumentStore
+        inputs: [Retriever]
+  - name: querying
+    nodes:
+      - name: Retriever
+        inputs: [Query]
+      - name: Reader
+        inputs: [Retriever]
+
+benchmark_config:
+  data_url: https://deepset-test-datasets.s3.eu-central-1.amazonaws.com/squadv2.100_000.tar.bz2
+  documents_directory: data/squadv2.100_000/txt
+  labels_file: data/squadv2.100_000/evalsets/squad_evalset_all.csv

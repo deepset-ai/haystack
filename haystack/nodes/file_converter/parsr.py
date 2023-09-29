@@ -1,10 +1,5 @@
 import sys
-from typing import Optional, Dict, List, Any, Union, Tuple
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import Optional, Dict, List, Any, Union, Tuple, Literal
 
 import json
 import copy
@@ -204,7 +199,7 @@ class ParsrConverter(BaseConverter):
                 if not isinstance(table.content, pd.DataFrame):
                     raise HaystackError("Document's content field must be of type 'pd.DataFrame'.")
                 for _, row in table.content.iterrows():
-                    for _, cell in row.items():
+                    for cell in row.values():
                         file_text += f" {cell}"
             if not self.validate_language(file_text, valid_languages):
                 logger.warning(

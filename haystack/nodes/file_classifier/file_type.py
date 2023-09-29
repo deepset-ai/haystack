@@ -5,22 +5,18 @@ import logging
 from pathlib import Path
 
 from haystack.nodes.base import BaseComponent
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
 
-
-try:
+with LazyImport() as magic_import:
     import magic
-except ImportError as ie:
-    logger.debug(
-        "Failed to import 'magic' (from 'python-magic' and 'python-magic-bin' on Windows). "
-        "FileTypeClassifier will not perform mimetype detection on extensionless files. "
-        "Please make sure the necessary OS libraries are installed if you need this functionality."
-    )
 
 
-DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html"]
+DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html", "media"]
+
+DEFAULT_MEDIA_TYPES = ["mp3", "mp4", "mpeg", "m4a", "wav", "webm"]
 
 
 class FileTypeClassifier(BaseComponent):
@@ -30,15 +26,20 @@ class FileTypeClassifier(BaseComponent):
 
     outgoing_edges = len(DEFAULT_TYPES)
 
-    def __init__(self, supported_types: Optional[List[str]] = None):
+    def __init__(self, supported_types: Optional[List[str]] = None, full_analysis: bool = False):
         """
         Node that sends out files on a different output edge depending on their extension.
 
-        :param supported_types: The file types that this node can distinguish between.
-              If no value is provided, the value created by default comprises: `txt`, `pdf`, `md`, `docx`, and `html`.
-             Lists with duplicate elements are not allowed.
+        :param supported_types: The file types this node distinguishes. Optional.
+            If you don't provide any value, the default is: `txt`, `pdf`, `md`, `docx`, and `html`.
+            You can't use lists with duplicate elements.
+        :param full_analysis: If True, the whole file is analyzed to determine the file type.
+            If False, only the first 2049 bytes are analyzed.
         """
+        self.full_analysis = full_analysis
+        self._default_types = False
         if supported_types is None:
+            self._default_types = True
             supported_types = DEFAULT_TYPES
         if len(set(supported_types)) != len(supported_types):
             duplicates = supported_types
@@ -62,9 +63,18 @@ class FileTypeClassifier(BaseComponent):
         :param file_path: the path to extract the extension from
         """
         try:
-            extension = magic.from_file(str(file_path), mime=True)
-            return mimetypes.guess_extension(extension) or ""
-        except NameError:
+            with open(file_path, "rb") as f:
+                if self.full_analysis:
+                    buffer = f.read()
+                else:
+                    buffer = f.read(2049)
+                extension = magic.from_buffer(buffer, mime=True)
+                real_extension = mimetypes.guess_extension(extension) or ""
+                real_extension = real_extension.lstrip(".")
+                if self._default_types and real_extension in DEFAULT_MEDIA_TYPES:
+                    return "media"
+                return real_extension or ""
+        except (NameError, ImportError):
             logger.error(
                 "The type of '%s' could not be guessed, probably because 'python-magic' is not installed. Ignoring this error."
                 "Please make sure the necessary OS libraries are installed if you need this functionality ('python-magic' or 'python-magic-bin' on Windows).",
@@ -81,18 +91,19 @@ class FileTypeClassifier(BaseComponent):
         :param file_paths: the paths to extract the extension from
         :return: a set of strings with all the extensions (without duplicates), the extension will be guessed if the file has none
         """
-        extension = file_paths[0].suffix.lower()
-        if extension == "":
+        extension = file_paths[0].suffix.lower().lstrip(".")
+
+        if extension == "" or (self._default_types and extension in DEFAULT_MEDIA_TYPES):
             extension = self._estimate_extension(file_paths[0])
 
         for path in file_paths:
-            path_suffix = path.suffix.lower()
-            if path_suffix == "":
+            path_suffix = path.suffix.lower().lstrip(".")
+            if path_suffix == "" or (self._default_types and path_suffix in DEFAULT_MEDIA_TYPES):
                 path_suffix = self._estimate_extension(path)
             if path_suffix != extension:
-                raise ValueError("Multiple file types are not allowed at once.")
+                raise ValueError("Multiple non-default file types are not allowed at once.")
 
-        return extension.lstrip(".")
+        return extension
 
     def run(self, file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str]]]):  # type: ignore
         """

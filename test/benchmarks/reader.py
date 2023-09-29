@@ -1,98 +1,70 @@
-from utils import get_document_store, index_to_doc_store, get_reader
-from haystack.document_stores.utils import eval_data_from_json
-from haystack.modeling.data_handler.processor import _download_extract_downstream_data
-
+from time import perf_counter
+from typing import Dict
 from pathlib import Path
-import pandas as pd
-from results_to_json import reader as reader_json
-from templates import READER_TEMPLATE
-import json
+import traceback
+import datetime
 import logging
 
-logger = logging.getLogger(__name__)
-
-reader_models_full = [
-    "deepset/roberta-base-squad2",
-    "deepset/minilm-uncased-squad2",
-    "deepset/bert-base-cased-squad2",
-    "deepset/roberta-large-squad2",
-    "deepset/roberta-base-squad2-distilled",
-    "distilbert-base-uncased-distilled-squad",
-]
-reader_models_ci = ["deepset/minilm-uncased-squad2"]
-
-reader_types = ["farm"]
-data_dir = Path("../../data/squad20")
-filename = "dev-v2.0.json"
-# Note that this number is approximate - it was calculated using Bert Base Cased
-# This number could vary when using a different tokenizer
-n_total_passages = 12350
-n_total_docs = 1204
-
-results_file = "reader_results.csv"
-
-reader_json_file = "../../docs/_src/benchmarks/reader_performance.json"
-
-doc_index = "eval_document"
-label_index = "label"
+from haystack import Pipeline
+from haystack.nodes import BaseReader
+from haystack.utils import aggregate_labels
+from utils import load_eval_data, get_reader_config
 
 
-def benchmark_reader(ci=False, update_json=False, save_markdown=False, **kwargs):
-    if ci:
-        reader_models = reader_models_ci
-    else:
-        reader_models = reader_models_full
-    reader_results = []
-    doc_store = get_document_store("elasticsearch")
-    # download squad data
-    _download_extract_downstream_data(input_file=data_dir / filename)
-    docs, labels = eval_data_from_json(data_dir / filename, max_docs=None)
+def benchmark_reader(pipeline: Pipeline, labels_file: Path) -> Dict:
+    try:
+        labels, queries = load_eval_data(labels_file)
+        eval_labels = aggregate_labels(labels)
+        eval_queries = []
+        eval_docs = []
+        for multi_label in eval_labels:
+            eval_queries.append(multi_label.query)
+            eval_docs.append([multi_label.labels[0].document])
 
-    index_to_doc_store(doc_store, docs, None, labels)
-    for reader_name in reader_models:
-        for reader_type in reader_types:
-            logger.info("##### Start reader run - model: %s, type: %s ##### ", reader_name, reader_type)
-            try:
-                reader = get_reader(reader_name, reader_type)
-                results = reader.eval(
-                    document_store=doc_store, doc_index=doc_index, label_index=label_index, device="cuda"
-                )
-                # print(results)
-                results["passages_per_second"] = n_total_passages / results["reader_time"]
-                results["reader"] = reader_name
-                results["error"] = ""
-                reader_results.append(results)
-            except Exception as e:
-                results = {
-                    "EM": 0.0,
-                    "f1": 0.0,
-                    "top_n_accuracy": 0.0,
-                    "top_n": 0,
-                    "reader_time": 0.0,
-                    "passages_per_second": 0.0,
-                    "seconds_per_query": 0.0,
-                    "reader": reader_name,
-                    "error": e,
-                }
-                reader_results.append(results)
-            reader_df = pd.DataFrame.from_records(reader_results)
-            reader_df.to_csv(results_file)
-            if save_markdown:
-                md_file = results_file.replace(".csv", ".md")
-                with open(md_file, "w") as f:
-                    f.write(str(reader_df.to_markdown()))
-    doc_store.delete_documents(label_index)
-    doc_store.delete_documents(doc_index)
-    if update_json:
-        populate_reader_json()
+        # Run querying
+        start_time = perf_counter()
+        # We use run_batch instead of eval_batch because we want to get pure inference time
+        predictions = pipeline.run_batch(queries=eval_queries, documents=eval_docs, labels=eval_labels, debug=True)
+        end_time = perf_counter()
+        querying_time = end_time - start_time
 
+        # Evaluate predictions
+        eval_result = pipeline._generate_eval_result_from_batch_preds(predictions_batches=predictions)
+        metrics = eval_result.calculate_metrics()["Reader"]
 
-def populate_reader_json():
-    reader_results = reader_json()
-    template = READER_TEMPLATE
-    template["data"] = reader_results
-    json.dump(template, open(reader_json_file, "w"), indent=4)
+        reader_type, reader_model, reader_top_k = get_reader_config(pipeline)
+        results = {
+            "querying": {
+                "exact_match": metrics["exact_match"],
+                "f1": metrics["f1"],
+                "n_queries": len(eval_labels),
+                "querying_time": querying_time,
+                "seconds_per_query": querying_time / len(eval_labels),
+                "reader": reader_type,
+                "reader_model": reader_model,
+                "top_k": reader_top_k,
+                "date_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "error": None,
+            }
+        }
 
+    except Exception:
+        tb = traceback.format_exc()
+        logging.error("##### The following Error was raised while running querying run:")
+        logging.error(tb)
+        reader_type, reader_model, reader_top_k = get_reader_config(pipeline)
+        results = {
+            "reader": {
+                "exact_match": 0.0,
+                "f1": 0.0,
+                "n_queries": 0,
+                "querying_time": 0.0,
+                "seconds_per_query": 0.0,
+                "reader": reader_type,
+                "reader_model": reader_model,
+                "date_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "error": str(tb),
+            }
+        }
 
-if __name__ == "__main__":
-    benchmark_reader(ci=True, update_json=True, save_markdown=True)
+    return results

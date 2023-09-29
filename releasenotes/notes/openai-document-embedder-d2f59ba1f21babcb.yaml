@@ -1,0 +1,6 @@
+---
+preview:
+  - |
+    Add OpenAI Document Embedder.
+    It computes embeddings of Documents using OpenAI models.
+    The embedding of each Document is stored in the `embedding` field of the Document.

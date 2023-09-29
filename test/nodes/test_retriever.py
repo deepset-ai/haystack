@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 from boilerpy3.extractors import ArticleExtractor
 from pandas.testing import assert_frame_equal
-from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
+from transformers import PreTrainedTokenizerFast
 
 
 try:
@@ -21,19 +21,19 @@ except (ImportError, ModuleNotFoundError) as ie:
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
 
-from haystack.document_stores.base import BaseDocumentStore, FilterType
+from haystack.document_stores.base import BaseDocumentStore, FilterType, KeywordDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.nodes.search_engine import WebSearch
-from haystack.nodes.retriever import Text2SparqlRetriever
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from haystack.nodes.retriever.multimodal import MultiModalRetriever
+from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 
 from ..conftest import MockBaseRetriever, fail_at_version
 
@@ -45,15 +45,12 @@ from ..conftest import MockBaseRetriever, fail_at_version
         ("mdr", "elasticsearch"),
         ("mdr", "faiss"),
         ("mdr", "memory"),
-        ("mdr", "milvus"),
         ("dpr", "elasticsearch"),
         ("dpr", "faiss"),
         ("dpr", "memory"),
-        ("dpr", "milvus"),
         ("embedding", "elasticsearch"),
         ("embedding", "faiss"),
         ("embedding", "memory"),
-        ("embedding", "milvus"),
         ("bm25", "elasticsearch"),
         ("bm25", "memory"),
         ("bm25", "weaviate"),
@@ -124,21 +121,24 @@ def test_retrieval_with_filters(retriever_with_docs: BaseRetriever, document_sto
     assert len(result) == 0
 
 
-def test_tfidf_retriever_multiple_indexes():
+@pytest.mark.unit
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+def test_tfidf_retriever_multiple_indexes(document_store: BaseDocumentStore):
     docs_index_0 = [Document(content="test_1"), Document(content="test_2"), Document(content="test_3")]
     docs_index_1 = [Document(content="test_4"), Document(content="test_5")]
-    ds = InMemoryDocumentStore(index="index_0")
-    tfidf_retriever = TfidfRetriever(document_store=ds)
+    tfidf_retriever = TfidfRetriever(document_store=document_store)
 
-    ds.write_documents(docs_index_0)
-    tfidf_retriever.fit(ds, index="index_0")
-    ds.write_documents(docs_index_1, index="index_1")
-    tfidf_retriever.fit(ds, index="index_1")
+    document_store.write_documents(docs_index_0, index="index_0")
+    tfidf_retriever.fit(document_store, index="index_0")
+    document_store.write_documents(docs_index_1, index="index_1")
+    tfidf_retriever.fit(document_store, index="index_1")
 
-    assert tfidf_retriever.document_counts["index_0"] == ds.get_document_count(index="index_0")
-    assert tfidf_retriever.document_counts["index_1"] == ds.get_document_count(index="index_1")
+    assert tfidf_retriever.document_counts["index_0"] == document_store.get_document_count(index="index_0")
+    assert tfidf_retriever.document_counts["index_1"] == document_store.get_document_count(index="index_1")
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 def test_retrieval_empty_query(document_store: BaseDocumentStore):
     # test with empty query using the run() method
     mock_document = Document(id="0", content="test")
@@ -220,65 +220,77 @@ def test_batch_retrieval_multiple_queries_with_filters(retriever_with_docs, docu
     assert res[1][0].meta["name"] == "filename2"
 
 
-@pytest.mark.elasticsearch
-def test_elasticsearch_custom_query():
-    client = Elasticsearch()
-    client.indices.delete(index="haystack_test_custom", ignore=[404])
-    document_store = ElasticsearchDocumentStore(
-        index="haystack_test_custom", content_field="custom_text_field", embedding_field="custom_embedding_field"
-    )
-    documents = [
-        {"content": "test_1", "meta": {"year": "2019"}},
-        {"content": "test_2", "meta": {"year": "2020"}},
-        {"content": "test_3", "meta": {"year": "2021"}},
-        {"content": "test_4", "meta": {"year": "2021"}},
-        {"content": "test_5", "meta": {"year": "2021"}},
-    ]
-    document_store.write_documents(documents)
+@pytest.mark.unit
+def test_embed_meta_fields(docs_with_ids):
+    with patch(
+        "haystack.nodes.retriever._embedding_encoder._SentenceTransformersEmbeddingEncoder.__init__"
+    ) as mock_init:
+        mock_init.return_value = None
+        retriever = EmbeddingRetriever(
+            embedding_model="sentence-transformers/all-mpnet-base-v2",
+            model_format="sentence_transformers",
+            embed_meta_fields=["date_field", "numeric_field", "list_field"],
+        )
+    docs_with_embedded_meta = retriever._preprocess_documents(docs=docs_with_ids[:2])
+    assert docs_with_embedded_meta[0].content.startswith("2019-10-01\n5.0\nitem0.1\nitem0.2")
+    assert docs_with_embedded_meta[1].content.startswith("2020-03-01\n5.5\nitem1.1\nitem1.2")
 
-    # test custom "terms" query
-    retriever = BM25Retriever(
-        document_store=document_store,
-        custom_query="""
+
+@pytest.mark.unit
+def test_embed_meta_fields_empty():
+    doc = Document(content="My name is Matteo and I live in Rome", meta={"meta_field": "", "list_field": []})
+    with patch(
+        "haystack.nodes.retriever._embedding_encoder._SentenceTransformersEmbeddingEncoder.__init__"
+    ) as mock_init:
+        mock_init.return_value = None
+        retriever = EmbeddingRetriever(
+            embedding_model="sentence-transformers/all-mpnet-base-v2",
+            model_format="sentence_transformers",
+            embed_meta_fields=["meta_field", "list_field"],
+        )
+    docs_with_embedded_meta = retriever._preprocess_documents(docs=[doc])
+    assert docs_with_embedded_meta[0].content == "My name is Matteo and I live in Rome"
+
+
+@pytest.mark.unit
+def test_embed_meta_fields_list_with_one_item():
+    doc = Document(content="My name is Matteo and I live in Rome", meta={"list_field": ["one_item"]})
+    with patch(
+        "haystack.nodes.retriever._embedding_encoder._SentenceTransformersEmbeddingEncoder.__init__"
+    ) as mock_init:
+        mock_init.return_value = None
+        retriever = EmbeddingRetriever(
+            embedding_model="sentence-transformers/all-mpnet-base-v2",
+            model_format="sentence_transformers",
+            embed_meta_fields=["list_field"],
+        )
+    docs_with_embedded_meta = retriever._preprocess_documents(docs=[doc])
+    assert docs_with_embedded_meta[0].content == "one_item\nMy name is Matteo and I live in Rome"
+
+
+@pytest.mark.unit
+def test_custom_query():
+    mock_document_store = Mock(spec=KeywordDocumentStore)
+    mock_document_store.index = "test"
+
+    custom_query = """
             {
                 "size": 10,
                 "query": {
                     "bool": {
                         "should": [{
-                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
-                            "filter": [{"terms": {"year": ${years}}}]}}}""",
-    )
-    results = retriever.retrieve(query="test", filters={"years": ["2020", "2021"]})
-    assert len(results) == 4
+                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["custom_text_field"]}}],
+                            "filter": ${filters}}}}"""
 
-    # test linefeeds in query
-    results = retriever.retrieve(query="test\n", filters={"years": ["2020", "2021"]})
-    assert len(results) == 3
-
-    # test double quote in query
-    results = retriever.retrieve(query='test"', filters={"years": ["2020", "2021"]})
-    assert len(results) == 3
-
-    # test custom "term" query
-    retriever = BM25Retriever(
-        document_store=document_store,
-        custom_query="""
-                {
-                    "size": 10,
-                    "query": {
-                        "bool": {
-                            "should": [{
-                                "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
-                                "filter": [{"term": {"year": ${years}}}]}}}""",
-    )
-    results = retriever.retrieve(query="test", filters={"years": "2021"})
-    assert len(results) == 3
+    retriever = BM25Retriever(document_store=mock_document_store, custom_query=custom_query)
+    retriever.retrieve(query="test", filters={"year": ["2020", "2021"]})
+    assert mock_document_store.query.call_args.kwargs["custom_query"] == custom_query
+    assert mock_document_store.query.call_args.kwargs["filters"] == {"year": ["2020", "2021"]}
+    assert mock_document_store.query.call_args.kwargs["query"] == "test"
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
-)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "weaviate", "pinecone"], indirect=True)
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_ids):
     document_store.return_embedding = True
@@ -300,9 +312,7 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_i
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
-)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "weaviate", "pinecone"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.embedding_dim(128)
 def test_retribert_embedding(document_store, retriever, docs_with_ids):
@@ -326,32 +336,51 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
         assert isclose(embedding[0], expected_value, rel_tol=0.001)
 
 
-def test_openai_embedding_retriever_selection():
-    # OpenAI released (Dec 2022) a unifying embedding model called text-embedding-ada-002
-    # make sure that we can use it with the retriever selection
-    er = EmbeddingRetriever(embedding_model="text-embedding-ada-002", document_store=None)
-    assert er.model_format == "openai"
-    assert er.embedding_encoder.query_encoder_model == "text-embedding-ada-002"
-    assert er.embedding_encoder.doc_encoder_model == "text-embedding-ada-002"
+@pytest.mark.unit
+def test_openai_embedding_retriever_model_format():
+    # support text-embedding-ada-002
+    assert (
+        EmbeddingRetriever._infer_model_format(model_name_or_path="text-embedding-ada-002", use_auth_token=None)
+        == "openai"
+    )
 
-    # but also support old ada and other text-search-<modelname>-*-001 models
-    er = EmbeddingRetriever(embedding_model="ada", document_store=None)
-    assert er.model_format == "openai"
-    assert er.embedding_encoder.query_encoder_model == "text-search-ada-query-001"
-    assert er.embedding_encoder.doc_encoder_model == "text-search-ada-doc-001"
+    # support old ada and other text-search-<modelname>-*-001 models
+    assert EmbeddingRetriever._infer_model_format(model_name_or_path="ada", use_auth_token=None) == "openai"
 
-    # but also support old babbage and other text-search-<modelname>-*-001 models
-    er = EmbeddingRetriever(embedding_model="babbage", document_store=None)
-    assert er.model_format == "openai"
-    assert er.embedding_encoder.query_encoder_model == "text-search-babbage-query-001"
-    assert er.embedding_encoder.doc_encoder_model == "text-search-babbage-doc-001"
+    # support old babbage and other text-search-<modelname>-*-001 models
+    assert EmbeddingRetriever._infer_model_format(model_name_or_path="babbage", use_auth_token=None) == "openai"
 
     # make sure that we can handle potential unreleased models
-    er = EmbeddingRetriever(embedding_model="text-embedding-babbage-002", document_store=None)
-    assert er.model_format == "openai"
-    assert er.embedding_encoder.query_encoder_model == "text-embedding-babbage-002"
-    assert er.embedding_encoder.doc_encoder_model == "text-embedding-babbage-002"
-    # etc etc.
+    assert (
+        EmbeddingRetriever._infer_model_format(model_name_or_path="text-embedding-babbage-002", use_auth_token=None)
+        == "openai"
+    )
+
+
+@pytest.mark.unit
+def test_openai_encoder_setup_encoding_models():
+    with patch("haystack.nodes.retriever._openai_encoder._OpenAIEmbeddingEncoder.__init__") as mock_encoder_init:
+        mock_encoder_init.return_value = None
+        encoder = _OpenAIEmbeddingEncoder(retriever=None)  # type: ignore
+
+    encoder._setup_encoding_models(model_class="ada", model_name="text-embedding-ada-002", max_seq_len=512)
+    assert encoder.query_encoder_model == "text-embedding-ada-002"
+    assert encoder.doc_encoder_model == "text-embedding-ada-002"
+
+    # support old ada and other text-search-<modelname>-*-001 models
+    encoder._setup_encoding_models(model_class="ada", model_name="ada", max_seq_len=512)
+    assert encoder.query_encoder_model == "text-search-ada-query-001"
+    assert encoder.doc_encoder_model == "text-search-ada-doc-001"
+
+    # support old babbage and other text-search-<modelname>-*-001 models
+    encoder._setup_encoding_models(model_class="babbage", model_name="babbage", max_seq_len=512)
+    assert encoder.query_encoder_model == "text-search-babbage-query-001"
+    assert encoder.doc_encoder_model == "text-search-babbage-doc-001"
+
+    # make sure that we can handle potential unreleased models
+    encoder._setup_encoding_models(model_class="babbage", model_name="text-embedding-babbage-002", max_seq_len=512)
+    assert encoder.query_encoder_model == "text-embedding-babbage-002"
+    assert encoder.doc_encoder_model == "text-embedding-babbage-002"
 
 
 @pytest.mark.integration
@@ -578,8 +607,8 @@ def test_dpr_saving_and_loading(tmp_path, retriever, document_store):
     assert loaded_retriever.processor.max_seq_len_query == 64
 
     # Tokenizer
-    assert isinstance(loaded_retriever.passage_tokenizer, DPRContextEncoderTokenizerFast)
-    assert isinstance(loaded_retriever.query_tokenizer, DPRQuestionEncoderTokenizerFast)
+    assert isinstance(loaded_retriever.passage_tokenizer, PreTrainedTokenizerFast)
+    assert isinstance(loaded_retriever.query_tokenizer, PreTrainedTokenizerFast)
     assert loaded_retriever.passage_tokenizer.do_lower_case == True
     assert loaded_retriever.query_tokenizer.do_lower_case == True
     assert loaded_retriever.passage_tokenizer.vocab_size == 30522
@@ -621,9 +650,9 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
     assert loaded_retriever.processor.max_seq_len_query == 64
 
     # Tokenizer
-    assert isinstance(loaded_retriever.passage_tokenizer, DPRContextEncoderTokenizerFast)
-    assert isinstance(loaded_retriever.table_tokenizer, DPRContextEncoderTokenizerFast)
-    assert isinstance(loaded_retriever.query_tokenizer, DPRQuestionEncoderTokenizerFast)
+    assert isinstance(loaded_retriever.passage_tokenizer, PreTrainedTokenizerFast)
+    assert isinstance(loaded_retriever.table_tokenizer, PreTrainedTokenizerFast)
+    assert isinstance(loaded_retriever.query_tokenizer, PreTrainedTokenizerFast)
     assert loaded_retriever.passage_tokenizer.do_lower_case == True
     assert loaded_retriever.table_tokenizer.do_lower_case == True
     assert loaded_retriever.query_tokenizer.do_lower_case == True
@@ -1131,168 +1160,56 @@ def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: 
 
 
 @pytest.mark.unit
-def test_web_retriever_mode_raw_documents(monkeypatch):
-    expected_search_results = {
-        "documents": [
-            Document(
-                content="Eddard Stark",
-                score=0.9090909090909091,
-                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
-                id_hash_keys=["content"],
-                id="f408db6de8de0ffad0cb47cf8830dbb8",
-            ),
-            Document(
-                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
-                score=0.09090909090909091,
-                meta={
-                    "title": "Arya Stark's Father - Crossword Clue Answers",
-                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
-                    "position": 1,
-                    "score": 0.09090909090909091,
-                },
-                id_hash_keys=["content"],
-                id="51779277acf94cf90e7663db137c0732",
-            ),
-        ]
-    }
+@patch("haystack.nodes.retriever._openai_encoder.openai_request")
+def test_openai_default_api_base(mock_request):
+    with patch("haystack.nodes.retriever._openai_encoder.load_openai_tokenizer"):
+        retriever = EmbeddingRetriever(embedding_model="text-embedding-ada-002", api_key="fake_api_key")
+    assert retriever.api_base == "https://api.openai.com/v1"
 
-    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
-        return expected_search_results, "output_1"
+    retriever.embed_queries(queries=["test query"])
+    assert mock_request.call_args.kwargs["url"] == "https://api.openai.com/v1/embeddings"
+    mock_request.reset_mock()
 
-    class MockResponse:
-        def __init__(self, text, status_code):
-            self.text = text
-            self.status_code = status_code
-
-    def get(url, headers, timeout):
-        return MockResponse("mocked", 200)
-
-    def get_content(self, text: str) -> str:
-        return "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
-
-    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
-    monkeypatch.setattr(ArticleExtractor, "get_content", get_content)
-    monkeypatch.setattr(requests, "get", get)
-
-    web_retriever = WebRetriever(api_key="", top_search_results=2, mode="raw_documents")
-    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
-    assert len(result) == 1
-    assert isinstance(result[0], Document)
-    assert (
-        result[0].content
-        == "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
-    )
-    assert result[0].score == None
-    assert result[0].meta["url"] == "https://crossword-solver.io/clue/arya-stark%27s-father/"
-    # Only preprocessed docs but not raw docs should have the _split_id field
-    assert "_split_id" not in result[0].meta
+    retriever.embed_documents(documents=[Document(content="test document")])
+    assert mock_request.call_args.kwargs["url"] == "https://api.openai.com/v1/embeddings"
 
 
 @pytest.mark.unit
-def test_web_retriever_mode_preprocessed_documents(monkeypatch):
-    expected_search_results = {
-        "documents": [
-            Document(
-                content="Eddard Stark",
-                score=0.9090909090909091,
-                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
-                id_hash_keys=["content"],
-                id="f408db6de8de0ffad0cb47cf8830dbb8",
-            ),
-            Document(
-                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
-                score=0.09090909090909091,
-                meta={
-                    "title": "Arya Stark's Father - Crossword Clue Answers",
-                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
-                    "position": 1,
-                    "score": 0.09090909090909091,
-                },
-                id_hash_keys=["content"],
-                id="51779277acf94cf90e7663db137c0732",
-            ),
-        ]
-    }
+@patch("haystack.nodes.retriever._openai_encoder.openai_request")
+def test_openai_custom_api_base(mock_request):
+    with patch("haystack.nodes.retriever._openai_encoder.load_openai_tokenizer"):
+        retriever = EmbeddingRetriever(
+            embedding_model="text-embedding-ada-002", api_key="fake_api_key", api_base="https://fake_api_base.com"
+        )
+    assert retriever.api_base == "https://fake_api_base.com"
 
-    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
-        return expected_search_results, "output_1"
+    retriever.embed_queries(queries=["test query"])
+    assert mock_request.call_args.kwargs["url"] == "https://fake_api_base.com/embeddings"
+    mock_request.reset_mock()
 
-    class MockResponse:
-        def __init__(self, text, status_code):
-            self.text = text
-            self.status_code = status_code
-
-    def get(url, headers, timeout):
-        return MockResponse("mocked", 200)
-
-    def get_content(self, text: str) -> str:
-        return "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
-
-    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
-    monkeypatch.setattr(ArticleExtractor, "get_content", get_content)
-    monkeypatch.setattr(requests, "get", get)
-
-    web_retriever = WebRetriever(api_key="", top_search_results=2, mode="preprocessed_documents")
-    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
-    assert len(result) == 1
-    assert isinstance(result[0], Document)
-    assert (
-        result[0].content
-        == "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
-    )
-    assert result[0].score == None
-    assert result[0].meta["url"] == "https://crossword-solver.io/clue/arya-stark%27s-father/"
-    assert result[0].meta["_split_id"] == 0
+    retriever.embed_documents(documents=[Document(content="test document")])
+    assert mock_request.call_args.kwargs["url"] == "https://fake_api_base.com/embeddings"
 
 
 @pytest.mark.unit
-def test_web_retriever_mode_snippets(monkeypatch):
-    expected_search_results = {
-        "documents": [
-            Document(
-                content="Eddard Stark",
-                score=0.9090909090909091,
-                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
-                id_hash_keys=["content"],
-                id="f408db6de8de0ffad0cb47cf8830dbb8",
-            ),
-            Document(
-                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
-                score=0.09090909090909091,
-                meta={
-                    "title": "Arya Stark's Father - Crossword Clue Answers",
-                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
-                    "position": 1,
-                    "score": 0.09090909090909091,
-                },
-                id_hash_keys=["content"],
-                id="51779277acf94cf90e7663db137c0732",
-            ),
-        ]
-    }
+@patch("haystack.nodes.retriever._openai_encoder.openai_request")
+def test_openai_no_openai_organization(mock_request):
+    with patch("haystack.nodes.retriever._openai_encoder.load_openai_tokenizer"):
+        retriever = EmbeddingRetriever(embedding_model="text-embedding-ada-002", api_key="fake_api_key")
+    assert retriever.openai_organization is None
 
-    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
-        return expected_search_results, "output_1"
-
-    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
-    web_retriever = WebRetriever(api_key="", top_search_results=2)
-    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
-    assert result == expected_search_results["documents"]
+    retriever.embed_queries(queries=["test query"])
+    assert "OpenAI-Organization" not in mock_request.call_args.kwargs["headers"]
 
 
-@fail_at_version(1, 17)
-def test_text_2_sparql_retriever_deprecation():
-    BartForConditionalGeneration = object()
-    BartTokenizer = object()
-    with patch.multiple(
-        "haystack.nodes.retriever.text2sparql", BartForConditionalGeneration=DEFAULT, BartTokenizer=DEFAULT
-    ):
-        knowledge_graph = Mock()
-        with pytest.warns(DeprecationWarning) as w:
-            Text2SparqlRetriever(knowledge_graph)
+@pytest.mark.unit
+@patch("haystack.nodes.retriever._openai_encoder.openai_request")
+def test_openai_openai_organization(mock_request):
+    with patch("haystack.nodes.retriever._openai_encoder.load_openai_tokenizer"):
+        retriever = EmbeddingRetriever(
+            embedding_model="text-embedding-ada-002", api_key="fake_api_key", openai_organization="fake_organization"
+        )
+    assert retriever.openai_organization == "fake_organization"
 
-            assert len(w) == 1
-            assert (
-                w[0].message.args[0]
-                == "The Text2SparqlRetriever component is deprecated and will be removed in future versions."
-            )
+    retriever.embed_queries(queries=["test query"])
+    assert mock_request.call_args.kwargs["headers"]["OpenAI-Organization"] == "fake_organization"

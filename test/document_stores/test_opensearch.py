@@ -60,6 +60,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         opensearch_mock = MagicMock()
         opensearch_mock.indices.exists.return_value = True
         opensearch_mock.indices.get.return_value = {self.index_name: existing_index}
+        opensearch_mock.info.return_value = {"version": {"number": "1.3.5"}}
         DSMock._init_client = MagicMock()
         DSMock._init_client.configure_mock(return_value=opensearch_mock)
         dsMock = DSMock()
@@ -577,7 +578,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert mocked_document_store.space_type == "innerproduct"
         with pytest.raises(
             DocumentStoreError,
-            match=f"Set `similarity` to one of '\['l2'\]' to properly use the embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'l2', it requires 'innerproduct'.",
+            match=rf"Set `similarity` to one of '\['l2'\]' to properly use the embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'l2', it requires 'innerproduct'.",
         ):
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
@@ -596,7 +597,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
         with pytest.raises(
             DocumentStoreError,
-            match=f"Set `similarity` to one of '\['dot_product'\]' to properly use the embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'innerproduct', it requires 'cosinesimil'.",
+            match=rf"Set `similarity` to one of '\['dot_product'\]' to properly use the embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'innerproduct', it requires 'cosinesimil'.",
         ):
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
@@ -1247,9 +1248,9 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             with pytest.raises(DocumentStoreError, match="Last try of bulk indexing documents failed."):
                 mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
 
-            assert mocked_bulk.call_count == 3  # depth first search failes and cancels the whole bulk request
+            assert mocked_bulk.call_count == 3  # depth first search fails and cancels the whole bulk request
 
-            assert "Too Many Requeset" in caplog.text
+            assert "Too Many Requests" in caplog.text
             assert " Splitting the number of documents into two chunks with the same size" in caplog.text
 
     @pytest.mark.unit
@@ -1291,3 +1292,10 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         # assert the resulting body is not affected by the `excluded_meta_data` value
         _, kwargs = mocked_document_store.client.search.call_args
         assert kwargs["body"]["_source"] == {"excludes": ["embedding"]}
+
+    @pytest.mark.unit
+    def test_write_documents_req_for_each_batch(self, mocked_document_store, documents):
+        mocked_document_store.batch_size = 2
+        with patch("haystack.document_stores.opensearch.bulk") as mocked_bulk:
+            mocked_document_store.write_documents(documents)
+            assert mocked_bulk.call_count == 5

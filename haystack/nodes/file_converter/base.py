@@ -4,20 +4,17 @@ import logging
 from abc import abstractmethod
 from pathlib import Path
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
 
-try:
+
+with LazyImport("Run 'pip install farm-haystack[preprocessing]' or 'pip install langdetect'") as langdetect_import:
     import langdetect
-except (ImportError, ModuleNotFoundError) as exc:
-    logger.debug(
-        "langdetect could not be imported. "
-        "Run 'pip install farm-haystack[preprocessing]' or 'pip install langdetect' to fix this issue."
-    )
-    langdetect = None
 
 
 # https://en.wikipedia.org/wiki/Ligature_(writing)
@@ -138,13 +135,17 @@ class BaseConverter(BaseComponent):
             return True
 
         lang = None
-        if not langdetect:
-            logger.debug("langdetect could not be imported. Haystack won't try to guess the document language.")
-        else:
-            try:
-                lang = langdetect.detect(text)
-            except langdetect.lang_detect_exception.LangDetectException:
-                pass
+        try:
+            langdetect_import.check()
+            lang = langdetect.detect(text)
+        except langdetect.lang_detect_exception.LangDetectException:
+            pass
+        except ImportError as exc:
+            logger.debug(
+                "langdetect could not be imported. Haystack won't try to guess the document language. "
+                "Original error: %s",
+                exc,
+            )
 
         return lang in valid_languages
 
@@ -201,15 +202,14 @@ class BaseConverter(BaseComponent):
         for file_path, file_meta in tqdm(
             zip(file_paths, meta), total=len(file_paths), disable=not self.progress_bar, desc="Converting files"
         ):
-            for doc in self.convert(
+            documents += self.convert(
                 file_path=file_path,
                 meta=file_meta,
                 remove_numeric_tables=remove_numeric_tables,
                 valid_languages=valid_languages,
                 encoding=encoding,
                 id_hash_keys=id_hash_keys,
-            ):
-                documents.append(doc)
+            )
 
         # Cleanup ligatures
         for document in documents:

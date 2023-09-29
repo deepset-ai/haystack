@@ -2,6 +2,7 @@ import os
 
 from haystack.agents import Agent, Tool
 from haystack.agents.base import ToolsManager
+from haystack.agents.types import AgentToolLogger
 from haystack.nodes import PromptNode, PromptTemplate
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.pipelines import WebQAPipeline
@@ -82,8 +83,9 @@ Final Answer: Gainsville, Florida
 ##
 Question: {query}
 Thought:
+{transcript}
 """
-few_shot_agent_template = PromptTemplate("few-shot-react", prompt_text=few_shot_prompt)
+few_shot_agent_template = PromptTemplate(few_shot_prompt)
 prompt_node = PromptNode(
     "gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"), max_length=512, stop_words=["Observation:"]
 )
@@ -98,6 +100,7 @@ web_qa_tool = Tool(
 agent = Agent(
     prompt_node=prompt_node, prompt_template=few_shot_agent_template, tools_manager=ToolsManager([web_qa_tool])
 )
+atl = AgentToolLogger(agent_events=agent.callback_manager, tool_events=agent.tm.callback_manager)
 
 hotpot_questions = [
     "What year was the father of the Princes in the Tower born?",
@@ -105,7 +108,9 @@ hotpot_questions = [
     "Where was the actress who played the niece in the Priest film born?",
     "Which author is English: John Braine or Studs Terkel?",
 ]
-
+verbose = False
 for question in hotpot_questions:
     result = agent.run(query=question)
     print(f"\n{result}")
+    if verbose:
+        print(f"\n{atl.logs}")

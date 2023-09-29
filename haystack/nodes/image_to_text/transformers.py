@@ -2,22 +2,31 @@ from typing import List, Optional, Union
 
 import logging
 
-import torch
-from tqdm.auto import tqdm
-from transformers import pipeline
+from tqdm import tqdm
 
 from haystack.schema import Document
 from haystack.nodes.image_to_text.base import BaseImageToText
-from haystack.modeling.utils import initialize_device_settings
-from haystack.utils.torch_utils import ListDataset
 from haystack.errors import ImageToTextError
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
 
 
-# supported models classes should be extended when HF image-to-text pipeline willl support more classes
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from transformers import pipeline
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
+    from haystack.utils.torch_utils import ListDataset
+
+
+# supported models classes should be extended when HF image-to-text pipeline will support more classes
 # see https://github.com/huggingface/transformers/issues/21110
-SUPPORTED_MODELS_CLASSES = ["VisionEncoderDecoderModel"]
+SUPPORTED_MODELS_CLASSES = [
+    "VisionEncoderDecoderModel",
+    "BlipForConditionalGeneration",
+    "Blip2ForConditionalGeneration",
+]
 
 UNSUPPORTED_MODEL_MESSAGE = (
     f"The supported classes are: {SUPPORTED_MODELS_CLASSES}. \n"
@@ -32,8 +41,6 @@ UNSUPPORTED_MODEL_MESSAGE = (
 class TransformersImageToText(BaseImageToText):
     """
     A transformer-based model to generate captions for images using the Hugging Face's transformers framework.
-
-    Currently, this node supports `VisionEncoderDecoderModel` models.
 
     **Example**
 
@@ -64,25 +71,24 @@ class TransformersImageToText(BaseImageToText):
 
     def __init__(
         self,
-        model_name_or_path: str = "nlpconnect/vit-gpt2-image-captioning",
+        model_name_or_path: str = "Salesforce/blip-image-captioning-base",
         model_version: Optional[str] = None,
         generation_kwargs: Optional[dict] = None,
         use_gpu: bool = True,
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
-        Load a `VisionEncoderDecoderModel` model from transformers.
+        Load an Image-to-Text model from transformers.
 
         :param model_name_or_path: Directory of a saved model or the name of a public model.
-                                   Currently, only `VisionEncoderDecoderModel` models are supported.
                                    To find these models:
                                    1. Visit [Hugging Face image to text models](https://huggingface.co/models?pipeline_tag=image-to-text).`
                                    2. Open the model you want to check.
                                    3. On the model page, go to the "Files and Versions" tab.
-                                   4. Open the `config.json` file and make sure the `architectures` field contains `VisionEncoderDecoderModel`.
+                                   4. Open the `config.json` file and make sure the `architectures` field contains `VisionEncoderDecoderModel`, `BlipForConditionalGeneration`, or `Blip2ForConditionalGeneration`.
         :param model_version: The version of the model to use from the Hugging Face model hub. This can be the tag name, branch name, or commit hash.
         :param generation_kwargs: Dictionary containing arguments for the `generate()` method of the Hugging Face model.
                                 See [generate()](https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate) in Hugging Face documentation.
@@ -98,6 +104,7 @@ class TransformersImageToText(BaseImageToText):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). If you set `use_gpu=False`, the devices
                         parameter is not used and a single CPU device is used for inference.
         """
+        torch_and_transformers_import.check()
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
@@ -150,6 +157,11 @@ class TransformersImageToText(BaseImageToText):
 
         if len(image_file_paths) == 0:
             raise ImageToTextError("ImageToText needs at least one file path to produce a caption.")
+
+        if type(image_file_paths) is not list:
+            raise ImageToTextError(
+                "Expected List[str] for image_file_paths, got %s instead" % str(type(image_file_paths))
+            )
 
         images_dataset = ListDataset(image_file_paths)
 

@@ -2,17 +2,21 @@ import logging
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Union
 
-import torch
-from tqdm.auto import tqdm
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer  # type: ignore
+from tqdm import tqdm
 
 from haystack.errors import HaystackError
 from haystack.schema import Document, Answer
 from haystack.nodes.translator.base import BaseTranslator
-from haystack.modeling.utils import initialize_device_settings
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class TransformersTranslator(BaseTranslator):
@@ -45,7 +49,7 @@ class TransformersTranslator(BaseTranslator):
         use_gpu: bool = True,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
         models from Hugging Face's model hub, we recommend using the OPUS models from Helsinki NLP. They provide plenty
@@ -78,6 +82,7 @@ class TransformersTranslator(BaseTranslator):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
+        torch_and_transformers_import.check()
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
@@ -163,7 +168,7 @@ class TransformersTranslator(BaseTranslator):
             return translated_texts[0]
         elif documents:
             if isinstance(documents, list) and isinstance(documents[0], str):
-                return [translated_text for translated_text in translated_texts]
+                return list(translated_texts)
 
             translated_documents: Union[
                 List[Document], List[Answer], List[str], List[Dict[str, Any]]

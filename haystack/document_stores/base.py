@@ -2,11 +2,9 @@
 
 from typing import Generator, Optional, Dict, List, Set, Union, Any
 
-import warnings
 import logging
 import collections
 from pathlib import Path
-from itertools import islice
 from abc import abstractmethod
 
 import numpy as np
@@ -30,35 +28,6 @@ except (ImportError, ModuleNotFoundError):
 
     def njit(f):
         return f
-
-
-class BaseKnowledgeGraph(BaseComponent):
-    """
-    Base class for implementing Knowledge Graphs.
-
-    The BaseKnowledgeGraph component is deprecated and will be removed in future versions.
-    """
-
-    def __init__(self):
-        warnings.warn(
-            "The BaseKnowledgeGraph component is deprecated and will be removed in future versions.",
-            category=DeprecationWarning,
-        )
-        super().__init__()
-
-    outgoing_edges = 1
-
-    def run(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):  # type: ignore
-        result = self.query(sparql_query=sparql_query, index=index, headers=headers)
-        output = {"sparql_result": result}
-        return output, "output_1"
-
-    def run_batch(self):
-        raise NotImplementedError("run_batch is not implemented for KnowledgeGraphs.")
-
-    @abstractmethod
-    def query(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
-        raise NotImplementedError
 
 
 class BaseDocumentStore(BaseComponent):
@@ -626,7 +595,7 @@ class BaseDocumentStore(BaseComponent):
         :param index: name of the index
         :return: A list of Haystack Document objects.
         """
-        _hash_ids: Set = set([])
+        _hash_ids: Set = set()
         _documents: List[Document] = []
 
         for document in documents:
@@ -927,14 +896,3 @@ class KeywordDocumentStore(BaseDocumentStore):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         pass
-
-
-def get_batches_from_generator(iterable, n):
-    """
-    Batch elements of an iterable into fixed-length chunks or blocks.
-    """
-    it = iter(iterable)
-    x = tuple(islice(it, n))
-    while x:
-        yield x
-        x = tuple(islice(it, n))

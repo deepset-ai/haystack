@@ -7,19 +7,20 @@ import os
 import platform
 import sys
 
-import torch
-import transformers
 from requests.exceptions import ConnectionError
 
 from haystack import __version__
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install transformers[torch]'") as transformers_import:
+    import torch
+    import transformers
+
+with LazyImport("Run Run 'pip install farm-haystack[metrics]'") as mlflow_import:
+    import mlflow
+
 
 logger = logging.getLogger(__name__)
-
-try:
-    import mlflow
-except ImportError as exc:
-    logger.debug("mlflow could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue.")
-    mlflow = None
 
 
 def flatten_dict(dict_to_flatten: dict, prefix: str = ""):
@@ -164,10 +165,7 @@ class MLflowTrackingHead(BaseTrackingHead):
         """
         Experiment tracking head for MLflow.
         """
-        if not mlflow:
-            raise ImportError(
-                "mlflow could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue."
-            )
+        mlflow_import.check()
         super().__init__()
         self.tracking_uri = tracking_uri
         self.auto_track_environment = auto_track_environment
@@ -230,8 +228,11 @@ env_meta_data: Dict[str, Any] = {}
 
 def get_or_create_env_meta_data() -> Dict[str, Any]:
     """
-    Collects meta data about the setup that is used with Haystack, such as: operating system, python version, Haystack version, transformers version, pytorch version, number of GPUs, execution environment, and the value stored in the env variable HAYSTACK_EXECUTION_CONTEXT.
+    Collects meta data about the setup that is used with Haystack, such as: operating system, python version,
+    Haystack version, transformers version, pytorch version, number of GPUs, execution environment, and the value
+    stored in the env variable HAYSTACK_EXECUTION_CONTEXT.
     """
+    transformers_import.check()
     from haystack.telemetry import HAYSTACK_EXECUTION_CONTEXT
 
     global env_meta_data  # pylint: disable=global-statement

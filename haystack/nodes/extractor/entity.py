@@ -18,27 +18,59 @@ Thanks for the great work!
 """
 
 import logging
-from typing import List, Union, Dict, Optional, Tuple, Any
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import List, Union, Dict, Optional, Tuple, Any, Literal
 
 import itertools
-import torch
-from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
-from transformers import AutoTokenizer, AutoModelForTokenClassification
 from tokenizers.pre_tokenizers import WhitespaceSplit
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
-from haystack.modeling.utils import initialize_device_settings
-from haystack.utils.torch_utils import ensure_tensor_on_device
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from torch.utils.data import Dataset, DataLoader
+    from transformers import AutoTokenizer, AutoModelForTokenClassification
+    from haystack.utils.torch_utils import ensure_tensor_on_device  # pylint: disable=ungrouped-imports
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
+
+    class TokenClassificationDataset(Dataset):
+        """Token Classification Dataset
+
+        This is a wrapper class to create a Pytorch dataset object from the data attribute of a
+        `transformers.tokenization_utils_base.BatchEncoding` object.
+
+        :param model_inputs: The data attribute of the output from a HuggingFace tokenizer which is needed to evaluate the
+            forward pass of a token classification model.
+        """
+
+        def __init__(self, model_inputs: dict):
+            self.model_inputs = model_inputs
+            self._len = len(model_inputs["input_ids"])
+
+        def __getitem__(self, item):
+            input_ids = self.model_inputs["input_ids"][item]
+            attention_mask = self.model_inputs["attention_mask"][item]
+            special_tokens_mask = self.model_inputs["special_tokens_mask"][item]
+            offset_mapping = self.model_inputs["offset_mapping"][item]
+            overflow_to_sample_mapping = self.model_inputs["overflow_to_sample_mapping"][item]
+            single_input = {
+                "input_ids": input_ids,
+                "attention_mask": attention_mask,
+                "special_tokens_mask": special_tokens_mask,
+                "offset_mapping": offset_mapping,
+                "overflow_to_sample_mapping": overflow_to_sample_mapping,
+            }
+            return single_input
+
+        def __len__(self):
+            return self._len
 
 
 class EntityExtractor(BaseComponent):
@@ -109,7 +141,7 @@ class EntityExtractor(BaseComponent):
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         aggregation_strategy: Literal[None, "simple", "first", "average", "max"] = "first",
         add_prefix_space: Optional[bool] = None,
         num_workers: int = 0,
@@ -118,6 +150,8 @@ class EntityExtractor(BaseComponent):
         pre_split_text: bool = False,
         ignore_labels: Optional[List[str]] = None,
     ):
+        torch_and_transformers_import.check()
+
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
@@ -283,7 +317,7 @@ class EntityExtractor(BaseComponent):
         offset_mapping = model_inputs.pop("offset_mapping", None)
         overflow_to_sample_mapping = model_inputs.pop("overflow_to_sample_mapping")
 
-        logits = self.model(**model_inputs)[0]
+        logits = self.model(**model_inputs)[0].to(torch.float64)
 
         return {
             "logits": logits,
@@ -732,8 +766,8 @@ class _EntityPostProcessor:
             "score": score,
             "word": word,
             "tokens": tokens,
-            "start": entities[0]["start"],
-            "end": entities[-1]["end"],
+            "start": int(entities[0]["start"]),
+            "end": int(entities[-1]["end"]),
         }
         return new_entity
 
@@ -844,36 +878,3 @@ class _EntityPostProcessor:
             entity_groups.append(self.group_sub_entities(entity_group_disagg))
 
         return entity_groups
-
-
-class TokenClassificationDataset(Dataset):
-    """Token Classification Dataset
-
-    This is a wrapper class to create a Pytorch dataset object from the data attribute of a
-    `transformers.tokenization_utils_base.BatchEncoding` object.
-
-    :param model_inputs: The data attribute of the output from a HuggingFace tokenizer which is needed to evaluate the
-        forward pass of a token classification model.
-    """
-
-    def __init__(self, model_inputs: dict):
-        self.model_inputs = model_inputs
-        self._len = len(model_inputs["input_ids"])
-
-    def __getitem__(self, item):
-        input_ids = self.model_inputs["input_ids"][item]
-        attention_mask = self.model_inputs["attention_mask"][item]
-        special_tokens_mask = self.model_inputs["special_tokens_mask"][item]
-        offset_mapping = self.model_inputs["offset_mapping"][item]
-        overflow_to_sample_mapping = self.model_inputs["overflow_to_sample_mapping"][item]
-        single_input = {
-            "input_ids": input_ids,
-            "attention_mask": attention_mask,
-            "special_tokens_mask": special_tokens_mask,
-            "offset_mapping": offset_mapping,
-            "overflow_to_sample_mapping": overflow_to_sample_mapping,
-        }
-        return single_input
-
-    def __len__(self):
-        return self._len

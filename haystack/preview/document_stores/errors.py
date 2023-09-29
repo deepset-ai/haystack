@@ -1,10 +1,10 @@
-class StoreError(Exception):
+class DocumentStoreError(Exception):
     pass
 
 
-class DuplicateDocumentError(StoreError):
+class DuplicateDocumentError(DocumentStoreError):
     pass
 
 
-class MissingDocumentError(StoreError):
+class MissingDocumentError(DocumentStoreError):
     pass

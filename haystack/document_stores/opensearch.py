@@ -3,25 +3,21 @@ from typing import List, Optional, Union, Dict, Any
 import logging
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from tenacity import retry, wait_exponential, retry_if_not_result
 
-try:
-    from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
-    from opensearchpy.helpers import bulk, scan
-except (ImportError, ModuleNotFoundError) as e:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "opensearch", e)
-
-
 from haystack.schema import Document, FilterType
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.utils.batching import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever
-
+from haystack.lazy_imports import LazyImport
 from .search_engine import SearchEngineDocumentStore, prepare_hosts
+
+with LazyImport("Run 'pip install farm-haystack[opensearch]'") as os_import:
+    from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
+    from opensearchpy.helpers import bulk, scan
+
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +58,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         create_index: bool = True,
         refresh_type: str = "wait_for",
         similarity: str = "dot_product",
-        timeout: int = 30,
+        timeout: int = 300,
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
         index_type: str = "flat",
@@ -74,49 +70,50 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         knn_engine: str = "nmslib",
         knn_parameters: Optional[Dict] = None,
         ivf_train_size: Optional[int] = None,
+        batch_size: int = 10_000,
     ):
         """
         Document Store using OpenSearch (https://opensearch.org/). It is compatible with the Amazon OpenSearch Service.
 
-        In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
+        In addition to native OpenSearch query & filtering, it provides efficient vector similarity search using
         the KNN plugin that can scale to a large number of documents.
 
-        :param host: url(s) of elasticsearch nodes
-        :param port: port(s) of elasticsearch nodes
+        :param host: url(s) of OpenSearch nodes
+        :param port: port(s) of OpenSearch nodes
         :param username: username (standard authentication via http_auth)
         :param password: password (standard authentication via http_auth)
-        :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
-        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
-        :param aws4auth: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
-        :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
-        :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
-        :param search_fields: Name of fields used by BM25Retriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
+        :param api_key_id: ID of the API key (alternative authentication mode to the above http_auth)
+        :param api_key: Secret value of the API key (alternative authentication mode to the above http_auth)
+        :param aws4auth: Authentication for usage with AWS OpenSearch Service (can be generated with the requests-aws4auth package)
+        :param index: Name of index in OpenSearch to use for storing the documents that we want to search. If not existing yet, we will create one.
+        :param label_index: Name of index in OpenSearch to use for storing labels. If not existing yet, we will create one.
+        :param search_fields: Name of fields used by BM25Retriever to find matches in the docs to our incoming query (using OpenSearch's multi_match query), e.g. ["title", "full_text"]
         :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
                                 Note, that in OpenSearch the similarity type for efficient approximate vector similarity calculations is tied to the embedding field's data type which cannot be changed after creation.
         :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
-        :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
-        :param analyzer: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
-                         Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
-                         https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
-        :param excluded_meta_data: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
+        :param custom_mapping: If you want to use your own custom mapping for creating a new index in OpenSearch, you can supply it here as a dictionary.
+        :param analyzer: Specify the default analyzer from one of the built-ins when creating a new OpenSearch Index.
+                         OpenSearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
+                         https://opensearch.org/docs/latest/analyzers/text-analyzers/
+        :param excluded_meta_data: Name of fields in OpenSearch that should not be returned (e.g. [field_one, field_two]).
                                    Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
-        :param scheme: 'https' or 'http', protocol used to connect to your elasticsearch instance
+        :param scheme: 'https' or 'http', protocol used to connect to your OpenSearch instance
         :param ca_certs: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
         :param verify_certs: Whether to be strict about ca certificates
         :param create_index: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case
-        :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
+        :param refresh_type: Type of OpenSearch refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
                              If set to 'wait_for', continue only after changes are visible (slow, but safe).
                              If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
-                             More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
+                             More info at https://opensearch.org/docs/latest/api-reference/document-apis/bulk/#url-parameters
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
                            Note, that the use of efficient approximate vector calculations in OpenSearch is tied to embedding_field's data type which cannot be changed after creation.
                            You won't be able to use approximate vector calculations on an embedding_field which was created with a different similarity value.
                            In such cases a fallback to exact but slow vector calculations will happen and a warning will be displayed.
-        :param timeout: Number of seconds after which an ElasticSearch request times out.
+        :param timeout: Number of seconds after which an OpenSearch request times out.
         :param return_embedding: To return document embedding
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
@@ -135,12 +132,12 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                            the best balance between nearly as good accuracy and latency.
         :param scroll: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
                        Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
-                       For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
+                       For details, see https://opensearch.org/docs/latest/api-reference/scroll/
         :param skip_missing_embeddings: Parameter to control queries based on vector similarity when indexed documents miss embeddings.
                                         Parameter options: (True, False)
                                         False: Raises exception if one or more documents do not have embeddings at query time
                                         True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
-        :param synonyms: List of synonyms can be passed while elasticsearch initialization.
+        :param synonyms: List of synonyms can be passed while OpenSearch initialization.
                          For example: [ "foo, bar => baz",
                                         "foozball , foosball" ]
                          More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html
@@ -165,7 +162,10 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                index type and knn parameters). If `0`, training doesn't happen automatically but needs
                                to be triggered manually via the `train_index` method.
                                Default: `None`
+        :param batch_size: Number of Documents to index at once / Number of queries to execute at once. If you face
+                           memory issues, decrease the batch_size.
         """
+        os_import.check()
         # These parameters aren't used by Opensearch at the moment but could be in the future, see
         # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
         # now but send a warning to the user.
@@ -243,6 +243,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
             synonym_type=synonym_type,
+            batch_size=batch_size,
         )
 
         # Let the base class catch the right error from the Opensearch client
@@ -269,7 +270,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         verify_certs: bool,
         timeout: int,
         use_system_proxy: bool,
-    ) -> OpenSearch:
+    ) -> "OpenSearch":
         """
         Create an instance of the Opensearch client
         """
@@ -321,7 +322,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         self,
         documents: Union[List[dict], List[Document]],
         index: Optional[str] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         duplicate_documents: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
@@ -329,7 +330,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         Indexes documents for later queries in OpenSearch.
 
         If a document with the same ID already exists in OpenSearch:
-        a) (Default) Throw Elastic's standard error message for duplicate IDs.
+        a) (Default) Throw OpenSearch's standard error message for duplicate IDs.
         b) If `self.update_existing_documents=True` for DocumentStore: Overwrite existing documents.
         (This is only relevant if you pass your own ID when initializing a `Document`.
         If you don't set custom IDs for your Documents or just pass a list of dictionaries here,
@@ -358,6 +359,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if index is None:
             index = self.index
 
+        batch_size = batch_size or self.batch_size
+
         if self.knn_engine == "faiss" and self.similarity == "cosine":
             field_map = self._create_document_field_map()
             documents = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
@@ -379,10 +382,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             self.index_type in ["ivf", "ivf_pq"]
             and not index.startswith(".")
             and not self._ivf_model_exists(index=index)
-        ):
-            if self.get_embedding_count(index=index, headers=headers) >= self.ivf_train_size:
-                train_docs = self.get_all_documents(index=index, return_embedding=True, headers=headers)
-                self._train_ivf_index(index=index, documents=train_docs, headers=headers)
+        ) and self.get_embedding_count(index=index, headers=headers) >= self.ivf_train_size:
+            train_docs = self.get_all_documents(index=index, return_embedding=True, headers=headers)
+            self._train_ivf_index(index=index, documents=train_docs, headers=headers)
 
     def _embed_documents(self, documents: List[Document], retriever: DenseRetriever) -> np.ndarray:
         """
@@ -478,7 +480,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to OpenSearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
@@ -501,7 +503,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         )
 
         logger.debug("Retriever query: %s", body)
-        result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
+        result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [
             self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, scale_score=scale_score)
@@ -529,6 +531,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = True,
+        batch_size: Optional[int] = None,
     ) -> List[List[Document]]:
         """
         Find the documents that are most similar to the provided `query_embs` by using a vector similarity metric.
@@ -601,21 +604,23 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to OpenSearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
-                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
-        :return:
+                            Otherwise, raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param batch_size: Number of query embeddings to process at once. If not specified, self.batch_size is used.
         """
         if index is None:
             index = self.index
+
+        batch_size = batch_size or self.batch_size
 
         if self.index_type in ["ivf", "ivf_pq"] and not self._ivf_model_exists(index=index):
             self._ivf_index_not_trained_error(index=index, headers=headers)
 
         return super().query_by_embedding_batch(
-            query_embs, filters, top_k, index, return_embedding, headers, scale_score
+            query_embs, filters, top_k, index, return_embedding, headers, scale_score, batch_size
         )
 
     def query(
@@ -700,11 +705,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return per query.
-        :param custom_query: query string containing a mandatory `${query}` placeholder.
+        :param custom_query: The query string containing a mandatory `${query}` and an optional `${filters}` placeholder.
 
-                             Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
-                             that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
-                             names must match with the filters dict supplied in self.retrieve().
                              ::
 
                                  **An example custom_query:**
@@ -717,17 +719,13 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                                 "query": ${query},                 // mandatory query placeholder
                                                 "type": "most_fields",
                                                 "fields": ["content", "title"]}}],
-                                            "filter": [                                 // optional custom filters
-                                                {"terms": {"year": ${years}}},
-                                                {"terms": {"quarter": ${quarters}}},
-                                                {"range": {"date": {"gte": ${date}}}}
-                                                ],
+                                            "filter": ${filters}                   // optional filters placeholder
                                         }
                                     },
                                 }
                                  ```
 
-                                **For this custom_query, a sample retrieve() could be:**
+                                **For this custom_query, a sample `retrieve()` could be:**
                                 ```python
                                 self.retrieve(query="Why did the revenue increase?",
                                               filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
@@ -1216,11 +1214,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def _ivf_model_exists(self, index: str) -> bool:
         if self._index_exists(".opensearch-knn-models"):
             response = self.client.transport.perform_request("GET", "/_plugins/_knn/models/_search")
-            existing_ivf_models = set(
+            existing_ivf_models = {
                 model["_source"]["model_id"]
                 for model in response["hits"]["hits"]
                 if model["_source"]["state"] != "failed"
-            )
+            }
         else:
             existing_ivf_models = set()
 
@@ -1271,7 +1269,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
-        Generate Elasticsearch query for vector similarity.
+        Generate OpenSearch query for vector similarity.
         """
         if self.knn_engine == "score_script":
             query: dict = {
@@ -1300,7 +1298,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         # adjust scores according to https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
         # and https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
 
-        # space type is required as criterion as there is no consistent similarity-to-space-type mapping accross knn engines
+        # space type is required as criterion as there is no consistent similarity-to-space-type mapping across knn engines
         if self.space_type == "innerproduct":
             if score > 1:
                 score = score - 1
@@ -1420,7 +1418,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
     def _recommended_ivf_train_size(self) -> int:
         """
-        Calculates the minumum recommended number of training samples for IVF training as suggested in FAISS docs.
+        Calculates the minimum recommended number of training samples for IVF training as suggested in FAISS docs.
         https://github.com/facebookresearch/faiss/wiki/FAQ#can-i-ignore-warning-clustering-xxx-points-to-yyy-centroids
         """
         min_points_per_cluster = 39
@@ -1450,7 +1448,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         ef_search = 20 if "ef_search" not in self.knn_parameters else self.knn_parameters["ef_search"]
         return ef_search
 
-    def _delete_index(self, index: str):
+    def _index_delete(self, index: str):
         if self._index_exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
             self._delete_ivf_model(index)
@@ -1462,7 +1460,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         """
         if self._index_exists(".opensearch-knn-models"):
             response = self.client.transport.perform_request("GET", "/_plugins/_knn/models/_search")
-            existing_ivf_models = set(model["_source"]["model_id"] for model in response["hits"]["hits"])
+            existing_ivf_models = {model["_source"]["model_id"] for model in response["hits"]["hits"]}
             if f"{index}-ivf" in existing_ivf_models:
                 self.client.transport.perform_request("DELETE", f"/_plugins/_knn/models/{index}-ivf")
 
@@ -1511,7 +1509,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                             }
                             doc_updates.append(update)
 
-                    bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                    bulk(self.client, doc_updates, refresh=self.refresh_type, headers=headers)
                     progress_bar.update(batch_size)
         finally:
             opensearch_logger.setLevel(original_log_level)

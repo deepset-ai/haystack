@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Union, Any
 
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.open_ai import OpenAIInvocationLayer
+from haystack.nodes.prompt.invocation_layer.utils import has_azure_parameters
 from haystack.utils.openai_utils import openai_request, _check_openai_finish_reason, count_openai_tokens_messages
 
 logger = logging.getLogger(__name__)
@@ -20,21 +21,34 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
     """
 
     def __init__(
-        self, api_key: str, model_name_or_path: str = "gpt-3.5-turbo", max_length: Optional[int] = 500, **kwargs
+        self,
+        api_key: str,
+        model_name_or_path: str = "gpt-3.5-turbo",
+        max_length: Optional[int] = 500,
+        api_base: str = "https://api.openai.com/v1",
+        **kwargs,
     ):
-        super().__init__(api_key, model_name_or_path, max_length, **kwargs)
-
-    def invoke(self, *args, **kwargs):
         """
-        It takes in either a prompt or a list of messages and returns a list of responses, using a REST invocation.
+         Creates an instance of ChatGPTInvocationLayer for OpenAI's GPT-3.5 GPT-4 models.
 
-        :return: A list of generated responses.
+        :param model_name_or_path: The name or path of the underlying model.
+        :param max_length: The maximum number of tokens the output text can have.
+        :param api_key: The OpenAI API key.
+        :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
+        :param kwargs: Additional keyword arguments passed to the underlying model.
+        [See OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
+        Note: additional model argument moderate_content will filter input and generated answers for potentially
+        sensitive content using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation)
+        if set. If the input or answers are flagged, an empty list is returned in place of the answers.
+        """
+        super().__init__(api_key, model_name_or_path, max_length, api_base=api_base, **kwargs)
 
-        Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
+    def _execute_openai_request(
+        self, prompt: Union[str, List[Dict]], base_payload: Dict, kwargs_with_defaults: Dict, stream: bool
+    ):
+        """
         For more details, see [OpenAI ChatGPT API reference](https://platform.openai.com/docs/api-reference/chat).
         """
-        prompt = kwargs.get("prompt", None)
-
         if isinstance(prompt, str):
             messages = [{"role": "user", "content": prompt}]
         elif isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict):
@@ -45,34 +59,8 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
                 f"The model {self.model_name_or_path} requires either a string or messages in the ChatML format. "
                 f"For more details, see this [GitHub discussion](https://github.com/openai/openai-python/blob/main/chatml.md)."
             )
-
-        kwargs_with_defaults = self.model_input_kwargs
-        if kwargs:
-            # we use keyword stop_words but OpenAI uses stop
-            if "stop_words" in kwargs:
-                kwargs["stop"] = kwargs.pop("stop_words")
-            if "top_k" in kwargs:
-                top_k = kwargs.pop("top_k")
-                kwargs["n"] = top_k
-                kwargs["best_of"] = top_k
-            kwargs_with_defaults.update(kwargs)
-
-        stream = (
-            kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
-        )
-        payload = {
-            "model": self.model_name_or_path,
-            "messages": messages,
-            "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length),
-            "temperature": kwargs_with_defaults.get("temperature", 0.7),
-            "top_p": kwargs_with_defaults.get("top_p", 1),
-            "n": kwargs_with_defaults.get("n", 1),
-            "stream": stream,
-            "stop": kwargs_with_defaults.get("stop", None),
-            "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
-            "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
-            "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
-        }
+        extra_payload = {"messages": messages}
+        payload = {**base_payload, **extra_payload}
         if not stream:
             response = openai_request(url=self.url, headers=self.headers, payload=payload)
             _check_openai_finish_reason(result=response, payload=payload)
@@ -111,22 +99,45 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         elif isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict):
             messages = prompt
 
-        n_prompt_tokens = count_openai_tokens_messages(messages, self._tokenizer)
+        n_message_tokens = count_openai_tokens_messages(messages, self._tokenizer)
         n_answer_tokens = self.max_length
-        if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
+        if (n_message_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
 
-        # TODO: support truncation as in _ensure_token_limit methods for other invocation layers
-        raise ValueError(
-            f"The prompt or the messages are too long ({n_prompt_tokens} tokens). "
-            f"The length of the prompt or messages and the answer ({n_answer_tokens} tokens) should be within the max token limit ({self.max_tokens_limit} tokens). "
-            f"Reduce the length of the prompt or messages."
-        )
+        if isinstance(prompt, str):
+            tokenized_prompt = self._tokenizer.encode(prompt)
+            n_other_tokens = n_message_tokens - len(tokenized_prompt)
+            truncated_prompt_length = self.max_tokens_limit - n_answer_tokens - n_other_tokens
+
+            logger.warning(
+                "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
+                "answer length (%s tokens) fit within the max token limit (%s tokens). "
+                "Reduce the length of the prompt to prevent it from being cut off.",
+                len(tokenized_prompt),
+                truncated_prompt_length,
+                n_answer_tokens,
+                self.max_tokens_limit,
+            )
+
+            truncated_prompt = self._tokenizer.decode(tokenized_prompt[:truncated_prompt_length])
+            return truncated_prompt
+        else:
+            # TODO: support truncation when there is a chat history
+            raise ValueError(
+                f"The prompt or the messages are too long ({n_message_tokens} tokens). "
+                f"The length of the prompt or messages and the answer ({n_answer_tokens} tokens) should be within the max "
+                f"token limit ({self.max_tokens_limit} tokens). "
+                f"Reduce the length of the prompt or messages."
+            )
 
     @property
     def url(self) -> str:
-        return "https://api.openai.com/v1/chat/completions"
+        return f"{self.api_base}/chat/completions"
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        return model_name_or_path in ["gpt-3.5-turbo", "gpt-4", "gpt-4-32k"]
+        valid_model = (
+            any(m for m in ["gpt-3.5-turbo", "gpt-4"] if m in model_name_or_path)
+            and not "gpt-3.5-turbo-instruct" in model_name_or_path
+        )
+        return valid_model and not has_azure_parameters(**kwargs)

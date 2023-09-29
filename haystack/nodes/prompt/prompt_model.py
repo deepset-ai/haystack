@@ -1,17 +1,17 @@
-from typing import Dict, List, Optional, Tuple, Union, Any, Type, overload
+import inspect
 import logging
-
-import torch
+from typing import Any, Dict, List, Optional, Tuple, Type, Union, overload
 
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
 from haystack.schema import Document, MultiLabel
+from haystack.lazy_imports import LazyImport
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
+    import torch
+
 
 logger = logging.getLogger(__name__)
-
-
-def instruction_following_models() -> List[str]:
-    return ["flan", "mt0", "bloomz", "davinci", "opt-iml", "gpt-3.5-turbo", "gpt-4", "gpt-35-turbo", "gpt-4-32k"]
 
 
 class PromptModel(BaseComponent):
@@ -38,7 +38,7 @@ class PromptModel(BaseComponent):
         api_key: Optional[str] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         invocation_layer_class: Optional[Type[PromptModelInvocationLayer]] = None,
         model_kwargs: Optional[Dict] = None,
     ):
@@ -69,14 +69,6 @@ class PromptModel(BaseComponent):
 
         self.model_kwargs = model_kwargs if model_kwargs else {}
         self.model_invocation_layer = self.create_invocation_layer(invocation_layer_class=invocation_layer_class)
-        is_instruction_following: bool = any(m in model_name_or_path for m in instruction_following_models())
-        if not is_instruction_following:
-            logger.warning(
-                "PromptNode has been potentially initialized with a language model not fine-tuned on instruction-following tasks. "
-                "Many of the default prompts and PromptTemplates may not work as intended. "
-                "Use custom prompts and PromptTemplates specific to the %s model",
-                model_name_or_path,
-            )
 
     def create_invocation_layer(
         self, invocation_layer_class: Optional[Type[PromptModelInvocationLayer]]
@@ -93,9 +85,10 @@ class PromptModel(BaseComponent):
             return invocation_layer_class(
                 model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
             )
-        # search all invocation layer classes and find the first one that supports the model,
-        # then create an instance of that invocation layer
+
         for invocation_layer in PromptModelInvocationLayer.invocation_layer_providers:
+            if inspect.isabstract(invocation_layer):
+                continue
             if invocation_layer.supports(self.model_name_or_path, **all_kwargs):
                 return invocation_layer(
                     model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
@@ -117,6 +110,16 @@ class PromptModel(BaseComponent):
         """
         output = self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
         return output
+
+    async def ainvoke(self, prompt: Union[str, List[str], List[Dict[str, str]]], **kwargs) -> List[str]:
+        """
+        Drop-in replacement asyncio version of the `invoke` method, see there for documentation.
+        """
+        try:
+            return await self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
+        except TypeError:
+            # The `invoke` method of the underlying invocation layer doesn't support asyncio
+            return self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
 
     @overload
     def _ensure_token_limit(self, prompt: str) -> str:

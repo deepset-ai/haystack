@@ -14,7 +14,7 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -26,7 +26,7 @@ jobs:
       - name: Install Haystack
         run: |
           pip install --upgrade pip
-          pip install -U -e .[all]
+          pip install -U -e .[all,dev]
           pip install -e ./rest_api
 
       - name: Update OpenAPI specs

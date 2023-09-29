@@ -1,0 +1,39 @@
+version: ignore
+
+components:
+  - name: DocumentStore
+    type: WeaviateDocumentStore
+    params:
+      timeout_config: [5, 300]
+      similarity: dot_product
+      embedding_dim: 768
+      batch_size: 5000
+      host: http://weaviate
+      port: 8080
+  - name: TextConverter
+    type: TextConverter
+  - name: Retriever
+    type: EmbeddingRetriever
+    params:
+      document_store: DocumentStore
+      embedding_model: sentence-transformers/multi-qa-mpnet-base-dot-v1
+      top_k: 10
+
+pipelines:
+  - name: indexing
+    nodes:
+      - name: TextConverter
+        inputs: [File]
+      - name: Retriever
+        inputs: [TextConverter]
+      - name: DocumentStore
+        inputs: [Retriever]
+  - name: querying
+    nodes:
+      - name: Retriever
+        inputs: [Query]
+
+benchmark_config:
+  data_url: https://deepset-test-datasets.s3.eu-central-1.amazonaws.com/msmarco.100_000.tar.bz2
+  documents_directory: data/msmarco.100_000/txt
+  labels_file: data/msmarco.100_000/evalsets/evalset_full.csv

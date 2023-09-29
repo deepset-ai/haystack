@@ -9,7 +9,7 @@ name = "farm-haystack"
 dynamic = [
   "version",
 ]
-description = "Neural Question Answering & Semantic Search at Scale. Use modern transformer based models like BERT to find answers in large document collections"
+description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.8"
@@ -47,24 +47,21 @@ classifiers = [
 ]
 dependencies = [
   "requests",
-  "pydantic",
-  "transformers[torch]==4.28.1",
-  "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
+  "pydantic<2",
+  "transformers==4.32.1",
   "pandas",
   "rank_bm25",
-  "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
-  "generalimport", # Optional imports
+  "scikit-learn>=1.3.0", # TF-IDF and metrics
+  "lazy-imports==0.3.1", # Optional imports
+  "prompthub-py==4.0.0",
+  "platformdirs",
 
   # Utils
-  "dill",  # pickle extension for (de-)serialization
   "tqdm",  # progress bars in model download and training scripts
   "networkx",  # graphs library
-  "mmh3",  # fast hashing function (murmurhash3)
   "quantulum3",  # quantities extraction from text
   "posthog",  # telemetry
-  "azure-ai-formrecognizer>=3.2.0b2",  # forms reader
   # audio's espnet-model-zoo requires huggingface-hub version <0.8 while we need >=0.5 to be able to use create_repo in FARMReader
-  "huggingface-hub>=0.5.0",
   "tenacity",  # retry decorator
   "sseclient-py",  # server side events for OpenAI streaming
   "more_itertools",  # utilities
@@ -72,25 +69,49 @@ dependencies = [
   # Web Retriever
   "boilerpy3",
 
-  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
-  "sentence-transformers>=2.2.0",
+  # Multimodal Embedder haystack/nodes/retriever/multimodal/embedder.py
+  "Pillow",
 
   # OpenAI tokenizer
-  "tiktoken>=0.3.0; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
+  "tiktoken>=0.5.1",
 
   # Schema validation
   "jsonschema",
 
-  # Preview
-  "canals==0.1.2",
-
   # Agent events
-  "events"
+  "events",
+
+  "requests-cache<1.0.0",
 ]
 
 [project.optional-dependencies]
+preview = [
+  "canals==0.8.1",
+  "requests",
+  "pandas",
+  "rank_bm25",
+  "tqdm",
+  "tenacity",
+  "lazy-imports",
+
+  "Jinja2",
+  "openai",
+]
+inference = [
+  "transformers[torch,sentencepiece]==4.32.1",
+  "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
+  "huggingface-hub>=0.5.0",
+]
 elasticsearch = [
+  "farm-haystack[elasticsearch7]",
+]
+elasticsearch7 = [
   "elasticsearch>=7.17,<8",
+  "elastic_transport<8"
+]
+elasticsearch8 = [
+  "elasticsearch>=8,<9",
+  "elastic_transport>=8,<9"
 ]
 sql = [
   "sqlalchemy>=1.4.2,<2",
@@ -109,14 +130,8 @@ only-faiss-gpu = [
 faiss-gpu = [
   "farm-haystack[sql,only-faiss-gpu]",
 ]
-only-milvus = [
-  "pymilvus>=2.0.0,<3",  # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
-]
-milvus = [
-  "farm-haystack[sql,only-milvus]",
-]
 weaviate = [
-  "weaviate-client>=3.10.0,<4",
+  "weaviate-client>2",
 ]
 only-pinecone = [
   "pinecone-client>=2.0.11,<3",
@@ -124,22 +139,14 @@ only-pinecone = [
 pinecone = [
   "farm-haystack[sql,only-pinecone]",
 ]
-graphdb = [
-  "SPARQLWrapper",
-  "rdflib!=6.3.2", # GPL-2.0-only license issue
-]
-inmemorygraph = [
-  "SPARQLWrapper",
-  "rdflib!=6.3.2", # GPL-2.0-only license issue
-]
 opensearch = [
   "opensearch-py>=2",
 ]
 docstores = [
-  "farm-haystack[elasticsearch,faiss,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss,weaviate,pinecone,opensearch]",
 ]
 docstores-gpu = [
-  "farm-haystack[elasticsearch,faiss-gpu,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch]",
 ]
 audio = [
   "openai-whisper"
@@ -147,15 +154,23 @@ audio = [
 beir = [
   "beir; platform_system != 'Windows'",
 ]
+aws = [
+  "boto3",
+  # Costraint botocore to avoid taking to much time to resolve the dependency tree.
+  # boto3 used to constraint it at this version more than a year ago. To avoid breaking
+  # people using old versions we use a similar constraint without upper bound.
+  # https://github.com/boto/boto3/blob/dae73bef223abbedfa7317a783070831febc0c90/setup.py#L16
+  "botocore>=1.27",
+]
 crawler = [
-  "selenium>=4.0.0,!=4.1.4",  # Avoid 4.1.4 due to https://github.com/SeleniumHQ/selenium/issues/10612
-  "webdriver-manager",
+  "selenium>=4.11.0"
 ]
 preprocessing = [
   "nltk",
   "langdetect",  # for language classification
 ]
 file-conversion = [
+  "azure-ai-formrecognizer>=3.2.0b2",  # Microsoft Azure's Form Recognizer service (text and table exctrator)
   "python-docx",
   "tika",  # Apache Tika (text & metadata extractor)
   "beautifulsoup4",
@@ -182,6 +197,9 @@ onnx-gpu = [
 metrics = [  # for metrics
   "scipy>=1.3.2",
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
+  # Pin setuptools_scm to prevent errors in Windows tests while installing seqeval
+  # https://github.com/deepset-ai/haystack/issues/5889
+  "setuptools_scm<8.0; platform_system == 'Windows'",
   "seqeval",
   "mlflow",
 ]
@@ -197,7 +215,6 @@ dev = [
   "pre-commit",
   # Type check
   "mypy",
-  "typing_extensions; python_version < '3.8'",
   # Test
   "pytest",
   "pytest-cov",
@@ -216,7 +233,12 @@ dev = [
   "mkdocs",
   "jupytercontrib",
   "watchdog",
-  "requests-cache<1.0.0",
+  "toml",
+  "reno",
+  # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.
+  # We pin it here to avoid taking too much time.
+  # https://opendev.org/openstack/reno/src/branch/master/requirements.txt#L7
+  "dulwich>=0.21.0,<1.0.0",
 ]
 
 formatting = [
@@ -226,15 +248,15 @@ formatting = [
 ]
 
 all = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,dev,onnx,beir,metrics]",
+  "farm-haystack[inference,docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,preview]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,dev,onnx-gpu,metrics]",
+  "farm-haystack[inference,docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics,aws,preview]",
 ]
 
 [project.scripts]
-haystack = "haystack.preview.cli.entry_point:main"
+haystack = "haystack.cli.entry_point:main"
 
 [project.urls]
 "CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"
@@ -265,6 +287,10 @@ packages = [
 line-length = 120
 skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
 
+[tool.codespell]
+ignore-words-list = "ans,astroid,nd,ned,nin,ue"
+quiet-level = 3
+skip = "test/nodes/*,test/others/*,test/samples/*"
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
@@ -284,18 +310,14 @@ disable = [
   "too-few-public-methods",
   "raise-missing-from",
   "invalid-name",
-  "too-many-locals",
   "duplicate-code",
-  "too-many-arguments",
   "arguments-differ",
   "consider-using-f-string",
   "no-else-return",
   "attribute-defined-outside-init",
-  "too-many-instance-attributes",
   "super-with-arguments",
   "redefined-builtin",
   "abstract-method",
-  "too-many-branches",
   "unspecified-encoding",
   "unidiomatic-typecheck",
   "no-name-in-module",
@@ -308,12 +330,9 @@ disable = [
   "subprocess-run-check",
   "singleton-comparison",
   "consider-iterating-dictionary",
-  "too-many-nested-blocks",
   "undefined-loop-variable",
-  "too-many-statements",
   "consider-using-in",
   "bare-except",
-  "too-many-lines",
   "unexpected-keyword-arg",
   "simplifiable-if-expression",
   "use-list-literal",
@@ -325,7 +344,13 @@ disable = [
   "deprecated-method",
 ]
 [tool.pylint.'DESIGN']
-max-args=7
+max-args = 38  # Default is 5
+max-attributes = 28  # Default is 7
+max-branches = 34  # Default is 12
+max-locals = 45  # Default is 15
+max-module-lines = 2468  # Default is 1000
+max-nested-blocks = 9  # Default is 5
+max-statements = 206  # Default is 50
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines=6
 
@@ -345,11 +370,9 @@ markers = [
   "ocr: requires Tesseract",
 
   "elasticsearch: requires Elasticsearch container",
-  "graphdb: requires GraphDB container",
   "weaviate: requires Weaviate container",
   "pinecone: requires Pinecone credentials",
   "faiss: uses FAISS",
-  "milvus: requires a Milvus 2 setup",
   "opensearch",
   "document_store",
 ]
@@ -361,4 +384,68 @@ warn_unused_configs = true
 ignore_missing_imports = true
 plugins = [
   "pydantic.mypy",
+]
+
+[tool.ruff]
+select = [
+  "AIR",    # Airflow
+  "ASYNC",  # flake8-async
+  "C4",     # flake8-comprehensions
+  "C90",    # McCabe cyclomatic complexity
+  "CPY",    # flake8-copyright
+  "DJ",     # flake8-django
+  "E501",   # Long lines
+  "EXE",    # flake8-executable
+  "F",      # Pyflakes
+  "FURB",   # refurb
+  "INT",    # flake8-gettext
+  "PERF",   # Perflint
+  "PL",     # Pylint
+  "Q",      # flake8-quotes
+  "SIM",    # flake8-simplify
+  "SLOT",   # flake8-slots
+  "T10",    # flake8-debugger
+  "W",      # pycodestyle
+  "YTT",    # flake8-2020
+  # "E",    # pycodestyle
+  # "NPY",  # NumPy-specific rules
+  # "PD",   # pandas-vet
+  # "PT",   # flake8-pytest-style
+  # "UP",   # pyupgrade
+]
+line-length = 1486
+target-version = "py38"
+ignore = [
+  "F401",     # unused-import
+  "PERF203",	# `try`-`except` within a loop incurs performance overhead
+  "PERF401",	# Use a list comprehension to create a transformed list
+  "PLR1714",  # repeated-equality-comparison
+  "PLR5501",  # collapsible-else-if
+  "PLW0603",  # global-statement
+  "PLW1510",  # subprocess-run-without-check
+  "PLW2901",  # redefined-loop-name
+  "SIM108",   # if-else-block-instead-of-if-exp
+  "SIM115",   # open-file-with-context-handler
+  "SIM118",   # in-dict-keys
+]
+
+[tool.ruff.mccabe]
+max-complexity = 28
+
+[tool.ruff.per-file-ignores]
+"examples/basic_qa_pipeline.py" = ["C416"]
+"haystack/preview/testing/document_store.py" = ["C416", "F821"]
+"haystack/telemetry.py" = ["F821"]
+
+[tool.ruff.pylint]
+allow-magic-value-types = ["float", "int", "str"]
+max-args = 38  # Default is 5
+max-branches = 32  # Default is 12
+max-public-methods = 90  # Default is 20
+max-returns = 9  # Default is 6
+max-statements = 105  # Default is 50
+
+[tool.coverage.run]
+omit = [
+    "haystack/testing/*",
 ]

@@ -1,4 +1,5 @@
-from unittest.mock import patch, Mock
+import asyncio
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -38,26 +39,22 @@ def test_constructor_with_no_supported_model():
         PromptModel("some-random-model")
 
 
-def create_mock_pipeline(model_name_or_path=None, max_length=100):
-    return Mock(
-        **{"model_name_or_path": model_name_or_path},
-        return_value=Mock(**{"model_name_or_path": model_name_or_path, "tokenizer.model_max_length": max_length}),
-    )
+@pytest.mark.asyncio
+async def test_ainvoke():
+    def async_return(result):
+        f = asyncio.Future()
+        f.set_result(result)
+        return f
+
+    mock_layer = MagicMock()  # no async-defined methods, await will fail and fall back to regular `invoke`
+    mock_layer.return_value.invoke.return_value = async_return("Async Bar!")
+    model = PromptModel(invocation_layer_class=mock_layer)
+    assert await model.ainvoke("Foo") == "Async Bar!"
 
 
-@pytest.mark.unit
-def test_hf_local_invocation_layer_with_task_name():
-    mock_pipeline = create_mock_pipeline()
-    mock_get_task = Mock(return_value="dummy_task")
-
-    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
-        with patch("haystack.nodes.prompt.invocation_layer.hugging_face.pipeline", mock_pipeline):
-            PromptModel(
-                model_name_or_path="local_model",
-                max_length=100,
-                model_kwargs={"task_name": "dummy_task"},
-                invocation_layer_class=HFLocalInvocationLayer,
-            )
-            # checking if get_task is called when task_name is passed to HFLocalInvocationLayer constructor
-            mock_get_task.assert_not_called()
-            mock_pipeline.assert_called_once()
+@pytest.mark.asyncio
+async def test_ainvoke_falls_back_to_sync():
+    mock_layer = MagicMock()  # no async-defined methods, await will fail and fall back to regular `invoke`
+    mock_layer.return_value.invoke.return_value = "Bar!"
+    model = PromptModel(invocation_layer_class=mock_layer)
+    assert await model.ainvoke("Foo") == "Bar!"

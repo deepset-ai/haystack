@@ -6,7 +6,7 @@ from haystack.pipelines import DocumentSearchPipeline
 from ..conftest import document_store
 
 
-@pytest.mark.parametrize("name", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"])
+@pytest.mark.parametrize("name", ["memory", "faiss", "weaviate", "elasticsearch"])
 def test_similarity_score_sentence_transformers(name, docs, tmp_path):
     with document_store(name, docs, tmp_path, embedding_dim=384) as ds:
         retriever = EmbeddingRetriever(
@@ -29,7 +29,7 @@ def test_similarity_score_sentence_transformers(name, docs, tmp_path):
         )
 
 
-@pytest.mark.parametrize("name", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"])
+@pytest.mark.parametrize("name", ["memory", "faiss", "weaviate", "elasticsearch"])
 def test_similarity_score(name, docs, tmp_path):
     with document_store(name, docs, tmp_path, embedding_dim=384) as ds:
         retriever = EmbeddingRetriever(
@@ -45,7 +45,7 @@ def test_similarity_score(name, docs, tmp_path):
         )
 
 
-@pytest.mark.parametrize("name", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"])
+@pytest.mark.parametrize("name", ["memory", "faiss", "weaviate", "elasticsearch"])
 def test_similarity_score_without_scaling(name, docs, tmp_path):
     with document_store(name, docs, tmp_path, embedding_dim=384) as ds:
         retriever = EmbeddingRetriever(
@@ -64,7 +64,7 @@ def test_similarity_score_without_scaling(name, docs, tmp_path):
         )
 
 
-@pytest.mark.parametrize("name", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"])
+@pytest.mark.parametrize("name", ["memory", "faiss", "weaviate", "elasticsearch"])
 def test_similarity_score_dot_product(name, docs, tmp_path):
     with document_store(name, docs, tmp_path, similarity="dot_product", embedding_dim=384) as ds:
         retriever = EmbeddingRetriever(
@@ -80,7 +80,7 @@ def test_similarity_score_dot_product(name, docs, tmp_path):
         )
 
 
-@pytest.mark.parametrize("name", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"])
+@pytest.mark.parametrize("name", ["memory", "faiss", "weaviate", "elasticsearch"])
 def test_similarity_score_dot_product_without_scaling(name, docs, tmp_path):
     with document_store(name, docs, tmp_path, embedding_dim=384, similarity="dot_product") as ds:
         retriever = EmbeddingRetriever(

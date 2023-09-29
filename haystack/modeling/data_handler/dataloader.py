@@ -3,6 +3,7 @@ from typing import Optional, List
 from math import ceil
 
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset, Sampler
 
 from haystack.errors import ModelingError
@@ -40,18 +41,26 @@ class NamedDataLoader(DataLoader):
             else:
                 _tensor_names = tensor_names
 
-            if type(batch[0]) == list:
+            if isinstance(batch[0], list):
                 batch = batch[0]
 
             if len(batch[0]) != len(_tensor_names):
                 raise ModelingError(
                     f"Dataset contains {len(batch[0])} tensors while there are {len(_tensor_names)} tensor names supplied: {_tensor_names}"
                 )
-            lists_temp = [[] for _ in range(len(_tensor_names))]
-            ret = dict(zip(_tensor_names, lists_temp))
 
+            max_num_labels = self._compute_max_number_of_labels(batch=batch, tensor_names=_tensor_names)
+
+            ret = {name: [] for name in tensor_names}
             for example in batch:
                 for name, tensor in zip(_tensor_names, example):
+                    # each example may have a different number of answers/labels,
+                    # so we need to pad the corresponding tensors to the max number of labels
+                    if name == "labels" and tensor.ndim > 0:
+                        num_labels = tensor.size(0)
+                        if num_labels < max_num_labels:
+                            padding = (0, 0, 0, max_num_labels - num_labels)
+                            tensor = F.pad(tensor, padding, value=-1)
                     ret[name].append(tensor)
 
             for key in ret:
@@ -75,3 +84,15 @@ class NamedDataLoader(DataLoader):
             return num_batches
         else:
             return super().__len__()
+
+    def _compute_max_number_of_labels(self, batch, tensor_names) -> int:
+        """
+        Compute the maximum number of labels in a batch.
+        Each example may have a different number of labels, depending on the number of answers.
+        """
+        max_num_labels = 0
+        for example in batch:
+            for name, tensor in zip(tensor_names, example):
+                if name == "labels" and tensor.ndim > 0:
+                    max_num_labels = max(max_num_labels, tensor.size(0))
+        return max_num_labels

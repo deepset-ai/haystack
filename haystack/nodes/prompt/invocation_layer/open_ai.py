@@ -5,13 +5,13 @@ import logging
 import sseclient
 
 from haystack.errors import OpenAIError
+from haystack.nodes.prompt.invocation_layer.utils import has_azure_parameters
 from haystack.utils.openai_utils import (
-    USE_TIKTOKEN,
     openai_request,
     _openai_text_completion_tokenization_details,
     load_openai_tokenizer,
     _check_openai_finish_reason,
-    count_openai_tokens,
+    check_openai_policy_violation,
 )
 from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler, DefaultTokenStreamingHandler
@@ -29,7 +29,13 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
     """
 
     def __init__(
-        self, api_key: str, model_name_or_path: str = "text-davinci-003", max_length: Optional[int] = 100, **kwargs
+        self,
+        api_key: str,
+        model_name_or_path: str = "text-davinci-003",
+        max_length: Optional[int] = 100,
+        api_base: str = "https://api.openai.com/v1",
+        openai_organization: Optional[str] = None,
+        **kwargs,
     ):
         """
          Creates an instance of OpenAIInvocationLayer for OpenAI's GPT-3 InstructGPT models.
@@ -37,12 +43,18 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         :param model_name_or_path: The name or path of the underlying model.
         :param max_length: The maximum number of tokens the output text can have.
         :param api_key: The OpenAI API key.
+        :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
+        :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see see OpenAI
+        [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         :param kwargs: Additional keyword arguments passed to the underlying model. Due to reflective construction of
         all PromptModelInvocationLayer instances, this instance of OpenAIInvocationLayer might receive some unrelated
         kwargs. Only the kwargs relevant to OpenAIInvocationLayer are considered. The list of OpenAI-relevant
         kwargs includes: suffix, temperature, top_p, presence_penalty, frequency_penalty, best_of, n, max_tokens,
         logit_bias, stop, echo, and logprobs. For more details about these kwargs, see OpenAI
         [documentation](https://platform.openai.com/docs/api-reference/completions/create).
+        Note: additional model argument moderate_content will filter input and generated answers for potentially
+        sensitive content using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation)
+        if set. If the input or answers are flagged, an empty list is returned in place of the answers.
         """
         super().__init__(model_name_or_path)
         if not isinstance(api_key, str) or len(api_key) == 0:
@@ -50,6 +62,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
             )
         self.api_key = api_key
+        self.api_base = api_base
+        self.openai_organization = openai_organization
 
         # 16 is the default length for answers from OpenAI shown in the docs
         # here, https://platform.openai.com/docs/api-reference/completions/create.
@@ -76,6 +90,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 "logit_bias",
                 "stream",
                 "stream_handler",
+                "moderate_content",
             ]
             if key in kwargs
         }
@@ -88,15 +103,19 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
     @property
     def url(self) -> str:
-        return "https://api.openai.com/v1/completions"
+        return f"{self.api_base}/completions"
 
     @property
     def headers(self) -> Dict[str, str]:
-        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        if self.openai_organization:
+            headers["OpenAI-Organization"] = self.openai_organization
+        return headers
 
     def invoke(self, *args, **kwargs):
         """
-        Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
+        Invokes a prompt on the model. Based on the model, it takes in a prompt (or either a prompt or a list of messages)
+        and returns a list of responses using a REST invocation.
 
         :return: The responses are being returned.
 
@@ -104,12 +123,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         For more details, see OpenAI [documentation](https://platform.openai.com/docs/api-reference/completions/create).
         """
         prompt = kwargs.get("prompt")
-        if not prompt:
-            raise ValueError(
-                f"No prompt provided. Model {self.model_name_or_path} requires prompt."
-                f"Make sure to provide prompt in kwargs."
-            )
-
+        # either stream is True (will use default handler) or stream_handler is provided
         kwargs_with_defaults = self.model_input_kwargs
         if kwargs:
             # we use keyword stop_words but OpenAI uses stop
@@ -120,28 +134,47 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 kwargs["n"] = top_k
                 kwargs["best_of"] = top_k
             kwargs_with_defaults.update(kwargs)
-
-        # either stream is True (will use default handler) or stream_handler is provided
         stream = (
             kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
         )
-        payload = {
+        moderation = kwargs_with_defaults.get("moderate_content", False)
+        base_payload = {  # payload common to all OpenAI models
             "model": self.model_name_or_path,
-            "prompt": prompt,
-            "suffix": kwargs_with_defaults.get("suffix", None),
             "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length),
             "temperature": kwargs_with_defaults.get("temperature", 0.7),
             "top_p": kwargs_with_defaults.get("top_p", 1),
             "n": kwargs_with_defaults.get("n", 1),
             "stream": stream,
-            "logprobs": kwargs_with_defaults.get("logprobs", None),
-            "echo": kwargs_with_defaults.get("echo", False),
             "stop": kwargs_with_defaults.get("stop", None),
             "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
             "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
-            "best_of": kwargs_with_defaults.get("best_of", 1),
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
+        if moderation and check_openai_policy_violation(input=prompt, headers=self.headers):
+            logger.info("Prompt '%s' will not be sent to OpenAI due to potential policy violation.", prompt)
+            return []
+        responses = self._execute_openai_request(
+            prompt=prompt, base_payload=base_payload, kwargs_with_defaults=kwargs_with_defaults, stream=stream
+        )
+        if moderation and check_openai_policy_violation(input=responses, headers=self.headers):
+            logger.info("Response '%s' will not be returned due to potential policy violation.", responses)
+            return []
+        return responses
+
+    def _execute_openai_request(self, prompt: str, base_payload: Dict, kwargs_with_defaults: Dict, stream: bool):
+        if not prompt:
+            raise ValueError(
+                f"No prompt provided. Model {self.model_name_or_path} requires prompt."
+                f"Make sure to provide prompt in kwargs."
+            )
+        extra_payload = {
+            "prompt": prompt,
+            "suffix": kwargs_with_defaults.get("suffix", None),
+            "logprobs": kwargs_with_defaults.get("logprobs", None),
+            "echo": kwargs_with_defaults.get("echo", False),
+            "best_of": kwargs_with_defaults.get("best_of", 1),
+        }
+        payload = {**base_payload, **extra_payload}
         if not stream:
             res = openai_request(url=self.url, headers=self.headers, payload=payload)
             _check_openai_finish_reason(result=res, payload=payload)
@@ -177,7 +210,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
         :param prompt: Prompt text to be sent to the generative model.
         """
-        n_prompt_tokens = count_openai_tokens(cast(str, prompt), self._tokenizer)
+        n_prompt_tokens = len(self._tokenizer.encode(cast(str, prompt)))
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
@@ -192,17 +225,13 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             self.max_tokens_limit,
         )
 
-        if USE_TIKTOKEN:
-            tokenized_payload = self._tokenizer.encode(prompt)
-            decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_tokens_limit - n_answer_tokens])
-        else:
-            tokenized_payload = self._tokenizer.tokenize(prompt)
-            decoded_string = self._tokenizer.convert_tokens_to_string(
-                tokenized_payload[: self.max_tokens_limit - n_answer_tokens]
-            )
+        tokenized_payload = self._tokenizer.encode(prompt)
+        decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_tokens_limit - n_answer_tokens])
         return decoded_string
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
-        return valid_model and kwargs.get("azure_base_url") is None
+        valid_model = model_name_or_path in ["ada", "babbage", "davinci", "curie", "gpt-3.5-turbo-instruct"] or any(
+            m in model_name_or_path for m in ["-ada-", "-babbage-", "-davinci-", "-curie-"]
+        )
+        return valid_model and not has_azure_parameters(**kwargs)

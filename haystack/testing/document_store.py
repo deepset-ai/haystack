@@ -78,8 +78,8 @@ class DocumentStoreBaseTestAbstract:
         ds.write_documents(documents)
         docs = ds.get_all_documents()
         assert len(docs) == len(documents)
-        expected_ids = set(doc.id for doc in documents)
-        ids = set(doc.id for doc in docs)
+        expected_ids = {doc.id for doc in documents}
+        ids = {doc.id for doc in docs}
         assert ids == expected_ids
 
     @pytest.mark.integration
@@ -560,6 +560,20 @@ class DocumentStoreBaseTestAbstract:
         assert documents[0].content == "test"
         # Some document stores normalize the embedding on save, let's just compare the length
         assert doc_to_write["custom_embedding_field"].shape == documents[0].embedding.shape
+
+    @pytest.mark.skip(reason="This currently fails for Weaviate and Pinecone")
+    @pytest.mark.integration
+    @pytest.mark.parametrize("batch_size", [None, 20])
+    def test_add_eval_data(self, ds, batch_size, samples_path):
+        # add eval data (SQUAD format)
+        ds.add_eval_data(
+            filename=samples_path / "squad" / "small.json",
+            doc_index=ds.index,
+            label_index=ds.label_index,
+            batch_size=batch_size,
+        )
+        assert ds.get_document_count() == 87
+        assert ds.get_label_count() == 1214
 
     #
     # Unit tests

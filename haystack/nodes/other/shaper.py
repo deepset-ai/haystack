@@ -1,6 +1,7 @@
 from functools import reduce
 import inspect
 import re
+from datetime import datetime
 from string import Template
 from typing import Literal, Optional, List, Dict, Any, Tuple, Union, Callable
 
@@ -24,6 +25,19 @@ def rename(value: Any) -> Any:
     ```
     """
     return value
+
+
+def current_datetime(format: str = "%H:%M:%S %d/%m/%y") -> str:
+    """
+    Function that outputs the current time and/or date formatted according to the parameters.
+
+    Example:
+
+    ```python
+    assert current_datetime("%d.%m.%y %H:%M:%S") == 01.01.2023 12:30:10
+    ```
+    """
+    return datetime.now().strftime(format)
 
 
 def value_to_list(value: Any, target_list: List[Any]) -> List[Any]:
@@ -544,6 +558,7 @@ def documents_to_strings(
 
 REGISTERED_FUNCTIONS: Dict[str, Callable[..., Any]] = {
     "rename": rename,
+    "current_datetime": current_datetime,
     "value_to_list": value_to_list,
     "join_lists": join_lists,
     "join_strings": join_strings,
@@ -740,7 +755,7 @@ class Shaper(BaseComponent):
         if labels and "labels" not in invocation_context.keys():
             invocation_context["labels"] = labels
 
-        if documents and "documents" not in invocation_context.keys():
+        if documents != None and "documents" not in invocation_context.keys():
             invocation_context["documents"] = documents
 
         if meta and "meta" not in invocation_context.keys():

@@ -1,9 +1,5 @@
-from typing import Any, Dict, List, Optional, Union, Generator
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+import copy
+from typing import Any, Dict, List, Optional, Union, Generator, Literal
 
 import time
 import logging
@@ -12,22 +8,26 @@ from collections import defaultdict
 import re
 
 import numpy as np
-import torch
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import rank_bm25
 import pandas as pd
 
 from haystack.schema import Document, FilterType, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.document_stores import KeywordDocumentStore
-from haystack.document_stores.base import get_batches_from_generator
-from haystack.modeling.utils import initialize_device_settings
+from haystack.utils.batching import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.nodes.retriever.dense import DenseRetriever
 from haystack.utils.scipy_utils import expit
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
+    import torch
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class InMemoryDocumentStore(KeywordDocumentStore):
@@ -48,7 +48,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         duplicate_documents: str = "overwrite",
         use_gpu: bool = True,
         scoring_batch_size: int = 500000,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         use_bm25: bool = False,
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
@@ -73,7 +73,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                                     exists.
         :param use_gpu: Whether to use a GPU or the CPU for calculating embedding similarity.
                         Falls back to CPU if no GPU is available.
-        :param scoring_batch_size: Batch size of documents to calculate similarity for. Very small batch sizes are inefficent.
+        :param scoring_batch_size: Batch size of documents to calculate similarity for. Very small batch sizes are inefficient.
                                    Very large batch sizes can overrun GPU memory. In general you want to make sure
                                    you have at least `embedding_dim`*`scoring_batch_size`*4 bytes available in GPU memory.
                                    Since the data is originally stored in CPU memory there is little risk of overruning memory
@@ -92,6 +92,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                                 You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25
                                 By default, no parameters are set.
         """
+        torch_import.check()
         if bm25_parameters is None:
             bm25_parameters = {}
         super().__init__()
@@ -310,6 +311,8 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
         :param documents_to_search: List of documents to compare `query_emb` against.
         """
+        torch_import.check()
+
         query_emb_tensor = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)
         if query_emb_tensor.ndim == 1:
             query_emb_tensor = query_emb_tensor.unsqueeze(dim=0)
@@ -958,7 +961,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         scale_score: bool = True,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through documents in DocumentStore and return a small number of documents
         that are most relevant to the query as defined by the BM25 algorithm.
         :param query: The query.
         :param top_k: How many documents to return per query.
@@ -994,13 +997,13 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
 
         textual_docs_list = [doc for doc in self.indexes[index].values() if doc.content_type in ["text", "table"]]
-        top_docs = []
+        return_documents = []
         for i in top_docs_positions:
             doc = textual_docs_list[i]
             doc.score = docs_scores[i]
-            top_docs.append(doc)
-
-        return top_docs
+            return_document = copy.copy(doc)
+            return_documents.append(return_document)
+        return return_documents
 
     def query_batch(
         self,
@@ -1014,7 +1017,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         scale_score: bool = True,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through documents in DocumentStore and return a small number of documents
         that are most relevant to the provided queries as defined by keyword matching algorithms like BM25.
         This method lets you find relevant documents for list of query strings (output: List of Lists of Documents).
         :param query: The query.

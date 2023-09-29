@@ -1,9 +1,11 @@
 loaders:
-  - type: python
+  - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/agents]
-    modules: ['base']
+    modules: ['base', 'conversational', 'utils', 'agent_step', 'memory/conversation_memory', 'memory/conversation_summary_memory']
     ignore_when_discovered: ['__init__']
 processors:
+  - type: filter
+    expression: "name not in ['print_text']"
   - type: filter
     expression:
     documented_only: true

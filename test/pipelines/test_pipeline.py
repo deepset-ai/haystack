@@ -164,6 +164,7 @@ def test_to_code_creates_same_pipelines(samples_path):
 #
 
 
+@pytest.mark.unit
 def test_get_config_creates_dependent_component():
     child = ChildComponent()
     parent = ParentComponent(dependent=child)
@@ -183,6 +184,7 @@ def test_get_config_creates_dependent_component():
         assert expected_component in config["components"]
 
 
+@pytest.mark.unit
 def test_get_config_creates_only_one_dependent_component_referenced_by_multiple_parents():
     child = ChildComponent()
     parent = ParentComponent(dependent=child)
@@ -217,6 +219,7 @@ def test_get_config_creates_only_one_dependent_component_referenced_by_multiple_
         assert expected_component in config["components"]
 
 
+@pytest.mark.unit
 def test_get_config_creates_two_different_dependent_components_of_same_type():
     child_a = ChildComponent(some_key="A")
     child_b = ChildComponent(some_key="B")
@@ -253,6 +256,7 @@ def test_get_config_creates_two_different_dependent_components_of_same_type():
         assert expected_component in config["components"]
 
 
+@pytest.mark.unit
 def test_get_config_reuses_same_dependent_components():
     child = ChildComponent()
     parent = ParentComponent(dependent=child)
@@ -276,6 +280,7 @@ def test_get_config_reuses_same_dependent_components():
         assert expected_component in config["components"]
 
 
+@pytest.mark.unit
 def test_get_config_creates_different_components_if_instances_differ():
     child_a = ChildComponent()
     child_b = ChildComponent()
@@ -313,6 +318,7 @@ def test_get_config_creates_different_components_if_instances_differ():
         assert expected_component in config["components"]
 
 
+@pytest.mark.unit
 def test_get_config_reuses_same_unnamed_dependent_components():
     child = ChildComponent()
     parent = ParentComponent(dependent=child)
@@ -338,6 +344,7 @@ def test_get_config_reuses_same_unnamed_dependent_components():
         assert expected_component in config["components"]
 
 
+@pytest.mark.unit
 def test_get_config_multi_level_dependencies():
     child = ChildComponent()
     intermediate = ParentComponent(dependent=child)
@@ -360,6 +367,7 @@ def test_get_config_multi_level_dependencies():
         assert expected_component in config["components"]
 
 
+@pytest.mark.unit
 def test_get_config_multi_level_dependencies_of_same_type():
     child = ChildComponent()
     second_intermediate = ParentComponent(dependent=child)
@@ -384,6 +392,7 @@ def test_get_config_multi_level_dependencies_of_same_type():
         assert expected_component in config["components"]
 
 
+@pytest.mark.unit
 def test_get_config_component_with_superclass_arguments():
     class CustomBaseDocumentStore(MockDocumentStore):
         def __init__(self, base_parameter: str):
@@ -409,6 +418,7 @@ def test_get_config_component_with_superclass_arguments():
     assert pipeline.get_document_store().base_parameter == "something"
 
 
+@pytest.mark.unit
 def test_get_config_custom_node_with_params():
     class CustomNode(MockNode):
         def __init__(self, param: int):
@@ -422,6 +432,7 @@ def test_get_config_custom_node_with_params():
     assert pipeline.get_config()["components"][0]["params"] == {"param": 10}
 
 
+@pytest.mark.unit
 def test_get_config_custom_node_with_positional_params():
     class CustomNode(MockNode):
         def __init__(self, param: int = 1):
@@ -435,6 +446,7 @@ def test_get_config_custom_node_with_positional_params():
     assert pipeline.get_config()["components"][0]["params"] == {"param": 10}
 
 
+@pytest.mark.unit
 def test_get_config_multi_output_node():
     class MultiOutputNode(BaseComponent):
         outgoing_edges = 2
@@ -475,6 +487,7 @@ def test_get_config_multi_output_node():
     assert "fork_2" in nodes[3]["inputs"]
 
 
+@pytest.mark.unit
 def test_generate_code_simple_pipeline():
     config = {
         "version": "ignore",
@@ -503,6 +516,7 @@ def test_generate_code_simple_pipeline():
     )
 
 
+@pytest.mark.unit
 def test_generate_code_imports():
     pipeline_config = {
         "version": "ignore",
@@ -536,6 +550,7 @@ def test_generate_code_imports():
     )
 
 
+@pytest.mark.unit
 def test_generate_code_imports_no_pipeline_cls():
     pipeline_config = {
         "version": "ignore",
@@ -565,6 +580,7 @@ def test_generate_code_imports_no_pipeline_cls():
     )
 
 
+@pytest.mark.unit
 def test_generate_code_comment():
     pipeline_config = {
         "version": "ignore",
@@ -593,6 +609,7 @@ def test_generate_code_comment():
     )
 
 
+@pytest.mark.unit
 def test_generate_code_is_component_order_invariant():
     pipeline_config = {
         "version": "ignore",
@@ -649,6 +666,7 @@ def test_generate_code_is_component_order_invariant():
         assert code == expected_code
 
 
+@pytest.mark.unit
 def test_generate_code_can_handle_weak_cyclic_pipelines():
     config = {
         "version": "ignore",
@@ -674,6 +692,7 @@ def test_generate_code_can_handle_weak_cyclic_pipelines():
     )
 
 
+@pytest.mark.unit
 def test_pipeline_classify_type(tmp_path):
     pipe = GenerativeQAPipeline(generator=MockSeq2SegGenerator(), retriever=MockRetriever())
     assert pipe.get_type().startswith("GenerativeQAPipeline")
@@ -710,7 +729,7 @@ def test_pipeline_classify_type(tmp_path):
     # previously misclassified as "UnknownPipeline"
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
                version: ignore
                components:
                - name: document_store
@@ -741,7 +760,7 @@ def test_pipeline_classify_type(tmp_path):
     # previously misclassified as "UnknownPipeline"
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
                version: ignore
                components:
                - name: document_store
@@ -777,7 +796,7 @@ def test_pipeline_classify_type(tmp_path):
     # previously misclassified as "UnknownPipeline"
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
                version: ignore
                components:
                - name: document_store
@@ -1371,7 +1390,7 @@ def test_failed_deploy_on_deepset_cloud():
             )
     with pytest.raises(
         DeepsetCloudError,
-        match=f"Deployment of pipeline config 'test_new_non_existing_pipeline' failed. "
+        match="Deployment of pipeline config 'test_new_non_existing_pipeline' failed. "
         "This might be caused by an exception in deepset Cloud or a runtime error in the pipeline. "
         "You can try to run this pipeline locally first.",
     ):
@@ -1402,7 +1421,7 @@ def test_unexpected_failed_deploy_on_deepset_cloud():
             )
     with pytest.raises(
         DeepsetCloudError,
-        match=f"Deployment of pipeline config 'test_new_non_existing_pipeline' failed. "
+        match="Deployment of pipeline config 'test_new_non_existing_pipeline' failed. "
         "This might be caused by an exception in deepset Cloud or a runtime error in the pipeline. "
         "You can try to run this pipeline locally first.",
     ):
@@ -1592,6 +1611,7 @@ def test_undeploy_on_deepset_cloud_timeout():
         )
 
 
+@pytest.mark.unit
 def test_graph_validation_invalid_edge():
     docstore = MockDocumentStore()
     retriever = DummyRetriever(document_store=docstore)
@@ -1602,6 +1622,7 @@ def test_graph_validation_invalid_edge():
         pipeline.add_node(name="Retriever", component=retriever, inputs=["DocStore.output_2"])
 
 
+@pytest.mark.unit
 def test_graph_validation_non_existing_edge():
     docstore = MockDocumentStore()
     retriever = DummyRetriever(document_store=docstore)
@@ -1612,6 +1633,7 @@ def test_graph_validation_non_existing_edge():
         pipeline.add_node(name="Retriever", component=retriever, inputs=["DocStore.wrong_edge_label"])
 
 
+@pytest.mark.unit
 def test_graph_validation_invalid_node():
     docstore = MockDocumentStore()
     retriever = DummyRetriever(document_store=docstore)
@@ -1622,6 +1644,7 @@ def test_graph_validation_invalid_node():
         pipeline.add_node(name="Retriever", component=retriever, inputs=["InvalidNode"])
 
 
+@pytest.mark.unit
 def test_graph_validation_invalid_root_node():
     docstore = MockDocumentStore()
     pipeline = Pipeline()
@@ -1630,6 +1653,7 @@ def test_graph_validation_invalid_root_node():
         pipeline.add_node(name="DocStore", component=docstore, inputs=["InvalidNode"])
 
 
+@pytest.mark.unit
 def test_graph_validation_no_root_node():
     docstore = MockNode()
     pipeline = Pipeline()
@@ -1638,6 +1662,7 @@ def test_graph_validation_no_root_node():
         pipeline.add_node(name="Node", component=docstore, inputs=[])
 
 
+@pytest.mark.unit
 def test_graph_validation_two_root_nodes():
     docstore = MockNode()
     pipeline = Pipeline()
@@ -1649,6 +1674,7 @@ def test_graph_validation_two_root_nodes():
         pipeline.add_node(name="Node", component=docstore, inputs=["Query", "Query"])
 
 
+@pytest.mark.unit
 def test_graph_validation_duplicate_node_instance():
     node = MockNode()
     pipeline = Pipeline()
@@ -1658,6 +1684,7 @@ def test_graph_validation_duplicate_node_instance():
         pipeline.add_node(name="node_b", component=node, inputs=["node_a"])
 
 
+@pytest.mark.unit
 def test_graph_validation_duplicate_node():
     node = MockNode()
     other_node = MockNode()
@@ -1668,6 +1695,7 @@ def test_graph_validation_duplicate_node():
 
 
 # See https://github.com/deepset-ai/haystack/issues/2568
+@pytest.mark.unit
 def test_pipeline_nodes_can_have_uncopiable_objects_as_args():
     class DummyNode(MockNode):
         def __init__(self, uncopiable: ssl.SSLContext):
@@ -1682,6 +1710,7 @@ def test_pipeline_nodes_can_have_uncopiable_objects_as_args():
     get_component_definitions(pipeline.get_config())
 
 
+@pytest.mark.unit
 def test_pipeline_env_vars_do_not_modify__component_config(caplog, monkeypatch):
     class DummyNode(MockNode):
         def __init__(self, replaceable: str):
@@ -1718,6 +1747,7 @@ def test_pipeline_env_vars_do_not_modify__component_config(caplog, monkeypatch):
     assert new_pipeline_config["components"][0]["params"]["replaceable"] == "init value"
 
 
+@pytest.mark.unit
 def test_pipeline_env_vars_do_not_modify_pipeline_config(monkeypatch):
     class DummyNode(MockNode):
         def __init__(self, replaceable: str):
@@ -1739,6 +1769,7 @@ def test_pipeline_env_vars_do_not_modify_pipeline_config(monkeypatch):
     assert pipeline_config["components"][0]["params"]["replaceable"] == "init value"
 
 
+@pytest.mark.unit
 def test_parallel_paths_in_pipeline_graph():
     class A(RootNode):
         def run(self):
@@ -1790,6 +1821,7 @@ def test_parallel_paths_in_pipeline_graph():
     assert output["test"] == "ABCABD"
 
 
+@pytest.mark.unit
 def test_parallel_paths_in_pipeline_graph_with_branching():
     class AWithOutput1(RootNode):
         outgoing_edges = 2
@@ -1871,6 +1903,7 @@ def test_parallel_paths_in_pipeline_graph_with_branching():
     assert output["output"] == "ACABEABD"
 
 
+@pytest.mark.unit
 def test_pipeline_components():
     class Node(BaseComponent):
         outgoing_edges = 1
@@ -1901,6 +1934,7 @@ def test_pipeline_components():
     assert pipeline.components["E"] == e
 
 
+@pytest.mark.unit
 def test_pipeline_get_document_store_from_components():
     doc_store = MockDocumentStore()
     pipeline = Pipeline()
@@ -1909,6 +1943,7 @@ def test_pipeline_get_document_store_from_components():
     assert doc_store == pipeline.get_document_store()
 
 
+@pytest.mark.unit
 def test_pipeline_get_document_store_from_components_multiple_doc_stores():
     doc_store_a = MockDocumentStore()
     doc_store_b = MockDocumentStore()
@@ -1920,6 +1955,7 @@ def test_pipeline_get_document_store_from_components_multiple_doc_stores():
         pipeline.get_document_store()
 
 
+@pytest.mark.unit
 def test_pipeline_get_document_store_from_retriever():
     doc_store = MockDocumentStore()
     retriever = DummyRetriever(document_store=doc_store)
@@ -1929,6 +1965,7 @@ def test_pipeline_get_document_store_from_retriever():
     assert doc_store == pipeline.get_document_store()
 
 
+@pytest.mark.unit
 def test_pipeline_get_document_store_from_dual_retriever():
     doc_store = MockDocumentStore()
     retriever_a = DummyRetriever(document_store=doc_store)
@@ -1942,6 +1979,7 @@ def test_pipeline_get_document_store_from_dual_retriever():
     assert doc_store == pipeline.get_document_store()
 
 
+@pytest.mark.unit
 def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
     doc_store_a = MockDocumentStore()
     doc_store_b = MockDocumentStore()
@@ -1988,6 +2026,7 @@ def test_batch_querying_multiple_queries(document_store_with_docs, samples_path)
     assert len(result["answers"][0]) == 5  # top-k of 5 for collection of docs
 
 
+@pytest.mark.unit
 def test_fix_to_pipeline_execution_when_join_follows_join():
     # wire up 4 retrievers, each with one document
     document_store_1 = InMemoryDocumentStore()

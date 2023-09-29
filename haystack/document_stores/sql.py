@@ -1,4 +1,3 @@
-#  type: ignore
 from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
@@ -8,7 +7,12 @@ from uuid import uuid4
 
 import numpy as np
 
-try:
+from haystack.schema import Document, Label, Answer
+from haystack.document_stores.base import BaseDocumentStore, FilterType
+from haystack.document_stores.filter_utils import LogicalFilterClause
+from haystack.lazy_imports import LazyImport
+
+with LazyImport(message="Run 'pip install farm-haystack[sql]'") as sqlalchemy_import:
     from sqlalchemy import (
         and_,
         func,
@@ -28,28 +32,6 @@ try:
     from sqlalchemy.orm import relationship, sessionmaker, aliased
     from sqlalchemy.sql import case, null
 
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "sql", ie)
-
-
-from haystack import is_imported
-from haystack.schema import Document, Label, Answer
-from haystack.document_stores.base import BaseDocumentStore, FilterType
-from haystack.document_stores.filter_utils import LogicalFilterClause
-
-
-if not is_imported("sqlalchemy"):
-    Base = object
-    ArrayType = object
-    ORMBase = object
-    DocumentORM = object
-    MetaDocumentORM = object
-    LabelORM = object
-    MetaLabelORM = object
-
-else:
     Base = declarative_base()  # type: Any
 
     class ArrayType(TypeDecorator):
@@ -164,6 +146,9 @@ class SQLDocumentStore(BaseDocumentStore):
         :param check_same_thread: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior)
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
+        # ensure the required dependencies were actually imported
+        sqlalchemy_import.check()
+
         super().__init__()
 
         create_engine_params = {}

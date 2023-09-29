@@ -64,14 +64,7 @@ from time import sleep
 from pathlib import Path
 from itertools import islice
 
-from tqdm.auto import tqdm
-
-try:
-    from elasticsearch import Elasticsearch
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "elasticsearch", ie)
+from tqdm import tqdm
 
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore  # keep it here !
@@ -80,6 +73,10 @@ from haystack.nodes.retriever.sparse import BM25Retriever  # keep it here !  # p
 from haystack.nodes.retriever.dense import DensePassageRetriever  # keep it here !  # pylint: disable=unused-import
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install farm-haystack[elasticsearch]'") as es_import:
+    from elasticsearch import Elasticsearch
 
 
 logger = logging.getLogger(__name__)
@@ -87,6 +84,8 @@ logger = logging.getLogger(__name__)
 
 class HaystackDocumentStore:
     def __init__(self, store_type: str = "ElasticsearchDocumentStore", **kwargs):
+        es_import.check()
+
         if store_type not in ["ElasticsearchDocumentStore", "FAISSDocumentStore"]:
             raise Exception(
                 "At the moment we only deal with one of these types: ElasticsearchDocumentStore, FAISSDocumentStore"

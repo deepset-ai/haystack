@@ -22,46 +22,40 @@ import logging
 from pathlib import Path
 
 import numpy as np
-import transformers
-from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig, AutoFeatureExtractor, AutoTokenizer
-
-# NOTE: These two constants are internals of HF. Keep in mind that they might be renamed or removed at any time.
-from transformers.models.auto.feature_extraction_auto import FEATURE_EXTRACTOR_MAPPING_NAMES
-from transformers.models.auto.tokenization_auto import TOKENIZER_MAPPING_NAMES
-
-from haystack import is_imported
 from haystack.errors import ModelingError
 from haystack.modeling.data_handler.samples import SampleBasket
-
+from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
-
 
 #: Special characters used by the different tokenizers to indicate start of word / whitespace
 SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
 
 
-if not is_imported("transformers"):
-    TOKENIZER_MAPPING_NAMES = {}
-    FEATURE_EXTRACTOR_MAPPING_NAMES = {}
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as transformers_import:
+    import transformers
+    from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig, AutoFeatureExtractor, AutoTokenizer
 
+    # NOTE: These two constants are internals of HF. Keep in mind that they might be renamed or removed at any time.
+    from transformers.models.auto.feature_extraction_auto import FEATURE_EXTRACTOR_MAPPING_NAMES
+    from transformers.models.auto.tokenization_auto import TOKENIZER_MAPPING_NAMES
 
-FEATURE_EXTRACTORS = {
-    **{key: AutoTokenizer for key in TOKENIZER_MAPPING_NAMES.keys()},
-    **{key: AutoFeatureExtractor for key in FEATURE_EXTRACTOR_MAPPING_NAMES.keys()},
-}
+    FEATURE_EXTRACTORS = {
+        **{key: AutoTokenizer for key in TOKENIZER_MAPPING_NAMES.keys()},
+        **{key: AutoFeatureExtractor for key in FEATURE_EXTRACTOR_MAPPING_NAMES.keys()},
+    }
 
-DEFAULT_EXTRACTION_PARAMS = {
-    AutoTokenizer: {
-        "max_length": 256,
-        "add_special_tokens": True,
-        "truncation": True,
-        "truncation_strategy": "longest_first",
-        "padding": "max_length",
-        "return_token_type_ids": True,
-    },
-    AutoFeatureExtractor: {"return_tensors": "pt"},
-}
+    DEFAULT_EXTRACTION_PARAMS = {
+        AutoTokenizer: {
+            "max_length": 256,
+            "add_special_tokens": True,
+            "truncation": True,
+            "truncation_strategy": "longest_first",
+            "padding": "max_length",
+            "return_token_type_ids": True,
+        },
+        AutoFeatureExtractor: {"return_tensors": "pt"},
+    }
 
 
 class FeatureExtractor:
@@ -89,6 +83,8 @@ class FeatureExtractor:
                             [Hugging Face documentation](https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained)
         :param kwargs: Other kwargs you want to pass on to `PretrainedTokenizer.from_pretrained()`
         """
+        transformers_import.check()
+
         model_name_or_path = str(pretrained_model_name_or_path)
         model_type = None
 
@@ -386,7 +382,7 @@ def _words_to_tokens(
         first_token = True
         for token in tokens_word:
             token_offsets.append(word_offset)
-            # Depending on the tokenizer type special chars are added to distinguish tokens with preceeding
+            # Depending on the tokenizer type special chars are added to distinguish tokens with preceding
             # whitespace (=> "start of a word"). We need to get rid of these to calculate the original length of the token
             original_token = re.sub(SPECIAL_TOKENIZER_CHARS, "", token)
             # Don't use length of unk token for offset calculation

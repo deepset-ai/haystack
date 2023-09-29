@@ -7,14 +7,14 @@ import random
 from itertools import groupby
 from pathlib import Path
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import torch
 from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
-from haystack.modeling.data_handler.processor import Processor
+from haystack.modeling.data_handler.processor import Processor, SquadProcessor
 from haystack.utils.experiment_tracking import Tracker as tracker
 from haystack.modeling.visual import TRACTOR_SMALL
 
@@ -110,11 +110,13 @@ class DataSilo:
         # loading dicts from file (default)
         if dicts is None:
             dicts = list(self.processor.file_to_dicts(filename))  # type: ignore
-            # shuffle list of dicts here if we later want to have a random dev set splitted from train set
-            if str(self.processor.train_filename) in str(filename):
-                if not self.processor.dev_filename:
-                    if self.processor.dev_split > 0.0:
-                        random.shuffle(dicts)
+            # shuffle list of dicts here if we later want to have a random dev set split from train set
+            if (
+                str(self.processor.train_filename) in str(filename)
+                and not self.processor.dev_filename
+                and self.processor.dev_split > 0.0
+            ):
+                random.shuffle(dicts)
 
         num_dicts = len(dicts)
         datasets = []
@@ -412,7 +414,8 @@ class DataSilo:
         logger.info("Total examples   : %s", self.counts["train"] + self.counts["dev"] + self.counts["test"])
         logger.info("")
         if self.data["train"]:
-            if "input_ids" in self.tensor_names:
+            # SquadProcessor does not clip sequences, but splits them into multiple samples
+            if "input_ids" in self.tensor_names and not isinstance(self.processor, SquadProcessor):
                 logger.info("Longest sequence length observed after clipping:     %s", max(seq_lens))
                 logger.info("Average sequence length after clipping: %s", ave_len)
                 logger.info("Proportion clipped:      %s", clipped)

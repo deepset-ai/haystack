@@ -20,7 +20,6 @@ from haystack.nodes import (
     MarkdownConverter,
     ParsrConverter,
     PDFToTextConverter,
-    PDFToTextOCRConverter,
     PreProcessor,
     TextConverter,
     TikaConverter,
@@ -30,7 +29,7 @@ from ..conftest import fail_at_version
 
 
 @pytest.mark.tika
-@pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter])
+@pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_convert(Converter, samples_path):
     converter = Converter()
     document = converter.run(file_paths=samples_path / "pdf" / "sample_pdf_1.pdf")[0]["documents"][0]
@@ -47,23 +46,6 @@ def test_convert(Converter, samples_path):
     # As whitespace can differ (\n," ", etc.), we standardize all to simple whitespace
     page_standard_whitespace = " ".join(pages[0].split())
     assert "Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
-
-
-# Marked as integration because it uses poppler, which is not installed in the unit tests suite
-@pytest.mark.integration
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Poppler not installed on Windows CI")
-def test_pdftoppm_command_format(samples_path):
-    # Haystack's PDFToTextOCRConverter uses pdf2image, which calls pdftoppm internally.
-    # Some installations of pdftoppm are incompatible with Haystack and won't raise an error but just return empty converted documents
-    # This test runs pdftoppm directly to check whether pdftoppm accepts the command format that pdf2image uses in Haystack
-    proc = subprocess.Popen(
-        ["pdftoppm", f"{samples_path}/pdf/sample_pdf_1.pdf"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    out, err = proc.communicate()
-    # If usage info of pdftoppm is sent to stderr then it's because Haystack's pdf2image uses an incompatible command format
-    assert (
-        not err
-    ), 'Your installation of poppler is incompatible with Haystack. Try installing via "conda install -c conda-forge poppler"'
 
 
 @pytest.mark.unit
@@ -197,34 +179,26 @@ def test_pdf_parallel_ocr(Converter, samples_path):
     assert pages[-1] == "This is the page 50 of the document."
 
 
-@pytest.mark.unit
-@fail_at_version(1, 17)
-@patch("haystack.nodes.file_converter.image.ImageToTextConverter.__new__")
-def test_deprecated_ocr_node(mock):
-    with pytest.warns(DeprecationWarning):
-        PDFToTextOCRConverter()
-
-
-@fail_at_version(1, 17)
+@fail_at_version(1, 18)
 def test_deprecated_encoding():
     with pytest.warns(DeprecationWarning):
-        converter = PDFToTextConverter(encoding="utf-8")
+        PDFToTextConverter(encoding="utf-8")
 
 
-@fail_at_version(1, 17)
+@fail_at_version(1, 18)
 def test_deprecated_encoding_in_convert_method(samples_path):
     converter = PDFToTextConverter()
     with pytest.warns(DeprecationWarning):
         converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf", encoding="utf-8")
 
 
-@fail_at_version(1, 17)
+@fail_at_version(1, 18)
 def test_deprecated_keep_physical_layout():
     with pytest.warns(DeprecationWarning):
-        converter = PDFToTextConverter(keep_physical_layout=True)
+        PDFToTextConverter(keep_physical_layout=True)
 
 
-@fail_at_version(1, 17)
+@fail_at_version(1, 18)
 def test_deprecated_keep_physical_layout_in_convert_method(samples_path):
     converter = PDFToTextConverter()
     with pytest.warns(DeprecationWarning):
@@ -420,7 +394,7 @@ def test_id_hash_keys_from_pipeline_params(samples_path):
     converter = TextConverter()
     output, _ = converter.run(file_paths=[doc_path, doc_path], meta=meta, id_hash_keys=["content", "meta"])
     documents = output["documents"]
-    unique_ids = set(d.id for d in documents)
+    unique_ids = {d.id for d in documents}
 
     assert len(documents) == 2
     assert len(unique_ids) == 2

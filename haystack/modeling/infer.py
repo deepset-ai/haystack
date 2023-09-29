@@ -1,20 +1,20 @@
-from typing import List, Optional, Dict, Union, Set, Any
-
-import os
+import contextlib
 import logging
-from tqdm.auto import tqdm
+import os
+from typing import Any, Dict, List, Optional, Set, Union
+
 import torch
-from torch.utils.data.sampler import SequentialSampler
 from torch.utils.data import Dataset
+from torch.utils.data.sampler import SequentialSampler
+from tqdm import tqdm
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
-from haystack.modeling.data_handler.processor import Processor, InferenceProcessor
-from haystack.modeling.data_handler.samples import SampleBasket
-from haystack.modeling.utils import initialize_device_settings, set_all_seeds
 from haystack.modeling.data_handler.inputs import QAInput
+from haystack.modeling.data_handler.processor import InferenceProcessor, Processor
+from haystack.modeling.data_handler.samples import SampleBasket
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
 from haystack.modeling.model.predictions import QAPred
-
+from haystack.modeling.utils import initialize_device_settings, set_all_seeds
 
 logger = logging.getLogger(__name__)
 
@@ -304,7 +304,7 @@ class Inferencer:
         :return: list of predictions
         """
         # whether to aggregate predictions across different samples (e.g. for QA on long texts)
-        # TODO remove or adjust after implmenting input objects properly
+        # TODO remove or adjust after implementing input objects properly
         # if set(dicts[0].keys()) == {"qas", "context"}:
         #     warnings.warn("QA Input dictionaries with [qas, context] as keys will be deprecated in the future",
         #                   DeprecationWarning)
@@ -340,10 +340,8 @@ class Inferencer:
 
         if return_json:
             # TODO this try catch should be removed when all tasks return prediction objects
-            try:
+            with contextlib.suppress(AttributeError):
                 preds_all = [x.to_json() for x in preds_all]
-            except AttributeError:
-                pass
 
         return preds_all
 

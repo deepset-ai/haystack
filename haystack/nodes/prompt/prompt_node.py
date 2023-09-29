@@ -1,19 +1,18 @@
 from collections import defaultdict
 import copy
 import logging
-import re
 from typing import Dict, List, Optional, Tuple, Union, Any
 
-import torch
-import yaml
-
 from haystack.nodes.base import BaseComponent
-
 from haystack.schema import Document, MultiLabel
 from haystack.telemetry import send_event
-from haystack.nodes.prompt.shapers import BaseOutputParser
 from haystack.nodes.prompt.prompt_model import PromptModel
-from haystack.nodes.prompt.prompt_template import PromptTemplate, get_predefined_prompt_templates
+from haystack.nodes.prompt.prompt_template import PromptTemplate
+from haystack.lazy_imports import LazyImport
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
+    import torch
+
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +59,7 @@ class PromptNode(BaseComponent):
         api_key: Optional[str] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         stop_words: Optional[List[str]] = None,
         top_k: int = 1,
         debug: Optional[bool] = False,
@@ -97,23 +96,17 @@ class PromptNode(BaseComponent):
             },
         )
         super().__init__()
-        self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
-        self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
+
+        # If we don't set _default_template here Pylint fails with error W0201 because it can't see that
+        # it's set in default_prompt_template, so we set it explicitly to None to avoid it failing
+        self._default_template = None
+        self.default_prompt_template = default_prompt_template
         self.output_variable: Optional[str] = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
         self.prompt_model: PromptModel
         self.stop_words: Optional[List[str]] = stop_words
         self.top_k: int = top_k
         self.debug = debug
-
-        if isinstance(self.default_prompt_template, str) and not self.is_supported_template(
-            self.default_prompt_template
-        ):
-            raise ValueError(
-                f"Prompt template {self.default_prompt_template} is not supported. "
-                f"Select one of: {self.get_prompt_template_names()} "
-                f"or register a new prompt template first using the add_prompt_template() method."
-            )
 
         if isinstance(model_name_or_path, str):
             self.prompt_model = PromptModel(
@@ -166,7 +159,7 @@ class PromptNode(BaseComponent):
         if template_to_fill:
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
-                kwargs_copy = copy.copy(kwargs)
+                kwargs_copy = template_to_fill.remove_template_params(copy.copy(kwargs))
                 # and pass the prepared prompt and kwargs copy to the model
                 prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
@@ -187,65 +180,18 @@ class PromptNode(BaseComponent):
                 results.extend(output)
         return results
 
-    def add_prompt_template(self, prompt_template: PromptTemplate) -> None:
-        """
-        Adds a prompt template to the list of supported prompt templates.
-        :param prompt_template: The PromptTemplate object to be added.
-        :return: None
-        """
-        if prompt_template.name in self.prompt_templates:
-            raise ValueError(
-                f"Prompt template {prompt_template.name} already exists. "
-                f"Select a different name for this prompt template."
-            )
+    @property
+    def default_prompt_template(self):
+        return self._default_template
 
-        self.prompt_templates[prompt_template.name] = prompt_template  # type: ignore
-
-    def remove_prompt_template(self, prompt_template: str) -> PromptTemplate:
-        """
-        Removes a prompt template from the list of supported prompt templates.
-        :param prompt_template: Name of the prompt template to be removed.
-        :return: PromptTemplate object that was removed.
-        """
-        if prompt_template not in self.prompt_templates:
-            raise ValueError(f"Prompt template {prompt_template} does not exist")
-
-        return self.prompt_templates.pop(prompt_template)
-
-    def set_default_prompt_template(self, prompt_template: Union[str, PromptTemplate]) -> "PromptNode":
+    @default_prompt_template.setter
+    def default_prompt_template(self, prompt_template: Union[str, PromptTemplate, None]):
         """
         Sets the default prompt template for the node.
         :param prompt_template: The prompt template to be set as default.
         :return: The current PromptNode object.
         """
-        if not self.is_supported_template(prompt_template):
-            raise ValueError(f"{prompt_template} not supported, select one of: {self.get_prompt_template_names()}")
-
-        self.default_prompt_template = prompt_template
-        return self
-
-    def get_prompt_templates(self) -> List[PromptTemplate]:
-        """
-        Returns the list of supported prompt templates.
-        :return: List of supported prompt templates.
-        """
-        return list(self.prompt_templates.values())
-
-    def get_prompt_template_names(self) -> List[str]:
-        """
-        Returns the list of supported prompt template names.
-        :return: List of supported prompt template names.
-        """
-        return list(self.prompt_templates.keys())
-
-    def is_supported_template(self, prompt_template: Union[str, PromptTemplate]) -> bool:
-        """
-        Checks if a prompt template is supported.
-        :param prompt_template: The prompt template to be checked.
-        :return: True if the prompt template is supported, False otherwise.
-        """
-        template_name = prompt_template if isinstance(prompt_template, str) else prompt_template.name
-        return template_name in self.prompt_templates
+        self._default_template = self.get_prompt_template(prompt_template)
 
     def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None] = None) -> Optional[PromptTemplate]:
         """
@@ -261,34 +207,19 @@ class PromptNode(BaseComponent):
 
             :return: The prompt template object.
         """
-        prompt_template = prompt_template or self.default_prompt_template
+        # None means we're asking for the default prompt template
+        prompt_template = prompt_template or self._default_template
         if prompt_template is None:
             return None
 
+        # PromptTemplate instances simply go through
         if isinstance(prompt_template, PromptTemplate):
             return prompt_template
 
-        if isinstance(prompt_template, str) and prompt_template in self.prompt_templates:
-            return self.prompt_templates[prompt_template]
-
-        # if it's not a string or looks like a prompt template name
-        if not isinstance(prompt_template, str) or re.fullmatch(r"[-a-zA-Z0-9_]+", prompt_template):
-            raise ValueError(
-                f"{prompt_template} not supported, select one of: {self.get_prompt_template_names()} or pass a PromptTemplate instance for prompting."
-            )
-
-        if "prompt_text:" in prompt_template:
-            prompt_template_parsed = yaml.safe_load(prompt_template)
-            if isinstance(prompt_template_parsed, dict):
-                return PromptTemplate(**prompt_template_parsed)
-
-        # it's a prompt_text
-        prompt_text = prompt_template
-        output_parser: Optional[BaseOutputParser] = None
-        default_prompt_template = self.get_prompt_template()
-        if default_prompt_template:
-            output_parser = default_prompt_template.output_parser
-        return PromptTemplate(name="custom-at-query-time", prompt_text=prompt_text, output_parser=output_parser)
+        output_parser = None
+        if self.default_prompt_template:
+            output_parser = self.default_prompt_template.output_parser
+        return PromptTemplate(prompt_template, output_parser=output_parser)
 
     def prompt_template_params(self, prompt_template: str) -> List[str]:
         """
@@ -296,10 +227,41 @@ class PromptNode(BaseComponent):
         :param prompt_template: The name of the prompt template.
         :return: The list of parameters for the prompt template.
         """
-        if not self.is_supported_template(prompt_template):
-            raise ValueError(f"{prompt_template} not supported, select one of: {self.get_prompt_template_names()}")
+        template = self.get_prompt_template(prompt_template)
+        if template:
+            return list(template.prompt_params)
+        return []
 
-        return list(self.prompt_templates[prompt_template].prompt_params)
+    def _prepare(  # type: ignore
+        self, query, file_paths, labels, documents, meta, invocation_context, prompt_template, generation_kwargs
+    ) -> Dict:
+        """
+        Prepare prompt invocation.
+        """
+        invocation_context = invocation_context or {}
+
+        if query and "query" not in invocation_context:
+            invocation_context["query"] = query
+
+        if file_paths and "file_paths" not in invocation_context:
+            invocation_context["file_paths"] = file_paths
+
+        if labels and "labels" not in invocation_context:
+            invocation_context["labels"] = labels
+
+        if documents and "documents" not in invocation_context:
+            invocation_context["documents"] = documents
+
+        if meta and "meta" not in invocation_context:
+            invocation_context["meta"] = meta
+
+        if "prompt_template" not in invocation_context:
+            invocation_context["prompt_template"] = self.get_prompt_template(prompt_template)
+
+        if generation_kwargs:
+            invocation_context.update(generation_kwargs)
+
+        return invocation_context
 
     def run(
         self,
@@ -310,6 +272,7 @@ class PromptNode(BaseComponent):
         meta: Optional[dict] = None,
         invocation_context: Optional[Dict[str, Any]] = None,
         prompt_template: Optional[Union[str, PromptTemplate]] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict, str]:
         """
         Runs the PromptNode on these input parameters. Returns the output of the prompt model.
@@ -334,34 +297,100 @@ class PromptNode(BaseComponent):
                 - prompt template name: Uses the prompt template registered with the given name.
                 - prompt template yaml: Uses the prompt template specified by the given YAML.
                 - prompt text: Uses a copy of the default prompt template with the given prompt text.
+        :param generation_kwargs: The generation_kwargs are used to customize text generation for the underlying pipeline.
         """
         # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
         # so that they can be returned by `run()` as part of the pipeline's debug output.
         prompt_collector: List[str] = []
 
-        invocation_context = invocation_context or {}
-        if query and "query" not in invocation_context.keys():
-            invocation_context["query"] = query
+        invocation_context = self._prepare(
+            query, file_paths, labels, documents, meta, invocation_context, prompt_template, generation_kwargs
+        )
 
-        if file_paths and "file_paths" not in invocation_context.keys():
-            invocation_context["file_paths"] = file_paths
-
-        if labels and "labels" not in invocation_context.keys():
-            invocation_context["labels"] = labels
-
-        if documents and "documents" not in invocation_context.keys():
-            invocation_context["documents"] = documents
-
-        if meta and "meta" not in invocation_context.keys():
-            invocation_context["meta"] = meta
-
-        if "prompt_template" not in invocation_context.keys():
-            invocation_context["prompt_template"] = self.get_prompt_template(prompt_template)
-
-        results = self(prompt_collector=prompt_collector, **invocation_context)
+        results = self(**invocation_context, prompt_collector=prompt_collector)
 
         prompt_template_resolved: PromptTemplate = invocation_context.pop("prompt_template")
-        output_variable = self.output_variable or prompt_template_resolved.output_variable or "results"
+
+        try:
+            output_variable = self.output_variable or prompt_template_resolved.output_variable or "results"
+        except:
+            output_variable = "results"
+
+        invocation_context[output_variable] = results
+        invocation_context["prompts"] = prompt_collector
+        final_result: Dict[str, Any] = {output_variable: results, "invocation_context": invocation_context}
+
+        if self.debug:
+            final_result["_debug"] = {"prompts_used": prompt_collector}
+
+        return final_result, "output_1"
+
+    async def _aprompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs):
+        """
+        Async version of the actual prompt invocation.
+        """
+        results = []
+        # we pop the prompt_collector kwarg to avoid passing it to the model
+        prompt_collector: List[Union[str, List[Dict[str, str]]]] = kwargs.pop("prompt_collector", [])
+
+        # kwargs override model kwargs
+        kwargs = {**self._prepare_model_kwargs(), **kwargs}
+        template_to_fill = self.get_prompt_template(prompt_template)
+        if template_to_fill:
+            # prompt template used, yield prompts from inputs args
+            for prompt in template_to_fill.fill(*args, **kwargs):
+                kwargs_copy = template_to_fill.remove_template_params(copy.copy(kwargs))
+                # and pass the prepared prompt and kwargs copy to the model
+                prompt = self.prompt_model._ensure_token_limit(prompt)
+                prompt_collector.append(prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
+                output = await self.prompt_model.ainvoke(prompt, **kwargs_copy)
+                results.extend(output)
+
+            kwargs["prompts"] = prompt_collector
+            results = template_to_fill.post_process(results, **kwargs)
+        else:
+            # straightforward prompt, no templates used
+            for prompt in list(args):
+                kwargs_copy = copy.copy(kwargs)
+                prompt = self.prompt_model._ensure_token_limit(prompt)
+                prompt_collector.append(prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
+                output = await self.prompt_model.ainvoke(prompt, **kwargs_copy)
+                results.extend(output)
+        return results
+
+    async def arun(
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
+        invocation_context: Optional[Dict[str, Any]] = None,
+        prompt_template: Optional[Union[str, PromptTemplate]] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[Dict, str]:
+        """
+        Drop-in replacement asyncio version of the `run` method, see there for documentation.
+        """
+        prompt_collector: List[str] = []
+
+        invocation_context = self._prepare(
+            query, file_paths, labels, documents, meta, invocation_context, prompt_template, generation_kwargs
+        )
+
+        # Let's skip the call to __call__, because all it does is injecting a prompt template
+        # if there isn't any, while we know for sure it'll be in `invocation_context`.
+        results = await self._aprompt(prompt_collector=prompt_collector, **invocation_context)
+
+        prompt_template_resolved: PromptTemplate = invocation_context.pop("prompt_template")
+
+        try:
+            output_variable = self.output_variable or prompt_template_resolved.output_variable or "results"
+        except:
+            output_variable = "results"
+
         invocation_context[output_variable] = results
         invocation_context["prompts"] = prompt_collector
         final_result: Dict[str, Any] = {output_variable: results, "invocation_context": invocation_context}
