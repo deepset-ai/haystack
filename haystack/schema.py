@@ -16,12 +16,12 @@ import numpy as np
 import pandas as pd
 from numpy import ndarray
 from pandas import DataFrame
-from pydantic import BaseConfig, Field
+from pydantic.v1 import BaseConfig, Field
 
 # We are using Pydantic dataclasses instead of vanilla Python's
 # See #1598 for the reasons behind this choice & performance considerations
-from pydantic.dataclasses import dataclass
-from pydantic.json import pydantic_encoder
+from pydantic.v1.dataclasses import dataclass
+from pydantic.v1.json import pydantic_encoder
 
 from haystack.mmh3 import hash128
 

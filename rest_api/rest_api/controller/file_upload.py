@@ -1,19 +1,17 @@
-from typing import Optional, List
-
 import json
 import shutil
 import uuid
 from pathlib import Path
+from typing import List, Optional
 
-from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, UploadFile
+from pydantic.v1 import BaseModel
+
 from haystack import Pipeline
 from haystack.nodes import BaseConverter, PreProcessor
-
-from rest_api.utils import get_app, get_pipelines
 from rest_api.config import FILE_UPLOAD_PATH
 from rest_api.controller.utils import as_form
-
+from rest_api.utils import get_app, get_pipelines
 
 router = APIRouter()
 app: FastAPI = get_app()

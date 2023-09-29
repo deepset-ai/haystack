@@ -1,19 +1,15 @@
+import logging
+import os
 from typing import List, Optional
 
-import logging
-
-import os
-import pynvml
 import psutil
-
-from pydantic import BaseModel, Field, validator
-
-from fastapi import FastAPI, APIRouter
+import pynvml
+from fastapi import APIRouter, FastAPI
+from pydantic.v1 import BaseModel, Field, validator
 
 import haystack
-
-from rest_api.utils import get_app
 from rest_api.config import LOG_LEVEL
+from rest_api.utils import get_app
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
 logger = logging.getLogger("haystack")

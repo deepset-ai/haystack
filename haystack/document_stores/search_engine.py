@@ -1,26 +1,25 @@
 # pylint: disable=too-many-public-methods
 
 
-from copy import deepcopy
-from typing import List, Optional, Union, Dict, Any, Generator
-from abc import abstractmethod
 import json
 import logging
 import time
+from abc import abstractmethod
+from copy import deepcopy
 from string import Template
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import numpy as np
+from pydantic.v1.error_wrappers import ValidationError
 from tqdm import tqdm
-from pydantic.error_wrappers import ValidationError
 
 from haystack.document_stores import KeywordDocumentStore
-from haystack.schema import Document, FilterType, Label
-from haystack.utils.batching import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
 from haystack.nodes.retriever import DenseRetriever
+from haystack.schema import Document, FilterType, Label
+from haystack.utils.batching import get_batches_from_generator
 from haystack.utils.scipy_utils import expit
-
 
 logger = logging.getLogger(__name__)
 

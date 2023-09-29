@@ -1,24 +1,23 @@
-from abc import abstractmethod
-import logging
-from numpy import mat
-import pytest
-import json
 import inspect
-import networkx as nx
+import json
+import logging
+from abc import abstractmethod
 from enum import Enum
-from pydantic.dataclasses import dataclass
 from typing import Any, Dict, List, Optional
+
+import networkx as nx
+import pytest
+from numpy import mat
+from pydantic.v1.dataclasses import dataclass
 
 import haystack
 from haystack import Pipeline
-from haystack.nodes import _json_schema
-from haystack.nodes import FileTypeClassifier
-from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaError, DocumentStoreError
+from haystack.errors import DocumentStoreError, HaystackError, PipelineConfigError, PipelineSchemaError
+from haystack.nodes import FileTypeClassifier, _json_schema
 from haystack.nodes.base import BaseComponent
 
-from ..conftest import MockNode, MockDocumentStore, MockReader, MockRetriever
 from .. import conftest
-
+from ..conftest import MockDocumentStore, MockNode, MockReader, MockRetriever
 
 #
 # Fixtures

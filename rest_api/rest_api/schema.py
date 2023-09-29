@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Union, Literal
+from typing import Dict, List, Literal, Optional, Union
+
 import numpy as np
 import pandas as pd
-
-from pydantic import BaseModel, Field, Extra
-from pydantic import BaseConfig
+from pydantic.v1 import BaseConfig, BaseModel, Extra, Field
 
 from haystack.schema import Answer, Document
-
 
 BaseConfig.arbitrary_types_allowed = True
 BaseConfig.json_encoders = {

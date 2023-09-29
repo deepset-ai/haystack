@@ -1,11 +1,10 @@
-from typing import Type, NewType
-
 import inspect
 from contextlib import contextmanager
 from threading import Semaphore
+from typing import NewType, Type
 
 from fastapi import Form, HTTPException
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 
 class RequestLimiter:

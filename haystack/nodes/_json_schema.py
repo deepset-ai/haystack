@@ -1,28 +1,21 @@
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
-
+import inspect
+import json
+import logging
 import os
 import sys
-import json
-import inspect
-import logging
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
-import pydantic.schema
-from pydantic import BaseConfig, BaseSettings, Required, SecretStr, create_model
-from pydantic.typing import ForwardRef, evaluate_forwardref, is_callable_type
-from pydantic.fields import ModelField
-from pydantic.schema import (
-    SkipField,
-    TypeModelOrEnum,
-    TypeModelSet,
-    encode_default,
-    field_singleton_schema as _field_singleton_schema,
-)
+import pydantic.v1.schema
+from pydantic.v1 import BaseConfig, BaseSettings, Required, SecretStr, create_model
+from pydantic.v1.fields import ModelField
+from pydantic.v1.schema import SkipField, TypeModelOrEnum, TypeModelSet, encode_default
+from pydantic.v1.schema import field_singleton_schema as _field_singleton_schema
+from pydantic.v1.typing import ForwardRef, evaluate_forwardref, is_callable_type
 
 from haystack import __version__ as haystack_version
 from haystack.errors import PipelineSchemaError
 from haystack.nodes.base import BaseComponent
-
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +74,7 @@ def field_singleton_schema(
 
 
 # Monkeypatch Pydantic's field_singleton_schema
-pydantic.schema.field_singleton_schema = field_singleton_schema
+pydantic.v1.schema.field_singleton_schema = field_singleton_schema
 
 
 # From FastAPI's internals
