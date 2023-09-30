@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Refactor and simplify WebRetriever to use LinkContentFetcher component

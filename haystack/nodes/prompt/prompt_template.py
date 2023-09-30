@@ -66,7 +66,7 @@ PROMPTHUB_CACHE_PATH = os.environ.get(
 #
 # After some discussion we deemed the change to be too breaking for existing
 # use cases and which steps would have been necessary to migrate to the
-# new API in case someone was using an harcoded template we decided to
+# new API in case someone was using an hardcoded template we decided to
 # bring them back.
 #
 # So for the time being this must live here, no new template must be added
@@ -577,6 +577,20 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 compile(self._ast_expression, filename="<string>", mode="eval"), self.globals, template_input
             )
             yield prompt_prepared
+
+    def remove_template_params(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Removes template parameters from kwargs.
+
+        :param kwargs: Keyword arguments to remove template parameters from.
+        :return: A modified dictionary with the template parameters removed.
+        """
+        if kwargs:
+            for param in self.prompt_params:
+                kwargs.pop(param, None)
+            return kwargs
+        else:
+            return {}
 
     def __repr__(self):
         return f"PromptTemplate(name={self.name}, prompt_text={self.prompt_text}, prompt_params={self.prompt_params})"

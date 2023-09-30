@@ -87,7 +87,7 @@ class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
 
             test_payload = cls.get_test_payload()
             # send test payload to endpoint to see if it's supported
-            supported = cls.check_model_input_format(session, model_name_or_path, test_payload)
+            supported = cls.check_model_input_format(session, model_name_or_path, test_payload, **kwargs)
             return supported
         return False
 
@@ -137,7 +137,18 @@ class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
                 client.close()
 
     @classmethod
-    def check_model_input_format(cls, session: "boto3.Session", endpoint: str, test_payload: Dict[str, str]):
+    def format_custom_attributes(cls, attributes: dict) -> str:
+        """
+        Formats the custom attributes for the SageMaker endpoint.
+        :param attributes: The custom attributes to format.
+        :return: The formatted custom attributes.
+        """
+        if attributes:
+            return ";".join(f"{k}={str(v).lower() if isinstance(v, bool) else str(v)}" for k, v in attributes.items())
+        return ""
+
+    @classmethod
+    def check_model_input_format(cls, session: "boto3.Session", endpoint: str, test_payload: Any, **kwargs):
         """
         Checks if the SageMaker endpoint supports the test_payload model input format.
         :param session: The boto3 session.
@@ -146,6 +157,8 @@ class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
         :return: True if the endpoint supports the test_payload model input format, False otherwise.
         """
         boto3_import.check()
+        custom_attributes = kwargs.get("aws_custom_attributes", None)
+        custom_attributes = SageMakerBaseInvocationLayer.format_custom_attributes(custom_attributes)
         client = None
         try:
             client = session.client("sagemaker-runtime")
@@ -154,6 +167,7 @@ class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
                 Body=json.dumps(test_payload),
                 ContentType="application/json",
                 Accept="application/json",
+                CustomAttributes=custom_attributes,
             )
         except ClientError:
             # raised if the endpoint doesn't support the test_payload model input format

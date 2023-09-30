@@ -118,12 +118,13 @@ def test_prompt_templates_from_file(tmp_path):
 
 @pytest.mark.unit
 def test_prompt_templates_on_the_fly():
-    with patch("haystack.nodes.prompt.prompt_template.yaml") as mocked_yaml:
-        with patch("haystack.nodes.prompt.prompt_template.prompthub") as mocked_ph:
-            p = PromptTemplate("This is a test prompt. Use your knowledge to answer this question: {question}")
-            assert p.name == "custom-at-query-time"
-            mocked_ph.fetch.assert_not_called()
-            mocked_yaml.safe_load.assert_not_called()
+    with patch("haystack.nodes.prompt.prompt_template.yaml") as mocked_yaml, patch(
+        "haystack.nodes.prompt.prompt_template.prompthub"
+    ) as mocked_ph:
+        p = PromptTemplate("This is a test prompt. Use your knowledge to answer this question: {question}")
+        assert p.name == "custom-at-query-time"
+        mocked_ph.fetch.assert_not_called()
+        mocked_yaml.safe_load.assert_not_called()
 
 
 @pytest.mark.unit
@@ -345,7 +346,7 @@ class TestPromptTemplateSyntax:
         self, prompt_text: str, documents: List[Document], query: str, expected_prompts: List[str]
     ):
         prompt_template = PromptTemplate(prompt_text)
-        prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
+        prompts = list(prompt_template.fill(documents=documents, query=query))
         assert prompts == expected_prompts
 
     @pytest.mark.unit
@@ -372,7 +373,7 @@ class TestPromptTemplateSyntax:
     )
     def test_join(self, prompt_text: str, documents: List[Document], expected_prompts: List[str]):
         prompt_template = PromptTemplate(prompt_text)
-        prompts = [prompt for prompt in prompt_template.fill(documents=documents)]
+        prompts = list(prompt_template.fill(documents=documents))
         assert prompts == expected_prompts
 
     @pytest.mark.unit
@@ -405,7 +406,7 @@ class TestPromptTemplateSyntax:
     )
     def test_to_strings(self, prompt_text: str, documents: List[Document], expected_prompts: List[str]):
         prompt_template = PromptTemplate(prompt_text)
-        prompts = [prompt for prompt in prompt_template.fill(documents=documents)]
+        prompts = list(prompt_template.fill(documents=documents))
         assert prompts == expected_prompts
 
     @pytest.mark.unit
@@ -466,5 +467,28 @@ class TestPromptTemplateSyntax:
         self, prompt_text: str, documents: List[Document], query: str, expected_prompts: List[str]
     ):
         prompt_template = PromptTemplate(prompt_text)
-        prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
+        prompts = list(prompt_template.fill(documents=documents, query=query))
         assert prompts == expected_prompts
+
+    def test_prompt_template_remove_template_params(self):
+        kwargs = {"query": "query", "documents": "documents", "other": "other"}
+        expected_kwargs = {"other": "other"}
+        prompt_text = "Here is prompt text with two variables that are also in kwargs: {query} and {documents}"
+        prompt_template = PromptTemplate(prompt_text)
+        assert prompt_template.remove_template_params(kwargs) == expected_kwargs
+
+    def test_prompt_template_remove_template_params_edge_cases(self):
+        """
+        Test that the function works with a variety of edge cases
+        """
+        kwargs = {"query": "query", "documents": "documents"}
+        prompt_text = "Here is prompt text with two variables that are also in kwargs: {query} and {documents}"
+        prompt_template = PromptTemplate(prompt_text)
+        assert prompt_template.remove_template_params(kwargs) == {}
+
+        assert prompt_template.remove_template_params({}) == {}
+
+        assert prompt_template.remove_template_params(None) == {}
+
+        totally_unrelated = {"totally_unrelated": "totally_unrelated"}
+        assert prompt_template.remove_template_params(totally_unrelated) == totally_unrelated

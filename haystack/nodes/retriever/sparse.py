@@ -33,11 +33,7 @@ class BM25Retriever(BaseRetriever):
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
                                      Defaults to False.
-        :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
-
-                             Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
-                             that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
-                             names must match with the filters dict supplied in self.retrieve().
+        :param custom_query: The query string containing a mandatory `${query}` and an optional `${filters}` placeholder.
 
                                 **An example custom_query:**
 
@@ -50,17 +46,13 @@ class BM25Retriever(BaseRetriever):
                                                 "query": ${query},                 // mandatory query placeholder
                                                 "type": "most_fields",
                                                 "fields": ["content", "title"]}}],
-                                            "filter": [                                 // optional custom filters
-                                                {"terms": {"year": ${years}}},
-                                                {"terms": {"quarter": ${quarters}}},
-                                                {"range": {"date": {"gte": ${date}}}}
-                                                ],
+                                            "filter": ${filters}                  // optional filter placeholder
                                         }
                                     },
                                 }
                                 ```
 
-                            **For this custom_query, a sample retrieve() could be:**
+                            **For this custom_query, a sample `retrieve()` could be:**
 
                             ```python
                             self.retrieve(query="Why did the revenue increase?",
@@ -465,10 +457,7 @@ class TfidfRetriever(BaseRetriever):
     def _calc_scores(self, queries: List[str], index: str) -> List[Dict[int, float]]:
         question_vector = self.vectorizer.transform(queries)
         doc_scores_per_query = self.tfidf_matrices[index].dot(question_vector.T).T.toarray()
-        doc_scores_per_query = [
-            [(doc_idx, doc_score) for doc_idx, doc_score in enumerate(doc_scores)]
-            for doc_scores in doc_scores_per_query
-        ]
+        doc_scores_per_query = [list(enumerate(doc_scores)) for doc_scores in doc_scores_per_query]
         indices_and_scores: List[Dict] = [
             OrderedDict(sorted(query_idx_scores, key=lambda tup: tup[1], reverse=True))
             for query_idx_scores in doc_scores_per_query
@@ -515,16 +504,15 @@ class TfidfRetriever(BaseRetriever):
                 "Both the `index` parameter passed to the `retrieve` method and the default `index` of the Document store are null. Pass a non-null `index` value."
             )
 
-        if self.auto_fit:
-            if (
-                index not in self.document_counts
-                or document_store.get_document_count(headers=headers, index=index) != self.document_counts[index]
-            ):
-                # run fit() to update self.dataframes, self.tfidf_matrices and self.document_counts
-                logger.warning(
-                    "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."
-                )
-                self.fit(document_store=document_store, index=index)
+        if self.auto_fit and (
+            index not in self.document_counts
+            or document_store.get_document_count(headers=headers, index=index) != self.document_counts[index]
+        ):
+            # run fit() to update self.dataframes, self.tfidf_matrices and self.document_counts
+            logger.warning(
+                "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."
+            )
+            self.fit(document_store=document_store, index=index)
         if self.dataframes[index] is None:
             raise DocumentStoreError(
                 "Retrieval requires dataframe and tf-idf matrix but fit() did not calculate them probably due to an empty document store."
@@ -603,16 +591,15 @@ class TfidfRetriever(BaseRetriever):
                 "Both the `index` parameter passed to the `retrieve_batch` method and the default `index` of the Document store are null. Pass a non-null `index` value."
             )
 
-        if self.auto_fit:
-            if (
-                index not in self.document_counts
-                or document_store.get_document_count(headers=headers, index=index) != self.document_counts[index]
-            ):
-                # run fit() to update self.dataframes, self.tfidf_matrices and self.document_counts
-                logger.warning(
-                    "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."
-                )
-                self.fit(document_store=document_store, index=index)
+        if self.auto_fit and (
+            index not in self.document_counts
+            or document_store.get_document_count(headers=headers, index=index) != self.document_counts[index]
+        ):
+            # run fit() to update self.dataframes, self.tfidf_matrices and self.document_counts
+            logger.warning(
+                "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."
+            )
+            self.fit(document_store=document_store, index=index)
         if self.dataframes[index] is None:
             raise DocumentStoreError(
                 "Retrieval requires dataframe and tf-idf matrix but fit() did not calculate them probably because of an empty document store."

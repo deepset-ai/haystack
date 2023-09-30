@@ -206,7 +206,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         except Exception as e:
             if hasattr(e, "status_code") and e.status_code == 429:  # type: ignore
                 logger.warning(
-                    "Failed to insert a batch of '%s' documents because of a 'Too Many Requeset' response. "
+                    "Failed to insert a batch of '%s' documents because of a 'Too Many Requests' response. "
                     "Splitting the number of documents into two chunks with the same size and retrying in %s seconds.",
                     len(documents),
                     _timeout,
@@ -824,11 +824,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return per query.
-        :param custom_query: query string containing a mandatory `${query}` placeholder.
+        :param custom_query: query string containing a mandatory `${query}` and an optional `${filters}` placeholder.
 
-                             Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
-                             that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
-                             names must match with the filters dict supplied in self.retrieve().
                              ::
 
                                  **An example custom_query:**
@@ -841,11 +838,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                                                 "query": ${query},                 // mandatory query placeholder
                                                 "type": "most_fields",
                                                 "fields": ["content", "title"]}}],
-                                            "filter": [                                 // optional custom filters
-                                                {"terms": {"year": ${years}}},
-                                                {"terms": {"quarter": ${quarters}}},
-                                                {"range": {"date": {"gte": ${date}}}}
-                                                ],
+                                            "filter": ${filters}                 // optional filters placeholder
                                         }
                                     },
                                 }
@@ -1084,16 +1077,13 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
         # Retrieval via custom query
-        elif custom_query:  # substitute placeholder for query and filters for the custom_query template string
+        elif custom_query:
             template = Template(custom_query)
-            # replace all "${query}" placeholder(s) with query
-            substitutions = {"query": json.dumps(query)}
-            # For each filter we got passed, we'll try to find & replace the corresponding placeholder in the template
-            # Example: filters={"years":[2018]} => replaces {$years} in custom_query with '[2018]'
-            if filters:
-                for key, values in filters.items():
-                    values_str = json.dumps(values)
-                    substitutions[key] = values_str
+            # substitute placeholder for query and filters for the custom_query template string
+            substitutions = {
+                "query": json.dumps(query),
+                "filters": json.dumps(LogicalFilterClause.parse(filters or {}).convert_to_elasticsearch()),
+            }
             custom_query_json = template.substitute(**substitutions)
             body = json.loads(custom_query_json)
             # add top_k
@@ -1630,9 +1620,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self._index_delete(index)
 
     def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
-        if logger.isEnabledFor(logging.DEBUG):
-            if self.client.indices.exists_alias(name=index_name):
-                logger.debug("Index name %s is an alias.", index_name)
+        if logger.isEnabledFor(logging.DEBUG) and self.client.indices.exists_alias(name=index_name):
+            logger.debug("Index name %s is an alias.", index_name)
 
         return self.client.indices.exists(index=index_name, headers=headers)
 

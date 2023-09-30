@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Python 3.8.10
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"

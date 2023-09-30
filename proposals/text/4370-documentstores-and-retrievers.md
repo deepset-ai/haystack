@@ -18,7 +18,7 @@ Note: these stores are designed to work **only** alongside Haystack 2.0 Pipeline
 
 Current `DocumentStore` face several issues mostly due to their organic growth. Some of them are:
 
-- `DocumentStore`s perform the bulk of retrieval, but they need to be tighly coupled to a `Retriever` object to work. We believe this coupling can be broken by a clear API boundary between `DocumentStores`, `Retriever`s and `Embedder`s. In this PR we focus on decoupling them.
+- `DocumentStore`s perform the bulk of retrieval, but they need to be tightly coupled to a `Retriever` object to work. We believe this coupling can be broken by a clear API boundary between `DocumentStores`, `Retriever`s and `Embedder`s. In this PR we focus on decoupling them.
 
 - `DocumentStore`s tend to bring in complex dependencies, so less used stores should be easy to decouple into external packages at need.
 

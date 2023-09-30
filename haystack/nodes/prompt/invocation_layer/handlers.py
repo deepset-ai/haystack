@@ -47,7 +47,7 @@ class HFTokenStreamingHandler(TextStreamer):  # pylint: disable=useless-object-i
         stream_handler: "TokenStreamingHandler",
     ):
         transformers_import.check()
-        super().__init__(tokenizer=tokenizer)  # type: ignore
+        super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
         self.token_handler = stream_handler
 
     def on_finalized_text(self, token: str, stream_end: bool = False):
@@ -63,6 +63,7 @@ class DefaultPromptHandler:
 
     def __init__(self, model_name_or_path: str, model_max_length: int, max_length: int = 100):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+        self.tokenizer.model_max_length = model_max_length
         self.model_max_length = model_max_length
         self.max_length = max_length
 

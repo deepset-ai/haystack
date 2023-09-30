@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Introduced `allowed_domains` parameter in `WebRetriever` for domain-specific searches,
+    thus enabling "talk to a website" and "talk to docs" scenarios.

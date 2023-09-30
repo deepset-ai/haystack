@@ -14,6 +14,7 @@ loaders:
         "sagemaker_base",
         "sagemaker_hf_infer",
         "sagemaker_hf_text_gen",
+        "sagemaker_meta",
       ]
     ignore_when_discovered: ["__init__"]
 processors:

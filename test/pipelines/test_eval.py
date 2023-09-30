@@ -7,7 +7,6 @@ import pandas as pd
 from copy import deepcopy
 
 import responses
-from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.answer_generator.openai import OpenAIAnswerGenerator
 from haystack.nodes.preprocessor import PreProcessor
@@ -420,6 +419,7 @@ EVAL_TABLE_LABELS = [
 ]
 
 
+@pytest.mark.skip(reason="Should be an end-to-end test since it uses model inferencing")
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
@@ -537,10 +537,10 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path, eval_labels):
 
     # all expected columns are part of the evaluation result dataframe
     assert sorted(expected_reader_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(reader_result.columns)
+        reader_result.columns
     )
     assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(retriever_result.columns)
+        retriever_result.columns
     )
 
     assert (
@@ -676,10 +676,10 @@ def test_generative_qa_eval(retriever_with_docs, tmp_path, eval_labels):
 
     # all expected columns are part of the evaluation result dataframe
     assert sorted(expected_generator_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(generator_result.columns)
+        generator_result.columns
     )
     assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(retriever_result.columns)
+        retriever_result.columns
     )
 
     assert generator_result["prompt"].iloc[0] is not None
@@ -777,10 +777,10 @@ def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path, eval_lab
 
     # all expected columns are part of the evaluation result dataframe
     assert sorted(expected_generator_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(generator_result.columns)
+        generator_result.columns
     )
     assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(retriever_result.columns)
+        retriever_result.columns
     )
 
     assert generator_result["prompt"].iloc[0] is not None
@@ -1353,24 +1353,24 @@ def test_extractive_qa_eval_answer_document_scope_combinations(reader, retriever
 
     # valid values for non default answer_scopes
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer", answer_scope="context")
-        metrics = eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_or_answer", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" not in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_and_context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_and_context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_or_context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_or_context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
 
@@ -2038,6 +2038,7 @@ def test_empty_documents_dont_fail_pipeline(reader, retriever_with_docs, eval_la
     )
 
 
+@pytest.mark.unit
 def test_load_legacy_evaluation_result(tmp_path):
     legacy_csv = Path(tmp_path) / "legacy.csv"
     with open(legacy_csv, "w") as legacy_csv:
@@ -2069,7 +2070,8 @@ def test_load_legacy_evaluation_result(tmp_path):
     assert "content" not in eval_result["legacy"]
 
 
-def test_load_evaluation_result_w_none_values(tmp_path):
+@pytest.mark.unit
+def test_load_evaluation_result(tmp_path):
     eval_result_csv = Path(tmp_path) / "Reader.csv"
     with open(eval_result_csv, "w") as eval_result_csv:
         columns = [
@@ -2141,8 +2143,43 @@ def test_load_evaluation_result_w_none_values(tmp_path):
         )
 
     eval_result = EvaluationResult.load(tmp_path)
+    known_result = {
+        "multilabel_id": {0: "ddc1562602f2d6d895b91e53f83e4c16"},
+        "query": {0: "who is written in the book of life"},
+        "filters": {0: b"null"},
+        "gold_answers": {
+            0: [
+                "every person who is destined for Heaven or the World to Come",
+                "all people considered righteous before God",
+            ]
+        },
+        "answer": {0: None},
+        "context": {0: None},
+        "exact_match": {0: 0.0},
+        "f1": {0: 0.0},
+        "exact_match_context_scope": {0: 0.0},
+        "f1_context_scope": {0: 0.0},
+        "exact_match_document_id_scope": {0: 0.0},
+        "f1_document_id_scope": {0: 0.0},
+        "exact_match_document_id_and_context_scope": {0: 0.0},
+        "f1_document_id_and_context_scope": {0: 0.0},
+        "gold_contexts": {0: ["Book of Life - wikipedia Book of Life Jump to: navigation, search..."]},
+        "rank": {0: 1.0},
+        "document_ids": {0: None},
+        "gold_document_ids": {0: ["de2fd2f109e11213af1ea189fd1488a3-0", "de2fd2f109e11213af1ea189fd1488a3-0"]},
+        "offsets_in_document": {0: [{"start": 0, "end": 0}]},
+        "gold_offsets_in_documents": {0: [{"start": 374, "end": 434}, {"start": 1107, "end": 1149}]},
+        "offsets_in_context": {0: [{"start": 0, "end": 0}]},
+        "gold_offsets_in_contexts": {0: [{"start": 374, "end": 434}, {"start": 1107, "end": 1149}]},
+        "gold_answers_exact_match": {0: [0, 0]},
+        "gold_answers_f1": {0: [0, 0]},
+        "gold_documents_id_match": {0: [0.0, 0.0]},
+        "gold_contexts_similarity": {0: [0.0, 0.0]},
+        "type": {0: "answer"},
+        "node": {0: "Reader"},
+        "eval_mode": {0: "integrated"},
+        "index": {0: None},
+    }
     assert "Reader" in eval_result
     assert len(eval_result) == 1
-    assert eval_result["Reader"].iloc[0].answer is None
-    assert eval_result["Reader"].iloc[0].context is None
-    assert eval_result["Reader"].iloc[0].document_ids is None
+    assert eval_result["Reader"].to_dict() == known_result

@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Add new TextFileToDocument component to Haystack v2 preview so that text files can be converted to Haystack Documents.

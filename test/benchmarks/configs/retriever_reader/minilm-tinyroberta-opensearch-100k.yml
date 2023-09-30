@@ -4,7 +4,9 @@ components:
   - name: DocumentStore
     type: OpenSearchDocumentStore
     params:
-      batch_size: 5000
+      host: opensearch
+      port: 9200
+      batch_size: 1000
       similarity: cosine
       embedding_dim: 384
   - name: TextConverter
@@ -20,6 +22,7 @@ components:
     params:
       model_name_or_path: deepset/tinyroberta-squad2
       top_k: 10
+      preprocessing_batch_size: 1000
 
 pipelines:
   - name: indexing

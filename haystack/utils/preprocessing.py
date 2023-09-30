@@ -34,7 +34,7 @@ def convert_files_to_docs(
     # Importing top-level causes a circular import
     from haystack.nodes.file_converter import BaseConverter, DocxToTextConverter, PDFToTextConverter, TextConverter
 
-    file_paths = [p for p in Path(dir_path).glob("**/*")]
+    file_paths = list(Path(dir_path).glob("**/*"))
     allowed_suffixes = [".pdf", ".txt", ".docx"]
     suffix2converter: Dict[str, BaseConverter] = {}
 
@@ -115,7 +115,7 @@ def tika_convert_files_to_docs(
         logger.error("Tika not installed. Please install tika and try again. Error: %s", ex)
         raise ex
     converter = TikaConverter()
-    paths = [p for p in Path(dir_path).glob("**/*")]
+    paths = list(Path(dir_path).glob("**/*"))
     allowed_suffixes = [".pdf", ".txt"]
     file_paths: List[Path] = []
 

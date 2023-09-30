@@ -56,7 +56,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
     4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
 
     Weaviate python client is used to connect to the server, more details are here
-    https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
+    https://weaviate.io/developers/weaviate/client-libraries/python
 
     Usage:
     1. Start a Weaviate server (see https://weaviate.io/developers/weaviate/current/getting-started/installation.html)
@@ -638,6 +638,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                     )
                     dummy_embed_warning_raised = True
 
+        # get the date properties of the index
+        date_fields = self._get_date_properties(index)
+
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
@@ -658,10 +661,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                             if isinstance(v, dict):
                                 json_fields.append(k)
                                 v = json.dumps(v)
-                            elif isinstance(v, list):
-                                if len(v) > 0 and isinstance(v[0], dict):
-                                    json_fields.append(k)
-                                    v = [json.dumps(item) for item in v]
+                            elif isinstance(v, list) and len(v) > 0 and isinstance(v[0], dict):
+                                json_fields.append(k)
+                                v = [json.dumps(item) for item in v]
                             _doc[k] = v
                         _doc.pop("meta")
 
@@ -684,9 +686,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                                 property_value = doc.meta[property]
                             self._update_schema(property, property_value, index)
                             current_properties.append(property)
+                        # update the date fields as there might be new ones
+                        date_fields = self._get_date_properties(index)
 
                     # Weaviate requires dates to be in RFC3339 format
-                    date_fields = self._get_date_properties(index)
                     for date_field in date_fields:
                         _doc[date_field] = convert_date_to_rfc3339(_doc[date_field])
 
@@ -730,9 +733,8 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         # Weaviate requires dates to be in RFC3339 format
         date_fields = self._get_date_properties(index)
         for date_field in date_fields:
-            if date_field in meta:
-                if isinstance(meta[date_field], str):
-                    meta[date_field] = convert_date_to_rfc3339(str(meta[date_field]))
+            if date_field in meta and isinstance(meta[date_field], str):
+                meta[date_field] = convert_date_to_rfc3339(str(meta[date_field]))
 
         self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
@@ -767,10 +769,8 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         else:
             result = self.weaviate_client.query.aggregate(index).with_meta_count().do()
 
-        if "data" in result:
-            if "Aggregate" in result.get("data"):
-                if result.get("data").get("Aggregate").get(index):
-                    doc_count = result.get("data").get("Aggregate").get(index)[0]["meta"]["count"]
+        if "data" in result and "Aggregate" in result.get("data") and result.get("data").get("Aggregate").get(index):
+            doc_count = result.get("data").get("Aggregate").get(index)[0]["meta"]["count"]
 
         return doc_count
 
@@ -1149,9 +1149,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             query_output = self.weaviate_client.query.raw(gql_query)
 
         results = []
-        if query_output and "data" in query_output and "Get" in query_output.get("data"):
-            if query_output.get("data").get("Get").get(index):
-                results = query_output.get("data").get("Get").get(index)
+        if (
+            query_output
+            and "data" in query_output
+            and "Get" in query_output.get("data")
+            and query_output.get("data").get("Get").get(index)
+        ):
+            results = query_output.get("data").get("Get").get(index)
 
         # We retrieve the JSON properties from the schema and convert them back to the Python dicts
         json_properties = self._get_json_properties(index=index)
@@ -1417,9 +1421,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             )
 
         results = []
-        if query_output and "data" in query_output and "Get" in query_output.get("data"):
-            if query_output.get("data").get("Get").get(index):
-                results = query_output.get("data").get("Get").get(index)
+        if (
+            query_output
+            and "data" in query_output
+            and "Get" in query_output.get("data")
+            and query_output.get("data").get("Get").get(index)
+        ):
+            results = query_output.get("data").get("Get").get(index)
 
         # We retrieve the JSON properties from the schema and convert them back to the Python dicts
         json_properties = self._get_json_properties(index=index)

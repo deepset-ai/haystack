@@ -24,7 +24,6 @@ def prepare_environment(pipeline_config: Dict, benchmark_config: Dict):
     # Download data if specified in benchmark config
     if "data_url" in benchmark_config:
         download_from_url(url=benchmark_config["data_url"], target_dir="data/")
-
     n_docs = 0
     if "documents_directory" in benchmark_config:
         documents_dir = Path(benchmark_config["documents_directory"])
@@ -37,10 +36,11 @@ def prepare_environment(pipeline_config: Dict, benchmark_config: Dict):
         )
 
     # Launch DocumentStore Docker container if needed
-    for comp in pipeline_config["components"]:
-        if comp["type"].endswith("DocumentStore"):
-            launch_document_store(comp["type"], n_docs=n_docs)
-            break
+    if "launch_document_store" in benchmark_config and benchmark_config["launch_document_store"]:
+        for comp in pipeline_config["components"]:
+            if comp["type"].endswith("DocumentStore"):
+                launch_document_store(comp["type"], n_docs=n_docs)
+                break
 
 
 def launch_document_store(document_store: str, n_docs: int = 0):
@@ -56,18 +56,28 @@ def launch_document_store(document_store: str, n_docs: int = 0):
         launch_weaviate(sleep=30, delete_existing=True)
 
 
-def download_from_url(url: str, target_dir: Union[str, Path]):
+def file_previously_downloaded(url_path: Path, target_dir: Union[str, Path]) -> bool:
+    if ".tar" in url_path.suffixes:
+        return Path(target_dir, url_path.parent).exists()
+    return Path(target_dir, url_path.name).exists()
+
+
+def download_from_url(url: str, target_dir: Union[str, Path]) -> None:
     """
     Download from a URL to a local file.
 
     :param url: URL
     :param target_dir: Local directory where the URL content will be saved.
     """
+    url_path = Path(url)
+
+    if file_previously_downloaded(url_path, target_dir):
+        logger.info(f"Skipping download of {url}, as a previous copy exists")
+        return
 
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
 
-    url_path = Path(url)
     logger.info("Downloading %s to %s", url_path.name, target_dir)
     with tempfile.NamedTemporaryFile() as temp_file:
         http_get(url=url, temp_file=temp_file)
@@ -165,7 +175,7 @@ def contains_reader(pipeline: Pipeline) -> bool:
     Check if a pipeline contains a Reader component.
     :param pipeline: Pipeline
     """
-    components = [comp for comp in pipeline.components.values()]
+    components = list(pipeline.components.values())
     return any(isinstance(comp, BaseReader) for comp in components)
 
 
@@ -173,5 +183,5 @@ def contains_retriever(pipeline: Pipeline) -> bool:
     """
     Check if a pipeline contains a Retriever component.
     """
-    components = [comp for comp in pipeline.components.values()]
+    components = list(pipeline.components.values())
     return any(isinstance(comp, BaseRetriever) for comp in components)

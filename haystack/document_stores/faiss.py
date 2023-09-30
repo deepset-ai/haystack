@@ -447,9 +447,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             return_embedding = self.return_embedding
 
         for doc in documents:
-            if return_embedding:
-                if doc.meta and doc.meta.get("vector_id") is not None:
-                    doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
+            if return_embedding and doc.meta and doc.meta.get("vector_id") is not None:
+                doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
             yield doc
 
     def get_documents_by_id(

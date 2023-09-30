@@ -8,5 +8,6 @@ from haystack.nodes.prompt.invocation_layer.anthropic_claude import AnthropicCla
 from haystack.nodes.prompt.invocation_layer.cohere import CohereInvocationLayer
 from haystack.nodes.prompt.invocation_layer.hugging_face import HFLocalInvocationLayer
 from haystack.nodes.prompt.invocation_layer.hugging_face_inference import HFInferenceEndpointInvocationLayer
+from haystack.nodes.prompt.invocation_layer.sagemaker_meta import SageMakerMetaInvocationLayer
 from haystack.nodes.prompt.invocation_layer.sagemaker_hf_infer import SageMakerHFInferenceInvocationLayer
 from haystack.nodes.prompt.invocation_layer.sagemaker_hf_text_gen import SageMakerHFTextGenerationInvocationLayer

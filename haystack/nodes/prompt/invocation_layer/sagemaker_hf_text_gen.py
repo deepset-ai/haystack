@@ -214,7 +214,7 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
 
         As of June 23, Sagemaker endpoints support the JSON payload format from the
         https://github.com/huggingface/text-generation-inference project. At the time of writing this docstring,
-        only Falcon models were deployed using this format. See pyton client implementation from the
+        only Falcon models were deployed using this format. See python client implementation from the
         https://github.com/huggingface/text-generation-inference for more details.
 
         :return: A payload used for testing if the current endpoint is working.

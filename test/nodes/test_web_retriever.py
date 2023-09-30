@@ -1,172 +1,239 @@
 import os
-from typing import Dict, Tuple
-
-
+from unittest.mock import patch, Mock
+from test.conftest import MockDocumentStore
 import pytest
-import requests
-from boilerpy3.extractors import ArticleExtractor
 
 from haystack import Document, Pipeline
-from haystack.nodes import WebSearch, WebRetriever, PromptNode
+from haystack.nodes import WebRetriever, PromptNode
+from haystack.nodes.retriever.link_content import html_content_handler
+from haystack.nodes.retriever.web import SearchResult
+from test.nodes.conftest import example_serperdev_response
+
+
+@pytest.fixture
+def mocked_requests():
+    with patch("haystack.nodes.retriever.link_content.requests") as mock_requests:
+        mock_response = Mock()
+        mock_requests.get.return_value = mock_response
+        mock_response.status_code = 200
+        mock_response.text = "Sample content from webpage"
+        yield mock_requests
+
+
+@pytest.fixture
+def mocked_article_extractor():
+    with patch("boilerpy3.extractors.ArticleExtractor.get_content", return_value="Sample content from webpage"):
+        yield
+
+
+@pytest.fixture
+def mocked_link_content_fetcher_handler_type():
+    with patch(
+        "haystack.nodes.retriever.link_content.LinkContentFetcher._get_content_type_handler",
+        return_value=html_content_handler,
+    ):
+        yield
 
 
 @pytest.mark.unit
-def test_web_retriever_mode_raw_documents(monkeypatch):
-    expected_search_results = {
-        "documents": [
-            Document(
-                content="Eddard Stark",
-                score=0.9090909090909091,
-                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
-                id_hash_keys=["content"],
-                id="f408db6de8de0ffad0cb47cf8830dbb8",
-            ),
-            Document(
-                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
-                score=0.09090909090909091,
-                meta={
-                    "title": "Arya Stark's Father - Crossword Clue Answers",
-                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
-                    "position": 1,
-                    "score": 0.09090909090909091,
-                },
-                id_hash_keys=["content"],
-                id="51779277acf94cf90e7663db137c0732",
-            ),
-        ]
-    }
+def test_init_default_parameters():
+    retriever = WebRetriever(api_key="test_key")
 
-    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
-        return expected_search_results, "output_1"
-
-    class MockResponse:
-        def __init__(self, text, status_code):
-            self.text = text
-            self.status_code = status_code
-
-    def get(url, headers, timeout):
-        return MockResponse("mocked", 200)
-
-    def get_content(self, text: str) -> str:
-        return "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
-
-    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
-    monkeypatch.setattr(ArticleExtractor, "get_content", get_content)
-    monkeypatch.setattr(requests, "get", get)
-
-    web_retriever = WebRetriever(api_key="", top_search_results=2, mode="raw_documents")
-    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
-    assert len(result) == 1
-    assert isinstance(result[0], Document)
-    assert (
-        result[0].content
-        == "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
-    )
-    assert result[0].score == None
-    assert result[0].meta["url"] == "https://crossword-solver.io/clue/arya-stark%27s-father/"
-    # Only preprocessed docs but not raw docs should have the _split_id field
-    assert "_split_id" not in result[0].meta
+    assert retriever.top_k == 5
+    assert retriever.mode == "snippets"
+    assert retriever.preprocessor is None
+    assert retriever.cache_document_store is None
+    assert retriever.cache_index is None
 
 
 @pytest.mark.unit
-def test_web_retriever_mode_preprocessed_documents(monkeypatch):
-    expected_search_results = {
-        "documents": [
-            Document(
-                content="Eddard Stark",
-                score=0.9090909090909091,
-                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
-                id_hash_keys=["content"],
-                id="f408db6de8de0ffad0cb47cf8830dbb8",
-            ),
-            Document(
-                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
-                score=0.09090909090909091,
-                meta={
-                    "title": "Arya Stark's Father - Crossword Clue Answers",
-                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
-                    "position": 1,
-                    "score": 0.09090909090909091,
-                },
-                id_hash_keys=["content"],
-                id="51779277acf94cf90e7663db137c0732",
-            ),
-        ]
-    }
+@pytest.mark.parametrize("mode", ["snippets", "raw_documents", "preprocessed_documents"])
+@pytest.mark.parametrize("top_k", [1, 5, 7])
+def test_retrieve_from_web_all_params(mock_web_search, mode, top_k):
+    """
+    Test that the retriever returns the correct number of documents in all modes
+    """
+    search_result_len = len(example_serperdev_response["organic"])
+    wr = WebRetriever(api_key="fake_key", top_k=top_k, mode=mode)
 
-    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
-        return expected_search_results, "output_1"
+    docs = [Document("test" + str(i)) for i in range(search_result_len)]
+    with patch("haystack.nodes.retriever.web.WebRetriever._scrape_links", return_value=docs):
+        retrieved_docs = wr.retrieve(query="who is the boyfriend of olivia wilde?")
 
-    class MockResponse:
-        def __init__(self, text, status_code):
-            self.text = text
-            self.status_code = status_code
-
-    def get(url, headers, timeout):
-        return MockResponse("mocked", 200)
-
-    def get_content(self, text: str) -> str:
-        return "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
-
-    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
-    monkeypatch.setattr(ArticleExtractor, "get_content", get_content)
-    monkeypatch.setattr(requests, "get", get)
-
-    web_retriever = WebRetriever(api_key="", top_search_results=2, mode="preprocessed_documents")
-    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
-    assert len(result) == 1
-    assert isinstance(result[0], Document)
-    assert (
-        result[0].content
-        == "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
-    )
-    assert result[0].score == None
-    assert result[0].meta["url"] == "https://crossword-solver.io/clue/arya-stark%27s-father/"
-    assert result[0].meta["_split_id"] == 0
+    assert isinstance(retrieved_docs, list)
+    assert all(isinstance(doc, Document) for doc in retrieved_docs)
+    assert len(retrieved_docs) == top_k
 
 
 @pytest.mark.unit
-def test_web_retriever_mode_snippets(monkeypatch):
-    expected_search_results = {
-        "documents": [
-            Document(
-                content="Eddard Stark",
-                score=0.9090909090909091,
-                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
-                id_hash_keys=["content"],
-                id="f408db6de8de0ffad0cb47cf8830dbb8",
-            ),
-            Document(
-                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
-                score=0.09090909090909091,
-                meta={
-                    "title": "Arya Stark's Father - Crossword Clue Answers",
-                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
-                    "position": 1,
-                    "score": 0.09090909090909091,
-                },
-                id_hash_keys=["content"],
-                id="51779277acf94cf90e7663db137c0732",
-            ),
-        ]
-    }
+def test_retrieve_from_web_invalid_query(mock_web_search):
+    """
+    Test that the retriever raises an error if the query is invalid
+    """
+    wr = WebRetriever(api_key="fake_key")
+    with pytest.raises(ValueError, match="WebSearch run requires"):
+        wr.retrieve("")
 
-    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
-        return expected_search_results, "output_1"
-
-    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
-    web_retriever = WebRetriever(api_key="", top_search_results=2)
-    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
-    assert result == expected_search_results["documents"]
+    with pytest.raises(ValueError, match="WebSearch run requires"):
+        wr.retrieve(None)
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("top_k", [1, 3, 6])
-def test_top_k_parameter(mock_web_search, top_k):
-    web_retriever = WebRetriever(api_key="some_invalid_key", mode="snippets")
-    result = web_retriever.retrieve(query="Who is the boyfriend of Olivia Wilde?", top_k=top_k)
-    assert len(result) == top_k
-    assert all(isinstance(doc, Document) for doc in result)
+def test_prepare_links_empty_list():
+    """
+    Test that the retriever's _prepare_links method returns an empty list if the input is an empty list
+    """
+    wr = WebRetriever(api_key="fake_key")
+    result = wr._prepare_links([])
+    assert result == []
+
+    result = wr._prepare_links(None)
+    assert result == []
+
+
+@pytest.mark.unit
+def test_scrape_links_empty_list():
+    """
+    Test that the retriever's _scrape_links method returns an empty list if the input is an empty list
+    """
+    wr = WebRetriever(api_key="fake_key")
+    result = wr._scrape_links([])
+    assert result == []
+
+
+@pytest.mark.unit
+def test_scrape_links_with_search_results(
+    mocked_requests, mocked_article_extractor, mocked_link_content_fetcher_handler_type
+):
+    """
+    Test that the retriever's _scrape_links method returns a list of Documents if the input is a list of SearchResults
+    """
+    wr = WebRetriever(api_key="fake_key")
+
+    sr1 = SearchResult("https://pagesix.com", "Some text", 0.43, "1")
+    sr2 = SearchResult("https://www.yahoo.com/", "Some text", 0.43, "2")
+    fake_search_results = [sr1, sr2]
+
+    result = wr._scrape_links(fake_search_results)
+
+    assert isinstance(result, list)
+    assert all(isinstance(r, Document) for r in result)
+    assert len(result) == 2
+
+
+@pytest.mark.unit
+def test_scrape_links_with_search_results_with_preprocessor(
+    mocked_requests, mocked_article_extractor, mocked_link_content_fetcher_handler_type
+):
+    """
+    Test that the retriever's _scrape_links method returns a list of Documents if the input is a list of SearchResults
+    and a preprocessor is provided
+    """
+    wr = WebRetriever(api_key="fake_key", mode="preprocessed_documents")
+
+    sr1 = SearchResult("https://pagesix.com", "Some text", 0.43, "1")
+    sr2 = SearchResult("https://www.yahoo.com/", "Some text", 0.43, "2")
+    fake_search_results = [sr1, sr2]
+
+    result = wr._scrape_links(fake_search_results)
+
+    assert isinstance(result, list)
+    assert all(isinstance(r, Document) for r in result)
+    # the documents from above SearchResult are so small that they will not be split into multiple documents
+    # by the preprocessor
+    assert len(result) == 2
+
+
+@pytest.mark.unit
+def test_retrieve_checks_cache(mock_web_search):
+    """
+    Test that the retriever's retrieve method checks the cache
+    """
+    wr = WebRetriever(api_key="fake_key", mode="preprocessed_documents")
+
+    with patch.object(wr, "_check_cache", return_value=([], [])) as mock_check_cache:
+        wr.retrieve("query")
+
+    # assert cache is checked
+    mock_check_cache.assert_called()
+
+
+@pytest.mark.unit
+def test_retrieve_no_cache_checks_in_snippet_mode(mock_web_search):
+    """
+    Test that the retriever's retrieve method does not check the cache if the mode is snippets
+    """
+    wr = WebRetriever(api_key="fake_key", mode="snippets")
+
+    with patch.object(wr, "_check_cache", return_value=([], [])) as mock_check_cache:
+        wr.retrieve("query")
+
+    # assert cache is NOT checked
+    mock_check_cache.assert_not_called()
+
+
+@pytest.mark.unit
+def test_retrieve_batch(mock_web_search):
+    """
+    Test that the retriever's retrieve_batch method returns a list of lists of Documents
+    """
+    queries = ["query1", "query2"]
+    wr = WebRetriever(api_key="fake_key", mode="preprocessed_documents")
+    web_docs = [Document("doc1"), Document("doc2"), Document("doc3")]
+    with patch("haystack.nodes.retriever.web.WebRetriever._scrape_links", return_value=web_docs):
+        result = wr.retrieve_batch(queries)
+
+    assert len(result) == len(queries)
+
+    # check that the result is a list of lists of Documents
+    assert all(isinstance(docs, list) for docs in result)
+    assert all(isinstance(doc, Document) for docs in result for doc in docs)
+
+    # check that the result is a list of lists of Documents, so that the number of Documents
+    # is equal to the number of queries * number of documents retrieved per query
+    assert len([doc for docs in result for doc in docs]) == len(web_docs) * len(queries)
+
+
+@pytest.mark.unit
+def test_retrieve_uses_cache(mock_web_search):
+    """
+    Test that the retriever's retrieve method uses the cache if it is available
+    """
+    wr = WebRetriever(api_key="fake_key", mode="raw_documents", cache_document_store=MockDocumentStore())
+
+    cached_links = [
+        SearchResult("https://pagesix.com", "Some text", 0.43, "1"),
+        SearchResult("https://www.yahoo.com/", "Some text", 0.43, "2"),
+    ]
+    cached_docs = [Document("doc1"), Document("doc2")]
+    with patch.object(wr, "_check_cache", return_value=(cached_links, cached_docs)) as mock_check_cache, patch.object(
+        wr, "_save_to_cache"
+    ) as mock_save_cache, patch.object(wr, "_scrape_links", return_value=[]):
+        result = wr.retrieve("query")
+
+    # checking cache is always called
+    mock_check_cache.assert_called()
+
+    # cache save is called but with empty list of documents
+    mock_save_cache.assert_called()
+    assert mock_save_cache.call_args[0][0] == []
+    assert result == cached_docs
+
+
+@pytest.mark.unit
+def test_retrieve_saves_to_cache(mock_web_search):
+    """
+    Test that the retriever's retrieve method saves to the cache if it is available
+    """
+    wr = WebRetriever(api_key="fake_key", cache_document_store=MockDocumentStore(), mode="preprocessed_documents")
+    web_docs = [Document("doc1"), Document("doc2"), Document("doc3")]
+
+    with patch.object(wr, "_save_to_cache") as mock_save_cache, patch.object(
+        wr, "_scrape_links", return_value=web_docs
+    ):
+        wr.retrieve("query")
+
+    mock_save_cache.assert_called()
 
 
 @pytest.mark.integration
@@ -180,7 +247,9 @@ def test_top_k_parameter(mock_web_search, top_k):
 )
 @pytest.mark.parametrize("top_k", [2, 4])
 def test_top_k_parameter_in_pipeline(top_k):
-    # test that WebRetriever top_k param is NOT ignored in a pipeline
+    """
+    Test that the top_k parameter works in the pipeline
+    """
     prompt_node = PromptNode(
         "gpt-3.5-turbo",
         api_key=os.environ.get("OPENAI_API_KEY"),

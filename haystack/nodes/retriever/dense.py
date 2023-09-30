@@ -484,7 +484,7 @@ class DensePassageRetriever(DenseRetriever):
         :return: dictionary of embeddings for "passages" and "query"
         """
         dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
-            dicts, indices=[i for i in range(len(dicts))], return_baskets=True
+            dicts, indices=list(range(len(dicts))), return_baskets=True
         )
 
         data_loader = NamedDataLoader(
@@ -1113,7 +1113,7 @@ class TableTextRetriever(DenseRetriever):
         """
 
         dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
-            dicts, indices=[i for i in range(len(dicts))], return_baskets=True
+            dicts, indices=list(range(len(dicts))), return_baskets=True
         )
 
         data_loader = NamedDataLoader(
@@ -1862,7 +1862,7 @@ class EmbeddingRetriever(DenseRetriever):
             for key in self.embed_meta_fields:
                 if key in doc.meta and doc.meta[key]:
                     if isinstance(doc.meta[key], list):
-                        meta_data_fields.extend([item for item in doc.meta[key]])
+                        meta_data_fields.extend(list(doc.meta[key]))
                     else:
                         meta_data_fields.append(doc.meta[key])
             # Convert to type string (e.g. for ints or floats)
@@ -1873,7 +1873,10 @@ class EmbeddingRetriever(DenseRetriever):
 
     @staticmethod
     def _infer_model_format(model_name_or_path: str, use_auth_token: Optional[Union[str, bool]]) -> str:
-        if any(m in model_name_or_path for m in ["ada", "babbage", "davinci", "curie"]):
+        valid_openai_model_name = model_name_or_path in ["ada", "babbage", "davinci", "curie"] or any(
+            m in model_name_or_path for m in ["-ada-", "-babbage-", "-davinci-", "-curie-"]
+        )
+        if valid_openai_model_name:
             return "openai"
         if model_name_or_path in ["small", "medium", "large", "multilingual-22-12", "finance-sentiment"]:
             return "cohere"

@@ -42,7 +42,7 @@ def exportable_to_yaml(init_func):
             for k, v in params.items():
                 self._component_config["params"][k] = v
 
-        # Call the actuall __init__ function with all the arguments
+        # Call the actual __init__ function with all the arguments
         init_func(self, *args, **kwargs)
 
     return wrapper_exportable_to_yaml
@@ -96,7 +96,7 @@ class BaseComponent(ABC):
     @property
     def utilized_components(self) -> List[BaseComponent]:
         if "params" not in self._component_config:
-            return list()
+            return []
         return [param for param in self._component_config["params"].values() if isinstance(param, BaseComponent)]
 
     @property
@@ -229,7 +229,7 @@ class BaseComponent(ABC):
                     if "debug" in value.keys():
                         self.debug = value.pop("debug")
 
-                    for _k, _v in value.items():
+                    for _k in value.keys():
                         if _k not in run_signature_args:
                             raise Exception(f"Invalid parameter '{_k}' for the node '{self.name}'.")
 
@@ -243,6 +243,80 @@ class BaseComponent(ABC):
                 run_inputs[key] = value
 
         output, stream = run_method(**run_inputs, **run_params)
+
+        # Collect debug information
+        debug_info = {}
+        if getattr(self, "debug", None):
+            # Include input
+            debug_info["input"] = {**run_inputs, **run_params}
+            debug_info["input"]["debug"] = self.debug
+            # Include output, exclude _debug to avoid recursion
+            filtered_output = {key: value for key, value in output.items() if key != "_debug"}
+            debug_info["output"] = filtered_output
+        # Include custom debug info
+        custom_debug = output.get("_debug", {})
+        if custom_debug:
+            debug_info["runtime"] = custom_debug
+
+        # append _debug information from nodes
+        all_debug = arguments.get("_debug", {})
+        if debug_info:
+            all_debug[self.name] = debug_info
+        if all_debug:
+            output["_debug"] = all_debug
+
+        # add "extra" args that were not used by the node, but not the 'inputs' value
+        for k, v in arguments.items():
+            if k not in output.keys() and k != "inputs":
+                output[k] = v
+
+        output["params"] = params
+        return output, stream
+
+    async def _adispatch_run_general(self, run_method: Callable, **kwargs):
+        """
+        This is the async version of _dispatch_run_general and is used indirectly by Pipeline._arun().
+        When actually running the node it tries to run it asynchronously, if that fails fall back to a synchronous run.
+        This makes it possible to run a pipeline asynchronously with a mix of async and sync nodes.
+
+        This method takes care of the following:
+          - inspect run_method's signature to validate if all necessary arguments are available
+          - pop `debug` and sets them on the instance to control debug output
+          - call run_method with the corresponding arguments and gather output
+          - collate `_debug` information if present
+          - merge component output with the preceding output and pass it on to the subsequent Component in the Pipeline
+
+        """
+        arguments = deepcopy(kwargs)
+        params = arguments.get("params") or {}
+
+        run_signature_args = inspect.signature(run_method).parameters.keys()
+
+        run_params: Dict[str, Any] = {}
+        for key, value in params.items():
+            if key == self.name:  # targeted params for this node
+                if isinstance(value, dict):
+                    # Extract debug attributes
+                    if "debug" in value.keys():
+                        self.debug = value.pop("debug")
+
+                    for key in value.keys():
+                        if key not in run_signature_args:
+                            raise Exception(f"Invalid parameter '{key}' for the node '{self.name}'.")
+
+                run_params.update(**value)
+            elif key in run_signature_args:  # global params
+                run_params[key] = value
+
+        run_inputs = {}
+        for key, value in arguments.items():
+            if key in run_signature_args:
+                run_inputs[key] = value
+
+        try:
+            output, stream = await run_method(**run_inputs, **run_params)
+        except TypeError:
+            output, stream = run_method(**run_inputs, **run_params)
 
         # Collect debug information
         debug_info = {}

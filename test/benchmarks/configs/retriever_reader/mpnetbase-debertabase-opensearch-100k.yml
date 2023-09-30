@@ -4,6 +4,8 @@ components:
   - name: DocumentStore
     type: OpenSearchDocumentStore
     params:
+      host: opensearch
+      port: 9200
       batch_size: 1000
       similarity: dot_product
       embedding_dim: 768
@@ -20,6 +22,7 @@ components:
     params:
       model_name_or_path: deepset/deberta-v3-base-squad2
       top_k: 10
+      preprocessing_batch_size: 1000
 
 pipelines:
   - name: indexing
