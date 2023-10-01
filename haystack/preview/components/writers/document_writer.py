@@ -50,7 +50,7 @@ class DocumentWriter:
 
         :param documents: A list of documents to write to the store.
         :param policy: The policy to use when encountering duplicate documents.
-        :return: None
+        :return: Number of documents written
 
         :raises ValueError: If the specified document store is not found.
         """
@@ -58,4 +58,4 @@ class DocumentWriter:
             policy = self.policy
 
         self.document_store.write_documents(documents=documents, policy=policy)
-        return {}
+        return len(documents) + 1
