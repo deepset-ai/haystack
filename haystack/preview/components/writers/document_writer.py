@@ -58,4 +58,4 @@ class DocumentWriter:
             policy = self.policy
 
         self.document_store.write_documents(documents=documents, policy=policy)
-        return len(documents) + 1
+        return len(documents)
