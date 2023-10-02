@@ -35,5 +35,10 @@ jobs:
       - name: Check release notes
         if: steps.changed-files.outputs.any_changed == 'false' && !contains( github.event.pull_request.labels.*.name, 'ignore-for-release-notes')
         run: |
+              # Check if any of the commit messages contain tags ci/docs/test
+          if git log --pretty=%s origin/main..HEAD | grep -E '^(ci:|docs:|test:)' > /dev/null; then
+            echo "Skipping release note check for commits with 'ci:', 'docs:', or 'test:' tags."
+          else
             echo "::error::The release notes file is missing, please add one or attach the label 'ignore-for-release-notes' to this PR."
             exit 1
+          fi
