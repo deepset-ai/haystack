@@ -7,11 +7,11 @@ import sseclient
 from haystack.errors import OpenAIError
 from haystack.nodes.prompt.invocation_layer.utils import has_azure_parameters
 from haystack.utils.openai_utils import (
-    openai_request,
     _openai_text_completion_tokenization_details,
     load_openai_tokenizer,
     _check_openai_finish_reason,
-    check_openai_policy_violation,
+    check_openai_async_policy_violation,
+    openai_async_request,
 )
 from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler, DefaultTokenStreamingHandler
@@ -150,18 +150,33 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
-        if moderation and check_openai_policy_violation(input=prompt, headers=self.headers):
+
+        return self._do_invoke(
+            prompt=prompt,
+            base_payload=base_payload,
+            kwargs_with_defaults=kwargs_with_defaults,
+            stream=stream,
+            moderation=moderation,
+        )
+
+    async def _do_invoke(
+        self, prompt: str, base_payload: Dict, kwargs_with_defaults: Dict, stream: bool, moderation: bool
+    ):
+        if moderation and await check_openai_async_policy_violation(input=prompt, headers=self.headers):
             logger.info("Prompt '%s' will not be sent to OpenAI due to potential policy violation.", prompt)
             return []
-        responses = self._execute_openai_request(
+
+        responses = await self._execute_openai_request(
             prompt=prompt, base_payload=base_payload, kwargs_with_defaults=kwargs_with_defaults, stream=stream
         )
-        if moderation and check_openai_policy_violation(input=responses, headers=self.headers):
+
+        if moderation and await check_openai_async_policy_violation(input=responses, headers=self.headers):
             logger.info("Response '%s' will not be returned due to potential policy violation.", responses)
             return []
+
         return responses
 
-    def _execute_openai_request(self, prompt: str, base_payload: Dict, kwargs_with_defaults: Dict, stream: bool):
+    async def _execute_openai_request(self, prompt: str, base_payload: Dict, kwargs_with_defaults: Dict, stream: bool):
         if not prompt:
             raise ValueError(
                 f"No prompt provided. Model {self.model_name_or_path} requires prompt."
@@ -176,12 +191,12 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         }
         payload = {**base_payload, **extra_payload}
         if not stream:
-            res = openai_request(url=self.url, headers=self.headers, payload=payload)
+            res = await openai_async_request(url=self.url, headers=self.headers, payload=payload)
             _check_openai_finish_reason(result=res, payload=payload)
             responses = [ans["text"].strip() for ans in res["choices"]]
             return responses
         else:
-            response = openai_request(
+            response = await openai_async_request(
                 url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
             )
             handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
