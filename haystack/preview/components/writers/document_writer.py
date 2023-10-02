@@ -44,6 +44,7 @@ class DocumentWriter:
         data["init_parameters"]["policy"] = DuplicatePolicy[data["init_parameters"]["policy"]]
         return default_from_dict(cls, data)
 
+    @component.output_types(documents_written=int)
     def run(self, documents: List[Document], policy: Optional[DuplicatePolicy] = None):
         """
         Run DocumentWriter on the given input data.
@@ -58,4 +59,4 @@ class DocumentWriter:
             policy = self.policy
 
         self.document_store.write_documents(documents=documents, policy=policy)
-        return len(documents)
+        return {"documents_written": len(documents)}
