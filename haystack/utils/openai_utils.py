@@ -157,7 +157,7 @@ async def openai_async_request(
     headers: Dict,
     payload: Dict,
     timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT,
-    read_response: Optional[bool] = True,
+    read_response: bool = True,
     **kwargs,
 ):
     """Make a request to the OpenAI API given a `url`, `headers`, `payload`, and `timeout`.
