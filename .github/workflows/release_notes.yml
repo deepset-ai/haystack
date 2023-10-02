@@ -22,9 +22,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-            # With the default value of 1, there are corner cases where tj-actions/changed-files
-            # fails with a `no merge base` error
-            fetch-depth: 0
+          # With the default value of 1, there are corner cases where tj-actions/changed-files
+          # fails with a `no merge base` error
+          fetch-depth: 0
 
       - name: Get release note files
         id: changed-files
@@ -35,7 +35,7 @@ jobs:
       - name: Check release notes
         if: steps.changed-files.outputs.any_changed == 'false' && !contains( github.event.pull_request.labels.*.name, 'ignore-for-release-notes')
         run: |
-              # Check if any of the commit messages contain tags ci/docs/test
+          # Check if any of the commit messages contain tags ci/docs/test
           if git log --pretty=%s origin/main..HEAD | grep -E '^(ci:|docs:|test:)' > /dev/null; then
             echo "Skipping release note check for commits with 'ci:', 'docs:', or 'test:' tags."
           else
