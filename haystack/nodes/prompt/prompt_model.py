@@ -116,9 +116,9 @@ class PromptModel(BaseComponent):
         Drop-in replacement asyncio version of the `invoke` method, see there for documentation.
         """
         try:
-            return await self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
-        except TypeError:
-            # The `invoke` method of the underlying invocation layer doesn't support asyncio
+            return await self.model_invocation_layer.ainvoke(prompt=prompt, **kwargs)
+        except AttributeError:
+            # The underlying invocation layer doesn't support asyncio
             return self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
 
     @overload

@@ -166,7 +166,7 @@ async def openai_async_request(
     """
     async with httpx.AsyncClient() as client:
         response = await client.request(
-            "POST", url, headers=headers, data=payload, timeout=cast(float, timeout), **kwargs
+            "POST", url, headers=headers, json=payload, timeout=cast(float, timeout), **kwargs
         )
 
     if read_response:

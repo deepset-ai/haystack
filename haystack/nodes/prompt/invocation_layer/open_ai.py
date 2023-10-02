@@ -11,7 +11,9 @@ from haystack.utils.openai_utils import (
     load_openai_tokenizer,
     _check_openai_finish_reason,
     check_openai_async_policy_violation,
+    check_openai_policy_violation,
     openai_async_request,
+    openai_request,
 )
 from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler, DefaultTokenStreamingHandler
@@ -112,17 +114,13 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             headers["OpenAI-Organization"] = self.openai_organization
         return headers
 
-    def invoke(self, *args, **kwargs):
-        """
-        Invokes a prompt on the model. Based on the model, it takes in a prompt (or either a prompt or a list of messages)
-        and returns a list of responses using a REST invocation.
-
-        :return: The responses are being returned.
-
-        Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
-        For more details, see OpenAI [documentation](https://platform.openai.com/docs/api-reference/completions/create).
-        """
+    def _prepare_invoke(self, *args, **kwargs):
         prompt = kwargs.get("prompt")
+        if not prompt:
+            raise ValueError(
+                f"No prompt provided. Model {self.model_name_or_path} requires prompt."
+                f"Make sure to provide prompt in kwargs."
+            )
         # either stream is True (will use default handler) or stream_handler is provided
         kwargs_with_defaults = self.model_input_kwargs
         if kwargs:
@@ -151,37 +149,58 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
 
-        return self._do_invoke(
-            prompt=prompt,
-            base_payload=base_payload,
-            kwargs_with_defaults=kwargs_with_defaults,
-            stream=stream,
-            moderation=moderation,
-        )
+        return (prompt, base_payload, kwargs_with_defaults, stream, moderation)
 
-    async def _do_invoke(
-        self, prompt: str, base_payload: Dict, kwargs_with_defaults: Dict, stream: bool, moderation: bool
-    ):
-        if moderation and await check_openai_async_policy_violation(input=prompt, headers=self.headers):
+    def invoke(self, *args, **kwargs):
+        """
+        Invokes a prompt on the model. Based on the model, it takes in a prompt (or either a prompt or a list of messages)
+        and returns a list of responses using a REST invocation.
+
+        :return: The responses are being returned.
+
+        Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
+        For more details, see OpenAI [documentation](https://platform.openai.com/docs/api-reference/completions/create).
+        """
+        prompt, base_payload, kwargs_with_defaults, stream, moderation = self._prepare_invoke(*args, **kwargs)
+
+        if moderation and check_openai_policy_violation(input=prompt, headers=self.headers):
             logger.info("Prompt '%s' will not be sent to OpenAI due to potential policy violation.", prompt)
             return []
 
-        responses = await self._execute_openai_request(
-            prompt=prompt, base_payload=base_payload, kwargs_with_defaults=kwargs_with_defaults, stream=stream
-        )
+        extra_payload = {
+            "prompt": prompt,
+            "suffix": kwargs_with_defaults.get("suffix", None),
+            "logprobs": kwargs_with_defaults.get("logprobs", None),
+            "echo": kwargs_with_defaults.get("echo", False),
+            "best_of": kwargs_with_defaults.get("best_of", 1),
+        }
+        payload = {**base_payload, **extra_payload}
+        if not stream:
+            res = openai_request(url=self.url, headers=self.headers, payload=payload)
+            _check_openai_finish_reason(result=res, payload=payload)
+            responses = [ans["text"].strip() for ans in res["choices"]]
+        else:
+            response = openai_request(
+                url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
+            )
+            handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
+            responses = self._process_streaming_response(response=response, stream_handler=handler)
 
-        if moderation and await check_openai_async_policy_violation(input=responses, headers=self.headers):
+        if moderation and check_openai_policy_violation(input=responses, headers=self.headers):
             logger.info("Response '%s' will not be returned due to potential policy violation.", responses)
             return []
 
         return responses
 
-    async def _execute_openai_request(self, prompt: str, base_payload: Dict, kwargs_with_defaults: Dict, stream: bool):
-        if not prompt:
-            raise ValueError(
-                f"No prompt provided. Model {self.model_name_or_path} requires prompt."
-                f"Make sure to provide prompt in kwargs."
-            )
+    async def ainvoke(self, *args, **kwargs):
+        """
+        asyncio version of the `invoke` method.
+        """
+        prompt, base_payload, kwargs_with_defaults, stream, moderation = self._prepare_invoke(*args, **kwargs)
+        if moderation and await check_openai_async_policy_violation(input=prompt, headers=self.headers):
+            logger.info("Prompt '%s' will not be sent to OpenAI due to potential policy violation.", prompt)
+            return []
+
         extra_payload = {
             "prompt": prompt,
             "suffix": kwargs_with_defaults.get("suffix", None),
@@ -194,13 +213,18 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             res = await openai_async_request(url=self.url, headers=self.headers, payload=payload)
             _check_openai_finish_reason(result=res, payload=payload)
             responses = [ans["text"].strip() for ans in res["choices"]]
-            return responses
         else:
             response = await openai_async_request(
                 url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
             )
             handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
-            return self._process_streaming_response(response=response, stream_handler=handler)
+            responses = self._process_streaming_response(response=response, stream_handler=handler)
+
+        if moderation and await check_openai_async_policy_violation(input=responses, headers=self.headers):
+            logger.info("Response '%s' will not be returned due to potential policy violation.", responses)
+            return []
+
+        return responses
 
     def _process_streaming_response(self, response, stream_handler: TokenStreamingHandler):
         client = sseclient.SSEClient(response)
