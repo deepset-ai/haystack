@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 from pathlib import Path
 import logging
 import uuid
@@ -12,6 +12,9 @@ import posthog
 
 import haystack
 from haystack.preview.telemetry.environment import is_containerized
+
+if TYPE_CHECKING:
+    from haystack.preview.pipeline import Pipeline
 
 
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
@@ -167,7 +170,7 @@ def send_event(event_name: str, event_properties: Optional[Dict[str, Any]] = Non
         logger.debug("There was an issue sending a '%s' telemetry event", event_name, exc_info=e)
 
 
-def send_pipeline_run_event(pipeline):
+def send_pipeline_run_event(pipeline: "Pipeline"):
     """
     Send a telemetry event for Pipeline.run(), if telemetry is enabled.
     """
