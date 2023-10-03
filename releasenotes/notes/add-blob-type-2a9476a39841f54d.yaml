@@ -1,5 +1,5 @@
 ---
 preview:
   - |
-    Add Blob type to send binary raw data across components
+    Add ByteStream type to send binary raw data across components
     in a pipeline.
