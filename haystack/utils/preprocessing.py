@@ -38,13 +38,13 @@ def convert_files_to_docs(
     # Importing top-level causes a circular import
     from haystack.nodes.file_converter import BaseConverter, DocxToTextConverter, PDFToTextConverter, TextConverter
 
+    if dir_path is None and file_paths is None:
+        raise ValueError("At least one of dir_path or file_paths must be set.")
     if file_paths is None:
         file_paths = []
     if dir_path is not None:
         file_paths = file_paths + list(Path(dir_path).glob("**/*"))
-    if dir_path is None and file_paths is None:
-        raise ValueError("At least one of dir_path or file_paths must be set.")
-        
+
     allowed_suffixes = [".pdf", ".txt", ".docx"]
     suffix2converter: Dict[str, BaseConverter] = {}
 
@@ -130,12 +130,12 @@ def tika_convert_files_to_docs(
         raise ex
     converter = TikaConverter()
 
+    if dir_path is None and file_paths is None:
+        raise ValueError("At least one of dir_path or file_paths must be set.")
     if file_paths is None:
         paths = []
     if dir_path is not None:
         paths = file_paths + list(Path(dir_path).glob("**/*"))
-    if dir_path is None and file_paths is None:
-        raise ValueError("At least one of dir_path or file_paths must be set.")
 
     allowed_suffixes = [".pdf", ".txt"]
     file_paths: List[Path] = []
