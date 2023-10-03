@@ -158,18 +158,6 @@ class Telemetry:
             logger.debug("Telemetry couldn't make a POST request to PostHog.", exc_info=e)
 
 
-def send_event(event_name: str, event_properties: Optional[Dict[str, Any]] = None):
-    """
-    Send a telemetry event, if telemetry is enabled.
-    """
-    try:
-        if telemetry:
-            telemetry.send_event(event_name=event_name, event_properties=event_properties)
-    except Exception as e:
-        # Never let telemetry break things
-        logger.debug("There was an issue sending a '%s' telemetry event", event_name, exc_info=e)
-
-
 def send_pipeline_run_event(pipeline: "Pipeline"):
     """
     Send a telemetry event for Pipeline.run(), if telemetry is enabled.
@@ -182,7 +170,7 @@ def send_pipeline_run_event(pipeline: "Pipeline"):
                 components = {}
                 for component_name, component in pipeline_description["components"].items():
                     components[component_name] = component["type"]
-                send_event("Pipeline run (2.x)", {"components": components, "runs": pipeline._telemetry_runs})
+                telemetry.send_event("Pipeline run (2.x)", {"components": components, "runs": pipeline._telemetry_runs})
     except Exception as e:
         # Never let telemetry break things
         logger.debug("There was an issue sending a 'Pipeline run (2.x)' telemetry event", exc_info=e)
@@ -193,7 +181,12 @@ def tutorial_running(tutorial_id: str):
     Send a telemetry event for a tutorial, if telemetry is enabled.
     :param tutorial_id: identifier of the tutorial
     """
-    send_event(event_name="Tutorial", event_properties={"tutorial.id": tutorial_id})
+    try:
+        if telemetry:
+            telemetry.send_event("Tutorial", {"tutorial.id": tutorial_id})
+    except Exception as e:
+        # Never let telemetry break things
+        logger.debug("There was an issue sending a 'Tutorial' telemetry event", exc_info=e)
 
 
 if os.environ.get(HAYSTACK_TELEMETRY_ENABLED, "True") == "False":
