@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import List, Optional, Tuple, Union
+import warnings
 
 from haystack import Document
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
@@ -21,6 +22,10 @@ OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 
 class OpenAIAnswerGenerator(BaseGenerator):
     """
+    This component is now deprecated and will be removed in future versions.
+    Use `PromptNode` instead of `OpenAIAnswerGenerator`,
+    as explained in https://haystack.deepset.ai/tutorials/22_pipeline_with_promptnode.
+
     Uses the GPT-3 models from the OpenAI API to generate Answers based on the Documents it receives.
     The Documents can come from a Retriever or you can supply them manually.
 
@@ -109,6 +114,12 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see see OpenAI
         [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         """
+        warnings.warn(
+            "`OpenAIAnswerGenerator component is deprecated and will be removed in future versions. Use `PromptNode` "
+            "instead of `OpenAIAnswerGenerator`.",
+            category=DeprecationWarning,
+        )
+
         super().__init__(progress_bar=progress_bar)
         if (examples is None and examples_context is not None) or (examples is not None and examples_context is None):
             logger.warning(
