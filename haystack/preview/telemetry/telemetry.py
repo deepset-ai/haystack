@@ -175,13 +175,14 @@ def send_pipeline_run_event(pipeline: "Pipeline"):
     Send a telemetry event for Pipeline.run(), if telemetry is enabled.
     """
     try:
-        if telemetry and (pipeline._telemetry_runs in [0, 10, 100, 1000] or pipeline._telemetry_runs % 10_000 == 0):
-            pipeline_description = pipeline.to_dict()
-            components = {}
-            for component_name, component in pipeline_description["components"].items():
-                components[component_name] = component["type"]
-            send_event("Pipeline run (2.x)", {"components": components, "runs": pipeline._telemetry_runs})
+        if telemetry:
             pipeline._telemetry_runs += 1
+            if pipeline._telemetry_runs in [1, 10, 100, 1000] or pipeline._telemetry_runs % 10_000 == 0:
+                pipeline_description = pipeline.to_dict()
+                components = {}
+                for component_name, component in pipeline_description["components"].items():
+                    components[component_name] = component["type"]
+                send_event("Pipeline run (2.x)", {"components": components, "runs": pipeline._telemetry_runs})
     except Exception as e:
         # Never let telemetry break things
         logger.debug("There was an issue sending a 'Pipeline run (2.x)' telemetry event", exc_info=e)
