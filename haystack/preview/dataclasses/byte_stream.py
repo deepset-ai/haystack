@@ -36,12 +36,3 @@ class ByteStream:
         :param encoding: The encoding used to convert the string into bytes
         """
         return cls(data=text.encode(encoding))
-
-    @classmethod
-    def from_stream(cls, stream: io.BytesIO) -> "ByteStream":
-        """
-        Create a ByteStream from a file-like object.
-
-        :param stream: The stream where bytes will be read from.
-        """
-        return cls(data=stream.read())
