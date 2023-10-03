@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING, List
 from pathlib import Path
 import logging
 import uuid
@@ -161,18 +161,20 @@ class Telemetry:
 def send_pipeline_run_event(pipeline: "Pipeline"):
     """
     Send a telemetry event for Pipeline.run(), if telemetry is enabled.
+
+    Collects name, type and the content of the _telemetry_data attribute, if present, for each component in the pipeline.
     """
     try:
         if telemetry:
             pipeline._telemetry_runs += 1
             if pipeline._telemetry_runs in [1, 10, 100, 1000] or pipeline._telemetry_runs % 10_000 == 0:
                 pipeline_description = pipeline.to_dict()
-                components = {}
+                components: Dict[str, List[Dict[str, Any]]] = {}
                 for component_name, component in pipeline_description["components"].items():
-                    components[component_name] = {
-                        "type": component["type"],
-                        **getattr(pipeline.get_component(component_name), "_telemetry_data", {}),
-                    }
+                    if not component["type"] in components:
+                        components[component["type"]] = []
+                    telemetry_data = getattr(pipeline.get_component(component_name), "_telemetry_data", {})
+                    components[component["type"]].append({"name": component_name, **telemetry_data})
                 telemetry.send_event("Pipeline run (2.x)", {"components": components, "runs": pipeline._telemetry_runs})
     except Exception as e:
         # Never let telemetry break things
