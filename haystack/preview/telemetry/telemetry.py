@@ -167,6 +167,23 @@ def send_event(event_name: str, event_properties: Optional[Dict[str, Any]] = Non
         logger.debug("There was an issue sending a '%s' telemetry event", event_name, exc_info=e)
 
 
+def send_pipeline_run_event(pipeline):
+    """
+    Send a telemetry event for Pipeline.run(), if telemetry is enabled.
+    """
+    try:
+        if telemetry and (pipeline._telemetry_runs in [0, 10, 100, 1000] or pipeline._telemetry_runs % 10_000 == 0):
+            pipeline_description = pipeline.to_dict()
+            components = {}
+            for component_name, component in pipeline_description["components"].items():
+                components[component_name] = component["type"]
+            send_event("Pipeline run (2.x)", {"components": components, "runs": pipeline._telemetry_runs})
+            pipeline._telemetry_runs += 1
+    except Exception as e:
+        # Never let telemetry break things
+        logger.debug("There was an issue sending a 'Pipeline run (2.x)' telemetry event", exc_info=e)
+
+
 def tutorial_running(tutorial_id: str):
     """
     Send a telemetry event for a tutorial, if telemetry is enabled.

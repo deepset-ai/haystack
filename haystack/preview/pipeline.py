@@ -1,16 +1,35 @@
 import os
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Union
 from pathlib import Path
 import logging
 import canals
 
-from haystack.preview.telemetry import send_event, HAYSTACK_TELEMETRY_ENABLED
+from haystack.preview.telemetry import send_pipeline_run_event, HAYSTACK_TELEMETRY_ENABLED
 
 
 logger = logging.getLogger(__name__)
 
 
 class Pipeline(canals.Pipeline):
+    def __init__(
+        self,
+        metadata: Optional[Dict[str, Any]] = None,
+        max_loops_allowed: int = 100,
+        debug_path: Union[Path, str] = Path(".haystack_debug/"),
+    ):
+        """
+        Creates the Pipeline.
+
+        Args:
+            metadata: arbitrary dictionary to store metadata about this pipeline. Make sure all the values contained in
+                this dictionary can be serialized and deserialized if you wish to save this pipeline to file with
+                `save_pipelines()/load_pipelines()`.
+            max_loops_allowed: how many times the pipeline can run the same node before throwing an exception.
+            debug_path: when debug is enabled in `run()`, where to save the debug data.
+        """
+        self._telemetry_runs = 0
+        super().__init__(metadata=metadata, max_loops_allowed=max_loops_allowed, debug_path=debug_path)
+
     def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
         """
         Runs the pipeline.
@@ -22,14 +41,5 @@ class Pipeline(canals.Pipeline):
 
         :raises PipelineRuntimeError: if the any of the components fail or return unexpected output.
         """
-        try:
-            if os.environ.get(HAYSTACK_TELEMETRY_ENABLED, "True") == "False":
-                pipeline_description = self.to_dict()
-                components = {}
-                for component_name, component in pipeline_description["components"].items():
-                    components[component_name] = component["type"]
-                send_event("Pipeline (2.x)", {"components": components})
-        except Exception as e:
-            logger.warning(f"Error sending telemetry event: {e}")
-
+        send_pipeline_run_event(self)
         return super().run(data=data, debug=debug)
