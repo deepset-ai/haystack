@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING, List
 from pathlib import Path
 import logging
 import uuid
@@ -167,7 +167,7 @@ def send_pipeline_run_event(pipeline: "Pipeline"):
             pipeline._telemetry_runs += 1
             if pipeline._telemetry_runs in [1, 10, 100, 1000] or pipeline._telemetry_runs % 10_000 == 0:
                 pipeline_description = pipeline.to_dict()
-                components = {}
+                components: Dict[str, List[Dict[str, Any]]] = {}
                 for component_name, component in pipeline_description["components"].items():
                     if not component["type"] in components:
                         components[component["type"]] = []
