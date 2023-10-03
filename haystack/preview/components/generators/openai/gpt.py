@@ -91,6 +91,9 @@ class GPTGenerator:
         self.streaming_callback = streaming_callback
         self.api_base_url = api_base_url
 
+        # Telemetry
+        self._telemetry_data = {"model": self.model_name}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
