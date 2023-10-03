@@ -169,7 +169,10 @@ def send_pipeline_run_event(pipeline: "Pipeline"):
                 pipeline_description = pipeline.to_dict()
                 components = {}
                 for component_name, component in pipeline_description["components"].items():
-                    components[component_name] = component["type"]
+                    components[component_name] = {
+                        "type": component["type"],
+                        **getattr(pipeline.get_component(component_name), "_telemetry_data", {}),
+                    }
                 telemetry.send_event("Pipeline run (2.x)", {"components": components, "runs": pipeline._telemetry_runs})
     except Exception as e:
         # Never let telemetry break things
