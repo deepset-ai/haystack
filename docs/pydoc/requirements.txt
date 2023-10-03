@@ -1,1 +1,2 @@
+novella==0.2.6
 pydoc-markdown==4.8.2
