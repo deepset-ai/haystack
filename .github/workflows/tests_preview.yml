@@ -154,7 +154,7 @@ jobs:
 
 
   integration-tests-linux:
-    name: Integration / Linux
+    name: Integration / ubuntu-latest
     needs: unit-tests
     runs-on: ubuntu-latest
     services:
@@ -213,7 +213,7 @@ jobs:
 
 
   integration-tests-macos:
-    name: Integration / MacOS
+    name: Integration / macos-latest
     needs: unit-tests
     runs-on: macos-latest
     steps:
@@ -271,7 +271,7 @@ jobs:
 
 
   integration-tests-windows:
-    name: Integration / Windows
+    name: Integration / windows-latest
     needs: unit-tests
     runs-on: windows-latest
     steps:
