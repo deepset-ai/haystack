@@ -173,7 +173,12 @@ def send_pipeline_run_event(pipeline: "Pipeline"):
                 for component_name, component in pipeline_description["components"].items():
                     if not component["type"] in components:
                         components[component["type"]] = []
+
                     telemetry_data = getattr(pipeline.get_component(component_name), "_telemetry_data", {})
+                    # To prevent failing to send an event if components have something odd in this field
+                    if not isinstance(telemetry_data, dict):
+                        telemetry_data = {"error": "_telemetry_data does not contain a dict"}
+
                     components[component["type"]].append({"name": component_name, **telemetry_data})
                 telemetry.send_event("Pipeline run (2.x)", {"components": components, "runs": pipeline._telemetry_runs})
     except Exception as e:
