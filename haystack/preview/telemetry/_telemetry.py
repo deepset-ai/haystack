@@ -132,7 +132,7 @@ def pipeline_running(pipeline: "Pipeline") -> Tuple[str, Dict[str, Any]]:
         pipeline_description = pipeline.to_dict()
         components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         for component_name, component in pipeline_description["components"].items():
-            telemetry_data = getattr(pipeline.get_component(component_name), "_telemetry_data", {})
+            telemetry_data = getattr(pipeline.get_component(component_name), "_get_telemetry_data", {})()
             try:
                 components[component["type"]].append({"name": component_name, **telemetry_data})
             except TypeError:
