@@ -35,8 +35,8 @@ class CohereTextEmbedder:
         :param api_base_url: The Cohere API Base url, defaults to `https://api.cohere.ai/v1/embed`.
         :param truncate: Truncate embeddings that are too long from start or end, ("NONE"|"START"|"END"), defaults to `"END"`. Passing START will discard the start of the input. END will discard the end of the input. In both cases, input is discarded until the remaining input is exactly the maximum input token length for the model. If NONE is selected, when the input exceeds the maximum input token length an error will be returned.
         :param use_async_client: Flag to select the AsyncClient, defaults to `False`. It is recommended to use AsyncClient for applications with many concurrent calls.
-        :param max_retries: maximal number of retries for requests, defaults to `3`.
-        :param timeout: request timeout in seconds, defaults to `120`.
+        :param max_retries: Maximum number of retries for requests, defaults to `3`.
+        :param timeout: Request timeout in seconds, defaults to `120`.
         """
 
         if api_key is None:
