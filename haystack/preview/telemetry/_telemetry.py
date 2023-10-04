@@ -126,18 +126,24 @@ def pipeline_running(pipeline: "Pipeline") -> Tuple[str, Dict[str, Any]]:
 
     :param pipeline: the pipeline that is running.
     """
+    print("running")
     pipeline._telemetry_runs += 1
     if pipeline._telemetry_runs == 1 or pipeline._telemetry_runs % PIPELINE_RUN_BUFFER_SIZE == 0:
         # Collect info about components
         pipeline_description = pipeline.to_dict()
         components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         for component_name, component in pipeline_description["components"].items():
-            telemetry_data = getattr(pipeline.get_component(component_name), "_get_telemetry_data", {})()
-            try:
-                components[component["type"]].append({"name": component_name, **telemetry_data})
-            except TypeError:
+            instance = pipeline.get_component(component_name)
+            if hasattr(instance, "_get_telemetry_data"):
+                telemetry_data = getattr(instance, "_get_telemetry_data")()
+                try:
+                    components[component["type"]].append({"name": component_name, **telemetry_data})
+                except TypeError:
+                    components[component["type"]].append({"name": component_name})
+            else:
                 components[component["type"]].append({"name": component_name})
 
+        print("sending data!!")
         # Data sent to Posthog
         return "Pipeline run (2.x)", {
             "pipeline_id": str(id(pipeline)),
