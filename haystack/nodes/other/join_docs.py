@@ -64,7 +64,7 @@ class JoinDocuments(JoinNode):
         document_map = {doc.id: doc for result in results for doc in result}
 
         if self.join_mode == "concatenate":
-            scores_map = self._concatenate_results(results)
+            scores_map = self._concatenate_results(results, document_map)
         elif self.join_mode == "merge":
             scores_map = self._calculate_comb_sum(results)
         elif self.join_mode == "reciprocal_rank_fusion":
@@ -118,11 +118,21 @@ class JoinDocuments(JoinNode):
 
             return output, "output_1"
 
-    def _concatenate_results(self, results):
+    def _concatenate_results(self, results, document_map):
         """
         Concatenates multiple document result lists.
         """
-        return {doc.id: doc.score for result in results for doc in result}
+        list_id = list(document_map.keys())
+        scores_map = {}
+        for idx in list_id:
+            tmp = []
+            for result in results:
+               for doc in result:
+                   if doc.id==idx:
+                       tmp.append(doc)
+            item_best_score = max(tmp, key=lambda x:x.score)
+            scores_map.update({idx: item_best_score.score})
+        return scores_map
 
     def _calculate_comb_sum(self, results):
         """
