@@ -133,17 +133,17 @@ def tika_convert_files_to_docs(
     if dir_path is None and file_paths is None:
         raise ValueError("At least one of dir_path or file_paths must be set.")
     if file_paths is None:
-        paths = []
+        file_paths = []
     if dir_path is not None:
-        paths = file_paths + list(Path(dir_path).glob("**/*"))
+        file_paths = file_paths + list(Path(dir_path).glob("**/*"))
 
     allowed_suffixes = [".pdf", ".txt"]
-    file_paths: List[Path] = []
+    file_paths_to_convert: List[Path] = []
 
-    for path in paths:
+    for path in file_paths:
         file_suffix = path.suffix.lower()
         if file_suffix in allowed_suffixes:
-            file_paths.append(path)
+            file_paths_to_convert.append(path)
         elif not path.is_dir():
             logger.warning(
                 "Skipped file %s as type %s is not supported here. "
@@ -153,7 +153,7 @@ def tika_convert_files_to_docs(
             )
 
     documents = []
-    for path in file_paths:
+    for path in file_paths_to_convert:
         logger.info("Converting %s", path)
         # TikaConverter returns a list containing a single Document
         document = converter.convert(path)[0]

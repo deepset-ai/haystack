@@ -255,7 +255,7 @@ def test_tika_convert_files_to_docs(samples_path):
 @pytest.mark.tika
 def test_tika_convert_list_of_file_paths_to_docs(sample_txt_file_paths_list):
     documents = tika_convert_files_to_docs(
-        file_paths=sample_txt_file_paths_list, clean_func=clean_wiki_text, split_paragraphs=True,
+        file_paths=sample_txt_file_paths_list, clean_func=clean_wiki_text, split_paragraphs=True
     )
     assert documents and len(documents) > 0
 
