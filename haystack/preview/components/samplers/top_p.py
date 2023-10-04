@@ -7,7 +7,7 @@ from haystack.preview.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]==4.32.1'") as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install torch>=1.13'") as torch_import:
     import torch
 
 
@@ -18,7 +18,8 @@ class TopPSampler:
     sampling.
 
     Usage example:
-    ```
+
+    ```python
     from haystack.preview import Document
     from haystack.preview.components.samplers import TopPSampler
 
@@ -45,7 +46,7 @@ class TopPSampler:
         If no score field is provided (default), the component will assume that the scores are stored in the Document
         score field.
         """
-        torch_and_transformers_import.check()
+        torch_import.check()
 
         self.top_p = top_p
         self.score_field = score_field
