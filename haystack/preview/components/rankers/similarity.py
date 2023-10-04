@@ -1,12 +1,9 @@
 import logging
 from pathlib import Path
-from typing import List, Optional, Union, Dict, Any
+from typing import List, Union, Dict, Any
 
-from haystack.preview import ComponentError
-
-from haystack.lazy_imports import LazyImport
-from haystack.preview import Document, component, default_from_dict, default_to_dict
-
+from haystack.preview import ComponentError, Document, component, default_from_dict, default_to_dict
+from haystack.preview.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +34,7 @@ class SimilarityRanker:
     """
 
     def __init__(
-        self,
-        model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-        device: Optional[str] = "cpu",
+        self, model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2", device: str = "cpu"
     ):
         """
         Creates an instance of SimilarityRanker.
@@ -48,7 +43,6 @@ class SimilarityRanker:
         :param device: torch device (for example, cuda:0, cpu, mps) to limit model inference to a specific device.
         """
         torch_and_transformers_import.check()
-        super().__init__()
 
         self.model_name_or_path = model_name_or_path
         self.device = device
@@ -105,6 +99,9 @@ class SimilarityRanker:
         with torch.inference_mode():
             similarity_scores = self.model(**features).logits.squeeze()  # type: ignore
 
-        _, sorted_indices = torch.sort(similarity_scores, descending=True)
-        ranked_docs = [documents[i] for i in sorted_indices]
+        sorted_similarity_scores, sorted_indices = torch.sort(similarity_scores, descending=True)
+        ranked_docs = []
+        for i in sorted_indices:
+            documents[i].score = sorted_similarity_scores[i].item()
+            ranked_docs.append(documents[i])
         return {"documents": ranked_docs}
