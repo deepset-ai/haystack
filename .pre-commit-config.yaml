@@ -39,4 +39,10 @@ repos:
   - id: actionlint-docker
     args: ["-ignore", "SC2102"]
 
+- repo: https://github.com/pycqa/isort
+  rev: 5.12.0
+  hooks:
+    - id: isort
+      name: isort (python)
+
 # TODO we can make pylint run at this stage too, once their execution gets normalized

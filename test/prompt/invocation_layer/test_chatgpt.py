@@ -7,7 +7,7 @@ from haystack.nodes.prompt.invocation_layer import ChatGPTInvocationLayer
 
 
 @pytest.mark.unit
-@patch("haystack.nodes.prompt.invocation_layer.chatgpt.openai_request")
+@patch("haystack.nodes.prompt.invocation_layer.open_ai.openai_request")
 def test_default_api_base(mock_request):
     with patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer"):
         invocation_layer = ChatGPTInvocationLayer(api_key="fake_api_key")
@@ -19,7 +19,7 @@ def test_default_api_base(mock_request):
 
 
 @pytest.mark.unit
-@patch("haystack.nodes.prompt.invocation_layer.chatgpt.openai_request")
+@patch("haystack.nodes.prompt.invocation_layer.open_ai.openai_request")
 def test_custom_api_base(mock_request):
     with patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer"):
         invocation_layer = ChatGPTInvocationLayer(api_key="fake_api_key", api_base="https://fake_api_base.com")
