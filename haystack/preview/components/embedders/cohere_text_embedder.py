@@ -62,7 +62,6 @@ class CohereTextEmbedder:
         """
         return default_to_dict(
             self,
-            api_key=self.api_key,
             model_name=self.model_name,
             api_base_url=self.api_base_url,
             truncate=self.truncate,

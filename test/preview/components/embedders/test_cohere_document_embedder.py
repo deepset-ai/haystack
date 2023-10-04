@@ -56,7 +56,6 @@ class TestCohereDocumentEmbedder:
         assert component_dict == {
             "type": "CohereDocumentEmbedder",
             "init_parameters": {
-                "api_key": "test-api-key",
                 "model_name": "embed-english-v2.0",
                 "api_base_url": "https://api.cohere.ai/v1/embed",
                 "truncate": "END",
@@ -89,7 +88,6 @@ class TestCohereDocumentEmbedder:
         assert component_dict == {
             "type": "CohereDocumentEmbedder",
             "init_parameters": {
-                "api_key": "test-api-key",
                 "model_name": "embed-multilingual-v2.0",
                 "api_base_url": "https://custom-api-base-url.com",
                 "truncate": "START",
@@ -137,8 +135,8 @@ class TestCohereDocumentEmbedder:
     @pytest.mark.unit
     def test_run(self):
         embedder = CohereDocumentEmbedder(api_key="test-api-key")
-        embedder.embedding_backend = MagicMock()
-        embedder.embedding_backend.embed = lambda x, **kwargs: np.random.rand(len(x), 2).tolist()
+        embedder = MagicMock()
+        embedder.run = lambda x, **kwargs: np.random.rand(len(x), 2).tolist()
 
         docs = [
             Document(text="I love cheese", metadata={"topic": "Cuisine"}),

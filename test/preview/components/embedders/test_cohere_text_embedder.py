@@ -52,7 +52,6 @@ class TestCohereTextEmbedder:
         assert component_dict == {
             "type": "CohereTextEmbedder",
             "init_parameters": {
-                "api_key": "test-api-key",
                 "model_name": "embed-english-v2.0",
                 "api_base_url": "https://api.cohere.ai/v1/embed",
                 "truncate": "END",
@@ -80,7 +79,6 @@ class TestCohereTextEmbedder:
         assert component_dict == {
             "type": "CohereTextEmbedder",
             "init_parameters": {
-                "api_key": "test-api-key",
                 "model_name": "embed-multilingual-v2.0",
                 "api_base_url": "https://custom-api-base-url.com",
                 "truncate": "START",

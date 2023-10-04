@@ -42,7 +42,7 @@ class CohereDocumentEmbedder:
         :param use_async_client: Flag to select the AsyncClient, defaults to `False`. It is recommended to use AsyncClient for applications with many concurrent calls.
         :param max_retries: maximal number of retries for requests, defaults to `3`.
         :param timeout: request timeout in seconds, defaults to `120`.
-                :param batch_size: Number of Documents to encode at once.
+        :param batch_size: Number of Documents to encode at once.
         :param progress_bar: Whether to show a progress bar or not. Can be helpful to disable in production deployments
                              to keep the logs clean.
         :param metadata_fields_to_embed: List of meta fields that should be embedded along with the Document text.
@@ -76,7 +76,6 @@ class CohereDocumentEmbedder:
         """
         return default_to_dict(
             self,
-            api_key=self.api_key,
             model_name=self.model_name,
             api_base_url=self.api_base_url,
             truncate=self.truncate,
