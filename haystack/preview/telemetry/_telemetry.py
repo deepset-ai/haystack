@@ -132,7 +132,11 @@ def pipeline_running(pipeline: "Pipeline") -> Tuple[str, Dict[str, Any]]:
         pipeline_description = pipeline.to_dict()
         components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         for component_name, component in pipeline_description["components"].items():
-            components[component["type"]].append({"name": component_name})
+            telemetry_data = getattr(pipeline.get_component(component_name), "_telemetry_data", {})
+            try:
+                components[component["type"]].append({"name": component_name, **telemetry_data})
+            except TypeError:
+                components[component["type"]].append({"name": component_name})
 
         # Data sent to Posthog
         return "Pipeline run (2.x)", {
