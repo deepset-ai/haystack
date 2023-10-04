@@ -121,6 +121,7 @@ class JoinDocuments(JoinNode):
     def _concatenate_results(self, results, document_map):
         """
         Concatenates multiple document result lists.
+        Return the documents with the higher score.
         """
         list_id = list(document_map.keys())
         scores_map = {}
