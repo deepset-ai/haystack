@@ -3,7 +3,7 @@ from pathlib import Path
 import logging
 import canals
 
-from haystack.preview.telemetry import send_pipeline_run_event
+from haystack.preview.telemetry import pipeline_running
 
 
 logger = logging.getLogger(__name__)
@@ -40,5 +40,5 @@ class Pipeline(canals.Pipeline):
 
         :raises PipelineRuntimeError: if the any of the components fail or return unexpected output.
         """
-        send_pipeline_run_event(self)
+        pipeline_running(self)
         return super().run(data=data, debug=debug)
