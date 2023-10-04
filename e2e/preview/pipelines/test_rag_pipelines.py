@@ -95,7 +95,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     """
     rag_pipeline = Pipeline()
     rag_pipeline.add_component(
-        instance=SentenceTransformersTextEmbedder(model_name_or_path="sentence-transformers/all-mpnet-base-v2"),
+        instance=SentenceTransformersTextEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
         name="text_embedder",
     )
     rag_pipeline.add_component(
@@ -131,7 +131,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     document_store = rag_pipeline.get_component("retriever").document_store
     indexing_pipeline = Pipeline()
     indexing_pipeline.add_component(
-        instance=SentenceTransformersDocumentEmbedder(model_name_or_path="sentence-transformers/all-mpnet-base-v2"),
+        instance=SentenceTransformersDocumentEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
         name="document_embedder",
     )
     indexing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="document_writer")
@@ -153,7 +153,6 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
 
         assert len(result["answer_builder"]["answers"]) == 1
         generated_answer = result["answer_builder"]["answers"][0]
-        print(generated_answer)
         assert spyword in generated_answer.data
         assert generated_answer.query == question
         assert hasattr(generated_answer, "documents")
