@@ -1,11 +1,8 @@
 import logging
 from typing import List, Optional, Dict, Any
 
-from haystack.preview import ComponentError
-
-from haystack.lazy_imports import LazyImport
-from haystack.preview import Document, component, default_from_dict, default_to_dict
-
+from haystack.preview import ComponentError, Document, component, default_from_dict, default_to_dict
+from haystack.preview.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
@@ -39,20 +36,19 @@ class TopPSampler:
     ```
     """
 
-    def __init__(self, top_p: Optional[float] = 1.0, score_field: Optional[str] = "similarity_score"):
+    def __init__(self, top_p: float = 1.0, score_field: Optional[str] = None):
         """
         Creates an instance of TopPSampler.
 
         :param top_p: Cumulative probability threshold for filtering the documents (usually between 0.9 and 0.99).
-        :param score_field: The name of the field that should be used to store the scores in a document's metadata.
+        :param score_field: The name of the field that should be used to resolve the scores in a document's metadata.
+        If no score field is provided (default), the component will assume that the scores are stored in the Document
+        score field.
         """
         torch_and_transformers_import.check()
-        super().__init__()
 
         self.top_p = top_p
         self.score_field = score_field
-        self.model = None
-        self.tokenizer = None
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -85,13 +81,6 @@ class TopPSampler:
 
         if not 0 <= top_p <= 1:
             raise ComponentError(f"top_p must be between 0 and 1. Got {top_p}.")
-
-        # If no model is provided, ensure documents have pre-computed scores
-        if not self._have_scores(documents):
-            raise ComponentError(
-                f"The component {self.__class__.__name__} requires similarity scores in the documents' metadata. "
-                "Either set 'model_name_or_path' to score documents or add scores to the documents."
-            )
 
         similarity_scores = torch.tensor(self._collect_scores(documents), dtype=torch.float32)
 
@@ -128,15 +117,14 @@ class TopPSampler:
         :param documents: List of Documents.
         :return: List of scores.
         """
-        if not self.score_field:
-            raise ComponentError("Cannot collect document scores if score_field init parameter is not set.")
-
-        return [d.metadata[self.score_field] for d in documents]
-
-    def _have_scores(self, documents: List[Document]) -> bool:
-        """
-        Check if the documents have scores in their metadata.
-        :param documents: List of Documents.
-        :return: True if the documents have scores in their metadata, False otherwise.
-        """
-        return all(self.score_field in d.metadata for d in documents)
+        if self.score_field:
+            have_scores = all(self.score_field in d.metadata for d in documents)
+            if not have_scores:
+                raise ComponentError(
+                    f"Score field '{self.score_field}' not found in metadata of all documents. "
+                    f"Make sure that all documents have a score field '{self.score_field}' in their metadata."
+                )
+            return [d.metadata[self.score_field] for d in documents]
+        else:
+            # If no score field is provided, assume the scores are stored in the score
+            return [d.score for d in documents]
