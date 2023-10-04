@@ -126,7 +126,6 @@ def pipeline_running(pipeline: "Pipeline") -> Tuple[str, Dict[str, Any]]:
 
     :param pipeline: the pipeline that is running.
     """
-    print("running")
     pipeline._telemetry_runs += 1
     if pipeline._telemetry_runs == 1 or pipeline._telemetry_runs % PIPELINE_RUN_BUFFER_SIZE == 0:
         # Collect info about components
@@ -143,8 +142,6 @@ def pipeline_running(pipeline: "Pipeline") -> Tuple[str, Dict[str, Any]]:
             else:
                 components[component["type"]].append({"name": component_name})
 
-        print("sending data!!")
-        # Data sent to Posthog
         return "Pipeline run (2.x)", {
             "pipeline_id": str(id(pipeline)),
             "runs": pipeline._telemetry_runs,
