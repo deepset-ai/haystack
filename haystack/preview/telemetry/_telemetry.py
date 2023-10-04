@@ -132,11 +132,7 @@ def pipeline_running(pipeline: "Pipeline") -> Tuple[str, Dict[str, Any]]:
         pipeline_description = pipeline.to_dict()
         components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         for component_name, component in pipeline_description["components"].items():
-            telemetry_data = getattr(pipeline.get_component(component_name), "_telemetry_data", {})
-            if not isinstance(telemetry_data, dict):
-                telemetry_data = {"error": "_telemetry_data is present but does not contain a dict"}
-
-            components[component["type"]].append({"name": component_name, **telemetry_data})
+            components[component["type"]].append({"name": component_name})
 
         # Data sent to Posthog
         return "Pipeline run (2.x)", {
