@@ -1,11 +1,10 @@
-from collections import defaultdict
 import logging
+from collections import defaultdict
 from math import inf
+from typing import List, Optional
 
-from typing import Optional, List
-
-from haystack.schema import Document
 from haystack.nodes.other.join import JoinNode
+from haystack.schema import Document
 
 logger = logging.getLogger(__name__)
 
@@ -128,10 +127,10 @@ class JoinDocuments(JoinNode):
         for idx in list_id:
             tmp = []
             for result in results:
-               for doc in result:
-                   if doc.id==idx:
-                       tmp.append(doc)
-            item_best_score = max(tmp, key=lambda x:x.score)
+                for doc in result:
+                    if doc.id == idx:
+                        tmp.append(doc)
+            item_best_score = max(tmp, key=lambda x: x.score)
             scores_map.update({idx: item_best_score.score})
         return scores_map
 
