@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional, TYPE_CHECKING, List, Tuple
 from pathlib import Path
 import logging
 import uuid
-import datetime
+from collections import defaultdict
 import yaml
 import posthog
 
@@ -130,11 +130,8 @@ def pipeline_running(pipeline: "Pipeline") -> Tuple[str, Dict[str, Any]]:
     if pipeline._telemetry_runs == 1 or pipeline._telemetry_runs % PIPELINE_RUN_BUFFER_SIZE == 0:
         # Collect info about components
         pipeline_description = pipeline.to_dict()
-        components: Dict[str, List[Dict[str, Any]]] = {}
+        components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         for component_name, component in pipeline_description["components"].items():
-            if not component["type"] in components:
-                components[component["type"]] = []
-
             telemetry_data = getattr(pipeline.get_component(component_name), "_telemetry_data", {})
             if not isinstance(telemetry_data, dict):
                 telemetry_data = {"error": "_telemetry_data is present but does not contain a dict"}
@@ -146,7 +143,6 @@ def pipeline_running(pipeline: "Pipeline") -> Tuple[str, Dict[str, Any]]:
             "pipeline_id": str(id(pipeline)),
             "runs": pipeline._telemetry_runs,
             "components": components,
-            "_unix_stamp": (datetime.datetime.now() - datetime.datetime(1970, 1, 1)).total_seconds(),
         }
 
 
