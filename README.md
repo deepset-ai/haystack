@@ -106,7 +106,7 @@ Then move into the cloned folder and install the project with `pip`, including t
 cd haystack && pip install -e '.[dev]'
 ```
 
-If you want to contribute to the Haystack repo, check our [Contributor Guidelines](#💙-contributing) first.
+If you want to contribute to the Haystack repo, check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first.
 
 See the list of [dependencies](https://github.com/deepset-ai/haystack/blob/main/pyproject.toml) to check which ones you want to install (for example, `[all]`, `[dev]`, or other).
 
