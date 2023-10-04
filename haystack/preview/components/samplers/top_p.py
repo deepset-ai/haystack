@@ -118,8 +118,8 @@ class TopPSampler:
         :return: List of scores.
         """
         if self.score_field:
-            have_scores = all(self.score_field in d.metadata for d in documents)
-            if not have_scores:
+            have_scores_in_metadata = all(self.score_field in d.metadata for d in documents)
+            if not have_scores_in_metadata:
                 raise ComponentError(
                     f"Score field '{self.score_field}' not found in metadata of all documents. "
                     f"Make sure that all documents have a score field '{self.score_field}' in their metadata."
@@ -127,4 +127,9 @@ class TopPSampler:
             return [d.metadata[self.score_field] for d in documents]
         else:
             # If no score field is provided, assume the scores are stored in the score
-            return [d.score for d in documents]
+            have_scores = all(d.score for d in documents)
+            if not have_scores:
+                raise ComponentError(
+                    "At least one Document score is None. Make sure all documents have a valid score value."
+                )
+            return [d.score for d in documents]  # type: ignore ## because Document score is Optional
