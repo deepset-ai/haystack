@@ -246,7 +246,6 @@ formatting = [
   # Version specified following Black stability policy:
   # https://black.readthedocs.io/en/stable/the_black_code_style/index.html#stability-policy
   "black[jupyter]~=23.0",
-  "isort~=5.12"
 ]
 
 all = [
@@ -451,5 +450,3 @@ max-statements = 105  # Default is 50
 omit = [
     "haystack/testing/*",
 ]
-[tool.isort]
-profile = "black"
