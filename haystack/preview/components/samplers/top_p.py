@@ -105,11 +105,6 @@ class TopPSampler:
             highest_prob_indices = torch.argsort(probs, descending=True)
             selected_docs = [documents[int(highest_prob_indices[0].item())]]
 
-        # Include prob scores in the results
-        if self.score_field:
-            for idx, doc in enumerate(selected_docs):
-                doc.metadata[self.score_field] = str(sorted_probs[idx].item())
-
         return {"documents": selected_docs}
 
     def _collect_scores(self, documents: List[Document]) -> List[float]:
