@@ -2,7 +2,7 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Any, Dict, List, Optional, Generator, Set
+from typing import Any, Dict, Generator, List, Optional, Set
 
 from haystack.preview import Document, component, default_from_dict, default_to_dict
 
