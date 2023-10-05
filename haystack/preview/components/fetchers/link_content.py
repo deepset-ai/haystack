@@ -2,12 +2,18 @@ import io
 import logging
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Dict, List, Callable, Any, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import requests
 from requests import Response
 from requests.exceptions import HTTPError
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryCallState
+from tenacity import (
+    RetryCallState,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from haystack import __version__
 from haystack.preview import component, default_from_dict, default_to_dict
@@ -45,7 +51,8 @@ def binary_content_handler(response: Response) -> ByteStream:
 @component
 class LinkContentFetcher:
     """
-    LinkContentFetcher fetches content from a URL link and converts it to a Document object.
+    LinkContentFetcher is a component for fetching and extracting content from URLs. It supports handling various
+    content types, retries on failures, and automatic user-agent rotation for failed web requests.
     """
 
     def __init__(
@@ -118,6 +125,16 @@ class LinkContentFetcher:
 
     @component.output_types(streams=Dict[str, List[io.BytesIO]])
     def run(self, urls: List[str]):
+        """
+        Fetches content from a list of URLs and returns a dictionary of extracted content streams.
+
+        :param urls: A list of URLs to fetch content from.
+
+
+        :return: A dictionary containing content streams categorized by content type.
+             The keys are content types (e.g., "text/html", "application/pdf"), and the values are lists of
+             ByteStream objects representing the extracted content.
+        """
         streams: Dict[str, List[ByteStream]] = defaultdict(list)
         if not urls:
             return {"streams": streams}
@@ -139,11 +156,16 @@ class LinkContentFetcher:
 
     def fetch(self, url: str) -> Tuple[str, ByteStream]:
         """
-        Fetches content from a URL and converts it to a Document objects. If no content is extracted,
-        an empty Document object is returned (if raise_on_failure is False).
+        Fetches content from a URL and returns it as a ByteStream.
 
-        :param url: URL to fetch content from.
-        :return: A tuple containing the content type and the corresponding ByteStream
+        :param url: The URL to fetch content from.
+        :return: A tuple containing the content type and the corresponding ByteStream.
+             The content type is a string indicating the type of content fetched (e.g., "text/html", "application/pdf").
+             The ByteStream object contains the fetched content as binary data.
+
+        :raises: If an error occurs during content retrieval and `raise_on_failure` is set to True, this method will
+        raise an exception. Otherwise, errors are logged, and an empty ByteStream is returned.
+
         """
         content_type: str = "text/html"
         stream: ByteStream = ByteStream(data=b"")
@@ -165,6 +187,7 @@ class LinkContentFetcher:
     def _get_content_type(self, response: Response):
         """
         Get the content type of the response.
+
         :param response: The response object.
         :return: The content type of the response.
         """
@@ -175,6 +198,7 @@ class LinkContentFetcher:
         """
         Switches the User-Agent for this LinkContentRetriever to the next one in the list of user agents.
         Used by tenacity to retry the requests with a different user agent.
+
         :param retry_state: The retry state (unused, required by tenacity).
         """
         self.current_user_agent_idx = (self.current_user_agent_idx + 1) % len(self.user_agents)
