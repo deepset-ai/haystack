@@ -14,8 +14,7 @@ with LazyImport(message="Run 'pip install torch>=1.13'") as torch_import:
 @component
 class TopPSampler:
     """
-    Selects documents based on the cumulative probability of the Document similarity scores using top p (nucleus)
-    sampling.
+    Filters documents using top-p (nucleus) sampling based on their similarity scores' cumulative probability.
 
     Usage example:
 
@@ -29,7 +28,6 @@ class TopPSampler:
         Document(text="Belgrade", metadata={"similarity_score": -8.9}),
         Document(text="Sarajevo", metadata={"similarity_score": -4.6}),
     ]
-    query = "City in Bosnia and Herzegovina"
     output = sampler.run(documents=docs)
     docs = output["documents"]
     assert len(docs) == 1
@@ -41,10 +39,9 @@ class TopPSampler:
         """
         Creates an instance of TopPSampler.
 
-        :param top_p: Cumulative probability threshold for filtering the documents (usually between 0.9 and 0.99).
-        :param score_field: The name of the field that should be used to resolve the scores in a document's metadata.
-        If no score field is provided (default), the component will assume that the scores are stored in the Document
-        score field.
+        :param top_p: Cumulative probability threshold (usually between 0.9 and 0.99).
+        :param score_field: Field name in a document's metadata containing the scores. Defaults to the Document score
+        if not provided.
         """
         torch_import.check()
 
@@ -67,13 +64,12 @@ class TopPSampler:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document], top_p: Optional[float] = None):
         """
-        Returns a list of documents filtered using `top_p`, based on the similarity scores of the documents whose
-        cumulative probability is less than or equal to `top_p`.
+        Filter documents based on their similarity scores using top-p sampling.
 
-        :param documents: List of Documents.
-        :param top_p: Cumulative probability threshold for filtering the documents. If top_p is not provided at
-        initialization then top_p will default to 1.0
-        :return: List of Documents whose cumulative probability is less than or equal to `top_p`.
+        :param documents: List of Documents to filter.
+        :param top_p: Cumulative probability threshold. Defaults to the value set during initialization or 1.0
+        if not set.
+        :return: List of filtered Documents.
         """
         if not documents:
             return {"documents": []}
@@ -86,11 +82,11 @@ class TopPSampler:
         similarity_scores = torch.tensor(self._collect_scores(documents), dtype=torch.float32)
 
         # Apply softmax normalization to the similarity scores
-        probs = torch.exp(similarity_scores) / torch.sum(torch.exp(similarity_scores))
+        probs = torch.nn.functional.softmax(similarity_scores, dim=-1)
 
         # Sort the probabilities and calculate their cumulative sum
         sorted_probs, sorted_indices = torch.sort(probs, descending=True)
-        cumulative_probs = torch.cumsum(sorted_probs, dim=0)
+        cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
 
         # Find the indices with cumulative probabilities that exceed top_p
         top_p_indices = torch.where(cumulative_probs <= top_p)[0]
@@ -102,6 +98,10 @@ class TopPSampler:
         # If low p resulted in no documents being selected, then
         # return at least one document
         if not selected_docs:
+            logger.warning(
+                f"Top-p sampling with p={top_p} resulted in no documents being selected. "
+                f"Returning the document with the highest similarity score."
+            )
             highest_prob_indices = torch.argsort(probs, descending=True)
             selected_docs = [documents[int(highest_prob_indices[0].item())]]
 
@@ -114,18 +114,20 @@ class TopPSampler:
         :return: List of scores.
         """
         if self.score_field:
-            have_scores_in_metadata = all(self.score_field in d.metadata for d in documents)
-            if not have_scores_in_metadata:
+            missing_scores_docs = [d for d in documents if self.score_field not in d.metadata]
+            if missing_scores_docs:
+                missing_scores_docs_ids = [d.id for d in missing_scores_docs if d.id]
                 raise ComponentError(
-                    f"Score field '{self.score_field}' not found in metadata of all documents. "
+                    f"Score field '{self.score_field}' not found in metadata of documents "
+                    f"with IDs: {missing_scores_docs_ids}."
                     f"Make sure that all documents have a score field '{self.score_field}' in their metadata."
                 )
             return [d.metadata[self.score_field] for d in documents]
         else:
-            # If no score field is provided, assume the scores are stored in the score
-            have_scores = all(d.score for d in documents)
-            if not have_scores:
+            missing_scores_docs = [d for d in documents if d.score is None]
+            if missing_scores_docs:
+                missing_scores_docs_ids = [d.id for d in missing_scores_docs if d.id]
                 raise ComponentError(
-                    "At least one Document score is None. Make sure all documents have a valid score value."
+                    f"Ensure all documents have a valid score value. These docs  {missing_scores_docs_ids} don't."
                 )
             return [d.score for d in documents]  # type: ignore ## because Document score is Optional
