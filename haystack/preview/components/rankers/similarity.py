@@ -99,9 +99,10 @@ class SimilarityRanker:
         with torch.inference_mode():
             similarity_scores = self.model(**features).logits.squeeze()  # type: ignore
 
-        sorted_similarity_scores, sorted_indices = torch.sort(similarity_scores, descending=True)
+        _, sorted_indices = torch.sort(similarity_scores, descending=True)
         ranked_docs = []
-        for i in sorted_indices:
-            documents[i].score = sorted_similarity_scores[i].item()
+        for sorted_index_tensor in sorted_indices:
+            i = sorted_index_tensor.item()
+            documents[i].score = similarity_scores[i].item()
             ranked_docs.append(documents[i])
         return {"documents": ranked_docs}

@@ -33,26 +33,29 @@ class TestSimilarityRanker:
         assert component.model_name_or_path == "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     @pytest.mark.integration
-    def test_run(self):
+    @pytest.mark.parametrize(
+        "query,docs_before_texts,expected_first_text",
+        [
+            ("City in Bosnia and Herzegovina", ["Berlin", "Belgrade", "Sarajevo"], "Sarajevo"),
+            ("Machine learning", ["Python", "Bakery in Paris", "Tesla Giga Berlin"], "Python"),
+            ("Cubist movement", ["Nirvana", "Pablo Picasso", "Coffee"], "Pablo Picasso"),
+        ],
+    )
+    def test_run(self, query, docs_before_texts, expected_first_text):
         """
-        Test if the component runs correctly.
+        Test if the component ranks documents correctly.
         """
-        sampler = SimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
-        sampler.warm_up()
-        docs = [Document(text="Berlin"), Document(text="Belgrade"), Document(text="Sarajevo")]
-        query = "City in Bosnia and Herzegovina"
-        output = sampler.run(query=query, documents=docs)
-        docs = output["documents"]
-        assert len(docs) == 3
-        assert docs[0].text == "Sarajevo"
+        ranker = SimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
+        ranker.warm_up()
+        docs_before = [Document(text=text) for text in docs_before_texts]
+        output = ranker.run(query=query, documents=docs_before)
+        docs_after = output["documents"]
 
-        # another test to make sure the first one was not a fluke
-        docs = [Document(text="Python"), Document(text="Bakery in Paris"), Document(text="Tesla Giga Berlin")]
-        query = "Programming language usually used for machine learning?"
-        output = sampler.run(query=query, documents=docs)
-        docs = output["documents"]
-        assert len(docs) == 3
-        assert docs[0].text == "Python"
+        assert len(docs_after) == 3
+        assert docs_after[0].text == expected_first_text
+
+        sorted_scores = sorted([doc.score for doc in docs_after], reverse=True)
+        assert [doc.score for doc in docs_after] == sorted_scores
 
     #  Returns an empty list if no documents are provided
     @pytest.mark.integration
