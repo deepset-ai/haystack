@@ -1,3 +1,5 @@
+import random
+
 import pytest
 
 from haystack.preview import Document, ComponentError
@@ -44,16 +46,22 @@ class TestTopPSampler:
         """
         Test if the component runs correctly with scores in the Document score field.
         """
-        sampler = TopPSampler(top_p=0.95)
+        sampler = TopPSampler(top_p=0.99)
         docs = [
             Document(text="Berlin", score=-10.6),
             Document(text="Belgrade", score=-8.9),
             Document(text="Sarajevo", score=-4.6),
         ]
+
+        random.shuffle(docs)
+
         output = sampler.run(documents=docs)
         docs = output["documents"]
         assert len(docs) == 1
         assert docs[0].text == "Sarajevo"
+
+        sorted_scores = sorted([doc.score for doc in docs], reverse=True)
+        assert [doc.score for doc in docs] == sorted_scores
 
     #  Returns an empty list if no documents are provided
     @pytest.mark.unit
