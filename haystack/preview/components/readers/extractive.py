@@ -1,17 +1,17 @@
-import math
-import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
+import math
+import warnings
 
-from haystack.preview import ComponentError, Document, ExtractedAnswer, component, default_from_dict, default_to_dict
+from haystack.preview import component, default_from_dict, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(
     "Run 'pip install transformers[torch,sentencepiece]==4.34.0 sentence-transformers>=2.2.0'"
 ) as torch_and_transformers_import:
-    import torch
-    from tokenizers import Encoding
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
+    from tokenizers import Encoding
+    import torch
 
 
 @component
