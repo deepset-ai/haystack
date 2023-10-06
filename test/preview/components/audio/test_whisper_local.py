@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
@@ -7,19 +8,11 @@ import torch
 from haystack.preview.dataclasses import Document
 from haystack.preview.components.audio import LocalWhisperTranscriber
 
-from test.preview.components.base import BaseTestComponent
-
 
 SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
 
 
-class Test_LocalWhisperTranscriber(BaseTestComponent):
-    @pytest.mark.unit
-    def test_save_load(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(
-            LocalWhisperTranscriber(model_name_or_path="large-v2"), tmp_path
-        )
-
+class TestLocalWhisperTranscriber:
     @pytest.mark.unit
     def test_init(self):
         transcriber = LocalWhisperTranscriber(
@@ -33,6 +26,47 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
     def test_init_wrong_model(self):
         with pytest.raises(ValueError, match="Model name 'whisper-1' not recognized"):
             LocalWhisperTranscriber(model_name_or_path="whisper-1")
+
+    @pytest.mark.unit
+    def test_to_dict(self):
+        transcriber = LocalWhisperTranscriber()
+        data = transcriber.to_dict()
+        assert data == {
+            "type": "LocalWhisperTranscriber",
+            "init_parameters": {"model_name_or_path": "large", "device": "cpu", "whisper_params": {}},
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_custom_init_parameters(self):
+        transcriber = LocalWhisperTranscriber(
+            model_name_or_path="tiny",
+            device="cuda",
+            whisper_params={"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+        )
+        data = transcriber.to_dict()
+        assert data == {
+            "type": "LocalWhisperTranscriber",
+            "init_parameters": {
+                "model_name_or_path": "tiny",
+                "device": "cuda",
+                "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+            },
+        }
+
+    @pytest.mark.unit
+    def test_from_dict(self):
+        data = {
+            "type": "LocalWhisperTranscriber",
+            "init_parameters": {
+                "model_name_or_path": "tiny",
+                "device": "cuda",
+                "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+            },
+        }
+        transcriber = LocalWhisperTranscriber.from_dict(data)
+        assert transcriber.model_name == "tiny"
+        assert transcriber.device == torch.device("cuda")
+        assert transcriber.whisper_params == {"return_segments": True, "temperature": [0.1, 0.6, 0.8]}
 
     @pytest.mark.unit
     def test_warmup(self):
@@ -60,7 +94,7 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
         }
         results = comp.run(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
         expected = Document(
-            content="test transcription",
+            text="test transcription",
             metadata={
                 "audio_file": SAMPLES_PATH / "audio" / "this is the content of the document.wav",
                 "other_metadata": ["other", "meta", "data"],
@@ -80,7 +114,7 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
             audio_files=[str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute())]
         )
         expected = Document(
-            content="test transcription",
+            text="test transcription",
             metadata={
                 "audio_file": str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute()),
                 "other_metadata": ["other", "meta", "data"],
@@ -98,7 +132,7 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
         }
         results = comp.transcribe(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
         expected = Document(
-            content="test transcription",
+            text="test transcription",
             metadata={
                 "audio_file": SAMPLES_PATH / "audio" / "this is the content of the document.wav",
                 "other_metadata": ["other", "meta", "data"],
@@ -118,7 +152,36 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
             audio_files=[open(SAMPLES_PATH / "audio" / "this is the content of the document.wav", "rb")]
         )
         expected = Document(
-            content="test transcription",
+            text="test transcription",
             metadata={"audio_file": "<<binary stream>>", "other_metadata": ["other", "meta", "data"]},
         )
         assert results == [expected]
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
+    def test_whisper_local_transcriber(self, preview_samples_path):
+        comp = LocalWhisperTranscriber(model_name_or_path="medium")
+        comp.warm_up()
+        output = comp.run(
+            audio_files=[
+                preview_samples_path / "audio" / "this is the content of the document.wav",
+                str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute()),
+                open(preview_samples_path / "audio" / "answer.wav", "rb"),
+            ]
+        )
+        docs = output["documents"]
+        assert len(docs) == 3
+
+        assert docs[0].text.strip().lower() == "this is the content of the document."
+        assert (
+            preview_samples_path / "audio" / "this is the content of the document.wav" == docs[0].metadata["audio_file"]
+        )
+
+        assert docs[1].text.strip().lower() == "the context for this answer is here."
+        assert (
+            str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute())
+            == docs[1].metadata["audio_file"]
+        )
+
+        assert docs[2].text.strip().lower() == "answer."
+        assert docs[2].metadata["audio_file"] == "<<binary stream>>"

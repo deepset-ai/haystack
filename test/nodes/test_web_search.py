@@ -39,7 +39,7 @@ def test_web_search_with_site_keyword():
     assert len(result["documents"]) > 0
     assert isinstance(result["documents"][0], Document)
     assert all(
-        ["nasa" in doc.meta["link"] or "lifewire" in doc.meta["link"] for doc in result["documents"]]
+        "nasa" in doc.meta["link"] or "lifewire" in doc.meta["link"] for doc in result["documents"]
     ), "Some documents are not from the specified sites lifewire.com or nasa.gov."
 
 

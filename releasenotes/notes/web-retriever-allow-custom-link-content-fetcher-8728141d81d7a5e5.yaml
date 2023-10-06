@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Allow WebRetriever users to specify a custom LinkContentFetcher instance

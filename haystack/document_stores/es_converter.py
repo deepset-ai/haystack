@@ -72,8 +72,8 @@ def open_search_index_to_document_store(
     :param port: Ports(s) of OpenSearch nodes.
     :param username: Username (standard authentication via http_auth).
     :param password: Password (standard authentication via http_auth).
-    :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth).
-    :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth).
+    :param api_key_id: ID of the API key (alternative authentication mode to the above http_auth).
+    :param api_key: Secret value of the API key (alternative authentication mode to the above http_auth).
     :param aws4auth: Authentication for usage with AWS OpenSearch
         (can be generated with the requests-aws4auth package).
     :param scheme: `"https"` or `"http"`, protocol used to connect to your OpenSearch instance.
@@ -171,8 +171,8 @@ def elasticsearch_index_to_document_store(
     :param port: Ports(s) of Elasticsearch nodes.
     :param username: Username (standard authentication via http_auth).
     :param password: Password (standard authentication via http_auth).
-    :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth).
-    :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth).
+    :param api_key_id: ID of the API key (alternative authentication mode to the above http_auth).
+    :param api_key: Secret value of the API key (alternative authentication mode to the above http_auth).
     :param aws4auth: Authentication for usage with AWS Elasticsearch
         (can be generated with the requests-aws4auth package).
     :param scheme: `"https"` or `"http"`, protocol used to connect to your Elasticsearch instance.
@@ -228,9 +228,8 @@ def elasticsearch_index_to_document_store(
         content = record["_source"].pop(original_content_field, "")
         if content:
             meta = {}
-            if original_name_field is not None:
-                if original_name_field in record["_source"]:
-                    meta["name"] = record["_source"].pop(original_name_field)
+            if original_name_field is not None and original_name_field in record["_source"]:
+                meta["name"] = record["_source"].pop(original_name_field)
             # Only add selected metadata fields
             if included_metadata_fields is not None:
                 for metadata_field in included_metadata_fields:

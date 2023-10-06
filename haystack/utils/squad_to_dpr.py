@@ -75,7 +75,7 @@ from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.lazy_imports import LazyImport
 
-with LazyImport("Run 'pip instlal farm-haystack[elasticsearch]'") as es_import:
+with LazyImport("Run 'pip install farm-haystack[elasticsearch]'") as es_import:
     from elasticsearch import Elasticsearch
 
 

@@ -8,10 +8,69 @@ from canals.errors import PipelineRuntimeError
 from langdetect import LangDetectException
 
 from haystack.preview.components.file_converters.txt import TextFileToDocument
-from test.preview.components.base import BaseTestComponent
 
 
-class TestTextfileToDocument(BaseTestComponent):
+class TestTextfileToDocument:
+    @pytest.mark.unit
+    def test_to_dict(self):
+        component = TextFileToDocument()
+        data = component.to_dict()
+        assert data == {
+            "type": "TextFileToDocument",
+            "init_parameters": {
+                "encoding": "utf-8",
+                "remove_numeric_tables": False,
+                "numeric_row_threshold": 0.4,
+                "valid_languages": [],
+                "id_hash_keys": [],
+                "progress_bar": True,
+            },
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_custom_init_parameters(self):
+        component = TextFileToDocument(
+            encoding="latin-1",
+            remove_numeric_tables=True,
+            numeric_row_threshold=0.7,
+            valid_languages=["en", "de"],
+            id_hash_keys=["name"],
+            progress_bar=False,
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "TextFileToDocument",
+            "init_parameters": {
+                "encoding": "latin-1",
+                "remove_numeric_tables": True,
+                "numeric_row_threshold": 0.7,
+                "valid_languages": ["en", "de"],
+                "id_hash_keys": ["name"],
+                "progress_bar": False,
+            },
+        }
+
+    @pytest.mark.unit
+    def test_from_dict(self):
+        data = {
+            "type": "TextFileToDocument",
+            "init_parameters": {
+                "encoding": "latin-1",
+                "remove_numeric_tables": True,
+                "numeric_row_threshold": 0.7,
+                "valid_languages": ["en", "de"],
+                "id_hash_keys": ["name"],
+                "progress_bar": False,
+            },
+        }
+        component = TextFileToDocument.from_dict(data)
+        assert component.encoding == "latin-1"
+        assert component.remove_numeric_tables
+        assert component.numeric_row_threshold == 0.7
+        assert component.valid_languages == ["en", "de"]
+        assert component.id_hash_keys == ["name"]
+        assert not component.progress_bar
+
     @pytest.mark.unit
     def test_run(self, preview_samples_path):
         """
@@ -22,8 +81,8 @@ class TestTextfileToDocument(BaseTestComponent):
         output = converter.run(paths=paths)
         docs = output["documents"]
         assert len(docs) == 2
-        assert docs[0].content == "Some text for testing.\nTwo lines in here."
-        assert docs[1].content == "This is a test line.\n123 456 789\n987 654 321."
+        assert docs[0].text == "Some text for testing.\nTwo lines in here."
+        assert docs[1].text == "This is a test line.\n123 456 789\n987 654 321."
         assert docs[0].metadata["file_path"] == str(paths[0])
         assert docs[1].metadata["file_path"] == str(paths[1])
 
@@ -31,17 +90,18 @@ class TestTextfileToDocument(BaseTestComponent):
     def test_run_warning_for_invalid_language(self, preview_samples_path, caplog):
         file_path = preview_samples_path / "txt" / "doc_1.txt"
         converter = TextFileToDocument()
-        with patch("haystack.preview.components.file_converters.txt.langdetect.detect", return_value="en"):
-            with caplog.at_level(logging.WARNING):
-                output = converter.run(paths=[file_path], valid_languages=["de"])
-                assert (
-                    f"Text from file {file_path} is not in one of the valid languages: ['de']. "
-                    f"The file may have been decoded incorrectly." in caplog.text
-                )
+        with patch(
+            "haystack.preview.components.file_converters.txt.langdetect.detect", return_value="en"
+        ), caplog.at_level(logging.WARNING):
+            output = converter.run(paths=[file_path], valid_languages=["de"])
+            assert (
+                f"Text from file {file_path} is not in one of the valid languages: ['de']. "
+                f"The file may have been decoded incorrectly." in caplog.text
+            )
 
         docs = output["documents"]
         assert len(docs) == 1
-        assert docs[0].content == "Some text for testing.\nTwo lines in here."
+        assert docs[0].text == "Some text for testing.\nTwo lines in here."
 
     @pytest.mark.unit
     def test_run_error_handling(self, preview_samples_path, caplog):

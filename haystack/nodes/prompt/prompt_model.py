@@ -111,6 +111,16 @@ class PromptModel(BaseComponent):
         output = self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
         return output
 
+    async def ainvoke(self, prompt: Union[str, List[str], List[Dict[str, str]]], **kwargs) -> List[str]:
+        """
+        Drop-in replacement asyncio version of the `invoke` method, see there for documentation.
+        """
+        if hasattr(self.model_invocation_layer, "ainvoke"):
+            return await self.model_invocation_layer.ainvoke(prompt=prompt, **kwargs)
+
+        # The underlying invocation layer doesn't support asyncio
+        return self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
+
     @overload
     def _ensure_token_limit(self, prompt: str) -> str:
         ...
