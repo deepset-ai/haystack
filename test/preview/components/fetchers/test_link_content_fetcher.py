@@ -159,3 +159,34 @@ class TestLinkContentFetcher:
         fetcher = LinkContentFetcher()
         streams = fetcher.run([PDF_URL])["streams"]
         assert len(streams["application/pdf"]) == 1 or len(streams["application/octet-stream"]) == 1
+
+    @pytest.mark.integration
+    def test_link_content_fetcher_multiple_different_content_types(self):
+        """
+        This test is to ensure that the fetcher can handle a list of URLs that contain different content types.
+        """
+        fetcher = LinkContentFetcher()
+        streams = fetcher.run([PDF_URL, HTML_URL])["streams"]
+        assert len(streams) == 2
+        assert len(streams["application/pdf"]) == 1 or len(streams["application/octet-stream"]) == 1
+        assert "Haystack" in streams["text/html"][0].data.decode("utf-8")
+
+    @pytest.mark.integration
+    def test_link_content_fetcher_multiple_different_content_types_v2(self):
+        """
+        This test is to ensure that the fetcher can handle a list of URLs that contain different content types,
+        and that we have two html streams.
+        """
+
+        fetcher = LinkContentFetcher()
+        streams = fetcher.run([PDF_URL, HTML_URL, "https://google.com"])["streams"]
+        assert len(streams) == 2
+        assert len(streams["text/html"]) == 2
+        assert len(streams["application/pdf"]) == 1 or len(streams["application/octet-stream"]) == 1
+        assert "Haystack" in streams["text/html"][0].data.decode("utf-8") or "Haystack" in streams["text/html"][
+            1
+        ].data.decode("utf-8")
+
+        assert "Search" in streams["text/html"][1].data.decode("utf-8") or "Search" in streams["text/html"][
+            0
+        ].data.decode("utf-8")

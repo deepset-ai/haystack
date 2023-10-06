@@ -1,4 +1,3 @@
-import io
 import logging
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -117,17 +116,18 @@ class LinkContentFetcher:
         """
         return default_from_dict(cls, data)
 
-    @component.output_types(streams=Dict[str, List[io.BytesIO]])
+    @component.output_types(streams=Dict[str, List[ByteStream]])
     def run(self, urls: List[str]):
         """
         Fetches content from a list of URLs and returns a dictionary of extracted content streams.
+        For each content type there will be one outgoing edge created with value of List[ByteStream].
 
         :param urls: A list of URLs to fetch content from.
 
 
         :return: A dictionary containing content streams categorized by content type.
-             The keys are content types (e.g., "text/html", "application/pdf"), and the values are lists of
-             ByteStream objects representing the extracted content.
+             The keys are content types (e.g., "text/html", "text/plain", "application/pdf"),
+             and the values are lists of ByteStream objects representing the extracted content.
         """
         streams: Dict[str, List[ByteStream]] = defaultdict(list)
         if not urls:
@@ -171,7 +171,8 @@ class LinkContentFetcher:
         except Exception as e:
             if self.raise_on_failure:
                 raise e
-            logger.debug("Couldn't retrieve content from %s", url)
+            # less verbose log as this is expected to happen often (requests failing, blocked, etc.)
+            logger.debug("Couldn't retrieve content from %s due to %s", url, str(e))
 
         finally:
             self.current_user_agent_idx = 0
