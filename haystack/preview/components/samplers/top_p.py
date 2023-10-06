@@ -99,8 +99,9 @@ class TopPSampler:
         # return at least one document
         if not selected_docs:
             logger.warning(
-                f"Top-p sampling with p={top_p} resulted in no documents being selected. "
-                f"Returning the document with the highest similarity score."
+                "Top-p sampling with p=%s resulted in no documents being selected. "
+                "Returning the document with the highest similarity score.",
+                top_p,
             )
             highest_prob_indices = torch.argsort(probs, descending=True)
             selected_docs = [documents[int(highest_prob_indices[0].item())]]
