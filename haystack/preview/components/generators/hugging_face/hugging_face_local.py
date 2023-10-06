@@ -1,29 +1,28 @@
-from typing import Optional, List, Callable, Dict, Any, Union, Literal
-
-import sys
 import logging
+import sys
 from collections import defaultdict
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
+from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
-from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
+from haystack.preview import DeserializationError, component, default_from_dict, default_to_dict
 from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install torch transformers'") as torch_and_transformers_import:
     import torch
+    from huggingface_hub import model_info
     from transformers import (
-        pipeline,
-        StoppingCriteriaList,
-        StoppingCriteria,
+        TOKENIZER_MAPPING,
+        AutoConfig,
+        AutoTokenizer,
         GenerationConfig,
+        Pipeline,
+        PreTrainedModel,
         PreTrainedTokenizer,
         PreTrainedTokenizerFast,
-        PreTrainedModel,
-        Pipeline,
-        AutoTokenizer,
-        AutoConfig,
-        TOKENIZER_MAPPING,
+        StoppingCriteria,
+        StoppingCriteriaList,
+        pipeline,
     )
-    from huggingface_hub import model_info
 
 
 logger = logging.getLogger(__name__)
