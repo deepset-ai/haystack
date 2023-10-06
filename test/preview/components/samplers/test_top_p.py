@@ -54,14 +54,15 @@ class TestTopPSampler:
         ]
 
         random.shuffle(docs)
-
-        output = sampler.run(documents=docs)
-        docs = output["documents"]
-        assert len(docs) == 1
-        assert docs[0].text == "Sarajevo"
-
         sorted_scores = sorted([doc.score for doc in docs], reverse=True)
-        assert [doc.score for doc in docs] == sorted_scores
+
+        # top_p = 0.99 will get the top 1 document
+        output = sampler.run(documents=docs)
+        docs_filtered = output["documents"]
+        assert len(docs_filtered) == 1
+        assert docs_filtered[0].text == "Sarajevo"
+
+        assert [doc.score for doc in docs_filtered] == sorted_scores[:1]
 
     #  Returns an empty list if no documents are provided
     @pytest.mark.unit
