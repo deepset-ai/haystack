@@ -13,6 +13,7 @@ services:
       # DEFAULT_ADMIN_PASSWORD: "DEMO_PASSWORD"
       # COOKIE_KEYS: "somesafecookiekeys"
       # JWT_SECRET: "somesafesecret"
+      # DOMAIN_WHITELIST: "*"
     ports:
       - "7001:7001"
     links:
