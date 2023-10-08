@@ -37,7 +37,7 @@ class HTMLToDocument:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
-    def run(self, paths: List[Union[str, Path]]):
+    def run(self, paths: List[Union[str, Path, ByteStream]]):
         """
         Converts a list of HTML files to Documents.
 
