@@ -105,7 +105,7 @@ class TestLinkContentFetcher:
             )
             fetcher = LinkContentFetcher()
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
-            assert streams["text/plain"][0].data == correct_response
+            assert streams[0].data == correct_response
 
     @pytest.mark.unit
     def test_run_html(self):
@@ -116,7 +116,7 @@ class TestLinkContentFetcher:
             )
             fetcher = LinkContentFetcher()
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
-            assert streams["text/html"][0].data == correct_response
+            assert streams[0].data == correct_response
 
     @pytest.mark.unit
     def test_run_binary(self, test_files_path):
@@ -127,7 +127,7 @@ class TestLinkContentFetcher:
             )
             fetcher = LinkContentFetcher()
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
-            assert streams["application/pdf"][0].data == file_bytes
+            assert streams[0].data == file_bytes
 
     @pytest.mark.unit
     def test_run_bad_status_code(self):
@@ -140,25 +140,25 @@ class TestLinkContentFetcher:
 
         # empty byte stream is returned because raise_on_failure is False
         assert len(streams) == 1
-        assert streams["text/html"][0].data == empty_byte_stream
+        assert streams[0].data == empty_byte_stream
 
     @pytest.mark.integration
     def test_link_content_fetcher_html(self):
         fetcher = LinkContentFetcher()
         streams = fetcher.run([HTML_URL])["streams"]
-        assert "Haystack" in streams["text/html"][0].data.decode("utf-8")
+        assert "Haystack" in streams[0].data.decode("utf-8")
 
     @pytest.mark.integration
     def test_link_content_fetcher_text(self):
         fetcher = LinkContentFetcher()
         streams = fetcher.run([TEXT_URL])["streams"]
-        assert "Haystack" in streams["text/plain"][0].data.decode("utf-8")
+        assert "Haystack" in streams[0].data.decode("utf-8")
 
     @pytest.mark.integration
     def test_link_content_fetcher_pdf(self):
         fetcher = LinkContentFetcher()
         streams = fetcher.run([PDF_URL])["streams"]
-        assert len(streams["application/pdf"]) == 1 or len(streams["application/octet-stream"]) == 1
+        assert len(streams) == 1
 
     @pytest.mark.integration
     def test_link_content_fetcher_multiple_different_content_types(self):
@@ -168,8 +168,11 @@ class TestLinkContentFetcher:
         fetcher = LinkContentFetcher()
         streams = fetcher.run([PDF_URL, HTML_URL])["streams"]
         assert len(streams) == 2
-        assert len(streams["application/pdf"]) == 1 or len(streams["application/octet-stream"]) == 1
-        assert "Haystack" in streams["text/html"][0].data.decode("utf-8")
+        for stream in streams:
+            if stream.metadata["content_type"] == "text/html":
+                assert "Haystack" in stream.data.decode("utf-8")
+            elif stream.metadata["content_type"] == "application/pdf":
+                assert len(stream.data) > 0
 
     @pytest.mark.integration
     def test_link_content_fetcher_multiple_different_content_types_v2(self):
@@ -180,13 +183,9 @@ class TestLinkContentFetcher:
 
         fetcher = LinkContentFetcher()
         streams = fetcher.run([PDF_URL, HTML_URL, "https://google.com"])["streams"]
-        assert len(streams) == 2
-        assert len(streams["text/html"]) == 2
-        assert len(streams["application/pdf"]) == 1 or len(streams["application/octet-stream"]) == 1
-        assert "Haystack" in streams["text/html"][0].data.decode("utf-8") or "Haystack" in streams["text/html"][
-            1
-        ].data.decode("utf-8")
-
-        assert "Search" in streams["text/html"][1].data.decode("utf-8") or "Search" in streams["text/html"][
-            0
-        ].data.decode("utf-8")
+        assert len(streams) == 3
+        for stream in streams:
+            if stream.metadata["content_type"] == "text/html":
+                assert "Haystack" in stream.data.decode("utf-8") or "Google" in stream.data.decode("utf-8")
+            elif stream.metadata["content_type"] == "application/pdf":
+                assert len(stream.data) > 0

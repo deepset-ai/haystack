@@ -119,15 +119,13 @@ class LinkContentFetcher:
     @component.output_types(streams=List[ByteStream])
     def run(self, urls: List[str]):
         """
-        Fetches content from a list of URLs and returns a dictionary of extracted content streams.
-        For each content type there will be one outgoing edge created with value of List[ByteStream].
+        Fetches content from a list of URLs and returns a list of extracted content streams.
+        Each content stream is a ByteStream object containing the extracted content as binary data.
+        The content type of each stream is stored in the metadata of the ByteStream object under
+        the key "content_type".
 
         :param urls: A list of URLs to fetch content from.
-
-
-        :return: A dictionary containing content streams categorized by content type.
-             The keys are content types (e.g., "text/html", "text/plain", "application/pdf"),
-             and the values are lists of ByteStream objects representing the extracted content.
+        :return: A lists of ByteStream objects representing the extracted content.
         """
         streams = []
         if not urls:
