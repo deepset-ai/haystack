@@ -160,7 +160,7 @@ class TestLocalWhisperTranscriber:
     @pytest.mark.integration
     @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
     def test_whisper_local_transcriber(self, preview_samples_path):
-        comp = LocalWhisperTranscriber(model_name_or_path="medium")
+        comp = LocalWhisperTranscriber(model_name_or_path="medium", whisper_params={"language": "english"})
         comp.warm_up()
         output = comp.run(
             audio_files=[
