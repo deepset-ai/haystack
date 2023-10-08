@@ -11,21 +11,21 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class FileExtensionRouter:
+class FileTypeRouter:
     """
-    A component that routes files based on their MIME types read from their file extensions. This component
-    does not read the file contents, but rather uses the file extension to determine the MIME type of the file.
+    FileTypeRouter takes a list of data sources (file paths or byte streams) and groups them by their corresponding
+    MIME types. For file paths, MIME types are inferred from their extensions, while for byte streams, MIME types
+    are determined from the provided metadata.
 
-    The FileExtensionRouter takes a list of file paths and groups them by their MIME types.
-    The list of MIME types to consider is provided during the initialization of the component.
+    The set of MIME types to be considered is specified during the initialization of the component.
 
-    This component is particularly useful when working with a large number of files, and you
-    want to categorize them based on their MIME types.
+    This component is invaluable when categorizing a large collection of files or data streams by their MIME
+    types and routing them to different components for further processing.
     """
 
     def __init__(self, mime_types: List[str]):
         """
-        Initialize the FileExtensionRouter.
+        Initialize the FileTypeRouter.
 
         :param mime_types: A list of file mime types to consider when routing
         files (e.g. ["text/plain", "audio/x-wav", "image/jpeg"]).
@@ -49,38 +49,37 @@ class FileExtensionRouter:
         return default_to_dict(self, mime_types=self.mime_types)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "FileExtensionRouter":
+    def from_dict(cls, data: Dict[str, Any]) -> "FileTypeRouter":
         """
         Deserialize this component from a dictionary.
         """
         return default_from_dict(cls, data)
 
-    def run(self, paths: List[Union[str, Path, ByteStream]]) -> Dict[str, List[Path]]:
+    def run(self, sources: List[Union[str, Path, ByteStream]]) -> Dict[str, List[Path]]:
         """
-        Run the FileExtensionRouter.
+        Categorizes the provided data sources by their MIME types.
 
-        This method takes the input data, iterates through the provided file paths, checks the file
-        mime type of each file, and groups the file paths by their mime types.
+        :param: sources: A list of file paths or byte streams to categorize.
+        :return: A dictionary where keys are MIME types and values are lists of data sources.
 
-        :param paths: The input data containing the file paths to route.
-        :return: The output data containing the routed file paths.
         """
+
         mime_types = defaultdict(list)
-        for path in paths:
-            if isinstance(path, str):
-                path = Path(path)
+        for source in sources:
+            if isinstance(source, str):
+                source = Path(source)
 
-            if isinstance(path, (str, Path)):
-                mime_type = self.get_mime_type(path)
-            elif isinstance(path, ByteStream):
-                mime_type = path.metadata.get("content_type")
+            if isinstance(source, (str, Path)):
+                mime_type = self.get_mime_type(source)
+            elif isinstance(source, ByteStream):
+                mime_type = source.metadata.get("content_type")
             else:
-                raise ValueError(f"Unsupported path type: {type(path)}")
+                raise ValueError(f"Unsupported data source type: {type(source)}")
 
             if mime_type in self.mime_types:
-                mime_types[mime_type].append(path)
+                mime_types[mime_type].append(source)
             else:
-                mime_types["unclassified"].append(path)
+                mime_types["unclassified"].append(source)
 
         return mime_types
 
