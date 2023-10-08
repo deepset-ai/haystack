@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Union, Optional, Dict, Any
 
 from haystack.preview import component, default_from_dict, default_to_dict
+from haystack.preview.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class FileExtensionRouter:
         """
         return default_from_dict(cls, data)
 
-    def run(self, paths: List[Union[str, Path]]):
+    def run(self, paths: List[Union[str, Path, ByteStream]]) -> Dict[str, List[Path]]:
         """
         Run the FileExtensionRouter.
 
@@ -68,7 +69,14 @@ class FileExtensionRouter:
         for path in paths:
             if isinstance(path, str):
                 path = Path(path)
-            mime_type = self.get_mime_type(path)
+
+            if isinstance(path, (str, Path)):
+                mime_type = self.get_mime_type(path)
+            elif isinstance(path, ByteStream):
+                mime_type = path.metadata.get("content_type")
+            else:
+                raise ValueError(f"Unsupported path type: {type(path)}")
+
             if mime_type in self.mime_types:
                 mime_types[mime_type].append(path)
             else:
