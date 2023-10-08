@@ -127,7 +127,7 @@ class LinkContentFetcher:
         :param urls: A list of URLs to fetch content from.
         :return: A lists of ByteStream objects representing the extracted content.
         """
-        streams = []
+        streams: List[ByteStream] = []
         if not urls:
             return {"streams": streams}
 
