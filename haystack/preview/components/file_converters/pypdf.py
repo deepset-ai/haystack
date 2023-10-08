@@ -47,21 +47,21 @@ class PyPDFToDocument:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
-    def run(self, paths: List[Union[str, Path, ByteStream]], id_hash_keys: Optional[List[str]] = None):
+    def run(self, sources: List[Union[str, Path, ByteStream]], id_hash_keys: Optional[List[str]] = None):
         """
         Converts PDF files to Documents.
 
-        :param paths: A list of paths to PDF files.
+        :param sources: A list of PDF data sources
         :param id_hash_keys: Generate the Document ID from a custom list of strings that refer to the Document's
             attributes. Default: `None`
         """
         id_hash_keys = id_hash_keys or self.id_hash_keys
         documents = []
-        for path in paths:
+        for source in sources:
             try:
-                text = self._read_pdf_file(path)
+                text = self._read_pdf_file(source)
             except Exception as e:
-                logger.warning("Could not read %s. Skipping it. Error message: %s", path, e)
+                logger.warning("Could not read %s. Skipping it. Error message: %s", source, e)
                 continue
 
             document = Document(text=text, id_hash_keys=id_hash_keys)
@@ -69,18 +69,18 @@ class PyPDFToDocument:
 
         return {"documents": documents}
 
-    def _read_pdf_file(self, path: Union[str, Path, ByteStream]) -> str:
+    def _read_pdf_file(self, source: Union[str, Path, ByteStream]) -> str:
         """
-        Extracts content from the given PDF path or ByteStream.
-        :param path: Path to a PDF file or a ByteStream containing a PDF file.
+        Extracts content from the given PDF source.
+        :param source:  PDF file data source
         :return: The extracted text.
         """
-        if isinstance(path, (str, Path)):
-            pdf_reader = PdfReader(str(path))
-        elif isinstance(path, ByteStream):
-            pdf_reader = PdfReader(io.BytesIO(path.data))
+        if isinstance(source, (str, Path)):
+            pdf_reader = PdfReader(str(source))
+        elif isinstance(source, ByteStream):
+            pdf_reader = PdfReader(io.BytesIO(source.data))
         else:
-            raise ValueError(f"Unsupported path type: {type(path)}")
+            raise ValueError(f"Unsupported path type: {type(source)}")
 
         text = "".join(extracted_text for page in pdf_reader.pages if (extracted_text := page.extract_text()))
 
