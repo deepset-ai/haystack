@@ -104,7 +104,7 @@ class TopPSampler:
                 top_p,
             )
             highest_prob_indices = torch.argsort(probs, descending=True)
-            selected_docs = [documents[highest_prob_indices[0].item()]]
+            selected_docs = [documents[int(highest_prob_indices[0].item())]]
 
         return {"documents": selected_docs}
 
