@@ -116,7 +116,7 @@ class LinkContentFetcher:
         """
         return default_from_dict(cls, data)
 
-    @component.output_types(streams=Dict[str, List[ByteStream]])
+    @component.output_types(streams=List[ByteStream])
     def run(self, urls: List[str]):
         """
         Fetches content from a list of URLs and returns a dictionary of extracted content streams.
@@ -129,7 +129,7 @@ class LinkContentFetcher:
              The keys are content types (e.g., "text/html", "text/plain", "application/pdf"),
              and the values are lists of ByteStream objects representing the extracted content.
         """
-        streams: Dict[str, List[ByteStream]] = defaultdict(list)
+        streams = []
         if not urls:
             return {"streams": streams}
 
@@ -137,14 +137,16 @@ class LinkContentFetcher:
         if len(urls) == 1:
             content_type, stream = self.fetch(urls[0])
             if content_type and stream:
-                streams[content_type].append(stream)
+                stream.metadata["content_type"] = content_type
+                streams.append(stream)
         else:
             with ThreadPoolExecutor() as executor:
                 results = executor.map(self.fetch, urls)
 
             for content_type, stream in results:
                 if content_type and stream:
-                    streams[content_type].append(stream)
+                    stream.metadata["content_type"] = content_type
+                    streams.append(stream)
 
         return {"streams": streams}
 
