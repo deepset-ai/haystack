@@ -55,13 +55,12 @@ class FileTypeRouter:
         """
         return default_from_dict(cls, data)
 
-    def run(self, sources: List[Union[str, Path, ByteStream]]) -> Dict[str, List[Path]]:
+    def run(self, sources: List[Union[str, Path, ByteStream]]) -> Dict[str, List[Union[ByteStream, Path]]]:
         """
         Categorizes the provided data sources by their MIME types.
 
         :param: sources: A list of file paths or byte streams to categorize.
         :return: A dictionary where keys are MIME types and values are lists of data sources.
-
         """
 
         mime_types = defaultdict(list)
@@ -69,7 +68,7 @@ class FileTypeRouter:
             if isinstance(source, str):
                 source = Path(source)
 
-            if isinstance(source, (str, Path)):
+            if isinstance(source, Path):
                 mime_type = self.get_mime_type(source)
             elif isinstance(source, ByteStream):
                 mime_type = source.metadata.get("content_type")
