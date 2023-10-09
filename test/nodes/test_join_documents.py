@@ -65,8 +65,8 @@ def test_joindocuments_concatenate_keep_only_highest_ranking_duplicate(join_mode
         {"documents": [Document(content="text document 2", content_type="text", score=0.7)]},
     ]
     expected_outputs = [
-        {"documents": [Document(content="text document 1", content_type="text", score=0.2)]},
         {"documents": [Document(content="text document 2", content_type="text", score=0.7)]},
+        {"documents": [Document(content="text document 1", content_type="text", score=0.2)]},
     ]
 
     join_docs = JoinDocuments(join_mode=join_mode)
