@@ -374,7 +374,14 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.model: str = next(
             (
                 m
-                for m in ["small", "medium", "large", "multilingual-22-12", "finance-sentiment"]
+                for m in [
+                    "small",
+                    "large",
+                    "multilingual-22-12",
+                    "embed-english-v2.0",
+                    "embed-english-light-v2.0",
+                    "embed-multilingual-v2.0",
+                ]
                 if m in retriever.embedding_model
             ),
             "multilingual-22-12",

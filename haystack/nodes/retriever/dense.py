@@ -1878,7 +1878,14 @@ class EmbeddingRetriever(DenseRetriever):
         )
         if valid_openai_model_name:
             return "openai"
-        if model_name_or_path in ["small", "medium", "large", "multilingual-22-12", "finance-sentiment"]:
+        if model_name_or_path in [
+            "small",
+            "large",
+            "multilingual-22-12",
+            "embed-english-v2.0",
+            "embed-english-light-v2.0",
+            "embed-multilingual-v2.0",
+        ]:
             return "cohere"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
