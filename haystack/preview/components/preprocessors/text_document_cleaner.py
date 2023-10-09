@@ -179,9 +179,7 @@ class TextDocumentCleaner:
         res = set(chain.from_iterable(ngrams))
         return res
 
-    def _find_longest_common_ngram(
-        self, sequences: List[str], max_ngram: int = 30, min_ngram: int = 3
-    ) -> Optional[str]:
+    def _find_longest_common_ngram(self, sequences: List[str], max_ngram: int = 30, min_ngram: int = 3) -> str:
         """
         Find the longest common ngram across different text sequences (e.g. start of pages).
         Considering all ngrams between the specified range. Helpful for finding footers, headers etc.
@@ -193,13 +191,9 @@ class TextDocumentCleaner:
         """
         sequences = [s for s in sequences if s]  # filter empty sequences
         if not sequences:
-            return None
+            return ""
         seqs_ngrams = map(partial(self._allngram, min_ngram=min_ngram, max_ngram=max_ngram), sequences)
         intersection = reduce(set.intersection, seqs_ngrams)
 
-        try:
-            longest = max(intersection, key=len)
-        except ValueError:
-            # no common sequence found
-            longest = ""
-        return longest if longest.strip() else None
+        longest = max(intersection, key=len, default="")
+        return longest if longest.strip() else ""
