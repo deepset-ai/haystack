@@ -122,7 +122,7 @@ class LinkContentFetcher:
         Fetches content from a list of URLs and returns a list of extracted content streams.
         Each content stream is a ByteStream object containing the extracted content as binary data.
         The content type of each stream is stored in the metadata of the ByteStream object under
-        the key "content_type".
+        the key "content_type". The URL of the fetched content is stored under the key "url".
 
         :param urls: A list of URLs to fetch content from.
         :return: A lists of ByteStream objects representing the extracted content.
@@ -133,27 +133,28 @@ class LinkContentFetcher:
 
         # don't use multithreading if there's only one URL
         if len(urls) == 1:
-            content_type, stream = self.fetch(urls[0])
-            if content_type and stream:
-                stream.metadata["content_type"] = content_type
+            stream_metadata, stream = self.fetch(urls[0])
+            if stream_metadata and stream:
+                stream.metadata.update(stream_metadata)
                 streams.append(stream)
         else:
             with ThreadPoolExecutor() as executor:
                 results = executor.map(self.fetch, urls)
 
-            for content_type, stream in results:
-                if content_type and stream:
-                    stream.metadata["content_type"] = content_type
+            for stream_metadata, stream in results:
+                if stream_metadata and stream:
+                    stream.metadata.update(stream_metadata)
                     streams.append(stream)
 
         return {"streams": streams}
 
-    def fetch(self, url: str) -> Tuple[str, ByteStream]:
+    def fetch(self, url: str) -> Tuple[Dict[str, str], ByteStream]:
         """
         Fetches content from a URL and returns it as a ByteStream.
 
         :param url: The URL to fetch content from.
-        :return: A tuple containing the content type and the corresponding ByteStream.
+        :return: A tuple containing the ByteStream metadata dict and the corresponding ByteStream.
+             ByteStream metadata contains the URL and the content type of the fetched content.
              The content type is a string indicating the type of content fetched (e.g., "text/html", "application/pdf").
              The ByteStream object contains the fetched content as binary data.
 
@@ -177,7 +178,7 @@ class LinkContentFetcher:
         finally:
             self.current_user_agent_idx = 0
 
-        return content_type, stream
+        return {"content_type": content_type, "url": url}, stream
 
     def _get_content_type(self, response: Response):
         """
