@@ -146,19 +146,25 @@ class TestLinkContentFetcher:
     def test_link_content_fetcher_html(self):
         fetcher = LinkContentFetcher()
         streams = fetcher.run([HTML_URL])["streams"]
-        assert "Haystack" in streams[0].data.decode("utf-8")
+        first_stream = streams[0]
+        assert "Haystack" in first_stream.data.decode("utf-8")
+        assert first_stream.metadata["content_type"] == "text/html"
 
     @pytest.mark.integration
     def test_link_content_fetcher_text(self):
         fetcher = LinkContentFetcher()
         streams = fetcher.run([TEXT_URL])["streams"]
-        assert "Haystack" in streams[0].data.decode("utf-8")
+        first_stream = streams[0]
+        assert "Haystack" in first_stream.data.decode("utf-8")
+        assert first_stream.metadata["content_type"] == "text/plain"
 
     @pytest.mark.integration
     def test_link_content_fetcher_pdf(self):
         fetcher = LinkContentFetcher()
         streams = fetcher.run([PDF_URL])["streams"]
         assert len(streams) == 1
+        first_stream = streams[0]
+        assert first_stream.metadata["content_type"] in ("application/octet-stream", "application/pdf")
 
     @pytest.mark.integration
     def test_link_content_fetcher_multiple_different_content_types(self):
@@ -175,7 +181,7 @@ class TestLinkContentFetcher:
                 assert len(stream.data) > 0
 
     @pytest.mark.integration
-    def test_link_content_fetcher_multiple_different_content_types_v2(self):
+    def test_link_content_fetcher_multiple_html_streams(self):
         """
         This test is to ensure that the fetcher can handle a list of URLs that contain different content types,
         and that we have two html streams.
