@@ -244,7 +244,9 @@ class Agent:
         self.max_steps = max_steps
         self.tm = tools_manager or ToolsManager()
         self.memory = memory or NoMemory()
-        self.callback_manager = Events(("on_agent_start", "on_agent_step", "on_agent_finish", "on_new_token"))
+        self.callback_manager = Events(
+            ("on_agent_start", "on_agent_step", "on_agent_finish", "on_agent_final_answer", "on_new_token")
+        )
         self.prompt_node = prompt_node
         prompt_template = prompt_template or prompt_node.default_prompt_template or "zero-shot-react"
         resolved_prompt_template = prompt_node.get_prompt_template(prompt_template)
@@ -290,8 +292,12 @@ class Agent:
             agent_name = kwargs.pop("name", "react")
             print_text(f"\nAgent {agent_name} started with {kwargs}\n")
 
+        def on_agent_final_answer(final_answer: Dict[str, Any], **kwargs: Any) -> None:
+            pass
+
         self.tm.callback_manager.on_tool_finish += on_tool_finish
         self.callback_manager.on_agent_start += on_agent_start
+        self.callback_manager.on_agent_final_answer += on_agent_final_answer
 
         if streaming:
             self.callback_manager.on_new_token += lambda token, **kwargs: print_text(token, color=agent_color)
@@ -359,7 +365,9 @@ class Agent:
                 agent_step = self._step(query, agent_step, params)
         finally:
             self.callback_manager.on_agent_finish(agent_step)
-        return agent_step.final_answer(query=query)
+        final_answer = agent_step.final_answer(query=query)
+        self.callback_manager.on_agent_final_answer(final_answer)
+        return final_answer
 
     def _step(self, query: str, current_step: AgentStep, params: Optional[dict] = None):
         # plan next step using the LLM
