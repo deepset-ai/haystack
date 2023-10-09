@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from haystack.preview.components.routers.file_router import FileTypeRouter
+from haystack.preview.components.routers.file_type_router import FileTypeRouter
 from haystack.preview.dataclasses import ByteStream
 
 
