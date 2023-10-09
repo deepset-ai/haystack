@@ -1,14 +1,12 @@
-from typing import List, Any, Dict, Optional, Type
-
-import json
 import hashlib
+import json
 import logging
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from dataclasses import dataclass, field, fields, asdict
+from typing import Any, Dict, List, Optional, Type
 
 import numpy
 import pandas
-
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +48,7 @@ class DocumentDecoder(json.JSONDecoder):
         return dictionary
 
 
-@dataclass(frozen=True)
+@dataclass
 class Document:
     """
     Base data class containing some data to be queried.
