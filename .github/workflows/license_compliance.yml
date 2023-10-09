@@ -171,7 +171,7 @@ jobs:
     name: All extras
     env:
       REQUIREMENTS_FILE: requirements_all.txt
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4

@@ -1,6 +1,6 @@
+import logging
 from unittest.mock import patch
 
-import logging
 import pytest
 
 from haystack.nodes.prompt.invocation_layer import ChatGPTInvocationLayer

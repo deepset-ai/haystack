@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed the bug that prevented the correct usage of ChatGPT invocation layer
+    in 1.21.1.
+    Added async support for ChatGPT invocation layer.
