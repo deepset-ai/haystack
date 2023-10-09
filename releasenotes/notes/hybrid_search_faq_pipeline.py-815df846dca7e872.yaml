@@ -1,4 +1,4 @@
 ---
 fixes:
   - |
-    Added the documents_store.update_embeddings
+    Added documents_store.update_embeddings to hybrid search example pipeline.
