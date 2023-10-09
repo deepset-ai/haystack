@@ -1,9 +1,10 @@
-import os
 from typing import Any, Dict, Optional, TYPE_CHECKING, List, Tuple
+import os
 from pathlib import Path
+import defaultdict
+import datetime
 import logging
 import uuid
-from collections import defaultdict
 import yaml
 import posthog
 
@@ -127,8 +128,20 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
     :param pipeline: the pipeline that is running.
     """
     pipeline._telemetry_runs += 1
-    if pipeline._telemetry_runs != 1 or pipeline._telemetry_runs % PIPELINE_RUN_BUFFER_SIZE != 0:
+    if (
+        # Always send the first event
+        pipeline._telemetry_runs != 1
+        or
+        # Send one event every 10 runs
+        pipeline._telemetry_runs % PIPELINE_RUN_BUFFER_SIZE != 0
+        or
+        # Always send the first event of the day
+        not pipeline._last_telemetry_sent
+        or (datetime.datetime.now() - pipeline._last_telemetry_sent).days == 0
+    ):
         return None
+
+    pipeline._last_telemetry_sent = datetime.datetime.now()
 
     # Collect info about components
     pipeline_description = pipeline.to_dict()
