@@ -60,19 +60,17 @@ def test_joindocuments_preserves_root_node():
 @pytest.mark.parametrize("join_mode", ["concatenate", "merge", "reciprocal_rank_fusion"])
 def test_joindocuments_concatenate_keep_only_highest_ranking_duplicate(join_mode):
     inputs = [
-        {"documents": [Document(content="text document 1", content_type="text", score=0.2)]},
-        {"documents": [Document(content="text document 2", content_type="text", score=0.3)]},
+        {"documents": [Document(content="text document 1", content_type="text", score=0.2),
+        Document(content="text document 2", content_type="text", score=0.3)]},
         {"documents": [Document(content="text document 2", content_type="text", score=0.7)]},
     ]
-    expected_outputs = [
-        {"documents": [Document(content="text document 2", content_type="text", score=0.7)]},
-        {"documents": [Document(content="text document 1", content_type="text", score=0.2)]},
-    ]
+    expected_outputs = {"documents": [Document(content="text document 2", content_type="text", score=0.7),
+        Document(content="text document 1", content_type="text", score=0.2)]}
 
     join_docs = JoinDocuments(join_mode=join_mode)
     result, _ = join_docs.run(inputs)
     assert len(result["documents"]) == 2
     if join_mode == "concatenate":
-        assert result["documents"] == expected_outputs
+        assert result['documents'] == expected_outputs['documents']
     else:
         pass
