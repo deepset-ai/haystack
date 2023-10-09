@@ -64,6 +64,26 @@ class TestTopPSampler:
 
         assert [doc.score for doc in docs_filtered] == sorted_scores[:1]
 
+    @pytest.mark.unit
+    def test_run_scores_top_p_1(self):
+        """
+        Test if the component runs correctly top_p=1.
+        """
+        sampler = TopPSampler(top_p=1.0)
+        docs = [
+            Document(text="Berlin", score=-10.6),
+            Document(text="Belgrade", score=-8.9),
+            Document(text="Sarajevo", score=-4.6),
+        ]
+
+        random.shuffle(docs)
+        output = sampler.run(documents=docs)
+        docs_filtered = output["documents"]
+        assert len(docs_filtered) == len(docs)
+        assert docs_filtered[0].text == "Sarajevo"
+
+        assert [doc.score for doc in docs_filtered] == sorted([doc.score for doc in docs], reverse=True)
+
     #  Returns an empty list if no documents are provided
     @pytest.mark.unit
     def test_returns_empty_list_if_no_documents_are_provided(self):

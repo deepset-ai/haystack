@@ -79,6 +79,8 @@ class TopPSampler:
         if not 0 <= top_p <= 1:
             raise ComponentError(f"top_p must be between 0 and 1. Got {top_p}.")
 
+        epsilon = 1e-6  # account for floating-point precision issues
+
         similarity_scores = torch.tensor(self._collect_scores(documents), dtype=torch.float32)
 
         # Apply softmax normalization to the similarity scores
@@ -89,7 +91,7 @@ class TopPSampler:
         cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
 
         # Find the indices with cumulative probabilities that exceed top_p
-        top_p_indices = torch.where(cumulative_probs <= top_p)[0]
+        top_p_indices = torch.where(torch.BoolTensor(cumulative_probs <= (top_p + epsilon)))[0]
 
         # Map the selected indices back to their original indices
         original_indices = sorted_indices[top_p_indices]
