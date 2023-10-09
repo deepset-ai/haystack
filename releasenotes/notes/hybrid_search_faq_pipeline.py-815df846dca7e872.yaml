@@ -1,4 +1,4 @@
 ---
-upgrade:
+fixes:
   - |
     Added the documents_store.update_embeddings
