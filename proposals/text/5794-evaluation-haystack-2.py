@@ -135,5 +135,5 @@ expected_output = [
 ]
 
 eval_result = eval(pipe, inputs=inputs, expected_output=expected_output)
-metrics = result.calculate_metrics(Metric.SAS)
+metrics = result.calculate_metrics(Metric.SAS)  # noqa
 metrics.save("path/to/file.csv")

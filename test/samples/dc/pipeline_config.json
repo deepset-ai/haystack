@@ -1,6 +1,5 @@
 {
     "version": "ignore",
-    "name": "document_retrieval_1",
     "components": [
         {
             "name": "DocumentStore",
