@@ -70,13 +70,41 @@ class TestFileTypeRouter:
 
             byte_streams.append(stream)
 
+        # add unclassified ByteStream
+        bs = ByteStream(b"unclassified content")
+        bs.metadata["content_type"] = "unknown_type"
+        byte_streams.append(bs)
+
         router = FileTypeRouter(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
         output = router.run(sources=byte_streams)
         assert output
         assert len(output["text/plain"]) == 2
         assert len(output["audio/x-wav"]) == 1
         assert len(output["image/jpeg"]) == 1
-        assert not output.get("unclassified", None)
+        assert len(output.get("unclassified")) == 1
+
+    @pytest.mark.unit
+    def test_run_with_bytestreams_and_file_paths(self, preview_samples_path):
+        file_paths = [
+            preview_samples_path / "txt" / "doc_1.txt",
+            preview_samples_path / "audio" / "the context for this answer is here.wav",
+            preview_samples_path / "txt" / "doc_2.txt",
+            preview_samples_path / "images" / "apple.jpg",
+        ]
+        mime_types = ["text/plain", "audio/x-wav", "text/plain", "image/jpeg"]
+        byte_stream_sources = []
+        for path, mime_type in zip(file_paths, mime_types):
+            stream = ByteStream(path.read_bytes())
+            stream.metadata["content_type"] = mime_type
+            byte_stream_sources.append(stream)
+
+        mixed_sources = file_paths[:2] + byte_stream_sources[2:]
+
+        router = FileTypeRouter(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
+        output = router.run(sources=mixed_sources)
+        assert len(output["text/plain"]) == 2
+        assert len(output["audio/x-wav"]) == 1
+        assert len(output["image/jpeg"]) == 1
 
     @pytest.mark.unit
     def test_no_files(self):
