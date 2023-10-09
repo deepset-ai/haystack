@@ -1,6 +1,9 @@
 - Start Date: 2022-11-11
 - Proposal PR: https://github.com/deepset-ai/haystack/pull/3558
 - Github Issue:
+
+> ⚠️ Superseded by https://github.com/deepset-ai/haystack/blob/main/proposals/text/5390-embedders.md
+
   # Summary
 
 - Current EmbeddingRetriever doesn't allow Haystack users to provide new embedding methods and is

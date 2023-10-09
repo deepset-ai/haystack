@@ -159,7 +159,7 @@ class PromptNode(BaseComponent):
         if template_to_fill:
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
-                kwargs_copy = copy.copy(kwargs)
+                kwargs_copy = template_to_fill.remove_template_params(copy.copy(kwargs))
                 # and pass the prepared prompt and kwargs copy to the model
                 prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
@@ -232,6 +232,37 @@ class PromptNode(BaseComponent):
             return list(template.prompt_params)
         return []
 
+    def _prepare(  # type: ignore
+        self, query, file_paths, labels, documents, meta, invocation_context, prompt_template, generation_kwargs
+    ) -> Dict:
+        """
+        Prepare prompt invocation.
+        """
+        invocation_context = invocation_context or {}
+
+        if query and "query" not in invocation_context:
+            invocation_context["query"] = query
+
+        if file_paths and "file_paths" not in invocation_context:
+            invocation_context["file_paths"] = file_paths
+
+        if labels and "labels" not in invocation_context:
+            invocation_context["labels"] = labels
+
+        if documents and "documents" not in invocation_context:
+            invocation_context["documents"] = documents
+
+        if meta and "meta" not in invocation_context:
+            invocation_context["meta"] = meta
+
+        if "prompt_template" not in invocation_context:
+            invocation_context["prompt_template"] = self.get_prompt_template(prompt_template)
+
+        if generation_kwargs:
+            invocation_context.update(generation_kwargs)
+
+        return invocation_context
+
     def run(
         self,
         query: Optional[str] = None,
@@ -272,29 +303,86 @@ class PromptNode(BaseComponent):
         # so that they can be returned by `run()` as part of the pipeline's debug output.
         prompt_collector: List[str] = []
 
-        invocation_context = invocation_context or {}
-        if query and "query" not in invocation_context.keys():
-            invocation_context["query"] = query
+        invocation_context = self._prepare(
+            query, file_paths, labels, documents, meta, invocation_context, prompt_template, generation_kwargs
+        )
 
-        if file_paths and "file_paths" not in invocation_context.keys():
-            invocation_context["file_paths"] = file_paths
+        results = self(**invocation_context, prompt_collector=prompt_collector)
 
-        if labels and "labels" not in invocation_context.keys():
-            invocation_context["labels"] = labels
+        prompt_template_resolved: PromptTemplate = invocation_context.pop("prompt_template")
 
-        if documents and "documents" not in invocation_context.keys():
-            invocation_context["documents"] = documents
+        try:
+            output_variable = self.output_variable or prompt_template_resolved.output_variable or "results"
+        except:
+            output_variable = "results"
 
-        if meta and "meta" not in invocation_context.keys():
-            invocation_context["meta"] = meta
+        invocation_context[output_variable] = results
+        invocation_context["prompts"] = prompt_collector
+        final_result: Dict[str, Any] = {output_variable: results, "invocation_context": invocation_context}
 
-        if "prompt_template" not in invocation_context.keys():
-            invocation_context["prompt_template"] = self.get_prompt_template(prompt_template)
+        if self.debug:
+            final_result["_debug"] = {"prompts_used": prompt_collector}
 
-        if generation_kwargs:
-            invocation_context.update(generation_kwargs)
+        return final_result, "output_1"
 
-        results = self(prompt_collector=prompt_collector, **invocation_context)
+    async def _aprompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs):
+        """
+        Async version of the actual prompt invocation.
+        """
+        results = []
+        # we pop the prompt_collector kwarg to avoid passing it to the model
+        prompt_collector: List[Union[str, List[Dict[str, str]]]] = kwargs.pop("prompt_collector", [])
+
+        # kwargs override model kwargs
+        kwargs = {**self._prepare_model_kwargs(), **kwargs}
+        template_to_fill = self.get_prompt_template(prompt_template)
+        if template_to_fill:
+            # prompt template used, yield prompts from inputs args
+            for prompt in template_to_fill.fill(*args, **kwargs):
+                kwargs_copy = template_to_fill.remove_template_params(copy.copy(kwargs))
+                # and pass the prepared prompt and kwargs copy to the model
+                prompt = self.prompt_model._ensure_token_limit(prompt)
+                prompt_collector.append(prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
+                output = await self.prompt_model.ainvoke(prompt, **kwargs_copy)
+                results.extend(output)
+
+            kwargs["prompts"] = prompt_collector
+            results = template_to_fill.post_process(results, **kwargs)
+        else:
+            # straightforward prompt, no templates used
+            for prompt in list(args):
+                kwargs_copy = copy.copy(kwargs)
+                prompt = self.prompt_model._ensure_token_limit(prompt)
+                prompt_collector.append(prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
+                output = await self.prompt_model.ainvoke(prompt, **kwargs_copy)
+                results.extend(output)
+        return results
+
+    async def arun(
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
+        invocation_context: Optional[Dict[str, Any]] = None,
+        prompt_template: Optional[Union[str, PromptTemplate]] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[Dict, str]:
+        """
+        Drop-in replacement asyncio version of the `run` method, see there for documentation.
+        """
+        prompt_collector: List[str] = []
+
+        invocation_context = self._prepare(
+            query, file_paths, labels, documents, meta, invocation_context, prompt_template, generation_kwargs
+        )
+
+        # Let's skip the call to __call__, because all it does is injecting a prompt template
+        # if there isn't any, while we know for sure it'll be in `invocation_context`.
+        results = await self._aprompt(prompt_collector=prompt_collector, **invocation_context)
 
         prompt_template_resolved: PromptTemplate = invocation_context.pop("prompt_template")
 

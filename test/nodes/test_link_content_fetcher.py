@@ -1,3 +1,4 @@
+from typing import Optional
 from unittest.mock import Mock, patch
 import logging
 import pytest
@@ -15,6 +16,7 @@ def mocked_requests():
         mock_requests.get.return_value = mock_response
         mock_response.status_code = 200
         mock_response.text = "Sample content from webpage"
+        mock_response.headers = {"Content-Type": "text/html"}
         yield mock_requests
 
 
@@ -33,7 +35,8 @@ def test_init():
 
     assert r.processor is None
     assert isinstance(r.handlers, dict)
-    assert "html" in r.handlers
+    assert "text/html" in r.handlers
+    assert "application/pdf" in r.handlers
 
 
 @pytest.mark.unit
@@ -45,7 +48,56 @@ def test_init_with_preprocessor():
     r = LinkContentFetcher(processor=pre_processor_mock)
     assert r.processor == pre_processor_mock
     assert isinstance(r.handlers, dict)
-    assert "html" in r.handlers
+    assert "text/html" in r.handlers
+    assert "application/pdf" in r.handlers
+
+
+@pytest.mark.unit
+def test_init_with_content_handlers():
+    """
+    Checks the initialization of the LinkContentFetcher content handlers.
+    """
+
+    def fake_but_valid_video_content_handler(response: Response) -> Optional[str]:
+        pass
+
+    r = LinkContentFetcher(content_handlers={"video/mp4": fake_but_valid_video_content_handler})
+
+    assert isinstance(r.handlers, dict)
+    assert "text/html" in r.handlers
+    assert "application/pdf" in r.handlers
+    assert "video/mp4" in r.handlers
+
+
+@pytest.mark.unit
+def test_init_with_content_handlers_override():
+    """
+    Checks the initialization of the LinkContentFetcher content handlers but with pdf handler overridden.
+    """
+
+    def new_pdf_content_handler(response: Response) -> Optional[str]:
+        pass
+
+    r = LinkContentFetcher(content_handlers={"application/pdf": new_pdf_content_handler})
+
+    assert isinstance(r.handlers, dict)
+    assert "text/html" in r.handlers
+    assert "application/pdf" in r.handlers
+    assert r.handlers["application/pdf"] == new_pdf_content_handler
+
+
+@pytest.mark.unit
+def test_init_with_invalid_content_handlers():
+    """
+    Checks the initialization of the LinkContentFetcher content handlers fails with invalid content handlers.
+    """
+
+    # invalid because it does not have the correct signature
+    def invalid_video_content_handler() -> Optional[str]:
+        pass
+
+    with pytest.raises(ValueError, match="handler must accept"):
+        LinkContentFetcher(content_handlers={"video/mp4": invalid_video_content_handler})
 
 
 @pytest.mark.unit
@@ -58,7 +110,7 @@ def test_fetch(mocked_requests, mocked_article_extractor):
     pre_processor_mock = Mock()
     pre_processor_mock.process.return_value = [Document("Sample content from webpage")]
 
-    r = LinkContentFetcher(pre_processor_mock)
+    r = LinkContentFetcher(processor=pre_processor_mock)
     result = r.fetch(url=url, doc_kwargs={"text": "Sample content from webpage"})
 
     assert len(result) == 1
@@ -120,7 +172,7 @@ def test_fetch_correct_arguments(mocked_requests, mocked_article_extractor):
     args, kwargs = mocked_requests.get.call_args
     assert args[0] == url
     assert kwargs["timeout"] == 3
-    assert kwargs["headers"] == r.REQUEST_HEADERS
+    assert kwargs["headers"] == r._REQUEST_HEADERS
 
     # another variant
     url = "https://deepset.ai"
@@ -129,7 +181,7 @@ def test_fetch_correct_arguments(mocked_requests, mocked_article_extractor):
     args, kwargs = mocked_requests.get.call_args
     assert args[0] == url
     assert kwargs["timeout"] == 10
-    assert kwargs["headers"] == r.REQUEST_HEADERS
+    assert kwargs["headers"] == r._REQUEST_HEADERS
 
 
 @pytest.mark.unit
@@ -174,9 +226,10 @@ def test_fetch_exception_during_content_extraction_raise_on_failure(caplog, mock
     url = "https://www.example.com"
     r = LinkContentFetcher(raise_on_failure=True)
 
-    with patch("boilerpy3.extractors.ArticleExtractor.get_content", side_effect=Exception("Could not extract content")):
-        with pytest.raises(Exception, match="Could not extract content"):
-            r.fetch(url=url)
+    with patch(
+        "boilerpy3.extractors.ArticleExtractor.get_content", side_effect=Exception("Could not extract content")
+    ), pytest.raises(Exception, match="Could not extract content"):
+        r.fetch(url=url)
 
 
 @pytest.mark.unit
@@ -202,9 +255,10 @@ def test_fetch_exception_during_request_get_raise_on_failure(caplog):
     url = "https://www.example.com"
     r = LinkContentFetcher(raise_on_failure=True)
 
-    with patch("haystack.nodes.retriever.link_content.requests.get", side_effect=requests.RequestException()):
-        with pytest.raises(requests.RequestException):
-            r.fetch(url=url)
+    with patch(
+        "haystack.nodes.retriever.link_content.requests.get", side_effect=requests.RequestException()
+    ), pytest.raises(requests.RequestException):
+        r.fetch(url=url)
 
 
 @pytest.mark.unit
@@ -227,7 +281,9 @@ def test_handle_various_response_errors(caplog, mocked_requests, error_code: int
     docs = r.fetch(url=url)
 
     assert f"Couldn't retrieve content from {url}" in caplog.text
-    assert docs == []
+    assert len(docs) == 1
+    assert isinstance(docs[0], Document)
+    assert docs[0].content == ""
 
 
 @pytest.mark.unit
@@ -307,6 +363,44 @@ def test_is_invalid_url():
 
     for url in invalid_urls:
         assert not retriever._is_valid_url(url), f"Expected {url} to be invalid"
+
+
+@pytest.mark.unit
+def test_switch_user_agent_on_failed_request():
+    """
+    Test that LinkContentFetcher switches user agents on failed requests
+    """
+    url = "http://fakeurl.com"
+    retry_attempts = 2
+    lc = LinkContentFetcher(user_agents=["ua1", "ua2"], retry_attempts=retry_attempts)
+    with patch("haystack.nodes.retriever.link_content.requests.get") as mocked_get:
+        mocked_get.return_value.raise_for_status.side_effect = requests.HTTPError()
+        lc._get_response(url)
+
+    assert mocked_get.call_count == retry_attempts
+    assert mocked_get.call_args_list[0][1]["headers"]["User-Agent"] == "ua1"
+    assert mocked_get.call_args_list[1][1]["headers"]["User-Agent"] == "ua2"
+
+
+@pytest.mark.unit
+def test_valid_requests_dont_switch_agent(mocked_requests):
+    """
+    Test that LinkContentFetcher doesn't switch user agents on valid requests
+    """
+    lcf = LinkContentFetcher()
+
+    # Make first valid request
+    lcf._get_response("http://example.com")
+
+    # Make second valid request
+    lcf._get_response("http://example.com")
+
+    # Assert that requests.get was called twice with the same default user agents
+    assert mocked_requests.get.call_count == 2
+    assert (
+        mocked_requests.get.call_args_list[0][1]["headers"]["User-Agent"]
+        == mocked_requests.get.call_args_list[1][1]["headers"]["User-Agent"]
+    )
 
 
 @pytest.mark.integration

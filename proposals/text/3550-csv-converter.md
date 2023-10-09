@@ -39,7 +39,7 @@ components:    # define all the building-blocks for Pipeline
     type: CsvTextConverter
 
 pipelines:
-  - name: indexing 
+  - name: indexing
     nodes:
       - name: CSVConverter
         inputs: [File]

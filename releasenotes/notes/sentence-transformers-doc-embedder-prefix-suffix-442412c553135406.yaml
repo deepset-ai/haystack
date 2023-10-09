@@ -1,0 +1,7 @@
+---
+preview:
+  - |
+    Add `prefix` and `suffix` attributes to `SentenceTransformersDocumentEmbedder`.
+    They can be used to add a prefix and suffix to the Document text before
+    embedding it. This is necessary to take full advantage of modern embedding
+    models, such as E5.

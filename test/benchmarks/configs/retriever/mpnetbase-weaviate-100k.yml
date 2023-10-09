@@ -8,6 +8,8 @@ components:
       similarity: dot_product
       embedding_dim: 768
       batch_size: 5000
+      host: http://weaviate
+      port: 8080
   - name: TextConverter
     type: TextConverter
   - name: Retriever

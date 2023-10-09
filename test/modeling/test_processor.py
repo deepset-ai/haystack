@@ -6,6 +6,7 @@ import pytest
 from transformers import AutoTokenizer
 
 from haystack.modeling.data_handler.processor import SquadProcessor, _is_json
+import contextlib
 
 
 # during inference (parameter return_baskets = False) we do not convert labels
@@ -230,10 +231,8 @@ def test_batch_encoding_flatten_rename():
     flatten_rename(None, [], [])
 
     # keys and renamed_keys have different sizes
-    try:
+    with contextlib.suppress(AssertionError):
         flatten_rename(encoded_inputs, [], ["blah"])
-    except AssertionError:
-        pass
 
 
 def test_dataset_from_dicts_qa_label_conversion(samples_path, caplog=None):

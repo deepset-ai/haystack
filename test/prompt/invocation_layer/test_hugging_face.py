@@ -1,5 +1,6 @@
 from typing import List
 from unittest.mock import MagicMock, patch, Mock
+import logging
 
 import pytest
 import torch
@@ -58,8 +59,8 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
     assert kwargs["task"] == "text2text-generation"
     assert kwargs["model"] == "google/flan-t5-base"
 
-    # no matter what kwargs we pass or don't pass, there are always 13 predefined kwargs passed to the pipeline
-    assert len(kwargs) == 13
+    # no matter what kwargs we pass or don't pass, there are always 14 predefined kwargs passed to the pipeline
+    assert len(kwargs) == 14
 
     # and these kwargs are passed to the pipeline
     assert list(kwargs.keys()) == [
@@ -68,14 +69,15 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
         "config",
         "tokenizer",
         "feature_extractor",
-        "revision",
-        "use_auth_token",
         "device_map",
         "device",
         "torch_dtype",
-        "trust_remote_code",
         "model_kwargs",
         "pipeline_class",
+        "use_fast",
+        "revision",
+        "use_auth_token",
+        "trust_remote_code",
     ]
 
 
@@ -206,48 +208,6 @@ def test_ensure_token_limit_negative(caplog):
 
 
 @pytest.mark.unit
-def test_num_return_sequences_no_larger_than_num_beams(mock_pipeline, mock_get_task, caplog):
-    """
-    Test that num_return_sequences cannot be larger than num_beams and that a warning is logged
-    """
-
-    layer = HFLocalInvocationLayer("google/flan-t5-base")
-
-    with patch.object(layer.pipe, "run_single", MagicMock()):
-        layer.invoke(prompt="What does 42 mean?", generation_kwargs={"num_beams": 5, "num_return_sequences": 8})
-
-    expected_message = (
-        "num_return_sequences 8 should not be larger than num_beams 5, hence setting it equal to num_beams"
-    )
-    # check that the warning is logged
-    assert caplog.records[0].message == expected_message
-
-    # check that num_return_sequences is set to num_beams
-    _, kwargs = layer.pipe.call_args
-    assert kwargs["num_beams"] == 5
-    assert kwargs["num_return_sequences"] == 5
-
-
-@pytest.mark.unit
-def test_num_beams_larger_than_num_return_sequences(mock_pipeline, mock_get_task, caplog):
-    """
-    Test that num_beams can be larger than num_return_sequences and that no warning is logged
-    """
-    layer = HFLocalInvocationLayer("google/flan-t5-base")
-
-    with patch.object(layer.pipe, "run_single", MagicMock()):
-        layer.invoke(prompt="What does 42 mean?", generation_kwargs={"num_beams": 8, "num_return_sequences": 5})
-
-    # check that no warning is logged
-    assert not caplog.records
-
-    # check that num_return_sequences remains unchanged
-    _, kwargs = layer.pipe.call_args
-    assert kwargs["num_beams"] == 8
-    assert kwargs["num_return_sequences"] == 5
-
-
-@pytest.mark.unit
 def test_constructor_with_custom_pretrained_model(mock_pipeline, mock_get_task):
     """
     Test that the constructor sets the pipeline with the pretrained model (if provided)
@@ -289,8 +249,8 @@ def test_constructor_with_invalid_kwargs(mock_pipeline, mock_get_task):
     # invalid kwargs are ignored and not passed to the pipeline
     assert "some_invalid_kwarg" not in kwargs
 
-    # still our 13 kwargs passed to the pipeline
-    assert len(kwargs) == 13
+    # still our 14 kwargs passed to the pipeline
+    assert len(kwargs) == 14
 
 
 @pytest.mark.unit
@@ -328,8 +288,8 @@ def test_constructor_with_various_kwargs(mock_pipeline, mock_get_task):
     assert kwargs["device_map"] and kwargs["device_map"] == "auto"
     assert kwargs["revision"] == "1.1"
 
-    # still on 13 kwargs passed to the pipeline
-    assert len(kwargs) == 13
+    # still on 14 kwargs passed to the pipeline
+    assert len(kwargs) == 14
 
 
 @pytest.mark.integration
@@ -509,6 +469,44 @@ def test_stop_words_multiple_token(stop_words: List[str]):
     assert "health" not in result[0]
 
 
+@pytest.mark.unit
+def test_stop_words_criteria():
+    """
+    Test that StopWordsCriteria will check stop word tokens in a continuous and sequential order
+    """
+    # input ids for "unambiguously"
+    stop_words_id = torch.tensor([[73, 24621, 11937]])
+
+    # input ids for "This is ambiguously, but is unrelated."
+    input_ids1 = torch.tensor([[100, 19, 24621, 11937, 6, 68, 19, 73, 3897, 5]])
+    # input ids for "This is unambiguously"
+    input_ids2 = torch.tensor([[100, 19, 73, 24621, 11937]])
+
+    # We used to implement stop words algorithm using the torch.isin function like this:
+    # `all(torch.isin(stop_words_id, input_ids1)[0])`
+    # However, this algorithm is not correct as it will return True for presence of "unambiguously" in input_ids1
+    # and True for presence of "unambiguously" in input_ids2. This is because the algorithm will check
+    # if the stop word tokens are present in the input_ids, but it does not check if the stop word tokens are
+    # present in a continuous/sequential order.
+
+    # In "This is ambiguously, but is unrelated." sentence the "un" token comes from "unrelated" and the
+    # "ambiguously" token comes from "ambiguously". The algorithm will return True for presence of
+    # "unambiguously" in input_ids1 which is not correct.
+
+    stop_words_criteria = StopWordsCriteria(tokenizer=Mock(), stop_words=["mock data"])
+    # because we are mocking the tokenizer, we need to set the stop words manually
+    stop_words_criteria.stop_words = stop_words_id
+
+    # this is the correct algorithm to check if the stop word tokens are present in a continuous and sequential order
+    # For the input_ids1, the stop word tokens are present BUT not in a continuous order
+    present_and_continuous = stop_words_criteria(input_ids1, scores=None)
+    assert not present_and_continuous
+
+    # For the input_ids2, the stop word tokens are both present and in a continuous order
+    present_and_continuous = stop_words_criteria(input_ids2, scores=None)
+    assert present_and_continuous
+
+
 @pytest.mark.integration
 @pytest.mark.parametrize("stop_words", [["Berlin"], ["Berlin", "Brandenburg"], ["Berlin", "Brandenburg", "Germany"]])
 def test_stop_words_not_being_found(stop_words: List[str]):
@@ -522,46 +520,66 @@ def test_stop_words_not_being_found(stop_words: List[str]):
         assert word in result[0]
 
 
-@pytest.mark.integration
-def test_generation_kwargs_from_constructor():
+@pytest.mark.unit
+def test_generation_kwargs_from_constructor(mock_auto_tokenizer, mock_pipeline, mock_get_task):
     """
     Test that generation_kwargs are correctly passed to pipeline invocation from constructor
     """
-    the_question = "What does 42 mean?"
+    query = "What does 42 mean?"
     # test that generation_kwargs are passed to the underlying HF model
     layer = HFLocalInvocationLayer(generation_kwargs={"do_sample": True})
-    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
-        layer.invoke(prompt=the_question)
-
-    mock_call.assert_called_with(the_question, {}, {"do_sample": True, "max_length": 100}, {})
+    layer.invoke(prompt=query)
+    assert any(
+        (call.kwargs == {"do_sample": True, "max_length": 100}) and (query in call.args)
+        for call in mock_pipeline.mock_calls
+    )
 
     # test that generation_kwargs in the form of GenerationConfig are passed to the underlying HF model
     layer = HFLocalInvocationLayer(generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
-    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
-        layer.invoke(prompt=the_question)
+    layer.invoke(prompt=query)
+    assert any(
+        (call.kwargs == {"do_sample": True, "max_length": 100, "top_p": 0.9}) and (query in call.args)
+        for call in mock_pipeline.mock_calls
+    )
 
-    mock_call.assert_called_with(the_question, {}, {"do_sample": True, "top_p": 0.9, "max_length": 100}, {})
 
-
-@pytest.mark.integration
-def test_generation_kwargs_from_invoke():
+@pytest.mark.unit
+def test_generation_kwargs_from_invoke(mock_auto_tokenizer, mock_pipeline, mock_get_task):
     """
     Test that generation_kwargs passed to invoke are passed to the underlying HF model
     """
-    the_question = "What does 42 mean?"
+    query = "What does 42 mean?"
     # test that generation_kwargs are passed to the underlying HF model
     layer = HFLocalInvocationLayer()
-    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
-        layer.invoke(prompt=the_question, generation_kwargs={"do_sample": True})
+    layer.invoke(prompt=query, generation_kwargs={"do_sample": True})
+    assert any(
+        (call.kwargs == {"do_sample": True, "max_length": 100}) and (query in call.args)
+        for call in mock_pipeline.mock_calls
+    )
 
-    mock_call.assert_called_with(the_question, {}, {"do_sample": True, "max_length": 100}, {})
-
-    # test that generation_kwargs in the form of GenerationConfig are passed to the underlying HF model
     layer = HFLocalInvocationLayer()
-    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
-        layer.invoke(prompt=the_question, generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
+    layer.invoke(prompt=query, generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
+    assert any(
+        (call.kwargs == {"do_sample": True, "max_length": 100, "top_p": 0.9}) and (query in call.args)
+        for call in mock_pipeline.mock_calls
+    )
 
-    mock_call.assert_called_with(the_question, {}, {"do_sample": True, "top_p": 0.9, "max_length": 100}, {})
+
+@pytest.mark.unit
+def test_max_length_from_invoke(mock_auto_tokenizer, mock_pipeline, mock_get_task):
+    """
+    Test that max_length passed to invoke are passed to the underlying HF model
+    """
+    query = "What does 42 mean?"
+    # test that generation_kwargs are passed to the underlying HF model
+    layer = HFLocalInvocationLayer()
+    layer.invoke(prompt=query, generation_kwargs={"max_length": 200})
+    # find the call to pipeline invocation, and check that the kwargs are correct
+    assert any((call.kwargs == {"max_length": 200}) and (query in call.args) for call in mock_pipeline.mock_calls)
+
+    layer = HFLocalInvocationLayer()
+    layer.invoke(prompt=query, generation_kwargs=GenerationConfig(max_length=235))
+    assert any((call.kwargs == {"max_length": 235}) and (query in call.args) for call in mock_pipeline.mock_calls)
 
 
 @pytest.mark.unit
@@ -594,3 +612,79 @@ def test_ensure_token_limit_negative_mock(mock_pipeline, mock_get_task, mock_aut
     result = layer._ensure_token_limit("I am a tokenized prompt of length eight")
 
     assert result == correct_result
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoConfig.from_pretrained")
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoTokenizer.from_pretrained")
+def test_tokenizer_loading_unsupported_model(mock_tokenizer, mock_config, mock_pipeline, mock_get_task, caplog):
+    """
+    Test loading of tokenizers for models that are not natively supported by the transformers library.
+    """
+    mock_config.return_value = Mock(tokenizer_class=None)
+
+    with caplog.at_level(logging.WARNING):
+        HFLocalInvocationLayer("unsupported_model", trust_remote_code=True)
+        assert (
+            "The transformers library doesn't know which tokenizer class should be "
+            "loaded for the model unsupported_model. Therefore, the tokenizer will be loaded in Haystack's "
+            "invocation layer and then passed to the underlying pipeline. Alternatively, you could "
+            "pass `tokenizer_class` to `model_kwargs` to workaround this, if your tokenizer is supported "
+            "by the transformers library."
+        ) in caplog.text
+        assert mock_tokenizer.called
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoTokenizer.from_pretrained")
+def test_tokenizer_loading_unsupported_model_with_initialized_model(
+    mock_tokenizer, mock_pipeline, mock_get_task, caplog
+):
+    """
+    Test loading of tokenizers for models that are not natively supported by the transformers library. In this case,
+    the model is already initialized and the model config is loaded from the model.
+    """
+    model = Mock()
+    model.config = Mock(tokenizer_class=None, _name_or_path="unsupported_model")
+
+    with caplog.at_level(logging.WARNING):
+        HFLocalInvocationLayer(model_name_or_path="unsupported", model=model, trust_remote_code=True)
+        assert (
+            "The transformers library doesn't know which tokenizer class should be "
+            "loaded for the model unsupported_model. Therefore, the tokenizer will be loaded in Haystack's "
+            "invocation layer and then passed to the underlying pipeline. Alternatively, you could "
+            "pass `tokenizer_class` to `model_kwargs` to workaround this, if your tokenizer is supported "
+            "by the transformers library."
+        ) in caplog.text
+        assert mock_tokenizer.called
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoConfig.from_pretrained")
+@patch("haystack.nodes.prompt.invocation_layer.hugging_face.AutoTokenizer.from_pretrained")
+def test_tokenizer_loading_unsupported_model_with_tokenizer_class_in_config(
+    mock_tokenizer, mock_config, mock_pipeline, mock_get_task, caplog
+):
+    """
+    Test that tokenizer is not loaded if tokenizer_class is set in model config.
+    """
+    mock_config.return_value = Mock(tokenizer_class="Some-Supported-Tokenizer")
+
+    with caplog.at_level(logging.WARNING):
+        HFLocalInvocationLayer(model_name_or_path="unsupported_model", trust_remote_code=True)
+        assert not mock_tokenizer.called
+        assert not caplog.text
+
+
+@pytest.mark.unit
+def test_skip_prompt_is_set_in_hf_text_streamer(mock_pipeline, mock_get_task):
+    """
+    Test that skip_prompt is set in HFTextStreamingHandler. Otherwise, we will output prompt text.
+    """
+    layer = HFLocalInvocationLayer(stream=True)
+
+    layer.invoke(prompt="Tell me hello")
+
+    _, kwargs = layer.pipe.call_args
+    assert "streamer" in kwargs and isinstance(kwargs["streamer"], HFTokenStreamingHandler)
+    assert kwargs["streamer"].skip_prompt

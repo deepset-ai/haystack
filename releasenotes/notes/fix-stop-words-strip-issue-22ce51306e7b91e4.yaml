@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Ensure the leading whitespace in the generated text is preserved when using `stop_words` in the Hugging Face invocation layer of the PromptNode.

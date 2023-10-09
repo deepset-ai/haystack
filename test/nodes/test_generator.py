@@ -6,7 +6,17 @@ from haystack.schema import Document, Answer
 from haystack.nodes.answer_generator import OpenAIAnswerGenerator
 from haystack.nodes import PromptTemplate
 
+from ..conftest import fail_at_version
+
 import logging
+
+
+@pytest.mark.unit
+@fail_at_version(1, 23)
+@patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer")
+def test_openaianswergenerator_deprecation(mock_load_tokenizer):
+    with pytest.warns(DeprecationWarning):
+        OpenAIAnswerGenerator(api_key="fake_api_key")
 
 
 @pytest.mark.unit
@@ -77,7 +87,7 @@ def test_openai_answer_generator_custom_template(haystack_openai_config, docs):
 
     lfqa_prompt = PromptTemplate(
         """Synthesize a comprehensive answer from your knowledge and the following topk most relevant paragraphs and
-        the given question.\n===\Paragraphs: {context}\n===\n{query}"""
+        the given question.\n===\\Paragraphs: {context}\n===\n{query}"""
     )
     node = OpenAIAnswerGenerator(
         api_key=haystack_openai_config["api_key"],

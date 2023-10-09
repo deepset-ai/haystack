@@ -1,21 +1,16 @@
 import logging
 from typing import List, Optional
 
-
 from haystack.nodes.base import Document
 from haystack.nodes.doc_language_classifier.base import BaseDocumentLanguageClassifier
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
 
 
-try:
+with LazyImport("Run 'pip install farm-haystack[preprocessing]' or 'pip install langdetect'") as langdetect_import:
     import langdetect
-except (ImportError, ModuleNotFoundError) as exc:
-    logger.debug(
-        "langdetect could not be imported. "
-        "Run 'pip install farm-haystack[preprocessing]' or 'pip install langdetect' to fix this issue."
-    )
-    langdetect = None
 
 
 class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
@@ -59,11 +54,7 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
         :param languages_to_route: A list of languages in ISO code, each corresponding to a different output edge (see
         [langdetect` documentation](https://github.com/Mimino666/langdetect#languages)).
         """
-        if not langdetect:
-            raise ImportError(
-                "langdetect could not be imported. "
-                "Run 'pip install farm-haystack[file-conversion]' or 'pip install langdetect' to fix this issue."
-            )
+        langdetect_import.check()
         super().__init__(route_by_language=route_by_language, languages_to_route=languages_to_route)
 
     def predict(self, documents: List[Document], batch_size: Optional[int] = None) -> List[Document]:

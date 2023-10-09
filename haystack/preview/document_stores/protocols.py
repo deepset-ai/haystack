@@ -1,5 +1,4 @@
-from typing import Protocol, Optional, Dict, Any, List, runtime_checkable
-
+from typing import Protocol, Optional, Dict, Any, List
 import logging
 from enum import Enum
 
@@ -15,17 +14,27 @@ class DuplicatePolicy(Enum):
     FAIL = "fail"
 
 
-@runtime_checkable
-class Store(Protocol):
+class DocumentStore(Protocol):
     """
     Stores Documents to be used by the components of a Pipeline.
 
     Classes implementing this protocol often store the documents permanently and allow specialized components to
     perform retrieval on them, either by embedding, by keyword, hybrid, and so on, depending on the backend used.
 
-    In order to retrieve documents, consider using a Retriever that supports the document store implementation that
+    In order to retrieve documents, consider using a Retriever that supports the DocumentStore implementation that
     you're using.
     """
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes this store to a dictionary.
+        """
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DocumentStore":
+        """
+        Deserializes the store from a dictionary.
+        """
 
     def count_documents(self) -> int:
         """
@@ -106,11 +115,11 @@ class Store(Protocol):
 
     def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
         """
-        Writes (or overwrites) documents into the store.
+        Writes (or overwrites) documents into the DocumentStore.
 
         :param documents: a list of documents.
         :param policy: documents with the same ID count as duplicates. When duplicates are met,
-            the store can:
+            the DocumentStore can:
              - skip: keep the existing document and ignore the new one.
              - overwrite: remove the old document and write the new one.
              - fail: an error is raised
@@ -120,8 +129,8 @@ class Store(Protocol):
 
     def delete_documents(self, document_ids: List[str]) -> None:
         """
-        Deletes all documents with a matching document_ids from the document store.
-        Fails with `MissingDocumentError` if no document with this id is present in the store.
+        Deletes all documents with a matching document_ids from the DocumentStore.
+        Fails with `MissingDocumentError` if no document with this id is present in the DocumentStore.
 
         :param object_ids: the object_ids to delete
         """

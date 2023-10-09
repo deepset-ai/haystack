@@ -47,6 +47,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         label_index: str = "default",
         embedding_dim: int = 768,
         use_prefiltering: bool = False,
+        search_fields: Union[str, list] = "content",
     ):
         """
         A DocumentStore facade enabling you to interact with the documents stored in deepset Cloud.
@@ -90,6 +91,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param use_prefiltering: By default, DeepsetCloudDocumentStore uses post-filtering when querying with filters.
                                  To use pre-filtering instead, set this parameter to `True`. Note that pre-filtering
                                  comes at the cost of higher latency.
+        :param search_fields: Names of fields BM25Retriever uses to find matches to the incoming query in the documents, for example: ["content", "title"].
         """
         self.index = index
         self.label_index = label_index
@@ -98,6 +100,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         self.return_embedding = return_embedding
         self.embedding_dim = embedding_dim
         self.use_prefiltering = use_prefiltering
+        self.search_fields = search_fields
         self.client = DeepsetCloud.get_index_client(
             api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, index=index
         )

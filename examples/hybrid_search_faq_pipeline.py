@@ -57,6 +57,7 @@ def hybrid_search_faq_pipeline():
     document_store.write_documents(docs_to_index)
     document_store.update_embeddings(retriever=dense_retriever)
 
+
     # Initialize a Pipeline (this time without a reader) and ask questions
     pipeline = Pipeline()
     pipeline.add_node(component=sparse_retriever, name="SparseRetriever", inputs=["Query"])

@@ -17,14 +17,15 @@ class ConversationalAgent(Agent):
     If no tools are provided, the agent will be initialized to have a basic chat application.
 
     Here is an example how you can create a chat application with tools:
+
     ```python
     import os
 
     from haystack.agents.conversational import ConversationalAgent
     from haystack.nodes import PromptNode
-    from haystack.agents.base import ToolsManager, Tool
+    from haystack.agents.base import Tool
 
-    # Initialize a PromptNode and a ToolsManager with the desired tools
+    # Initialize a PromptNode and the desired tools
     prompt_node = PromptNode("gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"), max_length=256)
     tools = [Tool(name="ExampleTool", pipeline_or_node=example_tool_node)]
 
@@ -38,10 +39,11 @@ class ConversationalAgent(Agent):
             break
         else:
             assistant_response = agent.run(user_input)
-            print("\nAssistant:", assistant_response)
+            print("Assistant:", assistant_response)
     ```
 
     If you don't want to have any tools in your chat app, you can create a ConversationalAgent only with a PromptNode:
+
     ```python
     import os
 
@@ -105,6 +107,6 @@ class ConversationalAgent(Agent):
     def add_tool(self, tool: Tool):
         if len(self.tm.tools) == 0:
             raise AgentError(
-                "You cannot add tools after initializing the ConversationalAgent without any tools. If you want to add tools, reinitailize the ConversationalAgent and provide `tools`."
+                "You cannot add tools after initializing the ConversationalAgent without any tools. If you want to add tools, reinitialize the ConversationalAgent and provide `tools`."
             )
         return super().add_tool(tool)

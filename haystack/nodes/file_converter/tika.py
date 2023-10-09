@@ -10,25 +10,21 @@ import requests
 
 from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
 
 
-try:
+with LazyImport("Run 'pip install farm-haystack[file-conversion]' or 'pip install tika'") as tika_import:
     from tika import parser as tika_parser
-except ImportError as exc:
-    logger.debug(
-        "tika could not be imported. "
-        "Run 'pip install farm-haystack[file-conversion]' or 'pip install tika' to fix this issue."
-    )
-    tika_parser = None
 
 
 TIKA_CONTAINER_NAME = "tika"
 
 
 def launch_tika(sleep=15, delete_existing=False):
+    tika_import.check()
     # Start a Tika server via Docker
 
     logger.debug("Starting Tika ...")
@@ -54,6 +50,7 @@ def launch_tika(sleep=15, delete_existing=False):
 class TikaXHTMLParser(HTMLParser):
     # Use the built-in HTML parser with minimum dependencies
     def __init__(self):
+        tika_import.check()
         self.ingest = True
         self.page = ""
         self.pages: List[str] = []
@@ -107,11 +104,7 @@ class TikaConverter(BaseConverter):
             as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
             Defaults to 10 seconds.
         """
-        if not tika_parser:
-            raise ImportError(
-                "tika could not be imported. "
-                "Run 'pip install farm-haystack[file-conversion]' or 'pip install tika' to fix this issue."
-            )
+        tika_import.check()
         super().__init__(
             remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages, id_hash_keys=id_hash_keys
         )
@@ -176,10 +169,14 @@ class TikaConverter(BaseConverter):
                 digits = [word for word in words if any(i.isdigit() for i in word)]
 
                 # remove lines having > 40% of words as digits AND not ending with a period(.)
-                if remove_numeric_tables:
-                    if words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
-                        logger.debug("Removing line '%s' from %s", line, file_path)
-                        continue
+                if (
+                    remove_numeric_tables
+                    and words
+                    and len(digits) / len(words) > 0.4
+                    and not line.strip().endswith(".")
+                ):
+                    logger.debug("Removing line '%s' from %s", line, file_path)
+                    continue
 
                 cleaned_lines.append(line)
 

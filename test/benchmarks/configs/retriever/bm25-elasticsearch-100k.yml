@@ -3,6 +3,9 @@ version: ignore
 components:
   - name: DocumentStore
     type: ElasticsearchDocumentStore
+    params:
+      host: elasticsearch
+      port: 9200
   - name: TextConverter
     type: TextConverter
   - name: Retriever

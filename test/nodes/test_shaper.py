@@ -122,7 +122,7 @@ def test_value_only_in_invocation_context(mock_function):
 def test_yaml(mock_function, tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -168,7 +168,7 @@ def test_rename():
 def test_rename_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -209,7 +209,7 @@ def test_current_datetime():
 def test_current_datetime_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -249,7 +249,7 @@ def test_value_to_list():
 def test_value_to_list_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -295,7 +295,7 @@ def test_join_lists():
 def test_join_lists_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -357,7 +357,7 @@ def test_join_strings_with_str_replace():
 def test_join_strings_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -387,7 +387,7 @@ def test_join_strings_yaml(tmp_path):
 def test_join_strings_default_delimiter_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -415,7 +415,7 @@ def test_join_strings_default_delimiter_yaml(tmp_path):
 def test_join_strings_with_str_replace_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -517,7 +517,7 @@ def test_join_documents_with_pattern_and_str_replace():
 def test_join_documents_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
 
             components:
@@ -552,7 +552,7 @@ def test_join_documents_yaml(tmp_path):
 def test_join_documents_default_delimiter_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -582,7 +582,7 @@ def test_join_documents_default_delimiter_yaml(tmp_path):
 def test_join_documents_with_pattern_and_str_replace_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -792,7 +792,7 @@ def test_strings_to_answers_with_references_meta():
 def test_strings_to_answers_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -829,7 +829,7 @@ def test_strings_to_answers_yaml(tmp_path):
 def test_strings_to_answers_with_reference_meta_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            r"""
             version: ignore
             components:
             - name: shaper
@@ -878,7 +878,7 @@ def test_strings_to_answers_with_reference_meta_yaml(tmp_path):
 def test_strings_to_answers_after_prompt_node_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
               - name: prompt_model
@@ -887,7 +887,7 @@ def test_strings_to_answers_after_prompt_node_yaml(tmp_path):
               - name: prompt_template_raw_qa_per_document
                 type: PromptTemplate
                 params:
-                  prompt: 'Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer:'
+                  prompt: 'Given the context please answer the question. Context: {documents}; Question: {query}; Answer:'
 
               - name: prompt_node_raw_qa
                 type: PromptNode
@@ -937,7 +937,7 @@ def test_strings_to_answers_after_prompt_node_yaml(tmp_path):
     )
     results = result["answers"]
     assert len(results) == 4
-    assert any([True for r in results if "Berlin" in r.answer])
+    assert any(True for r in results if "Berlin" in r.answer)
     for answer in results[:2]:
         assert answer.document_ids == ["123"]
         assert (
@@ -980,7 +980,7 @@ def test_answers_to_strings_with_pattern_and_str_replace():
 def test_answers_to_strings_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -1008,7 +1008,7 @@ def test_answers_to_strings_yaml(tmp_path):
 def test_answers_to_strings_with_pattern_and_str_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -1114,7 +1114,7 @@ def test_strings_to_documents_single_meta_with_hashkeys():
 def test_strings_to_documents_no_meta_no_hashkeys_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -1146,7 +1146,7 @@ def test_strings_to_documents_no_meta_no_hashkeys_yaml(tmp_path):
 def test_strings_to_documents_meta_and_hashkeys_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -1211,7 +1211,7 @@ def test_documents_to_strings_with_pattern_and_str_replace():
 def test_documents_to_strings_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -1239,7 +1239,7 @@ def test_documents_to_strings_yaml(tmp_path):
 def test_documents_to_strings_with_pattern_and_str_replace_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: shaper
@@ -1297,7 +1297,7 @@ def test_chain_shapers():
 def test_chain_shapers_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
 
@@ -1347,7 +1347,7 @@ def test_chain_shapers_yaml(tmp_path):
 def test_chain_shapers_yaml_2(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
 
@@ -1434,7 +1434,7 @@ def test_chain_shapers_yaml_2(tmp_path):
 def test_with_prompt_node(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
               - name: prompt_model
@@ -1469,7 +1469,7 @@ def test_with_prompt_node(tmp_path):
 def test_with_multiple_prompt_nodes(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
               - name: prompt_model
@@ -1527,14 +1527,14 @@ def test_with_multiple_prompt_nodes(tmp_path):
     )
     results = result["answers"]
     assert len(results) == 2
-    assert any([True for r in results if "Berlin" in r.answer])
+    assert any(True for r in results if "Berlin" in r.answer)
 
 
 @pytest.mark.unit
 def test_join_query_and_documents_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
 
             components:
@@ -1580,7 +1580,7 @@ def test_join_query_and_documents_yaml(tmp_path):
 def test_join_query_and_documents_into_single_string_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: expander
@@ -1637,7 +1637,7 @@ def test_join_query_and_documents_into_single_string_yaml(tmp_path):
 def test_join_query_and_documents_convert_into_documents_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: expander

@@ -1,0 +1,17 @@
+---
+prelude: >
+    We're introducing a new ranker to Haystack - DiversityRanker. This
+    ranker aims to maximize the overall diversity of the given documents.
+    It leverages sentence-transformer models to calculate semantic embeddings
+    for each document. It orders documents so that the next one, on average,
+    is least similar to the already selected documents. Such ranking results in a
+    list where each subsequent document contributes the most to the overall
+    diversity of the selected document set.
+features:
+  - |
+    The DiversityRanker can be used like other rankers in Haystack and
+    it can be particularly helpful in cases where you have highly relevant
+    yet similar sets of documents. By ensuring a diversity of documents,
+    this new ranker facilitates a more comprehensive utilization of the
+    documents and, particularly in RAG pipelines, potentially contributes
+    to more accurate and rich model responses.

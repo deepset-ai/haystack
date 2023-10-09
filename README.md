@@ -3,19 +3,69 @@
 
 |         |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CI/CD   | [![Tests](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml) [![Docker image release](https://github.com/deepset-ai/haystack/actions/workflows/docker_release.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/docker_release.yml) [![Schemas](https://github.com/deepset-ai/haystack/actions/workflows/schemas.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/schemas.yml) [![code style - Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![types - Mypy](https://img.shields.io/badge/types-Mypy-blue.svg)](https://github.com/python/mypy) |
+| CI/CD   | [![Tests](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml) [![Docker image release](https://github.com/deepset-ai/haystack/actions/workflows/docker_release.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/docker_release.yml) [![Schemas](https://github.com/deepset-ai/haystack/actions/workflows/schemas.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/schemas.yml) [![code style - Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![types - Mypy](https://img.shields.io/badge/types-Mypy-blue.svg)](https://github.com/python/mypy) [![Coverage Status](https://coveralls.io/repos/github/deepset-ai/haystack/badge.svg?branch=main)](https://coveralls.io/github/deepset-ai/haystack?branch=main) |
 | Docs    | [![Sync docs with Readme](https://github.com/deepset-ai/haystack/actions/workflows/readme_sync.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/readme_sync.yml) ![Website](https://img.shields.io/website?label=documentation&up_message=online&url=https%3A%2F%2Fdocs.haystack.deepset.ai)                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | Package | ![PyPI](https://img.shields.io/pypi/v/farm-haystack) ![PyPI - Downloads](https://img.shields.io/pypi/dm/farm-haystack?color=blue&logo=pypi&logoColor=gold) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/farm-haystack?logo=python&logoColor=gold) ![GitHub](https://img.shields.io/github/license/deepset-ai/haystack?color=blue) [![License Compliance](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml)                                                                                                                                                                                            |
 | Meta    | ![Discord](https://img.shields.io/discord/993534733298450452?logo=discord) ![Twitter Follow](https://img.shields.io/twitter/follow/deepset_ai)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 </div>
 
-[Haystack](https://haystack.deepset.ai/) is an end-to-end NLP framework that enables you to build NLP applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform question answering, answer generation, semantic document search, or build tools that are capable of complex decision making and query resolution, you can use the state-of-the-art NLP models with Haystack to build end-to-end NLP applications solving your use case.
+[Haystack](https://haystack.deepset.ai/) is an end-to-end NLP framework that enables you to build applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform question answering, answer generation, semantic document search, or build tools that are capable of complex decision-making and query resolution, you can use the state-of-the-art NLP models with Haystack to build end-to-end NLP applications solving your use case.
+
+## Quickstart
+
+Haystack is built around the concept of pipelines. A pipeline is a powerful structure that performs an NLP task. It's made up of components connected together. For example, you can connect a `Retriever` and a `PromptNode` to build a Generative Question Answering pipeline that uses your own data.
+
+Try out how Haystack answers questions about Game of Thrones using the Retrieval Augmented Generation (RAG) approach 👇
+
+First, run the minimal Haystack installation:
+
+```sh
+pip install farm-haystack
+```
+
+Then, index your data to the DocumentStore, build a RAG pipeline, and ask a question on your data: 
+
+```python
+from haystack.document_stores import InMemoryDocumentStore
+from haystack.utils import build_pipeline, add_example_data, print_answers
+
+# We are model agnostic :) Here, you can choose from: "anthropic", "cohere", "huggingface", and "openai".
+provider = "openai"
+API_KEY = "sk-..." # ADD YOUR KEY HERE
+
+# We support many different databases. Here, we load a simple and lightweight in-memory database.
+document_store = InMemoryDocumentStore(use_bm25=True)
+
+# Download and add Game of Thrones TXT articles to Haystack DocumentStore.
+# You can also provide a folder with your local documents.
+add_example_data(document_store, "data/GoT_getting_started")
+
+# Build a pipeline with a Retriever to get relevant documents to the query and a PromptNode interacting with LLMs using a custom prompt.
+pipeline = build_pipeline(provider, API_KEY, document_store)
+
+# Ask a question on the data you just added.
+result = pipeline.run(query="Who is the father of Arya Stark?")
+
+# For details, like which documents were used to generate the answer, look into the <result> object
+print_answers(result, details="medium")
+```
+
+The output of the pipeline will reference the documents used to generate the answer:
+
+```
+'Query: Who is the father of Arya Stark?'
+'Answers:'
+[{'answer': 'The father of Arya Stark is Lord Eddard Stark of '
+                'Winterfell. [Document 1, Document 4, Document 5]'}]
+```
+
+Congratulations, you have just built your first Haystack app!
 
 ## Core Concepts
 
-🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/docs/pipelines):** This is the standard Haystack structure that can connect to your data and perform on it NLP tasks that you define. The data in a Pipeline flows from one Node to the next. You define how Nodes interact with each other, and how one Node pushes data to the next.
+🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/docs/pipelines):** This is the standard Haystack structure that builds on top of your data to perform various NLP tasks such as retrieval augmented generation, question answering and more. The data in a Pipeline flows from one Node to the next. You define how Nodes interact with each other, and how one Node pushes data to the next.
 
-An example pipeline would consist of one `Retriever` Node and one `Reader` Node. When the pipeline runs with a query, the Retriever first retrieves the documents relevant to the query and then the Reader extracts the final answer.
+An example pipeline would consist of one `Retriever` Node and one `PromptNode`. When the pipeline runs with a query, the Retriever first retrieves the relevant context to the query from your data, and then the PromptNode uses an LLM to generate the final answer.
 
 ⚛️ **[Nodes](https://docs.haystack.deepset.ai/docs/nodes_overview):** Each Node achieves one thing. Such as preprocessing documents, retrieving documents, using language models to answer questions and so on.
 
@@ -27,8 +77,8 @@ An example pipeline would consist of one `Retriever` Node and one `Reader` Node.
 
 ## What to Build with Haystack
 
+-   Build **retrieval augmented generation (RAG)** by making use of one of the available vector databases and customizing your LLM interaction, the sky is the limit 🚀
 -   Perform Question Answering **in natural language** to find granular answers in your documents.
--   **Generate answers or content** with the use of LLM such as articles, tweets, product descriptions and more, the sky is the limit 🚀
 -   Perform **semantic search** and retrieve documents according to meaning.
 -   Build applications that can do complex decisions making to answer complex queries: such as systems that can resolve complex customer queries, do knowledge search on many disconnected resources and so on.
 -   Use **off-the-shelf models** or **fine-tune** them to your data.
@@ -36,7 +86,7 @@ An example pipeline would consist of one `Retriever` Node and one `Reader` Node.
 
 ## Features
 
--   **Latest models**: Haystack allows you to use and compare models available from OpenAI, Cohere and Hugging Face, as well as your own local models. Use the latest LLMs or Transformer-based models (for example: BERT, RoBERTa, MiniLM).
+-   **Latest models**: Haystack allows you to use and compare models available from OpenAI, Cohere and Hugging Face, as well as your own local models or models hosted on SageMaker. Use the latest LLMs or Transformer-based models (for example: BERT, RoBERTa, MiniLM).
 -   **Modular**: Multiple choices to fit your tech stack and use case. A wide choice of DocumentStores to store your data, file conversion tools and more
 -   **Open**: Integrated with Hugging Face's model hub, OpenAI, Cohere and various Azure services.
 -   **Scalable**: Scale to millions of docs using retrievers and production-scale components like Elasticsearch and a fastAPI REST API.
@@ -72,11 +122,11 @@ Use [pip](https://github.com/pypa/pip) to install a basic version of Haystack's 
 pip install farm-haystack
 ```
 
-This command installs everything needed for basic Pipelines that use an in-memory DocumentStore.
+This command installs everything needed for basic Pipelines that use an in-memory DocumentStore and external LLM provider (e.g. OpenAI).
 
 **Full Installation**
 
-To use more advanced features, like certain DocumentStores, FileConverters, OCR, local inference with pytorch, or Ray,
+To use more advanced features, like certain DocumentStores, inference with local transformer models, FileConverters, OCR, or Ray,
 you need to install further dependencies. The following command installs the [latest release](https://github.com/deepset-ai/haystack/releases) of Haystack and all its dependencies:
 
 ```sh
@@ -106,7 +156,7 @@ Then move into the cloned folder and install the project with `pip`, including t
 cd haystack && pip install -e '.[dev]'
 ```
 
-If you want to contribute to the Haystack repo, check our [Contributor Guidelines](#💙-contributing) first.
+If you want to contribute to the Haystack repo, check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first.
 
 See the list of [dependencies](https://github.com/deepset-ai/haystack/blob/main/pyproject.toml) to check which ones you want to install (for example, `[all]`, `[dev]`, or other).
 

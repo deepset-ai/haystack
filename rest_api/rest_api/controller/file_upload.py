@@ -49,10 +49,14 @@ def upload_file(
     additional_params: Optional[str] = Form("null"),  # type: ignore
     fileconverter_params: FileConverterParams = Depends(FileConverterParams.as_form),  # type: ignore
     preprocessor_params: PreprocessorParams = Depends(PreprocessorParams.as_form),  # type: ignore
+    keep_files: Optional[bool] = False,
 ):
     """
     You can use this endpoint to upload a file for indexing
-    (see https://haystack.deepset.ai/guides/rest-api#indexing-documents-in-the-haystack-rest-api-document-store).
+    (see https://docs.haystack.deepset.ai/docs/rest_api#indexing-documents-in-the-haystack-rest-api-documentstore).
+
+    Note: files are removed immediately after being indexed. If you want to keep them, pass the
+    `keep_files=true` parameter in the request payload.
     """
     if not indexing_pipeline:
         raise HTTPException(status_code=501, detail="Indexing Pipeline is not configured.")
@@ -88,3 +92,8 @@ def upload_file(
         params[preprocessor.name] = preprocessor_params.dict()
 
     indexing_pipeline.run(file_paths=file_paths, meta=file_metas, params=params)
+
+    # Clean up indexed files
+    if not keep_files:
+        for p in file_paths:
+            p.unlink()

@@ -5,8 +5,8 @@ import json
 import logging
 from pathlib import Path
 
-from haystack.utils import request_with_retry
-from haystack.preview import component, Document
+from haystack.preview.utils import request_with_retry
+from haystack.preview import component, Document, default_to_dict, default_from_dict
 
 logger = logging.getLogger(__name__)
 
@@ -28,23 +28,12 @@ class RemoteWhisperTranscriber:
     [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text)
     """
 
-    class Input:
-        audio_files: List[Path]
-        whisper_params: Optional[Dict[str, Any]] = None
-
-    class Output:
-        documents: List[Document]
-
-    @component.input
-    def input(self):  # type: ignore
-        return RemoteWhisperTranscriber.Input
-
-    @component.output
-    def output(self):  # type: ignore
-        return RemoteWhisperTranscriber.Output
-
     def __init__(
-        self, api_key: str, model_name: WhisperRemoteModel = "whisper-1", api_base: str = "https://api.openai.com/v1"
+        self,
+        api_key: str,
+        model_name: WhisperRemoteModel = "whisper-1",
+        api_base: str = "https://api.openai.com/v1",
+        whisper_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Transcribes a list of audio files into a list of Documents.
@@ -60,12 +49,32 @@ class RemoteWhisperTranscriber:
         if not api_key:
             raise ValueError("API key is None.")
 
+        self.model_name = model_name
         self.api_key = api_key
         self.api_base = api_base
+        self.whisper_params = whisper_params or {}
 
-        self.model_name = model_name
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        return default_to_dict(
+            self,
+            model_name=self.model_name,
+            api_key=self.api_key,
+            api_base=self.api_base,
+            whisper_params=self.whisper_params,
+        )
 
-    def run(self, data: Input) -> Output:
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "RemoteWhisperTranscriber":
+        """
+        Deserialize this component from a dictionary.
+        """
+        return default_from_dict(cls, data)
+
+    @component.output_types(documents=List[Document])
+    def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None):
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
@@ -79,10 +88,11 @@ class RemoteWhisperTranscriber:
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
         """
-        if not data.whisper_params:
-            data.whisper_params = {}
-        documents = self.transcribe(data.audio_files, **data.whisper_params)
-        return self.output(documents=documents)
+        if whisper_params is None:
+            whisper_params = self.whisper_params
+
+        documents = self.transcribe(audio_files, **whisper_params)
+        return {"documents": documents}
 
     def transcribe(self, audio_files: Sequence[Union[str, Path, BinaryIO]], **kwargs) -> List[Document]:
         """
@@ -101,7 +111,7 @@ class RemoteWhisperTranscriber:
             content = transcript.pop("text")
             if not isinstance(audio, (str, Path)):
                 audio = "<<binary stream>>"
-            doc = Document(content=content, metadata={"audio_file": audio, **transcript})
+            doc = Document(text=content, metadata={"audio_file": audio, **transcript})
             documents.append(doc)
         return documents
 

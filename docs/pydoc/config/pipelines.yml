@@ -1,5 +1,5 @@
 loaders:
-  - type: python
+  - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/pipelines]
     modules: ["base", "ray", "standard_pipelines"]
     ignore_when_discovered: ["__init__"]

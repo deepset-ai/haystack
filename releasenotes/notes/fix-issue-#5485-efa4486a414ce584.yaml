@@ -1,0 +1,2 @@
+fixes:
+  - fix issue 5485, TransformersImageToText.generate_captions accepts "str"

@@ -5,19 +5,14 @@ from pathlib import Path
 
 from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
 
 
-try:
+with LazyImport("Run 'pip install farm-haystack[file-conversion]' or 'pip install docx'") as docx_import:
     import docx
-except ImportError as exc:
-    logger.debug(
-        "docx could not be imported. "
-        "Run 'pip install farm-haystack[file-conversion]' or 'pip install python-docx' to fix this issue."
-    )
-    docx = None
 
 
 class DocxToTextConverter(BaseConverter):
@@ -28,11 +23,7 @@ class DocxToTextConverter(BaseConverter):
         id_hash_keys: Optional[List[str]] = None,
         progress_bar: bool = True,
     ):
-        if not docx:
-            raise ImportError(
-                "docx could not be imported. "
-                "Run 'pip install farm-haystack[file-conversion]' or 'pip install python-docx' to fix this issue."
-            )
+        docx_import.check()
         super().__init__(
             remove_numeric_tables=remove_numeric_tables,
             valid_languages=valid_languages,

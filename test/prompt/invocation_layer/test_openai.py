@@ -120,3 +120,19 @@ def test_openai_organization(mock_open_ai_request, load_openai_tokenizer):
 
     invocation_layer.invoke(prompt="dummy_prompt")
     assert mock_open_ai_request.call_args.kwargs["headers"]["OpenAI-Organization"] == "fake_organization"
+
+
+@pytest.mark.unit
+def test_supports(load_openai_tokenizer):
+    layer = OpenAIInvocationLayer(api_key="some_fake_key")
+
+    assert layer.supports("ada")
+    assert layer.supports("babbage")
+    assert layer.supports("curie")
+    assert layer.supports("davinci")
+    assert layer.supports("text-ada-001")
+    assert layer.supports("text-davinci-002")
+    assert layer.supports("gpt-3.5-turbo-instruct")
+
+    # the following model contains "ada" in the name, but it's not from OpenAI
+    assert not layer.supports("ybelkada/mpt-7b-bf16-sharded")
