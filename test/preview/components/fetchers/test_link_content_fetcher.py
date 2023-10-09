@@ -105,7 +105,9 @@ class TestLinkContentFetcher:
             )
             fetcher = LinkContentFetcher()
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
-            assert streams[0].data == correct_response
+            first_stream = streams[0]
+            assert first_stream.data == correct_response
+            assert first_stream.metadata["content_type"] == "text/plain"
 
     @pytest.mark.unit
     def test_run_html(self):
@@ -116,7 +118,9 @@ class TestLinkContentFetcher:
             )
             fetcher = LinkContentFetcher()
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
-            assert streams[0].data == correct_response
+            first_stream = streams[0]
+            assert first_stream.data == correct_response
+            assert first_stream.metadata["content_type"] == "text/html"
 
     @pytest.mark.unit
     def test_run_binary(self, test_files_path):
@@ -127,7 +131,9 @@ class TestLinkContentFetcher:
             )
             fetcher = LinkContentFetcher()
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
-            assert streams[0].data == file_bytes
+            first_stream = streams[0]
+            assert first_stream.data == file_bytes
+            assert first_stream.metadata["content_type"] == "application/pdf"
 
     @pytest.mark.unit
     def test_run_bad_status_code(self):
@@ -140,7 +146,9 @@ class TestLinkContentFetcher:
 
         # empty byte stream is returned because raise_on_failure is False
         assert len(streams) == 1
-        assert streams[0].data == empty_byte_stream
+        first_stream = streams[0]
+        assert first_stream.data == empty_byte_stream
+        assert first_stream.metadata["content_type"] == "text/html"
 
     @pytest.mark.integration
     def test_link_content_fetcher_html(self):
@@ -175,6 +183,7 @@ class TestLinkContentFetcher:
         streams = fetcher.run([PDF_URL, HTML_URL])["streams"]
         assert len(streams) == 2
         for stream in streams:
+            assert stream.metadata["content_type"] in ("text/html", "application/pdf", "application/octet-stream")
             if stream.metadata["content_type"] == "text/html":
                 assert "Haystack" in stream.data.decode("utf-8")
             elif stream.metadata["content_type"] == "application/pdf":
@@ -191,6 +200,7 @@ class TestLinkContentFetcher:
         streams = fetcher.run([PDF_URL, HTML_URL, "https://google.com"])["streams"]
         assert len(streams) == 3
         for stream in streams:
+            assert stream.metadata["content_type"] in ("text/html", "application/pdf", "application/octet-stream")
             if stream.metadata["content_type"] == "text/html":
                 assert "Haystack" in stream.data.decode("utf-8") or "Google" in stream.data.decode("utf-8")
             elif stream.metadata["content_type"] == "application/pdf":
