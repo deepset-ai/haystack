@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional, TYPE_CHECKING, List, Tuple
 import os
 from pathlib import Path
-import defaultdict
+from collections import defaultdict
 import datetime
 import logging
 import uuid
@@ -127,7 +127,7 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
     pipeline._telemetry_runs += 1
     if (
         # Always send the first event
-        pipeline._telemetry_runs != 1
+        pipeline._telemetry_runs not in [1, 2, 3]
         or
         # Send one event every 10 runs
         pipeline._telemetry_runs % PIPELINE_RUN_BUFFER_SIZE != 0
