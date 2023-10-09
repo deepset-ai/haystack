@@ -23,7 +23,7 @@ pip install farm-haystack
 ```
 The `farm-haystack` package includes all new features of Haystack 2.0. Note that updates to this package occur less frequently compared to `haystack-ai`. So, you might not get the all latest Haystack 2.0 features immediately when using `farm-haystack`.
 
-## 🚗 Getting started
+## 🚗 Getting Started
 
 In our **end 2 end tests** you can find example code for the following pipelines:
 - [RAG pipeline](https://github.com/deepset-ai/haystack/blob/main/e2e/preview/pipelines/test_rag_pipelines.py)
