@@ -17,7 +17,7 @@ Haystack is built around the concept of pipelines. A pipeline is a powerful stru
 
 Try out how Haystack answers questions about Game of Thrones using the Retrieval Augmented Generation (RAG) approach 👇
 
-First, install Haystack in the minimal form:
+First, run the minimal Haystack installation:
 
 ```sh
 pip install farm-haystack
