@@ -8,7 +8,7 @@ import uuid
 import yaml
 import posthog
 
-from haystack.preview.telemetry._environment import dynamic_system_specs, static_system_specs
+from haystack.preview.telemetry._environment import collect_system_specs
 
 if TYPE_CHECKING:
     from haystack.preview.pipeline import Pipeline
@@ -77,7 +77,7 @@ class Telemetry:
             except Exception as e:
                 logger.debug("Telemetry could not write config file to %s", CONFIG_PATH, exc_info=e)
 
-        self.event_properties = static_system_specs()
+        self.event_properties = collect_system_specs()
 
     def send_event(self, event_name: str, event_properties: Optional[Dict[str, Any]] = None):
         """
@@ -88,12 +88,9 @@ class Telemetry:
             system metadata collected in __init__, so take care not to overwrite them.
         """
         event_properties = event_properties or {}
-        dynamic_specs = dynamic_system_specs()
         try:
             posthog.capture(
-                distinct_id=self.user_id,
-                event=event_name,
-                properties={**self.event_properties, **dynamic_specs, **event_properties},
+                distinct_id=self.user_id, event=event_name, properties={**self.event_properties, **event_properties}
             )
         except Exception as e:
             logger.debug("Telemetry couldn't make a POST request to PostHog.", exc_info=e)
