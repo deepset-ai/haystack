@@ -883,6 +883,11 @@ def samples_path():
 
 
 @pytest.fixture
+def sample_txt_file_paths_list(samples_path):
+    return list((samples_path / "docs").glob("*.txt"))
+
+
+@pytest.fixture
 def preview_samples_path():
     return Path(__file__).parent / "preview" / "test_files"
 
