@@ -17,7 +17,7 @@ class FileTypeRouter:
     MIME types. For file paths, MIME types are inferred from their extensions, while for byte streams, MIME types
     are determined from the provided metadata.
 
-    The set of MIME types to be considered is specified during the initialization of the component.
+    The set of MIME types to consider is specified during the initialization of the component.
 
     This component is invaluable when categorizing a large collection of files or data streams by their MIME
     types and routing them to different components for further processing.
@@ -59,7 +59,7 @@ class FileTypeRouter:
         """
         Categorizes the provided data sources by their MIME types.
 
-        :param: sources: A list of file paths or byte streams to categorize.
+        :param sources: A list of file paths or byte streams to categorize.
         :return: A dictionary where keys are MIME types and values are lists of data sources.
         """
 
