@@ -127,14 +127,9 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
     pipeline._telemetry_runs += 1
     if (
         # Always send the first event
-        pipeline._telemetry_runs not in [1, 2, 3]
-        or
-        # Send one event every 10 runs
-        pipeline._telemetry_runs % PIPELINE_RUN_BUFFER_SIZE != 0
-        or
-        # Always send the first event of the day
         not pipeline._last_telemetry_sent
-        or (datetime.datetime.now() - pipeline._last_telemetry_sent).days == 0
+        # Send no more than one event every minute
+        or (datetime.datetime.now() - pipeline._last_telemetry_sent).seconds < 60
     ):
         return None
 
