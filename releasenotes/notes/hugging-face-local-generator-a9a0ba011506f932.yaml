@@ -1,5 +1,5 @@
 ---
 preview:
   - |
-    Add a minimal version of HuggingFaceLocalGenerator, a LLM component based on Hugging Face models.
-    It provides an interface to generate text using a Hugging Face model that runs locally.
+    Add a minimal version of HuggingFaceLocalGenerator, a component that can run
+    Hugging Face models locally to generate text.

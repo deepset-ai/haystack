@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceLocalGenerator:
     """
-    LLM Generator based on a Hugging Face model.
+    Generator based on a Hugging Face model.
     This component provides an interface to generate text using a Hugging Face model that runs locally.
 
     Usage example:
