@@ -126,6 +126,11 @@ class LinkContentFetcher:
 
         :param urls: A list of URLs to fetch content from.
         :return: A lists of ByteStream objects representing the extracted content.
+
+        :raises: If a list of URLs has a single URL and an error occurs during content retrieval
+        while `raise_on_failure` is set to True, this method will raise an exception. Otherwise, in all other
+        cases, retrieval errors are simply logged, and a list of successfully retrieved ByteStream objects is
+        returned.
         """
         streams: List[ByteStream] = []
         if not urls:
@@ -134,15 +139,15 @@ class LinkContentFetcher:
         # don't use multithreading if there's only one URL
         if len(urls) == 1:
             stream_metadata, stream = self.fetch(urls[0])
-            if stream_metadata and stream:
+            if stream_metadata is not None and stream is not None:
                 stream.metadata.update(stream_metadata)
                 streams.append(stream)
         else:
             with ThreadPoolExecutor() as executor:
-                results = executor.map(self.fetch, urls)
+                results = executor.map(self._fetch_wrapper, urls)
 
-            for stream_metadata, stream in results:
-                if stream_metadata and stream:
+            for stream_metadata, stream in results:  # type: ignore
+                if stream_metadata is not None and stream is not None:
                     stream.metadata.update(stream_metadata)
                     streams.append(stream)
 
@@ -159,7 +164,7 @@ class LinkContentFetcher:
              The ByteStream object contains the fetched content as binary data.
 
         :raises: If an error occurs during content retrieval and `raise_on_failure` is set to True, this method will
-        raise an exception. Otherwise, errors are logged, and an empty ByteStream is returned.
+        raise an exception. Otherwise, all fetching errors are logged, and an empty ByteStream is returned.
 
         """
         content_type: str = "text/html"
@@ -179,6 +184,23 @@ class LinkContentFetcher:
             self.current_user_agent_idx = 0
 
         return {"content_type": content_type, "url": url}, stream
+
+    def _fetch_wrapper(self, url: str) -> Tuple[Optional[Dict[str, str]], Optional[ByteStream]]:
+        """
+        If `raise_on_failure` is set to True, this method will wrap the fetch method and catch any exceptions.
+        Otherwise, it will simply call the fetch method.
+        :param url: The URL to fetch content from.
+        :return: A tuple containing the ByteStream metadata dict and the corresponding ByteStream.
+
+        """
+        if self.raise_on_failure:
+            try:
+                return self.fetch(url)
+            except Exception as e:
+                logger.warning("Error fetching %s: %s", url, str(e))
+                return None, None
+        else:
+            return self.fetch(url)
 
     def _get_content_type(self, response: Response):
         """

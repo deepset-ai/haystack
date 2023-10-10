@@ -1,6 +1,7 @@
 from unittest.mock import patch, Mock
 
 import pytest
+import requests
 
 from haystack.preview.components.fetchers.link_content import (
     LinkContentFetcher,
@@ -208,3 +209,26 @@ class TestLinkContentFetcher:
                 assert "Haystack" in stream.data.decode("utf-8") or "Google" in stream.data.decode("utf-8")
             elif stream.metadata["content_type"] == "application/pdf":
                 assert len(stream.data) > 0
+
+    @pytest.mark.integration
+    def test_mix_of_good_and_failed_requests(self):
+        """
+        This test is to ensure that the fetcher can handle a list of URLs that contain URLs that fail to be fetched.
+        In such a case, the fetcher should return the content of the URLs that were successfully fetched and not raise
+        an exception.
+        """
+        fetcher = LinkContentFetcher()
+        result = fetcher.run(["https://non_existent_website_dot.com/", "https://www.google.com/"])
+        assert len(result["streams"]) == 1
+        first_stream = result["streams"][0]
+        assert first_stream.metadata["content_type"] == "text/html"
+
+    @pytest.mark.integration
+    def test_bad_request_exception_raised(self):
+        """
+        This test is to ensure that the fetcher raises an exception when a single bad request is made and it is configured to
+        do so.
+        """
+        fetcher = LinkContentFetcher()
+        with pytest.raises(requests.exceptions.ConnectionError):
+            fetcher.run(["https://non_existent_website_dot.com/"])
