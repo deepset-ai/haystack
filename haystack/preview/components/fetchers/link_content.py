@@ -56,15 +56,13 @@ class LinkContentFetcher:
         timeout: int = 3,
     ):
         """
-        Creates a LinkContentFetcher instance.
+        Initializes a LinkContentFetcher instance.
 
-        :param raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
-            during content extraction. If False, the error is simply logged and the program continues.
-            Defaults to False.
-        :param user_agents: A list of user agents to use when fetching content. Defaults to None, in which case a
-            default user agent is used.
-        :param retry_attempts: The number of times to retry fetching content. Defaults to 2.
-        :param timeout: The timeout in seconds for the request. Defaults to 3.
+        :param raise_on_failure: If True, raises an exception on failure when fetching a single URL.
+            For multiple URLs, errors are logged and successful fetches are returned. Default is True.
+        :param user_agents: A list of user agents for fetching content. If None, a default user agent is used.
+        :param retry_attempts: Number of retry attempts for fetching content. Default is 2.
+        :param timeout: Timeout in seconds for the request. Default is 3.
         """
         self.raise_on_failure = raise_on_failure
         self.user_agents = user_agents or [DEFAULT_USER_AGENT]
@@ -127,10 +125,9 @@ class LinkContentFetcher:
         :param urls: A list of URLs to fetch content from.
         :return: A lists of ByteStream objects representing the extracted content.
 
-        :raises: If a list of URLs has a single URL and an error occurs during content retrieval
-        while `raise_on_failure` is set to True, this method will raise an exception. Otherwise, in all other
-        cases, retrieval errors are simply logged, and a list of successfully retrieved ByteStream objects is
-        returned.
+        :raises: If the provided list of URLs contains only a single URL, and `raise_on_failure` is set to True,
+        an exception will be raised in case of an error during content retrieval. In all other scenarios, any
+        retrieval errors are logged, and a list of successfully retrieved ByteStream objects is returned.
         """
         streams: List[ByteStream] = []
         if not urls:
@@ -139,12 +136,11 @@ class LinkContentFetcher:
         # don't use multithreading if there's only one URL
         if len(urls) == 1:
             stream_metadata, stream = self.fetch(urls[0])
-            if stream_metadata is not None and stream is not None:
-                stream.metadata.update(stream_metadata)
-                streams.append(stream)
+            stream.metadata.update(stream_metadata)
+            streams.append(stream)
         else:
             with ThreadPoolExecutor() as executor:
-                results = executor.map(self._fetch_wrapper, urls)
+                results = executor.map(self._fetch_with_exception_suppression, urls)
 
             for stream_metadata, stream in results:  # type: ignore
                 if stream_metadata is not None and stream is not None:
@@ -185,8 +181,10 @@ class LinkContentFetcher:
 
         return {"content_type": content_type, "url": url}, stream
 
-    def _fetch_wrapper(self, url: str) -> Tuple[Optional[Dict[str, str]], Optional[ByteStream]]:
+    def _fetch_with_exception_suppression(self, url: str) -> Tuple[Optional[Dict[str, str]], Optional[ByteStream]]:
         """
+        Fetches content from a URL and returns it as a ByteStream.
+
         If `raise_on_failure` is set to True, this method will wrap the fetch method and catch any exceptions.
         Otherwise, it will simply call the fetch method.
         :param url: The URL to fetch content from.
@@ -198,7 +196,7 @@ class LinkContentFetcher:
                 return self.fetch(url)
             except Exception as e:
                 logger.warning("Error fetching %s: %s", url, str(e))
-                return None, None
+                return {"content_type": None, "url": url}, None
         else:
             return self.fetch(url)
 
