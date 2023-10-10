@@ -15,7 +15,7 @@ from haystack.pipelines import Pipeline
 
 def basic_qa_pipeline():
     # Initialize a DocumentStore
-    document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
+    document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="example-document")
 
     # fetch, pre-process and write documents
     doc_dir = "data/basic_qa_pipeline"
@@ -54,7 +54,7 @@ def basic_qa_pipeline():
 
     # Initialize Retriever & Reader
     retriever = BM25Retriever(document_store=document_store)
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
+    reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=True)
 
     # Query Pipeline
     pipeline = Pipeline()
@@ -66,6 +66,7 @@ def basic_qa_pipeline():
     )
 
     print_answers(prediction, details="minimum")
+    document_store.delete_index(index="example-document")
     return prediction
 
 
