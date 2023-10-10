@@ -1,15 +1,15 @@
 import logging
 
-logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
-logging.getLogger("haystack").setLevel(logging.INFO)
+import pandas as pd
 
 from haystack.document_stores import ElasticsearchDocumentStore
-
 from haystack.nodes import EmbeddingRetriever
 from haystack.nodes.other.docs2answers import Docs2Answers
-from haystack.utils import launch_es, print_answers, fetch_archive_from_http
-import pandas as pd
 from haystack.pipelines import Pipeline
+from haystack.utils import fetch_archive_from_http, launch_es, print_answers
+
+logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+logging.getLogger("haystack").setLevel(logging.INFO)
 
 
 def basic_faq_pipeline():
