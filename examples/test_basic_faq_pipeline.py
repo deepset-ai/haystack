@@ -1,6 +1,6 @@
 from examples.basic_faq_pipeline import basic_faq_pipeline
 
-from haystack.schema import Answer, Document
+from haystack.schema import Answer
 
 
 def test_basic_faq_pipeline():
