@@ -54,7 +54,7 @@ def basic_qa_pipeline():
 
     # Initialize Retriever & Reader
     retriever = BM25Retriever(document_store=document_store)
-    reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=True)
+    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
 
     # Query Pipeline
     pipeline = Pipeline()

@@ -44,8 +44,7 @@ jobs:
       - name: Install Haystack
         run: |
           pip install --upgrade pip
-          pip install .[dev,elasticsearch,preprocessing,file-conversion] 'sentence-transformers>=2.2.0' 'huggingface-hub>=0.5.0' 'sentencepiece>=0.1.91,!=0.1.92' protobuf
-          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install .[inference,dev,elasticsearch,preprocessing,file-conversion]
 
       - name: Run
         run: pytest examples/
