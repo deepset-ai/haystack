@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Enhanced file routing capabilities with the introduction of `ByteStream` handling, and
+    improved clarity by renaming the router to `FileTypeRouter`.
