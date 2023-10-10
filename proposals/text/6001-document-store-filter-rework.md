@@ -45,22 +45,11 @@ As a practical example the below two filters are equivalent. Given that they're 
 {"number": {"$lte": 2, "$gte": 0}}
 ```
 
-With the newly proposed approach the first filter would be equivalent to:
+With the newly proposed approach both filters would be equivalent to:
 
 ```
 {
     "operator": "AND",
-    "conditions": [
-        { "field": "number", "operator": "<=", "value": 2 },
-        { "field": "number", "operator": ">=", "value": 0 },
-    ]
-}
-```
-
-The second to:
-
-```
-{
     "conditions": [
         { "field": "number", "operator": "<=", "value": 2 },
         { "field": "number", "operator": ">=", "value": 0 },
@@ -93,15 +82,12 @@ Comparison dictionaries must contain the keys:
 - `operator`
 - `value`
 
-Logic dictionaries have only one mandatory key:
+Logic dictionaries must contain the keys:
 
+- `operator`
 - `conditions`
 
 `conditions` key must be a list of dictionaries, either Comparison or Logic.
-
-The following key can be omitted:
-
-- `operator`
 
 `operator` values in Comparison dictionaries must be:
 
@@ -119,8 +105,6 @@ The following key can be omitted:
 - `NOT`
 - `OR`
 - `AND`
-
-If `operator` key in Logic dictionaries is omitted we assume it's an `AND` value.
 
 ---
 
@@ -173,7 +157,7 @@ This connects to `Document` implementation and is not the focus of this proposal
 
 # Drawbacks
 
-The only drawback would be that we need to adapt `MemoryDocumentStore` and `ElasticsearchDocumentStore` to use this new filtering language. These are the only two Document Stores currently created for Haystack 2.x.
+The only drawback would be that we need to adapt the existing Document Stores already created for Haystack 2.x to support this filtering system. `MemoryDocumentStore`, `ElasticsearchDocumentStore`, `ChromaDocumentStore` and `MarqoDocumentStore` are the currently existing Document Stores.
 
 # Alternatives
 
@@ -182,13 +166,15 @@ This wouldn't require any change but supporting a new filtering language after t
 
 # Adoption strategy
 
-This is meant to be a new strategy to be adopted in Haystack version 2.x, so it will follow the same strategy as the other decisions taken for the next major version.
+We're going to release this new strategy of filters declaration for Haystack 2.x. At the same time we'll deprecate the current strategy but we'll keep supporting it for a while.
+
+Since we're going to provide an utility function to convert from old style to new style it will be easy for Document Stores to support both.
 
 # How we teach this
 
 We're going to provide documentation and specifications on how the filters should be declared, this proposal is a good starting point as it already defines the specs.
 
-Since it's meant for Haystack 2.x we're also going to provide utility functions to migrate filters from version 1.x to 2.x.
+We're also going to provide utility functions to migrate filters from old style to new style.
 
 # Unresolved questions
 
