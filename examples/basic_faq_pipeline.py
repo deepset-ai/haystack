@@ -1,3 +1,5 @@
+# Disable pylint errors for logging basicConfig
+# pylint: disable=no-logging-basicconfig
 import logging
 
 import pandas as pd
