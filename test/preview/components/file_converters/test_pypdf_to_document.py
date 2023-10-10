@@ -31,7 +31,7 @@ class TestPyPDFToDocument:
         """
         paths = [preview_samples_path / "pdf" / "react_paper.pdf"]
         converter = PyPDFToDocument()
-        output = converter.run(paths=paths)
+        output = converter.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 1
         assert "ReAct" in docs[0].text
@@ -44,5 +44,5 @@ class TestPyPDFToDocument:
         paths = ["non_existing_file.pdf"]
         converter = PyPDFToDocument()
         with caplog.at_level(logging.WARNING):
-            converter.run(paths=paths)
-            assert "Could not read file non_existing_file.pdf" in caplog.text
+            converter.run(sources=paths)
+            assert "Could not read non_existing_file.pdf" in caplog.text
