@@ -29,7 +29,7 @@ class BaseDocumentClassifier(BaseComponent):
 
     def run(self, documents: Union[List[dict], List[Document]], root_node: str):  # type: ignore
         """
-        :param documents: A list of dicts that are documents.
+        :param documents: A list of Document objects.
         :param root_node: The root node of the pipeline's graph.
         """
         self.query_count += 1
@@ -54,7 +54,7 @@ class BaseDocumentClassifier(BaseComponent):
     def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):  # type: ignore
         """
         :param documents: List of list of Documents.
-        :param batch_size: Number of records to process at a time.
+        :param batch_size: Number of Documents to process at a time.
         """
         predict_batch = self.timing(self.predict_batch, "query_time")
         results = predict_batch(documents=documents, batch_size=batch_size)

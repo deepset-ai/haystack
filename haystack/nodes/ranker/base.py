@@ -68,7 +68,7 @@ class BaseRanker(BaseComponent):
         """
         :param query: Query string.
         :param documents: List of Documents to process.
-        :param top_k: The maximum number of answers to return.
+        :param top_k: The maximum number of Documents to return.
         """
         self.query_count += 1
         if documents:
@@ -94,7 +94,7 @@ class BaseRanker(BaseComponent):
         :param queries: List of query strings.
         :param documents: List of list of Documents to process.
         :param top_k: The maximum number of answers to return.
-        :param batch_size: Number of records to process at a time.
+        :param batch_size: Number of Documents to process at a time.
         """
         self.query_count = +len(queries)
         predict_batch = self.timing(self.predict_batch, "query_time")

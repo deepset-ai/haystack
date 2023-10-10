@@ -48,7 +48,7 @@ class BaseTranslator(BaseComponent):
         :param results: Generated QA pairs to translate.
         :param query: The query string to translate.
         :param documents: The documents to translate.
-        :param answers: 
+        :param answers: Passes the answers to the TranslationWrapperPipeline. See [Haystack documentation](https://docs.haystack.deepset.ai/docs/ready_made_pipelines#translationwrapperpipeline) for more details.
         :param dict_key: If you pass a dictionary in `documents`, you can specify here the field which shall be translated.
         """
         translation_results = {}

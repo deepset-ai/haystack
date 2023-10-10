@@ -45,7 +45,7 @@ class BaseSummarizer(BaseComponent):
     ):
         """
         :param documents: List of related documents.
-        :param batch_size: Number of records to process at a time.
+        :param batch_size: Number of Documents to process at a time.
         """
         results = self.predict_batch(documents=documents, batch_size=batch_size)
 
