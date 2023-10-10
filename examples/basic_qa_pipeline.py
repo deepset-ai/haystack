@@ -66,6 +66,8 @@ def basic_qa_pipeline():
     )
 
     print_answers(prediction, details="minimum")
+
+    # Remove the index once we're done to save space
     document_store.delete_index(index="example-document")
     return prediction
 

@@ -63,6 +63,8 @@ def basic_faq_pipeline():
     prediction = pipeline.run(query="How is the virus spreading?", params={"Retriever": {"top_k": 10}})
 
     print_answers(prediction, details="medium")
+
+    # Remove the index once we're done to save space
     document_store.delete_index(index="example-document")
     return prediction
 
