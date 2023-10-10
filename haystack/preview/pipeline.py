@@ -27,6 +27,7 @@ class Pipeline(canals.Pipeline):
             debug_path: when debug is enabled in `run()`, where to save the debug data.
         """
         self._telemetry_runs = 0
+        self._last_telemetry_sent = None
         super().__init__(metadata=metadata, max_loops_allowed=max_loops_allowed, debug_path=debug_path)
 
     def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:

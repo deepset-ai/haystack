@@ -156,12 +156,7 @@ jobs:
   integration-tests-linux:
     name: Integration / ubuntu-latest
     needs: unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     services:
       tika:
         image: apache/tika:2.9.0.0
