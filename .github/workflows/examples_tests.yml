@@ -42,7 +42,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[all,dev]
+        run: |
+          pip install --upgrade pip
+          pip install .[inference,dev,elasticsearch,preprocessing,file-conversion]
 
       - name: Run
         run: pytest examples/
