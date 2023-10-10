@@ -4,11 +4,9 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from haystack.preview import component, default_from_dict, default_to_dict
 from haystack.preview.lazy_imports import LazyImport
 
-with LazyImport(message="Run 'pip install torch transformers'") as transformers_import:
+with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import model_info
     from transformers import pipeline
-    from transformers import AutoModelForCausalLM, AutoTokenizer, T5ForConditionalGeneration
-
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +14,8 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceLocalGenerator:
     """
-    LLM Generator based on a local model downloaded from the Hugging Face Hub.
+    LLM Generator based on a Hugging Face model.
+    This component provides an interface to generate text using a Hugging Face model that runs locally.
 
     Usage example:
     ```python
@@ -44,44 +43,42 @@ class HuggingFaceLocalGenerator:
         pipeline_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        :param model_name_or_path: The name or path of the underlying model,
-            stored in the Hugging Face Hub. E.g. "google/flan-t5-large".
+        :param model_name_or_path: The name or path of a Hugging Face model for text generation.
+            E.g. "google/flan-t5-large".
             If the model is also specified in the pipeline_kwargs, this parameter will be ignored.
-        :param task: The task for Hugging Face's pipeline. You can find more information in the model card.
+        :param task: The task for the Hugging Face pipeline. Possible values are "text-generation" and "text2text-generation".
             Generally, decoder-only models like GPT support "text-generation",
             while encoder-decoder models like T5 support "text2text-generation".
-            If not specified, the component will try to infer the task, contacting the Hugging Face Hub API.
             If the task is also specified in the pipeline_kwargs, this parameter will be ignored.
+            If not specified, the component will attempt to infer the task from the model name,
+            contacting the Hugging Face Hub API.
         :param device: The device on which the model is loaded. (e.g., "cpu", "cuda:0").
             If device or device_map is specified in the pipeline_kwargs, this parameter will be ignored.
         :param token: The token to use as HTTP bearer authorization for remote files.
             If True, will use the token generated when running huggingface-cli login (stored in ~/.huggingface).
             If the token is also specified in the pipeline_kwargs, this parameter will be ignored.
-        :param generation_kwargs: Dictionary containing keyword arguments to customize text generation.
+        :param generation_kwargs: a dictionary containing keyword arguments to customize text generation.
             See Hugging Face's documentation for more information.
             https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation
             https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig
         :param pipeline_kwargs: Dictionary containing keyword arguments used to initialize the pipeline.
-            You can use these keyword arguments for fine-grained control of the pipeline.
+            These keyword arguments provide fine-grained control over the pipeline.
             In case of duplication, these kwargs override model_name_or_path, task, device, and token init parameters.
             See Hugging Face's documentation for more information on the available kwargs.
             https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task
-            In this dictionary, you can also specify enter a key called "model_kwargs" to specify the kwargs
-            for the model initialization. See Hugging Face's documentation:
+            In this dictionary, you can also include "model_kwargs" to specify the kwargs
+            for model initialization:
             https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained
         """
         transformers_import.check()
 
-        self.generation_kwargs = generation_kwargs or {}
-
         pipeline_kwargs = pipeline_kwargs or {}
+        generation_kwargs = generation_kwargs or {}
 
-        # check if the essential kwargs are already in the pipeline_kwargs
-        # otherwise, take them from the other init parameters (if not None)
-        if "model" not in pipeline_kwargs:
-            pipeline_kwargs["model"] = model_name_or_path
-        if "token" not in pipeline_kwargs:
-            pipeline_kwargs["token"] = token
+        # check if the pipeline_kwargs contain the essential parameters
+        # otherwise, populate them with values from other init parameters
+        pipeline_kwargs.setdefault("model", model_name_or_path)
+        pipeline_kwargs.setdefault("token", token)
         if device is not None and "device" not in pipeline_kwargs and "device_map" not in pipeline_kwargs:
             pipeline_kwargs["device"] = device
 
@@ -94,17 +91,21 @@ class HuggingFaceLocalGenerator:
 
         if task not in ["text-generation", "text2text-generation"]:
             raise ValueError(
-                f"Task name {task} is not supported. "
-                f"We only support text2text-generation and text-generation tasks."
+                f"Task '{task}' is not supported. "
+                f"The supported tasks are 'text-generation' and 'text2text-generation'."
             )
         pipeline_kwargs["task"] = task
 
+        # if not specified, set return_full_text to False for text-generation
+        # only generated text is returned (excluding prompt)
+        if task == "text-generation" and "return_full_text" not in generation_kwargs:
+            generation_kwargs["return_full_text"] = False
+
         self.pipeline_kwargs = pipeline_kwargs
+        self.generation_kwargs = generation_kwargs
         self.pipeline = None
 
     def warm_up(self):
-        print(f"{self.pipeline_kwargs=}")
-
         if self.pipeline is None:
             self.pipeline = pipeline(**self.pipeline_kwargs)
 
@@ -129,27 +130,3 @@ class HuggingFaceLocalGenerator:
         output = self.pipeline(prompt, **self.generation_kwargs)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
         return {"replies": generated_texts}
-
-    # serialization!
-
-
-if __name__ == "__main__":
-    import json
-
-    model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-base")
-    tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
-    hf = HuggingFaceLocalGenerator(
-        pipeline_kwargs={"model": model, "tokenizer": tokenizer}, task="text2text-generation"
-    )
-    hf.warm_up()
-    hf.pipeline_kwargs["model"] = model.config.to_dict()
-    hf.pipeline_kwargs["tokenizer"] = tokenizer.name_or_path
-    serialized = hf.to_dict()
-    with open("serialized.txt", "w") as f:
-        f.write(str(serialized))
-
-    print(serialized)
-    new_hf = HuggingFaceLocalGenerator.from_dict(serialized)
-    print(new_hf.to_dict())
-    new_hf.warm_up()
-    print(new_hf.run("What is Google?"))
