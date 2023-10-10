@@ -31,7 +31,7 @@ class TestHTMLToDocument:
         """
         paths = [preview_samples_path / "html" / "what_is_haystack.html"]
         converter = HTMLToDocument()
-        output = converter.run(paths=paths)
+        output = converter.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 1
         assert "Haystack" in docs[0].text
@@ -44,7 +44,7 @@ class TestHTMLToDocument:
         paths = [preview_samples_path / "audio" / "answer.wav"]
         converter = HTMLToDocument()
         with caplog.at_level(logging.WARNING):
-            output = converter.run(paths=paths)
+            output = converter.run(sources=paths)
             assert "codec can't decode byte" in caplog.text
 
         docs = output["documents"]
@@ -58,6 +58,6 @@ class TestHTMLToDocument:
         paths = ["non_existing_file.html"]
         converter = HTMLToDocument()
         with caplog.at_level(logging.WARNING):
-            result = converter.run(paths=paths)
-            assert "Could not read file non_existing_file.html" in caplog.text
+            result = converter.run(sources=paths)
+            assert "Could not read non_existing_file.html" in caplog.text
             assert result["documents"] == []
