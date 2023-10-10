@@ -196,7 +196,7 @@ class LinkContentFetcher:
                 return self.fetch(url)
             except Exception as e:
                 logger.warning("Error fetching %s: %s", url, str(e))
-                return {"content_type": None, "url": url}, None
+                return {"content_type": "Unknown", "url": url}, None
         else:
             return self.fetch(url)
 
