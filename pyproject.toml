@@ -25,10 +25,18 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
   "networkx", # Pipeline graphs
-  "requests", # Mermaid diagrams
+
 ]
 
 [project.optional-dependencies]
+graphviz = [
+  "pygraphviz", # Draw pipelines (requires the 'graphviz' system library)
+
+]
+mermaid = [
+  "requests", # Draw pipelines (requires internet connectivity)
+
+]
 dev = [
   "hatch",
   "pre-commit",
