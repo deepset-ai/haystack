@@ -57,7 +57,7 @@ def test_joindocuments_preserves_root_node():
 
 
 @pytest.mark.unit
-def test_joindocuments_concatenate_keep_only_highest_ranking_duplicate(join_mode):
+def test_joindocuments_concatenate_keep_only_highest_ranking_duplicate():
     inputs = [
         {
             "documents": [
