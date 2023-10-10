@@ -6,7 +6,6 @@ from examples.getting_started import getting_started
 from haystack.schema import Answer, Document
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize("provider", ["anthropic", "cohere", "huggingface", "openai"])
 def test_getting_started(provider):
     if provider == "anthropic":
