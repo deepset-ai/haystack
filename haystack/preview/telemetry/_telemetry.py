@@ -16,7 +16,9 @@ if TYPE_CHECKING:
 
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
 CONFIG_PATH = Path("~/.haystack/config.yaml").expanduser()
-PIPELINE_RUN_BUFFER_SIZE = 10
+
+#: Telemetry sends at most one event every number of seconds specified in this constant
+MIN_SECONDS_BETWEEN_EVENTS = 60
 
 
 logger = logging.getLogger(__name__)
@@ -129,7 +131,7 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
         # Always send the first event
         not pipeline._last_telemetry_sent
         # Send no more than one event every minute
-        or (datetime.datetime.now() - pipeline._last_telemetry_sent).seconds < 60
+        or (datetime.datetime.now() - pipeline._last_telemetry_sent).seconds < MIN_SECONDS_BETWEEN_EVENTS
     ):
         return None
 
