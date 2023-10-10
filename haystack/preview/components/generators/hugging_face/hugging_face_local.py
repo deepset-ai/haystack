@@ -46,12 +46,13 @@ class HuggingFaceLocalGenerator:
         :param model_name_or_path: The name or path of a Hugging Face model for text generation.
             E.g. "google/flan-t5-large".
             If the model is also specified in the pipeline_kwargs, this parameter will be ignored.
-        :param task: The task for the Hugging Face pipeline. Possible values are "text-generation" and "text2text-generation".
+        :param task: The task for the Hugging Face pipeline.
+            Possible values are "text-generation" and "text2text-generation".
             Generally, decoder-only models like GPT support "text-generation",
             while encoder-decoder models like T5 support "text2text-generation".
             If the task is also specified in the pipeline_kwargs, this parameter will be ignored.
             If not specified, the component will attempt to infer the task from the model name,
-            contacting the Hugging Face Hub API.
+            calling the Hugging Face Hub API.
         :param device: The device on which the model is loaded. (e.g., "cpu", "cuda:0").
             If device or device_map is specified in the pipeline_kwargs, this parameter will be ignored.
         :param token: The token to use as HTTP bearer authorization for remote files.
@@ -127,6 +128,9 @@ class HuggingFaceLocalGenerator:
         if self.pipeline is None:
             raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
 
-        output = self.pipeline(prompt, **self.generation_kwargs)
-        generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
-        return {"replies": generated_texts}
+        replies = []
+        if prompt:
+            output = self.pipeline(prompt, **self.generation_kwargs)
+            replies = [o["generated_text"] for o in output if "generated_text" in o]
+
+        return {"replies": replies}
