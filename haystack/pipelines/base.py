@@ -963,7 +963,7 @@ class Pipeline:
             from beir.datasets.data_loader import GenericDataLoader
             from beir.retrieval.evaluation import EvaluateRetrieval
         except ModuleNotFoundError as e:
-            raise HaystackError("beir is not installed. Please run `pip install farm-haystack[beir]`...") from e
+            raise HaystackError("beir is not installed. Please run `pip install beir`") from e
 
         url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{dataset}.zip"
         data_path = util.download_and_unzip(url, dataset_dir)
