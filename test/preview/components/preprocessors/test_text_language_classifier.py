@@ -1,4 +1,5 @@
 import pytest
+import logging
 
 from haystack.preview import Document
 from haystack.preview.components.preprocessors import TextLanguageClassifier
@@ -36,3 +37,10 @@ class TestTextLanguageClassifier:
         german_setence = "Ein deutscher Satz ohne Verb."
         result = classifier.run(strings=[english_sentence, german_setence])
         assert result == {"en": [english_sentence], "unmatched": [german_setence]}
+
+    @pytest.mark.unit
+    def test_warning_if_no_language_detected(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            classifier = TextLanguageClassifier()
+            classifier.run(strings=["."])
+            assert "Langdetect cannot detect the language of text: ." in caplog.text

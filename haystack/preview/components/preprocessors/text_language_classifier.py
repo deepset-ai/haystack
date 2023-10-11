@@ -71,6 +71,6 @@ class TextLanguageClassifier:
         try:
             language = langdetect.detect(string)
         except langdetect.LangDetectException:
-            logger.debug("Langdetect cannot detect the language of text: %s", string)
+            logger.warning("Langdetect cannot detect the language of text: %s", string)
             language = None
         return language
