@@ -128,8 +128,8 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
     """
     pipeline._telemetry_runs += 1
     if (
-        pipeline._last_telemetry_sent and 
-        (datetime.datetime.now() - pipeline._last_telemetry_sent).seconds < MIN_SECONDS_BETWEEN_EVENTS
+        pipeline._last_telemetry_sent
+        and (datetime.datetime.now() - pipeline._last_telemetry_sent).seconds < MIN_SECONDS_BETWEEN_EVENTS
     ):
         return None
 
