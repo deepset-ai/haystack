@@ -17,7 +17,7 @@ from haystack.errors import HaystackError
 from haystack.schema import Document, FilterType
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
-from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
+from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS, COHERE_EMBEDDING_MODELS
 from haystack.utils.early_stopping import EarlyStopping
 from haystack.telemetry import send_event
 from haystack.lazy_imports import LazyImport
@@ -1472,7 +1472,7 @@ class EmbeddingRetriever(DenseRetriever):
         :param embedding_model: Local path or name of model in Hugging Face's model hub such
                                 as ``'sentence-transformers/all-MiniLM-L6-v2'``. The embedding model could also
                                 potentially be an OpenAI model ["ada", "babbage", "davinci", "curie"] or
-                                a Cohere model ["small", "medium", "large"].
+                                a Cohere model ["embed-english-v2.0", "embed-english-light-v2.0", "embed-multilingual-v2.0"].
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to encode at once.
@@ -1878,14 +1878,7 @@ class EmbeddingRetriever(DenseRetriever):
         )
         if valid_openai_model_name:
             return "openai"
-        if model_name_or_path in [
-            "small",
-            "large",
-            "multilingual-22-12",
-            "embed-english-v2.0",
-            "embed-english-light-v2.0",
-            "embed-multilingual-v2.0",
-        ]:
+        if model_name_or_path in COHERE_EMBEDDING_MODELS:
             return "cohere"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
