@@ -8,7 +8,7 @@ import itertools
 
 from canals.errors import PipelineConnectError
 from canals.type_checking import _types_are_compatible
-from canals.pipeline.sockets import InputSocket, OutputSocket
+from canals.component.sockets import InputSocket, OutputSocket
 from canals.utils import _type_name
 
 

@@ -13,7 +13,7 @@ from collections import OrderedDict
 
 import networkx
 
-from canals.component import component, Component
+from canals.component import component, Component, InputSocket, OutputSocket
 from canals.errors import (
     PipelineError,
     PipelineConnectError,
@@ -22,7 +22,6 @@ from canals.errors import (
     PipelineValidationError,
 )
 from canals.pipeline.draw import _draw, _convert_for_debug, RenderingEngines
-from canals.pipeline.sockets import InputSocket, OutputSocket
 from canals.pipeline.validation import _validate_pipeline_input
 from canals.pipeline.connections import parse_connection, _find_unambiguous_connection
 from canals.utils import _type_name

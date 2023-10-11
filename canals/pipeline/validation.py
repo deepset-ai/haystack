@@ -7,7 +7,7 @@ import logging
 import networkx
 
 from canals.errors import PipelineValidationError
-from canals.pipeline.sockets import InputSocket, OutputSocket
+from canals.component.sockets import InputSocket, OutputSocket
 
 
 logger = logging.getLogger(__name__)

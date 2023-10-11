@@ -7,7 +7,7 @@ import logging
 import pytest
 
 from canals import Pipeline
-from canals.pipeline.sockets import InputSocket, OutputSocket
+from canals.component.sockets import InputSocket, OutputSocket
 from canals.errors import PipelineMaxLoops, PipelineError, PipelineRuntimeError
 from sample_components import AddFixedValue, Threshold, MergeLoop, Double
 from canals.testing.factory import component_class
