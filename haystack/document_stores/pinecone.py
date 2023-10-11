@@ -2,6 +2,8 @@ import copy
 import json
 import logging
 import operator
+from copy import deepcopy
+from datetime import datetime
 from functools import reduce
 from itertools import islice
 from typing import Any, Dict, Generator, List, Literal, Optional, Set, Union
@@ -14,7 +16,8 @@ from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DuplicateDocumentError, PineconeDocumentStoreError
 from haystack.lazy_imports import LazyImport
 from haystack.nodes.retriever import DenseRetriever
-from haystack.schema import Answer, Document, FilterType, Label, Span
+from haystack.schema import LABEL_DATETIME_FORMAT, Answer, Document, FilterType, Label, Span
+from haystack.utils.batching import get_batches_from_generator
 
 with LazyImport("Run 'pip install farm-haystack[pinecone]'") as pinecone_import:
     import pinecone
@@ -30,7 +33,7 @@ AND_OPERATOR = "$and"
 IN_OPERATOR = "$in"
 EQ_OPERATOR = "$eq"
 
-DEFAULT_BATCH_SIZE = 32
+DEFAULT_BATCH_SIZE = 128
 
 PINECONE_STARTER_POD = "starter"
 
@@ -292,15 +295,15 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         Add new filter for `doc_type` metadata field.
         """
+        all_filters = deepcopy(filters)
         if type_value:
             new_type_filter = {TYPE_METADATA_FIELD: {EQ_OPERATOR: type_value}}
-            if AND_OPERATOR not in filters and TYPE_METADATA_FIELD not in filters:
+            if AND_OPERATOR not in all_filters and TYPE_METADATA_FIELD not in all_filters:
                 # extend filters with new `doc_type` filter and add $and operator
-                filters.update(new_type_filter)
-                all_filters = filters
+                all_filters.update(new_type_filter)
                 return {AND_OPERATOR: all_filters}
 
-            filters_content = filters[AND_OPERATOR] if AND_OPERATOR in filters else filters
+            filters_content = all_filters[AND_OPERATOR] if AND_OPERATOR in all_filters else all_filters
             if TYPE_METADATA_FIELD in filters_content:  # type: ignore
                 current_type_filter = filters_content[TYPE_METADATA_FIELD]  # type: ignore
                 type_values = {type_value}
@@ -316,7 +319,19 @@ class PineconeDocumentStore(BaseDocumentStore):
                 new_type_filter = {TYPE_METADATA_FIELD: {IN_OPERATOR: list(type_values)}}  # type: ignore
             filters_content.update(new_type_filter)  # type: ignore
 
-        return filters
+        return all_filters
+
+    def _remove_type_metadata_filter(self, filters: FilterType) -> FilterType:
+        """
+        Remove filter for `doc_type` metadata field if it exists.
+        """
+        all_filters = deepcopy(filters)
+        for key, value in all_filters.copy().items():
+            if key == TYPE_METADATA_FIELD:
+                del all_filters[key]
+            elif isinstance(value, dict):
+                all_filters[key] = self._remove_type_metadata_filter(filters=value)
+        return all_filters
 
     def _get_default_type_metadata(self, index: Optional[str], namespace: Optional[str] = None) -> str:
         """
@@ -365,6 +380,13 @@ class PineconeDocumentStore(BaseDocumentStore):
                 self.top_k_limit,
             )
         return vector_count
+
+    def _delete_vectors(self, index: str, ids: List[str], namespace: Optional[str]) -> None:
+        batch_size = self.top_k_limit_vectors
+        [
+            self.pinecone_indexes[index].delete(ids=list(id_batch), namespace=namespace)
+            for id_batch in get_batches_from_generator(ids, batch_size)
+        ]
 
     def get_document_count(
         self,
@@ -416,11 +438,18 @@ class PineconeDocumentStore(BaseDocumentStore):
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
-        # add `doc_type` value if specified, otherwise default is related to documents without embeddings
-        types_metadata = {type_metadata or DOCUMENT_WITHOUT_EMBEDDING}
-        if not type_metadata and not only_documents_without_embedding:
-            # add `doc_type` related to documents with embeddings
-            types_metadata.add(DOCUMENT_WITH_EMBEDDING)
+        # add `doc_type` value if specified
+        if type_metadata:
+            types_metadata = {type_metadata}
+        # otherwise add default `doc_type` value which is related to documents without embeddings,
+        # but only if `doc_type` doesn't already exist in filters
+        elif TYPE_METADATA_FIELD not in str(filters):
+            types_metadata = {DOCUMENT_WITHOUT_EMBEDDING}
+            if not only_documents_without_embedding:
+                # add `doc_type` related to documents with embeddings
+                types_metadata.add(DOCUMENT_WITH_EMBEDDING)
+        else:
+            types_metadata = set()
 
         return self._get_vector_count(index, filters=filters, namespace=namespace, types_metadata=types_metadata)  # type: ignore
 
@@ -431,7 +460,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         Return the count of embeddings in the document store.
 
         :param index: Optional index name to retrieve all documents from.
-        :param filters: filters: Optional filters to narrow down the documents with embedding which
+        :param filters: Optional filters to narrow down the documents with embedding which
             will be counted. Filters are defined as nested dictionaries. The keys of the dictionaries
             can be a logical operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`,
             `"$in"`, `"$gt"`, `"$gte"`, `"$lt"`, `"$lte"`), or a metadata field name.
@@ -458,6 +487,9 @@ class PineconeDocumentStore(BaseDocumentStore):
                 ```
         :param namespace: Optional namespace to count embeddings from. If not specified, None is default.
         """
+        # drop filter for `doc_type` if exists
+        if TYPE_METADATA_FIELD in str(filters):
+            filters = self._remove_type_metadata_filter(filters)
         return self._get_vector_count(
             index, filters=filters, namespace=namespace, types_metadata={DOCUMENT_WITH_EMBEDDING}  # type: ignore
         )
@@ -542,8 +574,9 @@ class PineconeDocumentStore(BaseDocumentStore):
             with tqdm(
                 total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
             ) as progress_bar:
-                for i in range(0, len(document_objects), batch_size):
-                    document_batch = document_objects[i : i + batch_size]
+                for document_batch in get_batches_from_generator(document_objects, batch_size):
+                    document_batch = list(document_batch)
+                    document_batch_copy = deepcopy(document_batch)
                     ids = [doc.id for doc in document_batch]
                     # If duplicate_documents set to `skip` or `fail`, we need to check for existing documents
                     if duplicate_documents in ["skip", "fail"]:
@@ -588,10 +621,10 @@ class PineconeDocumentStore(BaseDocumentStore):
                                 **doc.meta,
                             }
                         )
-                        for doc in document_objects[i : i + batch_size]
+                        for doc in document_batch_copy
                     ]
                     if add_vectors:
-                        embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
+                        embeddings = [doc.embedding for doc in document_batch_copy]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
                         if self.similarity == "cosine":
                             # Normalize embeddings inplace
@@ -784,7 +817,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
-        if not type_metadata:
+        if not type_metadata and TYPE_METADATA_FIELD not in str(filters):
             # set default value for `doc_type` metadata field
             type_metadata = self._get_default_type_metadata(index, namespace)  # type: ignore
 
@@ -859,7 +892,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         index = self._index(index)
         self._index_connection_exists(index)
 
-        if not type_metadata:
+        if not type_metadata and TYPE_METADATA_FIELD not in str(filters):
             # set default value for `doc_type` metadata field
             type_metadata = self._get_default_type_metadata(index, namespace)  # type: ignore
 
@@ -873,10 +906,9 @@ class PineconeDocumentStore(BaseDocumentStore):
                 "Make sure the desired metadata you want to filter with is indexed."
             )
 
-        for i in range(0, len(ids), batch_size):
-            i_end = min(len(ids), i + batch_size)
+        for id_batch in get_batches_from_generator(ids, batch_size):
             documents = self.get_documents_by_id(
-                ids=ids[i:i_end],
+                ids=list(id_batch),
                 index=index,
                 batch_size=batch_size,
                 return_embedding=return_embedding,
@@ -897,7 +929,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         index = self._index(index)
         self._index_connection_exists(index)
 
-        document_count = self.get_document_count(index=index, namespace=namespace, type_metadata=type_metadata)
+        document_count = self.get_document_count(
+            index=index, namespace=namespace, type_metadata=type_metadata, filters=filters
+        )
 
         if index not in self.all_ids:
             self.all_ids[index] = set()
@@ -916,16 +950,16 @@ class PineconeDocumentStore(BaseDocumentStore):
                     index=index, filters=filters, type_metadata=type_metadata, batch_size=self.top_k_limit
                 )
             else:
-                # If we don't have all IDs, we must query and extract IDs from the original namespace, then move the retrieved embeddings
-                # to a temporary namespace and query again for new items. We repeat this process until all embeddings
-                # have been retrieved.
+                # If we don't have all IDs, we must query and extract IDs from the original namespace, then move the
+                # retrieved documents to a temporary namespace and query again for new items. We repeat this process
+                # until all documents have been retrieved.
                 target_namespace = f"{namespace}-copy" if namespace is not None else "copy"
                 all_ids: Set[str] = set()  # type: ignore
                 vector_id_matrix = ["dummy-id"]
                 with tqdm(
                     total=document_count, disable=not self.progress_bar, position=0, unit=" ids", desc="Retrieving IDs"
                 ) as progress_bar:
-                    while vector_id_matrix:
+                    while True:
                         # Retrieve IDs from Pinecone
                         vector_id_matrix = self._get_ids(
                             index=index,
@@ -934,8 +968,11 @@ class PineconeDocumentStore(BaseDocumentStore):
                             type_metadata=type_metadata,
                             batch_size=batch_size,
                         )
+                        if not vector_id_matrix:
+                            break
                         # Save IDs
-                        all_ids = all_ids.union(set(vector_id_matrix))  # type: ignore
+                        unique_ids = set(vector_id_matrix)
+                        all_ids = all_ids.union(unique_ids)  # type: ignore
                         # Move these IDs to new namespace
                         self._move_documents_by_id_namespace(
                             ids=vector_id_matrix,
@@ -945,10 +982,12 @@ class PineconeDocumentStore(BaseDocumentStore):
                             batch_size=batch_size,
                         )
                         progress_bar.set_description_str("Retrieved IDs")
-                        progress_bar.update(len(set(vector_id_matrix)))
+                        progress_bar.update(len(unique_ids))
 
                 # Now move all documents back to source namespace
-                self._namespace_cleanup(index=index, namespace=target_namespace, batch_size=batch_size)
+                self._namespace_cleanup(
+                    index=index, ids=list(all_ids), namespace=target_namespace, batch_size=batch_size
+                )
 
             self._add_local_ids(index, list(all_ids))
             return list(all_ids)
@@ -975,11 +1014,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         with tqdm(
             total=len(ids), disable=not self.progress_bar, position=0, unit=" docs", desc="Moving Documents"
         ) as progress_bar:
-            for i in range(0, len(ids), batch_size):
-                i_end = min(len(ids), i + batch_size)
-                # TODO if i == i_end:
-                #    break
-                id_batch = ids[i:i_end]
+            for id_batch in get_batches_from_generator(ids, batch_size):
+                id_batch = list(id_batch)
                 # Retrieve documents from source_namespace
                 result = self.pinecone_indexes[index].fetch(ids=id_batch, namespace=source_namespace)
                 vector_id_matrix = result["vectors"].keys()
@@ -989,27 +1025,24 @@ class PineconeDocumentStore(BaseDocumentStore):
                 # Store metadata nd embeddings in new target_namespace
                 self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone, namespace=target_namespace)
                 # Delete vectors from source_namespace
-                self.delete_documents(index=index, ids=ids[i:i_end], namespace=source_namespace, drop_ids=False)
+                self.delete_documents(index=index, ids=id_batch, namespace=source_namespace, drop_ids=False)
                 progress_bar.set_description_str("Documents Moved")
                 progress_bar.update(len(id_batch))
 
-    def _namespace_cleanup(self, index: str, namespace: str, batch_size: int = DEFAULT_BATCH_SIZE):
+    def _namespace_cleanup(self, index: str, ids: List[str], namespace: str, batch_size: int = DEFAULT_BATCH_SIZE):
         """
-        Shifts vectors back from "-copy" namespace to the original namespace.
+        Shifts vectors back from "*-copy" namespace to the original namespace.
         """
         with tqdm(
             total=1, disable=not self.progress_bar, position=0, unit=" namespaces", desc="Cleaning Namespace"
         ) as progress_bar:
             target_namespace = namespace[:-5] if namespace != "copy" else None
-            while True:
-                # Retrieve IDs from Pinecone
-                vector_id_matrix = self._get_ids(index=index, namespace=namespace, batch_size=batch_size)
-                # Once we reach final item, we break
-                if len(vector_id_matrix) == 0:
+            for id_batch in get_batches_from_generator(ids, batch_size):
+                id_batch = list(id_batch)
+                if not id_batch:
                     break
-                # Move these IDs to new namespace
                 self._move_documents_by_id_namespace(
-                    ids=vector_id_matrix,
+                    ids=id_batch,
                     index=index,
                     source_namespace=namespace,
                     target_namespace=target_namespace,
@@ -1051,10 +1084,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         self._index_connection_exists(index)
 
         documents = []
-        for i in range(0, len(ids), batch_size):
-            i_end = min(len(ids), i + batch_size)
-            id_batch = ids[i:i_end]
-            result = self.pinecone_indexes[index].fetch(ids=id_batch, namespace=namespace)
+        for id_batch in get_batches_from_generator(ids, batch_size):
+            result = self.pinecone_indexes[index].fetch(ids=list(id_batch), namespace=namespace)
 
             vector_id_matrix = []
             meta_matrix = []
@@ -1193,13 +1224,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 # Extend the list of document IDs that should be deleted
                 id_values = list(set(id_values).union(set(doc_ids)))
             if id_values:
-                if len(id_values) > self.top_k_limit_vectors:
-                    batch_size = self.top_k_limit_vectors
-                    while id_values:
-                        id_values_batch, id_values = id_values[:batch_size], id_values[batch_size:]
-                        self.pinecone_indexes[index].delete(ids=id_values_batch, namespace=namespace)
-                else:
-                    self.pinecone_indexes[index].delete(ids=id_values, namespace=namespace)
+                self._delete_vectors(index, id_values, namespace)
 
         if drop_ids:
             self.all_ids[index] = self.all_ids[index].difference(set(id_values))
@@ -1688,14 +1713,20 @@ class PineconeDocumentStore(BaseDocumentStore):
                 if k.startswith("label-meta-"):
                     label_meta_metadata[k[11:]] = v
             # Rebuild Label object
+            created_at = label_meta.get("label-created-at")
+            updated_at = label_meta.get("label-updated-at")
+            if created_at and isinstance(created_at, datetime):
+                created_at = created_at.strftime(LABEL_DATETIME_FORMAT)
+            if updated_at and isinstance(updated_at, datetime):
+                updated_at = updated_at.strftime(LABEL_DATETIME_FORMAT)
             label = Label(
                 id=label_meta["label-id"],
                 query=label_meta["query"],
                 document=doc,
                 answer=answer,
                 pipeline_id=label_meta["label-pipeline-id"],
-                created_at=label_meta["label-created-at"],
-                updated_at=label_meta["label-updated-at"],
+                created_at=created_at,
+                updated_at=updated_at,
                 is_correct_answer=label_meta["label-is-correct-answer"],
                 is_correct_document=label_meta["label-is-correct-document"],
                 origin=label_meta["label-origin"],
@@ -1776,11 +1807,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         index = self._index(index)
         self._index_connection_exists(index)
 
-        # add filter for `doc_type` metadata field
-        filters = filters or {}
-        filters = self._add_type_metadata_filter(filters, LABEL)  # type: ignore
-
-        documents = self.get_all_documents(index=index, filters=filters, headers=headers, namespace=namespace)
+        documents = self.get_all_documents(
+            index=index, filters=filters, headers=headers, namespace=namespace, type_metadata=LABEL
+        )
         for doc in documents:
             doc.meta = self._pinecone_meta_format(doc.meta, labels=True)
         labels = self._meta_to_labels(documents)

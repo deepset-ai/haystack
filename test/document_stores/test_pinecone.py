@@ -6,7 +6,13 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from haystack.document_stores.pinecone import DOCUMENT_WITH_EMBEDDING, PineconeDocumentStore, pinecone
+from haystack.document_stores.pinecone import (
+    DOCUMENT_WITH_EMBEDDING,
+    DOCUMENT_WITHOUT_EMBEDDING,
+    TYPE_METADATA_FIELD,
+    PineconeDocumentStore,
+    pinecone,
+)
 from haystack.errors import FilterError, PineconeDocumentStoreError
 from haystack.schema import Document
 from haystack.testing import DocumentStoreBaseTestAbstract
@@ -15,7 +21,7 @@ from ..conftest import MockBaseRetriever
 from ..mocks import pinecone as pinecone_mock
 
 # Set metadata fields used during testing for PineconeDocumentStore meta_config
-META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document"]
+META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document", "doc_type"]
 
 
 class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
@@ -467,9 +473,59 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         We expect 1 doc with an embeddings because all documents in already written in doc_store_with_docs contain no
         embeddings.
         """
-        doc = Document(content="Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc = Document(
+            content="Doc with embedding",
+            embedding=np.random.rand(768).astype(np.float32),
+            meta={"meta_field": "test-1"},
+        )
         doc_store_with_docs.write_documents([doc])
         assert doc_store_with_docs.get_embedding_count() == 1
+
+    @pytest.mark.integration
+    def test_get_embedding_count_with_filters(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        We expect 1 doc with an embedding and given filters, because there are only two documents with embedding
+        written in doc_store_with_docs, while only one of them satisfies given filters.
+        """
+        doc_1 = Document(
+            content="Doc with embedding 1",
+            embedding=np.random.rand(768).astype(np.float32),
+            meta={"meta_field": "test-1"},
+        )
+        doc_2 = Document(
+            content="Doc with embedding 2",
+            embedding=np.random.rand(768).astype(np.float32),
+            meta={"meta_field": "test-2"},
+        )
+        doc_store_with_docs.write_documents([doc_1, doc_2])
+        assert doc_store_with_docs.get_embedding_count(filters={"meta_field": "test-1"}) == 1
+
+    @pytest.mark.integration
+    def test_get_embedding_count_with_doc_type_filters(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        We expect 2 docs with an embedding and given filters, because there are only two documents with embedding
+        written in doc_store_with_docs and both of them satisfy given filters (`meta_field` filter).
+        Even though the filters include `doc_type` with value related to documents without embedding (`no-vector`),
+        we expect this particular filter to be ignored (irrelevant, since documents with embedding have `doc_type`
+        set to `vector`).
+        """
+        doc_1 = Document(
+            content="Doc with embedding 1",
+            embedding=np.random.rand(768).astype(np.float32),
+            meta={"meta_field": "test-2"},
+        )
+        doc_2 = Document(
+            content="Doc with embedding 2",
+            embedding=np.random.rand(768).astype(np.float32),
+            meta={"meta_field": "test-2"},
+        )
+        doc_store_with_docs.write_documents([doc_1, doc_2])
+        assert (
+            doc_store_with_docs.get_embedding_count(
+                filters={TYPE_METADATA_FIELD: DOCUMENT_WITHOUT_EMBEDDING, "meta_field": "test-2"}
+            )
+            == 2
+        )
 
     @pytest.mark.integration
     def test_get_document_count_after_write_doc_with_embedding(self, doc_store_with_docs: PineconeDocumentStore):
