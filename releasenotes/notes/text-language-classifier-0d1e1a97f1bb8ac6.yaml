@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Add TextLanguageClassifier component so that input strings, for example queries, can be routed to different components based on the detected language.
