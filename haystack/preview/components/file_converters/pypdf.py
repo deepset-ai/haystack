@@ -80,7 +80,7 @@ class PyPDFToDocument:
         elif isinstance(source, ByteStream):
             pdf_reader = PdfReader(io.BytesIO(source.data))
         else:
-            raise ValueError(f"Unsupported path type: {type(source)}")
+            raise ValueError(f"Unsupported source type: {type(source)}")
 
         text = "".join(extracted_text for page in pdf_reader.pages if (extracted_text := page.extract_text()))
 
