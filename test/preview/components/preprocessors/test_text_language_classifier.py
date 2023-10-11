@@ -21,4 +21,18 @@ class TestTextLanguageClassifier:
     def test_empty_list(self):
         classifier = TextLanguageClassifier()
         result = classifier.run(strings=[])
-        assert result == {"english": [], "unmatched": []}
+        assert result == {"en": [], "unmatched": []}
+
+    @pytest.mark.unit
+    def test_detect_language(self):
+        classifier = TextLanguageClassifier()
+        detected_language = classifier.detect_language("This is an english sentence.")
+        assert detected_language == "en"
+
+    @pytest.mark.unit
+    def test_route_to_en_and_unmatched(self):
+        classifier = TextLanguageClassifier()
+        english_sentence = "This is an english sentence."
+        german_setence = "Ein deutscher Satz ohne Verb."
+        result = classifier.run(strings=[english_sentence, german_setence])
+        assert result == {"en": [english_sentence], "unmatched": [german_setence]}

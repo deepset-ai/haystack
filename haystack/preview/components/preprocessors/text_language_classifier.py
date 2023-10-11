@@ -1,6 +1,13 @@
+import logging
 from typing import List, Dict, Any, Optional
 
 from haystack.preview import component, Document, default_from_dict, default_to_dict
+from haystack.preview.lazy_imports import LazyImport
+
+logger = logging.getLogger(__name__)
+
+with LazyImport("Run 'pip install langdetect'") as langdetect_import:
+    import langdetect
 
 
 @component
@@ -14,10 +21,11 @@ class TextLanguageClassifier:
 
     def __init__(self, languages: Optional[List[str]] = None):
         """
-        :param languages: The languages that are supported as output edges. By default english is supported and texts of any other language are routed to "unmatched"
+        :param languages: A list of languages in ISO code, each corresponding to a different output connection (see [langdetect` documentation](https://github.com/Mimino666/langdetect#languages)). By default, only ["en"] is supported and texts of any other language are routed to "unmatched".
         """
+        langdetect_import.check()
         if not languages:
-            languages = ["english"]
+            languages = ["en"]
         self.languages = languages
         component.set_output_types(self, unmatched=List[str], **{language: List[str] for language in languages})
 
@@ -34,21 +42,16 @@ class TextLanguageClassifier:
                 "TextLanguageClassifier expects a list of str as input. In case you want to classify a document, please use the DocumentLanguageClassifier."
             )
 
-        unmatched_strings = []
         output: Dict[str, List[str]] = {language: [] for language in self.languages}
+        output["unmatched"] = []
 
         for string in strings:
-            cur_string_matched = False
-            for language in self.languages:
-                if self.string_matches_language(language, string):
-                    output[language].append(string)
-                    cur_string_matched = True
-                    break
+            detected_language = self.detect_language(string)
+            if detected_language in self.languages:
+                output[detected_language].append(string)
+            else:
+                output["unmatched"].append(string)
 
-            if not cur_string_matched:
-                unmatched_strings.append(string)
-
-        output["unmatched"] = unmatched_strings
         return output
 
     def to_dict(self) -> Dict[str, Any]:
@@ -64,5 +67,10 @@ class TextLanguageClassifier:
         """
         return default_from_dict(cls, data)
 
-    def string_matches_language(self, language: str, string: str) -> bool:
-        return language == "english"
+    def detect_language(self, string: str) -> Optional[str]:
+        try:
+            language = langdetect.detect(string)
+        except langdetect.LangDetectException:
+            logger.debug("Langdetect cannot detect the language of text: %s", string)
+            language = None
+        return language
