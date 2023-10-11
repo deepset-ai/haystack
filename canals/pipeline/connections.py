@@ -15,7 +15,7 @@ from canals.utils import _type_name
 logger = logging.getLogger(__name__)
 
 
-def _parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
+def parse_connection(connection: str) -> Tuple[str, Optional[str]]:
     """
     Returns component-connection pairs from a connect_to/from string
     """
