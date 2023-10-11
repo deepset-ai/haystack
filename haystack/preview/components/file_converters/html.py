@@ -75,4 +75,4 @@ class HTMLToDocument:
         if isinstance(source, ByteStream):
             return source.data.decode("utf-8")
 
-        raise ValueError(f"Unsupported path type: {type(source)}")
+        raise ValueError(f"Unsupported source type: {type(source)}")
