@@ -62,6 +62,7 @@ class ExtractiveReader:
         self.model_name_or_path = str(model_name_or_path)
         self.model = None
         self.device = device
+        self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
         self.confidence_threshold = confidence_threshold
