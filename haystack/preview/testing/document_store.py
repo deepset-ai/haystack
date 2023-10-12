@@ -62,12 +62,12 @@ class DocumentStoreBaseTests:
 
     def contains_same_docs(self, first_list: List[Document], second_list: List[Document]) -> bool:
         """
-        Utility to compare two lists of documents for equality regardless of the order od the documents.
+        Utility to compare two lists of documents for equality regardless of the order of the documents.
         """
         return (
             len(first_list) > 0
             and len(second_list) > 0
-            and first_list.sort(key=lambda d: d.id) == second_list.sort(key=lambda d: d.id)
+            and sorted(first_list, key=lambda d: d.id) == sorted(second_list, key=lambda d: d.id)
         )
 
     @pytest.mark.unit
@@ -361,9 +361,9 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_gte_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$gte": -2.0}})
+        result = docstore.filter_documents(filters={"number": {"$gte": -2}})
         assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if "number" in doc.metadata and doc.metadata["number"] >= -2.0]
+            result, [doc for doc in filterable_docs if "number" in doc.metadata and doc.metadata["number"] >= -2]
         )
 
     @pytest.mark.unit
@@ -459,14 +459,9 @@ class DocumentStoreBaseTests:
         self, docstore: DocumentStore, filterable_docs: List[Document]
     ):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$and": {"$lte": 0, "$gte": -2}}})
+        result = docstore.filter_documents(filters={"number": {"$and": {"$gte": 0, "$lte": 2}}})
         assert self.contains_same_docs(
-            result,
-            [
-                doc
-                for doc in filterable_docs
-                if "number" in doc.metadata and doc.metadata["number"] >= 0.0 and doc.metadata["number"] <= 2.0
-            ],
+            result, [doc for doc in filterable_docs if "number" in doc.metadata and 0 <= doc.metadata["number"] <= 2]
         )
 
     @pytest.mark.unit
@@ -617,7 +612,7 @@ class DocumentStoreBaseTests:
         docstore.write_documents(filterable_docs)
         filters_simplified = {
             "$or": {
-                "number": {"$lt": 1.0},
+                "number": {"$lt": 1},
                 "$and": {"name": {"$in": ["name_0", "name_1"]}, "$not": {"chapter": {"$eq": "intro"}}},
             }
         }
@@ -631,7 +626,7 @@ class DocumentStoreBaseTests:
                     ("number" in doc.metadata and doc.metadata["number"] < 1)
                     or (
                         doc.metadata.get("name") in ["name_0", "name_1"]
-                        or ("chapter" in doc.metadata and doc.metadata["chapter"] != "intro")
+                        and ("chapter" in doc.metadata and doc.metadata["chapter"] != "intro")
                     )
                 )
             ],
@@ -656,7 +651,7 @@ class DocumentStoreBaseTests:
                 for doc in filterable_docs
                 if (
                     (doc.metadata.get("name") in ["name_0", "name_1"] and doc.metadata.get("page") == "100")
-                    or (doc.metadata.get("chapter") in ["intro", "abstract"] and doc.metadata.get("page") == "100")
+                    or (doc.metadata.get("chapter") in ["intro", "abstract"] and doc.metadata.get("page") == "123")
                 )
             ],
         )
