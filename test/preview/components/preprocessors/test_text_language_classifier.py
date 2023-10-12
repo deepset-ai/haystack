@@ -1,5 +1,5 @@
-import pytest
 import logging
+import pytest
 
 from haystack.preview import Document
 from haystack.preview.components.preprocessors import TextLanguageClassifier
@@ -8,21 +8,21 @@ from haystack.preview.components.preprocessors import TextLanguageClassifier
 class TestTextLanguageClassifier:
     @pytest.mark.unit
     def test_non_string_input(self):
-        with pytest.raises(TypeError, match="TextLanguageClassifier expects a list of str as input."):
+        with pytest.raises(TypeError, match="TextLanguageClassifier expects a str as input."):
             classifier = TextLanguageClassifier()
-            classifier.run(strings=Document(text="This is an english sentence."))
+            classifier.run(text=Document(text="This is an english sentence."))
 
     @pytest.mark.unit
-    def test_single_string(self):
-        with pytest.raises(TypeError, match="TextLanguageClassifier expects a list of str as input."):
+    def test_list_of_string(self):
+        with pytest.raises(TypeError, match="TextLanguageClassifier expects a str as input."):
             classifier = TextLanguageClassifier()
-            classifier.run(strings="This is an english sentence.")
+            classifier.run(text=["This is an english sentence."])
 
     @pytest.mark.unit
-    def test_empty_list(self):
+    def test_empty_string(self):
         classifier = TextLanguageClassifier()
-        result = classifier.run(strings=[])
-        assert result == {"en": [], "unmatched": []}
+        result = classifier.run(text="")
+        assert result == {"en": None, "unmatched": ""}
 
     @pytest.mark.unit
     def test_detect_language(self):
@@ -31,16 +31,22 @@ class TestTextLanguageClassifier:
         assert detected_language == "en"
 
     @pytest.mark.unit
-    def test_route_to_en_and_unmatched(self):
+    def test_route_to_en(self):
         classifier = TextLanguageClassifier()
         english_sentence = "This is an english sentence."
-        german_setence = "Ein deutscher Satz ohne Verb."
-        result = classifier.run(strings=[english_sentence, german_setence])
-        assert result == {"en": [english_sentence], "unmatched": [german_setence]}
+        result = classifier.run(text=english_sentence)
+        assert result == {"en": english_sentence, "unmatched": None}
+
+    @pytest.mark.unit
+    def test_route_to_unmatched(self):
+        classifier = TextLanguageClassifier()
+        german_sentence = "Ein deutscher Satz ohne Verb."
+        result = classifier.run(text=german_sentence)
+        assert result == {"en": None, "unmatched": german_sentence}
 
     @pytest.mark.unit
     def test_warning_if_no_language_detected(self, caplog):
         with caplog.at_level(logging.WARNING):
             classifier = TextLanguageClassifier()
-            classifier.run(strings=["."])
+            classifier.run(text=".")
             assert "Langdetect cannot detect the language of text: ." in caplog.text
