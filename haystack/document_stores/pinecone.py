@@ -955,7 +955,6 @@ class PineconeDocumentStore(BaseDocumentStore):
                 # until all documents have been retrieved.
                 target_namespace = f"{namespace}-copy" if namespace is not None else "copy"
                 all_ids: Set[str] = set()  # type: ignore
-                vector_id_matrix = ["dummy-id"]
                 with tqdm(
                     total=document_count, disable=not self.progress_bar, position=0, unit=" ids", desc="Retrieving IDs"
                 ) as progress_bar:
