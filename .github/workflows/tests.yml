@@ -329,7 +329,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     services:
       elasticsearch:
-        image: elasticsearch:8.8.0
+        image: elasticsearch:8.10.2
         env:
           discovery.type: "single-node"
           xpack.security.enabled: "false"
