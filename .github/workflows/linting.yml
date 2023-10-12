@@ -6,6 +6,8 @@ on:
     paths:
       - "**.py"
       - "**/pyproject.toml"
+      - "!haystack/preview/**/*.py"
+      - "!test/preview/**/*.py"
 
 env:
   PYTHON_VERSION: "3.8"

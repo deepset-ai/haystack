@@ -121,7 +121,7 @@ class GPTGenerator:
         """
         init_params = data.get("init_parameters", {})
         streaming_callback = None
-        if "streaming_callback" in init_params:
+        if "streaming_callback" in init_params and init_params["streaming_callback"]:
             parts = init_params["streaming_callback"].split(".")
             module_name = ".".join(parts[:-1])
             function_name = parts[-1]
