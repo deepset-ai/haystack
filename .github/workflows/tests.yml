@@ -370,7 +370,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x "document_store and integration" test/document_stores/test_elasticsearch.py
+          pytest -x -m"document_store and integration" test/document_stores/test_elasticsearch.py
 
       - name: logs
         if: failure()
