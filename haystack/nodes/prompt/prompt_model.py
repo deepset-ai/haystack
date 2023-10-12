@@ -98,8 +98,8 @@ class PromptModel(BaseComponent):
             f" Currently supported invocation layers are: {PromptModelInvocationLayer.invocation_layer_providers}"
             f" You can implement and provide custom invocation layer for {self.model_name_or_path} by subclassing "
             "PromptModelInvocationLayer."
-            f" Also please check if you have if you are authorised to load the model {self.model_name_or_path} and have "
-            "logged into the huggingface cli."
+            f" Also please ensure you are authorised to load the model {self.model_name_or_path} and you are "
+            "logged-in into the huggingface cli."
         )
 
     def invoke(self, prompt: Union[str, List[str], List[Dict[str, str]]], **kwargs) -> List[str]:
