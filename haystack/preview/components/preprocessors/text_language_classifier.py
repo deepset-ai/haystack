@@ -37,7 +37,7 @@ class TextLanguageClassifier:
         self.languages = languages
         component.set_output_types(self, unmatched=str, **{language: str for language in languages})
 
-    def run(self, text: str):
+    def run(self, text: str) -> Dict[str, str]:
         """
         Run the TextLanguageClassifier. This method routes the text one of different edges based on its language.
         If the text does not match any of the languages specified at initialization, it is routed to
@@ -50,8 +50,7 @@ class TextLanguageClassifier:
                 "TextLanguageClassifier expects a str as input. In case you want to classify a document, please use the DocumentLanguageClassifier."
             )
 
-        output: Dict[str, str] = {language: None for language in self.languages}
-        output["unmatched"] = None
+        output: Dict[str, str] = {}
 
         detected_language = self.detect_language(text)
         if detected_language in self.languages:

@@ -22,7 +22,7 @@ class TestTextLanguageClassifier:
     def test_empty_string(self):
         classifier = TextLanguageClassifier()
         result = classifier.run(text="")
-        assert result == {"en": None, "unmatched": ""}
+        assert result == {"unmatched": ""}
 
     @pytest.mark.unit
     def test_detect_language(self):
@@ -35,14 +35,14 @@ class TestTextLanguageClassifier:
         classifier = TextLanguageClassifier()
         english_sentence = "This is an english sentence."
         result = classifier.run(text=english_sentence)
-        assert result == {"en": english_sentence, "unmatched": None}
+        assert result == {"en": english_sentence}
 
     @pytest.mark.unit
     def test_route_to_unmatched(self):
         classifier = TextLanguageClassifier()
         german_sentence = "Ein deutscher Satz ohne Verb."
         result = classifier.run(text=german_sentence)
-        assert result == {"en": None, "unmatched": german_sentence}
+        assert result == {"unmatched": german_sentence}
 
     @pytest.mark.unit
     def test_warning_if_no_language_detected(self, caplog):
