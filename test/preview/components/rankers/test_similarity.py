@@ -13,6 +13,7 @@ class TestSimilarityRanker:
             "type": "SimilarityRanker",
             "init_parameters": {
                 "device": "cpu",
+                "top_k": 10,
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "token": None,
             },
@@ -20,14 +21,15 @@ class TestSimilarityRanker:
 
     @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
-        component = SimilarityRanker(model_name_or_path="my_model", device="cuda", token="my_token")
+        component = SimilarityRanker(model_name_or_path="my_model", device="cuda", token="my_token", top_k=5)
         data = component.to_dict()
         assert data == {
             "type": "SimilarityRanker",
             "init_parameters": {
                 "device": "cuda",
                 "model_name_or_path": "my_model",
-                "token": None,  # we don't serialize valid tokens
+                "token": None,  # we don't serialize valid tokens,
+                "top_k": 5,
             },
         }
 
@@ -35,7 +37,11 @@ class TestSimilarityRanker:
     def test_from_dict(self):
         data = {
             "type": "SimilarityRanker",
-            "init_parameters": {"device": "cpu", "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2"},
+            "init_parameters": {
+                "device": "cpu",
+                "top_k": 10,
+                "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+            },
         }
         component = SimilarityRanker.from_dict(data)
         assert component.model_name_or_path == "cross-encoder/ms-marco-MiniLM-L-6-v2"
@@ -80,3 +86,28 @@ class TestSimilarityRanker:
 
         with pytest.raises(ComponentError):
             sampler.run(query="query", documents=[Document(text="document")])
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize(
+        "query,docs_before_texts,expected_first_text",
+        [
+            ("City in Bosnia and Herzegovina", ["Berlin", "Belgrade", "Sarajevo"], "Sarajevo"),
+            ("Machine learning", ["Python", "Bakery in Paris", "Tesla Giga Berlin"], "Python"),
+            ("Cubist movement", ["Nirvana", "Pablo Picasso", "Coffee"], "Pablo Picasso"),
+        ],
+    )
+    def test_run_top_k(self, query, docs_before_texts, expected_first_text):
+        """
+        Test if the component ranks documents correctly with a custom top_k.
+        """
+        ranker = SimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
+        ranker.warm_up()
+        docs_before = [Document(text=text) for text in docs_before_texts]
+        output = ranker.run(query=query, documents=docs_before)
+        docs_after = output["documents"]
+
+        assert len(docs_after) == 2
+        assert docs_after[0].text == expected_first_text
+
+        sorted_scores = sorted([doc.score for doc in docs_after], reverse=True)
+        assert [doc.score for doc in docs_after] == sorted_scores

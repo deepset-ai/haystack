@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Union, Dict, Any
+from typing import List, Union, Dict, Any, Optional
 
 from haystack.preview import ComponentError, Document, component, default_from_dict, default_to_dict
 from haystack.preview.lazy_imports import LazyImport
@@ -38,6 +38,7 @@ class SimilarityRanker:
         model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         device: str = "cpu",
         token: Union[bool, str, None] = None,
+        top_k: int = 10,
     ):
         """
         Creates an instance of SimilarityRanker.
@@ -47,10 +48,14 @@ class SimilarityRanker:
         :param token: The API token used to download private models from Hugging Face.
             If this parameter is set to `True`, then the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) will be used.
+        :param top_k: The maximum number of documents to return per query.
         """
         torch_and_transformers_import.check()
 
         self.model_name_or_path = model_name_or_path
+        if top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
+        self.top_k = top_k
         self.device = device
         self.token = token
         self.model = None
@@ -75,6 +80,7 @@ class SimilarityRanker:
             device=self.device,
             model_name_or_path=self.model_name_or_path,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
+            top_k=self.top_k,
         )
 
     @classmethod
@@ -85,16 +91,23 @@ class SimilarityRanker:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
-    def run(self, query: str, documents: List[Document]):
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
         Returns a list of documents ranked by their similarity to the given query
 
         :param query: Query string.
         :param documents: List of Documents.
+        :param top_k: The maximum number of documents to return.
         :return: List of Documents sorted by (desc.) similarity with the query.
         """
         if not documents:
             return {"documents": []}
+
+        if top_k is None:
+            top_k = self.top_k
+
+        elif top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
 
         # If a model path is provided but the model isn't loaded
         if self.model_name_or_path and not self.model:
@@ -117,4 +130,4 @@ class SimilarityRanker:
             i = sorted_index_tensor.item()
             documents[i].score = similarity_scores[i].item()
             ranked_docs.append(documents[i])
-        return {"documents": ranked_docs}
+        return {"documents": ranked_docs[:top_k]}
