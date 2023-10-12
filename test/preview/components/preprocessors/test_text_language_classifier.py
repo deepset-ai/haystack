@@ -7,6 +7,18 @@ from haystack.preview.components.preprocessors import TextLanguageClassifier
 
 class TestTextLanguageClassifier:
     @pytest.mark.unit
+    def test_to_dict(self):
+        component = TextLanguageClassifier(languages=["en", "de"])
+        data = component.to_dict()
+        assert data == {"type": "TextLanguageClassifier", "init_parameters": {"languages": ["en", "de"]}}
+
+    @pytest.mark.unit
+    def test_from_dict(self):
+        data = {"type": "TextLanguageClassifier", "init_parameters": {"languages": ["en", "de"]}}
+        component = TextLanguageClassifier.from_dict(data)
+        assert component.languages == ["en", "de"]
+
+    @pytest.mark.unit
     def test_non_string_input(self):
         with pytest.raises(TypeError, match="TextLanguageClassifier expects a str as input."):
             classifier = TextLanguageClassifier()
