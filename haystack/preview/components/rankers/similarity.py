@@ -34,18 +34,25 @@ class SimilarityRanker:
     """
 
     def __init__(
-        self, model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2", device: str = "cpu"
+        self,
+        model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        device: str = "cpu",
+        token: Union[bool, str, None] = None,
     ):
         """
         Creates an instance of SimilarityRanker.
 
         :param model_name_or_path: Path to a pre-trained sentence-transformers model.
         :param device: torch device (for example, cuda:0, cpu, mps) to limit model inference to a specific device.
+        :param token: The API token used to download private models from Hugging Face.
+            If this parameter is set to `True`, then the token generated when running
+            `transformers-cli login` (stored in ~/.huggingface) will be used.
         """
         torch_and_transformers_import.check()
 
         self.model_name_or_path = model_name_or_path
         self.device = device
+        self.token = token
         self.model = None
         self.tokenizer = None
 
@@ -54,16 +61,21 @@ class SimilarityRanker:
         Warm up the model and tokenizer used in scoring the documents.
         """
         if self.model_name_or_path and not self.model:
-            self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name_or_path)
+            self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name_or_path, token=self.token)
             self.model = self.model.to(self.device)
             self.model.eval()
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(self, device=self.device, model_name_or_path=self.model_name_or_path)
+        return default_to_dict(
+            self,
+            device=self.device,
+            model_name_or_path=self.model_name_or_path,
+            token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SimilarityRanker":
