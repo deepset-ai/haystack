@@ -94,6 +94,7 @@ class TestSentenceTransformersTextEmbedder:
             "init_parameters": {
                 "model_name_or_path": "model",
                 "device": "cpu",
+                "token": None,
                 "prefix": "",
                 "suffix": "",
                 "batch_size": 32,

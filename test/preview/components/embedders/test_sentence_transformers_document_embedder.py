@@ -84,12 +84,12 @@ class TestSentenceTransformersDocumentEmbedder:
         )
         data = component.to_dict()
 
-        # the token is not serialized
         assert data == {
             "type": "SentenceTransformersDocumentEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
                 "device": "cuda",
+                "token": None,  # the token is not serialized
                 "prefix": "prefix",
                 "suffix": "suffix",
                 "batch_size": 64,

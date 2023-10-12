@@ -54,21 +54,17 @@ class SentenceTransformersTextEmbedder:
         """
         Serialize this component to a dictionary.
         """
-        init_parameters_to_serialize = {
-            "model_name_or_path": self.model_name_or_path,
-            "device": self.device,
-            "prefix": self.prefix,
-            "suffix": self.suffix,
-            "batch_size": self.batch_size,
-            "progress_bar": self.progress_bar,
-            "normalize_embeddings": self.normalize_embeddings,
-        }
-
-        # we don't want to leak the token
-        if not isinstance(self.token, str):
-            init_parameters_to_serialize["token"] = self.token
-
-        return default_to_dict(self, **init_parameters_to_serialize)
+        return default_to_dict(
+            self,
+            model_name_or_path=self.model_name_or_path,
+            device=self.device,
+            token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
+            prefix=self.prefix,
+            suffix=self.suffix,
+            batch_size=self.batch_size,
+            progress_bar=self.progress_bar,
+            normalize_embeddings=self.normalize_embeddings,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersTextEmbedder":
