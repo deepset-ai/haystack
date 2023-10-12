@@ -1,3 +1,4 @@
+import logging
 import re
 from copy import deepcopy
 from functools import partial, reduce
@@ -6,12 +7,25 @@ from typing import Any, Dict, Generator, List, Optional, Set
 
 from haystack.preview import Document, component, default_from_dict, default_to_dict
 
+logger = logging.getLogger(__name__)
+
 
 @component
 class TextDocumentCleaner:
     """
     Makes text documents more readable by cleaning empty lines, extra whitespaces, headers and footers, etc.
     This is useful for preparing the documents for further processing by LLMs.
+
+    Example usage in an indexing pipeline:
+    document_store = MemoryDocumentStore()
+    p = Pipeline()
+    p.add_component(instance=TextFileToDocument(), name="text_file_converter")
+    p.add_component(instance=TextDocumentCleaner(), name="cleaner")
+    p.add_component(instance=TextDocumentSplitter(split_by="sentence", split_length=1), name="splitter")
+    p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+    p.connect("text_file_converter.documents", "cleaner.documents")
+    p.connect("cleaner.documents", "splitter.documents")
+    p.connect("splitter.documents", "writer.documents")
     """
 
     def __init__(
@@ -44,9 +58,12 @@ class TextDocumentCleaner:
         cleaned_docs = []
         for doc in documents:
             if doc.text is None:
-                raise ValueError(
-                    f"TextDocumentCleaner only works with text documents but document.text for document ID {doc.id} is None."
+                logger.warning(
+                    "TextDocumentCleaner only works with text documents but document.text for document ID %s is None.",
+                    doc.id,
                 )
+                cleaned_docs.append(doc)
+                continue
             text = doc.text
 
             if self.remove_empty_lines:
@@ -70,9 +87,11 @@ class TextDocumentCleaner:
         """
         return default_to_dict(
             self,
-            clean_empty_lines=self.remove_empty_lines,
-            clean_whitespaces=self.remove_extra_whitespaces,
-            clean_repeated_substrings=self.remove_repeated_substrings,
+            remove_empty_lines=self.remove_empty_lines,
+            remove_extra_whitespaces=self.remove_extra_whitespaces,
+            remove_repeated_substrings=self.remove_repeated_substrings,
+            remove_substrings=self.remove_substrings,
+            remove_regex=self.remove_regex,
         )
 
     @classmethod
@@ -133,7 +152,7 @@ class TextDocumentCleaner:
         :param n_chars: number of first/last characters where the header/footer shall be searched in
         :param n_first_pages_to_ignore: number of first pages to ignore (e.g. TOCs often don't contain footer/header)
         :param n_last_pages_to_ignore: number of last pages to ignore
-        :return: (cleaned pages, found_header_str, found_footer_str)
+        :return: cleaned text
         """
 
         pages = text.split("\f")

@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 from haystack.preview import Document
@@ -6,12 +8,51 @@ from haystack.preview.components.preprocessors import TextDocumentCleaner
 
 class TestTextDocumentCleaner:
     @pytest.mark.unit
-    def test_non_text_document(self):
-        with pytest.raises(
-            ValueError, match="TextDocumentCleaner only works with text documents but document.text for document ID"
-        ):
+    def test_to_dict(self):
+        component = TextDocumentCleaner(
+            remove_empty_lines=False,
+            remove_extra_whitespaces=False,
+            remove_repeated_substrings=True,
+            remove_substrings=["a", "b"],
+            remove_regex=r"\s\s+",
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "TextDocumentCleaner",
+            "init_parameters": {
+                "remove_empty_lines": False,
+                "remove_extra_whitespaces": False,
+                "remove_repeated_substrings": True,
+                "remove_substrings": ["a", "b"],
+                "remove_regex": r"\s\s+",
+            },
+        }
+
+    @pytest.mark.unit
+    def test_from_dict(self):
+        data = {
+            "type": "TextDocumentCleaner",
+            "init_parameters": {
+                "remove_empty_lines": False,
+                "remove_extra_whitespaces": False,
+                "remove_repeated_substrings": True,
+                "remove_substrings": ["a", "b"],
+                "remove_regex": r"\s\s+",
+            },
+        }
+        component = TextDocumentCleaner.from_dict(data)
+        assert component.remove_empty_lines == False
+        assert component.remove_extra_whitespaces == False
+        assert component.remove_repeated_substrings == True
+        assert component.remove_substrings == ["a", "b"]
+        assert component.remove_regex == r"\s\s+"
+
+    @pytest.mark.unit
+    def test_non_text_document(self, caplog):
+        with caplog.at_level(logging.WARNING):
             cleaner = TextDocumentCleaner()
             cleaner.run(documents=[Document()])
+            assert "TextDocumentCleaner only works with text documents but document.text for document ID" in caplog.text
 
     @pytest.mark.unit
     def test_single_document(self):
