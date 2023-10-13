@@ -19,6 +19,8 @@ class DocumentLanguageClassifier:
     For routing texts based on their language use the related TextLanguageClassifier component.
 
     Example usage in and indexing pipeline that writes only English language documents to a Store:
+
+    ```python
     document_store = MemoryDocumentStore()
     p = Pipeline()
     p.add_component(instance=TextFileToDocument(), name="text_file_converter")
@@ -28,6 +30,7 @@ class DocumentLanguageClassifier:
     p.connect("text_file_converter.documents", "language_classifier.documents")
     p.connect("language_classifier.documents", "splitter.documents")
     p.connect("splitter.documents", "writer.documents")
+    ```
     """
 
     def __init__(self, languages: Optional[List[str]] = None):
