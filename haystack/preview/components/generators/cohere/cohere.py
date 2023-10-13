@@ -1,20 +1,17 @@
 import logging
 import sys
-from collections import defaultdict
-from dataclasses import asdict, dataclass
 from typing import Any, Callable, Dict, List, Optional
 
 from haystack.lazy_imports import LazyImport
+from haystack.preview import DeserializationError, component, default_from_dict, default_to_dict
 
 with LazyImport(message="Run 'pip install cohere'") as cohere_import:
     import cohere
-from haystack.preview import (DeserializationError, component,
-                              default_from_dict, default_to_dict)
 
 logger = logging.getLogger(__name__)
 
 
-API_BASE_URL = 'https://api.cohere.ai'
+API_BASE_URL = "https://api.cohere.ai"
 
 
 def default_streaming_callback(chunk):
@@ -24,17 +21,19 @@ def default_streaming_callback(chunk):
     """
     print(chunk.text, flush=True, end="")
 
+
 @component
 class CohereGenerator:
-    """Cohere Generator compatible with cohere chat"""
+    """Cohere Generator compatible with Cohere generate endpoint"""
+
     def __init__(
         self,
         api_key: str,
         model: str = "command",
         streaming_callback: Optional[Callable] = None,
         api_base_url: str = API_BASE_URL,
-        **kwargs
-        ):
+        **kwargs,
+    ):
         """
         Args:
             api_key (str): The API key for the Cohere API.
@@ -46,7 +45,7 @@ class CohereGenerator:
         self.streaming_callback = streaming_callback
         self.api_base_url = api_base_url
         self.model_parameters = kwargs
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
@@ -68,8 +67,7 @@ class CohereGenerator:
             api_base_url=self.api_base_url,
             **self.model_parameters,
         )
-    
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CohereGenerator":
         """
@@ -89,23 +87,16 @@ class CohereGenerator:
                 raise DeserializationError(f"Could not locate the streaming callback: {function_name}")
             data["init_parameters"]["streaming_callback"] = streaming_callback
         return default_from_dict(cls, data)
-    
+
     @component.output_types(replies=List[str], metadata=List[Dict[str, Any]])
     def run(self, prompt: str):
         """
         Queries the LLM with the prompts to produce replies.
-
-        :param prompts: The prompts to be sent to the generative model.
-        """ 
-        co = cohere.Client(
-            api_key = self.api_key,
-            api_url = self.api_base_url,
-        )
+        :param prompt: The prompts to be sent to the generative model.
+        """
+        co = cohere.Client(api_key=self.api_key, api_url=self.api_base_url)
         response = co.generate(
-            model = self.model,
-            prompt = prompt,
-            stream=self.streaming_callback is not None,
-            **self.model_parameters,
+            model=self.model, prompt=prompt, stream=self.streaming_callback is not None, **self.model_parameters
         )
         replies: List[str]
         metadata: List[Dict[str, Any]]
@@ -119,12 +110,7 @@ class CohereGenerator:
             metadata = [dict(metadata_dict)]
             self._check_truncated_answers(metadata)
             return {"replies": replies, "metadata": metadata}
-
-        metadata = [
-            {
-                "finish_reason": response[0].finish_reason,
-            }
-        ]
+        metadata = [{"finish_reason": response[0].finish_reason}]
         replies = [response[0].text]
         self._check_truncated_answers(metadata)
         return {"replies": replies, "metadata": metadata}
@@ -134,12 +120,8 @@ class CohereGenerator:
         Check the `finish_reason` returned with the Cohere response.
         If the `finish_reason` is `MAX_TOKEN`, log a warning to the user.
         """
-        if metadata[0]["finish_reason"]=="MAX_TOKENS":
+        if metadata[0]["finish_reason"] == "MAX_TOKENS":
             logger.warning(
                 "Responses have been truncated before reaching a natural stopping point. "
-                "Increase the max_tokens parameter to allow for longer completions.",
+                "Increase the max_tokens parameter to allow for longer completions."
             )
-
-
-
-

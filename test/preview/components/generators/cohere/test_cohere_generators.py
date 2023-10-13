@@ -73,6 +73,7 @@ class TestGPTGenerator:
                 "streaming_callback": "haystack.preview.components.generators.cohere.cohere.default_streaming_callback",
             },
         }
+
     @pytest.mark.unit
     def test_to_dict_with_lambda_streaming_callback(self):
         component = CohereGenerator(
@@ -85,16 +86,17 @@ class TestGPTGenerator:
         )
         data = component.to_dict()
         assert data == {
-            'type': 'CohereGenerator', 
-            'init_parameters': {
-                'api_key': 'test-api-key', 
-                'model': 'command', 
-                'streaming_callback': 'test_cohere_generators.<lambda>', 
-                'api_base_url': 'test-base-url', 
-                'max_tokens': 10, 
-                'some_test_param': 'test-params'
-                }
-            }
+            "type": "CohereGenerator",
+            "init_parameters": {
+                "api_key": "test-api-key",
+                "model": "command",
+                "streaming_callback": "test_cohere_generators.<lambda>",
+                "api_base_url": "test-base-url",
+                "max_tokens": 10,
+                "some_test_param": "test-params",
+            },
+        }
+
     @pytest.mark.unit
     def test_from_dict(self):
         data = {
@@ -115,32 +117,16 @@ class TestGPTGenerator:
         assert component.api_base_url == "test-base-url"
         assert component.model_parameters == {"max_tokens": 10, "some_test_param": "test-params"}
 
-    # @pytest.mark.unit
-    # def test_run_with_parameters(self):
-    #     with patch("haystack.preview.components.generators.openai.gpt.openai.ChatCompletion") as cohere_patch:
-    #         cohere_patch.create.side_effect = mock_openai_response
-    #         component = CohereGenerator(api_key="test-api-key", max_tokens=10)
-    #         component.run(prompt="test-prompt-1")
-    #         gpt_patch.create.assert_called_once_with(
-    #             model="gpt-3.5-turbo",
-    #             api_key="test-api-key",
-    #             messages=[{"role": "user", "content": "test-prompt-1"}],
-    #             stream=False,
-    #             max_tokens=10,
-    #         )
-
     @pytest.mark.unit
     def test_check_truncated_answers(self, caplog):
         component = CohereGenerator(api_key="test-api-key")
-        metadata = [
-            {"finish_reason": "MAX_TOKENS"},
-        ]
+        metadata = [{"finish_reason": "MAX_TOKENS"}]
         component._check_truncated_answers(metadata)
         assert caplog.records[0].message == (
             "Responses have been truncated before reaching a natural stopping point. "
             "Increase the max_tokens parameter to allow for longer completions."
         )
-    
+
     @pytest.mark.skipif(
         not os.environ.get("CO_API_KEY", None),
         reason="Export an env var called CO_API_KEY containing the Cohere API key to run this test.",
@@ -160,8 +146,11 @@ class TestGPTGenerator:
     )
     @pytest.mark.integration
     def test_cohere_generator_run_wrong_model_name(self):
-        component =  CohereGenerator(model="something-obviously-wrong", api_key=os.environ.get("CO_API_KEY"))
-        with pytest.raises(cohere.CohereAPIError, match="model not found, make sure the correct model ID was used and that you have access to the model."):
+        component = CohereGenerator(model="something-obviously-wrong", api_key=os.environ.get("CO_API_KEY"))
+        with pytest.raises(
+            cohere.CohereAPIError,
+            match="model not found, make sure the correct model ID was used and that you have access to the model.",
+        ):
             component.run(prompt="What's the capital of France?")
 
     @pytest.mark.skipif(
