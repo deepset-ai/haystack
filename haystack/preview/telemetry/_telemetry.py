@@ -139,7 +139,6 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
     pipeline_description = pipeline.to_dict()
     components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for component_name, component in pipeline_description["components"].items():
-
         instance = pipeline.get_component(component_name)
         if hasattr(instance, "_get_telemetry_data"):
             telemetry_data = getattr(instance, "_get_telemetry_data")()
