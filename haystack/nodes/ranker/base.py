@@ -65,6 +65,11 @@ class BaseRanker(BaseComponent):
         return docs_with_meta
 
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore
+        """
+        :param query: Query string.
+        :param documents: List of Documents to process.
+        :param top_k: The maximum number of Documents to return.
+        """
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
@@ -85,6 +90,12 @@ class BaseRanker(BaseComponent):
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
     ):
+        """
+        :param queries: List of query strings.
+        :param documents: List of list of Documents to process.
+        :param top_k: The maximum number of answers to return.
+        :param batch_size: Number of Documents to process at a time.
+        """
         self.query_count = +len(queries)
         predict_batch = self.timing(self.predict_batch, "query_time")
         results = predict_batch(queries=queries, documents=documents, top_k=top_k, batch_size=batch_size)
