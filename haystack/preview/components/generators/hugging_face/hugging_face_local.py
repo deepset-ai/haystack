@@ -59,6 +59,7 @@ class HuggingFaceLocalGenerator:
             If True, will use the token generated when running huggingface-cli login (stored in ~/.huggingface).
             If the token is also specified in the pipeline_kwargs, this parameter will be ignored.
         :param generation_kwargs: a dictionary containing keyword arguments to customize text generation.
+            Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
             See Hugging Face's documentation for more information.
             https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation
             https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig
