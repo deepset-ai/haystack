@@ -11,6 +11,9 @@ with LazyImport(message="Run 'pip install transformers'") as transformers_import
 logger = logging.getLogger(__name__)
 
 
+SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
+
+
 @component
 class HuggingFaceLocalGenerator:
     """
@@ -91,10 +94,9 @@ class HuggingFaceLocalGenerator:
             elif isinstance(pipeline_kwargs["model"], str):
                 task = model_info(pipeline_kwargs["model"], token=pipeline_kwargs["token"]).pipeline_tag
 
-        if task not in ["text-generation", "text2text-generation"]:
+        if task not in SUPPORTED_TASKS:
             raise ValueError(
-                f"Task '{task}' is not supported. "
-                f"The supported tasks are 'text-generation' and 'text2text-generation'."
+                f"Task '{task}' is not supported. " f"The supported tasks are: {', '.join(SUPPORTED_TASKS)}."
             )
         pipeline_kwargs["task"] = task
 
