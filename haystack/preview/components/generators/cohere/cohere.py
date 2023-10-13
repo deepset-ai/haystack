@@ -6,7 +6,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.preview import DeserializationError, component, default_from_dict, default_to_dict
 
 with LazyImport(message="Run 'pip install cohere'") as cohere_import:
-    import cohere
+    from cohere import Client
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,8 @@ class CohereGenerator:
         self.streaming_callback = streaming_callback
         self.api_base_url = api_base_url
         self.model_parameters = kwargs
+        # create cohere client
+        self.client = Client(api_key=self.api_key, api_url=self.api_base_url)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -94,8 +96,7 @@ class CohereGenerator:
         Queries the LLM with the prompts to produce replies.
         :param prompt: The prompts to be sent to the generative model.
         """
-        co = cohere.Client(api_key=self.api_key, api_url=self.api_base_url)
-        response = co.generate(
+        response = self.client.generate(
             model=self.model, prompt=prompt, stream=self.streaming_callback is not None, **self.model_parameters
         )
         replies: List[str]
@@ -107,7 +108,7 @@ class CohereGenerator:
                 metadata_dict["index"] = chunk.index
             replies = response.texts
             metadata_dict["finish_reason"] = response.finish_reason
-            metadata = [dict(metadata_dict)]
+            metadata = [metadata_dict]
             self._check_truncated_answers(metadata)
             return {"replies": replies, "metadata": metadata}
         metadata = [{"finish_reason": response[0].finish_reason}]
