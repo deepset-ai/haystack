@@ -90,7 +90,7 @@ class BaseTranslator(BaseComponent):
         """
         :param queries: List of query strings to translate.
         :param documents: The documents to translate.
-        :param answers: 
+        :param answers:
         :param batch_size: Number of records to process at a time.
         """
         translation_results = {}
