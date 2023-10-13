@@ -27,7 +27,7 @@ def test_preprocessing_pipeline(tmp_path):
     preprocessing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
     preprocessing_pipeline.connect("file_type_router.text/plain", "text_file_converter.paths")
     preprocessing_pipeline.connect("text_file_converter.documents", "language_classifier.documents")
-    preprocessing_pipeline.connect("language_classifier.documents", "cleaner.documents")
+    preprocessing_pipeline.connect("language_classifier.en", "cleaner.documents")
     preprocessing_pipeline.connect("cleaner.documents", "splitter.documents")
     preprocessing_pipeline.connect("splitter.documents", "embedder.documents")
     preprocessing_pipeline.connect("embedder.documents", "writer.documents")
@@ -66,6 +66,18 @@ def test_preprocessing_pipeline(tmp_path):
 
     result = preprocessing_pipeline.run({"file_type_router": {"sources": paths}})
 
-    # TODO Add more assertions
     assert result["writer"]["documents_written"] == 6
     assert document_store.count_documents() == 6
+
+    # Check preprocessed texts and mime_types
+    stored_documents = document_store.filter_documents()
+    expected_texts = [
+        "This is an english sentence.",
+        " There is more to it.",
+        " It's a long text.",
+        "Spans multiple lines.",
+        "Even contains empty lines.",
+        " And extra whitespaces.",
+    ]
+    assert expected_texts == [document.text for document in stored_documents]
+    assert all(document.mime_type == "text/plain" for document in stored_documents)

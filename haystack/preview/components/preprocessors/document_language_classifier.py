@@ -41,7 +41,9 @@ class DocumentLanguageClassifier:
         if not languages:
             languages = ["en"]
         self.languages = languages
-        component.set_output_types(self, unmatched=List[str], **{language: List[str] for language in languages})
+        component.set_output_types(
+            self, unmatched=List[Document], **{language: List[Document] for language in languages}
+        )
 
     def run(self, documents: List[Document]):
         """
