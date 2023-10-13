@@ -155,7 +155,7 @@ class TestHuggingFaceLocalGenerator:
                 "pipeline_kwargs": {
                     "model": "gpt2",
                     "task": "text-generation",
-                    "token": "test-token",
+                    "token": None,  # we don't want serialize valid tokens
                     "device": "cuda:0",
                 },
                 "generation_kwargs": {"max_new_tokens": 100, "return_full_text": False},

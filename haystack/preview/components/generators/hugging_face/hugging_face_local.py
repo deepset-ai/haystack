@@ -1,5 +1,6 @@
 import logging
 from typing import Any, Dict, List, Literal, Optional, Union
+from copy import deepcopy
 
 from haystack.preview import component, default_from_dict, default_to_dict
 from haystack.preview.lazy_imports import LazyImport
@@ -102,8 +103,8 @@ class HuggingFaceLocalGenerator:
 
         # if not specified, set return_full_text to False for text-generation
         # only generated text is returned (excluding prompt)
-        if task == "text-generation" and "return_full_text" not in generation_kwargs:
-            generation_kwargs["return_full_text"] = False
+        if task == "text-generation":
+            generation_kwargs.setdefault("return_full_text", False)
 
         self.pipeline_kwargs = pipeline_kwargs
         self.generation_kwargs = generation_kwargs
@@ -117,7 +118,15 @@ class HuggingFaceLocalGenerator:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(self, pipeline_kwargs=self.pipeline_kwargs, generation_kwargs=self.generation_kwargs)
+        pipeline_kwargs_to_serialize = deepcopy(self.pipeline_kwargs)
+
+        # we don't want to serialize valid tokens
+        if isinstance(pipeline_kwargs_to_serialize["token"], str):
+            pipeline_kwargs_to_serialize["token"] = None
+
+        return default_to_dict(
+            self, pipeline_kwargs=pipeline_kwargs_to_serialize, generation_kwargs=self.generation_kwargs
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceLocalGenerator":
