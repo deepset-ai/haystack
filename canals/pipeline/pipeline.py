@@ -24,7 +24,7 @@ from canals.errors import (
 from canals.pipeline.draw import _draw, _convert_for_debug, RenderingEngines
 from canals.pipeline.validation import _validate_pipeline_input
 from canals.pipeline.connections import parse_connection, _find_unambiguous_connection
-from canals.utils import _type_name
+from canals.type_utils import _type_name
 from canals.serialization import component_to_dict, component_from_dict
 
 logger = logging.getLogger(__name__)

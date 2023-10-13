@@ -7,9 +7,8 @@ import logging
 import itertools
 
 from canals.errors import PipelineConnectError
-from canals.type_checking import _types_are_compatible
+from canals.type_utils import _types_are_compatible, _type_name
 from canals.component.sockets import InputSocket, OutputSocket
-from canals.utils import _type_name
 
 
 logger = logging.getLogger(__name__)

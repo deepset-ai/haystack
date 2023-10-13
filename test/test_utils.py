@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from canals.utils import _type_name
+from canals.type_utils import _type_name
 
 
 class Class1:

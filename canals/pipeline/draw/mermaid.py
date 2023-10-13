@@ -8,7 +8,7 @@ import requests
 import networkx
 
 from canals.errors import PipelineDrawingError
-from canals.utils import _type_name
+from canals.type_utils import _type_name
 
 logger = logging.getLogger(__name__)
 

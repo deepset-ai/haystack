@@ -70,10 +70,11 @@
 
 import logging
 import inspect
-from typing import Protocol, Union, Dict, Any, get_origin, get_args
+from typing import Protocol, Dict, Any
 from functools import wraps
 
 from canals.errors import ComponentError
+from canals.type_utils import _is_optional
 
 
 logger = logging.getLogger(__name__)
@@ -258,10 +259,3 @@ class _Component:
 
 
 component = _Component()
-
-
-def _is_optional(type_: type) -> bool:
-    """
-    Utility method that returns whether a type is Optional.
-    """
-    return get_origin(type_) is Union and type(None) in get_args(type_)
