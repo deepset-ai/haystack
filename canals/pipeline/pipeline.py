@@ -355,11 +355,6 @@ class Pipeline:
             ImportError: if `engine='graphviz'` and `pygraphviz` is not installed.
             HTTPConnectionError: (and similar) if the internet connection is down or other connection issues.
         """
-        sockets = {
-            comp: "\n".join([f"{name}: {socket}" for name, socket in data.get("input_sockets", {}).items()])
-            for comp, data in self.graph.nodes(data=True)
-        }
-        print(sockets)
         _draw(graph=networkx.MultiDiGraph(self.graph), path=path, engine=engine)
 
     def warm_up(self):
