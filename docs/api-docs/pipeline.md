@@ -14,6 +14,4 @@
 
 ::: canals.pipeline.pipeline
 
-::: canals.pipeline.sockets
-
 ::: canals.pipeline.validation
