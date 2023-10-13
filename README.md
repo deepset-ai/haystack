@@ -33,23 +33,18 @@ Canals powers version 2.0 of the [Haystack framework](https://github.com/deepset
 
 ## Installation
 
-Running:
+To install Canals, run:
 
 ```console
 pip install canals
 ```
 
-gives you the bare minimum necessary to run Canals.
-
-To be able to draw pipelines, please make sure you have either an internet connection (to reach the Mermaid graph renderer at `https://mermaid.ink`) or [graphviz](https://graphviz.org/download/) (version 2.49.0) installed and then install Canals as:
-
-### Mermaid
-```console
-pip install canals[mermaid]
-```
+To be able to draw pipelines (`Pipeline.draw()` method), please make sure you have either an internet connection (to reach the Mermaid graph renderer at `https://mermaid.ink`) or [graphviz](https://graphviz.org/download/) (version 2.49.0) installed. If you
+plan to use Mermaid there is no additional steps to take, while for graphviz
+you need to do:
 
 ### GraphViz
 ```console
 sudo apt install graphviz  # You may need `graphviz-dev` too
-pip install canals[graphviz]
+pip install pygraphviz
 ```

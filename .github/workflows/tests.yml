@@ -27,7 +27,7 @@ jobs:
       - name: Install Canals
         run: |
           sudo apt install graphviz libgraphviz-dev
-          pip install .[mermaid,graphviz,dev]
+          pip install .[dev] pygraphviz
 
       - name: Mypy
         run: |
@@ -48,7 +48,7 @@ jobs:
       - name: Install Canals
         run: |
           sudo apt install graphviz libgraphviz-dev
-          pip install .[mermaid,graphviz,dev]
+          pip install .[dev] pygraphviz
 
       - name: Pylint
         run: pylint -ry -j 0 canals/ sample_components/
@@ -98,14 +98,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt install graphviz libgraphviz-dev
-          pip install .[mermaid,graphviz,dev]
+          pip install .[dev] pygraphviz
 
       - name: Install Canals (MacOS)
         if: matrix.os == 'macos-latest'
         run: |
           # brew only offers graphviz 8, which seems to be incompatible with pygraphviz :(
           # brew install graphviz@2.49.0
-          pip install .[mermaid,dev]
+          pip install .[dev]
 
       - name: Install Canals (Windows)
         if: matrix.os == 'windows-latest'
@@ -116,7 +116,7 @@ jobs:
           #       --global-option="-IC:\Program Files\Graphviz\include" `
           #       --global-option="-LC:\Program Files\Graphviz\lib" `
           #       pygraphviz
-          pip install .[mermaid,dev]
+          pip install .[dev]
 
       - name: Run
         run: pytest --cov-report xml:coverage.xml --cov="canals" test/
