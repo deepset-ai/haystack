@@ -126,16 +126,17 @@ class HuggingFaceLocalGenerator:
         self.generation_kwargs = generation_kwargs
         self.stop_words = stop_words
         self.pipeline = None
+        self.stopping_criteria_list = None
 
     def warm_up(self):
         if self.pipeline is None:
             self.pipeline = pipeline(**self.pipeline_kwargs)
 
-        if self.stop_words:
+        if self.stop_words and self.stopping_criteria_list is None:
             stop_words_criteria = StopWordsCriteria(
                 tokenizer=self.pipeline.tokenizer, stop_words=self.stop_words, device=self.pipeline.device
             )
-            self.pipeline.model.config.stopping_criteria = StoppingCriteriaList([stop_words_criteria])
+            self.stopping_criteria_list = StoppingCriteriaList([stop_words_criteria])
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -169,7 +170,7 @@ class HuggingFaceLocalGenerator:
         if not prompt:
             return {"replies": []}
 
-        output = self.pipeline(prompt, **self.generation_kwargs)
+        output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **self.generation_kwargs)
         replies = [o["generated_text"] for o in output if "generated_text" in o]
 
         if self.stop_words:
