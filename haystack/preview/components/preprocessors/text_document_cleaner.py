@@ -17,6 +17,8 @@ class DocumentCleaner:
     This is useful for preparing the documents for further processing by LLMs.
 
     Example usage in an indexing pipeline:
+
+    ```python
     document_store = MemoryDocumentStore()
     p = Pipeline()
     p.add_component(instance=TextFileToDocument(), name="text_file_converter")
@@ -26,6 +28,7 @@ class DocumentCleaner:
     p.connect("text_file_converter.documents", "cleaner.documents")
     p.connect("cleaner.documents", "splitter.documents")
     p.connect("splitter.documents", "writer.documents")
+    ```
     """
 
     def __init__(
