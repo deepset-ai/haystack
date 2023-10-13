@@ -1,12 +1,11 @@
 import json
-from mimetypes import guess_type
-from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union, Literal
-
 import logging
 import os
 import time
 from enum import Enum
+from mimetypes import guess_type
+from pathlib import Path
+from typing import Any, Dict, Generator, List, Literal, Optional, Tuple, Union
 
 import pandas as pd
 import requests
@@ -560,10 +559,11 @@ class PipelineClient:
         :param workspace: Specifies the name of the workspace on deepset Cloud.
         :param headers: Headers to pass to the API call.
         """
-        config["name"] = pipeline_config_name
         workspace_url = self._build_workspace_url(workspace=workspace)
         pipelines_url = f"{workspace_url}/pipelines"
-        response = self.client.post(url=pipelines_url, data=yaml.dump(config), headers=headers).json()
+        response = self.client.post(
+            url=pipelines_url, json={"name": pipeline_config_name, "config": yaml.dump(config)}, headers=headers
+        ).json()
         if "name" not in response or response["name"] != pipeline_config_name:
             logger.warning("Unexpected response from saving pipeline config: %s", response)
 
@@ -582,7 +582,6 @@ class PipelineClient:
         :param workspace: Specifies the name of the workspace on deepset Cloud.
         :param headers: Headers to pass to the API call.
         """
-        config["name"] = pipeline_config_name
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
         yaml_url = f"{pipeline_url}/yaml"
         response = self.client.put(url=yaml_url, data=yaml.dump(config), headers=headers).json()

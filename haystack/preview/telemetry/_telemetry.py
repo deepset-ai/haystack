@@ -1,13 +1,14 @@
-import os
 from typing import Any, Dict, Optional, TYPE_CHECKING, List, Tuple
+import os
 from pathlib import Path
+from collections import defaultdict
+import datetime
 import logging
 import uuid
-from collections import defaultdict
 import yaml
 import posthog
 
-from haystack.preview.telemetry._environment import dynamic_system_specs, static_system_specs
+from haystack.preview.telemetry._environment import collect_system_specs
 
 if TYPE_CHECKING:
     from haystack.preview.pipeline import Pipeline
@@ -15,7 +16,9 @@ if TYPE_CHECKING:
 
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
 CONFIG_PATH = Path("~/.haystack/config.yaml").expanduser()
-PIPELINE_RUN_BUFFER_SIZE = 10
+
+#: Telemetry sends at most one event every number of seconds specified in this constant
+MIN_SECONDS_BETWEEN_EVENTS = 60
 
 
 logger = logging.getLogger(__name__)
@@ -76,7 +79,7 @@ class Telemetry:
             except Exception as e:
                 logger.debug("Telemetry could not write config file to %s", CONFIG_PATH, exc_info=e)
 
-        self.event_properties = static_system_specs()
+        self.event_properties = collect_system_specs()
 
     def send_event(self, event_name: str, event_properties: Optional[Dict[str, Any]] = None):
         """
@@ -87,12 +90,9 @@ class Telemetry:
             system metadata collected in __init__, so take care not to overwrite them.
         """
         event_properties = event_properties or {}
-        dynamic_specs = dynamic_system_specs()
         try:
             posthog.capture(
-                distinct_id=self.user_id,
-                event=event_name,
-                properties={**self.event_properties, **dynamic_specs, **event_properties},
+                distinct_id=self.user_id, event=event_name, properties={**self.event_properties, **event_properties}
             )
         except Exception as e:
             logger.debug("Telemetry couldn't make a POST request to PostHog.", exc_info=e)
@@ -127,10 +127,14 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
     :param pipeline: the pipeline that is running.
     """
     pipeline._telemetry_runs += 1
-    
-    if pipeline._telemetry_runs != 1 or pipeline._telemetry_runs % PIPELINE_RUN_BUFFER_SIZE != 0:
+    if (
+        pipeline._last_telemetry_sent
+        and (datetime.datetime.now() - pipeline._last_telemetry_sent).seconds < MIN_SECONDS_BETWEEN_EVENTS
+    ):
         return None
-    
+
+    pipeline._last_telemetry_sent = datetime.datetime.now()
+
     # Collect info about components
     pipeline_description = pipeline.to_dict()
     components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
@@ -145,6 +149,7 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
         else:
             components[component["type"]].append({"name": component_name})
 
+    # Data sent to Posthog
     return "Pipeline run (2.x)", {
         "pipeline_id": str(id(pipeline)),
         "runs": pipeline._telemetry_runs,

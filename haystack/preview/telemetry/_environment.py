@@ -59,11 +59,14 @@ def _is_containerized() -> Optional[bool]:
     return _IS_DOCKER_CACHE
 
 
-def static_system_specs() -> Dict[str, Any]:
+def collect_system_specs() -> Dict[str, Any]:
     """
     Collects meta data about the setup that is used with Haystack, such as:
     operating system, python version, Haystack version, transformers version,
     pytorch version, number of GPUs, execution environment.
+
+    These values are highly unlikely to change during the runtime of the pipeline,
+    so they're collected only once.
     """
     specs = {
         "libraries.haystack": __version__,
@@ -73,10 +76,13 @@ def static_system_specs() -> Dict[str, Any]:
         "os.machine": platform.machine(),
         "python.version": platform.python_version(),
         "hardware.cpus": os.cpu_count(),
+        "hardware.gpus": 0,
         "libraries.transformers": False,
         "libraries.torch": False,
         "libraries.cuda": False,
-        "hardware.gpus": 0,
+        "libraries.pytest": sys.modules["pytest"].__version__ if "pytest" in sys.modules.keys() else False,
+        "libraries.ipython": sys.modules["ipython"].__version__ if "ipython" in sys.modules.keys() else False,
+        "libraries.colab": sys.modules["google.colab"].__version__ if "google.colab" in sys.modules.keys() else False,
     }
 
     # Try to find out transformer's version
@@ -98,16 +104,3 @@ def static_system_specs() -> Dict[str, Any]:
     except ImportError:
         pass
     return specs
-
-
-def dynamic_system_specs() -> Dict[str, Any]:
-    """
-    Collects meta data about the setup that is used with Haystack, such as:
-    operating system, python version, Haystack version, transformers version,
-    pytorch version, number of GPUs, execution environment.
-    """
-    return {
-        "libraries.pytest": sys.modules["pytest"].__version__ if "pytest" in sys.modules.keys() else False,
-        "libraries.ipython": sys.modules["ipython"].__version__ if "ipython" in sys.modules.keys() else False,
-        "libraries.colab": sys.modules["google.colab"].__version__ if "google.colab" in sys.modules.keys() else False,
-    }

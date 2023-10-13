@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional, Union
 from pathlib import Path
+import datetime
 import logging
 import canals
 
@@ -27,6 +28,7 @@ class Pipeline(canals.Pipeline):
             debug_path: when debug is enabled in `run()`, where to save the debug data.
         """
         self._telemetry_runs = 0
+        self._last_telemetry_sent: Optional[datetime.datetime] = None
         super().__init__(metadata=metadata, max_loops_allowed=max_loops_allowed, debug_path=debug_path)
 
     def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:

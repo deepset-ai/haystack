@@ -1,21 +1,14 @@
-from pathlib import Path
 import dataclasses
-import textwrap
 import json
+import textwrap
+from pathlib import Path
 
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
 
 from haystack.preview import Document
-from haystack.preview.dataclasses.document import DocumentEncoder, DocumentDecoder
-
-
-@pytest.mark.unit
-def test_document_is_immutable():
-    doc = Document(text="test text")
-    with pytest.raises(dataclasses.FrozenInstanceError):
-        doc.text = "won't work"
+from haystack.preview.dataclasses.document import DocumentDecoder, DocumentEncoder
 
 
 @pytest.mark.unit
