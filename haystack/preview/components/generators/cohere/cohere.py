@@ -24,7 +24,11 @@ def default_streaming_callback(chunk):
 
 @component
 class CohereGenerator:
-    """Cohere Generator compatible with Cohere generate endpoint"""
+    """LLM Generator compatible with Cohere's generate endpoint
+
+    Queries the LLM using Cohere's API. Invocations are made using 'cohere' package
+    See [Cohere API](https://docs.cohere.com/reference/generate) for more details.
+    """
 
     def __init__(
         self,
