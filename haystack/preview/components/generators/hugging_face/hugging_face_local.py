@@ -47,13 +47,13 @@ class HuggingFaceLocalGenerator:
         pipeline_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        :param model_name_or_path: The name or path of a Hugging Face model for text generation, 
+        :param model_name_or_path: The name or path of a Hugging Face model for text generation,
             for example, "google/flan-t5-large".
             If the model is also specified in the `pipeline_kwargs`, this parameter will be ignored.
         :param task: The task for the Hugging Face pipeline.
             Possible values are "text-generation" and "text2text-generation".
-            Generally, decoder-only models like GPT support "text-generation", 
-            while encoder-decoder models like T5 support "text2text-generation". 
+            Generally, decoder-only models like GPT support "text-generation",
+            while encoder-decoder models like T5 support "text2text-generation".
             If the task is also specified in the `pipeline_kwargs`, this parameter will be ignored.
             If not specified, the component will attempt to infer the task from the model name,
             calling the Hugging Face Hub API.
@@ -64,16 +64,16 @@ class HuggingFaceLocalGenerator:
             If the token is also specified in the `pipeline_kwargs`, this parameter will be ignored.
         :param generation_kwargs: A dictionary containing keyword arguments to customize text generation.
             Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
-            See Hugging Face's documentation for more information: 
+            See Hugging Face's documentation for more information:
             - https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation
             - https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig
         :param pipeline_kwargs: Dictionary containing keyword arguments used to initialize the pipeline.
             These keyword arguments provide fine-grained control over the pipeline.
             In case of duplication, these kwargs override `model_name_or_path`, `task`, `device`, and `token` init parameters.
-            See Hugging Face's [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task) 
-            for more information on the available kwargs.            
+            See Hugging Face's [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task)
+            for more information on the available kwargs.
             In this dictionary, you can also include `model_kwargs` to specify the kwargs
-            for model initialization: 
+            for model initialization:
             https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained
         """
         transformers_import.check()
