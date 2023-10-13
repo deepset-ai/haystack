@@ -39,13 +39,13 @@ class CohereGenerator:
             api_key (str): The API key for the Cohere API.
             model_name (str): The name of the model to use.
             streaming_callback (Callable, optional): A callback function to be called with the streaming response. Defaults to None.
+            api_base_url (str, optional): The base URL of the Cohere API. Defaults to "https://api.cohere.ai".
         """
         self.api_key = api_key
         self.model = model
         self.streaming_callback = streaming_callback
         self.api_base_url = api_base_url
         self.model_parameters = kwargs
-        # create cohere client
         self.client = Client(api_key=self.api_key, api_url=self.api_base_url)
 
     def to_dict(self) -> Dict[str, Any]:
