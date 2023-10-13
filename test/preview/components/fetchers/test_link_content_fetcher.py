@@ -1,7 +1,7 @@
-import io
 from unittest.mock import patch, Mock
 
 import pytest
+import requests
 
 from haystack.preview.components.fetchers.link_content import (
     LinkContentFetcher,
@@ -99,27 +99,29 @@ class TestLinkContentFetcher:
 
     @pytest.mark.unit
     def test_run_text(self):
+        correct_response = b"Example test response"
         with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
             mock_run.get.return_value = Mock(
                 status_code=200, text="Example test response", headers={"Content-Type": "text/plain"}
             )
             fetcher = LinkContentFetcher()
-            document = fetcher.run("https://www.example.com")["document"]
-            assert document.text == "Example test response"
-            assert document.metadata["url"] == "https://www.example.com"
-            assert "timestamp" in document.metadata
+            streams = fetcher.run(urls=["https://www.example.com"])["streams"]
+            first_stream = streams[0]
+            assert first_stream.data == correct_response
+            assert first_stream.metadata["content_type"] == "text/plain"
 
     @pytest.mark.unit
     def test_run_html(self):
+        correct_response = b"<h1>Example test response</h1>"
         with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
             mock_run.get.return_value = Mock(
                 status_code=200, text="<h1>Example test response</h1>", headers={"Content-Type": "text/html"}
             )
             fetcher = LinkContentFetcher()
-            document = fetcher.run("https://www.example.com")["document"]
-            assert document.text == "<h1>Example test response</h1>"
-            assert document.metadata["url"] == "https://www.example.com"
-            assert "timestamp" in document.metadata
+            streams = fetcher.run(urls=["https://www.example.com"])["streams"]
+            first_stream = streams[0]
+            assert first_stream.data == correct_response
+            assert first_stream.metadata["content_type"] == "text/html"
 
     @pytest.mark.unit
     def test_run_binary(self, test_files_path):
@@ -129,42 +131,104 @@ class TestLinkContentFetcher:
                 status_code=200, content=file_bytes, headers={"Content-Type": "application/pdf"}
             )
             fetcher = LinkContentFetcher()
-            document = fetcher.run("https://www.example.com")["document"]
-            # casting to list to make the blobs comparable
-            assert list(document.blob) == list(io.BytesIO(file_bytes))
-            assert document.metadata["url"] == "https://www.example.com"
-            assert "timestamp" in document.metadata
+            streams = fetcher.run(urls=["https://www.example.com"])["streams"]
+            first_stream = streams[0]
+            assert first_stream.data == file_bytes
+            assert first_stream.metadata["content_type"] == "application/pdf"
 
     @pytest.mark.unit
     def test_run_bad_status_code(self):
+        empty_byte_stream = b""
         fetcher = LinkContentFetcher(raise_on_failure=False)
         mock_response = Mock(status_code=403)
         with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
             mock_run.get.return_value = mock_response
-            document = fetcher.run("https://www.example.com")["document"]
-        assert document is None
+            streams = fetcher.run(urls=["https://www.example.com"])["streams"]
+
+        # empty byte stream is returned because raise_on_failure is False
+        assert len(streams) == 1
+        first_stream = streams[0]
+        assert first_stream.data == empty_byte_stream
+        assert first_stream.metadata["content_type"] == "text/html"
 
     @pytest.mark.integration
     def test_link_content_fetcher_html(self):
         fetcher = LinkContentFetcher()
-        document = fetcher.run(HTML_URL)["document"]
-        assert document.mime_type == "text/html"
-        assert "Introduction to Haystack" in document.text
-        assert document.metadata["url"] == HTML_URL
+        streams = fetcher.run([HTML_URL])["streams"]
+        first_stream = streams[0]
+        assert "Haystack" in first_stream.data.decode("utf-8")
+        assert first_stream.metadata["content_type"] == "text/html"
+        assert "url" in first_stream.metadata and first_stream.metadata["url"] == HTML_URL
 
     @pytest.mark.integration
     def test_link_content_fetcher_text(self):
         fetcher = LinkContentFetcher()
-        document = fetcher.run(TEXT_URL)["document"]
-        assert document.mime_type == "text/plain"
-        assert "Haystack" in document.text
-        assert document.metadata["url"] == TEXT_URL
+        streams = fetcher.run([TEXT_URL])["streams"]
+        first_stream = streams[0]
+        assert "Haystack" in first_stream.data.decode("utf-8")
+        assert first_stream.metadata["content_type"] == "text/plain"
+        assert "url" in first_stream.metadata and first_stream.metadata["url"] == TEXT_URL
 
     @pytest.mark.integration
     def test_link_content_fetcher_pdf(self):
         fetcher = LinkContentFetcher()
-        document = fetcher.run(PDF_URL)["document"]
-        assert document.mime_type == "application/octet-stream"  # FIXME Should be "application/pdf"?
-        assert document.text is None
-        assert document.blob is not None
-        assert document.metadata["url"] == PDF_URL
+        streams = fetcher.run([PDF_URL])["streams"]
+        assert len(streams) == 1
+        first_stream = streams[0]
+        assert first_stream.metadata["content_type"] in ("application/octet-stream", "application/pdf")
+        assert "url" in first_stream.metadata and first_stream.metadata["url"] == PDF_URL
+
+    @pytest.mark.integration
+    def test_link_content_fetcher_multiple_different_content_types(self):
+        """
+        This test is to ensure that the fetcher can handle a list of URLs that contain different content types.
+        """
+        fetcher = LinkContentFetcher()
+        streams = fetcher.run([PDF_URL, HTML_URL])["streams"]
+        assert len(streams) == 2
+        for stream in streams:
+            assert stream.metadata["content_type"] in ("text/html", "application/pdf", "application/octet-stream")
+            if stream.metadata["content_type"] == "text/html":
+                assert "Haystack" in stream.data.decode("utf-8")
+            elif stream.metadata["content_type"] == "application/pdf":
+                assert len(stream.data) > 0
+
+    @pytest.mark.integration
+    def test_link_content_fetcher_multiple_html_streams(self):
+        """
+        This test is to ensure that the fetcher can handle a list of URLs that contain different content types,
+        and that we have two html streams.
+        """
+
+        fetcher = LinkContentFetcher()
+        streams = fetcher.run([PDF_URL, HTML_URL, "https://google.com"])["streams"]
+        assert len(streams) == 3
+        for stream in streams:
+            assert stream.metadata["content_type"] in ("text/html", "application/pdf", "application/octet-stream")
+            if stream.metadata["content_type"] == "text/html":
+                assert "Haystack" in stream.data.decode("utf-8") or "Google" in stream.data.decode("utf-8")
+            elif stream.metadata["content_type"] == "application/pdf":
+                assert len(stream.data) > 0
+
+    @pytest.mark.integration
+    def test_mix_of_good_and_failed_requests(self):
+        """
+        This test is to ensure that the fetcher can handle a list of URLs that contain URLs that fail to be fetched.
+        In such a case, the fetcher should return the content of the URLs that were successfully fetched and not raise
+        an exception.
+        """
+        fetcher = LinkContentFetcher()
+        result = fetcher.run(["https://non_existent_website_dot.com/", "https://www.google.com/"])
+        assert len(result["streams"]) == 1
+        first_stream = result["streams"][0]
+        assert first_stream.metadata["content_type"] == "text/html"
+
+    @pytest.mark.integration
+    def test_bad_request_exception_raised(self):
+        """
+        This test is to ensure that the fetcher raises an exception when a single bad request is made and it is configured to
+        do so.
+        """
+        fetcher = LinkContentFetcher()
+        with pytest.raises(requests.exceptions.ConnectionError):
+            fetcher.run(["https://non_existent_website_dot.com/"])

@@ -128,10 +128,8 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
     """
     pipeline._telemetry_runs += 1
     if (
-        # Always send the first event
-        not pipeline._last_telemetry_sent
-        # Send no more than one event every minute
-        or (datetime.datetime.now() - pipeline._last_telemetry_sent).seconds < MIN_SECONDS_BETWEEN_EVENTS
+        pipeline._last_telemetry_sent
+        and (datetime.datetime.now() - pipeline._last_telemetry_sent).seconds < MIN_SECONDS_BETWEEN_EVENTS
     ):
         return None
 
@@ -141,6 +139,7 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
     pipeline_description = pipeline.to_dict()
     components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for component_name, component in pipeline_description["components"].items():
+
         instance = pipeline.get_component(component_name)
         if hasattr(instance, "_get_telemetry_data"):
             telemetry_data = getattr(instance, "_get_telemetry_data")()
@@ -151,6 +150,7 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
         else:
             components[component["type"]].append({"name": component_name})
 
+    # Data sent to Posthog
     return "Pipeline run (2.x)", {
         "pipeline_id": str(id(pipeline)),
         "runs": pipeline._telemetry_runs,
