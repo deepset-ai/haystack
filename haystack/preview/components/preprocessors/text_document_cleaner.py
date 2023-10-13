@@ -11,16 +11,16 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class TextDocumentCleaner:
+class DocumentCleaner:
     """
-    Makes text documents more readable by cleaning empty lines, extra whitespaces, headers and footers, etc.
+    Makes text documents more readable by removing extra whitespaces, empty lines, specified substrings, regexes, headers and footers (in this order).
     This is useful for preparing the documents for further processing by LLMs.
 
     Example usage in an indexing pipeline:
     document_store = MemoryDocumentStore()
     p = Pipeline()
     p.add_component(instance=TextFileToDocument(), name="text_file_converter")
-    p.add_component(instance=TextDocumentCleaner(), name="cleaner")
+    p.add_component(instance=DocumentCleaner(), name="cleaner")
     p.add_component(instance=TextDocumentSplitter(split_by="sentence", split_length=1), name="splitter")
     p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
     p.connect("text_file_converter.documents", "cleaner.documents")
@@ -52,30 +52,32 @@ class TextDocumentCleaner:
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
+        """
+        Run the DocumentCleaner on the given list of documents
+        """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
-            raise TypeError("TextDocumentCleaner expects a List of Documents as input.")
+            raise TypeError("DocumentCleaner expects a List of Documents as input.")
 
         cleaned_docs = []
         for doc in documents:
             if doc.text is None:
                 logger.warning(
-                    "TextDocumentCleaner only works with text documents but document.text for document ID %s is None.",
-                    doc.id,
+                    "DocumentCleaner only cleans text documents but document.text for document ID %s is None.", doc.id
                 )
                 cleaned_docs.append(doc)
                 continue
             text = doc.text
 
-            if self.remove_empty_lines:
-                text = self._remove_empty_lines(text)
             if self.remove_extra_whitespaces:
                 text = self._remove_extra_whitespaces(text)
-            if self.remove_repeated_substrings:
-                text = self._remove_repeated_substrings(text)
+            if self.remove_empty_lines:
+                text = self._remove_empty_lines(text)
             if self.remove_substrings:
                 text = self._remove_substrings(text, self.remove_substrings)
             if self.remove_regex:
                 text = self._remove_regex(text, self.remove_regex)
+            if self.remove_repeated_substrings:
+                text = self._remove_repeated_substrings(text)
 
             cleaned_docs.append(Document(text=text, metadata=deepcopy(doc.metadata)))
 
@@ -95,7 +97,7 @@ class TextDocumentCleaner:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TextDocumentCleaner":
+    def from_dict(cls, data: Dict[str, Any]) -> "DocumentCleaner":
         """
         Deserialize this component from a dictionary.
         """
@@ -105,6 +107,7 @@ class TextDocumentCleaner:
         """
         Remove empty lines and lines that contain nothing but whitespaces from text.
         :param text: Text to clean.
+        :param return: The text without empty lines.
         """
         lines = text.split("\n")
         non_empty_lines = filter(lambda line: line.strip() != "", lines)
@@ -114,6 +117,7 @@ class TextDocumentCleaner:
         """
         Remove extra whitespaces from text.
         :param text: Text to clean.
+        :param return: The text without extra whitespaces.
         """
         return re.sub(r"\s\s+", " ", text).strip()
 
@@ -122,6 +126,7 @@ class TextDocumentCleaner:
         Remove substrings that match the specified regex from the text.
         :param text: Text to clean.
         :param regex: Regex to match and replace substrings by "".
+        :param return: The text without any substrings that match the regex.
         """
         return re.sub(regex, "", text).strip()
 
@@ -130,12 +135,18 @@ class TextDocumentCleaner:
         Remove all specified substrings from the text.
         :param text: Text to clean.
         :param substrings: Substrings to remove.
+        :return: The text without the specified substrings.
         """
         for substring in substrings:
             text = text.replace(substring, "")
         return text
 
     def _remove_repeated_substrings(self, text: str) -> str:
+        """
+        Remove any substrings from the text that occur repeatedly. For example headers or footers.
+        :param text: Text to clean.
+        :return: The text without the repeated substrings.
+        """
         return self._find_and_remove_header_footer(
             text, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
         )
@@ -149,10 +160,10 @@ class TextDocumentCleaner:
         Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
          but won't detect "Page 3 of 4" or similar.
 
-        :param n_chars: number of first/last characters where the header/footer shall be searched in
-        :param n_first_pages_to_ignore: number of first pages to ignore (e.g. TOCs often don't contain footer/header)
-        :param n_last_pages_to_ignore: number of last pages to ignore
-        :return: cleaned text
+        :param n_chars: The number of first/last characters where the header/footer shall be searched in.
+        :param n_first_pages_to_ignore: The number of first pages to ignore (e.g. TOCs often don't contain footer/header).
+        :param n_last_pages_to_ignore: The number of last pages to ignore.
+        :return: The text without the found headers and footers.
         """
 
         pages = text.split("\f")
@@ -168,16 +179,17 @@ class TextDocumentCleaner:
         found_footer = self._find_longest_common_ngram(end_of_pages)
         if found_footer:
             pages = [page.replace(found_footer, "") for page in pages]
-        # logger.debug("Removed header '%s' and footer '%s' in document", found_header, found_footer)
+
+        logger.debug("Removed header '%s' and footer '%s' in document", found_header, found_footer)
         text = "\f".join(pages)
         return text
 
     def _ngram(self, seq: str, n: int) -> Generator[str, None, None]:
         """
-        Return ngram (of tokens - currently split by whitespace)
-        :param seq: str, string from which the ngram shall be created
-        :param n: int, n of ngram
-        :return: str, ngram as string
+        Return all ngrams of length n from a text sequence. Each ngram consists of n words split by whitespace.
+        :param seq: The sequence to generate ngrams from.
+        :param n: The length of the ngrams to generate.
+        :return: A Generator generating all ngrams of length n from the given sequence.
         """
 
         # In order to maintain the original whitespace, but still consider \n and \t for n-gram tokenization,
@@ -193,20 +205,30 @@ class TextDocumentCleaner:
         return ngrams
 
     def _allngram(self, seq: str, min_ngram: int, max_ngram: int) -> Set[str]:
+        """
+        Generates all possible ngrams from a given sequence of text.
+        Considering all ngram lengths between the minimum and maximum length.
+
+        :param seq: The sequence to generate ngrams from.
+        :param min_ngram: The minimum length of ngram to consider.
+        :param max_ngram: The maximum length of ngram to consider.
+        :return: A set of all ngrams from the given sequence.
+        """
         lengths = range(min_ngram, max_ngram) if max_ngram else range(min_ngram, len(seq))
         ngrams = map(partial(self._ngram, seq), lengths)
         res = set(chain.from_iterable(ngrams))
         return res
 
-    def _find_longest_common_ngram(self, sequences: List[str], max_ngram: int = 30, min_ngram: int = 3) -> str:
+    def _find_longest_common_ngram(self, sequences: List[str], min_ngram: int = 3, max_ngram: int = 30) -> str:
         """
-        Find the longest common ngram across different text sequences (e.g. start of pages).
-        Considering all ngrams between the specified range. Helpful for finding footers, headers etc.
+        Find the longest common ngram across a list of text sequences (e.g. start of pages).
+        Considering all ngram lengths between the minimum and maximum length. Helpful for finding footers, headers etc.
+        Empty sequences are ignored.
 
-        :param sequences: list[str], list of strings that shall be searched for common n_grams
-        :param max_ngram: int, maximum length of ngram to consider
-        :param min_ngram: minimum length of ngram to consider
-        :return: str, common string of all sections
+        :param sequences: The list of strings that shall be searched for common n_grams.
+        :param max_ngram: The maximum length of ngram to consider.
+        :param min_ngram: The minimum length of ngram to consider.
+        :return: The longest ngram that all sequences have in common.
         """
         sequences = [s for s in sequences if s]  # filter empty sequences
         if not sequences:

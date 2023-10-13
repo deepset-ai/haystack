@@ -3,22 +3,46 @@ import logging
 import pytest
 
 from haystack.preview import Document
-from haystack.preview.components.preprocessors import TextDocumentCleaner
+from haystack.preview.components.preprocessors import DocumentCleaner
 
 
-class TestTextDocumentCleaner:
+class TestDocumentCleaner:
+    @pytest.mark.unit
+    def test_init(self):
+        cleaner = DocumentCleaner()
+        assert cleaner.remove_empty_lines == True
+        assert cleaner.remove_extra_whitespaces == True
+        assert cleaner.remove_repeated_substrings == False
+        assert cleaner.remove_substrings is None
+        assert cleaner.remove_regex is None
+
     @pytest.mark.unit
     def test_to_dict(self):
-        component = TextDocumentCleaner(
+        cleaner = DocumentCleaner()
+        data = cleaner.to_dict()
+        assert data == {
+            "type": "DocumentCleaner",
+            "init_parameters": {
+                "remove_empty_lines": True,
+                "remove_extra_whitespaces": True,
+                "remove_repeated_substrings": False,
+                "remove_substrings": None,
+                "remove_regex": None,
+            },
+        }
+
+    @pytest.mark.unit
+    def test_to_dict_with_custom_init_parameters(self):
+        cleaner = DocumentCleaner(
             remove_empty_lines=False,
             remove_extra_whitespaces=False,
             remove_repeated_substrings=True,
             remove_substrings=["a", "b"],
             remove_regex=r"\s\s+",
         )
-        data = component.to_dict()
+        data = cleaner.to_dict()
         assert data == {
-            "type": "TextDocumentCleaner",
+            "type": "DocumentCleaner",
             "init_parameters": {
                 "remove_empty_lines": False,
                 "remove_extra_whitespaces": False,
@@ -31,7 +55,7 @@ class TestTextDocumentCleaner:
     @pytest.mark.unit
     def test_from_dict(self):
         data = {
-            "type": "TextDocumentCleaner",
+            "type": "DocumentCleaner",
             "init_parameters": {
                 "remove_empty_lines": False,
                 "remove_extra_whitespaces": False,
@@ -40,35 +64,35 @@ class TestTextDocumentCleaner:
                 "remove_regex": r"\s\s+",
             },
         }
-        component = TextDocumentCleaner.from_dict(data)
-        assert component.remove_empty_lines == False
-        assert component.remove_extra_whitespaces == False
-        assert component.remove_repeated_substrings == True
-        assert component.remove_substrings == ["a", "b"]
-        assert component.remove_regex == r"\s\s+"
+        cleaner = DocumentCleaner.from_dict(data)
+        assert cleaner.remove_empty_lines == False
+        assert cleaner.remove_extra_whitespaces == False
+        assert cleaner.remove_repeated_substrings == True
+        assert cleaner.remove_substrings == ["a", "b"]
+        assert cleaner.remove_regex == r"\s\s+"
 
     @pytest.mark.unit
     def test_non_text_document(self, caplog):
         with caplog.at_level(logging.WARNING):
-            cleaner = TextDocumentCleaner()
+            cleaner = DocumentCleaner()
             cleaner.run(documents=[Document()])
-            assert "TextDocumentCleaner only works with text documents but document.text for document ID" in caplog.text
+            assert "DocumentCleaner only cleans text documents but document.text for document ID" in caplog.text
 
     @pytest.mark.unit
     def test_single_document(self):
-        with pytest.raises(TypeError, match="TextDocumentCleaner expects a List of Documents as input."):
-            cleaner = TextDocumentCleaner()
+        with pytest.raises(TypeError, match="DocumentCleaner expects a List of Documents as input."):
+            cleaner = DocumentCleaner()
             cleaner.run(documents=Document())
 
     @pytest.mark.unit
     def test_empty_list(self):
-        cleaner = TextDocumentCleaner()
+        cleaner = DocumentCleaner()
         result = cleaner.run(documents=[])
         assert result == {"documents": []}
 
     @pytest.mark.unit
     def test_remove_empty_lines(self):
-        cleaner = TextDocumentCleaner(remove_extra_whitespaces=False)
+        cleaner = DocumentCleaner(remove_extra_whitespaces=False)
         result = cleaner.run(
             documents=[
                 Document(
@@ -88,7 +112,7 @@ class TestTextDocumentCleaner:
 
     @pytest.mark.unit
     def test_remove_whitespaces(self):
-        cleaner = TextDocumentCleaner(remove_empty_lines=False)
+        cleaner = DocumentCleaner(remove_empty_lines=False)
         result = cleaner.run(
             documents=[
                 Document(
@@ -107,21 +131,21 @@ class TestTextDocumentCleaner:
 
     @pytest.mark.unit
     def test_remove_substrings(self):
-        cleaner = TextDocumentCleaner(remove_substrings=["This", "A", "words"])
-        result = cleaner.run(documents=[Document(text="This is a text with some words.")])
+        cleaner = DocumentCleaner(remove_substrings=["This", "A", "words", "🪲"])
+        result = cleaner.run(documents=[Document(text="This is a text with some words.🪲")])
         assert len(result["documents"]) == 1
         assert result["documents"][0].text == " is a text with some ."
 
     @pytest.mark.unit
     def test_remove_regex(self):
-        cleaner = TextDocumentCleaner(remove_regex=r"\s\s+")
+        cleaner = DocumentCleaner(remove_regex=r"\s\s+")
         result = cleaner.run(documents=[Document(text="This is a  text with   some words.")])
         assert len(result["documents"]) == 1
         assert result["documents"][0].text == "This is a text with some words."
 
     @pytest.mark.unit
     def test_remove_repeated_substrings(self):
-        cleaner = TextDocumentCleaner(
+        cleaner = DocumentCleaner(
             remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
         )
 
