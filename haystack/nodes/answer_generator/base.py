@@ -24,11 +24,11 @@ class BaseGenerator(BaseComponent):
         """
         Abstract method to generate answers.
 
-        :param query: Query
+        :param query: Query string.
         :param documents: Related documents (for example, coming from a retriever) the answer should be based on.
         :param top_k: Number of returned answers.
-        :param max_tokens: THe maximum number of tokens the generated answer can have.
-        :return: Generated answers plus additional infos in a dict
+        :param max_tokens: The maximum number of tokens the generated answer can have.
+        :return: Generated answers plus additional infos in a dict.
         """
         pass
 
@@ -41,6 +41,14 @@ class BaseGenerator(BaseComponent):
         add_isolated_node_eval: bool = False,
         max_tokens: Optional[int] = None,
     ):  # type: ignore
+        """
+        :param query: Query string.
+        :param documents: List of Documents the answer should be based on.
+        :param top_k: The maximum number of answers to return.
+        :param labels: Labels to be used for evaluation.
+        :param add_isolated_node_eval: If True, the answer generator will be evaluated in isolation.
+        :param max_tokens: The maximum number of tokens the generated answer can have.
+        """
         if documents:
             results = self.predict(query=query, documents=documents, top_k=top_k, max_tokens=max_tokens)
         else:
@@ -66,6 +74,14 @@ class BaseGenerator(BaseComponent):
         add_isolated_node_eval: bool = False,
         max_tokens: Optional[int] = None,
     ):
+        """
+        :param queries: List of query strings.
+        :param documents: List of list of Documents the answer should be based on.
+        :param top_k: The maximum number of answers to return.
+        :param labels: Labels to be used for evaluation.
+        :param add_isolated_node_eval: If True, the answer generator will be evaluated in isolation.
+        :param max_tokens: The maximum number of tokens the generated answer can have.
+        """
         results = self.predict_batch(
             queries=queries, documents=documents, top_k=top_k, batch_size=batch_size, max_tokens=max_tokens
         )
