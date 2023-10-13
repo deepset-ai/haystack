@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 @component
 class DocumentCleaner:
     """
-    Makes text documents more readable by removing extra whitespaces, empty lines, specified substrings, regexes, headers and footers (in this order).
+    Makes text documents more readable by removing extra whitespaces, empty lines, specified substrings, regexes, page headers and footers (in this order).
     This is useful for preparing the documents for further processing by LLMs.
 
     Example usage in an indexing pipeline:
@@ -39,7 +39,7 @@ class DocumentCleaner:
         """
         :param remove_empty_lines: Whether to remove empty lines.
         :param remove_extra_whitespaces: Whether to remove extra whitespaces.
-        :param remove_repeated_substrings: Whether to remove repeated substrings, such as headers and footers.
+        :param remove_repeated_substrings: Whether to remove repeated substrings from pages, such as headers and footers. Pages in the text need to be separated by form feed character "\f", which is supported by TextFileToDocument and AzureOCRDocumentConverter.
         :param remove_substrings: List of substrings to remove from the text.
         :param remove_regex: Regex to match and replace substrings by "".
         """
@@ -143,7 +143,8 @@ class DocumentCleaner:
 
     def _remove_repeated_substrings(self, text: str) -> str:
         """
-        Remove any substrings from the text that occur repeatedly. For example headers or footers.
+        Remove any substrings from the text that occur repeatedly on every page. For example headers or footers.
+        Pages in the text need to be separated by form feed character "\f".
         :param text: Text to clean.
         :return: The text without the repeated substrings.
         """
@@ -156,6 +157,7 @@ class DocumentCleaner:
     ) -> str:
         """
         Heuristic to find footers and headers across different pages by searching for the longest common string.
+        Pages in the text need to be separated by form feed character "\f".
         For headers, we only search in the first n_chars characters (for footer: last n_chars).
         Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
          but won't detect "Page 3 of 4" or similar.
