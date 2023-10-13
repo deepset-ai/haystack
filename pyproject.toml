@@ -94,6 +94,7 @@ preview = [
   "tqdm",
   "tenacity",
   "lazy-imports",
+  "posthog",  # telemetry
 
   "Jinja2",
   "openai",
