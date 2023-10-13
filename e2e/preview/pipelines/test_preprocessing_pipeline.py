@@ -3,8 +3,8 @@ import json
 from haystack.preview import Pipeline
 from haystack.preview.components.embedders import SentenceTransformersDocumentEmbedder
 from haystack.preview.components.file_converters import TextFileToDocument
-from haystack.preview.components.preprocessors import TextDocumentSplitter, TextDocumentCleaner
-from haystack.preview.components.routers import FileTypeRouter, DocumentLanguageClassifier
+from haystack.preview.components.preprocessors import TextDocumentSplitter, DocumentCleaner, DocumentLanguageClassifier
+from haystack.preview.components.routers import FileTypeRouter
 from haystack.preview.components.writers import DocumentWriter
 from haystack.preview.document_stores import MemoryDocumentStore
 
@@ -16,7 +16,7 @@ def test_preprocessing_pipeline(tmp_path):
     preprocessing_pipeline.add_component(instance=FileTypeRouter(mime_types=["text/plain"]), name="file_type_router")
     preprocessing_pipeline.add_component(instance=TextFileToDocument(), name="text_file_converter")
     preprocessing_pipeline.add_component(instance=DocumentLanguageClassifier(), name="language_classifier")
-    preprocessing_pipeline.add_component(instance=TextDocumentCleaner(), name="cleaner")
+    preprocessing_pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
     preprocessing_pipeline.add_component(
         instance=TextDocumentSplitter(split_by="sentence", split_length=1), name="splitter"
     )

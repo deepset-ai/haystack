@@ -7,7 +7,18 @@ from haystack.preview.components.preprocessors import DocumentLanguageClassifier
 
 class TestDocumentLanguageClassifier:
     @pytest.mark.unit
+    def test_init(self):
+        component = DocumentLanguageClassifier()
+        assert component.languages == ["en"]
+
+    @pytest.mark.unit
     def test_to_dict(self):
+        component = DocumentLanguageClassifier()
+        data = component.to_dict()
+        assert data == {"type": "DocumentLanguageClassifier", "init_parameters": {"languages": ["en"]}}
+
+    @pytest.mark.unit
+    def test_to_dict_with_custom_init_parameters(self):
         component = DocumentLanguageClassifier(languages=["en", "de"])
         data = component.to_dict()
         assert data == {"type": "DocumentLanguageClassifier", "init_parameters": {"languages": ["en", "de"]}}
