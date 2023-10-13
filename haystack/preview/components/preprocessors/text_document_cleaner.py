@@ -39,7 +39,9 @@ class DocumentCleaner:
         """
         :param remove_empty_lines: Whether to remove empty lines.
         :param remove_extra_whitespaces: Whether to remove extra whitespaces.
-        :param remove_repeated_substrings: Whether to remove repeated substrings from pages, such as headers and footers. Pages in the text need to be separated by form feed character "\f", which is supported by TextFileToDocument and AzureOCRDocumentConverter.
+        :param remove_repeated_substrings: Whether to remove repeated substrings (headers/footers) from pages.
+            Pages in the text need to be separated by form feed character "\f",
+            which is supported by TextFileToDocument and AzureOCRDocumentConverter.
         :param remove_substrings: List of substrings to remove from the text.
         :param remove_regex: Regex to match and replace substrings by "".
         """
