@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Adds HTMLToDocument component to convert HTML to a Document.

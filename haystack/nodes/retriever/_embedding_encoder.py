@@ -46,6 +46,14 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
 COHERE_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 COHERE_BACKOFF = int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
 COHERE_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
+COHERE_EMBEDDING_MODELS = [
+    "small",
+    "large",
+    "multilingual-22-12",
+    "embed-english-v2.0",
+    "embed-english-light-v2.0",
+    "embed-multilingual-v2.0",
+]
 
 
 class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
@@ -364,7 +372,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
         torch_and_transformers_import.check()
 
-        # See https://docs.cohere.ai/embed-reference/ for more details
+        # See https://docs.cohere.com/reference/embed for more details
         # Cohere has a max seq length of 4096 tokens and a max batch size of 96
         self.max_seq_len = min(4096, retriever.max_seq_len)
         self.url = "https://api.cohere.ai/embed"
@@ -372,12 +380,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.batch_size = min(96, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
         self.model: str = next(
-            (
-                m
-                for m in ["small", "medium", "large", "multilingual-22-12", "finance-sentiment"]
-                if m in retriever.embedding_model
-            ),
-            "multilingual-22-12",
+            (m for m in COHERE_EMBEDDING_MODELS if m in retriever.embedding_model), "multilingual-22-12"
         )
 
     @retry(

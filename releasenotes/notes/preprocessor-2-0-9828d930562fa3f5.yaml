@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Add the `TextDocumentSplitter` component for Haystack 2.0 that splits a Document with long text into multiple Documents with shorter texts. Thereby the texts match the maximum length that the language models in Embedders or other components can process.

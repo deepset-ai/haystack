@@ -1,8 +1,9 @@
 import os
+import asyncio
 
 import pytest
 
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores import InMemoryDocumentStore, ElasticsearchDocumentStore
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.pipelines import (
     Pipeline,
@@ -13,6 +14,7 @@ from haystack.pipelines import (
     SearchSummarizationPipeline,
 )
 from haystack.nodes import EmbeddingRetriever, PromptNode, BM25Retriever, TransformersSummarizer
+from haystack.nodes.asyncio.sleeper import Sleeper  # noqa # pylint: disable=unused-import
 from haystack.schema import Document
 
 
@@ -89,7 +91,7 @@ def test_most_similar_documents_pipeline():
             assert isinstance(document.content, str)
 
 
-def test_most_similar_documents_pipeline_with_filters():
+async def test_most_similar_documents_pipeline_with_filters():
     documents = [
         {"id": "a", "content": "Sample text for document-1", "meta": {"source": "wiki1"}},
         {"id": "b", "content": "Sample text for document-2", "meta": {"source": "wiki2"}},
@@ -120,22 +122,77 @@ def test_most_similar_documents_pipeline_with_filters():
             assert document.meta["source"] in ["wiki3", "wiki4", "wiki5"]
 
 
-def test_query_and_indexing_pipeline(samples_path):
+@pytest.mark.asyncio
+async def test_query_and_indexing_pipeline(samples_path):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
         samples_path / "pipelines" / "test.haystack-pipeline.yml", pipeline_name="indexing_pipeline"
     )
-    pipeline.run(file_paths=samples_path / "pipelines" / "sample_pdf_1.pdf")
+    await pipeline._arun(file_paths=samples_path / "pipelines" / "sample_pdf_1.pdf")
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
         samples_path / "pipelines" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
     )
-    prediction = pipeline.run(
+    prediction = await pipeline._arun(
         query="Who made the PDF specification?", params={"Retriever": {"top_k": 2}, "Reader": {"top_k": 1}}
     )
     assert prediction["query"] == "Who made the PDF specification?"
     assert prediction["answers"][0].answer == "Adobe Systems"
     assert "_debug" not in prediction.keys()
+
+
+@pytest.mark.asyncio
+async def test_async_concurrent_complex_pipeline(samples_path):
+    documents = [
+        {"content": "How to test module-1?", "meta": {"source": "wiki1", "answer": "Using tests for module-1"}},
+        {"content": "How to test module-2?", "meta": {"source": "wiki2", "answer": "Using tests for module-2"}},
+        {"content": "How to test module-3?", "meta": {"source": "wiki3", "answer": "Using tests for module-3"}},
+        {"content": "How to test module-4?", "meta": {"source": "wiki4", "answer": "Using tests for module-4"}},
+        {"content": "How to test module-5?", "meta": {"source": "wiki5", "answer": "Using tests for module-5"}},
+    ]
+    document_store = ElasticsearchDocumentStore()
+    document_store.write_documents(documents)
+
+    # test correct load of indexing pipeline from yaml
+    pipeline = Pipeline.load_from_yaml(samples_path / "pipelines" / "async_test_pipeline.yml", pipeline_name="query")
+    queries = [
+        "How to test module-1?",
+        "How to test module-2?",
+        "How to test module-3?",
+        "How to test module-4?",
+        "How to test module-5?",
+    ]
+    futures = []
+    for query in queries:
+        future = pipeline._arun(query=query)
+        futures.append(future)
+
+    await asyncio.gather(*futures)
+
+
+@pytest.mark.asyncio
+async def test_async_sequential_complex_pipeline(samples_path):
+    documents = [
+        {"content": "How to test module-1?", "meta": {"source": "wiki1", "answer": "Using tests for module-1"}},
+        {"content": "How to test module-2?", "meta": {"source": "wiki2", "answer": "Using tests for module-2"}},
+        {"content": "How to test module-3?", "meta": {"source": "wiki3", "answer": "Using tests for module-3"}},
+        {"content": "How to test module-4?", "meta": {"source": "wiki4", "answer": "Using tests for module-4"}},
+        {"content": "How to test module-5?", "meta": {"source": "wiki5", "answer": "Using tests for module-5"}},
+    ]
+    document_store = ElasticsearchDocumentStore()
+    document_store.write_documents(documents)
+
+    # test correct load of indexing pipeline from yaml
+    pipeline = Pipeline.load_from_yaml(samples_path / "pipelines" / "async_test_pipeline.yml", pipeline_name="query")
+    queries = [
+        "How to test module-1?",
+        "How to test module-2?",
+        "How to test module-3?",
+        "How to test module-4?",
+        "How to test module-5?",
+    ]
+    for query in queries:
+        await pipeline._arun(query=query)
 
 
 @pytest.mark.skipif(

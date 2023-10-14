@@ -65,7 +65,7 @@ def add_example_data(document_store, dir):
             output_dir=dir,
         )
         files_to_index = [dir + "/" + f for f in os.listdir(dir)]
-        converter = TextConverter(remove_numeric_tables=True, valid_languages=["en"])
+        converter = TextConverter(remove_numeric_tables=True)
         docs = [converter.convert(file_path=file, meta=None)[0] for file in files_to_index]
     else:
         # Here you can add a local folder with your files(.txt, .pdf, .docx).

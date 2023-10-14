@@ -47,6 +47,7 @@ classifiers = [
 ]
 dependencies = [
   "requests",
+  "httpx",
   "pydantic<2",
   "transformers==4.32.1",
   "pandas",
@@ -78,12 +79,6 @@ dependencies = [
   # Schema validation
   "jsonschema",
 
-  # Preview
-  "canals==0.8.0",
-  "openai",
-  "Jinja2",
-  "openai-whisper",  # FIXME https://github.com/deepset-ai/haystack/issues/5731
-
   # Agent events
   "events",
 
@@ -91,6 +86,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+preview = [
+  "canals==0.8.1",
+  "requests",
+  "pandas",
+  "rank_bm25",
+  "tqdm",
+  "tenacity",
+  "lazy-imports",
+
+  "Jinja2",
+  "openai",
+]
 inference = [
   "transformers[torch,sentencepiece]==4.32.1",
   "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
@@ -144,9 +151,6 @@ docstores-gpu = [
 ]
 audio = [
   "openai-whisper"
-]
-beir = [
-  "beir; platform_system != 'Windows'",
 ]
 aws = [
   "boto3",
@@ -239,11 +243,11 @@ formatting = [
 ]
 
 all = [
-  "farm-haystack[inference,docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws]",
+  "farm-haystack[inference,docstores,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[inference,docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics,aws]",
+  "farm-haystack[inference,docstores-gpu,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview]",
 ]
 
 [project.scripts]
@@ -279,7 +283,7 @@ line-length = 120
 skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
 
 [tool.codespell]
-ignore-words-list = "ans,astroid,nd,ned,nin,ue"
+ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge"
 quiet-level = 3
 skip = "test/nodes/*,test/others/*,test/samples/*"
 

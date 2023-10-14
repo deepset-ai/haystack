@@ -36,7 +36,29 @@ class TestAnswerBuilder:
     def test_run_unmatching_input_len(self):
         component = AnswerBuilder()
         with pytest.raises(ValueError):
-            component.run(query="query", replies=["reply1", "reply2"], metadata=[])
+            component.run(query="query", replies=["reply1"], metadata=[{"test": "meta"}, {"test": "meta2"}])
+
+    @pytest.mark.unit
+    def test_run_without_meta(self):
+        component = AnswerBuilder()
+        output = component.run(query="query", replies=["reply1"])
+        answers = output["answers"]
+        assert answers[0].data == "reply1"
+        assert answers[0].metadata == {}
+        assert answers[0].query == "query"
+        assert answers[0].documents == []
+        assert isinstance(answers[0], GeneratedAnswer)
+
+    @pytest.mark.unit
+    def test_run_meta_is_an_empty_list(self):
+        component = AnswerBuilder()
+        output = component.run(query="query", replies=["reply1"], metadata=[])
+        answers = output["answers"]
+        assert answers[0].data == "reply1"
+        assert answers[0].metadata == {}
+        assert answers[0].query == "query"
+        assert answers[0].documents == []
+        assert isinstance(answers[0], GeneratedAnswer)
 
     def test_run_without_pattern(self):
         component = AnswerBuilder()

@@ -1,15 +1,17 @@
+# Disable pylint errors for logging basicConfig
+# pylint: disable=no-logging-basicconfig
 import logging
+
+import pandas as pd
+
+from haystack.document_stores import ElasticsearchDocumentStore
+from haystack.nodes import EmbeddingRetriever
+from haystack.nodes.other.docs2answers import Docs2Answers
+from haystack.pipelines import Pipeline
+from haystack.utils import fetch_archive_from_http, launch_es, print_answers
 
 logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
 logging.getLogger("haystack").setLevel(logging.INFO)
-
-from haystack.document_stores import ElasticsearchDocumentStore
-
-from haystack.nodes import EmbeddingRetriever
-from haystack.nodes.other.docs2answers import Docs2Answers
-from haystack.utils import launch_es, print_answers, fetch_archive_from_http
-import pandas as pd
-from haystack.pipelines import Pipeline
 
 
 def basic_faq_pipeline():
@@ -17,7 +19,7 @@ def basic_faq_pipeline():
         host="localhost",
         username="",
         password="",
-        index="document",
+        index="example-document",
         embedding_field="question_emb",
         embedding_dim=384,
         excluded_meta_data=["question_emb"],
@@ -52,6 +54,7 @@ def basic_faq_pipeline():
     # Convert Dataframe to list of dicts and index them in our DocumentStore
     docs_to_index = df.to_dict(orient="records")
     document_store.write_documents(docs_to_index)
+    document_store.update_embeddings(retriever)
 
     # Initialize a Pipeline (this time without a reader) and ask questions
     pipeline = Pipeline()
@@ -62,6 +65,9 @@ def basic_faq_pipeline():
     prediction = pipeline.run(query="How is the virus spreading?", params={"Retriever": {"top_k": 10}})
 
     print_answers(prediction, details="medium")
+
+    # Remove the index once we're done to save space
+    document_store.delete_index(index="example-document")
     return prediction
 
 
