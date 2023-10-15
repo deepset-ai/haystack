@@ -8,7 +8,7 @@ from requests import Response
 from requests.exceptions import HTTPError
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from haystack import __version__
+from haystack.preview import __version__
 from haystack.preview import component, default_from_dict, default_to_dict
 from haystack.preview.dataclasses import ByteStream
 
