@@ -8,6 +8,6 @@ from importlib import metadata
 # When installing `haystack-ai` we want to use that package version though
 # as `farm-haystack` might not be installed and cause this to fail.
 try:
-    __version__: str = str(metadata.version("haystack-ai"))
+    __version__ = str(metadata.version("haystack-ai"))
 except metadata.PackageNotFoundError:
-    __version__: str = str(metadata.version("farm-haystack"))
+    __version__ = str(metadata.version("farm-haystack"))
