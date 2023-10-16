@@ -329,7 +329,7 @@ def fetch_from_prompthub(name: str) -> prompthub.Prompt:
     try:
         prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
     except HTTPError as http_error:
-        if http_error.response.status_code != 404:
+        if http_error.response and http_error.response.status_code != 404:
             raise http_error
         raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
     return prompt_data
@@ -460,7 +460,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 cache_prompt(data)
 
         except HTTPError as http_error:
-            if http_error.response.status_code != 404:
+            if http_error.response and http_error.response.status_code != 404:
                 raise http_error
             raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
         return data.text

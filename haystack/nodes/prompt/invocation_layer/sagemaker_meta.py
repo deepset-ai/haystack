@@ -232,7 +232,8 @@ class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
             generated_texts = [o["generation"] for o in output if "generation" in o]
             return generated_texts
         except requests.HTTPError as err:
-            res = err.response
+            # Ugly hack to silence mypy
+            res = err.response or requests.Response()
             if res.status_code == 429:
                 raise SageMakerModelNotReadyError(f"Model not ready: {res.text}") from err
             raise SageMakerInferenceError(

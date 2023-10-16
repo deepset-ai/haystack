@@ -219,7 +219,8 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
                 **kwargs,
             )
         except requests.HTTPError as err:
-            res = err.response
+            # Ugly hack to silence mypy
+            res = err.response or requests.Response()
             if res.status_code == 429:
                 raise AnthropicRateLimitError(f"API rate limit exceeded: {res.text}")
             if res.status_code == 401:

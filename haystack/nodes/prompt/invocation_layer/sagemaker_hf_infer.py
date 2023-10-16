@@ -209,7 +209,8 @@ class SageMakerHFInferenceInvocationLayer(SageMakerBaseInvocationLayer):
             output = json.loads(response_json)
             return self._extract_response(output)
         except requests.HTTPError as err:
-            res = err.response
+            # Ugly hack to silence mypy
+            res = err.response or requests.Response()
             if res.status_code == 429:
                 raise SageMakerModelNotReadyError(f"Model not ready: {res.text}")
             raise SageMakerInferenceError(
