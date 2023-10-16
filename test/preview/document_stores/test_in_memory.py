@@ -55,7 +55,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         }
 
     @pytest.mark.unit
-    @patch("haystack.preview.document_stores.memory.document_store.re")
+    @patch("haystack.preview.document_stores.in_memory.document_store.re")
     def test_from_dict(self, mock_regex):
         data = {
             "type": "InMemoryDocumentStore",
