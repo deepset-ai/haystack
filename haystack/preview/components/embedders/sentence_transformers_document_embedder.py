@@ -57,6 +57,16 @@ class SentenceTransformersDocumentEmbedder:
         self.metadata_fields_to_embed = metadata_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {
+            "model": self.model_name_or_path,
+            "uses_prefix_or_suffix": bool(self.prefix or self.suffix),
+            "embeds_metadata_fields": bool(self.metadata_fields_to_embed),
+        }
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.

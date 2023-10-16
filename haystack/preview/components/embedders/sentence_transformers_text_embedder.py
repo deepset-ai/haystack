@@ -50,6 +50,12 @@ class SentenceTransformersTextEmbedder:
         self.progress_bar = progress_bar
         self.normalize_embeddings = normalize_embeddings
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"model": self.model_name_or_path, "uses_prefix_or_suffix": bool(self.prefix or self.suffix)}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
