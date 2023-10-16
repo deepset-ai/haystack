@@ -110,6 +110,14 @@ class HuggingFaceLocalGenerator:
         self.generation_kwargs = generation_kwargs
         self.pipeline = None
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        if isinstance(self.pipeline_kwargs["model"], str):
+            return {"model": self.pipeline_kwargs["model"]}
+        return {"model": f"[object of type {type(self.pipeline_kwargs['model'])}]"}
+
     def warm_up(self):
         if self.pipeline is None:
             self.pipeline = pipeline(**self.pipeline_kwargs)
