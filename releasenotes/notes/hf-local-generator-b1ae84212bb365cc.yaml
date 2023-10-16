@@ -1,4 +1,0 @@
----
-preview:
-  - |
-    Support stopwords removal in `HuggingFaceLocalGenerator`.
