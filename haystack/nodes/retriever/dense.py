@@ -1472,7 +1472,7 @@ class EmbeddingRetriever(DenseRetriever):
         :param embedding_model: Local path or name of model in Hugging Face's model hub such
                                 as ``'sentence-transformers/all-MiniLM-L6-v2'``. The embedding model could also
                                 potentially be an OpenAI model ["ada", "babbage", "davinci", "curie"] or
-                                a Cohere model ["small", "medium", "large"].
+                                a Cohere model ["small", "large"].
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to encode at once.
@@ -1878,7 +1878,7 @@ class EmbeddingRetriever(DenseRetriever):
         )
         if valid_openai_model_name:
             return "openai"
-        if model_name_or_path in ["small", "medium", "large", "multilingual-22-12", "finance-sentiment"]:
+        if model_name_or_path in ["small", "large", "multilingual-22-12", "finance-sentiment"]:
             return "cohere"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
