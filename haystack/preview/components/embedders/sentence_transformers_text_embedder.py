@@ -1,7 +1,7 @@
 from typing import List, Optional, Union, Dict, Any
 
 from haystack.preview import component, default_to_dict, default_from_dict
-from haystack.preview.embedding_backends.sentence_transformers_backend import (
+from haystack.preview.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
 
@@ -26,11 +26,13 @@ class SentenceTransformersTextEmbedder:
         """
         Create a SentenceTransformersTextEmbedder component.
 
-        :param model_name_or_path: Local path or name of the model in Hugging Face's model hub, such as ``'sentence-transformers/all-mpnet-base-v2'``.
-        :param device: Device (like 'cuda' / 'cpu') that should be used for computation. If None, checks if a GPU can be used.
+        :param model_name_or_path: Local path or name of the model in Hugging Face's model hub,
+            such as ``'sentence-transformers/all-mpnet-base-v2'``.
+        :param device: Device (like 'cuda' / 'cpu') that should be used for computation.
+            Defaults to CPU.
         :param use_auth_token: The API token used to download private models from Hugging Face.
-                        If this parameter is set to `True`, then the token generated when running
-                        `transformers-cli login` (stored in ~/.huggingface) will be used.
+            If this parameter is set to `True`, then the token generated when running
+            `transformers-cli login` (stored in ~/.huggingface) will be used.
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         :param batch_size: Number of strings to encode at once.
