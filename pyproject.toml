@@ -152,9 +152,6 @@ docstores-gpu = [
 audio = [
   "openai-whisper"
 ]
-beir = [
-  "beir; platform_system != 'Windows'",
-]
 aws = [
   "boto3",
   # Costraint botocore to avoid taking to much time to resolve the dependency tree.
@@ -246,11 +243,11 @@ formatting = [
 ]
 
 all = [
-  "farm-haystack[inference,docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,preview]",
+  "farm-haystack[inference,docstores,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[inference,docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics,aws,preview]",
+  "farm-haystack[inference,docstores-gpu,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview]",
 ]
 
 [project.scripts]
