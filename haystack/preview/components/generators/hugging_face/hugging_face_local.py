@@ -88,6 +88,7 @@ class HuggingFaceLocalGenerator:
             for model initialization:
             https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained
         :param stop_words: A list of stop words. If any one of the stop words is generated, the generation is stopped.
+            If you provide this parameter, you should not specify the `stopping_criteria` in `generation_kwargs`.
             For some chat models, the output includes both the new text and the original prompt.
             In these cases, it's important to make sure your prompt has no stop words.
         """
@@ -121,6 +122,12 @@ class HuggingFaceLocalGenerator:
         # only generated text is returned (excluding prompt)
         if task == "text-generation":
             generation_kwargs.setdefault("return_full_text", False)
+
+        if stop_words and "stopping_criteria" in generation_kwargs:
+            raise ValueError(
+                "Found both the `stop_words` init parameter and the `stopping_criteria` key in `generation_kwargs`. "
+                "Please specify only one of them."
+            )
 
         self.pipeline_kwargs = pipeline_kwargs
         self.generation_kwargs = generation_kwargs
