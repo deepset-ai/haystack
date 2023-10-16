@@ -383,10 +383,8 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def _delete_vectors(self, index: str, ids: List[str], namespace: Optional[str]) -> None:
         batch_size = self.top_k_limit_vectors
-        [
+        for id_batch in get_batches_from_generator(ids, batch_size):
             self.pinecone_indexes[index].delete(ids=list(id_batch), namespace=namespace)
-            for id_batch in get_batches_from_generator(ids, batch_size)
-        ]
 
     def get_document_count(
         self,
@@ -444,10 +442,10 @@ class PineconeDocumentStore(BaseDocumentStore):
         # otherwise add default `doc_type` value which is related to documents without embeddings,
         # but only if `doc_type` doesn't already exist in filters
         elif TYPE_METADATA_FIELD not in str(filters):
-            types_metadata = {DOCUMENT_WITHOUT_EMBEDDING}
+            types_metadata = {DOCUMENT_WITHOUT_EMBEDDING}  # type: ignore
             if not only_documents_without_embedding:
                 # add `doc_type` related to documents with embeddings
-                types_metadata.add(DOCUMENT_WITH_EMBEDDING)
+                types_metadata.add(DOCUMENT_WITH_EMBEDDING)  # type: ignore
         else:
             types_metadata = set()
 
@@ -489,7 +487,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         # drop filter for `doc_type` if exists
         if TYPE_METADATA_FIELD in str(filters):
-            filters = self._remove_type_metadata_filter(filters)
+            filters = self._remove_type_metadata_filter(filters)  # type: ignore
         return self._get_vector_count(
             index, filters=filters, namespace=namespace, types_metadata={DOCUMENT_WITH_EMBEDDING}  # type: ignore
         )
@@ -1807,7 +1805,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self._index_connection_exists(index)
 
         documents = self.get_all_documents(
-            index=index, filters=filters, headers=headers, namespace=namespace, type_metadata=LABEL
+            index=index, filters=filters, headers=headers, namespace=namespace, type_metadata=LABEL  # type: ignore
         )
         for doc in documents:
             doc.meta = self._pinecone_meta_format(doc.meta, labels=True)
