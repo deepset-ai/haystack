@@ -54,7 +54,7 @@ class SentenceTransformersTextEmbedder:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": self.model_name_or_path, "uses_prefix_or_suffix": bool(self.prefix or self.suffix)}
+        return {"model": self.model_name_or_path}
 
     def to_dict(self) -> Dict[str, Any]:
         """
