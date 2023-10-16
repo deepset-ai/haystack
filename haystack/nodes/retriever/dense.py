@@ -17,7 +17,7 @@ from haystack.errors import HaystackError
 from haystack.schema import Document, FilterType
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
-from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS, COHERE_EMBEDDING_MODELS
+from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
 from haystack.utils.early_stopping import EarlyStopping
 from haystack.telemetry import send_event
 from haystack.lazy_imports import LazyImport
