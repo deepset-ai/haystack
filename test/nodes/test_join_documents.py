@@ -54,3 +54,27 @@ def test_joindocuments_preserves_root_node():
     join_docs = JoinDocuments()
     result, _ = join_docs.run(inputs)
     assert result["root_node"] == "File"
+
+
+@pytest.mark.unit
+def test_joindocuments_concatenate_keep_only_highest_ranking_duplicate():
+    inputs = [
+        {
+            "documents": [
+                Document(content="text document 1", content_type="text", score=0.2),
+                Document(content="text document 2", content_type="text", score=0.3),
+            ]
+        },
+        {"documents": [Document(content="text document 2", content_type="text", score=0.7)]},
+    ]
+    expected_outputs = {
+        "documents": [
+            Document(content="text document 2", content_type="text", score=0.7),
+            Document(content="text document 1", content_type="text", score=0.2),
+        ]
+    }
+
+    join_docs = JoinDocuments(join_mode="concatenate")
+    result, _ = join_docs.run(inputs)
+    assert len(result["documents"]) == 2
+    assert result["documents"] == expected_outputs["documents"]
