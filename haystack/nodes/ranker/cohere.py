@@ -123,8 +123,7 @@ class CohereRanker(BaseRanker):
                 timeout=timeout,
             )
         except requests.HTTPError as err:
-            # Ugly hack to silence mypy
-            res = err.response or requests.Response()
+            res = err.response
             if res.status_code == 429:
                 raise CohereInferenceLimitError(f"API rate limit exceeded: {res.text}")
             if res.status_code == 401:
