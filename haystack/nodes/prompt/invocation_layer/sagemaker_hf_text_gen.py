@@ -199,11 +199,11 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
             return generated_texts
         except requests.HTTPError as err:
             res = err.response
-            if res.status_code == 429:
-                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}") from err
+            if res.status_code == 429:  # type: ignore[union-attr]
+                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}") from err  # type: ignore[union-attr]
             raise SageMakerInferenceError(
-                f"SageMaker Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
-                status_code=res.status_code,
+                f"SageMaker Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",  # type: ignore[union-attr]
+                status_code=res.status_code,  # type: ignore[union-attr]
             ) from err
 
     @classmethod
