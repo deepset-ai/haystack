@@ -6,6 +6,6 @@
 
 ::: canals.errors
 
-::: canals.utils
+::: canals.type_utils
 
 ::: canals.type_checking
