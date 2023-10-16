@@ -48,7 +48,7 @@ class MemoryEmbeddingRetriever:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"document_store": self.document_store}
+        return {"document_store": type(self.document_store).__name__}
 
     def to_dict(self) -> Dict[str, Any]:
         """
