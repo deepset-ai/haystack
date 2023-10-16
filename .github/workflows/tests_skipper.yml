@@ -10,10 +10,10 @@ on:
       - ready_for_review
     paths-ignore:
       - "**.py"
+      - "pyproject.toml"
       - "!haystack/preview/**/*.py"  # See tests_preview.yml
       - "!test/preview/**/*.py"  # See tests_preview.yml
       - "!e2e/preview/**/*.py"  # See e2e_preview.yml
-      - "pyproject.toml"
       - "!.github/**/*.py"
       - "!rest_api/**/*.py"
       - "!docs/**/*.py"
