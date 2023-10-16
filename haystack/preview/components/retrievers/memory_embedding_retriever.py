@@ -44,6 +44,12 @@ class MemoryEmbeddingRetriever:
         self.scale_score = scale_score
         self.return_embedding = return_embedding
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"document_store": type(self.document_store).__name__}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
