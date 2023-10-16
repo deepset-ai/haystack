@@ -2,6 +2,9 @@
 name: Linting (Preview)
 
 on:
+  push:
+    branches:
+      - fix-mypy-errors
   pull_request:
     paths:
       - "haystack/preview/**/*.py"
