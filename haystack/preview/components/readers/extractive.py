@@ -67,6 +67,12 @@ class ExtractiveReader:
         self.no_answer = no_answer
         self.calibration_factor = calibration_factor
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"model": self.model_name_or_path}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.

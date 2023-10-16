@@ -91,6 +91,12 @@ class GPTGenerator:
         self.streaming_callback = streaming_callback
         self.api_base_url = api_base_url
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"model": self.model_name}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.

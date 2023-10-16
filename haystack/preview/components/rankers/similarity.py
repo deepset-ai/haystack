@@ -56,6 +56,12 @@ class SimilarityRanker:
         self.model = None
         self.tokenizer = None
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"model": str(self.model_name_or_path)}
+
     def warm_up(self):
         """
         Warm up the model and tokenizer used in scoring the documents.
