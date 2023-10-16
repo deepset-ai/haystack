@@ -8,4 +8,4 @@
 
 ::: canals.type_utils
 
-::: canals.type_checking
+::: canals.serialization
