@@ -19,7 +19,7 @@ on:
       - "pyproject.toml"
       - "!haystack/preview/**/*.py"  # See tests_preview.yml
       - "!test/preview/**/*.py"  # See tests_preview.yml
-      - "!e2e/preview/**/*.py"  # See tests_preview.yml
+      - "!e2e/preview/**/*.py"  # See e2e_preview.yml
       - "!.github/**/*.py"
       - "!rest_api/**/*.py"
       - "!docs/**/*.py"

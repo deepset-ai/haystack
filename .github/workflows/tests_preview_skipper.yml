@@ -11,7 +11,6 @@ on:
     paths-ignore:
       - "haystack/preview/**/*.py"
       - "test/preview/**/*.py"
-      - "e2e/preview/**/*.py"
 
 jobs:
   catch-all:
