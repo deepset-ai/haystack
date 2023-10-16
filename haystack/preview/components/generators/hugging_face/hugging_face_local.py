@@ -114,7 +114,9 @@ class HuggingFaceLocalGenerator:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": self.pipeline_kwargs["model"]}
+        if isinstance(self.pipeline_kwargs["model"], str):
+            return {"model": self.pipeline_kwargs["model"]}
+        return {"model": f"[object of type {type(self.pipeline_kwargs['model'])}]"}
 
     def warm_up(self):
         if self.pipeline is None:
