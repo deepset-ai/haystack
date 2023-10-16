@@ -1,10 +1,7 @@
 import os
-from unittest.mock import patch, Mock
-from copy import deepcopy
 
 import pytest
 import cohere
-from cohere.responses.generation import StreamingText
 
 from haystack.preview.components.generators.cohere.cohere import CohereGenerator
 from haystack.preview.components.generators.cohere.cohere import default_streaming_callback
@@ -128,12 +125,12 @@ class TestGPTGenerator:
         )
 
     @pytest.mark.skipif(
-        not os.environ.get("CO_API_KEY", None),
+        not os.environ.get("COHERE_API_KEY", None),
         reason="Export an env var called CO_API_KEY containing the Cohere API key to run this test.",
     )
     @pytest.mark.integration
     def test_cohere_generator_run(self):
-        component = CohereGenerator(api_key=os.environ.get("CO_API_KEY"))
+        component = CohereGenerator(api_key=os.environ.get("COHERE_API_KEY"))
         results = component.run(prompt="What's the capital of France?")
         assert len(results["replies"]) == 1
         assert "Paris" in results["replies"][0]
@@ -141,12 +138,12 @@ class TestGPTGenerator:
         assert results["metadata"][0]["finish_reason"] == "COMPLETE"
 
     @pytest.mark.skipif(
-        not os.environ.get("CO_API_KEY", None),
-        reason="Export an env var called CO_API_KEY containing the Cohere API key to run this test.",
+        not os.environ.get("COHERE_API_KEY", None),
+        reason="Export an env var called COHERE_API_KEY containing the Cohere API key to run this test.",
     )
     @pytest.mark.integration
     def test_cohere_generator_run_wrong_model_name(self):
-        component = CohereGenerator(model="something-obviously-wrong", api_key=os.environ.get("CO_API_KEY"))
+        component = CohereGenerator(model="something-obviously-wrong", api_key=os.environ.get("COHERE_API_KEY"))
         with pytest.raises(
             cohere.CohereAPIError,
             match="model not found, make sure the correct model ID was used and that you have access to the model.",
@@ -154,8 +151,8 @@ class TestGPTGenerator:
             component.run(prompt="What's the capital of France?")
 
     @pytest.mark.skipif(
-        not os.environ.get("CO_API_KEY", None),
-        reason="Export an env var called CO_API_KEY containing the Cohere API key to run this test.",
+        not os.environ.get("COHERE_API_KEY", None),
+        reason="Export an env var called COHERE_API_KEY containing the Cohere API key to run this test.",
     )
     @pytest.mark.integration
     def test_cohere_generator_run_streaming(self):
@@ -168,7 +165,7 @@ class TestGPTGenerator:
                 return chunk
 
         callback = Callback()
-        component = CohereGenerator(os.environ.get("CO_API_KEY"), streaming_callback=callback)
+        component = CohereGenerator(os.environ.get("COHERE_API_KEY"), streaming_callback=callback)
         results = component.run(prompt="What's the capital of France?")
 
         assert len(results["replies"]) == 1
