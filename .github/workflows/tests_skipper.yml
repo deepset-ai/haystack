@@ -12,6 +12,7 @@ on:
       - "**.py"
       - "!haystack/preview/**/*.py"  # See tests_preview.yml
       - "!test/preview/**/*.py"  # See tests_preview.yml
+      - "!e2e/preview/**/*.py"  # See tests_preview.yml
       - "pyproject.toml"
       - "!.github/**/*.py"
       - "!rest_api/**/*.py"
