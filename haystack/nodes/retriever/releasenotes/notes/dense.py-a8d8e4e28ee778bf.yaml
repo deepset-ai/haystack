@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Removed option "medium" when Cohere embeddings are used.
