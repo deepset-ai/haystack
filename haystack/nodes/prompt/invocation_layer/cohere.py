@@ -180,14 +180,14 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
             )
         except requests.HTTPError as err:
             res = err.response
-            if res.status_code == 429:
-                raise CohereInferenceLimitError(f"API rate limit exceeded: {res.text}")
-            if res.status_code == 401:
-                raise CohereUnauthorizedError(f"API key is invalid: {res.text}")
+            if res.status_code == 429:  # type: ignore[union-attr]
+                raise CohereInferenceLimitError(f"API rate limit exceeded: {res.text}")  # type: ignore[union-attr]
+            if res.status_code == 401:  # type: ignore[union-attr]
+                raise CohereUnauthorizedError(f"API key is invalid: {res.text}")  # type: ignore[union-attr]
 
             raise CohereError(
-                f"Cohere model returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
-                status_code=res.status_code,
+                f"Cohere model returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",  # type: ignore[union-attr]
+                status_code=res.status_code,  # type: ignore[union-attr]
             )
         return response
 
