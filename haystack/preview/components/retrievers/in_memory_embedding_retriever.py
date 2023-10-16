@@ -1,29 +1,29 @@
 from typing import Dict, List, Any, Optional
 
 from haystack.preview import component, Document, default_to_dict, default_from_dict, DeserializationError
-from haystack.preview.document_stores import MemoryDocumentStore, document_store
+from haystack.preview.document_stores import InMemoryDocumentStore, document_store
 
 
 @component
-class MemoryEmbeddingRetriever:
+class InMemoryEmbeddingRetriever:
     """
-    A component for retrieving documents from a MemoryDocumentStore using a vector similarity metric.
+    A component for retrieving documents from a InMemoryDocumentStore using a vector similarity metric.
 
-    Needs to be connected to a MemoryDocumentStore to run.
+    Needs to be connected to a InMemoryDocumentStore to run.
     """
 
     def __init__(
         self,
-        document_store: MemoryDocumentStore,
+        document_store: InMemoryDocumentStore,
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         scale_score: bool = True,
         return_embedding: bool = False,
     ):
         """
-        Create a MemoryEmbeddingRetriever component.
+        Create a InMemoryEmbeddingRetriever component.
 
-        :param document_store: An instance of MemoryDocumentStore.
+        :param document_store: An instance of InMemoryDocumentStore.
         :param filters: A dictionary with filters to narrow down the search space. Default is None.
         :param top_k: The maximum number of documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved documents or not. Default is True.
@@ -31,8 +31,8 @@ class MemoryEmbeddingRetriever:
 
         :raises ValueError: If the specified top_k is not > 0.
         """
-        if not isinstance(document_store, MemoryDocumentStore):
-            raise ValueError("document_store must be an instance of MemoryDocumentStore")
+        if not isinstance(document_store, InMemoryDocumentStore):
+            raise ValueError("document_store must be an instance of InMemoryDocumentStore")
 
         self.document_store = document_store
 
@@ -59,7 +59,7 @@ class MemoryEmbeddingRetriever:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MemoryEmbeddingRetriever":
+    def from_dict(cls, data: Dict[str, Any]) -> "InMemoryEmbeddingRetriever":
         """
         Deserialize this component from a dictionary.
         """
@@ -86,7 +86,7 @@ class MemoryEmbeddingRetriever:
         return_embedding: Optional[bool] = None,
     ):
         """
-        Run the MemoryEmbeddingRetriever on the given input data.
+        Run the InMemoryEmbeddingRetriever on the given input data.
 
         :param query_embedding: Embedding of the query.
         :param filters: A dictionary with filters to narrow down the search space.
@@ -95,7 +95,7 @@ class MemoryEmbeddingRetriever:
         :param return_embedding: Whether to return the embedding of the retrieved Documents.
         :return: The retrieved documents.
 
-        :raises ValueError: If the specified DocumentStore is not found or is not a MemoryDocumentStore instance.
+        :raises ValueError: If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
         """
         if filters is None:
             filters = self.filters

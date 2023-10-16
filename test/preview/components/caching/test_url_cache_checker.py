@@ -1,10 +1,8 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from haystack.preview import Document, DeserializationError
 from haystack.preview.testing.factory import document_store_class
-from haystack.preview.document_stores.memory import MemoryDocumentStore
+from haystack.preview.document_stores.in_memory import InMemoryDocumentStore
 from haystack.preview.components.caching.url_cache_checker import UrlCacheChecker
 
 
@@ -72,7 +70,7 @@ class TestUrlCacheChecker:
 
     @pytest.mark.unit
     def test_run(self):
-        docstore = MemoryDocumentStore()
+        docstore = InMemoryDocumentStore()
         documents = [
             Document(text="doc1", metadata={"url": "https://example.com/1"}),
             Document(text="doc2", metadata={"url": "https://example.com/2"}),

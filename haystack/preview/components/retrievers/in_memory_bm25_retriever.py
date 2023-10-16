@@ -1,36 +1,36 @@
 from typing import Dict, List, Any, Optional
 
 from haystack.preview import component, Document, default_to_dict, default_from_dict, DeserializationError
-from haystack.preview.document_stores import MemoryDocumentStore, document_store
+from haystack.preview.document_stores import InMemoryDocumentStore, document_store
 
 
 @component
-class MemoryBM25Retriever:
+class InMemoryBM25Retriever:
     """
-    A component for retrieving documents from a MemoryDocumentStore using the BM25 algorithm.
+    A component for retrieving documents from a InMemoryDocumentStore using the BM25 algorithm.
 
-    Needs to be connected to a MemoryDocumentStore to run.
+    Needs to be connected to a InMemoryDocumentStore to run.
     """
 
     def __init__(
         self,
-        document_store: MemoryDocumentStore,
+        document_store: InMemoryDocumentStore,
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         scale_score: bool = True,
     ):
         """
-        Create a MemoryBM25Retriever component.
+        Create a InMemoryBM25Retriever component.
 
-        :param document_store: An instance of MemoryDocumentStore.
+        :param document_store: An instance of InMemoryDocumentStore.
         :param filters: A dictionary with filters to narrow down the search space. Default is None.
         :param top_k: The maximum number of documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the BM25 score or not. Default is True.
 
         :raises ValueError: If the specified top_k is not > 0.
         """
-        if not isinstance(document_store, MemoryDocumentStore):
-            raise ValueError("document_store must be an instance of MemoryDocumentStore")
+        if not isinstance(document_store, InMemoryDocumentStore):
+            raise ValueError("document_store must be an instance of InMemoryDocumentStore")
 
         self.document_store = document_store
 
@@ -51,7 +51,7 @@ class MemoryBM25Retriever:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MemoryBM25Retriever":
+    def from_dict(cls, data: Dict[str, Any]) -> "InMemoryBM25Retriever":
         """
         Deserialize this component from a dictionary.
         """
@@ -77,7 +77,7 @@ class MemoryBM25Retriever:
         scale_score: Optional[bool] = None,
     ):
         """
-        Run the MemoryBM25Retriever on the given input data.
+        Run the InMemoryBM25Retriever on the given input data.
 
         :param query: The query string for the retriever.
         :param filters: A dictionary with filters to narrow down the search space.
@@ -85,7 +85,7 @@ class MemoryBM25Retriever:
         :param scale_score: Whether to scale the BM25 scores or not.
         :return: The retrieved documents.
 
-        :raises ValueError: If the specified DocumentStore is not found or is not a MemoryDocumentStore instance.
+        :raises ValueError: If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
         """
         if filters is None:
             filters = self.filters

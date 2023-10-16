@@ -21,10 +21,10 @@ class TextLanguageClassifier:
     Example usage in a retrieval pipeline that passes only English language queries to the retriever:
 
     ```python
-    document_store = MemoryDocumentStore()
+    document_store = InMemoryDocumentStore()
     p = Pipeline()
     p.add_component(instance=TextLanguageClassifier(), name="text_language_classifier")
-    p.add_component(instance=MemoryBM25Retriever(document_store=document_store), name="retriever")
+    p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="retriever")
     p.connect("text_language_classifier.en", "retriever.query")
     p.run({"text_language_classifier": {"text": "What's your query?"}})
     ```
