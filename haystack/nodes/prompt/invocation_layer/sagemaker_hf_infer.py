@@ -210,11 +210,11 @@ class SageMakerHFInferenceInvocationLayer(SageMakerBaseInvocationLayer):
             return self._extract_response(output)
         except requests.HTTPError as err:
             res = err.response
-            if res.status_code == 429:
-                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}")
+            if res.status_code == 429:  # type: ignore[union-attr]
+                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}")  # type: ignore[union-attr]
             raise SageMakerInferenceError(
-                f"SageMaker Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
-                status_code=res.status_code,
+                f"SageMaker Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",  # type: ignore[union-attr]
+                status_code=res.status_code,  # type: ignore[union-attr]
             )
 
     def _extract_response(self, json_response: Any) -> List[str]:
