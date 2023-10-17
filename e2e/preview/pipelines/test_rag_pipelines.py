@@ -115,11 +115,11 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     rag_pipeline.draw(tmp_path / "test_embedding_rag_pipeline.png")
 
     # Serialize the pipeline to JSON
-    with open(tmp_path / "test_bm25_rag_pipeline.json", "w") as f:
+    with open(tmp_path / "test_embedding_rag_pipeline.json", "w") as f:
         json.dump(rag_pipeline.to_dict(), f)
 
     # Load the pipeline back
-    with open(tmp_path / "test_bm25_rag_pipeline.json", "r") as f:
+    with open(tmp_path / "test_embedding_rag_pipeline.json", "r") as f:
         rag_pipeline = Pipeline.from_dict(json.load(f))
 
     # Populate the document store
