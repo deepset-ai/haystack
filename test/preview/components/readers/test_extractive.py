@@ -265,6 +265,17 @@ def test_nest_answers(mock_reader: ExtractiveReader):
         assert no_answer.probability == pytest.approx(expected_no_answer)
 
 
+@pytest.mark.unit
+@patch("haystack.preview.components.readers.extractive.AutoTokenizer.from_pretrained")
+@patch("haystack.preview.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
+    reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token")
+    reader.warm_up()
+
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
+    mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
+
+
 @pytest.mark.integration
 def test_t5():
     reader = ExtractiveReader("TARUNBHATT/flan-t5-small-finetuned-squad")
