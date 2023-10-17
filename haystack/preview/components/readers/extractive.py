@@ -25,6 +25,7 @@ class ExtractiveReader:
         self,
         model_name_or_path: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
         device: Optional[str] = None,
+        token: Union[bool, str, None] = None,
         top_k: int = 20,
         confidence_threshold: Optional[float] = None,
         max_seq_length: int = 384,
@@ -40,6 +41,9 @@ class ExtractiveReader:
             Can either be a path to a folder containing the model files or an identifier for the HF hub
             Default: `'deepset/roberta-base-squad2-distilled'`
         :param device: Pytorch device string. Uses GPU by default if available
+        :param token: The API token used to download private models from Hugging Face.
+            If this parameter is set to `True`, then the token generated when running
+            `transformers-cli login` (stored in ~/.huggingface) will be used.
         :param top_k: Number of answers to return per query.
             It is required even if confidence_threshold is set. Defaults to 20.
         :param confidence_threshold: Answers with a confidence score below this value will not be returned
@@ -58,6 +62,7 @@ class ExtractiveReader:
         self.model_name_or_path = str(model_name_or_path)
         self.model = None
         self.device = device
+        self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
         self.confidence_threshold = confidence_threshold
@@ -81,6 +86,7 @@ class ExtractiveReader:
             self,
             model_name_or_path=self.model_name_or_path,
             device=self.device,
+            token=self.token if not isinstance(self.token, str) else None,
             max_seq_length=self.max_seq_length,
             top_k=self.top_k,
             confidence_threshold=self.confidence_threshold,
@@ -104,8 +110,10 @@ class ExtractiveReader:
                 self.device = self.device or "cuda:0"
             else:
                 self.device = self.device or "cpu:0"
-            self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_name_or_path).to(self.device)
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
+            self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_name_or_path, token=self.token).to(
+                self.device
+            )
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
     def _flatten_documents(
         self, queries: List[str], documents: List[List[Document]]
