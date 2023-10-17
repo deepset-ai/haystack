@@ -70,30 +70,77 @@
 
 import logging
 import inspect
-from typing import Protocol, Dict, Any
-from functools import wraps
+from typing import Protocol, runtime_checkable, Any
+from types import new_class
+
 
 from canals.errors import ComponentError
 from canals.type_utils import _is_optional
 
-
 logger = logging.getLogger(__name__)
 
 
+@runtime_checkable
 class Component(Protocol):
     """
-    Abstract interface of a Component.
-    This is only used by type checking tools.
-    If you want to create a new Component use the @component decorator.
+    Note this is only used by type checking tools.
+
+    In order to implement the `Component` protocol, custom components need to
+    have a `run` method. The signature of the method and its return value
+    won't be checked, i.e. classes with the following methods:
+
+        def run(self, param: str) -> Dict[str, Any]:
+            ...
+
+    and
+
+        def run(self, **kwargs):
+            ...
+
+    will be both considered as respecting the protocol. This makes the type
+    checking much weaker, but we have other places where we ensure code is
+    dealing with actual Components.
+
+    The protocol is runtime checkable so it'll be possible to assert:
+
+        isinstance(MyComponent, Component)
     """
 
-    def run(self, **kwargs) -> Dict[str, Any]:
+    def run(self, *args: Any, **kwargs: Any):  # pylint: disable=missing-function-docstring
+        ...
+
+
+class ComponentMeta(type):
+    def __call__(cls, *args, **kwargs):
         """
-        Takes the Component input and returns its output.
-        Inputs are defined explicitly by the run method's signature or with `component.set_input_types()` if dynamic.
-        Outputs are defined by decorating the run method with `@component.output_types()`
-        or with `component.set_output_types()` if dynamic.
+        This method is called when clients instantiate a Component and
+        runs before __new__ and __init__.
         """
+        # This will call __new__ then __init__, giving us back the Component instance
+        instance = super().__call__(*args, **kwargs)
+
+        # Before returning, we have the chance to modify the newly created
+        # Component instance, so we take the chance and set up the I/O sockets
+
+        # If the __init__ called component.set_output_types(), __canals_output__ is already populated
+        if not hasattr(instance, "__canals_output__"):
+            # if the run method was decorated, it has a _output_types_cache field assigned
+            instance.__canals_output__ = getattr(instance.run, "_output_types_cache", {})
+
+        # If the __init__ called component.set_input_types(), __canals_input__ is already populated
+        if not hasattr(instance, "__canals_input__"):
+            run_signature = inspect.signature(getattr(cls, "run"))
+            instance.__canals_input__ = {
+                # Create the input sockets
+                param: {
+                    "name": param,
+                    "type": run_signature.parameters[param].annotation,
+                    "is_optional": _is_optional(run_signature.parameters[param].annotation),
+                }
+                for param in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
+            }
+
+        return instance
 
 
 class _Component:
@@ -117,7 +164,7 @@ class _Component:
 
     def set_input_types(self, instance, **types):
         """
-        Method that validates the input kwargs of the run method.
+        Method that specifies the input types when 'kwargs' is passed to the run method.
 
         Use as:
 
@@ -134,23 +181,14 @@ class _Component:
                 return {"output_1": kwargs["value_1"], "output_2": ""}
         ```
         """
-        run_method = instance.run
-
-        def wrapper(**kwargs):
-            return run_method(**kwargs)
-
-        # Store the input types in the run method
-        wrapper.__canals_input__ = {
+        instance.__canals_input__ = {
             name: {"name": name, "type": type_, "is_optional": _is_optional(type_)} for name, type_ in types.items()
         }
-        wrapper.__canals_output__ = getattr(run_method, "__canals_output__", {})
-
-        # Assigns the wrapped method to the instance's run()
-        instance.run = wrapper
 
     def set_output_types(self, instance, **types):
         """
-        Method that validates the output dictionary of the run method.
+        Method that specifies the output types when the 'run' method is not decorated
+        with 'component.output_types'.
 
         Use as:
 
@@ -162,28 +200,16 @@ class _Component:
                 component.set_output_types(output_1=int, output_2=str)
                 ...
 
+            # no decorators here
             def run(self, value: int):
                 return {"output_1": 1, "output_2": "2"}
         ```
         """
-        if not types:
-            return
-
-        run_method = instance.run
-
-        def wrapper(*args, **kwargs):
-            return run_method(*args, **kwargs)
-
-        # Store the output types in the run method
-        wrapper.__canals_input__ = getattr(run_method, "__canals_input__", {})
-        wrapper.__canals_output__ = {name: {"name": name, "type": type_} for name, type_ in types.items()}
-
-        # Assigns the wrapped method to the instance's run()
-        instance.run = wrapper
+        instance.__canals_output__ = {name: {"name": name, "type": type_} for name, type_ in types.items()}
 
     def output_types(self, **types):
         """
-        Decorator factory that validates the output dictionary of the run method.
+        Decorator factory that specifies the output types of a component.
 
         Use as:
 
@@ -198,18 +224,17 @@ class _Component:
 
         def output_types_decorator(run_method):
             """
-            Decorator that validates the output dictionary of the run method.
+            This happens at class creation time, and since we don't have the decorated
+            class available here, we temporarily store the output types as an attribute of
+            the decorated method. The ComponentMeta metaclass will use this data to create
+            sockets at instance creation time.
             """
-            # Store the output types in the run method - used by the pipeline to build the sockets.
-
-            @wraps(run_method)
-            def wrapper(self, *args, **kwargs):
-                return run_method(self, *args, **kwargs)
-
-            wrapper.__canals_input__ = getattr(run_method, "__canals_input__", {})
-            wrapper.__canals_output__ = {name: {"name": name, "type": type_} for name, type_ in types.items()}
-
-            return wrapper
+            setattr(
+                run_method,
+                "_output_types_cache",
+                {name: {"name": name, "type": type_} for name, type_ in types.items()},
+            )
+            return run_method
 
         return output_types_decorator
 
@@ -219,24 +244,25 @@ class _Component:
         """
         logger.debug("Registering %s as a component", class_)
 
-        # Check for required methods
+        # Check for required methods and fail as soon as possible
         if not hasattr(class_, "run"):
             raise ComponentError(f"{class_.__name__} must have a 'run()' method. See the docs for more information.")
-        run_signature = inspect.signature(class_.run)
 
-        # Create the input sockets
-        class_.run.__canals_input__ = {
-            param: {
-                "name": param,
-                "type": run_signature.parameters[param].annotation,
-                "is_optional": _is_optional(run_signature.parameters[param].annotation),
-            }
-            for param in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
-        }
+        def copy_class_namespace(namespace):
+            """
+            This is the callback that `typing.new_class` will use
+            to populate the newly created class. We just copy
+            the whole namespace from the decorated class.
+            """
+            for key, val in dict(class_.__dict__).items():
+                namespace[key] = val
+
+        # Recreate the decorated component class so it uses our metaclass
+        class_ = new_class(class_.__name__, class_.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace)
 
         # Save the component in the class registry (for deserialization)
         if class_.__name__ in self.registry:
-            # It may occur easily in notebooks by re-running cells.
+            # Corner case, but it may occur easily in notebooks when re-running cells.
             logger.debug(
                 "Component %s is already registered. Previous imported from '%s', new imported from '%s'",
                 class_.__name__,
@@ -246,16 +272,10 @@ class _Component:
         self.registry[class_.__name__] = class_
         logger.debug("Registered Component %s", class_)
 
-        setattr(class_, "__canals_component__", True)
-
         return class_
 
-    def __call__(self, class_=None):
-        """Allows us to use this decorator with parenthesis and without."""
-        if class_:
-            return self._component(class_)
-
-        return self._component
+    def __call__(self, class_):
+        return self._component(class_)
 
 
 component = _Component()

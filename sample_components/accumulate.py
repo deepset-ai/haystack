@@ -7,7 +7,7 @@ import builtins
 from importlib import import_module
 
 from canals.serialization import default_to_dict
-from canals.component import component, Component
+from canals.component import component
 from canals.errors import ComponentDeserializationError
 
 
@@ -48,7 +48,7 @@ class Accumulate:
         return default_to_dict(self, function=function_name)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> Component:  # pylint: disable=missing-function-docstring
+    def from_dict(cls, data: Dict[str, Any]) -> "Accumulate":  # pylint: disable=missing-function-docstring
         if "type" not in data:
             raise ComponentDeserializationError("Missing 'type' in component serialization data")
         if data["type"] != cls.__name__:

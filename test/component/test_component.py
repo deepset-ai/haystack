@@ -4,6 +4,7 @@ import pytest
 
 from canals import component
 from canals.errors import ComponentError
+from canals.component import Component
 
 
 def test_correct_declaration():
@@ -104,7 +105,7 @@ def test_set_input_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.run.__canals_input__ == {
+    assert comp.__canals_input__ == {
         "value": {
             "name": "value",
             "type": Any,
@@ -131,7 +132,7 @@ def test_set_output_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.run.__canals_output__ == {
+    assert comp.__canals_output__ == {
         "value": {
             "name": "value",
             "type": int,
@@ -154,7 +155,7 @@ def test_output_types_decorator_with_compatible_type():
             return cls()
 
     comp = MockComponent()
-    assert comp.run.__canals_output__ == {
+    assert comp.__canals_output__ == {
         "value": {
             "name": "value",
             "type": int,
@@ -177,4 +178,4 @@ def test_component_decorator_set_it_as_component():
             return cls()
 
     comp = MockComponent()
-    assert comp.__canals_component__
+    assert isinstance(comp, Component)
