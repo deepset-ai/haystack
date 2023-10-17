@@ -7,7 +7,18 @@ from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import model_info
-    from transformers import pipeline
+    from transformers import (
+        pipeline,
+        StoppingCriteriaList,
+        StoppingCriteria,
+        PreTrainedTokenizer,
+        PreTrainedTokenizerFast,
+    )
+
+with LazyImport(
+    message="PyTorch is needed to run this component. Please install it by following the instructions at https://pytorch.org/"
+) as torch_import:
+    import torch
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +56,7 @@ class HuggingFaceLocalGenerator:
         token: Optional[Union[str, bool]] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         pipeline_kwargs: Optional[Dict[str, Any]] = None,
+        stop_words: Optional[List[str]] = None,
     ):
         """
         :param model_name_or_path: The name or path of a Hugging Face model for text generation,
@@ -75,8 +87,13 @@ class HuggingFaceLocalGenerator:
             In this dictionary, you can also include `model_kwargs` to specify the kwargs
             for model initialization:
             https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained
+        :param stop_words: A list of stop words. If any one of the stop words is generated, the generation is stopped.
+            If you provide this parameter, you should not specify the `stopping_criteria` in `generation_kwargs`.
+            For some chat models, the output includes both the new text and the original prompt.
+            In these cases, it's important to make sure your prompt has no stop words.
         """
         transformers_import.check()
+        torch_import.check()
 
         pipeline_kwargs = pipeline_kwargs or {}
         generation_kwargs = generation_kwargs or {}
@@ -106,9 +123,17 @@ class HuggingFaceLocalGenerator:
         if task == "text-generation":
             generation_kwargs.setdefault("return_full_text", False)
 
+        if stop_words and "stopping_criteria" in generation_kwargs:
+            raise ValueError(
+                "Found both the `stop_words` init parameter and the `stopping_criteria` key in `generation_kwargs`. "
+                "Please specify only one of them."
+            )
+
         self.pipeline_kwargs = pipeline_kwargs
         self.generation_kwargs = generation_kwargs
+        self.stop_words = stop_words
         self.pipeline = None
+        self.stopping_criteria_list = None
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -122,6 +147,12 @@ class HuggingFaceLocalGenerator:
         if self.pipeline is None:
             self.pipeline = pipeline(**self.pipeline_kwargs)
 
+        if self.stop_words and self.stopping_criteria_list is None:
+            stop_words_criteria = StopWordsCriteria(
+                tokenizer=self.pipeline.tokenizer, stop_words=self.stop_words, device=self.pipeline.device
+            )
+            self.stopping_criteria_list = StoppingCriteriaList([stop_words_criteria])
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
@@ -133,7 +164,10 @@ class HuggingFaceLocalGenerator:
             pipeline_kwargs_to_serialize["token"] = None
 
         return default_to_dict(
-            self, pipeline_kwargs=pipeline_kwargs_to_serialize, generation_kwargs=self.generation_kwargs
+            self,
+            pipeline_kwargs=pipeline_kwargs_to_serialize,
+            generation_kwargs=self.generation_kwargs,
+            stop_words=self.stop_words,
         )
 
     @classmethod
@@ -143,14 +177,56 @@ class HuggingFaceLocalGenerator:
         """
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[str], metadata=List[Dict[str, Any]])
+    @component.output_types(replies=List[str])
     def run(self, prompt: str):
         if self.pipeline is None:
             raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
 
-        replies = []
-        if prompt:
-            output = self.pipeline(prompt, **self.generation_kwargs)
-            replies = [o["generated_text"] for o in output if "generated_text" in o]
+        if not prompt:
+            return {"replies": []}
+
+        output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **self.generation_kwargs)
+        replies = [o["generated_text"] for o in output if "generated_text" in o]
+
+        if self.stop_words:
+            # the output of the pipeline includes the stop word
+            replies = [reply.replace(stop_word, "").rstrip() for reply in replies for stop_word in self.stop_words]
 
         return {"replies": replies}
+
+
+class StopWordsCriteria(StoppingCriteria):
+    """
+    Stops text generation if any one of the stop words is generated.
+
+    Note: When a stop word is encountered, the generation of new text is stopped.
+    However, if the stop word is in the prompt itself, it can stop generating new text
+    prematurely after the first token. This is particularly important for LLMs designed
+    for dialogue generation. For these models, like for example mosaicml/mpt-7b-chat,
+    the output includes both the new text and the original prompt. Therefore, it's important
+    to make sure your prompt has no stop words.
+    """
+
+    def __init__(
+        self,
+        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+        stop_words: List[str],
+        device: Union[str, torch.device] = "cpu",
+    ):
+        super().__init__()
+        encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
+        self.stop_ids = encoded_stop_words.input_ids.to(device)
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        for stop_id in self.stop_ids:
+            found_stop_word = self.is_stop_word_found(input_ids, stop_id)
+            if found_stop_word:
+                return True
+        return False
+
+    def is_stop_word_found(self, generated_text_ids: torch.Tensor, stop_id: torch.Tensor) -> bool:
+        generated_text_ids = generated_text_ids[-1]
+        len_generated_text_ids = generated_text_ids.size(0)
+        len_stop_id = stop_id.size(0)
+        result = all(generated_text_ids[len_generated_text_ids - len_stop_id :].eq(stop_id))
+        return result
