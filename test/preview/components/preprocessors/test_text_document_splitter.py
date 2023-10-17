@@ -21,9 +21,9 @@ class TestTextDocumentSplitter:
 
     @pytest.mark.unit
     def test_empty_list(self):
-        with pytest.raises(TypeError, match="TextDocumentSplitter expects a List of Documents as input."):
-            splitter = TextDocumentSplitter()
-            splitter.run(documents=[])
+        splitter = TextDocumentSplitter()
+        res = splitter.run(documents=[])
+        assert res == {"documents": []}
 
     @pytest.mark.unit
     def test_unsupported_split_by(self):
