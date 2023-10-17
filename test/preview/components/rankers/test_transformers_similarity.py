@@ -14,20 +14,24 @@ class TestSimilarityRanker:
             "init_parameters": {
                 "device": "cpu",
                 "top_k": 10,
+                "token": None,
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
             },
         }
 
     @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
-        component = TransformersSimilarityRanker()
+        component = TransformersSimilarityRanker(
+            model_name_or_path="my_model", device="cuda", token="my_token", top_k=5
+        )
         data = component.to_dict()
         assert data == {
             "type": "TransformersSimilarityRanker",
             "init_parameters": {
-                "device": "cpu",
-                "top_k": 10,
-                "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+                "device": "cuda",
+                "model_name_or_path": "my_model",
+                "token": None,  # we don't serialize valid tokens,
+                "top_k": 5,
             },
         }
 
@@ -38,6 +42,7 @@ class TestSimilarityRanker:
             "init_parameters": {
                 "device": "cpu",
                 "top_k": 10,
+                "token": None,
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
             },
         }

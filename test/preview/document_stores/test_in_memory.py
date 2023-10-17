@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from haystack.preview import Document
-from haystack.preview.document_stores import DocumentStore, MemoryDocumentStore, DocumentStoreError
+from haystack.preview.document_stores import DocumentStore, InMemoryDocumentStore, DocumentStoreError
 
 
 from haystack.preview.testing.document_store import DocumentStoreBaseTests
@@ -14,19 +14,19 @@ from haystack.preview.testing.document_store import DocumentStoreBaseTests
 
 class TestMemoryDocumentStore(DocumentStoreBaseTests):
     """
-    Test MemoryDocumentStore's specific features
+    Test InMemoryDocumentStore's specific features
     """
 
     @pytest.fixture
-    def docstore(self) -> MemoryDocumentStore:
-        return MemoryDocumentStore()
+    def docstore(self) -> InMemoryDocumentStore:
+        return InMemoryDocumentStore()
 
     @pytest.mark.unit
     def test_to_dict(self):
-        store = MemoryDocumentStore()
+        store = InMemoryDocumentStore()
         data = store.to_dict()
         assert data == {
-            "type": "MemoryDocumentStore",
+            "type": "InMemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": r"(?u)\b\w\w+\b",
                 "bm25_algorithm": "BM25Okapi",
@@ -37,7 +37,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
-        store = MemoryDocumentStore(
+        store = InMemoryDocumentStore(
             bm25_tokenization_regex="custom_regex",
             bm25_algorithm="BM25Plus",
             bm25_parameters={"key": "value"},
@@ -45,7 +45,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         )
         data = store.to_dict()
         assert data == {
-            "type": "MemoryDocumentStore",
+            "type": "InMemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": "custom_regex",
                 "bm25_algorithm": "BM25Plus",
@@ -55,17 +55,17 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         }
 
     @pytest.mark.unit
-    @patch("haystack.preview.document_stores.memory.document_store.re")
+    @patch("haystack.preview.document_stores.in_memory.document_store.re")
     def test_from_dict(self, mock_regex):
         data = {
-            "type": "MemoryDocumentStore",
+            "type": "InMemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": "custom_regex",
                 "bm25_algorithm": "BM25Plus",
                 "bm25_parameters": {"key": "value"},
             },
         }
-        store = MemoryDocumentStore.from_dict(data)
+        store = InMemoryDocumentStore.from_dict(data)
         mock_regex.compile.assert_called_with("custom_regex")
         assert store.tokenizer
         assert store.bm25_algorithm.__name__ == "BM25Plus"
@@ -73,7 +73,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_bm25_retrieval(self, docstore: DocumentStore):
-        docstore = MemoryDocumentStore()
+        docstore = InMemoryDocumentStore()
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
         docs = [Document(text="Hello world"), Document(text="Haystack supports multiple languages")]
         docstore.write_documents(docs)
@@ -253,7 +253,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_embedding_retrieval(self):
-        docstore = MemoryDocumentStore(embedding_similarity_function="cosine")
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
         # Tests if the embedding retrieval method returns the correct document based on the input query embedding.
         docs = [
             Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
@@ -268,7 +268,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_embedding_retrieval_invalid_query(self):
-        docstore = MemoryDocumentStore()
+        docstore = InMemoryDocumentStore()
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
             docstore.embedding_retrieval(query_embedding=[])
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
@@ -277,7 +277,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     @pytest.mark.unit
     def test_embedding_retrieval_no_embeddings(self, caplog):
         caplog.set_level(logging.WARNING)
-        docstore = MemoryDocumentStore()
+        docstore = InMemoryDocumentStore()
         docs = [Document(text="Hello world"), Document(text="Haystack supports multiple languages")]
         docstore.write_documents(docs)
         results = docstore.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1])
@@ -287,7 +287,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     @pytest.mark.unit
     def test_embedding_retrieval_some_documents_wo_embeddings(self, caplog):
         caplog.set_level(logging.INFO)
-        docstore = MemoryDocumentStore()
+        docstore = InMemoryDocumentStore()
         docs = [
             Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
             Document(text="Haystack supports multiple languages"),
@@ -298,7 +298,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_embedding_retrieval_documents_different_embedding_sizes(self):
-        docstore = MemoryDocumentStore()
+        docstore = InMemoryDocumentStore()
         docs = [
             Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
             Document(text="Haystack supports multiple languages", embedding=[1.0, 1.0]),
@@ -310,7 +310,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_embedding_retrieval_query_documents_different_embedding_sizes(self):
-        docstore = MemoryDocumentStore()
+        docstore = InMemoryDocumentStore()
         docs = [Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4])]
         docstore.write_documents(docs)
 
@@ -322,7 +322,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_embedding_retrieval_with_different_top_k(self):
-        docstore = MemoryDocumentStore()
+        docstore = InMemoryDocumentStore()
         docs = [
             Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
             Document(text="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
@@ -338,7 +338,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_embedding_retrieval_with_scale_score(self):
-        docstore = MemoryDocumentStore()
+        docstore = InMemoryDocumentStore()
         docs = [
             Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
             Document(text="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
@@ -356,7 +356,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_embedding_retrieval_return_embedding(self):
-        docstore = MemoryDocumentStore(embedding_similarity_function="cosine")
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
         docs = [
             Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
             Document(text="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
@@ -371,7 +371,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_compute_cosine_similarity_scores(self):
-        docstore = MemoryDocumentStore(embedding_similarity_function="cosine")
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
         docs = [
             Document(text="Document 1", embedding=[1.0, 0.0, 0.0, 0.0]),
             Document(text="Document 2", embedding=[1.0, 1.0, 1.0, 1.0]),
@@ -384,7 +384,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_compute_dot_product_similarity_scores(self):
-        docstore = MemoryDocumentStore(embedding_similarity_function="dot_product")
+        docstore = InMemoryDocumentStore(embedding_similarity_function="dot_product")
         docs = [
             Document(text="Document 1", embedding=[1.0, 0.0, 0.0, 0.0]),
             Document(text="Document 2", embedding=[1.0, 1.0, 1.0, 1.0]),
