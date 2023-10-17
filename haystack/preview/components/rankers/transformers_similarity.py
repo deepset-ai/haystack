@@ -14,16 +14,17 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]==4.3
 
 
 @component
-class SimilarityRanker:
+class TransformersSimilarityRanker:
     """
     Ranks documents based on query similarity.
+    It uses a pre-trained cross-encoder model (from Hugging Face Hub) to embed the query and documents.
 
     Usage example:
     ```
     from haystack.preview import Document
-    from haystack.preview.components.rankers import SimilarityRanker
+    from haystack.preview.components.rankers import TransformersSimilarityRanker
 
-    sampler = SimilarityRanker()
+    sampler = TransformersSimilarityRanker()
     docs = [Document(text="Paris"), Document(text="Berlin")]
     query = "City in Germany"
     output = sampler.run(query=query, documents=docs)
@@ -40,9 +41,10 @@ class SimilarityRanker:
         device: str = "cpu",
     ):
         """
-        Creates an instance of SimilarityRanker.
+        Creates an instance of TransformersSimilarityRanker.
 
-        :param model_name_or_path: Path to a pre-trained sentence-transformers model.
+        :param model_name_or_path: The name or path of a pre-trained cross-encoder model
+            from Hugging Face Hub.
         :param top_k: The maximum number of documents to return per query.
         :param device: torch device (for example, cuda:0, cpu, mps) to limit model inference to a specific device.
         """
@@ -79,7 +81,7 @@ class SimilarityRanker:
         return default_to_dict(self, top_k=self.top_k, device=self.device, model_name_or_path=self.model_name_or_path)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SimilarityRanker":
+    def from_dict(cls, data: Dict[str, Any]) -> "TransformersSimilarityRanker":
         """
         Deserialize this component from a dictionary.
         """
