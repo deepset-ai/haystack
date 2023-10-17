@@ -67,10 +67,11 @@ def test_preprocessing_pipeline(tmp_path):
     result = preprocessing_pipeline.run({"file_type_router": {"sources": paths}})
 
     assert result["writer"]["documents_written"] == 6
-    assert document_store.count_documents() == 6
+    filled_document_store = preprocessing_pipeline.get_component("writer").document_store
+    assert filled_document_store.count_documents() == 6
 
     # Check preprocessed texts and mime_types
-    stored_documents = document_store.filter_documents()
+    stored_documents = filled_document_store.filter_documents()
     expected_texts = [
         "This is an english sentence.",
         " There is more to it.",
