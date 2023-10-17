@@ -3,9 +3,9 @@ import json
 import pytest
 
 from haystack.preview import Pipeline, Document
-from haystack.preview.document_stores import MemoryDocumentStore
+from haystack.preview.document_stores import InMemoryDocumentStore
 from haystack.preview.components.writers import DocumentWriter
-from haystack.preview.components.retrievers import MemoryBM25Retriever, MemoryEmbeddingRetriever
+from haystack.preview.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.preview.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
 from haystack.preview.components.generators.openai.gpt import GPTGenerator
 from haystack.preview.components.builders.answer_builder import AnswerBuilder
@@ -28,7 +28,7 @@ def test_bm25_rag_pipeline(tmp_path):
     \nAnswer:
     """
     rag_pipeline = Pipeline()
-    rag_pipeline.add_component(instance=MemoryBM25Retriever(document_store=MemoryDocumentStore()), name="retriever")
+    rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
     rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
     rag_pipeline.add_component(instance=GPTGenerator(api_key=os.environ.get("OPENAI_API_KEY")), name="llm")
     rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
@@ -99,7 +99,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
         name="text_embedder",
     )
     rag_pipeline.add_component(
-        instance=MemoryEmbeddingRetriever(document_store=MemoryDocumentStore()), name="retriever"
+        instance=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()), name="retriever"
     )
     rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
     rag_pipeline.add_component(instance=GPTGenerator(api_key=os.environ.get("OPENAI_API_KEY")), name="llm")

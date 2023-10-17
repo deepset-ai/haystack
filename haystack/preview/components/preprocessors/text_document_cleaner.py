@@ -19,7 +19,7 @@ class DocumentCleaner:
     Example usage in an indexing pipeline:
 
     ```python
-    document_store = MemoryDocumentStore()
+    document_store = InMemoryDocumentStore()
     p = Pipeline()
     p.add_component(instance=TextFileToDocument(), name="text_file_converter")
     p.add_component(instance=DocumentCleaner(), name="cleaner")
