@@ -22,7 +22,8 @@ class TestTextDocumentSplitter:
     @pytest.mark.unit
     def test_empty_list(self):
         splitter = TextDocumentSplitter()
-        splitter.run(documents=[])
+        res = splitter.run(documents=[])
+        assert res == {"documents": []}
 
     @pytest.mark.unit
     def test_unsupported_split_by(self):
