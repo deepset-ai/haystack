@@ -44,8 +44,9 @@ class TextDocumentSplitter:
         :return: A list of documents with the split texts.
         """
 
-        if not documents or not isinstance(documents, list) or not isinstance(documents[0], Document):
+        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("TextDocumentSplitter expects a List of Documents as input.")
+
         split_docs = []
         for doc in documents:
             if doc.text is None:
