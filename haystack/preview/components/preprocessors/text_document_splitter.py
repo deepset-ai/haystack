@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import List, Dict, Literal
+from typing import List, Literal
 
 from more_itertools import windowed
 
