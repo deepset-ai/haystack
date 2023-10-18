@@ -2,7 +2,6 @@ from unittest.mock import patch, Mock
 
 import pytest
 import requests
-from canals.serialization import component_to_dict
 
 from haystack.preview.components.fetchers.link_content import (
     LinkContentFetcher,
