@@ -16,9 +16,9 @@ class DocumentLanguageClassifier:
     Routes documents onto different output connections depending on their language.
     This is useful for routing documents to different models in a pipeline depending on their language.
     The set of supported languages can be specified.
-    For routing texts based on their language use the related TextLanguageClassifier component.
+    For routing plain text using the same logic, use the related TextLanguageClassifier component instead.
 
-    Example usage in and indexing pipeline that writes only English language documents to a Store:
+    Example usage within an indexing pipeline, storing only documents written in English language documents to a Store:
 
     ```python
     document_store = MemoryDocumentStore()
