@@ -68,6 +68,7 @@ class TestOpenAIDocumentEmbedder:
 
     @pytest.mark.unit
     def test_init_fail_wo_api_key(self, monkeypatch):
+        openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="OpenAIDocumentEmbedder expects an OpenAI API key"):
             OpenAIDocumentEmbedder()
@@ -148,6 +149,7 @@ class TestOpenAIDocumentEmbedder:
 
     @pytest.mark.unit
     def test_from_dict_fail_wo_env_var(self, monkeypatch):
+        openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         data = {
             "type": "OpenAIDocumentEmbedder",
