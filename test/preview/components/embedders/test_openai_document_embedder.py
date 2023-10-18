@@ -27,6 +27,7 @@ def mock_openai_response(
 class TestOpenAIDocumentEmbedder:
     @pytest.mark.unit
     def test_init_default(self, monkeypatch):
+        openai.api_key = None
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAIDocumentEmbedder()
 
