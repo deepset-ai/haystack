@@ -28,7 +28,7 @@ DOT_PRODUCT_SCALING_FACTOR = 100
 
 
 @document_store
-class MemoryDocumentStore:
+class InMemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
     """
@@ -199,7 +199,7 @@ class MemoryDocumentStore:
         :param object_ids: The object_ids to delete.
         """
         for doc_id in document_ids:
-            if not doc_id in self.storage.keys():
+            if doc_id not in self.storage.keys():
                 raise MissingDocumentError(f"ID '{doc_id}' not found, cannot delete it.")
             del self.storage[doc_id]
 

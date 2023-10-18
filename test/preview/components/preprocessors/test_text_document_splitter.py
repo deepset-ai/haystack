@@ -21,9 +21,9 @@ class TestTextDocumentSplitter:
 
     @pytest.mark.unit
     def test_empty_list(self):
-        with pytest.raises(TypeError, match="TextDocumentSplitter expects a List of Documents as input."):
-            splitter = TextDocumentSplitter()
-            splitter.run(documents=[])
+        splitter = TextDocumentSplitter()
+        res = splitter.run(documents=[])
+        assert res == {"documents": []}
 
     @pytest.mark.unit
     def test_unsupported_split_by(self):
@@ -155,3 +155,18 @@ class TestTextDocumentSplitter:
         result = splitter.run(documents=[doc1, doc2])
         assert result["documents"][0].metadata["source_id"] == doc1.id
         assert result["documents"][1].metadata["source_id"] == doc2.id
+
+    @pytest.mark.unit
+    def test_copy_id_hash_keys_and_metadata(self):
+        splitter = TextDocumentSplitter(split_by="word", split_length=10)
+        documents = [
+            Document(text="Text.", metadata={"name": "doc 0"}, id_hash_keys=["name"]),
+            Document(text="Text.", metadata={"name": "doc 1"}, id_hash_keys=["name"]),
+        ]
+        result = splitter.run(documents=documents)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].id != result["documents"][1].id
+        for doc, split_doc in zip(documents, result["documents"]):
+            assert doc.id_hash_keys == split_doc.id_hash_keys
+            assert doc.metadata.items() <= split_doc.metadata.items()
+            assert split_doc.text == "Text."

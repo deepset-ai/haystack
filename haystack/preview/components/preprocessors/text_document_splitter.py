@@ -39,12 +39,14 @@ class TextDocumentSplitter:
         Splits the documents by split_by after split_length units with an overlap of split_overlap units.
         Returns a list of documents with the split texts.
         A metadata field "source_id" is added to each document to keep track of the original document that was split.
+        Other metadata and id_hash_keys are copied from the original document.
         :param documents: The documents to split.
         :return: A list of documents with the split texts.
         """
 
-        if not documents or not isinstance(documents, list) or not isinstance(documents[0], Document):
+        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("TextDocumentSplitter expects a List of Documents as input.")
+
         split_docs = []
         for doc in documents:
             if doc.text is None:
@@ -54,8 +56,9 @@ class TextDocumentSplitter:
             units = self._split_into_units(doc.text, self.split_by)
             text_splits = self._concatenate_units(units, self.split_length, self.split_overlap)
             metadata = deepcopy(doc.metadata)
+            id_hash_keys = deepcopy(doc.id_hash_keys)
             metadata["source_id"] = doc.id
-            split_docs += [Document(text=txt, metadata=metadata) for txt in text_splits]
+            split_docs += [Document(text=txt, metadata=metadata, id_hash_keys=id_hash_keys) for txt in text_splits]
         return {"documents": split_docs}
 
     def to_dict(self) -> Dict[str, Any]:

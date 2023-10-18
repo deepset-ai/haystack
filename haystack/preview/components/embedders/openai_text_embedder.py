@@ -50,6 +50,12 @@ class OpenAITextEmbedder:
         if organization is not None:
             openai.organization = organization
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"model": self.model_name}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         This method overrides the default serializer in order to avoid leaking the `api_key` value passed

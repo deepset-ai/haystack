@@ -178,3 +178,18 @@ class TestDocumentCleaner:
         Sed do eiusmod tempor."""
         result = cleaner.run(documents=[Document(text=text)])
         assert result["documents"][0].text == expected_text
+
+    @pytest.mark.unit
+    def test_copy_id_hash_keys_and_metadata(self):
+        cleaner = DocumentCleaner()
+        documents = [
+            Document(text="Text. ", metadata={"name": "doc 0"}, id_hash_keys=["name"]),
+            Document(text="Text. ", metadata={"name": "doc 1"}, id_hash_keys=["name"]),
+        ]
+        result = cleaner.run(documents=documents)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].id != result["documents"][1].id
+        for doc, cleaned_doc in zip(documents, result["documents"]):
+            assert doc.id_hash_keys == cleaned_doc.id_hash_keys
+            assert doc.metadata == cleaned_doc.metadata
+            assert cleaned_doc.text == "Text."
