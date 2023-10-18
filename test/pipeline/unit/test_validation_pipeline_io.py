@@ -27,7 +27,7 @@ def test_find_pipeline_input_one_input():
     pipe.connect("comp1", "comp2")
 
     assert _find_pipeline_inputs(pipe.graph) == {
-        "comp1": [InputSocket(name="value", type=int, is_optional=False)],
+        "comp1": [InputSocket(name="value", type=int)],
         "comp2": [],
     }
 
@@ -40,8 +40,8 @@ def test_find_pipeline_input_two_inputs_same_component():
 
     assert _find_pipeline_inputs(pipe.graph) == {
         "comp1": [
-            InputSocket(name="value", type=int, is_optional=False),
-            InputSocket(name="add", type=Optional[int], is_optional=True),
+            InputSocket(name="value", type=int),
+            InputSocket(name="add", type=Optional[int]),
         ],
         "comp2": [],
     }
@@ -57,10 +57,10 @@ def test_find_pipeline_input_some_inputs_different_components():
 
     assert _find_pipeline_inputs(pipe.graph) == {
         "comp1": [
-            InputSocket(name="value", type=int, is_optional=False),
-            InputSocket(name="add", type=Optional[int], is_optional=True),
+            InputSocket(name="value", type=int),
+            InputSocket(name="add", type=Optional[int]),
         ],
-        "comp2": [InputSocket(name="value", type=int, is_optional=False)],
+        "comp2": [InputSocket(name="value", type=int)],
         "comp3": [],
     }
 
@@ -73,13 +73,13 @@ def test_find_pipeline_variable_input_nodes_in_the_pipeline():
 
     assert _find_pipeline_inputs(pipe.graph) == {
         "comp1": [
-            InputSocket(name="value", type=int, is_optional=False),
-            InputSocket(name="add", type=Optional[int], is_optional=True),
+            InputSocket(name="value", type=int),
+            InputSocket(name="add", type=Optional[int]),
         ],
-        "comp2": [InputSocket(name="value", type=int, is_optional=False)],
+        "comp2": [InputSocket(name="value", type=int)],
         "comp3": [
-            InputSocket(name="in_1", type=Optional[int], is_optional=True),
-            InputSocket(name="in_2", type=Optional[int], is_optional=True),
+            InputSocket(name="in_1", type=Optional[int]),
+            InputSocket(name="in_2", type=Optional[int]),
         ],
     }
 

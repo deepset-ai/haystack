@@ -105,7 +105,7 @@ def test_set_input_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.__canals_input__ == {"value": InputSocket("value", Any, False)}
+    assert comp.__canals_input__ == {"value": InputSocket("value", Any)}
     assert comp.run() == {"value": 1}
 
 
