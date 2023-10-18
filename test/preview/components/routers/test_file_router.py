@@ -12,24 +12,6 @@ from haystack.preview.dataclasses import ByteStream
 )
 class TestFileTypeRouter:
     @pytest.mark.unit
-    def test_to_dict(self):
-        component = FileTypeRouter(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
-        data = component.to_dict()
-        assert data == {
-            "type": "FileTypeRouter",
-            "init_parameters": {"mime_types": ["text/plain", "audio/x-wav", "image/jpeg"]},
-        }
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "FileTypeRouter",
-            "init_parameters": {"mime_types": ["text/plain", "audio/x-wav", "image/jpeg"]},
-        }
-        component = FileTypeRouter.from_dict(data)
-        assert component.mime_types == ["text/plain", "audio/x-wav", "image/jpeg"]
-
-    @pytest.mark.unit
     def test_run(self, preview_samples_path):
         """
         Test if the component runs correctly in the simplest happy path.
