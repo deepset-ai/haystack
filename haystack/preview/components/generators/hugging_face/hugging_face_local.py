@@ -2,7 +2,7 @@ import logging
 from typing import Any, Dict, List, Literal, Optional, Union
 from copy import deepcopy
 
-from haystack.preview import component, default_from_dict, default_to_dict
+from haystack.preview import component, default_to_dict
 from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
@@ -169,13 +169,6 @@ class HuggingFaceLocalGenerator:
             generation_kwargs=self.generation_kwargs,
             stop_words=self.stop_words,
         )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceLocalGenerator":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     @component.output_types(replies=List[str])
     def run(self, prompt: str):

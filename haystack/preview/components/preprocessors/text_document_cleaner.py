@@ -3,9 +3,9 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Any, Dict, Generator, List, Optional, Set
+from typing import Generator, List, Optional, Set
 
-from haystack.preview import Document, component, default_from_dict, default_to_dict
+from haystack.preview import Document, component
 
 logger = logging.getLogger(__name__)
 
@@ -90,26 +90,6 @@ class DocumentCleaner:
             )
 
         return {"documents": cleaned_docs}
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(
-            self,
-            remove_empty_lines=self.remove_empty_lines,
-            remove_extra_whitespaces=self.remove_extra_whitespaces,
-            remove_repeated_substrings=self.remove_repeated_substrings,
-            remove_substrings=self.remove_substrings,
-            remove_regex=self.remove_regex,
-        )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DocumentCleaner":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     def _remove_empty_lines(self, text: str) -> str:
         """

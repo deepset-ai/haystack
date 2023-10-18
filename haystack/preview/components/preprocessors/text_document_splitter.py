@@ -1,9 +1,9 @@
 from copy import deepcopy
-from typing import List, Dict, Any, Literal
+from typing import List, Dict, Literal
 
 from more_itertools import windowed
 
-from haystack.preview import component, Document, default_from_dict, default_to_dict
+from haystack.preview import component, Document
 
 
 @component
@@ -60,21 +60,6 @@ class TextDocumentSplitter:
             metadata["source_id"] = doc.id
             split_docs += [Document(text=txt, metadata=metadata, id_hash_keys=id_hash_keys) for txt in text_splits]
         return {"documents": split_docs}
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(
-            self, split_by=self.split_by, split_length=self.split_length, split_overlap=self.split_overlap
-        )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TextDocumentSplitter":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     def _split_into_units(self, text: str, split_by: Literal["word", "sentence", "passage"]) -> List[str]:
         if split_by == "passage":
