@@ -12,24 +12,6 @@ class TestDocumentLanguageClassifier:
         assert component.languages == ["en"]
 
     @pytest.mark.unit
-    def test_to_dict(self):
-        component = DocumentLanguageClassifier()
-        data = component.to_dict()
-        assert data == {"type": "DocumentLanguageClassifier", "init_parameters": {"languages": ["en"]}}
-
-    @pytest.mark.unit
-    def test_to_dict_with_custom_init_parameters(self):
-        component = DocumentLanguageClassifier(languages=["en", "de"])
-        data = component.to_dict()
-        assert data == {"type": "DocumentLanguageClassifier", "init_parameters": {"languages": ["en", "de"]}}
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {"type": "DocumentLanguageClassifier", "init_parameters": {"languages": ["en", "de"]}}
-        component = DocumentLanguageClassifier.from_dict(data)
-        assert component.languages == ["en", "de"]
-
-    @pytest.mark.unit
     def test_non_document_input(self):
         with pytest.raises(TypeError, match="DocumentLanguageClassifier expects a list of Document as input."):
             classifier = DocumentLanguageClassifier()

@@ -1,7 +1,7 @@
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 
-from haystack.preview import component, default_from_dict, default_to_dict, Document
+from haystack.preview import component, Document
 from haystack.preview.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
@@ -25,11 +25,9 @@ class DocumentLanguageClassifier:
     p = Pipeline()
     p.add_component(instance=TextFileToDocument(), name="text_file_converter")
     p.add_component(instance=DocumentLanguageClassifier(), name="language_classifier")
-    p.add_component(instance=TextDocumentSplitter(), name="splitter")
     p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
     p.connect("text_file_converter.documents", "language_classifier.documents")
-    p.connect("language_classifier.documents", "splitter.documents")
-    p.connect("splitter.documents", "writer.documents")
+    p.connect("language_classifier.en", "writer.documents")
     ```
     """
 
@@ -69,19 +67,6 @@ class DocumentLanguageClassifier:
                 output["unmatched"].append(document)
 
         return output
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(self, languages=self.languages)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DocumentLanguageClassifier":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     def detect_language(self, document: Document) -> Optional[str]:
         try:
