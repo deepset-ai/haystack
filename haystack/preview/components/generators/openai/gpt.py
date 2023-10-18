@@ -86,6 +86,8 @@ class GPTGenerator:
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens and the
                 values are the bias to add to that token.
         """
+        # if the user does not provide the API key, check if it is set in the module client
+        api_key = api_key or openai.api_key
         if api_key is None:
             try:
                 api_key = os.environ["OPENAI_API_KEY"]
