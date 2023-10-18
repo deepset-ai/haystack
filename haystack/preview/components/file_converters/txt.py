@@ -58,7 +58,7 @@ class TextFileToDocument:
         self.remove_numeric_tables = remove_numeric_tables
         self.numeric_row_threshold = numeric_row_threshold
         self.valid_languages = valid_languages or []
-        self.id_hash_keys = id_hash_keys or []
+        self.id_hash_keys = id_hash_keys
         self.progress_bar = progress_bar
 
     def to_dict(self) -> Dict[str, Any]:
@@ -154,7 +154,10 @@ class TextFileToDocument:
                     valid_languages,
                 )
 
-            document = Document(text=text, metadata=meta, id_hash_keys=id_hash_keys)
+            if id_hash_keys:
+                document = Document(text=text, metadata=meta, id_hash_keys=id_hash_keys)
+            else:
+                document = Document(text=text, metadata=meta)
             documents.append(document)
 
         return {"documents": documents}
