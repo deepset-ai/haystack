@@ -5,6 +5,8 @@ import json
 import logging
 from pathlib import Path
 
+from canals.serialization import default_to_dict
+
 from haystack.preview.utils import request_with_retry
 from haystack.preview import component, Document
 
@@ -126,3 +128,12 @@ class RemoteWhisperTranscriber:
 
             transcriptions.append(transcription)
         return transcriptions
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        This method overrides the default serializer in order to avoid leaking the `api_key` value passed
+        to the constructor.
+        """
+        return default_to_dict(
+            self, model_name=self.model_name, api_base=self.api_base, whisper_params=self.whisper_params
+        )

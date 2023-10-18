@@ -5,7 +5,7 @@ import openai
 from tqdm import tqdm
 
 
-from haystack.preview import component, Document, default_to_dict, default_from_dict
+from haystack.preview import component, Document, default_to_dict
 
 
 @component
@@ -88,13 +88,6 @@ class OpenAIDocumentEmbedder:
             metadata_fields_to_embed=self.metadata_fields_to_embed,
             embedding_separator=self.embedding_separator,
         )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIDocumentEmbedder":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     def _prepare_texts_to_embed(self, documents: List[Document]) -> List[str]:
         """
