@@ -214,10 +214,8 @@ class Pipeline:
             )
 
         # Create the component's input and output sockets
-        inputs = getattr(instance, "__canals_input__", {})
-        outputs = getattr(instance, "__canals_output__", {})
-        input_sockets = {name: InputSocket(**data) for name, data in inputs.items()}
-        output_sockets = {name: OutputSocket(**data) for name, data in outputs.items()}
+        input_sockets = getattr(instance, "__canals_input__", {})
+        output_sockets = getattr(instance, "__canals_output__", {})
 
         # Add component to the graph, disconnected
         logger.debug("Adding component '%s' (%s)", name, instance)

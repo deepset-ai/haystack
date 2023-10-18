@@ -13,12 +13,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def test_pipeline(tmp_path):
-    add_two = AddFixedValue(add=2)
-
     pipeline = Pipeline()
-    pipeline.add_component("first_addition", add_two)
-    pipeline.add_component("second_addition", add_two)
-    pipeline.add_component("third_addition", add_two)
+    pipeline.add_component("first_addition", AddFixedValue(add=2))
+    pipeline.add_component("second_addition", AddFixedValue(add=2))
+    pipeline.add_component("third_addition", AddFixedValue(add=2))
     pipeline.add_component("diff", Subtract())
     pipeline.add_component("fourth_addition", AddFixedValue(add=1))
 

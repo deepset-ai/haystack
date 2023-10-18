@@ -23,17 +23,16 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def test_complex_pipeline(tmp_path):
-    accumulate = Accumulate()
     loop_merger = MergeLoop(expected_type=int, inputs=["in_1", "in_2"])
     summer = Sum(inputs=["in_1", "in_2", "in_3"])
 
     pipeline = Pipeline(max_loops_allowed=2)
     pipeline.add_component("greet_first", Greet(message="Hello, the value is {value}."))
-    pipeline.add_component("accumulate_1", accumulate)
+    pipeline.add_component("accumulate_1", Accumulate())
     pipeline.add_component("add_two", AddFixedValue(add=2))
     pipeline.add_component("parity", Parity())
     pipeline.add_component("add_one", AddFixedValue(add=1))
-    pipeline.add_component("accumulate_2", accumulate)
+    pipeline.add_component("accumulate_2", Accumulate())
 
     pipeline.add_component("loop_merger", loop_merger)
     pipeline.add_component("below_10", Threshold(threshold=10))
@@ -51,7 +50,7 @@ def test_complex_pipeline(tmp_path):
     pipeline.add_component("replicate", Repeat(outputs=["first", "second"]))
     pipeline.add_component("add_five", AddFixedValue(add=5))
     pipeline.add_component("add_four", AddFixedValue(add=4))
-    pipeline.add_component("accumulate_3", accumulate)
+    pipeline.add_component("accumulate_3", Accumulate())
 
     pipeline.connect("greet_first", "accumulate_1")
     pipeline.connect("accumulate_1", "add_two")
@@ -85,11 +84,7 @@ def test_complex_pipeline(tmp_path):
     pipeline.draw(tmp_path / "complex_pipeline.png")
 
     results = pipeline.run({"greet_first": {"value": 1}, "greet_enumerator": {"value": 1}})
-    pprint(results)
-    print("accumulated: ", accumulate.state)
-
-    assert results == {"accumulate_3": {"value": 9}, "add_five": {"result": -7}}
-    assert accumulate.state == 9
+    assert results == {"accumulate_3": {"value": -7}, "add_five": {"result": -6}}
 
 
 if __name__ == "__main__":
