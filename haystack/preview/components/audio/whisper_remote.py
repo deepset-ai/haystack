@@ -5,10 +5,8 @@ import json
 import logging
 from pathlib import Path
 
-from canals.serialization import default_to_dict
-
 from haystack.preview.utils import request_with_retry
-from haystack.preview import component, Document
+from haystack.preview import component, Document, default_to_dict
 
 logger = logging.getLogger(__name__)
 
