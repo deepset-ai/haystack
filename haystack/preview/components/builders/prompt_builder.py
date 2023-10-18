@@ -3,7 +3,7 @@ from typing import Dict, Any
 from jinja2 import Template, meta
 
 from haystack.preview import component
-from haystack.preview import default_to_dict, default_from_dict
+from haystack.preview import default_to_dict
 
 
 @component

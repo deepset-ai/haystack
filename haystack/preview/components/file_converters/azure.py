@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Union, Optional, Dict, Any
 
 from haystack.preview.lazy_imports import LazyImport
-from haystack.preview import component, Document, default_to_dict, default_from_dict
+from haystack.preview import component, Document, default_to_dict
 
 
 with LazyImport(message="Run 'pip install azure-ai-formrecognizer>=3.2.0b2'") as azure_import:
@@ -83,13 +83,6 @@ class AzureOCRDocumentConverter:
         return default_to_dict(
             self, endpoint=self.endpoint, api_key=self.api_key, model_id=self.model_id, id_hash_keys=self.id_hash_keys
         )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AzureOCRDocumentConverter":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     @staticmethod
     def _convert_azure_result_to_document(

@@ -1,8 +1,8 @@
 import logging
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional, Union
 from pathlib import Path
 
-from haystack.preview import Document, component, default_to_dict, default_from_dict
+from haystack.preview import Document, component
 from haystack.preview.dataclasses import ByteStream
 from haystack.preview.lazy_imports import LazyImport
 
@@ -26,15 +26,6 @@ class HTMLToDocument:
         """
         boilerpy3_import.check()
         self.id_hash_keys = id_hash_keys or []
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Serialize the component to a dictionary."""
-        return default_to_dict(self, id_hash_keys=self.id_hash_keys)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HTMLToDocument":
-        """Deserialize the component from a dictionary."""
-        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
     def run(self, sources: List[Union[str, Path, ByteStream]]):

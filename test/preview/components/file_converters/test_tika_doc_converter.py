@@ -7,34 +7,6 @@ from haystack.preview.components.file_converters.tika import TikaDocumentConvert
 
 class TestTikaDocumentConverter:
     @pytest.mark.unit
-    def test_to_dict(self):
-        component = TikaDocumentConverter()
-        data = component.to_dict()
-        assert data == {
-            "type": "TikaDocumentConverter",
-            "init_parameters": {"tika_url": "http://localhost:9998/tika", "id_hash_keys": []},
-        }
-
-    @pytest.mark.unit
-    def test_to_dict_with_custom_init_parameters(self):
-        component = TikaDocumentConverter(tika_url="http://localhost:1234/tika", id_hash_keys=["text", "category"])
-        data = component.to_dict()
-        assert data == {
-            "type": "TikaDocumentConverter",
-            "init_parameters": {"tika_url": "http://localhost:1234/tika", "id_hash_keys": ["text", "category"]},
-        }
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "TikaDocumentConverter",
-            "init_parameters": {"tika_url": "http://localhost:9998/tika", "id_hash_keys": ["text", "category"]},
-        }
-        component = TikaDocumentConverter.from_dict(data)
-        assert component.tika_url == "http://localhost:9998/tika"
-        assert component.id_hash_keys == ["text", "category"]
-
-    @pytest.mark.unit
     def test_run(self):
         component = TikaDocumentConverter()
         with patch("haystack.preview.components.file_converters.tika.tika_parser.from_file") as mock_tika_parser:
