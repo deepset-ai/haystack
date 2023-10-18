@@ -107,19 +107,6 @@ class AnswerBuilder:
 
         return {"answers": all_answers}
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(self, pattern=self.pattern, reference_pattern=self.reference_pattern)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AnswerBuilder":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
-
     @staticmethod
     def _extract_answer_string(reply: str, pattern: Optional[str] = None) -> str:
         """

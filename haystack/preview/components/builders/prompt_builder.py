@@ -36,10 +36,6 @@ class PromptBuilder:
     def to_dict(self) -> Dict[str, Any]:
         return default_to_dict(self, template=self._template_string)
 
-    @classmethod
-    def from_dict(cls, data) -> "PromptBuilder":
-        return default_from_dict(cls, data)
-
     @component.output_types(prompt=str)
     def run(self, **kwargs):
         return {"prompt": self.template.render(kwargs)}
