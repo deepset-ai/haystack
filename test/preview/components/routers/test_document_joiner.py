@@ -32,14 +32,14 @@ class TestDocumentJoiner:
     @pytest.mark.unit
     def test_list_of_empty_lists(self):
         joiner = DocumentJoiner()
-        result = joiner.run([], [])
+        result = joiner.run([[], []])
         assert result == {"documents": []}
 
     @pytest.mark.unit
     def test_list_with_one_empty_list(self):
         joiner = DocumentJoiner()
         documents = [Document(text="a"), Document(text="b"), Document(text="c")]
-        result = joiner.run([], documents)
+        result = joiner.run([[], documents])
         assert result == {"documents": documents}
 
     @pytest.mark.unit
@@ -57,7 +57,7 @@ class TestDocumentJoiner:
             Document(text="f", metadata={"key": "value"}),
             Document(text="g"),
         ]
-        output = joiner.run(documents_1, documents_2)
+        output = joiner.run([documents_1, documents_2])
         assert len(output["documents"]) == 6
         assert sorted(documents_1 + documents_2[:-1], key=lambda d: d.id) == sorted(
             output["documents"], key=lambda d: d.id
@@ -72,7 +72,7 @@ class TestDocumentJoiner:
             Document(text="a"),
             Document(text="f", metadata={"key": "value"}),
         ]
-        output = joiner.run(documents_1, documents_2)
+        output = joiner.run([documents_1, documents_2])
         assert len(output["documents"]) == 4
         assert sorted(documents_1 + [documents_2[-1]], key=lambda d: d.id) == sorted(
             output["documents"], key=lambda d: d.id
@@ -87,7 +87,7 @@ class TestDocumentJoiner:
             Document(text="b", score=3.0),
             Document(text="f", score=4.0, metadata={"key": "value"}),
         ]
-        output = joiner.run(documents_1, documents_2)
+        output = joiner.run([documents_1, documents_2])
         assert len(output["documents"]) == 3
         expected_documents = [
             Document(text="a", score=1.25),
@@ -106,7 +106,7 @@ class TestDocumentJoiner:
             Document(text="a"),
             Document(text="f", metadata={"key": "value"}),
         ]
-        output = joiner.run(documents_1, documents_2)
+        output = joiner.run([documents_1, documents_2])
         assert len(output["documents"]) == 4
         expected_documents = [
             Document(text="b"),
@@ -121,7 +121,7 @@ class TestDocumentJoiner:
         joiner = DocumentJoiner()
         with caplog.at_level(logging.INFO):
             documents = [Document(text="a"), Document(text="b", score=0.5)]
-            output = joiner.run(documents)
+            output = joiner.run([documents])
             assert "documents were sorted as if their score was `-infinity`" in caplog.text
             assert output["documents"] == documents[::-1]
 
@@ -130,5 +130,5 @@ class TestDocumentJoiner:
         joiner = DocumentJoiner(sort_by_score=False)
         documents_1 = [Document(text="a", score=0.1)]
         documents_2 = [Document(text="d", score=0.2)]
-        output = joiner.run(documents_1, documents_2)
+        output = joiner.run([documents_1, documents_2])
         assert output["documents"] == documents_1 + documents_2

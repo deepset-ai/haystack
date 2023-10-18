@@ -3,6 +3,7 @@ import logging
 from collections import defaultdict
 from math import inf
 from typing import List, Optional
+from canals.component.types import Variadic
 
 from haystack.preview import component, Document
 
@@ -58,9 +59,10 @@ class DocumentJoiner:
         self.weights = [float(i) / sum(weights) for i in weights] if weights else None
         self.top_k = top_k
         self.sort_by_score = sort_by_score
+        component.set_input_types(self, documents=Variadic[List[Document]])
 
     @component.output_types(documents=List[Document])
-    def run(self, *documents: List[Document]):
+    def run(self, documents):
         """
         Run the DocumentJoiner. This method joins the input lists of documents into one output list based on the join_mode specified during initialization.
 
