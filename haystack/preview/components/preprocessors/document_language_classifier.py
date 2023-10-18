@@ -21,7 +21,7 @@ class DocumentLanguageClassifier:
     Example usage within an indexing pipeline, storing only documents written in English language documents to a Store:
 
     ```python
-    document_store = MemoryDocumentStore()
+    document_store = InMemoryDocumentStore()
     p = Pipeline()
     p.add_component(instance=TextFileToDocument(), name="text_file_converter")
     p.add_component(instance=DocumentLanguageClassifier(), name="language_classifier")

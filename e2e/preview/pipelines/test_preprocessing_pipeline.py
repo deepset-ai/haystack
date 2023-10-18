@@ -6,12 +6,12 @@ from haystack.preview.components.file_converters import TextFileToDocument
 from haystack.preview.components.preprocessors import TextDocumentSplitter, DocumentCleaner, DocumentLanguageClassifier
 from haystack.preview.components.routers import FileTypeRouter
 from haystack.preview.components.writers import DocumentWriter
-from haystack.preview.document_stores import MemoryDocumentStore
+from haystack.preview.document_stores import InMemoryDocumentStore
 
 
 def test_preprocessing_pipeline(tmp_path):
     # Create the pipeline and its components
-    document_store = MemoryDocumentStore()
+    document_store = InMemoryDocumentStore()
     preprocessing_pipeline = Pipeline()
     preprocessing_pipeline.add_component(instance=FileTypeRouter(mime_types=["text/plain"]), name="file_type_router")
     preprocessing_pipeline.add_component(instance=TextFileToDocument(), name="text_file_converter")
