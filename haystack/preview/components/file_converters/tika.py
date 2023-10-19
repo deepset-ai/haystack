@@ -61,10 +61,7 @@ class TikaDocumentConverter:
                 if not extracted_text:
                     logger.warning("Skipping file at '%s' as Tika was not able to extract any content.", str(path))
                     continue
-                if id_hash_keys:
-                    document = Document(text=extracted_text, id_hash_keys=id_hash_keys)
-                else:
-                    document = Document(text=extracted_text)
+                document = Document(text=extracted_text, id_hash_keys=id_hash_keys)
                 documents.append(document)
             except Exception as e:
                 logger.error("Could not convert file at '%s' to Document. Error: %s", str(path), e)

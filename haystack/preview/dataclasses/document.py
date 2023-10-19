@@ -48,18 +48,20 @@ class DocumentDecoder(json.JSONDecoder):
         return dictionary
 
 
+def id_hash_keys_default_factory():
+    """
+    Default factory for the id_hash_keys field of the Document dataclass.
+    We need a callable instead of a default value, because mutable default values are not allowed.
+    """
+    return ["text", "array", "dataframe", "blob"]
+
+
 @dataclass
 class Document:
     """
     Base data class containing some data to be queried.
     Can contain text snippets, tables, and file paths to images or audios.
-    Documents can be sorted by score, saved to/from dictionary and JSON, and are immutable.
-
-    Immutability is due to the fact that the document's ID depends on its content, so upon changing the content, also
-    the ID should change. To avoid keeping IDs in sync with the content by using properties, and asking docstores to
-    be aware of this corner case, we decide to make Documents immutable and remove the issue. If you need to modify a
-    Document, consider using `to_dict()`, modifying the dict, and then create a new Document object using
-    `Document.from_dict()`.
+    Documents can be sorted by score and saved to/from dictionary and JSON.
 
     :param id: Unique identifier for the document. When not set, it's generated based on the document's attributes (see id_hash_keys).
     :param text: Text of the document, if the document contains text.
@@ -84,7 +86,7 @@ class Document:
     blob: Optional[bytes] = field(default=None)
     mime_type: str = field(default="text/plain")
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
-    id_hash_keys: List[str] = field(default_factory=lambda: ["text", "array", "dataframe", "blob"], hash=False)
+    id_hash_keys: List[str] = field(default_factory=id_hash_keys_default_factory, hash=False)
     score: Optional[float] = field(default=None, compare=False)
     embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
 
@@ -113,6 +115,10 @@ class Document:
         """
         Generate the ID based on the init parameters.
         """
+        # if id_hash_keys is None or empty, use the default factory
+        if not self.id_hash_keys:
+            self.id_hash_keys = id_hash_keys_default_factory()
+
         # Validate metadata
         for key in self.metadata:
             if key in [field.name for field in fields(self)]:

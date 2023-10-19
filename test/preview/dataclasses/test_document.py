@@ -1,6 +1,4 @@
-import dataclasses
 import json
-import textwrap
 from pathlib import Path
 
 import numpy as np
@@ -96,6 +94,15 @@ def test_id_hash_keys_field_may_be_missing(caplog):
     assert doc1.id == doc2.id
     assert "is missing the following id_hash_keys: ['something']." in caplog.text
     assert "is missing the following id_hash_keys: ['something else']." in caplog.text
+
+
+@pytest.mark.unit
+def test_id_hash_keys_is_set_to_default_if_invalid():
+    doc = Document(text="test text", id_hash_keys=None)
+    assert doc.id_hash_keys == ["text", "array", "dataframe", "blob"]
+
+    doc = Document(text="test text", id_hash_keys=[])
+    assert doc.id_hash_keys == ["text", "array", "dataframe", "blob"]
 
 
 @pytest.mark.unit
