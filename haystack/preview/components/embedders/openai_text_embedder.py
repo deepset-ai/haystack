@@ -3,7 +3,7 @@ import os
 
 import openai
 
-from haystack.preview import component, default_to_dict, default_from_dict
+from haystack.preview import component, default_to_dict
 
 
 @component
@@ -50,6 +50,12 @@ class OpenAITextEmbedder:
         if organization is not None:
             openai.organization = organization
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"model": self.model_name}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         This method overrides the default serializer in order to avoid leaking the `api_key` value passed
@@ -59,13 +65,6 @@ class OpenAITextEmbedder:
         return default_to_dict(
             self, model_name=self.model_name, organization=self.organization, prefix=self.prefix, suffix=self.suffix
         )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAITextEmbedder":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     @component.output_types(embedding=List[float], metadata=Dict[str, Any])
     def run(self, text: str):

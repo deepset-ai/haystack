@@ -1,7 +1,7 @@
 from typing import List, Optional, Union, Dict, Any
 
-from haystack.preview import component, Document, default_to_dict, default_from_dict
-from haystack.preview.embedding_backends.sentence_transformers_backend import (
+from haystack.preview import component, Document, default_to_dict
+from haystack.preview.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
 
@@ -17,7 +17,7 @@ class SentenceTransformersDocumentEmbedder:
         self,
         model_name_or_path: str = "sentence-transformers/all-mpnet-base-v2",
         device: Optional[str] = None,
-        use_auth_token: Union[bool, str, None] = None,
+        token: Union[bool, str, None] = None,
         prefix: str = "",
         suffix: str = "",
         batch_size: int = 32,
@@ -29,11 +29,13 @@ class SentenceTransformersDocumentEmbedder:
         """
         Create a SentenceTransformersDocumentEmbedder component.
 
-        :param model_name_or_path: Local path or name of the model in Hugging Face's model hub, such as ``'sentence-transformers/all-mpnet-base-v2'``.
-        :param device: Device (like 'cuda' / 'cpu') that should be used for computation. If None, checks if a GPU can be used.
-        :param use_auth_token: The API token used to download private models from Hugging Face.
-                        If this parameter is set to `True`, then the token generated when running
-                        `transformers-cli login` (stored in ~/.huggingface) will be used.
+        :param model_name_or_path: Local path or name of the model in Hugging Face's model hub,
+            such as ``'sentence-transformers/all-mpnet-base-v2'``.
+        :param device: Device (like 'cuda' / 'cpu') that should be used for computation.
+            Defaults to CPU.
+        :param token: The API token used to download private models from Hugging Face.
+            If this parameter is set to `True`, then the token generated when running
+            `transformers-cli login` (stored in ~/.huggingface) will be used.
         :param prefix: A string to add to the beginning of each Document text before embedding.
         :param suffix: A string to add to the end of each Document text before embedding.
         :param batch_size: Number of strings to encode at once.
@@ -46,7 +48,7 @@ class SentenceTransformersDocumentEmbedder:
         self.model_name_or_path = model_name_or_path
         # TODO: remove device parameter and use Haystack's device management once migrated
         self.device = device or "cpu"
-        self.use_auth_token = use_auth_token
+        self.token = token
         self.prefix = prefix
         self.suffix = suffix
         self.batch_size = batch_size
@@ -54,6 +56,12 @@ class SentenceTransformersDocumentEmbedder:
         self.normalize_embeddings = normalize_embeddings
         self.metadata_fields_to_embed = metadata_fields_to_embed or []
         self.embedding_separator = embedding_separator
+
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"model": self.model_name_or_path}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -63,7 +71,7 @@ class SentenceTransformersDocumentEmbedder:
             self,
             model_name_or_path=self.model_name_or_path,
             device=self.device,
-            use_auth_token=self.use_auth_token,
+            token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             prefix=self.prefix,
             suffix=self.suffix,
             batch_size=self.batch_size,
@@ -73,20 +81,13 @@ class SentenceTransformersDocumentEmbedder:
             embedding_separator=self.embedding_separator,
         )
 
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersDocumentEmbedder":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
-
     def warm_up(self):
         """
         Load the embedding backend.
         """
         if not hasattr(self, "embedding_backend"):
             self.embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
-                model_name_or_path=self.model_name_or_path, device=self.device, use_auth_token=self.use_auth_token
+                model_name_or_path=self.model_name_or_path, device=self.device, use_auth_token=self.token
             )
 
     @component.output_types(documents=List[Document])
@@ -95,7 +96,7 @@ class SentenceTransformersDocumentEmbedder:
         Embed a list of Documents.
         The embedding of each Document is stored in the `embedding` field of the Document.
         """
-        if not isinstance(documents, list) or not isinstance(documents[0], Document):
+        if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
                 "SentenceTransformersDocumentEmbedder expects a list of Documents as input."
                 "In case you want to embed a list of strings, please use the SentenceTransformersTextEmbedder."

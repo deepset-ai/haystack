@@ -5,7 +5,7 @@ import openai
 from tqdm import tqdm
 
 
-from haystack.preview import component, Document, default_to_dict, default_from_dict
+from haystack.preview import component, Document, default_to_dict
 
 
 @component
@@ -66,6 +66,12 @@ class OpenAIDocumentEmbedder:
         if organization is not None:
             openai.organization = organization
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"model": self.model_name}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         This method overrides the default serializer in order to avoid leaking the `api_key` value passed
@@ -82,13 +88,6 @@ class OpenAIDocumentEmbedder:
             metadata_fields_to_embed=self.metadata_fields_to_embed,
             embedding_separator=self.embedding_separator,
         )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIDocumentEmbedder":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     def _prepare_texts_to_embed(self, documents: List[Document]) -> List[str]:
         """

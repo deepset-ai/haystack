@@ -14,7 +14,7 @@ class TestSentenceTransformersDocumentEmbedder:
         embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
         assert embedder.model_name_or_path == "model"
         assert embedder.device == "cpu"
-        assert embedder.use_auth_token is None
+        assert embedder.token is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
         assert embedder.batch_size == 32
@@ -28,7 +28,7 @@ class TestSentenceTransformersDocumentEmbedder:
         embedder = SentenceTransformersDocumentEmbedder(
             model_name_or_path="model",
             device="cuda",
-            use_auth_token=True,
+            token=True,
             prefix="prefix",
             suffix="suffix",
             batch_size=64,
@@ -39,7 +39,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
         assert embedder.model_name_or_path == "model"
         assert embedder.device == "cuda"
-        assert embedder.use_auth_token is True
+        assert embedder.token is True
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
         assert embedder.batch_size == 64
@@ -57,7 +57,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "init_parameters": {
                 "model_name_or_path": "model",
                 "device": "cpu",
-                "use_auth_token": None,
+                "token": None,
                 "prefix": "",
                 "suffix": "",
                 "batch_size": 32,
@@ -73,7 +73,7 @@ class TestSentenceTransformersDocumentEmbedder:
         component = SentenceTransformersDocumentEmbedder(
             model_name_or_path="model",
             device="cuda",
-            use_auth_token="the-token",
+            token="the-token",
             prefix="prefix",
             suffix="suffix",
             batch_size=64,
@@ -83,12 +83,13 @@ class TestSentenceTransformersDocumentEmbedder:
             embedding_separator=" - ",
         )
         data = component.to_dict()
+
         assert data == {
             "type": "SentenceTransformersDocumentEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
                 "device": "cuda",
-                "use_auth_token": "the-token",
+                "token": None,  # the token is not serialized
                 "prefix": "prefix",
                 "suffix": "suffix",
                 "batch_size": 64,
@@ -98,35 +99,6 @@ class TestSentenceTransformersDocumentEmbedder:
                 "metadata_fields_to_embed": ["meta_field"],
             },
         }
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "SentenceTransformersDocumentEmbedder",
-            "init_parameters": {
-                "model_name_or_path": "model",
-                "device": "cuda",
-                "use_auth_token": "the-token",
-                "prefix": "prefix",
-                "suffix": "suffix",
-                "batch_size": 64,
-                "progress_bar": False,
-                "normalize_embeddings": False,
-                "embedding_separator": " - ",
-                "metadata_fields_to_embed": ["meta_field"],
-            },
-        }
-        component = SentenceTransformersDocumentEmbedder.from_dict(data)
-        assert component.model_name_or_path == "model"
-        assert component.device == "cuda"
-        assert component.use_auth_token == "the-token"
-        assert component.prefix == "prefix"
-        assert component.suffix == "suffix"
-        assert component.batch_size == 64
-        assert component.progress_bar is False
-        assert component.normalize_embeddings is False
-        assert component.metadata_fields_to_embed == ["meta_field"]
-        assert component.embedding_separator == " - "
 
     @pytest.mark.unit
     @patch(

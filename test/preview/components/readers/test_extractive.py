@@ -88,6 +88,29 @@ example_documents = [
 
 
 @pytest.mark.unit
+def test_to_dict():
+    component = ExtractiveReader("my-model", token="secret-token")
+    data = component.to_dict()
+
+    assert data == {
+        "type": "ExtractiveReader",
+        "init_parameters": {
+            "model_name_or_path": "my-model",
+            "device": None,
+            "token": None,  # don't serialize valid tokens
+            "top_k": 20,
+            "confidence_threshold": None,
+            "max_seq_length": 384,
+            "stride": 128,
+            "max_batch_size": None,
+            "answers_per_seq": None,
+            "no_answer": True,
+            "calibration_factor": 0.1,
+        },
+    }
+
+
+@pytest.mark.unit
 def test_output(mock_reader: ExtractiveReader):
     answers = mock_reader.run(example_queries[0], example_documents[0], top_k=3)[
         "answers"
@@ -207,6 +230,17 @@ def test_nest_answers(mock_reader: ExtractiveReader):
         assert no_answer.query == query
         assert no_answer.document is None
         assert no_answer.probability == pytest.approx(expected_no_answer)
+
+
+@pytest.mark.unit
+@patch("haystack.preview.components.readers.extractive.AutoTokenizer.from_pretrained")
+@patch("haystack.preview.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
+    reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token")
+    reader.warm_up()
+
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
+    mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
 
 
 @pytest.mark.integration

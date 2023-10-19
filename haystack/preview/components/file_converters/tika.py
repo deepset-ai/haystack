@@ -1,9 +1,9 @@
 import logging
 from pathlib import Path
-from typing import Optional, List, Union, Dict, Any
+from typing import Optional, List, Union
 
 from haystack.preview.lazy_imports import LazyImport
-from haystack.preview import component, Document, default_to_dict, default_from_dict
+from haystack.preview import component, Document
 
 
 with LazyImport("Run 'pip install tika'") as tika_import:
@@ -61,25 +61,9 @@ class TikaDocumentConverter:
                 if not extracted_text:
                     logger.warning("Skipping file at '%s' as Tika was not able to extract any content.", str(path))
                     continue
-                if id_hash_keys:
-                    document = Document(text=extracted_text, id_hash_keys=id_hash_keys)
-                else:
-                    document = Document(text=extracted_text)
+                document = Document(text=extracted_text, id_hash_keys=id_hash_keys)
                 documents.append(document)
             except Exception as e:
                 logger.error("Could not convert file at '%s' to Document. Error: %s", str(path), e)
 
         return {"documents": documents}
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(self, tika_url=self.tika_url, id_hash_keys=self.id_hash_keys)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TikaDocumentConverter":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)

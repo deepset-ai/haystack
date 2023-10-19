@@ -2,7 +2,7 @@ import logging
 import re
 from typing import List, Dict, Any, Optional
 
-from haystack.preview import component, GeneratedAnswer, Document, default_to_dict, default_from_dict
+from haystack.preview import component, GeneratedAnswer, Document
 
 
 logger = logging.getLogger(__name__)
@@ -106,19 +106,6 @@ class AnswerBuilder:
             all_answers.append(answer)
 
         return {"answers": all_answers}
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(self, pattern=self.pattern, reference_pattern=self.reference_pattern)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AnswerBuilder":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     @staticmethod
     def _extract_answer_string(reply: str, pattern: Optional[str] = None) -> str:

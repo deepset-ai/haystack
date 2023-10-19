@@ -33,7 +33,6 @@ class TestRemoteWhisperTranscriber:
             "type": "RemoteWhisperTranscriber",
             "init_parameters": {
                 "model_name": "whisper-1",
-                "api_key": "test",
                 "api_base": "https://api.openai.com/v1",
                 "whisper_params": {},
             },
@@ -52,28 +51,10 @@ class TestRemoteWhisperTranscriber:
             "type": "RemoteWhisperTranscriber",
             "init_parameters": {
                 "model_name": "whisper-1",
-                "api_key": "test",
                 "api_base": "https://my.api.base/something_else/v3",
                 "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
             },
         }
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "RemoteWhisperTranscriber",
-            "init_parameters": {
-                "model_name": "whisper-1",
-                "api_key": "test",
-                "api_base": "https://my.api.base/something_else/v3",
-                "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
-            },
-        }
-        transcriber = RemoteWhisperTranscriber.from_dict(data)
-        assert transcriber.model_name == "whisper-1"
-        assert transcriber.api_key == "test"
-        assert transcriber.api_base == "https://my.api.base/something_else/v3"
-        assert transcriber.whisper_params == {"return_segments": True, "temperature": [0.1, 0.6, 0.8]}
 
     @pytest.mark.unit
     def test_run_with_path(self, preview_samples_path):

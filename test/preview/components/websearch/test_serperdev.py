@@ -125,23 +125,6 @@ class TestSerperDevSearchAPI:
         }
 
     @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "SerperDevWebSearch",
-            "init_parameters": {
-                "api_key": "test_key",
-                "top_k": 10,
-                "allowed_domains": ["test.com"],
-                "search_params": {"param": "test"},
-            },
-        }
-        component = SerperDevWebSearch.from_dict(data)
-        assert component.api_key == "test_key"
-        assert component.top_k == 10
-        assert component.allowed_domains == ["test.com"]
-        assert component.search_params == {"param": "test"}
-
-    @pytest.mark.unit
     @pytest.mark.parametrize("top_k", [1, 5, 7])
     def test_web_search_top_k(self, mock_serper_dev_search_result, top_k: int):
         ws = SerperDevWebSearch(api_key="some_invalid_key", top_k=top_k)

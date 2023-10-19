@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Any
 
 import requests
 
-from haystack.preview import Document, component, default_from_dict, default_to_dict, ComponentError
+from haystack.preview import Document, component, default_to_dict, ComponentError
 
 logger = logging.getLogger(__name__)
 
@@ -57,13 +57,6 @@ class SerperDevWebSearch:
             allowed_domains=self.allowed_domains,
             search_params=self.search_params,
         )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SerperDevWebSearch":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document], links=List[str])
     def run(self, query: str):
