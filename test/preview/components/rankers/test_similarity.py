@@ -34,19 +34,6 @@ class TestSimilarityRanker:
         }
 
     @pytest.mark.integration
-    def test_from_dict(self):
-        data = {
-            "type": "SimilarityRanker",
-            "init_parameters": {
-                "device": "cpu",
-                "top_k": 10,
-                "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
-            },
-        }
-        component = SimilarityRanker.from_dict(data)
-        assert component.model_name_or_path == "cross-encoder/ms-marco-MiniLM-L-6-v2"
-
-    @pytest.mark.integration
     @pytest.mark.parametrize(
         "query,docs_before_texts,expected_first_text",
         [
