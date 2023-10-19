@@ -1,6 +1,0 @@
----
-preview:
-  - |
-    Ensure that File converters handle the parameter `id_hash_keys` correctly.
-    If this parameter is not specified, the ids are generated based on the
-    the content (text).
