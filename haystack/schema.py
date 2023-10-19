@@ -1,32 +1,29 @@
 from __future__ import annotations
+
+import ast
 import csv
 import hashlib
 import inspect
-
-from typing import Any, Optional, Dict, List, Union, Literal
-
-from pathlib import Path
-from uuid import uuid4
+import json
 import logging
 import time
-import json
-import ast
 from dataclasses import asdict
+from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional, Union
+from uuid import uuid4
 
 import numpy as np
-from numpy import ndarray
 import pandas as pd
+from numpy import ndarray
 from pandas import DataFrame
-
 from pydantic import BaseConfig, Field
-from pydantic.json import pydantic_encoder
 
 # We are using Pydantic dataclasses instead of vanilla Python's
 # See #1598 for the reasons behind this choice & performance considerations
 from pydantic.dataclasses import dataclass
+from pydantic.json import pydantic_encoder
 
 from haystack.mmh3 import hash128
-
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +34,8 @@ BaseConfig.arbitrary_types_allowed = True
 #: Types of content_types supported
 ContentTypes = Literal["text", "table", "image", "audio"]
 FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
+
+LABEL_DATETIME_FORMAT: str = "%Y-%m-%d %H:%M:%S"
 
 
 @dataclass
@@ -526,7 +525,7 @@ class Label:
         :param pipeline_id: pipeline identifier (any str) that was involved for generating this label (in-case of user feedback).
         :param created_at: Timestamp of creation with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S").
-        :param created_at: Timestamp of update with format yyyy-MM-dd HH:mm:ss.
+        :param updated_at: Timestamp of update with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S")
         :param meta: Meta fields like "annotator_name" in the form of a custom dict (any keys and values allowed).
         :param filters: filters that should be applied to the query to rule out non-relevant documents. For example, if there are different correct answers
@@ -540,7 +539,7 @@ class Label:
             self.id = str(uuid4())
 
         if created_at is None:
-            created_at = time.strftime("%Y-%m-%d %H:%M:%S")
+            created_at = time.strftime(LABEL_DATETIME_FORMAT)
         self.created_at = created_at
 
         self.updated_at = updated_at

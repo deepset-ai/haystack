@@ -94,9 +94,12 @@ preview = [
   "tqdm",
   "tenacity",
   "lazy-imports",
+  "posthog",  # telemetry
 
   "Jinja2",
   "openai",
+  "pyyaml",
+  "more-itertools",  # TextDocumentSplitter
 ]
 inference = [
   "transformers[torch,sentencepiece]==4.34.1",
