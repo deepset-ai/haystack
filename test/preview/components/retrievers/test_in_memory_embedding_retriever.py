@@ -152,7 +152,7 @@ class TestMemoryEmbeddingRetriever:
         pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
         result: Dict[str, Any] = pipeline.run(
-            data={"retriever": {"query_embedding": [0.1, 0.1, 0.1, 0.1], "return_embedding": True}}
+            data={"retriever": {"query_embedding": np.array([0.1, 0.1, 0.1, 0.1]), "return_embedding": True}}
         )
 
         assert result
@@ -160,4 +160,4 @@ class TestMemoryEmbeddingRetriever:
         results_docs = result["retriever"]["documents"]
         assert results_docs
         assert len(results_docs) == top_k
-        assert results_docs[0].embedding == [1.0, 1.0, 1.0, 1.0]
+        assert (results_docs[0].embedding == [1.0, 1.0, 1.0, 1.0]).all()
