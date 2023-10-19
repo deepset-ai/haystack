@@ -25,7 +25,7 @@ class HTMLToDocument:
         :param id_hash_keys: List of strings referencing the Document's attributes to generate its ID. Default: `None`
         """
         boilerpy3_import.check()
-        self.id_hash_keys = id_hash_keys or []
+        self.id_hash_keys = id_hash_keys
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the component to a dictionary."""
@@ -58,7 +58,10 @@ class HTMLToDocument:
                 logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
                 continue
 
-            document = Document(text=text, id_hash_keys=self.id_hash_keys)
+            if self.id_hash_keys:
+                document = Document(text=text, id_hash_keys=self.id_hash_keys)
+            else:
+                document = Document(text=text)
             documents.append(document)
 
         return {"documents": documents}
