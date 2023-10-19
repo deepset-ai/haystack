@@ -37,7 +37,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.0 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
+        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
@@ -71,7 +71,7 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.0 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
           pip install ./haystack-linter
 
       - name: Pylint
