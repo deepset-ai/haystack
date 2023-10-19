@@ -86,7 +86,7 @@ class Document:
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
     id_hash_keys: List[str] = field(default_factory=lambda: ["text", "array", "dataframe", "blob"], hash=False)
     score: Optional[float] = field(default=None, compare=False)
-    embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
+    embedding: Optional[List[float]] = field(default=None, repr=False)
 
     def __str__(self):
         fields = [f"mimetype: '{self.mime_type}'"]
