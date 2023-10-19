@@ -2,4 +2,4 @@
 preview:
   - |
     Rework `Document.id` generation, if an `id` is not explicitly set it's generated
-    using all `Document` fields
+    using all `Document` field' values, `score` and `id_hash_keys` are not used.
