@@ -85,9 +85,9 @@ class Document:
     dataframe: Optional[pandas.DataFrame] = field(default=None)
     blob: Optional[bytes] = field(default=None)
     mime_type: str = field(default="text/plain")
-    metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
+    metadata: Dict[str, Any] = field(default_factory=dict)
     id_hash_keys: List[str] = field(default_factory=id_hash_keys_default_factory, hash=False)
-    score: Optional[float] = field(default=None, compare=False)
+    score: Optional[float] = field(default=None)
     embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
 
     def __str__(self):
@@ -115,41 +115,28 @@ class Document:
         """
         Generate the ID based on the init parameters.
         """
-        # if id_hash_keys is None or empty, use the default factory
-        if not self.id_hash_keys:
-            self.id_hash_keys = id_hash_keys_default_factory()
-
         # Validate metadata
         for key in self.metadata:
             if key in [field.name for field in fields(self)]:
                 raise ValueError(f"Cannot name metadata fields as top-level document fields, like '{key}'.")
 
-        # Note: we need to set the id this way because the dataclass is frozen. See the docstring.
-        if self.id == "":
-            object.__setattr__(self, "id", self._create_id())
+        # Generate an id only if not explicitly set
+        self.id = self.id or self._create_id()
 
     def _create_id(self):
         """
         Creates a hash of the given content that acts as the document's ID.
         """
-        document_data = self.flatten()
-        contents = [self.__class__.__name__]
-        missing_id_hash_keys = []
-        if self.id_hash_keys:
-            for key in self.id_hash_keys:
-                if key not in document_data:
-                    missing_id_hash_keys.append(key)
-                else:
-                    contents.append(str(document_data.get(key)))
-        content_to_hash = ":".join(contents)
-        doc_id = hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
-        if missing_id_hash_keys:
-            logger.warning(
-                "Document %s is missing the following id_hash_keys: %s. Using a hash of the remaining content as ID.",
-                doc_id,
-                missing_id_hash_keys,
-            )
-        return doc_id
+        text = self.text or None
+        array = self.array.tolist() if self.array is not None else None
+        dataframe = self.dataframe.to_json() if self.dataframe is not None else None
+        blob = self.blob or None
+        mime_type = self.mime_type or None
+        metadata = self.metadata or {}
+        score = self.score if self.score is not None else None
+        embedding = self.embedding.tolist() if self.embedding is not None else None
+        data = f"{text}{array}{dataframe}{blob}{mime_type}{metadata}{score}{embedding}"
+        return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
     def to_dict(self):
         """
