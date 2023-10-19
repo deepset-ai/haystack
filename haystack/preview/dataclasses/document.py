@@ -133,9 +133,8 @@ class Document:
         blob = self.blob or None
         mime_type = self.mime_type or None
         metadata = self.metadata or {}
-        score = self.score if self.score is not None else None
         embedding = self.embedding.tolist() if self.embedding is not None else None
-        data = f"{text}{array}{dataframe}{blob}{mime_type}{metadata}{score}{embedding}"
+        data = f"{text}{array}{dataframe}{blob}{mime_type}{metadata}{embedding}"
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
     def to_dict(self):
