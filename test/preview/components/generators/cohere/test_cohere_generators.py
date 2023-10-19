@@ -4,7 +4,14 @@ import pytest
 import cohere
 
 from haystack.preview.components.generators.cohere.cohere import CohereGenerator
-from haystack.preview.components.generators.cohere.cohere import default_streaming_callback
+
+
+def default_streaming_callback(chunk):
+    """
+    Default callback function for streaming responses from Cohere API.
+    Prints the tokens of the first completion to stdout as soon as they are received and returns the chunk unchanged.
+    """
+    print(chunk.text, flush=True, end="")
 
 
 class TestGPTGenerator:
@@ -67,7 +74,7 @@ class TestGPTGenerator:
                 "max_tokens": 10,
                 "some_test_param": "test-params",
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.preview.components.generators.cohere.cohere.default_streaming_callback",
+                "streaming_callback": "test_cohere_generators.default_streaming_callback",
             },
         }
 
@@ -104,7 +111,7 @@ class TestGPTGenerator:
                 "max_tokens": 10,
                 "some_test_param": "test-params",
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.preview.components.generators.cohere.cohere.default_streaming_callback",
+                "streaming_callback": "test_cohere_generators.default_streaming_callback",
             },
         }
         component = CohereGenerator.from_dict(data)

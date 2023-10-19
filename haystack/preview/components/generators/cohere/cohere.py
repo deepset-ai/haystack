@@ -6,20 +6,9 @@ from haystack.lazy_imports import LazyImport
 from haystack.preview import DeserializationError, component, default_from_dict, default_to_dict
 
 with LazyImport(message="Run 'pip install cohere'") as cohere_import:
-    from cohere import Client
+    from cohere import Client, COHERE_API_URL
 
 logger = logging.getLogger(__name__)
-
-
-API_BASE_URL = "https://api.cohere.ai"
-
-
-def default_streaming_callback(chunk):
-    """
-    Default callback function for streaming responses from Cohere API.
-    Prints the tokens of the first completion to stdout as soon as they are received and returns the chunk unchanged.
-    """
-    print(chunk.text, flush=True, end="")
 
 
 @component
@@ -35,15 +24,33 @@ class CohereGenerator:
         api_key: str,
         model: str = "command",
         streaming_callback: Optional[Callable] = None,
-        api_base_url: str = API_BASE_URL,
+        api_base_url: str = COHERE_API_URL,
         **kwargs,
     ):
         """
-        Args:
-            api_key (str): The API key for the Cohere API.
-            model_name (str): The name of the model to use.
-            streaming_callback (Callable, optional): A callback function to be called with the streaming response. Defaults to None.
-            api_base_url (str, optional): The base URL of the Cohere API. Defaults to "https://api.cohere.ai".
+         Instantiates a `CohereGenerator` component.
+        :param api_key: The API key for the Cohere API.
+        :param model_name: The name of the model to use. Available models are: [command, command-light, command-nightly, command-nightly-light]. Defaults to "command".
+        :param streaming_callback: A callback function to be called with the streaming response. Defaults to None.
+        :param api_base_url: The base URL of the Cohere API. Defaults to "https://api.cohere.ai".
+        :param kwargs: additional model parameters. These will be used during generation. Refer to https://docs.cohere.com/reference/generate for more details.
+          Some of the parameters are:
+          - 'max_tokens': The maximum number of tokens to be generated. Defaults to 1024.
+          - 'truncate': One of NONE|START|END to specify how the API will handle inputs longer than the maximum token length. Defaults to END.
+          - 'temperature': A non-negative float that tunes the degree of randomness in generation. Lower temperatures mean less random generations.
+          - 'preset': Identifier of a custom preset. A preset is a combination of parameters, such as prompt, temperature etc. You can create presets in the playground.
+          - 'end_sequences': The generated text will be cut at the beginning of the earliest occurrence of an end sequence. The sequence will be excluded from the text.
+          - 'stop_sequences': The generated text will be cut at the end of the earliest occurrence of a stop sequence. The sequence will be included the text.
+          - 'k': Defaults to 0. min value of 0.01, max value of 0.99.
+          - 'p': Ensures that only the most likely tokens, with total probability mass of p, are considered for generation at each step. If both k and p are enabled, p acts after k.
+          - 'frequency_penalty': Used to reduce repetitiveness of generated tokens. The higher the value, the stronger a penalty is applied to previously present tokens,
+                                 proportional to how many times they have already appeared in the prompt or prior generation.'
+          - 'presence_penalty': Defaults to 0.0, min value of 0.0, max value of 1.0. Can be used to reduce repetitiveness of generated tokens.
+                                Similar to frequency_penalty, except that this penalty is applied equally to all tokens that have already appeared, regardless of their exact frequencies.
+          - 'return_likelihoods': One of GENERATION|ALL|NONE to specify how and if the token likelihoods are returned with the response. Defaults to NONE.
+          - 'logit_bias': Used to prevent the model from generating unwanted tokens or to incentivize it to include desired tokens.
+                          The format is {token_id: bias} where bias is a float between -10 and 10.
+
         """
         self.api_key = api_key
         self.model = model
@@ -103,8 +110,6 @@ class CohereGenerator:
         response = self.client.generate(
             model=self.model, prompt=prompt, stream=self.streaming_callback is not None, **self.model_parameters
         )
-        replies: List[str]
-        metadata: List[Dict[str, Any]]
         if self.streaming_callback:
             metadata_dict: Dict[str, Any] = {}
             for chunk in response:
@@ -115,8 +120,9 @@ class CohereGenerator:
             metadata = [metadata_dict]
             self._check_truncated_answers(metadata)
             return {"replies": replies, "metadata": metadata}
-        metadata = [{"finish_reason": response[0].finish_reason}]
-        replies = [response[0].text]
+
+        metadata = [{"finish_reason": resp.finish_reason} for resp in response]
+        replies = [resp.text for resp in response]
         self._check_truncated_answers(metadata)
         return {"replies": replies, "metadata": metadata}
 
@@ -124,6 +130,7 @@ class CohereGenerator:
         """
         Check the `finish_reason` returned with the Cohere response.
         If the `finish_reason` is `MAX_TOKEN`, log a warning to the user.
+        :param metadata: The metadata returned by the Cohere API.
         """
         if metadata[0]["finish_reason"] == "MAX_TOKENS":
             logger.warning(
