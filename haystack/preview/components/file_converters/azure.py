@@ -109,9 +109,6 @@ class AzureOCRDocumentConverter:
         else:
             text = result.content
 
-        if id_hash_keys:
-            document = Document(text=text, id_hash_keys=id_hash_keys)
-        else:
-            document = Document(text=text)
+        document = Document(text=text, id_hash_keys=id_hash_keys)
 
         return document
