@@ -129,7 +129,7 @@ class TestMemoryEmbeddingRetriever:
 
         assert "documents" in result
         assert len(result["documents"]) == top_k
-        assert (result["documents"][0].embedding == [1.0, 1.0, 1.0, 1.0]).all()
+        assert np.array_equal(result["documents"][0].embedding, [1.0, 1.0, 1.0, 1.0])
 
     @pytest.mark.unit
     def test_invalid_run_wrong_store_type(self):
@@ -160,4 +160,4 @@ class TestMemoryEmbeddingRetriever:
         results_docs = result["retriever"]["documents"]
         assert results_docs
         assert len(results_docs) == top_k
-        assert (results_docs[0].embedding == [1.0, 1.0, 1.0, 1.0]).all()
+        assert np.array_equal(results_docs[0].embedding, [1.0, 1.0, 1.0, 1.0])

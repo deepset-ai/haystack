@@ -256,7 +256,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
         # Tests if the embedding retrieval method returns the correct document based on the input query embedding.
         docs = [
-            Document(text="Hello world", embedding=np.array(np.array([0.1, 0.2, 0.3, 0.4]))),
+            Document(text="Hello world", embedding=np.array([0.1, 0.2, 0.3, 0.4])),
             Document(text="Haystack supports multiple languages", embedding=np.array([1.0, 1.0, 1.0, 1.0])),
         ]
         docstore.write_documents(docs)
