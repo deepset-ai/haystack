@@ -1,6 +1,6 @@
 from typing import List, Optional, Union, Dict, Any
 
-from haystack.preview import component, Document, default_to_dict, default_from_dict
+from haystack.preview import component, Document, default_to_dict
 from haystack.preview.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
@@ -80,13 +80,6 @@ class SentenceTransformersDocumentEmbedder:
             metadata_fields_to_embed=self.metadata_fields_to_embed,
             embedding_separator=self.embedding_separator,
         )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersDocumentEmbedder":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     def warm_up(self):
         """

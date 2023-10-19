@@ -1,6 +1,6 @@
-from typing import Any, Dict, List
+from typing import Dict, List
 
-from haystack.preview import component, default_from_dict, default_to_dict, Document
+from haystack.preview import component, Document
 from haystack.preview.utils.filters import document_matches_filter
 
 
@@ -52,16 +52,3 @@ class MetadataRouter:
 
         output["unmatched"] = unmatched_documents
         return output
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(self, rules=self.rules)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MetadataRouter":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)

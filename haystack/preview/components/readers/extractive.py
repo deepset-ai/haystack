@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import math
 import warnings
 
-from haystack.preview import component, default_from_dict, default_to_dict, ComponentError, Document, ExtractedAnswer
+from haystack.preview import component, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(
@@ -96,13 +96,6 @@ class ExtractiveReader:
             no_answer=self.no_answer,
             calibration_factor=self.calibration_factor,
         )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ExtractiveReader":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     def warm_up(self):
         if self.model is None:

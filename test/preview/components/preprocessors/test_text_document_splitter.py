@@ -119,35 +119,6 @@ class TestTextDocumentSplitter:
         assert result["documents"][1].text == "is a second sentence. And there is a third sentence."
 
     @pytest.mark.unit
-    def test_to_dict(self):
-        splitter = TextDocumentSplitter()
-        data = splitter.to_dict()
-        assert data == {
-            "type": "TextDocumentSplitter",
-            "init_parameters": {"split_by": "word", "split_length": 200, "split_overlap": 0},
-        }
-
-    @pytest.mark.unit
-    def test_to_dict_with_custom_init_parameters(self):
-        splitter = TextDocumentSplitter(split_by="passage", split_length=100, split_overlap=1)
-        data = splitter.to_dict()
-        assert data == {
-            "type": "TextDocumentSplitter",
-            "init_parameters": {"split_by": "passage", "split_length": 100, "split_overlap": 1},
-        }
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "TextDocumentSplitter",
-            "init_parameters": {"split_by": "passage", "split_length": 100, "split_overlap": 1},
-        }
-        splitter = TextDocumentSplitter.from_dict(data)
-        assert splitter.split_by == "passage"
-        assert splitter.split_length == 100
-        assert splitter.split_overlap == 1
-
-    @pytest.mark.unit
     def test_source_id_stored_in_metadata(self):
         splitter = TextDocumentSplitter(split_by="word", split_length=10)
         doc1 = Document(text="This is a text with some words.")

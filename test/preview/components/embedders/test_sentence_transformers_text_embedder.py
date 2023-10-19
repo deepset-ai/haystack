@@ -104,31 +104,6 @@ class TestSentenceTransformersTextEmbedder:
         }
 
     @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "SentenceTransformersTextEmbedder",
-            "init_parameters": {
-                "model_name_or_path": "model",
-                "device": "cuda",
-                "token": True,
-                "prefix": "prefix",
-                "suffix": "suffix",
-                "batch_size": 64,
-                "progress_bar": False,
-                "normalize_embeddings": True,
-            },
-        }
-        component = SentenceTransformersTextEmbedder.from_dict(data)
-        assert component.model_name_or_path == "model"
-        assert component.device == "cuda"
-        assert component.token is True
-        assert component.prefix == "prefix"
-        assert component.suffix == "suffix"
-        assert component.batch_size == 64
-        assert component.progress_bar is False
-        assert component.normalize_embeddings is True
-
-    @pytest.mark.unit
     @patch(
         "haystack.preview.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
