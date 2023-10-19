@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Union, Optional, Dict, Any
+from typing import List, Union, Dict, Any
 
 from haystack.preview.lazy_imports import LazyImport
 from haystack.preview import component, Document, default_to_dict

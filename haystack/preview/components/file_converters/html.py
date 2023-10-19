@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Union
+from typing import List, Union
 from pathlib import Path
 
 from haystack.preview import Document, component
