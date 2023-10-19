@@ -199,17 +199,17 @@ class ExtractiveReader:
         start_candidates = start_candidates.cpu()
         end_candidates = end_candidates.cpu()
 
-        start_candidates = [
+        start_candidates_char_indices = [
             [encoding.token_to_chars(start)[0] for start in candidates]
             for candidates, encoding in zip(start_candidates, encodings)
         ]
-        end_candidates = [
+        end_candidates_char_indices = [
             [encoding.token_to_chars(end)[1] for end in candidates]
             for candidates, encoding in zip(end_candidates, encodings)
         ]
         probabilities = candidates.values.cpu()
 
-        return start_candidates, end_candidates, probabilities
+        return start_candidates_char_indices, end_candidates_char_indices, probabilities
 
     def _nest_answers(
         self,
