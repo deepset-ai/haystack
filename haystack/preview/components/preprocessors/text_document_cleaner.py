@@ -59,7 +59,7 @@ class DocumentCleaner:
     def run(self, documents: List[Document]):
         """
         Run the DocumentCleaner on the given list of documents.
-        The documents' metadata and id_hash_keys remain unchanged.
+        The documents' metadata remain unchanged.
         """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError("DocumentCleaner expects a List of Documents as input.")
@@ -85,9 +85,7 @@ class DocumentCleaner:
             if self.remove_repeated_substrings:
                 text = self._remove_repeated_substrings(text)
 
-            cleaned_docs.append(
-                Document(text=text, metadata=deepcopy(doc.metadata), id_hash_keys=deepcopy(doc.id_hash_keys))
-            )
+            cleaned_docs.append(Document(text=text, metadata=deepcopy(doc.metadata)))
 
         return {"documents": cleaned_docs}
 
