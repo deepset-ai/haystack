@@ -133,3 +133,4 @@ dmypy.json
 # Canals
 drafts/
 .canals_debug/
+test/**/*.png

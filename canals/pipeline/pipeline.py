@@ -22,7 +22,7 @@ from canals.errors import (
     PipelineValidationError,
 )
 from canals.pipeline.draw import _draw, _convert_for_debug, RenderingEngines
-from canals.pipeline.validation import _validate_pipeline_input
+from canals.pipeline.validation import validate_pipeline_input
 from canals.pipeline.connections import parse_connection, _find_unambiguous_connection
 from canals.type_utils import _type_name
 from canals.serialization import component_to_dict, component_from_dict
@@ -295,9 +295,9 @@ class Pipeline:
         Directly connect socket to socket. This method does not type-check the connections: use 'Pipeline.connect()'
         instead (which uses 'find_unambiguous_connection()' to validate types).
         """
-        # Make sure the receiving socket isn't already connected - sending sockets can be connected as many times as needed,
-        # so they don't need this check
-        if to_socket.sender:
+        # Make sure the receiving socket isn't already connected, unless it's variadic. Sending sockets can be
+        # connected as many times as needed, so they don't need this check
+        if to_socket.sender and not to_socket.is_variadic:
             raise PipelineConnectError(
                 f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
                 f"{to_node}.{to_socket.name} is already connected to {to_socket.sender}.\n"
@@ -315,8 +315,8 @@ class Pipeline:
             to_socket=to_socket,
         )
 
-        # Stores the name of the node that will send its output to this socket
-        to_socket.sender = from_node
+        # Stores the name of the nodes that will send its output to this socket
+        to_socket.sender.append(from_node)
 
     def get_component(self, name: str) -> Component:
         """
@@ -410,18 +410,13 @@ class Pipeline:
         # if debug:
         #     os.makedirs("debug", exist_ok=True)
 
-        data = _validate_pipeline_input(self.graph, input_values=data)
-        self._clear_visits_count()
-        self.warm_up()
+        data = validate_pipeline_input(self.graph, input_values=data)
 
         logger.info("Pipeline execution started.")
-        inputs_buffer = OrderedDict(
-            {
-                node: {key: value for key, value in input_data.items() if value is not None}
-                for node, input_data in data.items()
-            }
-        )
+        inputs_buffer = self._prepare_inputs_buffer(data)
         pipeline_output: Dict[str, Dict[str, Any]] = {}
+        self._clear_visits_count()
+        self.warm_up()
 
         if debug:
             logger.info("Debug mode ON.")
@@ -780,13 +775,37 @@ class Pipeline:
                         target_node,
                     )
             else:
-                # In all other cases, populate the inputs buffer for all downstream nodes, setting None to any
-                # edge that did not receive input.
-                if target_node not in inputs_buffer:
-                    inputs_buffer[target_node] = {}  # Create the buffer for the downstream node if it's not there yet
+                # In all other cases, populate the inputs buffer for all downstream nodes.
 
-                value_to_route = node_results.get(from_socket.name, None)
-                if value_to_route is not None:
+                # Create the buffer for the downstream node if it's not yet there.
+                if target_node not in inputs_buffer:
+                    inputs_buffer[target_node] = {}
+
+                # Skip Edges that did not receive any input.
+                value_to_route = node_results.get(from_socket.name)
+                if value_to_route is None:
+                    continue
+
+                # If the socket was marked as variadic, pile up inputs in a list
+                if to_socket.is_variadic:
+                    inputs_buffer[target_node].setdefault(to_socket.name, []).append(value_to_route)
+                # Non-variadic input: just store the value
+                else:
                     inputs_buffer[target_node][to_socket.name] = value_to_route
 
+        return inputs_buffer
+
+    def _prepare_inputs_buffer(self, data: Dict[str, Any]) -> OrderedDict:
+        """
+        Prepare the inputs buffer based on the parameters that were
+        passed to run()
+        """
+        inputs_buffer: OrderedDict = OrderedDict()
+        for node_name, input_data in data.items():
+            for socket_name, value in input_data.items():
+                if value is None:
+                    continue
+                if self.graph.nodes[node_name]["input_sockets"][socket_name].is_variadic:
+                    value = [value]
+                inputs_buffer.setdefault(node_name, {})[socket_name] = value
         return inputs_buffer

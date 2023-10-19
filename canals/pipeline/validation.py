@@ -35,7 +35,7 @@ def _find_pipeline_outputs(graph) -> Dict[str, List[OutputSocket]]:
     }
 
 
-def _validate_pipeline_input(graph: networkx.MultiDiGraph, input_values: Dict[str, Any]) -> Dict[str, Any]:
+def validate_pipeline_input(graph: networkx.MultiDiGraph, input_values: Dict[str, Any]) -> Dict[str, Any]:
     """
     Make sure the pipeline is properly built and that the input received makes sense.
     Returns the input values, validated and updated at need.
@@ -90,6 +90,6 @@ def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, in
                     "Are you using the correct Input class?"
                 )
 
-            sender = graph.nodes[node]["input_sockets"][socket_name].sender
-            if sender:
-                raise ValueError(f"The input {socket_name} of {node} is already sent by node {sender}")
+            input_socket: InputSocket = graph.nodes[node]["input_sockets"][socket_name]
+            if input_socket.sender and not input_socket.is_variadic:
+                raise ValueError(f"The input {socket_name} of {node} is already sent by: {input_socket.sender}")

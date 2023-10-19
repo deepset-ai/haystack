@@ -98,14 +98,17 @@ def _connections_status(
     """
     sender_sockets_entries = []
     for sender_socket in sender_sockets:
-        sender_sockets_entries.append(f" - {sender_socket.name} ({_type_name(sender_socket.type)})")
+        sender_sockets_entries.append(f" - {sender_socket.name}: {_type_name(sender_socket.type)}")
     sender_sockets_list = "\n".join(sender_sockets_entries)
 
     receiver_sockets_entries = []
     for receiver_socket in receiver_sockets:
+        if receiver_socket.sender:
+            sender_status = f"sent by {','.join(receiver_socket.sender)}"
+        else:
+            sender_status = "available"
         receiver_sockets_entries.append(
-            f" - {receiver_socket.name} ({_type_name(receiver_socket.type)}), "
-            f"{'sent by '+receiver_socket.sender if receiver_socket.sender else 'available'}"
+            f" - {receiver_socket.name}: {_type_name(receiver_socket.type)} ({sender_status})"
         )
     receiver_sockets_list = "\n".join(receiver_sockets_entries)
 

@@ -65,7 +65,7 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
             [
                 f"<li>{name} ({_type_name(socket.type)})</li>"
                 for name, socket in data.get("input_sockets", {}).items()
-                if socket.is_optional and socket.sender is None
+                if socket.is_optional and not socket.sender
             ]
         )
         for comp, data in graph.nodes(data=True)
