@@ -16,7 +16,6 @@ class TestAzureOCRDocumentConverter:
             "init_parameters": {
                 "api_key": "test_credential_key",
                 "endpoint": "test_endpoint",
-                "id_hash_keys": [],
                 "model_id": "prebuilt-read",
             },
         }

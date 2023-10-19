@@ -20,18 +20,14 @@ class PyPDFToDocument:
     Converts a PDF file to a Document.
     """
 
-    def __init__(self, id_hash_keys: Optional[List[str]] = None):
+    def __init__(self):
         """
         Initializes the PyPDFToDocument component.
-
-        :param id_hash_keys: Generate the Document ID from a custom list of strings that refer to the Document's
-            attributes. Default: `None`
         """
         pypdf_import.check()
-        self.id_hash_keys = id_hash_keys or []
 
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]], id_hash_keys: Optional[List[str]] = None):
+    def run(self, sources: List[Union[str, Path, ByteStream]]):
         """
         Converts PDF files to Documents.
 
@@ -39,7 +35,6 @@ class PyPDFToDocument:
         :param id_hash_keys: Generate the Document ID from a custom list of strings that refer to the Document's
             attributes. Default: `None`
         """
-        id_hash_keys = id_hash_keys or self.id_hash_keys
         documents = []
         for source in sources:
             try:
@@ -48,7 +43,7 @@ class PyPDFToDocument:
                 logger.warning("Could not read %s. Skipping it. Error message: %s", source, e)
                 continue
 
-            document = Document(text=text, id_hash_keys=id_hash_keys)
+            document = Document(text=text)
             documents.append(document)
 
         return {"documents": documents}
