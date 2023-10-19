@@ -155,10 +155,7 @@ class OpenAIDocumentEmbedder:
 
         embeddings, metadata = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
-        documents_with_embeddings = []
         for doc, emb in zip(documents, embeddings):
-            doc_as_dict = doc.to_dict()
-            doc_as_dict["embedding"] = emb
-            documents_with_embeddings.append(Document.from_dict(doc_as_dict))
+            doc.embedding = emb
 
-        return {"documents": documents_with_embeddings, "metadata": metadata}
+        return {"documents": documents, "metadata": metadata}
