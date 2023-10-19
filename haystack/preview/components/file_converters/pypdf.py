@@ -28,7 +28,7 @@ class PyPDFToDocument:
             attributes. Default: `None`
         """
         pypdf_import.check()
-        self.id_hash_keys = id_hash_keys
+        self.id_hash_keys = id_hash_keys or []
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -64,10 +64,7 @@ class PyPDFToDocument:
                 logger.warning("Could not read %s. Skipping it. Error message: %s", source, e)
                 continue
 
-            if id_hash_keys:
-                document = Document(text=text, id_hash_keys=id_hash_keys)
-            else:
-                document = Document(text=text)
+            document = Document(text=text, id_hash_keys=id_hash_keys)
             documents.append(document)
 
         return {"documents": documents}
