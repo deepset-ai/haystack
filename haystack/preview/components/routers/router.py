@@ -20,10 +20,7 @@ class Router:
         """
         self.routes = routes
         self.input_context_vars = input_context_vars
-        all_input_types = {var: Any for var in input_context_vars}
-        for route in routes.values():
-            all_input_types.update({route["input"]: Any})
-        component.set_input_types(self, **all_input_types)
+        component.set_input_types(self, **{var: Any for var in input_context_vars})
 
         all_output_types = {}
         for route in routes.values():
@@ -35,7 +32,7 @@ class Router:
         # resolve the firing boolean expression and return output slots and corresponding result
         local_vars = {context_var: kwargs[context_var] for context_var in self.input_context_vars}
         for route_directive in self.routes.values():
-            if route_directive["expression"]:
+            if route_directive["expression"] and route_directive["output"]:
                 expr_ast = ast.parse(route_directive["expression"], mode="eval")
                 compiled_expr = compile(expr_ast, filename="<string>", mode="eval")
                 result = eval(compiled_expr, local_vars)
