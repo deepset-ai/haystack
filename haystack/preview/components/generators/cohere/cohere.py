@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 @component
 class CohereGenerator:
-    """LLM Generator compatible with Cohere's generate endpoint
+    """LLM Generator compatible with Cohere's generate endpoint.
 
-    Queries the LLM using Cohere's API. Invocations are made using 'cohere' package
+    Queries the LLM using Cohere's API. Invocations are made using 'cohere' package.
     See [Cohere API](https://docs.cohere.com/reference/generate) for more details.
     """
 
