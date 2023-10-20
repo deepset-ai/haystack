@@ -1,12 +1,14 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, TextIO
 from pathlib import Path
 import datetime
 import logging
 import canals
 
 from haystack.preview.telemetry import pipeline_running
+from haystack.preview.marshal import Marshaller, YamlMarshaller
 
 
+DEFAULT_MARSHALLER = YamlMarshaller()
 logger = logging.getLogger(__name__)
 
 
@@ -44,3 +46,17 @@ class Pipeline(canals.Pipeline):
         """
         pipeline_running(self)
         return super().run(data=data, debug=debug)
+
+    def dumps(self, marshaller: Marshaller = DEFAULT_MARSHALLER) -> str:
+        return marshaller.marshal(self.to_dict())
+
+    def dump(self, fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER):
+        fp.write(marshaller.marshal(self.to_dict()))
+
+    @classmethod
+    def loads(cls, data: Union[str, bytes, bytearray], marshaller: Marshaller = DEFAULT_MARSHALLER) -> "Pipeline":
+        return cls.from_dict(marshaller.unmarshal(data))
+
+    @classmethod
+    def load(cls, data: bytes, fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER) -> "Pipeline":
+        return cls.from_dict(marshaller.unmarshal(data))
