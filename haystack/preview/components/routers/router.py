@@ -1,3 +1,4 @@
+import ast
 import logging
 from typing import List, Dict, Any
 
@@ -32,6 +33,13 @@ class Router:
     def run(self, **kwargs):
         # some routing execution logic
         # resolve the firing boolean expression and return output slots and corresponding result
-        output_slot = self.routes.values()["output"]
-
-        return {output_slot: "hey, I'm the router's result"}
+        local_vars = {context_var: kwargs[context_var] for context_var in self.input_context_vars}
+        for route_directive in self.routes.values():
+            if route_directive["expression"]:
+                expr_ast = ast.parse(route_directive["expression"], mode="eval")
+                compiled_expr = compile(expr_ast, filename="<string>", mode="eval")
+                result = eval(compiled_expr, local_vars)
+                if result:
+                    output_slot = route_directive["output"]
+                    return {output_slot: kwargs[output_slot]}
+        raise Exception("No route fired")
