@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Add `dumps`, `dump`, `loads` and `load` methods to save
+    and load pipelines in Yaml format.
