@@ -87,7 +87,7 @@ dependencies = [
 
 [project.optional-dependencies]
 preview = [
-  "canals==0.8.1",
+  "canals==0.9.0",
   "requests",
   "pandas",
   "rank_bm25",
