@@ -21,8 +21,6 @@ class HTMLToDocument:
     def __init__(self):
         """
         Initializes the HTMLToDocument component.
-
-        :param id_hash_keys: List of strings referencing the Document's attributes to generate its ID. Default: `None`
         """
         boilerpy3_import.check()
 

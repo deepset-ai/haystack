@@ -32,8 +32,6 @@ class PyPDFToDocument:
         Converts PDF files to Documents.
 
         :param sources: A list of PDF data sources
-        :param id_hash_keys: Generate the Document ID from a custom list of strings that refer to the Document's
-            attributes. Default: `None`
         """
         documents = []
         for source in sources:
