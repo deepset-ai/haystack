@@ -41,7 +41,7 @@ class CohereGenerator:
           - 'preset': Identifier of a custom preset. A preset is a combination of parameters, such as prompt, temperature etc. You can create presets in the playground.
           - 'end_sequences': The generated text will be cut at the beginning of the earliest occurrence of an end sequence. The sequence will be excluded from the text.
           - 'stop_sequences': The generated text will be cut at the end of the earliest occurrence of a stop sequence. The sequence will be included the text.
-          - 'k': Defaults to 0. min value of 0.01, max value of 0.99.
+          - 'k': Defaults to 0, min value of 0.01, max value of 0.99.
           - 'p': Ensures that only the most likely tokens, with total probability mass of p, are considered for generation at each step. If both k and p are enabled, p acts after k.
           - 'frequency_penalty': Used to reduce repetitiveness of generated tokens. The higher the value, the stronger a penalty is applied to previously present tokens,
                                  proportional to how many times they have already appeared in the prompt or prior generation.'
