@@ -119,53 +119,6 @@ class TestOpenAIDocumentEmbedder:
         }
 
     @pytest.mark.unit
-    def test_from_dict(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        data = {
-            "type": "OpenAIDocumentEmbedder",
-            "init_parameters": {
-                "model_name": "model",
-                "organization": "my-org",
-                "prefix": "prefix",
-                "suffix": "suffix",
-                "batch_size": 64,
-                "progress_bar": False,
-                "metadata_fields_to_embed": ["test_field"],
-                "embedding_separator": " | ",
-            },
-        }
-        component = OpenAIDocumentEmbedder.from_dict(data)
-        assert openai.api_key == "fake-api-key"
-        assert component.model_name == "model"
-        assert component.organization == "my-org"
-        assert openai.organization == "my-org"
-        assert component.prefix == "prefix"
-        assert component.suffix == "suffix"
-        assert component.batch_size == 64
-        assert component.progress_bar is False
-        assert component.metadata_fields_to_embed == ["test_field"]
-        assert component.embedding_separator == " | "
-
-    @pytest.mark.unit
-    def test_from_dict_fail_wo_env_var(self, monkeypatch):
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        data = {
-            "type": "OpenAIDocumentEmbedder",
-            "init_parameters": {
-                "model_name": "model",
-                "organization": "my-org",
-                "prefix": "prefix",
-                "suffix": "suffix",
-                "batch_size": 64,
-                "progress_bar": False,
-                "metadata_fields_to_embed": ["test_field"],
-                "embedding_separator": " | ",
-            },
-        }
-        with pytest.raises(ValueError, match="OpenAIDocumentEmbedder expects an OpenAI API key"):
-            OpenAIDocumentEmbedder.from_dict(data)
-
-    @pytest.mark.unit
     def test_prepare_texts_to_embed_w_metadata(self):
         documents = [
             Document(text=f"document number {i}:\ncontent", metadata={"meta_field": f"meta_value {i}"})

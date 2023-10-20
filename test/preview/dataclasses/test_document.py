@@ -1,6 +1,4 @@
-import dataclasses
 import json
-import textwrap
 from pathlib import Path
 
 import numpy as np
@@ -38,67 +36,6 @@ def test_document_str(doc, doc_str):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize(
-    "doc1_data,doc2_data",
-    [
-        [{"text": "test text"}, {"text": "test text", "mime_type": "text/plain"}],
-        [{"text": "test text", "mime_type": "text/html"}, {"text": "test text", "mime_type": "text/plain"}],
-        [{"text": "test text"}, {"text": "test text", "metadata": {"path": Path(__file__)}}],
-        [
-            {"text": "test text", "metadata": {"path": Path(__file__).parent}},
-            {"text": "test text", "metadata": {"path": Path(__file__)}},
-        ],
-        [{"text": "test text"}, {"text": "test text", "score": 200}],
-        [{"text": "test text", "score": 0}, {"text": "test text", "score": 200}],
-        [{"text": "test text"}, {"text": "test text", "embedding": np.array([1, 2, 3])}],
-        [
-            {"text": "test text", "embedding": np.array([100, 222, 345])},
-            {"text": "test text", "embedding": np.array([1, 2, 3])},
-        ],
-        [{"array": np.array(range(10))}, {"array": np.array(range(10))}],
-        [{"dataframe": pd.DataFrame([1, 2, 3])}, {"dataframe": pd.DataFrame([1, 2, 3])}],
-        [{"blob": b"some bytes"}, {"blob": b"some bytes"}],
-    ],
-)
-def test_id_hash_keys_default_fields_equal_id(doc1_data, doc2_data):
-    doc1 = Document.from_dict(doc1_data)
-    doc2 = Document.from_dict(doc2_data)
-    assert doc1.id == doc2.id
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "doc1_data,doc2_data",
-    [
-        [{"text": "test text"}, {"text": "test text "}],
-        [{"array": np.array(range(10))}, {"array": np.array(range(11))}],
-        [{"dataframe": pd.DataFrame([1, 2, 3])}, {"dataframe": pd.DataFrame([1, 2, 3, 4])}],
-        [{"blob": b"some bytes"}, {"blob": "something else".encode()}],
-    ],
-)
-def test_id_hash_keys_default_fields_different_ids(doc1_data, doc2_data):
-    doc1 = Document.from_dict(doc1_data)
-    doc2 = Document.from_dict(doc2_data)
-    assert doc1.id != doc2.id
-
-
-@pytest.mark.unit
-def test_id_hash_keys_changes_id():
-    doc1 = Document(text="test text", metadata={"some-value": "value"})
-    doc2 = Document(text="test text", metadata={"some-value": "value"}, id_hash_keys=["text", "some-value"])
-    assert doc1.id != doc2.id
-
-
-@pytest.mark.unit
-def test_id_hash_keys_field_may_be_missing(caplog):
-    doc1 = Document(text="test text", id_hash_keys=["something"])
-    doc2 = Document(text="test text", id_hash_keys=["something else"])
-    assert doc1.id == doc2.id
-    assert "is missing the following id_hash_keys: ['something']." in caplog.text
-    assert "is missing the following id_hash_keys: ['something else']." in caplog.text
-
-
-@pytest.mark.unit
 def test_init_document_same_meta_as_main_fields():
     """
     This is forbidden to prevent later issues with `Document.flatten()`
@@ -133,12 +70,9 @@ def test_equality_with_metadata_with_objects():
             if type(self) == type(other):
                 return True
 
-    doc1 = Document(
-        text="test text", metadata={"value": np.array([0, 1, 2]), "path": Path(__file__), "obj": TestObject()}
-    )
-    doc2 = Document(
-        text="test text", metadata={"value": np.array([0, 1, 2]), "path": Path(__file__), "obj": TestObject()}
-    )
+    foo = TestObject()
+    doc1 = Document(text="test text", metadata={"value": np.array([0, 1, 2]), "path": Path("."), "obj": foo})
+    doc2 = Document(text="test text", metadata={"value": np.array([0, 1, 2]), "path": Path("."), "obj": foo})
     assert doc1 == doc2
 
 
@@ -173,7 +107,7 @@ def test_full_document_to_dict():
         blob=b"some bytes",
         mime_type="application/pdf",
         metadata={"some": "values", "test": 10},
-        id_hash_keys=["test"],
+        id_hash_keys=["text", "array", "dataframe", "blob"],
         score=0.99,
         embedding=np.zeros([10, 10]),
     )
@@ -196,7 +130,7 @@ def test_full_document_to_dict():
         "text": "test text",
         "mime_type": "application/pdf",
         "metadata": {"some": "values", "test": 10},
-        "id_hash_keys": ["test"],
+        "id_hash_keys": ["text", "array", "dataframe", "blob"],
         "score": 0.99,
     }
 
@@ -212,7 +146,6 @@ def test_document_with_most_attributes_from_dict():
             "blob": b"some bytes",
             "mime_type": "application/pdf",
             "metadata": {"some": "values", "test": 10},
-            "id_hash_keys": ["test"],
             "score": 0.99,
             "embedding": embedding,
         }
@@ -223,7 +156,6 @@ def test_document_with_most_attributes_from_dict():
         blob=b"some bytes",
         mime_type="application/pdf",
         metadata={"some": "values", "test": 10},
-        id_hash_keys=["test"],
         score=0.99,
         embedding=embedding,
     )
@@ -265,7 +197,7 @@ def test_full_document_to_json(tmp_path):
         blob=b"some bytes",
         mime_type="application/pdf",
         metadata={"some object": TestClass(), "a path": tmp_path / "test.txt"},
-        id_hash_keys=["test"],
+        id_hash_keys=["text", "array", "dataframe", "blob"],
         score=0.5,
         embedding=np.array([1, 2, 3, 4]),
     )
@@ -277,7 +209,7 @@ def test_full_document_to_json(tmp_path):
             "dataframe": '{"0":{"0":10,"1":20,"2":30}}',
             "mime_type": "application/pdf",
             "metadata": {"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
-            "id_hash_keys": ["test"],
+            "id_hash_keys": ["text", "array", "dataframe", "blob"],
             "score": 0.5,
             "embedding": [1, 2, 3, 4],
         }
@@ -301,7 +233,6 @@ def test_full_document_from_json(tmp_path):
                 "dataframe": '{"0":{"0":10,"1":20,"2":30}}',
                 "mime_type": "application/pdf",
                 "metadata": {"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
-                "id_hash_keys": ["test"],
                 "score": 0.5,
                 "embedding": [1, 2, 3, 4],
             }
@@ -315,7 +246,6 @@ def test_full_document_from_json(tmp_path):
         mime_type="application/pdf",
         # Note the object serialization
         metadata={"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
-        id_hash_keys=["test"],
         score=0.5,
         embedding=np.array([1, 2, 3, 4]),
     )
@@ -379,7 +309,6 @@ def test_from_json_custom_decoder():
                 "dataframe": None,
                 "mime_type": "text/plain",
                 "metadata": {"some object": "<<CUSTOM ENCODING>>"},
-                "id_hash_keys": ["text", "array", "dataframe", "blob"],
                 "score": None,
                 "embedding": None,
             }
@@ -398,9 +327,9 @@ def test_flatten_document_no_meta():
         "dataframe": None,
         "blob": None,
         "mime_type": "text/plain",
-        "id_hash_keys": ["text", "array", "dataframe", "blob"],
         "score": None,
         "embedding": None,
+        "id_hash_keys": ["text", "array", "dataframe", "blob"],
     }
 
 
@@ -414,11 +343,11 @@ def test_flatten_document_with_flat_meta():
         "dataframe": None,
         "blob": None,
         "mime_type": "text/plain",
-        "id_hash_keys": ["text", "array", "dataframe", "blob"],
         "score": None,
         "embedding": None,
         "some-key": "a value",
         "another-key": "another value!",
+        "id_hash_keys": ["text", "array", "dataframe", "blob"],
     }
 
 
@@ -432,9 +361,9 @@ def test_flatten_document_with_nested_meta():
         "dataframe": None,
         "blob": None,
         "mime_type": "text/plain",
-        "id_hash_keys": ["text", "array", "dataframe", "blob"],
         "score": None,
         "embedding": None,
         "some-key": "a value",
         "nested": {"key": 10, "key2": 50},
+        "id_hash_keys": ["text", "array", "dataframe", "blob"],
     }

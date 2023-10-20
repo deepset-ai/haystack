@@ -1,12 +1,12 @@
 import logging
 from pathlib import Path
-from typing import Optional, List, Union, Dict, Any
+from typing import Optional, List, Union, Dict
 
 from canals.errors import PipelineRuntimeError
 from tqdm import tqdm
 
 from haystack.preview.lazy_imports import LazyImport
-from haystack.preview import Document, component, default_to_dict, default_from_dict
+from haystack.preview import Document, component
 
 with LazyImport("Run 'pip install langdetect'") as langdetect_import:
     import langdetect
@@ -60,27 +60,6 @@ class TextFileToDocument:
         self.valid_languages = valid_languages or []
         self.id_hash_keys = id_hash_keys or []
         self.progress_bar = progress_bar
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(
-            self,
-            encoding=self.encoding,
-            remove_numeric_tables=self.remove_numeric_tables,
-            numeric_row_threshold=self.numeric_row_threshold,
-            valid_languages=self.valid_languages,
-            id_hash_keys=self.id_hash_keys,
-            progress_bar=self.progress_bar,
-        )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TextFileToDocument":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
     def run(

@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    The Document dataclass checks if `id_hash_keys` is None or empty in
+    __post_init__. If so, it uses the default factory to set a default valid value.

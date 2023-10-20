@@ -48,18 +48,20 @@ class DocumentDecoder(json.JSONDecoder):
         return dictionary
 
 
+def id_hash_keys_default_factory():
+    """
+    Default factory for the id_hash_keys field of the Document dataclass.
+    We need a callable instead of a default value, because mutable default values are not allowed.
+    """
+    return ["text", "array", "dataframe", "blob"]
+
+
 @dataclass
 class Document:
     """
     Base data class containing some data to be queried.
     Can contain text snippets, tables, and file paths to images or audios.
-    Documents can be sorted by score, saved to/from dictionary and JSON, and are immutable.
-
-    Immutability is due to the fact that the document's ID depends on its content, so upon changing the content, also
-    the ID should change. To avoid keeping IDs in sync with the content by using properties, and asking docstores to
-    be aware of this corner case, we decide to make Documents immutable and remove the issue. If you need to modify a
-    Document, consider using `to_dict()`, modifying the dict, and then create a new Document object using
-    `Document.from_dict()`.
+    Documents can be sorted by score and saved to/from dictionary and JSON.
 
     :param id: Unique identifier for the document. When not set, it's generated based on the document's attributes (see id_hash_keys).
     :param text: Text of the document, if the document contains text.
@@ -83,9 +85,9 @@ class Document:
     dataframe: Optional[pandas.DataFrame] = field(default=None)
     blob: Optional[bytes] = field(default=None)
     mime_type: str = field(default="text/plain")
-    metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
-    id_hash_keys: List[str] = field(default_factory=lambda: ["text", "array", "dataframe", "blob"], hash=False)
-    score: Optional[float] = field(default=None, compare=False)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    id_hash_keys: List[str] = field(default_factory=id_hash_keys_default_factory, hash=False)
+    score: Optional[float] = field(default=None)
     embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
 
     def __str__(self):
@@ -118,32 +120,22 @@ class Document:
             if key in [field.name for field in fields(self)]:
                 raise ValueError(f"Cannot name metadata fields as top-level document fields, like '{key}'.")
 
-        # Note: we need to set the id this way because the dataclass is frozen. See the docstring.
-        if self.id == "":
-            object.__setattr__(self, "id", self._create_id())
+        # Generate an id only if not explicitly set
+        self.id = self.id or self._create_id()
 
     def _create_id(self):
         """
         Creates a hash of the given content that acts as the document's ID.
         """
-        document_data = self.flatten()
-        contents = [self.__class__.__name__]
-        missing_id_hash_keys = []
-        if self.id_hash_keys:
-            for key in self.id_hash_keys:
-                if key not in document_data:
-                    missing_id_hash_keys.append(key)
-                else:
-                    contents.append(str(document_data.get(key)))
-        content_to_hash = ":".join(contents)
-        doc_id = hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
-        if missing_id_hash_keys:
-            logger.warning(
-                "Document %s is missing the following id_hash_keys: %s. Using a hash of the remaining content as ID.",
-                doc_id,
-                missing_id_hash_keys,
-            )
-        return doc_id
+        text = self.text or None
+        array = self.array.tolist() if self.array is not None else None
+        dataframe = self.dataframe.to_json() if self.dataframe is not None else None
+        blob = self.blob or None
+        mime_type = self.mime_type or None
+        metadata = self.metadata or {}
+        embedding = self.embedding.tolist() if self.embedding is not None else None
+        data = f"{text}{array}{dataframe}{blob}{mime_type}{metadata}{embedding}"
+        return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
     def to_dict(self):
         """
