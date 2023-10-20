@@ -47,11 +47,11 @@ def test_hybrid_doc_search_pipeline(tmp_path):
         Document(text="My name is Mario and I live in the capital of Italy."),
         Document(text="My name is Giorgio and I live in Rome."),
     ]
-    hybrid_pipeline.get_component("retriever").document_store.write_documents(documents)
+    hybrid_pipeline.get_component("bm25_retriever").document_store.write_documents(documents)
 
     query = "Who lives in Rome?"
     result = hybrid_pipeline.run(
-        {"bm25_retriever": {"query": query}, "text_embedder": {"query": query}, "ranker": {"query": query}}
+        {"bm25_retriever": {"query": query}, "text_embedder": {"text": query}, "ranker": {"query": query}}
     )
     assert result["ranker"]["documents"][0].text == "My name is Giorgio and I live in Rome."
     assert result["ranker"]["documents"][1].text == "My name is Mario and I live in the capital of Italy."
