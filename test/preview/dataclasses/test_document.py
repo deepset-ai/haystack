@@ -14,7 +14,6 @@ from haystack.preview.dataclasses.document import DocumentDecoder, DocumentEncod
     "doc,doc_str",
     [
         (Document(text="test text"), "text: 'test text'"),
-        (Document(array=np.zeros((3, 7))), "array: (3, 7)"),
         (
             Document(dataframe=pd.DataFrame([["John", 25], ["Martha", 34]], columns=["name", "age"])),
             "dataframe: (2, 2)",
@@ -23,11 +22,10 @@ from haystack.preview.dataclasses.document import DocumentDecoder, DocumentEncod
         (
             Document(
                 text="test text",
-                array=np.zeros((3, 7)),
                 dataframe=pd.DataFrame([["John", 25], ["Martha", 34]], columns=["name", "age"]),
                 blob=bytes("hello, test string".encode("utf-8")),
             ),
-            "text: 'test text', array: (3, 7), dataframe: (2, 2), blob: 18 bytes",
+            "text: 'test text', dataframe: (2, 2), blob: 18 bytes",
         ),
     ],
 )
@@ -82,7 +80,6 @@ def test_empty_document_to_dict():
     assert doc.to_dict() == {
         "id": doc._create_id(),
         "text": None,
-        "array": None,
         "dataframe": None,
         "blob": None,
         "mime_type": "text/plain",
@@ -101,7 +98,6 @@ def test_empty_document_from_dict():
 def test_full_document_to_dict():
     doc = Document(
         text="test text",
-        array=np.array([1, 2, 3]),
         dataframe=pd.DataFrame([10, 20, 30]),
         blob=b"some bytes",
         mime_type="application/pdf",
@@ -110,9 +106,6 @@ def test_full_document_to_dict():
         embedding=[10, 10],
     )
     dictionary = doc.to_dict()
-
-    array = dictionary.pop("array")
-    assert array.shape == doc.array.shape and (array == doc.array).all()
 
     dataframe = dictionary.pop("dataframe")
     assert dataframe.equals(doc.dataframe)
@@ -138,7 +131,6 @@ def test_document_with_most_attributes_from_dict():
     assert Document.from_dict(
         {
             "text": "test text",
-            "array": np.array([1, 2, 3]),
             "dataframe": pd.DataFrame([10, 20, 30]),
             "blob": b"some bytes",
             "mime_type": "application/pdf",
@@ -148,7 +140,6 @@ def test_document_with_most_attributes_from_dict():
         }
     ) == Document(
         text="test text",
-        array=np.array([1, 2, 3]),
         dataframe=pd.DataFrame([10, 20, 30]),
         blob=b"some bytes",
         mime_type="application/pdf",
@@ -165,7 +156,6 @@ def test_empty_document_to_json():
         {
             "id": doc.id,
             "text": None,
-            "array": None,
             "dataframe": None,
             "mime_type": "text/plain",
             "metadata": {},
@@ -188,7 +178,6 @@ def test_full_document_to_json(tmp_path):
 
     doc_1 = Document(
         text="test text",
-        array=np.array([1, 2, 3]),
         dataframe=pd.DataFrame([10, 20, 30]),
         blob=b"some bytes",
         mime_type="application/pdf",
@@ -200,7 +189,6 @@ def test_full_document_to_json(tmp_path):
         {
             "id": doc_1.id,
             "text": "test text",
-            "array": [1, 2, 3],
             "dataframe": '{"0":{"0":10,"1":20,"2":30}}',
             "mime_type": "application/pdf",
             "metadata": {"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
@@ -223,7 +211,6 @@ def test_full_document_from_json(tmp_path):
         json.dumps(
             {
                 "text": "test text",
-                "array": [1, 2, 3],
                 "dataframe": '{"0":{"0":10,"1":20,"2":30}}',
                 "mime_type": "application/pdf",
                 "metadata": {"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
@@ -234,7 +221,6 @@ def test_full_document_from_json(tmp_path):
     )
     assert doc == Document(
         text="test text",
-        array=np.array([1, 2, 3]),
         dataframe=pd.DataFrame([10, 20, 30]),
         blob=None,
         mime_type="application/pdf",
@@ -263,7 +249,6 @@ def test_to_json_custom_encoder():
         {
             "id": doc.id,
             "text": "test text",
-            "array": None,
             "dataframe": None,
             "mime_type": "text/plain",
             "metadata": {"some object": "<<CUSTOM ENCODING>>"},
@@ -298,7 +283,6 @@ def test_from_json_custom_decoder():
             {
                 "id": doc.id,
                 "text": "test text",
-                "array": None,
                 "dataframe": None,
                 "mime_type": "text/plain",
                 "metadata": {"some object": "<<CUSTOM ENCODING>>"},
@@ -316,7 +300,6 @@ def test_flatten_document_no_meta():
     assert doc.flatten() == {
         "id": doc.id,
         "text": "test text",
-        "array": None,
         "dataframe": None,
         "blob": None,
         "mime_type": "text/plain",
@@ -331,7 +314,6 @@ def test_flatten_document_with_flat_meta():
     assert doc.flatten() == {
         "id": doc.id,
         "text": "test text",
-        "array": None,
         "dataframe": None,
         "blob": None,
         "mime_type": "text/plain",
@@ -348,7 +330,6 @@ def test_flatten_document_with_nested_meta():
     assert doc.flatten() == {
         "id": doc.id,
         "text": "test text",
-        "array": None,
         "dataframe": None,
         "blob": None,
         "mime_type": "text/plain",
