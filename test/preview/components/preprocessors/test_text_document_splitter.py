@@ -128,16 +128,15 @@ class TestTextDocumentSplitter:
         assert result["documents"][1].metadata["source_id"] == doc2.id
 
     @pytest.mark.unit
-    def test_copy_id_hash_keys_and_metadata(self):
+    def test_copy_metadata(self):
         splitter = TextDocumentSplitter(split_by="word", split_length=10)
         documents = [
-            Document(text="Text.", metadata={"name": "doc 0"}, id_hash_keys=["name"]),
-            Document(text="Text.", metadata={"name": "doc 1"}, id_hash_keys=["name"]),
+            Document(text="Text.", metadata={"name": "doc 0"}),
+            Document(text="Text.", metadata={"name": "doc 1"}),
         ]
         result = splitter.run(documents=documents)
         assert len(result["documents"]) == 2
         assert result["documents"][0].id != result["documents"][1].id
         for doc, split_doc in zip(documents, result["documents"]):
-            assert doc.id_hash_keys == split_doc.id_hash_keys
             assert doc.metadata.items() <= split_doc.metadata.items()
             assert split_doc.text == "Text."
