@@ -46,7 +46,7 @@ class CohereGenerator:
           - 'frequency_penalty': Used to reduce repetitiveness of generated tokens. The higher the value, the stronger a penalty is applied to previously present tokens,
                                  proportional to how many times they have already appeared in the prompt or prior generation.'
           - 'presence_penalty': Defaults to 0.0, min value of 0.0, max value of 1.0. Can be used to reduce repetitiveness of generated tokens.
-                                Similar to frequency_penalty, except that this penalty is applied equally to all tokens that have already appeared, regardless of their exact frequencies.
+                                Similar to `frequency_penalty`, except that this penalty is applied equally to all tokens that have already appeared, regardless of their exact frequencies.
           - 'return_likelihoods': One of GENERATION|ALL|NONE to specify how and if the token likelihoods are returned with the response. Defaults to NONE.
           - 'logit_bias': Used to prevent the model from generating unwanted tokens or to incentivize it to include desired tokens.
                           The format is {token_id: bias} where bias is a float between -10 and 10.
