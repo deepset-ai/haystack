@@ -33,7 +33,7 @@ class CohereGenerator:
         :param model_name: The name of the model to use. Available models are: [command, command-light, command-nightly, command-nightly-light]. Defaults to "command".
         :param streaming_callback: A callback function to be called with the streaming response. Defaults to None.
         :param api_base_url: The base URL of the Cohere API. Defaults to "https://api.cohere.ai".
-        :param kwargs: additional model parameters. These will be used during generation. Refer to https://docs.cohere.com/reference/generate for more details.
+        :param kwargs: Additional model parameters. These will be used during generation. Refer to https://docs.cohere.com/reference/generate for more details.
           Some of the parameters are:
           - 'max_tokens': The maximum number of tokens to be generated. Defaults to 1024.
           - 'truncate': One of NONE|START|END to specify how the API will handle inputs longer than the maximum token length. Defaults to END.
