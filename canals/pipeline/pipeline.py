@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Optional, Any, Dict, List, Literal, Union
+from typing import Optional, Any, Dict, List, Literal, Union, TypeVar, Type
 
 import os
 import json
@@ -28,6 +28,11 @@ from canals.type_utils import _type_name
 from canals.serialization import component_to_dict, component_from_dict
 
 logger = logging.getLogger(__name__)
+
+# We use a generic type to annotate the return value of classmethods,
+# so that static analyzers won't be confused when derived classes
+# use those methods.
+T = TypeVar("T", bound="Pipeline")
 
 
 class Pipeline:
@@ -92,12 +97,7 @@ class Pipeline:
         for sender, receiver, edge_data in self.graph.edges.data():
             sender_socket = edge_data["from_socket"].name
             receiver_socket = edge_data["to_socket"].name
-            connections.append(
-                {
-                    "sender": f"{sender}.{sender_socket}",
-                    "receiver": f"{receiver}.{receiver_socket}",
-                }
-            )
+            connections.append({"sender": f"{sender}.{sender_socket}", "receiver": f"{receiver}.{receiver_socket}"})
         return {
             "metadata": self.metadata,
             "max_loops_allowed": self.max_loops_allowed,
@@ -106,7 +106,7 @@ class Pipeline:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any], **kwargs) -> "Pipeline":
+    def from_dict(cls: Type[T], data: Dict[str, Any], **kwargs) -> T:
         """
         Creates a Pipeline instance from a dictionary.
         A sample `data` dictionary could be formatted like so:
@@ -140,11 +140,7 @@ class Pipeline:
         metadata = data.get("metadata", {})
         max_loops_allowed = data.get("max_loops_allowed", 100)
         debug_path = Path(data.get("debug_path", ".canals_debug/"))
-        pipe = cls(
-            metadata=metadata,
-            max_loops_allowed=max_loops_allowed,
-            debug_path=debug_path,
-        )
+        pipe = cls(metadata=metadata, max_loops_allowed=max_loops_allowed, debug_path=debug_path)
         components_to_reuse = kwargs.get("components", {})
         for name, component_data in data.get("components", {}).items():
             if name in components_to_reuse:
@@ -220,11 +216,7 @@ class Pipeline:
         # Add component to the graph, disconnected
         logger.debug("Adding component '%s' (%s)", name, instance)
         self.graph.add_node(
-            name,
-            instance=instance,
-            input_sockets=input_sockets,
-            output_sockets=output_sockets,
-            visits=0,
+            name, instance=instance, input_sockets=input_sockets, output_sockets=output_sockets, visits=0
         )
 
     def connect(self, connect_from: str, connect_to: str) -> None:
@@ -656,11 +648,7 @@ class Pipeline:
 
         if any(self.graph.nodes[n]["visits"] == 0 for n in input_components.keys()):
             # Some upstream component that must send input to the current component has yet to run.
-            logger.debug(
-                "Component '%s' is waiting. Missing inputs: %s",
-                name,
-                set(input_components.values()),
-            )
+            logger.debug("Component '%s' is waiting. Missing inputs: %s", name, set(input_components.values()))
             return "wait"
 
         ###############
@@ -690,7 +678,7 @@ class Pipeline:
             f"input components: {list(input_components.keys())}, "
             f"skipped components: {skipped_components}, "
             f"skipped optional inputs: {skipped_optional_input_sockets}."
-            f"This is likely a Canals bug. Please open an issue at https://github.com/deepset-ai/canals.",
+            f"This is likely a Canals bug. Please open an issue at https://github.com/deepset-ai/canals."
         )
 
     def _skip_downstream_unvisited_nodes(self, component_name: str, inputs_buffer: OrderedDict) -> OrderedDict:
@@ -738,12 +726,7 @@ class Pipeline:
 
         return outputs
 
-    def _route_output(
-        self,
-        node_name: str,
-        node_results: Dict[str, Any],
-        inputs_buffer: OrderedDict,
-    ) -> OrderedDict:
+    def _route_output(self, node_name: str, node_results: Dict[str, Any], inputs_buffer: OrderedDict) -> OrderedDict:
         """
         Distrubute the outputs of the component into the input buffer of downstream components.
 
@@ -764,16 +747,10 @@ class Pipeline:
             if is_decision_node_for_loop and node_results.get(from_socket.name, None) is None:
                 if networkx.has_path(self.graph, target_node, node_name):
                     # In case we're choosing to leave a loop, do not put the loop's node in the buffer.
-                    logger.debug(
-                        "Not adding '%s' to the inputs buffer: we're leaving the loop.",
-                        target_node,
-                    )
+                    logger.debug("Not adding '%s' to the inputs buffer: we're leaving the loop.", target_node)
                 else:
                     # In case we're choosing to stay in a loop, do not put the external node in the buffer.
-                    logger.debug(
-                        "Not adding '%s' to the inputs buffer: we're staying in the loop.",
-                        target_node,
-                    )
+                    logger.debug("Not adding '%s' to the inputs buffer: we're staying in the loop.", target_node)
             else:
                 # In all other cases, populate the inputs buffer for all downstream nodes.
 
