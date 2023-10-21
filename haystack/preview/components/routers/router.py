@@ -7,31 +7,101 @@ from haystack.preview import component
 logger = logging.getLogger(__name__)
 
 
+class NoRouteSelectedException(Exception):
+    """Exception raised when no route is selected in Router."""
+
+    def __init__(self, routes, routing_variables, message=None):
+        self.routes = routes
+        self.routing_variables = routing_variables
+
+        super().__init__(
+            (
+                f"No route fired. Routes: {routes}, " f"Routing Variables: {routing_variables}"
+                if message is None
+                else message
+            )
+        )
+
+
 @component
 class Router:
-    def __init__(self, routes: Dict[str, dict], input_context_vars: List[str]):
+    """
+    The Router class orchestrates the flow of data by evaluating specified conditions
+    to determine the appropriate route among a set of provided route alternatives.
+
+    To use a Router in Haystack 2.x pipelines we first define a list called routes, where each element
+    is a dictionary representing a route.
+
+    Each route dictionary contains three keys: expression, output, and output_type.
+
+    The expression is a string containing a Python expression that will be evaluated to determine if
+    this route should be selected. The output is a string specifying the name of the output slot for
+    this route, and output_type is a string representation of the expected type of the output.
+
+    After specifying routes list we need to also provide routing variables - variables that will be
+    available for use in the expressions within the routes as well as the outputs of the router.
+
+    Example:
+
+        In this example, we create a `Router` instance with two routes.
+        The first route will be selected if the number of streams is less than 2,
+        and will output the `query` variable. The second route will be selected
+        if the number of streams is 2 or more, and will output the `streams` variable.
+        We also specify the routing variables, which are `query` and `streams`. These
+        variables need to be provided in the pipeline `run()` method.
+
+        ```python
+
+            routes = [
+                {"expression": "len(streams) < 2", "output": "query", "output_type": "str"},
+                {"expression": "len(streams) >= 2", "output": "streams", "output_type": "List[ByteStream]"}
+            ]
+
+            router = Router(routes=routes, routing_variables=["query", "streams"])
+        ```
+    """
+
+    def __init__(self, routes: List[Dict], routing_variables: List[str]):
         """
-        Initialize the Router.
+        Initialize the Router with a list of routes and the routing variables.
 
-        In routes, the key is the component pipeline registration name and the value is boolean expression.
+        :param routes: A list of dictionaries, each representing a route with a
+                       boolean expression (`expression`), an output slot (`output`),
+                       and the output type as a string representation (`output_type`).
 
-        The input_context_vars are additional pipeline variables that are used in the boolean expressions or
-        outputs of the router. These variables should be provided by pipeline run() method.
+        :param routing_variables: A list of additional pipeline variables that are
+                       used in the boolean expressions or as outputs of the router.
+                       These variables should be provided by either the pipeline `run()`
+                       method or by a previous component to the router in the pipeline.
+
         """
         self.routes = routes
-        self.input_context_vars = input_context_vars
-        component.set_input_types(self, **{var: Any for var in input_context_vars})
+        self.routing_variables = routing_variables
+        component.set_input_types(self, **{var: Any for var in routing_variables})
 
         all_output_types = {}
-        for route in routes.values():
+        for route in routes:
             all_output_types.update({route["output"]: route["output_type"]})
         component.set_output_types(self, **all_output_types)
 
     def run(self, **kwargs):
-        # some routing execution logic
-        # resolve the firing boolean expression and return output slots and corresponding result
-        local_vars = {context_var: kwargs[context_var] for context_var in self.input_context_vars}
-        for route_directive in self.routes.values():
+        """
+        Executes the routing logic by evaluating the specified boolean expressions
+        for each route in the order they are listed. The method directs the flow
+        of data to the output slot specified in the first route whose expression
+        evaluates to True. If no route's expression evaluates to True, an exception
+        is raised.
+
+        :param kwargs: A dictionary containing the pipeline variables, which should
+                   include all variables listed in `routing_variables`.
+
+        :return: A dictionary containing the output slot and the corresponding result,
+             based on the first route whose expression evaluates to True.
+
+        :raises Exception: If no route's expression evaluates to True.
+        """
+        local_vars = {context_var: kwargs[context_var] for context_var in self.routing_variables}
+        for route_directive in self.routes:
             if route_directive["expression"] and route_directive["output"]:
                 expr_ast = ast.parse(route_directive["expression"], mode="eval")
                 compiled_expr = compile(expr_ast, filename="<string>", mode="eval")
@@ -39,4 +109,4 @@ class Router:
                 if result:
                     output_slot = route_directive["output"]
                     return {output_slot: kwargs[output_slot]}
-        raise Exception("No route fired")
+        raise NoRouteSelectedException(routes=self.routes, routing_variables=self.routing_variables)
