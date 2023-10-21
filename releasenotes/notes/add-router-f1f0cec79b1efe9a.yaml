@@ -1,0 +1,6 @@
+---
+preview:
+  - |
+    Introduced a new `Router` component to enhance the conditional pipeline routing capabilities.
+    The Router component orchestrates the flow of data by evaluating specified route conditions
+    to determine the appropriate route among a set of provided route alternatives.
