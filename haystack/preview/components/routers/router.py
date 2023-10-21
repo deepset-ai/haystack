@@ -65,6 +65,7 @@ class Router:
             ]
 
             router = Router(routes=routes, routing_variables=["query", "streams"])
+        ```
     """
 
     def __init__(self, routes: List[Dict], routing_variables: List[str]):

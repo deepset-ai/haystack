@@ -4,7 +4,6 @@ import pytest
 
 from haystack.preview.components.routers import Router
 from haystack.preview.components.routers.router import NoRouteSelectedException
-from haystack.preview.dataclasses import ByteStream
 
 
 class TestRouter:
@@ -15,7 +14,7 @@ class TestRouter:
         """
         routes = [
             {"condition": "len(streams) < 2", "output": "query", "output_type": str},
-            {"condition": "len(streams) >= 2", "output": "streams", "output_type": List[ByteStream]},
+            {"condition": "len(streams) >= 2", "output": "streams", "output_type": List[int]},
         ]
         routing_variables = ["query", "streams"]
 
@@ -31,7 +30,7 @@ class TestRouter:
         """
         routes = [
             {"condition": "len(streams) < 2", "output": "query", "output_type": str},
-            {"condition": "len(streams) >= 2", "output": "streams", "output_type": List[ByteStream]},
+            {"condition": "len(streams) >= 2", "output": "streams", "output_type": List[int]},
         ]
         routing_variables = ["query", "streams"]
 
@@ -54,7 +53,7 @@ class TestRouter:
         """
         routes = [
             {"condition": "len(streams) < 2", "output": "query", "output_type": str},
-            {"condition": "len(streams) >= 5", "output": "streams", "output_type": List[ByteStream]},
+            {"condition": "len(streams) >= 5", "output": "streams", "output_type": List[int]},
         ]
         routing_variables = ["query", "streams"]
 
@@ -73,7 +72,7 @@ class TestRouter:
         """
         routes = [
             {"condition": "len(streams) < 2", "output": "query", "output_type": str},
-            {"condition": "len(streams) >= 2", "output": "streams", "output_type": List[ByteStream]},
+            {"condition": "len(streams) >= 2", "output": "streams", "output_type": List[int]},
         ]
         routing_variables = ["query", "streams"]
 
@@ -91,7 +90,7 @@ class TestRouter:
         """
         routes = [
             {"condition": "len(streams) < 2", "output": "query", "output_type": str},
-            ["len(streams) >= 2", "streams", "List[ByteStream]"],
+            ["len(streams) >= 2", "streams", List[int]],
         ]
         routing_variables = ["query", "streams"]
 
@@ -105,7 +104,7 @@ class TestRouter:
         """
         routes = [
             {"condition": "len(streams) < 2", "output": "query"},
-            {"condition": "len(streams) >= 2", "output": "streams", "output_type": List[ByteStream]},
+            {"condition": "len(streams) >= 2", "output": "streams", "output_type": List[int]},
         ]
         routing_variables = ["query", "streams"]
 
@@ -119,7 +118,7 @@ class TestRouter:
         """
         routes = [
             {"condition": "len(streams) < 2", "output": "query", "output_type": str},
-            {"condition": "len(streams) >= 2", "output": "streams", "output_type": List[ByteStream]},
+            {"condition": "len(streams) >= 2", "output": "streams", "output_type": List[int]},
         ]
         routing_variables = ["query", 123]
 
