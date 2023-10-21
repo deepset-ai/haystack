@@ -23,8 +23,8 @@ class NoRouteSelectedException(Exception):
         )
 
 
-class ConditionEvaluationError(Exception):
-    """Exception raised when there is an error evaluating the condition expression in Router."""
+class RouteConditionException(Exception):
+    """Exception raised when there is an error parsing or evaluating the condition expression in Router."""
 
     def __init__(self, route_directive, message=None):
         self.route_directive = route_directive
@@ -85,6 +85,17 @@ class Router:
         self._validate_routing_variables(routing_variables)
         self.routes = routes
         self.routing_variables = routing_variables
+
+        # Compile the condition expressions for each route
+        self.compiled_expressions = []
+        for route_directive in self.routes:
+            expr_ast = ast.parse(route_directive["condition"], mode="eval")
+            try:
+                compiled_expr = compile(expr_ast, filename="<string>", mode="eval")
+            except Exception as e:
+                raise RouteConditionException(route_directive, "Invalid route condition expression.") from e
+            self.compiled_expressions.append(compiled_expr)
+
         component.set_input_types(self, **{var: Any for var in routing_variables})
 
         all_output_types = {}
@@ -109,16 +120,15 @@ class Router:
         :raises NoRouteSelectedException: If no route's expression evaluates to True.
         """
         local_vars = {context_var: kwargs[context_var] for context_var in self.routing_variables}
-        for route_directive in self.routes:
-            expr_ast = ast.parse(route_directive["condition"], mode="eval")
-            compiled_expr = compile(expr_ast, filename="<string>", mode="eval")
+        for i, route_directive in enumerate(self.routes):
             try:
-                result = eval(compiled_expr, local_vars)
+                result = eval(self.compiled_expressions[i], local_vars)
             except Exception as e:
-                raise ConditionEvaluationError(route_directive) from e
+                raise RouteConditionException(route_directive) from e
             if result:
                 output_slot = route_directive["output"]
                 return {output_slot: kwargs[output_slot]}
+
         raise NoRouteSelectedException(routes=self.routes, routing_variables=self.routing_variables)
 
     def _validate_routes(self, routes: List[Dict]):
