@@ -15,7 +15,7 @@ class ChatRole(str, Enum):
 @dataclass
 class ChatMessage:
     """
-    Represents a message in a chat conversation.
+    Represents a message in a LLM chat conversation.
 
     :param content: The text content of the message.
     :param role: The role of the entity sending the message.
@@ -26,7 +26,7 @@ class ChatMessage:
     content: str
     role: ChatRole
     name: Optional[str]
-    metadata: Optional[Dict[str, Any]] = field(default_factory=dict, hash=False)
+    metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
 
     def is_from(self, role: ChatRole) -> bool:
         """
