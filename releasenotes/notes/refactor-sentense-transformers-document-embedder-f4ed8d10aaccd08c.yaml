@@ -32,5 +32,4 @@ fixes:
     Add normal bug fixes here, or remove this section.
 preview:
   - |
-    Add changes to Haystack version 2, or remove this section.
-    Haystack version 2 can be found under haystack/preview.
+    Initially when document embedders were implemented, the document class were frozen, so documents were recreated just to add the embedding to them . Now, as document class in unfrozen we can simply add embedding to document as doc.embedding = emb
