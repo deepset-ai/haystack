@@ -109,7 +109,7 @@ class RemoteWhisperTranscriber:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
-    def run(self, audio_files: Sequence[Union[str, Path, BinaryIO]]):
+    def run(self, audio_files: List[Union[str, Path, BinaryIO]]):
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
@@ -118,21 +118,26 @@ class RemoteWhisperTranscriber:
         [github repo](https://github.com/openai/whisper).
 
         :param audio_files: a list of paths or binary streams to transcribe
-        :returns: a list of Documents, one for each file. The content of the document is the transcription text, while the document's metadata         contains a key called `audio_file`, which contains the path to the
+        :returns: a list of Documents, one for each file. The content of the
+        document is the transcription text, while the document's metadata
+        contains a key called `audio_file`, which contains the path to the
         audio file used for the transcription.
         """
         documents = []
+
         for audio_file in audio_files:
             if isinstance(audio_file, (str, Path)):
-                audio_file = open(audio_file, "rb")
+                if isinstance(audio_file, str):
+                    file_name = audio_file
+                else:
+                    file_name = str(audio_file.absolute())
+                with open(audio_file, "rb") as file:
+                    content = openai.Audio.transcribe(file=file, model=self.model_name, **self.whisper_params)
+            else:
+                file_name = "<<binary stream>>"
+                content = openai.Audio.transcribe(file=audio_file, model=self.model_name, **self.whisper_params)
 
-            content = openai.Audio.transcribe(file=audio_file, model=self.model_name, **self.whisper_params)
-
-            # Set the audio file to <<binary stream>> for document metadata if the path is not present
-            if not isinstance(audio_file, (str, Path)):
-                audio_file = "<<binary stream>>"
-
-            doc = Document(text=content["text"], metadata={"audio_file": audio_file})
+            doc = Document(text=content["text"], metadata={"audio_file": file_name})
             documents.append(doc)
 
         return {"documents": documents}
