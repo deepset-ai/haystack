@@ -116,12 +116,7 @@ class TestSerperDevSearchAPI:
         data = component.to_dict()
         assert data == {
             "type": "SerperDevWebSearch",
-            "init_parameters": {
-                "api_key": "test_key",
-                "top_k": 10,
-                "allowed_domains": ["test.com"],
-                "search_params": {"param": "test"},
-            },
+            "init_parameters": {"top_k": 10, "allowed_domains": ["test.com"], "search_params": {"param": "test"}},
         }
 
     @pytest.mark.unit

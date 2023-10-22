@@ -28,8 +28,9 @@ class AzureOCRDocumentConverter:
         Create an AzureOCRDocumentConverter component.
 
         :param endpoint: The endpoint of your Azure resource.
-        :param api_key: The key of your Azure resource. It can be explicitly provided or automatically read from the
-                        environment variable CORE_AZURE_CS_API_KEY (recommended).
+        :param api_key: The key of your Azure resource. It can be
+        explicitly provided or automatically read from the
+        environment variable CORE_AZURE_CS_API_KEY (recommended).
         :param model_id: The model ID of the model you want to use. Please refer to [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
             for a list of available models. Default: `"prebuilt-read"`.
         """
@@ -44,6 +45,7 @@ class AzureOCRDocumentConverter:
                     "Set the CORE_AZURE_CS_API_KEY environment variable (recommended) or pass it explicitly."
                 ) from e
 
+        self.api_key = api_key
         self.document_analysis_client = DocumentAnalysisClient(
             endpoint=endpoint, credential=AzureKeyCredential(api_key)
         )
