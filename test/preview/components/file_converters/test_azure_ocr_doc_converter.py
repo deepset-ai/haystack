@@ -8,16 +8,18 @@ from haystack.preview.components.file_converters.azure import AzureOCRDocumentCo
 
 class TestAzureOCRDocumentConverter:
     @pytest.mark.unit
+    def test_init_fail_wo_api_key(self, monkeypatch):
+        monkeypatch.delenv("CORE_AZURE_CS_API_KEY", raising=False)
+        with pytest.raises(ValueError, match="AzureOCRDocumentConverter expects an Azure Credential key"):
+            AzureOCRDocumentConverter(endpoint="test_endpoint")
+
+    @pytest.mark.unit
     def test_to_dict(self):
         component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
         data = component.to_dict()
         assert data == {
             "type": "AzureOCRDocumentConverter",
-            "init_parameters": {
-                "api_key": "test_credential_key",
-                "endpoint": "test_endpoint",
-                "model_id": "prebuilt-read",
-            },
+            "init_parameters": {"endpoint": "test_endpoint", "model_id": "prebuilt-read"},
         }
 
     @pytest.mark.unit

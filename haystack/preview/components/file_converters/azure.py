@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import List, Union, Dict, Any
+from typing import List, Union, Dict, Any, Optional
+import os
 
 from haystack.preview.lazy_imports import LazyImport
 from haystack.preview import component, Document, default_to_dict
@@ -22,22 +23,31 @@ class AzureOCRDocumentConverter:
     to set up your resource.
     """
 
-    def __init__(self, endpoint: str, api_key: str, model_id: str = "prebuilt-read"):
+    def __init__(self, endpoint: str, api_key: Optional[str] = None, model_id: str = "prebuilt-read"):
         """
         Create an AzureOCRDocumentConverter component.
 
         :param endpoint: The endpoint of your Azure resource.
-        :param api_key: The key of your Azure resource.
+        :param api_key: The key of your Azure resource. It can be explicitly provided or automatically read from the
+                        environment variable CORE_AZURE_CS_API_KEY (recommended).
         :param model_id: The model ID of the model you want to use. Please refer to [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
             for a list of available models. Default: `"prebuilt-read"`.
         """
         azure_import.check()
 
+        if api_key is None:
+            try:
+                api_key = os.environ["CORE_AZURE_CS_API_KEY"]
+            except KeyError as e:
+                raise ValueError(
+                    "AzureOCRDocumentConverter expects an Azure Credential key. "
+                    "Set the CORE_AZURE_CS_API_KEY environment variable (recommended) or pass it explicitly."
+                ) from e
+
         self.document_analysis_client = DocumentAnalysisClient(
             endpoint=endpoint, credential=AzureKeyCredential(api_key)
         )
         self.endpoint = endpoint
-        self.api_key = api_key
         self.model_id = model_id
 
     @component.output_types(documents=List[Document], azure=List[Dict])
@@ -70,7 +80,7 @@ class AzureOCRDocumentConverter:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(self, endpoint=self.endpoint, api_key=self.api_key, model_id=self.model_id)
+        return default_to_dict(self, endpoint=self.endpoint, model_id=self.model_id)
 
     @staticmethod
     def _convert_azure_result_to_document(result: "AnalyzeResult", file_suffix: str) -> Document:
