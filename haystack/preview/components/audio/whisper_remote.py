@@ -72,7 +72,6 @@ class RemoteWhisperTranscriber:
                     "Set the OPENAI_API_KEY environment variable (recommended) or pass it explicitly."
                 ) from e
 
-        self.api_key = api_key
         self.organization = organization
         self.model_name = model_name
         self.api_base_url = api_base_url

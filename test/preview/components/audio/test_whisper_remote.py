@@ -33,7 +33,7 @@ class TestRemoteWhisperTranscriber:
     def test_init_default(self):
         transcriber = RemoteWhisperTranscriber(api_key="test_api_key")
 
-        assert transcriber.api_key == "test_api_key"
+        assert openai.api_key == "test_api_key"
         assert transcriber.model_name == "whisper-1"
         assert transcriber.organization is None
         assert transcriber.api_base_url == "https://api.openai.com/v1"
@@ -52,7 +52,7 @@ class TestRemoteWhisperTranscriber:
             temperature="0.5",
         )
 
-        assert transcriber.api_key == "test_api_key"
+        assert openai.api_key == "test_api_key"
         assert transcriber.model_name == "whisper-1"
         assert transcriber.organization == "test-org"
         assert transcriber.api_base_url == "test_api_url"
@@ -118,7 +118,7 @@ class TestRemoteWhisperTranscriber:
 
         transcriber = RemoteWhisperTranscriber.from_dict(data)
 
-        assert transcriber.api_key == "test_api_key"
+        assert openai.api_key == "test_api_key"
         assert transcriber.model_name == "whisper-1"
         assert transcriber.organization is None
         assert transcriber.api_base_url == "https://api.openai.com/v1"
@@ -141,7 +141,7 @@ class TestRemoteWhisperTranscriber:
         }
         transcriber = RemoteWhisperTranscriber.from_dict(data)
 
-        assert transcriber.api_key == "test_api_key"
+        assert openai.api_key == "test_api_key"
         assert transcriber.model_name == "whisper-1"
         assert transcriber.organization == "test-org"
         assert transcriber.api_base_url == "test_api_url"
@@ -252,7 +252,8 @@ class TestRemoteWhisperTranscriber:
 
         assert docs[0].text.strip().lower() == "this is the content of the document."
         assert (
-            preview_samples_path / "audio" / "this is the content of the document.wav" == docs[0].metadata["audio_file"]
+            str((preview_samples_path / "audio" / "this is the content of the document.wav").absolute())
+            == docs[0].metadata["audio_file"]
         )
 
         assert docs[1].text.strip().lower() == "the context for this answer is here."
