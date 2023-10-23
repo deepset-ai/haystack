@@ -1,12 +1,10 @@
 import json
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from haystack.preview import Document
-from haystack.preview.dataclasses.document import DocumentDecoder, DocumentEncoder
 
 
 @pytest.mark.unit
@@ -31,15 +29,6 @@ from haystack.preview.dataclasses.document import DocumentDecoder, DocumentEncod
 )
 def test_document_str(doc, doc_str):
     assert f"Document(id={doc.id}, mimetype: 'text/plain', {doc_str})" == str(doc)
-
-
-@pytest.mark.unit
-def test_init_document_same_meta_as_main_fields():
-    """
-    This is forbidden to prevent later issues with `Document.flatten()`
-    """
-    with pytest.raises(ValueError, match="score"):
-        Document(text="test text", metadata={"score": "10/10"})
 
 
 @pytest.mark.unit
@@ -157,6 +146,7 @@ def test_empty_document_to_json():
             "id": doc.id,
             "text": None,
             "dataframe": None,
+            "blob": None,
             "mime_type": "text/plain",
             "metadata": {},
             "score": None,
@@ -171,17 +161,13 @@ def test_empty_document_from_json():
 
 
 @pytest.mark.unit
-def test_full_document_to_json(tmp_path):
-    class TestClass:
-        def __repr__(self):
-            return "<the object>"
-
+def test_full_document_to_json():
     doc_1 = Document(
         text="test text",
         dataframe=pd.DataFrame([10, 20, 30]),
         blob=b"some bytes",
         mime_type="application/pdf",
-        metadata={"some object": TestClass(), "a path": tmp_path / "test.txt"},
+        metadata={"create_date": -14186580},
         score=0.5,
         embedding=[1, 2, 3, 4],
     )
@@ -190,8 +176,9 @@ def test_full_document_to_json(tmp_path):
             "id": doc_1.id,
             "text": "test text",
             "dataframe": '{"0":{"0":10,"1":20,"2":30}}',
+            "blob": list(b"some bytes"),
             "mime_type": "application/pdf",
-            "metadata": {"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
+            "metadata": {"create_date": -14186580},
             "score": 0.5,
             "embedding": [1, 2, 3, 4],
         }
@@ -199,21 +186,14 @@ def test_full_document_to_json(tmp_path):
 
 
 @pytest.mark.unit
-def test_full_document_from_json(tmp_path):
-    class TestClass:
-        def __repr__(self):
-            return "'<the object>'"
-
-        def __eq__(self, other):
-            return type(self) == type(other)
-
+def test_full_document_from_json():
     doc = Document.from_json(
         json.dumps(
             {
                 "text": "test text",
                 "dataframe": '{"0":{"0":10,"1":20,"2":30}}',
                 "mime_type": "application/pdf",
-                "metadata": {"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
+                "metadata": {"create_date": -14186580},
                 "score": 0.5,
                 "embedding": [1, 2, 3, 4],
             }
@@ -224,117 +204,7 @@ def test_full_document_from_json(tmp_path):
         dataframe=pd.DataFrame([10, 20, 30]),
         blob=None,
         mime_type="application/pdf",
-        # Note the object serialization
-        metadata={"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
+        metadata={"create_date": -14186580},
         score=0.5,
         embedding=[1, 2, 3, 4],
     )
-
-
-@pytest.mark.unit
-def test_to_json_custom_encoder():
-    class SerializableTestClass:
-        ...
-
-    class TestEncoder(DocumentEncoder):
-        def default(self, obj):
-            if isinstance(obj, SerializableTestClass):
-                return "<<CUSTOM ENCODING>>"
-            return DocumentEncoder.default(self, obj)
-
-    doc = Document(text="test text", metadata={"some object": SerializableTestClass()})
-    doc_json = doc.to_json(indent=4, json_encoder=TestEncoder).strip()
-
-    assert doc_json == json.dumps(
-        {
-            "id": doc.id,
-            "text": "test text",
-            "dataframe": None,
-            "mime_type": "text/plain",
-            "metadata": {"some object": "<<CUSTOM ENCODING>>"},
-            "score": None,
-            "embedding": None,
-        },
-        indent=4,
-    )
-
-
-@pytest.mark.unit
-def test_from_json_custom_decoder():
-    class TestClass:
-        def __eq__(self, other):
-            return type(self) == type(other)
-
-    class TestDecoder(DocumentDecoder):
-        def __init__(self, *args, **kwargs):
-            super().__init__(object_hook=self.object_hook)
-
-        def object_hook(self, dictionary):
-            if "metadata" in dictionary:
-                for key, value in dictionary["metadata"].items():
-                    if value == "<<CUSTOM ENCODING>>":
-                        dictionary["metadata"][key] = TestClass()
-            return dictionary
-
-    doc = Document(text="test text", metadata={"some object": TestClass()})
-
-    assert doc == Document.from_json(
-        json.dumps(
-            {
-                "id": doc.id,
-                "text": "test text",
-                "dataframe": None,
-                "mime_type": "text/plain",
-                "metadata": {"some object": "<<CUSTOM ENCODING>>"},
-                "score": None,
-                "embedding": None,
-            }
-        ),
-        json_decoder=TestDecoder,
-    )
-
-
-@pytest.mark.unit
-def test_flatten_document_no_meta():
-    doc = Document(text="test text")
-    assert doc.flatten() == {
-        "id": doc.id,
-        "text": "test text",
-        "dataframe": None,
-        "blob": None,
-        "mime_type": "text/plain",
-        "score": None,
-        "embedding": None,
-    }
-
-
-@pytest.mark.unit
-def test_flatten_document_with_flat_meta():
-    doc = Document(text="test text", metadata={"some-key": "a value", "another-key": "another value!"})
-    assert doc.flatten() == {
-        "id": doc.id,
-        "text": "test text",
-        "dataframe": None,
-        "blob": None,
-        "mime_type": "text/plain",
-        "score": None,
-        "embedding": None,
-        "some-key": "a value",
-        "another-key": "another value!",
-    }
-
-
-@pytest.mark.unit
-def test_flatten_document_with_nested_meta():
-    doc = Document(text="test text", metadata={"some-key": "a value", "nested": {"key": 10, "key2": 50}})
-    assert doc.flatten() == {
-        "id": doc.id,
-        "text": "test text",
-        "dataframe": None,
-        "blob": None,
-        "mime_type": "text/plain",
-        "score": None,
-        "embedding": None,
-        "some-key": "a value",
-        "nested": {"key": 10, "key2": 50},
-    }
