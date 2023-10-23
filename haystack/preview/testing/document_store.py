@@ -214,11 +214,9 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_eq_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        embedding = np.zeros(768).astype(np.float32)
+        embedding = [0.0] * 768
         result = docstore.filter_documents(filters={"embedding": embedding})
-        assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if np.array_equal(embedding, doc.embedding)]  # type: ignore
-        )
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if embedding == doc.embedding])
 
     @pytest.mark.unit
     def test_in_filter_explicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -253,17 +251,12 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_in_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        embedding_zero = np.zeros(768, np.float32)
-        embedding_one = np.ones(768, np.float32)
+        embedding_zero = [0.0] * 768
+        embedding_one = [1.0] * 768
         result = docstore.filter_documents(filters={"embedding": {"$in": [embedding_zero, embedding_one]}})
         assert self.contains_same_docs(
             result,
-            [
-                doc
-                for doc in filterable_docs
-                if isinstance(doc.embedding, np.ndarray)
-                and (np.array_equal(embedding_zero, doc.embedding) or np.array_equal(embedding_one, doc.embedding))
-            ],
+            [doc for doc in filterable_docs if (embedding_zero == doc.embedding or embedding_one == doc.embedding)],
         )
 
     @pytest.mark.unit
