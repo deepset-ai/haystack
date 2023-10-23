@@ -49,15 +49,15 @@ class TextDocumentSplitter:
 
         split_docs = []
         for doc in documents:
-            if doc.text is None:
+            if doc.content is None:
                 raise ValueError(
                     f"TextDocumentSplitter only works with text documents but document.text for document ID {doc.id} is None."
                 )
-            units = self._split_into_units(doc.text, self.split_by)
+            units = self._split_into_units(doc.content, self.split_by)
             text_splits = self._concatenate_units(units, self.split_length, self.split_overlap)
-            metadata = deepcopy(doc.metadata)
+            metadata = deepcopy(doc.meta)
             metadata["source_id"] = doc.id
-            split_docs += [Document(text=txt, metadata=metadata) for txt in text_splits]
+            split_docs += [Document(content=txt, meta=metadata) for txt in text_splits]
         return {"documents": split_docs}
 
     def _split_into_units(self, text: str, split_by: Literal["word", "sentence", "passage"]) -> List[str]:

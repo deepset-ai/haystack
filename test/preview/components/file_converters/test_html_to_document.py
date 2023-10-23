@@ -17,7 +17,7 @@ class TestHTMLToDocument:
         output = converter.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 1
-        assert "Haystack" in docs[0].text
+        assert "Haystack" in docs[0].content
 
     @pytest.mark.unit
     def test_run_wrong_file_type(self, preview_samples_path, caplog):
@@ -60,4 +60,4 @@ class TestHTMLToDocument:
         docs = output["documents"]
         assert len(docs) == 2
         for doc in docs:
-            assert "Haystack" in doc.text
+            assert "Haystack" in doc.content

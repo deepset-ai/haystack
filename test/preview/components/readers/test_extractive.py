@@ -80,9 +80,9 @@ def mock_reader(mock_tokenizer):
 example_queries = ["Who is the chancellor of Germany?", "Who is the head of the department?"]
 example_documents = [
     [
-        Document(text="Angela Merkel was the chancellor of Germany."),
-        Document(text="Olaf Scholz is the chancellor of Germany"),
-        Document(text="Jerry is the head of the department."),
+        Document(content="Angela Merkel was the chancellor of Germany."),
+        Document(content="Olaf Scholz is the chancellor of Germany"),
+        Document(content="Jerry is the head of the department."),
     ]
 ] * 2
 
@@ -120,7 +120,7 @@ def test_output(mock_reader: ExtractiveReader):
     for doc, answer in zip(example_documents[0], answers[:3]):
         assert answer.start == 11
         assert answer.end == 16
-        assert answer.data == doc.text[11:16]
+        assert answer.data == doc.content[11:16]
         assert answer.probability == pytest.approx(1 / (1 + exp(-2 * mock_reader.calibration_factor)))
         no_answer_prob *= 1 - answer.probability
         doc_ids.add(doc.id)
@@ -156,7 +156,7 @@ def test_preprocess(mock_reader: ExtractiveReader):
 
 def test_preprocess_splitting(mock_reader: ExtractiveReader):
     _, _, seq_ids, _, query_ids, doc_ids = mock_reader._preprocess(
-        example_queries * 4, example_documents[0] + [Document(text="a" * 64)], 96, [1, 1, 1, 1], 0
+        example_queries * 4, example_documents[0] + [Document(content="a" * 64)], 96, [1, 1, 1, 1], 0
     )
     assert seq_ids.shape[0] == 5
     assert query_ids == [1, 1, 1, 1, 1]
@@ -303,7 +303,7 @@ def test_matches_hf_pipeline():
     ]  # [0] Remove first two indices when batching support is reintroduced
     answers_hf = pipeline("question-answering", model=reader.model, tokenizer=reader.tokenizer, align_to_words=False)(
         question=example_queries[0],
-        context=example_documents[0][0].text,
+        context=example_documents[0][0].content,
         max_answer_len=1_000,
         handle_impossible_answer=False,
         top_k=20,

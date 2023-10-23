@@ -46,13 +46,13 @@ class TestTextDocumentSplitter:
         result = splitter.run(
             documents=[
                 Document(
-                    text="This is a text with some words. There is a second sentence. And there is a third sentence."
+                    content="This is a text with some words. There is a second sentence. And there is a third sentence."
                 )
             ]
         )
         assert len(result["documents"]) == 2
-        assert result["documents"][0].text == "This is a text with some words. There is a "
-        assert result["documents"][1].text == "second sentence. And there is a third sentence."
+        assert result["documents"][0].content == "This is a text with some words. There is a "
+        assert result["documents"][1].content == "second sentence. And there is a third sentence."
 
     @pytest.mark.unit
     def test_split_by_word_multiple_input_docs(self):
@@ -60,19 +60,19 @@ class TestTextDocumentSplitter:
         result = splitter.run(
             documents=[
                 Document(
-                    text="This is a text with some words. There is a second sentence. And there is a third sentence."
+                    content="This is a text with some words. There is a second sentence. And there is a third sentence."
                 ),
                 Document(
-                    text="This is a different text with some words. There is a second sentence. And there is a third sentence. And there is a fourth sentence."
+                    content="This is a different text with some words. There is a second sentence. And there is a third sentence. And there is a fourth sentence."
                 ),
             ]
         )
         assert len(result["documents"]) == 5
-        assert result["documents"][0].text == "This is a text with some words. There is a "
-        assert result["documents"][1].text == "second sentence. And there is a third sentence."
-        assert result["documents"][2].text == "This is a different text with some words. There is "
-        assert result["documents"][3].text == "a second sentence. And there is a third sentence. And "
-        assert result["documents"][4].text == "there is a fourth sentence."
+        assert result["documents"][0].content == "This is a text with some words. There is a "
+        assert result["documents"][1].content == "second sentence. And there is a third sentence."
+        assert result["documents"][2].content == "This is a different text with some words. There is "
+        assert result["documents"][3].content == "a second sentence. And there is a third sentence. And "
+        assert result["documents"][4].content == "there is a fourth sentence."
 
     @pytest.mark.unit
     def test_split_by_sentence(self):
@@ -80,14 +80,14 @@ class TestTextDocumentSplitter:
         result = splitter.run(
             documents=[
                 Document(
-                    text="This is a text with some words. There is a second sentence. And there is a third sentence."
+                    content="This is a text with some words. There is a second sentence. And there is a third sentence."
                 )
             ]
         )
         assert len(result["documents"]) == 3
-        assert result["documents"][0].text == "This is a text with some words."
-        assert result["documents"][1].text == " There is a second sentence."
-        assert result["documents"][2].text == " And there is a third sentence."
+        assert result["documents"][0].content == "This is a text with some words."
+        assert result["documents"][1].content == " There is a second sentence."
+        assert result["documents"][2].content == " And there is a third sentence."
 
     @pytest.mark.unit
     def test_split_by_passage(self):
@@ -95,14 +95,14 @@ class TestTextDocumentSplitter:
         result = splitter.run(
             documents=[
                 Document(
-                    text="This is a text with some words. There is a second sentence.\n\nAnd there is a third sentence.\n\n And another passage."
+                    content="This is a text with some words. There is a second sentence.\n\nAnd there is a third sentence.\n\n And another passage."
                 )
             ]
         )
         assert len(result["documents"]) == 3
-        assert result["documents"][0].text == "This is a text with some words. There is a second sentence.\n\n"
-        assert result["documents"][1].text == "And there is a third sentence.\n\n"
-        assert result["documents"][2].text == " And another passage."
+        assert result["documents"][0].content == "This is a text with some words. There is a second sentence.\n\n"
+        assert result["documents"][1].content == "And there is a third sentence.\n\n"
+        assert result["documents"][2].content == " And another passage."
 
     @pytest.mark.unit
     def test_split_by_word_with_overlap(self):
@@ -110,33 +110,33 @@ class TestTextDocumentSplitter:
         result = splitter.run(
             documents=[
                 Document(
-                    text="This is a text with some words. There is a second sentence. And there is a third sentence."
+                    content="This is a text with some words. There is a second sentence. And there is a third sentence."
                 )
             ]
         )
         assert len(result["documents"]) == 2
-        assert result["documents"][0].text == "This is a text with some words. There is a "
-        assert result["documents"][1].text == "is a second sentence. And there is a third sentence."
+        assert result["documents"][0].content == "This is a text with some words. There is a "
+        assert result["documents"][1].content == "is a second sentence. And there is a third sentence."
 
     @pytest.mark.unit
     def test_source_id_stored_in_metadata(self):
         splitter = TextDocumentSplitter(split_by="word", split_length=10)
-        doc1 = Document(text="This is a text with some words.")
-        doc2 = Document(text="This is a different text with some words.")
+        doc1 = Document(content="This is a text with some words.")
+        doc2 = Document(content="This is a different text with some words.")
         result = splitter.run(documents=[doc1, doc2])
-        assert result["documents"][0].metadata["source_id"] == doc1.id
-        assert result["documents"][1].metadata["source_id"] == doc2.id
+        assert result["documents"][0].meta["source_id"] == doc1.id
+        assert result["documents"][1].meta["source_id"] == doc2.id
 
     @pytest.mark.unit
     def test_copy_metadata(self):
         splitter = TextDocumentSplitter(split_by="word", split_length=10)
         documents = [
-            Document(text="Text.", metadata={"name": "doc 0"}),
-            Document(text="Text.", metadata={"name": "doc 1"}),
+            Document(content="Text.", meta={"name": "doc 0"}),
+            Document(content="Text.", meta={"name": "doc 1"}),
         ]
         result = splitter.run(documents=documents)
         assert len(result["documents"]) == 2
         assert result["documents"][0].id != result["documents"][1].id
         for doc, split_doc in zip(documents, result["documents"]):
-            assert doc.metadata.items() <= split_doc.metadata.items()
-            assert split_doc.text == "Text."
+            assert doc.meta.items() <= split_doc.meta.items()
+            assert split_doc.content == "Text."

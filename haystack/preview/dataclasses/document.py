@@ -42,17 +42,17 @@ class _BackwardCompatible(type):
         if "id_hash_keys" in kwargs:
             del kwargs["id_hash_keys"]
 
-        if kwargs.get("metadata") is None:
+        if kwargs.get("meta") is None:
             # This must be a flattened Document, so we treat all keys that are not
             # Document fields as metadata.
-            metadata = {}
+            meta = {}
             field_names = [f.name for f in fields(cast(Type[Document], cls))]
             keys = list(kwargs.keys())  # get a list of the keys as we'll modify the dict in the loop
             for key in keys:
                 if key in field_names:
                     continue
-                metadata[key] = kwargs.pop(key)
-            kwargs["metadata"] = metadata
+                meta[key] = kwargs.pop(key)
+            kwargs["meta"] = meta
 
         return super().__call__(*args, **kwargs)
 
@@ -65,28 +65,30 @@ class Document(metaclass=_BackwardCompatible):
     Documents can be sorted by score and saved to/from dictionary and JSON.
 
     :param id: Unique identifier for the document. When not set, it's generated based on the Document fields' values.
-    :param text: Text of the document, if the document contains text.
+    :param content: Text of the document, if the document contains text.
     :param dataframe: Pandas dataframe with the document's content, if the document contains tabular data.
     :param blob: Binary data associated with the document, if the document has any binary data associated with it.
     :param mime_type: MIME type of the document. Defaults to "text/plain".
-    :param metadata: Additional custom metadata for the document. Must be JSON-serializable.
+    :param meta: Additional custom metadata for the document. Must be JSON-serializable.
     :param score: Score of the document. Used for ranking, usually assigned by retrievers.
     :param embedding: Vector representation of the document.
     """
 
     id: str = field(default="")
-    text: Optional[str] = field(default=None)
+    content: Optional[str] = field(default=None)
     dataframe: Optional[pandas.DataFrame] = field(default=None)
     blob: Optional[bytes] = field(default=None)
     mime_type: str = field(default="text/plain")
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    meta: Dict[str, Any] = field(default_factory=dict)
     score: Optional[float] = field(default=None)
     embedding: Optional[List[float]] = field(default=None, repr=False)
 
     def __str__(self):
         fields = [f"mimetype: '{self.mime_type}'"]
-        if self.text is not None:
-            fields.append(f"text: '{self.text}'" if len(self.text) < 100 else f"text: '{self.text[:100]}...'")
+        if self.content is not None:
+            fields.append(
+                f"content: '{self.content}'" if len(self.content) < 100 else f"content: '{self.content[:100]}...'"
+            )
         if self.dataframe is not None:
             fields.append(f"dataframe: {self.dataframe.shape}")
         if self.blob is not None:
@@ -113,13 +115,13 @@ class Document(metaclass=_BackwardCompatible):
         """
         Creates a hash of the given content that acts as the document's ID.
         """
-        text = self.text or None
+        text = self.content or None
         dataframe = self.dataframe.to_json() if self.dataframe is not None else None
         blob = self.blob or None
         mime_type = self.mime_type or None
-        metadata = self.metadata or {}
+        meta = self.meta or {}
         embedding = self.embedding if self.embedding is not None else None
-        data = f"{text}{dataframe}{blob}{mime_type}{metadata}{embedding}"
+        data = f"{text}{dataframe}{blob}{mime_type}{meta}{embedding}"
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
     def to_dict(self, flatten=True) -> Dict[str, Any]:
@@ -127,7 +129,7 @@ class Document(metaclass=_BackwardCompatible):
         Converts Document into a dictionary.
         `dataframe` and `blob` fields are converted to JSON-serializable types.
 
-        :param flatten: Whether to flatten `metadata` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
+        :param flatten: Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
         """
         data = asdict(self)
         if (dataframe := data.get("dataframe")) is not None:
@@ -136,7 +138,7 @@ class Document(metaclass=_BackwardCompatible):
             data["blob"] = list(blob)
 
         if flatten:
-            return {**data, **data.pop("metadata")}
+            return {**data, **data.pop("meta")}
 
         return data
 
@@ -160,10 +162,10 @@ class Document(metaclass=_BackwardCompatible):
         A ValueError will be raised if both `text` and `dataframe` fields are set
         or both are missing.
         """
-        if self.text is not None and self.dataframe is not None:
+        if self.content is not None and self.dataframe is not None:
             raise ValueError("Both text and dataframe are set.")
 
-        if self.text is not None:
+        if self.content is not None:
             return "text"
         elif self.dataframe is not None:
             return "table"
