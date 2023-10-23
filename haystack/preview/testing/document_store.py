@@ -1,5 +1,6 @@
 # pylint: disable=too-many-public-methods
 from typing import List
+import random
 
 import pytest
 import numpy as np
@@ -18,8 +19,9 @@ class DocumentStoreBaseTests:
 
     @pytest.fixture
     def filterable_docs(self) -> List[Document]:
-        embedding_zero = np.zeros(768).astype(np.float32)
-        embedding_one = np.ones(768).astype(np.float32)
+        embedding_zero = [0.0] * 768
+        embedding_one = [1.0] * 768
+        random_embeddings = lambda n: [random.random() for _ in range(n)]
 
         documents = []
         for i in range(3):
@@ -27,21 +29,21 @@ class DocumentStoreBaseTests:
                 Document(
                     text=f"A Foo Document {i}",
                     metadata={"name": f"name_{i}", "page": "100", "chapter": "intro", "number": 2},
-                    embedding=np.random.rand(768).astype(np.float32),
+                    embedding=random_embeddings(768),
                 )
             )
             documents.append(
                 Document(
                     text=f"A Bar Document {i}",
                     metadata={"name": f"name_{i}", "page": "123", "chapter": "abstract", "number": -2},
-                    embedding=np.random.rand(768).astype(np.float32),
+                    embedding=random_embeddings(768),
                 )
             )
             documents.append(
                 Document(
                     text=f"A Foobar Document {i}",
                     metadata={"name": f"name_{i}", "page": "90", "chapter": "conclusion", "number": -10},
-                    embedding=np.random.rand(768).astype(np.float32),
+                    embedding=random_embeddings(768),
                 )
             )
             documents.append(
