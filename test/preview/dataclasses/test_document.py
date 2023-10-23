@@ -71,8 +71,8 @@ def test_equality_with_metadata_with_objects():
                 return True
 
     foo = TestObject()
-    doc1 = Document(text="test text", metadata={"value": np.array([0, 1, 2]), "path": Path("."), "obj": foo})
-    doc2 = Document(text="test text", metadata={"value": np.array([0, 1, 2]), "path": Path("."), "obj": foo})
+    doc1 = Document(text="test text", metadata={"value": [0, 1, 2], "path": Path("."), "obj": foo})
+    doc2 = Document(text="test text", metadata={"value": [0, 1, 2], "path": Path("."), "obj": foo})
     assert doc1 == doc2
 
 
@@ -107,7 +107,7 @@ def test_full_document_to_dict():
         mime_type="application/pdf",
         metadata={"some": "values", "test": 10},
         score=0.99,
-        embedding=np.zeros([10, 10]),
+        embedding=[10, 10],
     )
     dictionary = doc.to_dict()
 
@@ -121,7 +121,7 @@ def test_full_document_to_dict():
     assert blob == doc.blob
 
     embedding = dictionary.pop("embedding")
-    assert (embedding == doc.embedding).all()
+    assert embedding == doc.embedding
 
     assert dictionary == {
         "id": doc.id,
@@ -134,7 +134,7 @@ def test_full_document_to_dict():
 
 @pytest.mark.unit
 def test_document_with_most_attributes_from_dict():
-    embedding = np.zeros([10, 10])
+    embedding = [10, 10]
     assert Document.from_dict(
         {
             "text": "test text",
@@ -194,7 +194,7 @@ def test_full_document_to_json(tmp_path):
         mime_type="application/pdf",
         metadata={"some object": TestClass(), "a path": tmp_path / "test.txt"},
         score=0.5,
-        embedding=np.array([1, 2, 3, 4]),
+        embedding=[1, 2, 3, 4],
     )
     assert doc_1.to_json() == json.dumps(
         {
@@ -241,7 +241,7 @@ def test_full_document_from_json(tmp_path):
         # Note the object serialization
         metadata={"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
         score=0.5,
-        embedding=np.array([1, 2, 3, 4]),
+        embedding=[1, 2, 3, 4],
     )
 
 
