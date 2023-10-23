@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Adapt GPTGenerator to GPTChatGenerator, use ChatMessage for input and output
