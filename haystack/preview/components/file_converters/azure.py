@@ -30,7 +30,7 @@ class AzureOCRDocumentConverter:
         :param endpoint: The endpoint of your Azure resource.
         :param api_key: The key of your Azure resource. It can be
         explicitly provided or automatically read from the
-        environment variable CORE_AZURE_CS_API_KEY (recommended).
+        environment variable AZURE_AI_API_KEY (recommended).
         :param model_id: The model ID of the model you want to use. Please refer to [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
             for a list of available models. Default: `"prebuilt-read"`.
         """
@@ -38,11 +38,11 @@ class AzureOCRDocumentConverter:
 
         if api_key is None:
             try:
-                api_key = os.environ["CORE_AZURE_CS_API_KEY"]
+                api_key = os.environ["AZURE_AI_API_KEY"]
             except KeyError as e:
                 raise ValueError(
                     "AzureOCRDocumentConverter expects an Azure Credential key. "
-                    "Set the CORE_AZURE_CS_API_KEY environment variable (recommended) or pass it explicitly."
+                    "Set the AZURE_AI_API_KEY environment variable (recommended) or pass it explicitly."
                 ) from e
 
         self.api_key = api_key
