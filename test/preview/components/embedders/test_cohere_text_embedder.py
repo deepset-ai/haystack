@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import pytest
 from cohere.responses.embeddings import Embeddings
 from haystack.preview.components.embedders.cohere_text_embedder import CohereTextEmbedder
@@ -153,3 +153,13 @@ class TestCohereTextEmbedder:
 
         with pytest.raises(TypeError, match="CohereTextEmbedder expects a string as input"):
             embedder.run(text=list_integers_input)
+
+    @pytest.mark.integration
+    def test_run(self):
+        embedder = CohereTextEmbedder(api_key="test-api-key")
+        embedder = MagicMock()
+        text = "The food was delicious"
+
+        result = embedder.run(text)
+
+        assert all(isinstance(x, float) for x in result["embedding"])
