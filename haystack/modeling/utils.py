@@ -112,6 +112,9 @@ def initialize_device_settings(
             else:
                 devices_to_use = [torch.device("cuda:0")]
                 n_gpu = 1
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            devices_to_use = torch.device("mps")
+            n_gpu = 1
         else:
             devices_to_use = [torch.device("cpu")]
             n_gpu = 0

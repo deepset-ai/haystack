@@ -104,13 +104,14 @@ def collect_static_system_specs() -> Dict[str, Any]:
     except ImportError:
         specs["libraries.transformers"] = False
 
+    has_mps = hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
     try:
         torch_import.check()
         specs.update(
             {
                 "libraries.torch": torch.__version__,
                 "libraries.cuda": torch.version.cuda if torch.cuda.is_available() else False,
-                "hardware.gpus": torch.cuda.device_count() if torch.cuda.is_available() else 0,
+                "hardware.gpus": torch.cuda.device_count() if torch.cuda.is_available() else 1 if has_mps else 0,
             }
         )
     except ImportError:

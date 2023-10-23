@@ -101,6 +101,8 @@ class ExtractiveReader:
         if self.model is None:
             if torch.cuda.is_available():
                 self.device = self.device or "cuda:0"
+            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                self.device = self.device or "mps:0"
             else:
                 self.device = self.device or "cpu:0"
             self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_name_or_path, token=self.token).to(
