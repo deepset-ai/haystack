@@ -87,7 +87,6 @@ def test_empty_document_to_dict():
         "blob": None,
         "mime_type": "text/plain",
         "metadata": {},
-        "id_hash_keys": ["text", "array", "dataframe", "blob"],
         "score": None,
         "embedding": None,
     }
@@ -107,7 +106,6 @@ def test_full_document_to_dict():
         blob=b"some bytes",
         mime_type="application/pdf",
         metadata={"some": "values", "test": 10},
-        id_hash_keys=["text", "array", "dataframe", "blob"],
         score=0.99,
         embedding=np.zeros([10, 10]),
     )
@@ -130,7 +128,6 @@ def test_full_document_to_dict():
         "text": "test text",
         "mime_type": "application/pdf",
         "metadata": {"some": "values", "test": 10},
-        "id_hash_keys": ["text", "array", "dataframe", "blob"],
         "score": 0.99,
     }
 
@@ -172,7 +169,6 @@ def test_empty_document_to_json():
             "dataframe": None,
             "mime_type": "text/plain",
             "metadata": {},
-            "id_hash_keys": ["text", "array", "dataframe", "blob"],
             "score": None,
             "embedding": None,
         }
@@ -197,7 +193,6 @@ def test_full_document_to_json(tmp_path):
         blob=b"some bytes",
         mime_type="application/pdf",
         metadata={"some object": TestClass(), "a path": tmp_path / "test.txt"},
-        id_hash_keys=["text", "array", "dataframe", "blob"],
         score=0.5,
         embedding=np.array([1, 2, 3, 4]),
     )
@@ -209,7 +204,6 @@ def test_full_document_to_json(tmp_path):
             "dataframe": '{"0":{"0":10,"1":20,"2":30}}',
             "mime_type": "application/pdf",
             "metadata": {"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
-            "id_hash_keys": ["text", "array", "dataframe", "blob"],
             "score": 0.5,
             "embedding": [1, 2, 3, 4],
         }
@@ -252,7 +246,7 @@ def test_full_document_from_json(tmp_path):
 
 
 @pytest.mark.unit
-def test_to_json_custom_encoder(tmp_path):
+def test_to_json_custom_encoder():
     class SerializableTestClass:
         ...
 
@@ -273,7 +267,6 @@ def test_to_json_custom_encoder(tmp_path):
             "dataframe": None,
             "mime_type": "text/plain",
             "metadata": {"some object": "<<CUSTOM ENCODING>>"},
-            "id_hash_keys": ["text", "array", "dataframe", "blob"],
             "score": None,
             "embedding": None,
         },
@@ -329,7 +322,6 @@ def test_flatten_document_no_meta():
         "mime_type": "text/plain",
         "score": None,
         "embedding": None,
-        "id_hash_keys": ["text", "array", "dataframe", "blob"],
     }
 
 
@@ -347,7 +339,6 @@ def test_flatten_document_with_flat_meta():
         "embedding": None,
         "some-key": "a value",
         "another-key": "another value!",
-        "id_hash_keys": ["text", "array", "dataframe", "blob"],
     }
 
 
@@ -365,5 +356,4 @@ def test_flatten_document_with_nested_meta():
         "embedding": None,
         "some-key": "a value",
         "nested": {"key": 10, "key2": 50},
-        "id_hash_keys": ["text", "array", "dataframe", "blob"],
     }
