@@ -5,7 +5,7 @@ import openai
 from tqdm import tqdm
 
 
-from haystack.preview import component, Document, default_to_dict, default_from_dict
+from haystack.preview import component, Document, default_to_dict
 
 
 @component
@@ -90,13 +90,6 @@ class OpenAIDocumentEmbedder:
             embedding_separator=self.embedding_separator,
         )
 
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIDocumentEmbedder":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
-
     def _prepare_texts_to_embed(self, documents: List[Document]) -> List[str]:
         """
         Prepare the texts to embed by concatenating the Document text with the metadata fields to embed.
@@ -119,7 +112,7 @@ class OpenAIDocumentEmbedder:
             texts_to_embed.append(text_to_embed)
         return texts_to_embed
 
-    def _embed_batch(self, texts_to_embed: List[str], batch_size: int) -> Tuple[List[str], Dict[str, Any]]:
+    def _embed_batch(self, texts_to_embed: List[str], batch_size: int) -> Tuple[List[List[float]], Dict[str, Any]]:
         """
         Embed a list of texts in batches.
         """
@@ -162,10 +155,7 @@ class OpenAIDocumentEmbedder:
 
         embeddings, metadata = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
-        documents_with_embeddings = []
         for doc, emb in zip(documents, embeddings):
-            doc_as_dict = doc.to_dict()
-            doc_as_dict["embedding"] = emb
-            documents_with_embeddings.append(Document.from_dict(doc_as_dict))
+            doc.embedding = emb
 
-        return {"documents": documents_with_embeddings, "metadata": metadata}
+        return {"documents": documents, "metadata": metadata}

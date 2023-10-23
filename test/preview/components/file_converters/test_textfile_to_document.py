@@ -12,66 +12,6 @@ from haystack.preview.components.file_converters.txt import TextFileToDocument
 
 class TestTextfileToDocument:
     @pytest.mark.unit
-    def test_to_dict(self):
-        component = TextFileToDocument()
-        data = component.to_dict()
-        assert data == {
-            "type": "TextFileToDocument",
-            "init_parameters": {
-                "encoding": "utf-8",
-                "remove_numeric_tables": False,
-                "numeric_row_threshold": 0.4,
-                "valid_languages": [],
-                "id_hash_keys": [],
-                "progress_bar": True,
-            },
-        }
-
-    @pytest.mark.unit
-    def test_to_dict_with_custom_init_parameters(self):
-        component = TextFileToDocument(
-            encoding="latin-1",
-            remove_numeric_tables=True,
-            numeric_row_threshold=0.7,
-            valid_languages=["en", "de"],
-            id_hash_keys=["name"],
-            progress_bar=False,
-        )
-        data = component.to_dict()
-        assert data == {
-            "type": "TextFileToDocument",
-            "init_parameters": {
-                "encoding": "latin-1",
-                "remove_numeric_tables": True,
-                "numeric_row_threshold": 0.7,
-                "valid_languages": ["en", "de"],
-                "id_hash_keys": ["name"],
-                "progress_bar": False,
-            },
-        }
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "TextFileToDocument",
-            "init_parameters": {
-                "encoding": "latin-1",
-                "remove_numeric_tables": True,
-                "numeric_row_threshold": 0.7,
-                "valid_languages": ["en", "de"],
-                "id_hash_keys": ["name"],
-                "progress_bar": False,
-            },
-        }
-        component = TextFileToDocument.from_dict(data)
-        assert component.encoding == "latin-1"
-        assert component.remove_numeric_tables
-        assert component.numeric_row_threshold == 0.7
-        assert component.valid_languages == ["en", "de"]
-        assert component.id_hash_keys == ["name"]
-        assert not component.progress_bar
-
-    @pytest.mark.unit
     def test_run(self, preview_samples_path):
         """
         Test if the component runs correctly.

@@ -1,14 +1,14 @@
 import logging
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import requests
 from requests import Response
 from requests.exceptions import HTTPError
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from haystack.preview import component, default_from_dict, default_to_dict
+from haystack.preview import component
 from haystack.preview.dataclasses import ByteStream
 from haystack.preview.version import __version__
 
@@ -94,25 +94,6 @@ class LinkContentFetcher:
             return response
 
         self._get_response: Callable = get_response
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(
-            self,
-            raise_on_failure=self.raise_on_failure,
-            user_agents=self.user_agents,
-            retry_attempts=self.retry_attempts,
-            timeout=self.timeout,
-        )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LinkContentFetcher":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     @component.output_types(streams=List[ByteStream])
     def run(self, urls: List[str]):

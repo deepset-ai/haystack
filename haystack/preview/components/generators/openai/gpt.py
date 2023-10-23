@@ -52,7 +52,7 @@ class GPTGenerator:
         **kwargs,
     ):
         """
-        Creates an instance of GPT35Generator for OpenAI's GPT-3.5 model.
+        Creates an instance of GPTGenerator. Unless specified otherwise in the `model_name`, this is for OpenAI's GPT-3.5 model.
 
         :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
             environment variable OPENAI_API_KEY (recommended).

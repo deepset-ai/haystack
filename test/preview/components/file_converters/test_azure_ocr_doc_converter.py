@@ -16,27 +16,9 @@ class TestAzureOCRDocumentConverter:
             "init_parameters": {
                 "api_key": "test_credential_key",
                 "endpoint": "test_endpoint",
-                "id_hash_keys": [],
                 "model_id": "prebuilt-read",
             },
         }
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "AzureOCRDocumentConverter",
-            "init_parameters": {
-                "api_key": "test_credential_key",
-                "endpoint": "test_endpoint",
-                "id_hash_keys": [],
-                "model_id": "prebuilt-read",
-            },
-        }
-        component = AzureOCRDocumentConverter.from_dict(data)
-        assert component.endpoint == "test_endpoint"
-        assert component.api_key == "test_credential_key"
-        assert component.id_hash_keys == []
-        assert component.model_id == "prebuilt-read"
 
     @pytest.mark.unit
     def test_run(self, preview_samples_path):

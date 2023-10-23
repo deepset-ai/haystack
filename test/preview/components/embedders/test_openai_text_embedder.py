@@ -89,42 +89,6 @@ class TestOpenAITextEmbedder:
         }
 
     @pytest.mark.unit
-    def test_from_dict(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        data = {
-            "type": "OpenAITextEmbedder",
-            "init_parameters": {
-                "model_name": "model",
-                "organization": "fake-organization",
-                "prefix": "prefix",
-                "suffix": "suffix",
-            },
-        }
-        component = OpenAITextEmbedder.from_dict(data)
-        assert openai.api_key == "fake-api-key"
-        assert component.model_name == "model"
-        assert component.organization == "fake-organization"
-        assert openai.organization == "fake-organization"
-        assert component.prefix == "prefix"
-        assert component.suffix == "suffix"
-
-    @pytest.mark.unit
-    def test_from_dict_fail_wo_env_var(self, monkeypatch):
-        openai.api_key = None
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        data = {
-            "type": "OpenAITextEmbedder",
-            "init_parameters": {
-                "model_name": "model",
-                "organization": "fake-organization",
-                "prefix": "prefix",
-                "suffix": "suffix",
-            },
-        }
-        with pytest.raises(ValueError, match="OpenAITextEmbedder expects an OpenAI API key"):
-            OpenAITextEmbedder.from_dict(data)
-
-    @pytest.mark.unit
     def test_run(self):
         model = "text-similarity-ada-001"
 
@@ -141,7 +105,7 @@ class TestOpenAITextEmbedder:
             )
 
         assert len(result["embedding"]) == 1536
-        assert all([isinstance(x, float) for x in result["embedding"]])
+        assert all(isinstance(x, float) for x in result["embedding"])
         assert result["metadata"] == {"model": model, "usage": {"prompt_tokens": 4, "total_tokens": 4}}
 
     @pytest.mark.unit
