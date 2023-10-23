@@ -12,6 +12,10 @@ from haystack.preview.document_stores.errors import MissingDocumentError, Duplic
 from haystack.preview.errors import FilterError
 
 
+def _random_embeddings(n):
+    return [random.random() for _ in range(n)]
+
+
 class DocumentStoreBaseTests:
     @pytest.fixture
     def docstore(self) -> DocumentStore:
@@ -21,7 +25,6 @@ class DocumentStoreBaseTests:
     def filterable_docs(self) -> List[Document]:
         embedding_zero = [0.0] * 768
         embedding_one = [1.0] * 768
-        random_embeddings = lambda n: [random.random() for _ in range(n)]
 
         documents = []
         for i in range(3):
@@ -29,21 +32,21 @@ class DocumentStoreBaseTests:
                 Document(
                     text=f"A Foo Document {i}",
                     metadata={"name": f"name_{i}", "page": "100", "chapter": "intro", "number": 2},
-                    embedding=random_embeddings(768),
+                    embedding=_random_embeddings(768),
                 )
             )
             documents.append(
                 Document(
                     text=f"A Bar Document {i}",
                     metadata={"name": f"name_{i}", "page": "123", "chapter": "abstract", "number": -2},
-                    embedding=random_embeddings(768),
+                    embedding=_random_embeddings(768),
                 )
             )
             documents.append(
                 Document(
                     text=f"A Foobar Document {i}",
                     metadata={"name": f"name_{i}", "page": "90", "chapter": "conclusion", "number": -10},
-                    embedding=random_embeddings(768),
+                    embedding=_random_embeddings(768),
                 )
             )
             documents.append(
