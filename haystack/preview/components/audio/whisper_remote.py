@@ -4,10 +4,9 @@ import os
 import logging
 from pathlib import Path
 
-from haystack.preview.utils import request_with_retry
-from haystack.preview import component, Document, default_to_dict, default_from_dict
-
 import openai
+
+from haystack.preview import component, Document, default_to_dict, default_from_dict
 
 
 logger = logging.getLogger(__name__)
