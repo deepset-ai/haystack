@@ -109,6 +109,12 @@ def mock_serper_dev_search_result():
 
 class TestSerperDevSearchAPI:
     @pytest.mark.unit
+    def test_init_fail_wo_api_key(self, monkeypatch):
+        monkeypatch.delenv("SERPERDEV_API_KEY", raising=False)
+        with pytest.raises(ValueError, match="SerperDevWebSearch expects an API key"):
+            SerperDevWebSearch()
+
+    @pytest.mark.unit
     def test_to_dict(self):
         component = SerperDevWebSearch(
             api_key="test_key", top_k=10, allowed_domains=["test.com"], search_params={"param": "test"}
