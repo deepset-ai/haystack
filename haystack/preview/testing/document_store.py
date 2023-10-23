@@ -56,7 +56,6 @@ class DocumentStoreBaseTests:
                 )
             )
             documents.append(Document(dataframe=pd.DataFrame([i]), metadata={"name": f"table_doc_{i}"}))
-            documents.append(Document(array=np.array([i, i, i]), metadata={"name": f"array_doc_{i}"}))
             documents.append(
                 Document(text=f"Doc {i} with zeros emb", metadata={"name": "zeros_doc"}, embedding=embedding_zero)
             )
@@ -115,23 +114,6 @@ class DocumentStoreBaseTests:
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"text": "A Foo Document 1"})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.text == "A Foo Document 1"])
-
-    @pytest.mark.unit
-    def test_filter_document_array(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"array": np.array([1, 1, 1])})
-        assert self.contains_same_docs(
-            result,
-            [
-                doc
-                for doc in filterable_docs
-                if (
-                    doc.array is not None
-                    and doc.array.shape == np.array([1, 1, 1]).shape
-                    and (doc.array == np.array([1, 1, 1])).all()
-                )
-            ],
-        )
 
     @pytest.mark.unit
     def test_filter_document_dataframe(self, docstore: DocumentStore, filterable_docs: List[Document]):
