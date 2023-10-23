@@ -1,47 +1,12 @@
 import hashlib
 import json
 import logging
-from dataclasses import asdict, dataclass, field, fields
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Type
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, List, Optional
 
-import numpy
 import pandas
 
 logger = logging.getLogger(__name__)
-
-
-class DocumentEncoder(json.JSONEncoder):
-    """
-    Encodes more exotic datatypes like pandas dataframes or file paths.
-    """
-
-    def default(self, obj):
-        if isinstance(obj, numpy.ndarray):
-            return obj.tolist()
-        if isinstance(obj, pandas.DataFrame):
-            return obj.to_json()
-        if isinstance(obj, Path):
-            return str(obj.absolute())
-        try:
-            return json.JSONEncoder.default(self, obj)
-        except TypeError:
-            return str(obj)
-
-
-class DocumentDecoder(json.JSONDecoder):
-    """
-    Decodes more exotic datatypes like pandas dataframes or file paths.
-    """
-
-    def __init__(self, *_, object_hook=None, **__):
-        super().__init__(object_hook=object_hook or self.document_decoder)
-
-    def document_decoder(self, dictionary):
-        if "dataframe" in dictionary and dictionary.get("dataframe"):
-            dictionary["dataframe"] = pandas.read_json(dictionary.get("dataframe", None))
-
-        return dictionary
 
 
 @dataclass
@@ -56,7 +21,7 @@ class Document:
     :param dataframe: Pandas dataframe with the document's content, if the document contains tabular data.
     :param blob: Binary data associated with the document, if the document has any binary data associated with it.
     :param mime_type: MIME type of the document. Defaults to "text/plain".
-    :param metadata: Additional custom metadata for the document.
+    :param metadata: Additional custom metadata for the document. Must be JSON serializable.
     :param score: Score of the document. Used for ranking, usually assigned by retrievers.
     :param embedding: Vector representation of the document.
     """
@@ -93,11 +58,6 @@ class Document:
         """
         Generate the ID based on the init parameters.
         """
-        # Validate metadata
-        for key in self.metadata:
-            if key in [field.name for field in fields(self)]:
-                raise ValueError(f"Cannot name metadata fields as top-level document fields, like '{key}'.")
-
         # Generate an id only if not explicitly set
         self.id = self.id or self._create_id()
 
@@ -114,41 +74,32 @@ class Document:
         data = f"{text}{dataframe}{blob}{mime_type}{metadata}{embedding}"
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
-    def to_dict(self):
+    def to_dict(self, flatten=True) -> Dict[str, Any]:
         """
-        Saves the Document into a dictionary.
-        """
-        return asdict(self)
+        Converts Document into a dictionary.
+        `dataframe` and `blob` fields are converted JSON serialisable types.
 
-    def to_json(self, json_encoder: Optional[Type[DocumentEncoder]] = None, **json_kwargs):
+        :param flatten: Whether to flatten `metadata` field or not. Defaults to True.
         """
-        Saves the Document into a JSON string that can be later loaded back. Drops all binary data from the blob field.
-        """
-        dictionary = self.to_dict()
-        del dictionary["blob"]
-        return json.dumps(dictionary, cls=json_encoder or DocumentEncoder, **json_kwargs)
+        data = asdict(self)
+        if (dataframe := data.get("dataframe", None)) is not None:
+            data["dataframe"] = dataframe.to_json()
+        if blob := data.get("blob", None):
+            data["blob"] = list(blob)
 
-    @classmethod
-    def from_dict(cls, dictionary):
-        """
-        Creates a new Document object from a dictionary of its fields.
-        """
-        return cls(**dictionary)
+        if flatten:
+            return {**data, **data.pop("metadata")}
+
+        return data
 
     @classmethod
-    def from_json(cls, data, json_decoder: Optional[Type[DocumentDecoder]] = None, **json_kwargs):
+    def from_dict(cls, data: Dict[str, Any]) -> "Document":
         """
-        Creates a new Document object from a JSON string.
+        Creates a new Document object from a dictionary.
+        `dataframe` and `blob` fields are converted to their original types.
         """
-        dictionary = json.loads(data, cls=json_decoder or DocumentDecoder, **json_kwargs)
-        return cls.from_dict(dictionary=dictionary)
-
-    def flatten(self) -> Dict[str, Any]:
-        """
-        Returns a dictionary with all the fields of the document and the metadata on the same level.
-        This allows filtering by all document fields, not only the metadata.
-        """
-        dictionary = self.to_dict()
-        metadata = dictionary.pop("metadata", {})
-        dictionary = {**dictionary, **metadata}
-        return dictionary
+        if (dataframe := data.get("dataframe", None)) is not None:
+            data["dataframe"] = pandas.read_json(dataframe)
+        if blob := data.get("blob", None):
+            data["blob"] = bytes(blob)
+        return cls(**data)
