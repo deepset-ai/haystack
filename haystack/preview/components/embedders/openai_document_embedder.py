@@ -43,7 +43,8 @@ class OpenAIDocumentEmbedder:
         :param metadata_fields_to_embed: List of meta fields that should be embedded along with the Document text.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
-
+        # if the user does not provide the API key, check if it is set in the module client
+        api_key = api_key or openai.api_key
         if api_key is None:
             try:
                 api_key = os.environ["OPENAI_API_KEY"]

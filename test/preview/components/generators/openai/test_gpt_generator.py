@@ -46,12 +46,20 @@ class TestGPTGenerator:
     @pytest.mark.unit
     def test_init_default(self):
         component = GPTGenerator(api_key="test-api-key")
+        assert openai.api_key == "test-api-key"
         assert component.system_prompt is None
-        assert component.api_key == "test-api-key"
         assert component.model_name == "gpt-3.5-turbo"
         assert component.streaming_callback is None
         assert component.api_base_url == "https://api.openai.com/v1"
+        assert openai.api_base == "https://api.openai.com/v1"
         assert component.model_parameters == {}
+
+    @pytest.mark.unit
+    def test_init_fail_wo_api_key(self, monkeypatch):
+        openai.api_key = None
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        with pytest.raises(ValueError, match="GPTGenerator expects an OpenAI API key"):
+            GPTGenerator()
 
     @pytest.mark.unit
     def test_init_with_parameters(self):
@@ -65,11 +73,12 @@ class TestGPTGenerator:
             streaming_callback=callback,
             api_base_url="test-base-url",
         )
+        assert openai.api_key == "test-api-key"
         assert component.system_prompt == "test-system-prompt"
-        assert component.api_key == "test-api-key"
         assert component.model_name == "gpt-4"
         assert component.streaming_callback == callback
         assert component.api_base_url == "test-base-url"
+        assert openai.api_base == "test-base-url"
         assert component.model_parameters == {"max_tokens": 10, "some_test_param": "test-params"}
 
     @pytest.mark.unit
@@ -79,7 +88,6 @@ class TestGPTGenerator:
         assert data == {
             "type": "GPTGenerator",
             "init_parameters": {
-                "api_key": "test-api-key",
                 "model_name": "gpt-3.5-turbo",
                 "system_prompt": None,
                 "streaming_callback": None,
@@ -102,7 +110,6 @@ class TestGPTGenerator:
         assert data == {
             "type": "GPTGenerator",
             "init_parameters": {
-                "api_key": "test-api-key",
                 "model_name": "gpt-4",
                 "system_prompt": "test-system-prompt",
                 "max_tokens": 10,
@@ -127,7 +134,6 @@ class TestGPTGenerator:
         assert data == {
             "type": "GPTGenerator",
             "init_parameters": {
-                "api_key": "test-api-key",
                 "model_name": "gpt-4",
                 "system_prompt": "test-system-prompt",
                 "max_tokens": 10,
@@ -138,11 +144,11 @@ class TestGPTGenerator:
         }
 
     @pytest.mark.unit
-    def test_from_dict(self):
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
             "type": "GPTGenerator",
             "init_parameters": {
-                "api_key": "test-api-key",
                 "model_name": "gpt-4",
                 "system_prompt": "test-system-prompt",
                 "max_tokens": 10,
@@ -153,11 +159,28 @@ class TestGPTGenerator:
         }
         component = GPTGenerator.from_dict(data)
         assert component.system_prompt == "test-system-prompt"
-        assert component.api_key == "test-api-key"
         assert component.model_name == "gpt-4"
         assert component.streaming_callback == default_streaming_callback
         assert component.api_base_url == "test-base-url"
         assert component.model_parameters == {"max_tokens": 10, "some_test_param": "test-params"}
+
+    @pytest.mark.unit
+    def test_from_dict_fail_wo_env_var(self, monkeypatch):
+        openai.api_key = None
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        data = {
+            "type": "GPTGenerator",
+            "init_parameters": {
+                "model_name": "gpt-4",
+                "system_prompt": "test-system-prompt",
+                "max_tokens": 10,
+                "some_test_param": "test-params",
+                "api_base_url": "test-base-url",
+                "streaming_callback": "haystack.preview.components.generators.openai.gpt.default_streaming_callback",
+            },
+        }
+        with pytest.raises(ValueError, match="GPTGenerator expects an OpenAI API key"):
+            GPTGenerator.from_dict(data)
 
     @pytest.mark.unit
     def test_run_no_system_prompt(self):
@@ -177,10 +200,7 @@ class TestGPTGenerator:
                 ],
             }
             gpt_patch.create.assert_called_once_with(
-                model="gpt-3.5-turbo",
-                api_key="test-api-key",
-                messages=[{"role": "user", "content": "test-prompt-1"}],
-                stream=False,
+                model="gpt-3.5-turbo", messages=[{"role": "user", "content": "test-prompt-1"}], stream=False
             )
 
     @pytest.mark.unit
@@ -202,7 +222,6 @@ class TestGPTGenerator:
             }
             gpt_patch.create.assert_called_once_with(
                 model="gpt-3.5-turbo",
-                api_key="test-api-key",
                 messages=[
                     {"role": "system", "content": "test-system-prompt"},
                     {"role": "user", "content": "test-prompt-1"},
@@ -218,7 +237,6 @@ class TestGPTGenerator:
             component.run(prompt="test-prompt-1")
             gpt_patch.create.assert_called_once_with(
                 model="gpt-3.5-turbo",
-                api_key="test-api-key",
                 messages=[{"role": "user", "content": "test-prompt-1"}],
                 stream=False,
                 max_tokens=10,
@@ -242,7 +260,6 @@ class TestGPTGenerator:
             assert mock_callback.call_count == 12
             gpt_patch.create.assert_called_once_with(
                 model="gpt-3.5-turbo",
-                api_key="test-api-key",
                 messages=[
                     {"role": "system", "content": "test-system-prompt"},
                     {"role": "user", "content": "test-prompt-1"},
