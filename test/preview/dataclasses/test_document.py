@@ -1,36 +1,11 @@
 import json
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from haystack.preview import Document
 from haystack.preview.dataclasses.document import DocumentDecoder, DocumentEncoder
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "doc,doc_str",
-    [
-        (Document(text="test text"), "text: 'test text'"),
-        (
-            Document(dataframe=pd.DataFrame([["John", 25], ["Martha", 34]], columns=["name", "age"])),
-            "dataframe: (2, 2)",
-        ),
-        (Document(blob=bytes("hello, test string".encode("utf-8"))), "blob: 18 bytes"),
-        (
-            Document(
-                text="test text",
-                dataframe=pd.DataFrame([["John", 25], ["Martha", 34]], columns=["name", "age"]),
-                blob=bytes("hello, test string".encode("utf-8")),
-            ),
-            "text: 'test text', dataframe: (2, 2), blob: 18 bytes",
-        ),
-    ],
-)
-def test_document_str(doc, doc_str):
-    assert f"Document(id={doc.id}, mimetype: 'text/plain', {doc_str})" == str(doc)
 
 
 @pytest.mark.unit

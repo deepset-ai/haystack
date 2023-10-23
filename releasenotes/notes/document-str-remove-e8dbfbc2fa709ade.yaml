@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Remove `Document.__str__()`

@@ -70,17 +70,6 @@ class Document:
     score: Optional[float] = field(default=None)
     embedding: Optional[List[float]] = field(default=None, repr=False)
 
-    def __str__(self):
-        fields = [f"mimetype: '{self.mime_type}'"]
-        if self.text is not None:
-            fields.append(f"text: '{self.text}'" if len(self.text) < 100 else f"text: '{self.text[:100]}...'")
-        if self.dataframe is not None:
-            fields.append(f"dataframe: {self.dataframe.shape}")
-        if self.blob is not None:
-            fields.append(f"blob: {len(self.blob)} bytes")
-        fields_str = ", ".join(fields)
-        return f"{self.__class__.__name__}(id={self.id}, {fields_str})"
-
     def __eq__(self, other):
         """
         Compares documents for equality. Uses the id to check whether the documents are supposed to be the same.
