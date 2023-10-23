@@ -1,4 +1,5 @@
 import json
+import os
 import logging
 from typing import Dict, List, Optional, Any
 
@@ -26,13 +27,15 @@ class SerperDevWebSearch:
 
     def __init__(
         self,
-        api_key: str,
+        api_key: Optional[str] = None,
         top_k: Optional[int] = 10,
         allowed_domains: Optional[List[str]] = None,
         search_params: Optional[Dict[str, Any]] = None,
     ):
         """
-        :param api_key: API key for the SerperDev API.
+        :param api_key: API key for the SerperDev API.  It can be
+        explicitly provided or automatically read from the
+        environment variable SERPERDEV_API_KEY (recommended).
         :param top_k: Number of documents to return.
         :param allowed_domains: List of domains to limit the search to.
         :param search_params: Additional parameters passed to the SerperDev API.
@@ -40,6 +43,13 @@ class SerperDevWebSearch:
         See the [Serper Dev website](https://serper.dev/) for more details.
         """
         if api_key is None:
+            try:
+                api_key = os.environ["SERPERDEV_API_KEY"]
+            except KeyError as e:
+                raise ValueError(
+                    "SerperDevWebSearch expects an API key. "
+                    "Set the SERPERDEV_API_KEY environment variable (recommended) or pass it explicitly."
+                ) from e
             raise ValueError("API key for SerperDev API must be set.")
         self.api_key = api_key
         self.top_k = top_k
@@ -51,11 +61,7 @@ class SerperDevWebSearch:
         Serialize this component to a dictionary.
         """
         return default_to_dict(
-            self,
-            api_key=self.api_key,
-            top_k=self.top_k,
-            allowed_domains=self.allowed_domains,
-            search_params=self.search_params,
+            self, top_k=self.top_k, allowed_domains=self.allowed_domains, search_params=self.search_params
         )
 
     @component.output_types(documents=List[Document], links=List[str])

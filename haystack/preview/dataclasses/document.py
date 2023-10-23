@@ -3,7 +3,7 @@ import json
 import logging
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 import numpy
 import pandas
@@ -42,8 +42,6 @@ class DocumentDecoder(json.JSONDecoder):
             dictionary["array"] = numpy.array(dictionary.get("array"))
         if "dataframe" in dictionary and dictionary.get("dataframe"):
             dictionary["dataframe"] = pandas.read_json(dictionary.get("dataframe", None))
-        if "embedding" in dictionary and dictionary.get("embedding"):
-            dictionary["embedding"] = numpy.array(dictionary.get("embedding"))
 
         return dictionary
 
@@ -75,7 +73,7 @@ class Document:
     mime_type: str = field(default="text/plain")
     metadata: Dict[str, Any] = field(default_factory=dict)
     score: Optional[float] = field(default=None)
-    embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
+    embedding: Optional[List[float]] = field(default=None, repr=False)
 
     def __str__(self):
         fields = [f"mimetype: '{self.mime_type}'"]
@@ -120,7 +118,7 @@ class Document:
         blob = self.blob or None
         mime_type = self.mime_type or None
         metadata = self.metadata or {}
-        embedding = self.embedding.tolist() if self.embedding is not None else None
+        embedding = self.embedding if self.embedding is not None else None
         data = f"{text}{array}{dataframe}{blob}{mime_type}{metadata}{embedding}"
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
