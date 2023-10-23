@@ -1,15 +1,15 @@
-from typing import Optional, List, Callable, Dict, Any
-
-import sys
+import dataclasses
 import logging
-from collections import defaultdict
-from dataclasses import dataclass, asdict
 import os
+import sys
+from collections import defaultdict
+from typing import Optional, List, Callable, Dict, Any, Union
 
 import openai
+from openai.openai_object import OpenAIObject
 
 from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
-
+from haystack.preview.dataclasses.chat_message import ChatMessage
 
 logger = logging.getLogger(__name__)
 
@@ -17,19 +17,12 @@ logger = logging.getLogger(__name__)
 API_BASE_URL = "https://api.openai.com/v1"
 
 
-@dataclass
-class _ChatMessage:
-    content: str
-    role: str
-
-
 def default_streaming_callback(chunk):
     """
     Default callback function for streaming responses from OpenAI API.
     Prints the tokens of the first completion to stdout as soon as they are received and returns the chunk unchanged.
     """
-    if hasattr(chunk.choices[0].delta, "content"):
-        print(chunk.choices[0].delta.content, flush=True, end="")
+    print(chunk.content, flush=True, end="")
     return chunk
 
 
@@ -154,72 +147,123 @@ class GPTGenerator:
             data["init_parameters"]["streaming_callback"] = streaming_callback
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[str], metadata=List[Dict[str, Any]])
-    def run(self, prompt: str):
+    @component.output_types(replies=List[ChatMessage])
+    def run(self, prompt: Union[str, List[ChatMessage]]):
         """
         Queries the LLM with the prompts to produce replies.
 
-        :param prompts: The prompts to be sent to the generative model.
+        :param prompt: The prompts to be sent to the generative model.
         """
-        message = _ChatMessage(content=prompt, role="user")
-        if self.system_prompt:
-            chat = [_ChatMessage(content=self.system_prompt, role="system"), message]
+        messages: List[ChatMessage] = []
+        if isinstance(prompt, str):
+            message = ChatMessage.from_user(prompt)
+            messages = [ChatMessage.from_system(self.system_prompt), message] if self.system_prompt else [message]
+        elif isinstance(prompt, list) and all(isinstance(message, ChatMessage) for message in prompt):
+            messages = prompt
         else:
-            chat = [message]
-
+            raise ValueError(
+                f"Invalid prompt. Expected either a string or a list of ChatMessage(s), but got {type(prompt)}"
+            )
+        openai_chat_message_format = ["role", "content", "name"]
         completion = openai.ChatCompletion.create(
             model=self.model_name,
-            messages=[asdict(message) for message in chat],
+            messages=[
+                dataclasses.asdict(
+                    m, dict_factory=lambda obj: {k: v for k, v in obj if k in openai_chat_message_format and v}
+                )
+                for m in messages
+            ],
             stream=self.streaming_callback is not None,
             **self.model_parameters,
         )
 
-        replies: List[str]
-        metadata: List[Dict[str, Any]]
+        completions: List[ChatMessage]
         if self.streaming_callback:
-            replies_dict: Dict[str, str] = defaultdict(str)
-            metadata_dict: Dict[str, Dict[str, Any]] = defaultdict(dict)
+            # buckets for n responses
+            chunk_buckets = defaultdict(list)
             for chunk in completion:
-                chunk = self.streaming_callback(chunk)
-                for choice in chunk.choices:
-                    if hasattr(choice.delta, "content"):
-                        replies_dict[choice.index] += choice.delta.content
-                    metadata_dict[choice.index] = {
-                        "model": chunk.model,
-                        "index": choice.index,
-                        "finish_reason": choice.finish_reason,
-                    }
-            replies = list(replies_dict.values())
-            metadata = list(metadata_dict.values())
-            self._check_truncated_answers(metadata)
-            return {"replies": replies, "metadata": metadata}
+                if chunk.choices:
+                    # we always get a chunk with a single choice.
+                    # the index idx of a choice varies, idx < number of requested completions
+                    chunk_delta: ChatMessage = self._build_chunk(chunk, chunk.choices[0])
+                    index = int(chunk_delta.metadata["index"])
+                    chunk_buckets[index].append(chunk_delta)
+                    # invoke callback with the chunk_delta
+                    self.streaming_callback(chunk_delta)
+            completions = self._collect_chunks(chunk_buckets)
+        else:
+            completions = [self._build_message(completion, choice) for choice in completion.choices]
 
-        metadata = [
+        # before returning, do post-processing of the completions
+        for completion in completions:
+            self._post_receive(completion)
+
+        return {"replies": completions}
+
+    def _build_message(self, completion: OpenAIObject, choice: OpenAIObject) -> ChatMessage:
+        """
+        Converts the response from the OpenAI API to a ChatMessage.
+        """
+        message: OpenAIObject = choice.message
+        content = dict(message.function_call) if choice.finish_reason == "function_call" else message.content
+        chat_message = ChatMessage.from_assistant(content)
+        chat_message.metadata.update(
             {
                 "model": completion.model,
                 "index": choice.index,
                 "finish_reason": choice.finish_reason,
                 "usage": dict(completion.usage.items()),
             }
-            for choice in completion.choices
-        ]
-        replies = [choice.message.content.strip() for choice in completion.choices]
-        self._check_truncated_answers(metadata)
-        return {"replies": replies, "metadata": metadata}
+        )
+        return chat_message
 
-    def _check_truncated_answers(self, metadata: List[Dict[str, Any]]):
+    def _build_chunk(self, chunk: OpenAIObject, choice: OpenAIObject) -> ChatMessage:
+        """
+        Converts the response from the OpenAI API to a ChatMessage.
+        """
+        has_content = bool(hasattr(choice.delta, "content") and choice.delta.content)
+        if has_content:
+            content = choice.delta.content
+        elif hasattr(choice.delta, "function_call"):
+            content = str(choice.delta.function_call)
+        else:
+            content = ""
+        # TODO: these should perhaps be ChatMessageChunk objects
+        chunk_message = ChatMessage.from_assistant(content)
+        chunk_message.metadata.update(
+            {"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason}
+        )
+        return chunk_message
+
+    def _collect_chunks(self, chunk_buckets: Dict[int, List[ChatMessage]]):
+        content_list = ["".join([chunk.content for chunk in chunk_list]) for chunk_list in chunk_buckets.values()]
+        replies: List[ChatMessage] = [
+            # take metadata from the last chunk in the bucket
+            ChatMessage.from_assistant(content, chunk_buckets[i][-1].metadata)
+            for i, content in enumerate(content_list)
+        ]
+        return replies
+
+    def _check_finish_reason(self, message: ChatMessage) -> None:
         """
         Check the `finish_reason` returned with the OpenAI completions.
         If the `finish_reason` is `length`, log a warning to the user.
-
-        :param result: The result returned from the OpenAI API.
-        :param payload: The payload sent to the OpenAI API.
+        :param message: The message returned by the LLM.
         """
-        truncated_completions = sum(1 for meta in metadata if meta.get("finish_reason") != "stop")
-        if truncated_completions > 0:
+        if message.metadata["finish_reason"] == "length":
             logger.warning(
-                "%s out of the %s completions have been truncated before reaching a natural stopping point. "
+                "The completion for index %s has been truncated before reaching a natural stopping point. "
                 "Increase the max_tokens parameter to allow for longer completions.",
-                truncated_completions,
-                len(metadata),
+                message.metadata["index"],
             )
+        if message.metadata["finish_reason"] == "content_filter":
+            logger.warning(
+                "The completion for index %s has been truncated due to the content filter.", message.metadata["index"]
+            )
+
+    def _post_receive(self, message: ChatMessage) -> None:
+        """
+        Post-processing of the message received from the LLM.
+        :param message: The message returned by the LLM.
+        """
+        self._check_finish_reason(message)

@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Adapt GPTGenerator to use ChatMessage format for input and output.

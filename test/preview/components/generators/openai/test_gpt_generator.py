@@ -8,6 +8,7 @@ from openai.util import convert_to_openai_object
 
 from haystack.preview.components.generators.openai.gpt import GPTGenerator
 from haystack.preview.components.generators.openai.gpt import default_streaming_callback
+from haystack.preview.dataclasses import ChatMessage, ChatRole
 
 
 def mock_openai_response(messages: str, model: str = "gpt-3.5-turbo-0301", **kwargs) -> openai.ChatCompletion:
@@ -189,15 +190,19 @@ class TestGPTGenerator:
             component = GPTGenerator(api_key="test-api-key")
             results = component.run(prompt="test-prompt-1")
             assert results == {
-                "replies": ["response for these messages --> user: test-prompt-1"],
-                "metadata": [
-                    {
-                        "model": "gpt-3.5-turbo",
-                        "index": "0",
-                        "finish_reason": "stop",
-                        "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
-                    }
-                ],
+                "replies": [
+                    ChatMessage(
+                        content="response for these messages --> user: test-prompt-1",
+                        role=ChatRole.ASSISTANT,
+                        name=None,
+                        metadata={
+                            "model": "gpt-3.5-turbo",
+                            "index": "0",
+                            "finish_reason": "stop",
+                            "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+                        },
+                    )
+                ]
             }
             gpt_patch.create.assert_called_once_with(
                 model="gpt-3.5-turbo", messages=[{"role": "user", "content": "test-prompt-1"}], stream=False
@@ -210,15 +215,19 @@ class TestGPTGenerator:
             component = GPTGenerator(api_key="test-api-key", system_prompt="test-system-prompt")
             results = component.run(prompt="test-prompt-1")
             assert results == {
-                "replies": ["response for these messages --> system: test-system-prompt - user: test-prompt-1"],
-                "metadata": [
-                    {
-                        "model": "gpt-3.5-turbo",
-                        "index": "0",
-                        "finish_reason": "stop",
-                        "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
-                    }
-                ],
+                "replies": [
+                    ChatMessage(
+                        content="response for these messages --> system: test-system-prompt - user: test-prompt-1",
+                        role=ChatRole.ASSISTANT,
+                        name=None,
+                        metadata={
+                            "model": "gpt-3.5-turbo",
+                            "index": "0",
+                            "finish_reason": "stop",
+                            "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+                        },
+                    )
+                ]
             }
             gpt_patch.create.assert_called_once_with(
                 model="gpt-3.5-turbo",
@@ -253,8 +262,14 @@ class TestGPTGenerator:
             )
             results = component.run(prompt="test-prompt-1")
             assert results == {
-                "replies": ["response for these messages --> system: test-system-prompt - user: test-prompt-1 "],
-                "metadata": [{"model": "gpt-3.5-turbo", "index": "0", "finish_reason": "stop"}],
+                "replies": [
+                    ChatMessage(
+                        content="response for these messages --> system: test-system-prompt - user: test-prompt-1 ",
+                        role=ChatRole.ASSISTANT,
+                        name=None,
+                        metadata={"finish_reason": "stop", "index": "0", "model": "gpt-3.5-turbo"},
+                    )
+                ]
             }
             # Calls count: 10 tokens per prompt + 1 token for the role + 1 empty termination token
             assert mock_callback.call_count == 12
@@ -268,19 +283,31 @@ class TestGPTGenerator:
             )
 
     @pytest.mark.unit
-    def test_check_truncated_answers(self, caplog):
+    def test_check_abnormal_completions(self, caplog):
         component = GPTGenerator(api_key="test-api-key")
-        metadata = [
-            {"finish_reason": "stop"},
-            {"finish_reason": "content_filter"},
-            {"finish_reason": "length"},
-            {"finish_reason": "stop"},
+        messages = [
+            ChatMessage.from_assistant(
+                "", metadata={"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
+            )
+            for i, _ in enumerate(range(4))
         ]
-        component._check_truncated_answers(metadata)
-        assert caplog.records[0].message == (
-            "2 out of the 4 completions have been truncated before reaching a natural "
-            "stopping point. Increase the max_tokens parameter to allow for longer completions."
+
+        for m in messages:
+            component._post_receive(m)
+
+        # check truncation warning
+        message_template = (
+            "The completion for index {index} has been truncated before reaching a natural stopping point. "
+            "Increase the max_tokens parameter to allow for longer completions."
         )
+
+        for index in [1, 3]:
+            assert caplog.records[index].message == message_template.format(index=index)
+
+        # check content filter warning
+        message_template = "The completion for index {index} has been truncated due to the content filter."
+        for index in [0, 2]:
+            assert caplog.records[index].message == message_template.format(index=index)
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -291,10 +318,10 @@ class TestGPTGenerator:
         component = GPTGenerator(api_key=os.environ.get("OPENAI_API_KEY"), n=1)
         results = component.run(prompt="What's the capital of France?")
         assert len(results["replies"]) == 1
-        assert "Paris" in results["replies"][0]
-        assert len(results["metadata"]) == 1
-        assert "gpt-3.5" in results["metadata"][0]["model"]
-        assert results["metadata"][0]["finish_reason"] == "stop"
+        message: ChatMessage = results["replies"][0]
+        assert "Paris" in message.content
+        assert "gpt-3.5" in message.metadata["model"]
+        assert message.metadata["finish_reason"] == "stop"
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -317,7 +344,7 @@ class TestGPTGenerator:
                 self.responses = ""
 
             def __call__(self, chunk):
-                self.responses += chunk.choices[0].delta.content if chunk.choices[0].delta else ""
+                self.responses += chunk.content if chunk.content else ""
                 return chunk
 
         callback = Callback()
@@ -325,10 +352,8 @@ class TestGPTGenerator:
         results = component.run(prompt="What's the capital of France?")
 
         assert len(results["replies"]) == 1
-        assert "Paris" in results["replies"][0]
+        message: ChatMessage = results["replies"][0]
+        assert "Paris" in message.content
 
-        assert len(results["metadata"]) == 1
-        assert "gpt-3.5" in results["metadata"][0]["model"]
-        assert results["metadata"][0]["finish_reason"] == "stop"
-
-        assert callback.responses == results["replies"][0]
+        assert "gpt-3.5" in message.metadata["model"]
+        assert message.metadata["finish_reason"] == "stop"
