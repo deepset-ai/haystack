@@ -62,6 +62,8 @@ class RemoteWhisperTranscriber:
             temperature until certain thresholds are hit.
         """
 
+        # if the user does not provide the API key, check if it is set in the module client
+        api_key = api_key or openai.api_key
         if api_key is None:
             try:
                 api_key = os.environ["OPENAI_API_KEY"]
@@ -70,6 +72,7 @@ class RemoteWhisperTranscriber:
                     "RemoteWhisperTranscriber expects an OpenAI API key. "
                     "Set the OPENAI_API_KEY environment variable (recommended) or pass it explicitly."
                 ) from e
+        openai.api_key = api_key
 
         self.organization = organization
         self.model_name = model_name
@@ -77,10 +80,11 @@ class RemoteWhisperTranscriber:
 
         # Only response_format = "json" is supported
         whisper_params = kwargs
+        if whisper_params.get("response_format") != "json":
+            logger.warning("RemoteWhisperTranscriber only supports 'response_format: json'. This parameter will be overwritten.")
         whisper_params["response_format"] = "json"
         self.whisper_params = whisper_params
 
-        openai.api_key = api_key
         if organization is not None:
             openai.organization = organization
 
