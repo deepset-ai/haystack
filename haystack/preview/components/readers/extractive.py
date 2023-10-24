@@ -7,7 +7,7 @@ from haystack.preview import component, default_to_dict, ComponentError, Documen
 from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(
-    "Run 'pip install transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0'"
+    "Run 'pip install transformers[torch,sentencepiece]==4.34.1 sentence-transformers>=2.2.0'"
 ) as torch_and_transformers_import:
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
     from tokenizers import Encoding
@@ -192,17 +192,17 @@ class ExtractiveReader:
         start_candidates = start_candidates.cpu()
         end_candidates = end_candidates.cpu()
 
-        start_candidates = [
+        start_candidates_char_indices = [
             [encoding.token_to_chars(start)[0] for start in candidates]
             for candidates, encoding in zip(start_candidates, encodings)
         ]
-        end_candidates = [
+        end_candidates_char_indices = [
             [encoding.token_to_chars(end)[1] for end in candidates]
             for candidates, encoding in zip(end_candidates, encodings)
         ]
         probabilities = candidates.values.cpu()
 
-        return start_candidates, end_candidates, probabilities
+        return start_candidates_char_indices, end_candidates_char_indices, probabilities
 
     def _nest_answers(
         self,
