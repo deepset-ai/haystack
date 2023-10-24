@@ -3,7 +3,7 @@ import json
 import logging
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 import numpy
 import pandas
@@ -38,12 +38,8 @@ class DocumentDecoder(json.JSONDecoder):
         super().__init__(object_hook=object_hook or self.document_decoder)
 
     def document_decoder(self, dictionary):
-        if "array" in dictionary and dictionary.get("array"):
-            dictionary["array"] = numpy.array(dictionary.get("array"))
         if "dataframe" in dictionary and dictionary.get("dataframe"):
             dictionary["dataframe"] = pandas.read_json(dictionary.get("dataframe", None))
-        if "embedding" in dictionary and dictionary.get("embedding"):
-            dictionary["embedding"] = numpy.array(dictionary.get("embedding"))
 
         return dictionary
 
@@ -57,8 +53,6 @@ class Document:
 
     :param id: Unique identifier for the document. When not set, it's generated based on the Document fields' values.
     :param text: Text of the document, if the document contains text.
-    :param array: Array of numbers associated with the document, if the document contains matrix data like image,
-        audio, video, and such.
     :param dataframe: Pandas dataframe with the document's content, if the document contains tabular data.
     :param blob: Binary data associated with the document, if the document has any binary data associated with it.
     :param mime_type: MIME type of the document. Defaults to "text/plain".
@@ -69,20 +63,17 @@ class Document:
 
     id: str = field(default="")
     text: Optional[str] = field(default=None)
-    array: Optional[numpy.ndarray] = field(default=None)
     dataframe: Optional[pandas.DataFrame] = field(default=None)
     blob: Optional[bytes] = field(default=None)
     mime_type: str = field(default="text/plain")
     metadata: Dict[str, Any] = field(default_factory=dict)
     score: Optional[float] = field(default=None)
-    embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
+    embedding: Optional[List[float]] = field(default=None, repr=False)
 
     def __str__(self):
         fields = [f"mimetype: '{self.mime_type}'"]
         if self.text is not None:
             fields.append(f"text: '{self.text}'" if len(self.text) < 100 else f"text: '{self.text[:100]}...'")
-        if self.array is not None:
-            fields.append(f"array: {self.array.shape}")
         if self.dataframe is not None:
             fields.append(f"dataframe: {self.dataframe.shape}")
         if self.blob is not None:
@@ -115,13 +106,12 @@ class Document:
         Creates a hash of the given content that acts as the document's ID.
         """
         text = self.text or None
-        array = self.array.tolist() if self.array is not None else None
         dataframe = self.dataframe.to_json() if self.dataframe is not None else None
         blob = self.blob or None
         mime_type = self.mime_type or None
         metadata = self.metadata or {}
-        embedding = self.embedding.tolist() if self.embedding is not None else None
-        data = f"{text}{array}{dataframe}{blob}{mime_type}{metadata}{embedding}"
+        embedding = self.embedding if self.embedding is not None else None
+        data = f"{text}{dataframe}{blob}{mime_type}{metadata}{embedding}"
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
     def to_dict(self):
