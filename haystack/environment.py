@@ -104,9 +104,9 @@ def collect_static_system_specs() -> Dict[str, Any]:
     except ImportError:
         specs["libraries.transformers"] = False
 
-    has_mps = hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
     try:
         torch_import.check()
+        has_mps = hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
         specs.update(
             {
                 "libraries.torch": torch.__version__,
