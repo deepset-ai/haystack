@@ -16,7 +16,7 @@ class TestUrlCacheChecker:
             "type": "UrlCacheChecker",
             "init_parameters": {
                 "document_store": {"type": "MockedDocumentStore", "init_parameters": {}},
-                "url_field": "url",
+                "url_field": "metadata.url",
             },
         }
 

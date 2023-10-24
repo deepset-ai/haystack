@@ -11,7 +11,7 @@ class UrlCacheChecker:
     implement caching functionality within web retrieval pipelines that use a Document Store.
     """
 
-    def __init__(self, document_store: DocumentStore, url_field: str = "url"):
+    def __init__(self, document_store: DocumentStore, url_field: str = "metadata.url"):
         """
         Create a UrlCacheChecker component.
         """
