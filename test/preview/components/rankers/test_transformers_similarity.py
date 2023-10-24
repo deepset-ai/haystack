@@ -7,7 +7,7 @@ from haystack.preview.components.rankers.transformers_similarity import Transfor
 class TestSimilarityRanker:
     @pytest.mark.unit
     def test_to_dict(self):
-        component = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
+        component = TransformersSimilarityRanker()
         data = component.to_dict()
         assert data == {
             "type": "TransformersSimilarityRanker",
