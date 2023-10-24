@@ -76,11 +76,15 @@ class PromptBuilder:
         as input types. Conversely, if template_variables are given, PromptBuilder will directly use
         them as input variables.
 
-        If neither template nor template_variables are provided, an error will be raised.
+        If neither template nor template_variables are provided, an error will be raised. If both are provided,
+        an error will be raised as well.
 
         :param template: Template string to be rendered.
         :param template_variables: List of template variables to be used as input types.
         """
+        if template_variables and template:
+            raise ValueError("template and template_variables cannot be provided at the same time.")
+
         # dynamic per-user message templating
         if template_variables:
             # treat vars as optional input slots

@@ -42,6 +42,20 @@ def test_run_with_missing_input():
 
 
 @pytest.mark.unit
+def test_init_with_template_and_template_variables():
+    # Initialize the PromptBuilder object with both template and template_variables
+    with pytest.raises(ValueError, match="template and template_variables cannot be provided at the same time."):
+        PromptBuilder(template="This is a {{ variable }}", template_variables=["variable"])
+
+
+@pytest.mark.unit
+def test_init_with_no_template_and_no_template_variables():
+    # Initialize the PromptBuilder object with no template and no template_variables
+    with pytest.raises(ValueError, match="Either template or template_variables must be provided."):
+        PromptBuilder()
+
+
+@pytest.mark.unit
 def test_dynamic_template_with_input_variables_no_messages():
     # Initialize the PromptBuilder object with dynamic template variables
     template_variables = ["location", "time"]
