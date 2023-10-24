@@ -85,6 +85,8 @@ class PromptBuilder:
         if template_variables:
             # treat vars as optional input slots
             dynamic_input_slots = {var: Optional[Any] for var in template_variables}
+            self.template = None
+
         # static templating
         else:
             if not template:
@@ -122,7 +124,13 @@ class PromptBuilder:
             last_message: ChatMessage = messages[-1]
             if last_message.is_from(ChatRole.USER):
                 template = Template(last_message.content)
-                messages[-1] = ChatMessage.from_user(template.render(kwargs))
-            return {"prompt": messages}
+                return {"prompt": messages[:-1] + [ChatMessage.from_user(template.render(kwargs))]}
+            else:
+                return {"prompt": messages}
         else:
-            return {"prompt": self.template.render(kwargs)}
+            if self.template:
+                return {"prompt": self.template.render(kwargs)}
+            else:
+                raise ValueError(
+                    "PromptBuilder was initialized with template_variables, but no ChatMessage(s) were provided."
+                )
