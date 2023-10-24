@@ -1,13 +1,12 @@
-from typing import List, Optional, Dict, Any, Union, BinaryIO
+from typing import List, Optional, Dict, Any
 
 import os
 import logging
-from pathlib import Path
 
 import openai
 
 from haystack.preview import component, Document, default_to_dict, default_from_dict
-
+from haystack.preview.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +111,7 @@ class RemoteWhisperTranscriber:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
-    def run(self, audio_files: List[Union[str, Path, BinaryIO]]):
+    def run(self, streams: List[ByteStream]):
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
@@ -128,19 +127,9 @@ class RemoteWhisperTranscriber:
         """
         documents = []
 
-        for audio_file in audio_files:
-            if isinstance(audio_file, (str, Path)):
-                if isinstance(audio_file, str):
-                    file_name = audio_file
-                else:
-                    file_name = str(audio_file.absolute())
-                with open(audio_file, "rb") as file:
-                    content = openai.Audio.transcribe(file=file, model=self.model_name, **self.whisper_params)
-            else:
-                file_name = "<<binary stream>>"
-                content = openai.Audio.transcribe(file=audio_file, model=self.model_name, **self.whisper_params)
-
-            doc = Document(text=content["text"], metadata={"audio_file": file_name})
+        for stream in streams:
+            content = openai.Audio.transcribe(file=stream.data, model=self.model_name, **self.whisper_params)
+            doc = Document(text=content["text"], metadata=stream.metadata)
             documents.append(doc)
 
         return {"documents": documents}
