@@ -81,7 +81,9 @@ class RemoteWhisperTranscriber:
         # Only response_format = "json" is supported
         whisper_params = kwargs
         if whisper_params.get("response_format") != "json":
-            logger.warning("RemoteWhisperTranscriber only supports 'response_format: json'. This parameter will be overwritten.")
+            logger.warning(
+                "RemoteWhisperTranscriber only supports 'response_format: json'. This parameter will be overwritten."
+            )
         whisper_params["response_format"] = "json"
         self.whisper_params = whisper_params
 

@@ -24,10 +24,24 @@ def mock_openai_response(response_format="json", **kwargs) -> openai.openai_obje
 class TestRemoteWhisperTranscriber:
     @pytest.mark.unit
     def test_init_no_key(self, monkeypatch):
+        openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         error_msg = "RemoteWhisperTranscriber expects an OpenAI API key."
         with pytest.raises(ValueError, match=error_msg):
             RemoteWhisperTranscriber(api_key=None)
+
+    def test_init_key_env_var(self, monkeypatch):
+        openai.api_key = None
+        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
+        RemoteWhisperTranscriber(api_key=None)
+        assert openai.api_key == "test_api_key"
+
+    def test_init_key_module_env_and_global_var(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key_2")
+        openai.api_key = "test_api_key_1"
+        RemoteWhisperTranscriber(api_key=None)
+        # The module global variable takes preference
+        assert openai.api_key == "test_api_key_1"
 
     @pytest.mark.unit
     def test_init_default(self):
@@ -153,6 +167,7 @@ class TestRemoteWhisperTranscriber:
         }
 
     def test_from_dict_with_defualt_parameters_no_env_var(self, monkeypatch):
+        openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
         data = {
