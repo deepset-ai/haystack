@@ -119,11 +119,8 @@ class RemoteWhisperTranscriber:
         [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
         [github repo](https://github.com/openai/whisper).
 
-        :param audio_files: a list of paths or binary streams to transcribe
-        :returns: a list of Documents, one for each file. The content of the
-        document is the transcription text, while the document's metadata
-        contains a key called `audio_file`, which contains the path to the
-        audio file used for the transcription.
+        :param audio_files: a list of ByteStream objects to transcribe.
+        :returns: a list of Documents, one for each file. The content of the document is the transcription text.
         """
         documents = []
 
