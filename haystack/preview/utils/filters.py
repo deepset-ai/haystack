@@ -1,5 +1,6 @@
 from typing import List, Any, Union, Dict
 from datetime import datetime
+from collections.abc import MutableMapping
 
 import numpy as np
 import pandas as pd
@@ -10,6 +11,33 @@ from haystack.preview.errors import FilterError
 
 GT_TYPES = (int, float, np.number)
 IN_TYPES = (list, set, tuple)
+
+
+def _find_nested_value(fields: Dict[str, Any], field_name: str) -> Any:
+    """
+    Find nested values in a dictionary.
+    Example usage:
+    ```python
+    _find_nested_value({"a": {"b": 1}}, "a.b")  # returns 1
+    ```
+
+    If a field is not found or is not a dictionary a ValueError is raised.
+    """
+    splits = field_name.split(".")
+    # Handle the first field
+    first = splits[0]
+    if first not in fields:
+        raise ValueError
+    value = fields[first]
+
+    # Handle the nested fields
+    for split in splits[1:]:
+        if not isinstance(value, MutableMapping) or split not in value:
+            # We can't go deeper, `field_name` must be wrong
+            raise ValueError
+        value = value[split]
+
+    return value
 
 
 def not_operation(conditions: List[Any], document: Document, _current_key: str):
@@ -58,13 +86,16 @@ def _safe_eq(first: Any, second: Any) -> bool:
     """
     Compares objects for equality, even np.ndarrays and pandas DataFrames.
     """
-    if type(first) != type(second):
-        return False
-
     if isinstance(first, pd.DataFrame):
         return first.equals(second)
 
     if isinstance(first, np.ndarray):
+        return np.array_equal(first, second)
+
+    if isinstance(second, pd.DataFrame):
+        return second.equals(first)
+
+    if isinstance(second, np.ndarray):
         return np.array_equal(first, second)
 
     return first == second
@@ -76,6 +107,10 @@ def _safe_gt(first: Any, second: Any) -> bool:
 
     Works only for numerical values and dates in ISO format (YYYY-MM-DD). Strings, lists, tables and tensors all raise exceptions.
     """
+    if first is None and second is not None:
+        return False
+    elif first is not None and second is None:
+        return True
     if not isinstance(first, GT_TYPES) or not isinstance(second, GT_TYPES):
         try:
             first = datetime.fromisoformat(first)
@@ -98,10 +133,17 @@ def eq_operation(fields, field_name, value):
     :param value: the fixed value to compare against
     :return: True if the values are equal, False otherwise
     """
-    if not field_name in fields:
+    if "." in field_name:
+        try:
+            field_value = _find_nested_value(fields, field_name)
+        except ValueError:
+            return False
+    elif not field_name in fields:
         return False
+    else:
+        field_value = fields[field_name]
 
-    return _safe_eq(fields[field_name], value)
+    return _safe_eq(field_value, value)
 
 
 def in_operation(fields, field_name, value):
@@ -113,13 +155,20 @@ def in_operation(fields, field_name, value):
     :param value; the fixed value to compare against
     :return: True if the document's value is included in the given list, False otherwise
     """
-    if not field_name in fields:
+    if "." in field_name:
+        try:
+            field_value = _find_nested_value(fields, field_name)
+        except ValueError:
+            return False
+    elif not field_name in fields:
         return False
+    else:
+        field_value = fields[field_name]
 
     if not isinstance(value, IN_TYPES):
         raise FilterError("$in accepts only iterable values like lists, sets and tuples.")
 
-    return any(_safe_eq(fields[field_name], v) for v in value)
+    return any(_safe_eq(field_value, v) for v in value)
 
 
 def ne_operation(fields, field_name, value):
@@ -155,9 +204,16 @@ def gt_operation(fields, field_name, value):
     :param value; the fixed value to compare against
     :return: True if the document's value is strictly larger than the fixed value, False otherwise
     """
-    if not field_name in fields:
+    if "." in field_name:
+        try:
+            field_value = _find_nested_value(fields, field_name)
+        except ValueError:
+            return False
+    elif not field_name in fields:
         return False
-    return _safe_gt(fields[field_name], value)
+    else:
+        field_value = fields[field_name]
+    return _safe_gt(field_value, value)
 
 
 def gte_operation(fields, field_name, value):
@@ -181,9 +237,17 @@ def lt_operation(fields, field_name, value):
     :param value; the fixed value to compare against
     :return: True if the document's value is strictly smaller than the fixed value, False otherwise
     """
-    if not field_name in fields:
+    if "." in field_name:
+        try:
+            field_value = _find_nested_value(fields, field_name)
+        except ValueError:
+            return False
+    elif not field_name in fields:
         return False
-    return not _safe_gt(fields[field_name], value) and not _safe_eq(fields[field_name], value)
+    else:
+        field_value = fields[field_name]
+
+    return not _safe_gt(field_value, value) and not _safe_eq(field_value, value)
 
 
 def lte_operation(fields, field_name, value):
@@ -195,9 +259,17 @@ def lte_operation(fields, field_name, value):
     :param value; the fixed value to compare against
     :return: True if the document's value is smaller than or equal to the fixed value, False otherwise
     """
-    if not field_name in fields:
+    if "." in field_name:
+        try:
+            field_value = _find_nested_value(fields, field_name)
+        except ValueError:
+            return False
+    elif not field_name in fields:
         return False
-    return not _safe_gt(fields[field_name], value)
+    else:
+        field_value = fields[field_name]
+
+    return not _safe_gt(field_value, value)
 
 
 LOGICAL_STATEMENTS = {"$not": not_operation, "$and": and_operation, "$or": or_operation}
@@ -254,7 +326,7 @@ def document_matches_filter(conditions: Union[Dict, List], document: Document, _
                     "Filters can't start with an operator like $eq and $in. You have to specify the field name first. "
                     "See the examples in the documentation."
                 )
-            return OPERATORS[field_key](fields=document.flatten(), field_name=_current_key, value=field_value)
+            return OPERATORS[field_key](fields=document.to_dict(), field_name=_current_key, value=field_value)
 
         # Otherwise fall back to the defaults
         conditions = _list_conditions(field_value)
@@ -267,11 +339,11 @@ def document_matches_filter(conditions: Union[Dict, List], document: Document, _
             return and_operation(conditions=_list_conditions(conditions), document=document, _current_key=_current_key)
         else:
             # The default operator for a {key: [value1, value2]} filter is $in
-            return in_operation(fields=document.flatten(), field_name=_current_key, value=conditions)
+            return in_operation(fields=document.to_dict(), field_name=_current_key, value=conditions)
 
     if _current_key:
         # The default operator for a {key: value} filter is $eq
-        return eq_operation(fields=document.flatten(), field_name=_current_key, value=conditions)
+        return eq_operation(fields=document.to_dict(), field_name=_current_key, value=conditions)
 
     raise FilterError("Filters must be dictionaries or lists. See the examples in the documentation.")
 
