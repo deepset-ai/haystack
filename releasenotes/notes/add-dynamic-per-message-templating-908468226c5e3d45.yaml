@@ -1,4 +1,4 @@
 ---
 preview:
   - |
-    Adds per ChatMessage templating support.
+    Adds `ChatMessage` templating in `PromptBuilder`
