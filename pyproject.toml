@@ -152,7 +152,7 @@ docstores-gpu = [
   "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch]",
 ]
 audio = [
-  "openai-whisper>=20230918"
+  "openai-whisper"
 ]
 aws = [
   "boto3",
