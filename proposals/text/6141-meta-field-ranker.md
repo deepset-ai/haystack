@@ -1,7 +1,7 @@
 - Title: Meta Field Ranker
 - Decision driver: @domenicocinque
 - Start Date: 2023-10-20
-- Proposal PR: n/a
+- Proposal PR: https://github.com/deepset-ai/haystack/pull/6141
 - Github Issue or Discussion: https://github.com/deepset-ai/haystack/issues/6054
 
 # Summary
