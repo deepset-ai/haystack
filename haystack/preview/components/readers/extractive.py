@@ -19,6 +19,16 @@ class ExtractiveReader:
     """
     A component for performing extractive QA.
     Every possible answer span is assigned a confidence score independent of other answer spans. This fixes a common issue of other implementations which make comparisons across documents harder by normalising each document's answers independently.
+
+    Example usage:
+    ```python
+    p = Pipeline()
+    p.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
+    p.add_component(instance=ExtractiveReader(), name="reader")
+    p.connect("retriever", "reader")
+    question = "Who lives in Berlin?"
+    p.run({"retriever": {"query": question}, "reader": {"query": question}})
+    ```
     """
 
     def __init__(
@@ -256,7 +266,7 @@ class ExtractiveReader:
     def run(
         self,
         query: str,
-        document: List[Document],
+        documents: List[Document],
         top_k: Optional[int] = None,
         confidence_threshold: Optional[float] = None,
         max_seq_length: Optional[int] = None,
@@ -267,9 +277,14 @@ class ExtractiveReader:
     ):
         """
         Performs extractive QA on the given documents using the given query.
+
+        :param query: Query string.
+        :param documents: List of Documents to search for an answer to the query.
+        :param top_k: The maximum number of answers to return.
+        :return: List of ExtractedAnswers sorted by (desc.) answer score.
         """
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2
-        documents = [document]
+        nested_documents = [documents]
         if self.model is None:
             raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
 
@@ -281,7 +296,7 @@ class ExtractiveReader:
         answers_per_seq = answers_per_seq or self.answers_per_seq or top_k or 20
         no_answer = no_answer if no_answer is not None else self.no_answer
 
-        flattened_queries, flattened_documents, query_ids = self._flatten_documents(queries, documents)
+        flattened_queries, flattened_documents, query_ids = self._flatten_documents(queries, nested_documents)
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
             flattened_queries, flattened_documents, max_seq_length, query_ids, stride
         )
