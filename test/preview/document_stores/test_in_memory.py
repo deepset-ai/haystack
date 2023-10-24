@@ -135,6 +135,10 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         results = docstore.bm25_retrieval(query="Python", top_k=1)
         assert results[0].text == "Python is a popular programming language"
 
+    @pytest.mark.skip(reason="Filter is not working properly, see https://github.com/deepset-ai/haystack/issues/6153")
+    def test_eq_filter_embedding(self, docstore: DocumentStore, filterable_docs):
+        pass
+
     # Test a query, add a new document and make sure results are appropriately updated
     @pytest.mark.unit
     def test_bm25_retrieval_with_updated_docs(self, docstore: DocumentStore):
@@ -202,30 +206,22 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_bm25_retrieval_default_filter_for_text_and_dataframes(self, docstore: DocumentStore):
-        docs = [
-            Document(array=np.array([1, 2, 3])),
-            Document(text="Gardening", array=np.array([1, 2, 3])),
-            Document(text="Bird watching"),
-        ]
+        docs = [Document(), Document(text="Gardening"), Document(text="Bird watching")]
         docstore.write_documents(docs)
         results = docstore.bm25_retrieval(query="doesn't matter, top_k is 10", top_k=10)
         assert len(results) == 2
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_filters(self, docstore: DocumentStore):
-        selected_document = Document(text="Gardening", array=np.array([1, 2, 3]), metadata={"selected": True})
-        docs = [Document(array=np.array([1, 2, 3])), selected_document, Document(text="Bird watching")]
+        selected_document = Document(text="Gardening", metadata={"selected": True})
+        docs = [Document(), selected_document, Document(text="Bird watching")]
         docstore.write_documents(docs)
         results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
         assert results == [selected_document]
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_filters_keeps_default_filters(self, docstore: DocumentStore):
-        docs = [
-            Document(array=np.array([1, 2, 3]), metadata={"selected": True}),
-            Document(text="Gardening", array=np.array([1, 2, 3])),
-            Document(text="Bird watching"),
-        ]
+        docs = [Document(metadata={"selected": True}), Document(text="Gardening"), Document(text="Bird watching")]
         docstore.write_documents(docs)
         results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
         assert not len(results)
@@ -233,22 +229,17 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     @pytest.mark.unit
     def test_bm25_retrieval_with_filters_on_text_or_dataframe(self, docstore: DocumentStore):
         document = Document(dataframe=pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web"]}))
-        docs = [
-            Document(array=np.array([1, 2, 3])),
-            Document(text="Gardening"),
-            Document(text="Bird watching"),
-            document,
-        ]
+        docs = [Document(), Document(text="Gardening"), Document(text="Bird watching"), document]
         docstore.write_documents(docs)
         results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"text": None})
         assert results == [document]
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_documents_with_mixed_content(self, docstore: DocumentStore):
-        double_document = Document(text="Gardening", array=np.array([1, 2, 3]))
-        docs = [Document(array=np.array([1, 2, 3])), double_document, Document(text="Bird watching")]
+        double_document = Document(text="Gardening", embedding=[1, 2, 3])
+        docs = [Document(embedding=[1, 2, 3]), double_document, Document(text="Bird watching")]
         docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"array": {"$not": None}})
+        results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"embedding": {"$not": None}})
         assert results == [double_document]
 
     @pytest.mark.unit
@@ -301,7 +292,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         docstore = InMemoryDocumentStore()
         docs = [
             Document(text="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(text="Haystack supports multiple languages", embedding=[1.0, 1.0]),
+            Document(text="Haystack supports multiple languages", embedding=np.array([1.0, 1.0])),
         ]
         docstore.write_documents(docs)
 

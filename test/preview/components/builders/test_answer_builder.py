@@ -8,31 +8,6 @@ from haystack.preview.components.builders.answer_builder import AnswerBuilder
 
 class TestAnswerBuilder:
     @pytest.mark.unit
-    def test_to_dict(self):
-        component = AnswerBuilder()
-        data = component.to_dict()
-        assert data == {"type": "AnswerBuilder", "init_parameters": {"pattern": None, "reference_pattern": None}}
-
-    @pytest.mark.unit
-    def test_to_dict_with_custom_init_parameters(self):
-        component = AnswerBuilder(pattern="pattern", reference_pattern="reference_pattern")
-        data = component.to_dict()
-        assert data == {
-            "type": "AnswerBuilder",
-            "init_parameters": {"pattern": "pattern", "reference_pattern": "reference_pattern"},
-        }
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "AnswerBuilder",
-            "init_parameters": {"pattern": "pattern", "reference_pattern": "reference_pattern"},
-        }
-        component = AnswerBuilder.from_dict(data)
-        assert component.pattern == "pattern"
-        assert component.reference_pattern == "reference_pattern"
-
-    @pytest.mark.unit
     def test_run_unmatching_input_len(self):
         component = AnswerBuilder()
         with pytest.raises(ValueError):

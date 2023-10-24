@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
 
-from haystack.preview import ComponentError, Document, component, default_from_dict, default_to_dict
+from haystack.preview import ComponentError, Document, component, default_to_dict
 from haystack.preview.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
@@ -88,13 +88,6 @@ class SimilarityRanker:
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             top_k=self.top_k,
         )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SimilarityRanker":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):
