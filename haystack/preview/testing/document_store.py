@@ -1,5 +1,6 @@
 # pylint: disable=too-many-public-methods
 from typing import List
+import random
 
 import pytest
 import numpy as np
@@ -11,6 +12,10 @@ from haystack.preview.document_stores.errors import MissingDocumentError, Duplic
 from haystack.preview.errors import FilterError
 
 
+def _random_embeddings(n):
+    return [random.random() for _ in range(n)]
+
+
 class DocumentStoreBaseTests:
     @pytest.fixture
     def docstore(self) -> DocumentStore:
@@ -18,8 +23,8 @@ class DocumentStoreBaseTests:
 
     @pytest.fixture
     def filterable_docs(self) -> List[Document]:
-        embedding_zero = np.zeros(768).astype(np.float32)
-        embedding_one = np.ones(768).astype(np.float32)
+        embedding_zero = [0.0] * 768
+        embedding_one = [1.0] * 768
 
         documents = []
         for i in range(3):
@@ -27,21 +32,21 @@ class DocumentStoreBaseTests:
                 Document(
                     text=f"A Foo Document {i}",
                     metadata={"name": f"name_{i}", "page": "100", "chapter": "intro", "number": 2},
-                    embedding=np.random.rand(768).astype(np.float32),
+                    embedding=_random_embeddings(768),
                 )
             )
             documents.append(
                 Document(
                     text=f"A Bar Document {i}",
                     metadata={"name": f"name_{i}", "page": "123", "chapter": "abstract", "number": -2},
-                    embedding=np.random.rand(768).astype(np.float32),
+                    embedding=_random_embeddings(768),
                 )
             )
             documents.append(
                 Document(
                     text=f"A Foobar Document {i}",
                     metadata={"name": f"name_{i}", "page": "90", "chapter": "conclusion", "number": -10},
-                    embedding=np.random.rand(768).astype(np.float32),
+                    embedding=_random_embeddings(768),
                 )
             )
             documents.append(
@@ -51,7 +56,6 @@ class DocumentStoreBaseTests:
                 )
             )
             documents.append(Document(dataframe=pd.DataFrame([i]), metadata={"name": f"table_doc_{i}"}))
-            documents.append(Document(array=np.array([i, i, i]), metadata={"name": f"array_doc_{i}"}))
             documents.append(
                 Document(text=f"Doc {i} with zeros emb", metadata={"name": "zeros_doc"}, embedding=embedding_zero)
             )
@@ -110,23 +114,6 @@ class DocumentStoreBaseTests:
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"text": "A Foo Document 1"})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.text == "A Foo Document 1"])
-
-    @pytest.mark.unit
-    def test_filter_document_array(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"array": np.array([1, 1, 1])})
-        assert self.contains_same_docs(
-            result,
-            [
-                doc
-                for doc in filterable_docs
-                if (
-                    doc.array is not None
-                    and doc.array.shape == np.array([1, 1, 1]).shape
-                    and (doc.array == np.array([1, 1, 1])).all()
-                )
-            ],
-        )
 
     @pytest.mark.unit
     def test_filter_document_dataframe(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -209,11 +196,9 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_eq_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        embedding = np.zeros(768).astype(np.float32)
+        embedding = [0.0] * 768
         result = docstore.filter_documents(filters={"embedding": embedding})
-        assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if np.array_equal(embedding, doc.embedding)]  # type: ignore
-        )
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if embedding == doc.embedding])
 
     @pytest.mark.unit
     def test_in_filter_explicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -248,17 +233,12 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_in_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        embedding_zero = np.zeros(768, np.float32)
-        embedding_one = np.ones(768, np.float32)
+        embedding_zero = [0.0] * 768
+        embedding_one = [1.0] * 768
         result = docstore.filter_documents(filters={"embedding": {"$in": [embedding_zero, embedding_one]}})
         assert self.contains_same_docs(
             result,
-            [
-                doc
-                for doc in filterable_docs
-                if isinstance(doc.embedding, np.ndarray)
-                and (np.array_equal(embedding_zero, doc.embedding) or np.array_equal(embedding_one, doc.embedding))
-            ],
+            [doc for doc in filterable_docs if (embedding_zero == doc.embedding or embedding_one == doc.embedding)],
         )
 
     @pytest.mark.unit

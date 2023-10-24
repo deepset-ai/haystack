@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal, get_args
 import logging
 from pathlib import Path
 
-from haystack.preview import component, Document, default_to_dict, default_from_dict, ComponentError
+from haystack.preview import component, Document, default_to_dict, ComponentError
 from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install openai-whisper'") as whisper_import:
@@ -65,13 +65,6 @@ class LocalWhisperTranscriber:
         return default_to_dict(
             self, model_name_or_path=self.model_name, device=str(self.device), whisper_params=self.whisper_params
         )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LocalWhisperTranscriber":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
     def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None):

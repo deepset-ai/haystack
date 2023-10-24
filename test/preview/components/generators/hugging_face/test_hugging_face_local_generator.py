@@ -182,31 +182,6 @@ class TestHuggingFaceLocalGenerator:
         }
 
     @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "HuggingFaceLocalGenerator",
-            "init_parameters": {
-                "pipeline_kwargs": {
-                    "model": "gpt2",
-                    "task": "text-generation",
-                    "token": "test-token",
-                    "device": "cuda:0",
-                },
-                "generation_kwargs": {"max_new_tokens": 100, "return_full_text": False},
-            },
-        }
-
-        component = HuggingFaceLocalGenerator.from_dict(data)
-
-        assert component.pipeline_kwargs == {
-            "model": "gpt2",
-            "task": "text-generation",
-            "token": "test-token",
-            "device": "cuda:0",
-        }
-        assert component.generation_kwargs == {"max_new_tokens": 100, "return_full_text": False}
-
-    @pytest.mark.unit
     @patch("haystack.preview.components.generators.hugging_face.hugging_face_local.pipeline")
     def test_warm_up(self, pipeline_mock):
         generator = HuggingFaceLocalGenerator(
