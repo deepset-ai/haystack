@@ -20,16 +20,16 @@ ranker = MetaFieldRanker(
     top_k=3,
 )
 ```
-In the context of a simple pipeline with a BM25Retriever and a MetaFieldRanker in which
-the documents are provided with a meta field "rating". The documents are first retrieved by the BM25Retriever and
+In the context of a simple pipeline with a retriever and a MetaFieldRanker in which
+the documents are provided with a meta field "rating". The documents are first retrieved by the retriever and
 then sorted by the MetaFieldRanker.
 
 ``` python
-retriever = BM25Retriever(document_store=document_store, top_k=20)
 pipeline = Pipeline()
-pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
-pipeline.add_node(component=ranker, name="Ranker", inputs=["Retriever"])
-```
+pipeline.add_component(component=InMemoryBM25Retriever(document_store=document_store, top_k=20)
+, name="Retriever")
+pipeline.add_component(component=MetaFieldRanker(meta_field="rating"), name="Ranker")
+pipeline.connect("Retriever.documents", "MetaFieldRanker.documents")
 
 # Motivation
 
@@ -54,7 +54,7 @@ The alternative is to make the user implement its own ranking logic.
 
 # Adoption strategy
 
-As it is not a breaking change, it should be easy to adopt in combination with the other components.
+MetaFieldRanker is a Haystack 2.0 component. As it is not a breaking change, it should be easy to adopt in combination with the other components.
 
 # How we teach this
 
