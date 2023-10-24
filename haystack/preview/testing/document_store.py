@@ -100,13 +100,13 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_filter_simple_metadata_value(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": "100"})
+        result = docstore.filter_documents(filters={"metadata.page": "100"})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
 
     @pytest.mark.unit
     def test_filter_simple_list_single_element(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": ["100"]})
+        result = docstore.filter_documents(filters={"metadata.page": ["100"]})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
 
     @pytest.mark.unit
@@ -127,13 +127,13 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_filter_simple_list_one_value(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": ["100"]})
+        result = docstore.filter_documents(filters={"metadata.page": ["100"]})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") in ["100"]])
 
     @pytest.mark.unit
     def test_filter_simple_list(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": ["100", "123"]})
+        result = docstore.filter_documents(filters={"metadata.page": ["100", "123"]})
         assert self.contains_same_docs(
             result, [doc for doc in filterable_docs if doc.metadata.get("page") in ["100", "123"]]
         )
@@ -171,13 +171,13 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_eq_filter_explicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": {"$eq": "100"}})
+        result = docstore.filter_documents(filters={"metadata.page": {"$eq": "100"}})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
 
     @pytest.mark.unit
     def test_eq_filter_implicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": "100"})
+        result = docstore.filter_documents(filters={"metadata.page": "100"})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
 
     @pytest.mark.unit
@@ -203,7 +203,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_in_filter_explicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": {"$in": ["100", "123", "n.a."]}})
+        result = docstore.filter_documents(filters={"metadata.page": {"$in": ["100", "123", "n.a."]}})
         assert self.contains_same_docs(
             result, [doc for doc in filterable_docs if doc.metadata.get("page") in ["100", "123"]]
         )
@@ -211,7 +211,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_in_filter_implicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": ["100", "123", "n.a."]})
+        result = docstore.filter_documents(filters={"metadata.page": ["100", "123", "n.a."]})
         assert self.contains_same_docs(
             result, [doc for doc in filterable_docs if doc.metadata.get("page") in ["100", "123"]]
         )
@@ -244,7 +244,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_ne_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": {"$ne": "100"}})
+        result = docstore.filter_documents(filters={"metadata.page": {"$ne": "100"}})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") != "100"])
 
     @pytest.mark.unit
@@ -306,7 +306,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_nin_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": {"$nin": ["100", "123", "n.a."]}})
+        result = docstore.filter_documents(filters={"metadata.page": {"$nin": ["100", "123", "n.a."]}})
         assert self.contains_same_docs(
             result, [doc for doc in filterable_docs if doc.metadata.get("page") not in ["100", "123"]]
         )
@@ -314,7 +314,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_gt_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$gt": 0.0}})
+        result = docstore.filter_documents(filters={"metadata.number": {"$gt": 0.0}})
         assert self.contains_same_docs(
             result, [doc for doc in filterable_docs if "number" in doc.metadata and doc.metadata["number"] > 0]
         )
@@ -323,7 +323,7 @@ class DocumentStoreBaseTests:
     def test_gt_filter_non_numeric(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"page": {"$gt": "100"}})
+            docstore.filter_documents(filters={"metadata.page": {"$gt": "100"}})
 
     @pytest.mark.unit
     def test_gt_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -341,7 +341,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_gte_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$gte": -2}})
+        result = docstore.filter_documents(filters={"metadata.number": {"$gte": -2}})
         assert self.contains_same_docs(
             result, [doc for doc in filterable_docs if "number" in doc.metadata and doc.metadata["number"] >= -2]
         )
@@ -350,7 +350,7 @@ class DocumentStoreBaseTests:
     def test_gte_filter_non_numeric(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"page": {"$gte": "100"}})
+            docstore.filter_documents(filters={"metadata.page": {"$gte": "100"}})
 
     @pytest.mark.unit
     def test_gte_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -368,7 +368,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_lt_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$lt": 0.0}})
+        result = docstore.filter_documents(filters={"metadata.number": {"$lt": 0.0}})
         assert self.contains_same_docs(
             result, [doc for doc in filterable_docs if "number" in doc.metadata and doc.metadata["number"] < 0]
         )
@@ -377,7 +377,7 @@ class DocumentStoreBaseTests:
     def test_lt_filter_non_numeric(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"page": {"$lt": "100"}})
+            docstore.filter_documents(filters={"metadata.page": {"$lt": "100"}})
 
     @pytest.mark.unit
     def test_lt_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -395,7 +395,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_lte_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$lte": 2.0}})
+        result = docstore.filter_documents(filters={"metadata.number": {"$lte": 2.0}})
         assert self.contains_same_docs(
             result, [doc for doc in filterable_docs if "number" in doc.metadata and doc.metadata["number"] <= 2.0]
         )
@@ -404,7 +404,7 @@ class DocumentStoreBaseTests:
     def test_lte_filter_non_numeric(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"page": {"$lte": "100"}})
+            docstore.filter_documents(filters={"metadata.page": {"$lte": "100"}})
 
     @pytest.mark.unit
     def test_lte_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -424,7 +424,7 @@ class DocumentStoreBaseTests:
         self, docstore: DocumentStore, filterable_docs: List[Document]
     ):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$lte": 2.0, "$gte": 0.0}})
+        result = docstore.filter_documents(filters={"metadata.number": {"$lte": 2.0, "$gte": 0.0}})
         assert self.contains_same_docs(
             result,
             [
@@ -439,7 +439,7 @@ class DocumentStoreBaseTests:
         self, docstore: DocumentStore, filterable_docs: List[Document]
     ):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$and": {"$gte": 0, "$lte": 2}}})
+        result = docstore.filter_documents(filters={"metadata.number": {"$and": {"$gte": 0, "$lte": 2}}})
         assert self.contains_same_docs(
             result, [doc for doc in filterable_docs if "number" in doc.metadata and 0 <= doc.metadata["number"] <= 2]
         )
@@ -447,7 +447,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_filter_simple_explicit_and_with_list(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$and": [{"$lte": 2}, {"$gte": 0}]}})
+        result = docstore.filter_documents(filters={"metadata.number": {"$and": [{"$lte": 2}, {"$gte": 0}]}})
         assert self.contains_same_docs(
             result,
             [
@@ -460,7 +460,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_filter_simple_implicit_and(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$lte": 2.0, "$gte": 0}})
+        result = docstore.filter_documents(filters={"metadata.number": {"$lte": 2.0, "$gte": 0}})
         assert self.contains_same_docs(
             result,
             [
@@ -473,7 +473,12 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_filter_nested_explicit_and(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        filters = {"$and": {"number": {"$and": {"$lte": 2, "$gte": 0}}, "name": {"$in": ["name_0", "name_1"]}}}
+        filters = {
+            "$and": {
+                "metadata.number": {"$and": {"$lte": 2, "$gte": 0}},
+                "metadata.name": {"$in": ["name_0", "name_1"]},
+            }
+        }
         result = docstore.filter_documents(filters=filters)
         assert self.contains_same_docs(
             result,
@@ -492,7 +497,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_filter_nested_implicit_and(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        filters_simplified = {"number": {"$lte": 2, "$gte": 0}, "name": ["name_0", "name_1"]}
+        filters_simplified = {"metadata.number": {"$lte": 2, "$gte": 0}, "metadata.name": ["name_0", "name_1"]}
         result = docstore.filter_documents(filters=filters_simplified)
         assert self.contains_same_docs(
             result,
@@ -511,7 +516,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_filter_simple_or(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        filters = {"$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}}}
+        filters = {"$or": {"metadata.name": {"$in": ["name_0", "name_1"]}, "metadata.number": {"$lt": 1.0}}}
         result = docstore.filter_documents(filters=filters)
         assert self.contains_same_docs(
             result,
@@ -528,7 +533,9 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_filter_nested_or(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        filters = {"$or": {"name": {"$or": [{"$eq": "name_0"}, {"$eq": "name_1"}]}, "number": {"$lt": 1.0}}}
+        filters = {
+            "$or": {"metadata.name": {"$or": [{"$eq": "name_0"}, {"$eq": "name_1"}]}, "metadata.number": {"$lt": 1.0}}
+        }
         result = docstore.filter_documents(filters=filters)
         assert self.contains_same_docs(
             result,
@@ -546,7 +553,10 @@ class DocumentStoreBaseTests:
     def test_filter_nested_and_or_explicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         filters_simplified = {
-            "$and": {"page": {"$eq": "123"}, "$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}}}
+            "$and": {
+                "metadata.page": {"$eq": "123"},
+                "$or": {"metadata.name": {"$in": ["name_0", "name_1"]}, "metadata.number": {"$lt": 1.0}},
+            }
         }
         result = docstore.filter_documents(filters=filters_simplified)
         assert self.contains_same_docs(
@@ -568,8 +578,8 @@ class DocumentStoreBaseTests:
     def test_filter_nested_and_or_implicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         filters_simplified = {
-            "page": {"$eq": "123"},
-            "$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}},
+            "metadata.page": {"$eq": "123"},
+            "$or": {"metadata.name": {"$in": ["name_0", "name_1"]}, "metadata.number": {"$lt": 1.0}},
         }
         result = docstore.filter_documents(filters=filters_simplified)
         assert self.contains_same_docs(
@@ -592,8 +602,11 @@ class DocumentStoreBaseTests:
         docstore.write_documents(filterable_docs)
         filters_simplified = {
             "$or": {
-                "number": {"$lt": 1},
-                "$and": {"name": {"$in": ["name_0", "name_1"]}, "$not": {"chapter": {"$eq": "intro"}}},
+                "metadata.number": {"$lt": 1},
+                "$and": {
+                    "metadata.name": {"$in": ["name_0", "name_1"]},
+                    "$not": {"metadata.chapter": {"$eq": "intro"}},
+                },
             }
         }
         result = docstore.filter_documents(filters=filters_simplified)
@@ -619,8 +632,8 @@ class DocumentStoreBaseTests:
         docstore.write_documents(filterable_docs)
         filters = {
             "$or": [
-                {"$and": {"name": {"$in": ["name_0", "name_1"]}, "page": "100"}},
-                {"$and": {"chapter": {"$in": ["intro", "abstract"]}, "page": "123"}},
+                {"$and": {"metadata.name": {"$in": ["name_0", "name_1"]}, "metadata.page": "100"}},
+                {"$and": {"metadata.chapter": {"$in": ["intro", "abstract"]}, "metadata.page": "123"}},
             ]
         }
         result = docstore.filter_documents(filters=filters)

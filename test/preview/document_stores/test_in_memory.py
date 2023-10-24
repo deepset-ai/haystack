@@ -216,7 +216,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         selected_document = Document(text="Gardening", metadata={"selected": True})
         docs = [Document(), selected_document, Document(text="Bird watching")]
         docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
+        results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"metadata.selected": True})
         assert results == [selected_document]
 
     @pytest.mark.unit
