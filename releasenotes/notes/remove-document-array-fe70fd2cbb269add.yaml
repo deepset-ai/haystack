@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Remove `array` field from `Document` dataclass.

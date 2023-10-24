@@ -8,24 +8,6 @@ from haystack.preview.components.samplers.top_p import TopPSampler
 
 class TestTopPSampler:
     @pytest.mark.unit
-    def test_to_dict(self):
-        component = TopPSampler()
-        data = component.to_dict()
-        assert data == {"type": "TopPSampler", "init_parameters": {"top_p": 1.0, "score_field": None}}
-
-    @pytest.mark.unit
-    def test_to_dict_with_custom_init_parameters(self):
-        component = TopPSampler(top_p=0.92)
-        data = component.to_dict()
-        assert data == {"type": "TopPSampler", "init_parameters": {"top_p": 0.92, "score_field": None}}
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {"type": "TopPSampler", "init_parameters": {"top_p": 0.9, "score_field": None}}
-        component = TopPSampler.from_dict(data)
-        assert component.top_p == 0.9
-
-    @pytest.mark.unit
     def test_run_scores_from_metadata(self):
         """
         Test if the component runs correctly with scores already in the metadata.

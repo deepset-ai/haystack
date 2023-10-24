@@ -1,6 +1,6 @@
 from typing import List, Optional, Union, Dict, Any
 
-from haystack.preview import component, Document, default_to_dict, default_from_dict
+from haystack.preview import component, Document, default_to_dict
 from haystack.preview.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
@@ -81,13 +81,6 @@ class SentenceTransformersDocumentEmbedder:
             embedding_separator=self.embedding_separator,
         )
 
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersDocumentEmbedder":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
-
     def warm_up(self):
         """
         Load the embedding backend.
@@ -132,10 +125,7 @@ class SentenceTransformersDocumentEmbedder:
             normalize_embeddings=self.normalize_embeddings,
         )
 
-        documents_with_embeddings = []
         for doc, emb in zip(documents, embeddings):
-            doc_as_dict = doc.to_dict()
-            doc_as_dict["embedding"] = emb
-            documents_with_embeddings.append(Document.from_dict(doc_as_dict))
+            doc.embedding = emb
 
-        return {"documents": documents_with_embeddings}
+        return {"documents": documents}
