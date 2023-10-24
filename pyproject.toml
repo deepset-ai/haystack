@@ -151,9 +151,6 @@ docstores = [
 docstores-gpu = [
   "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch]",
 ]
-audio = [
-  "openai-whisper"
-]
 aws = [
   "boto3",
   # Costraint botocore to avoid taking to much time to resolve the dependency tree.
