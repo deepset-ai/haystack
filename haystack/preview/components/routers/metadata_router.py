@@ -19,10 +19,10 @@ class MetadataRouter:
                       follow the format of filtering expressions in Haystack. For example:
                       ```python
                       {
-                            "edge_1": {"created_at": {"$gte": "2023-01-01", "$lt": "2023-04-01"}},
-                            "edge_2": {"created_at": {"$gte": "2023-04-01", "$lt": "2023-07-01"}},
-                            "edge_3": {"created_at": {"$gte": "2023-07-01", "$lt": "2023-10-01"}},
-                            "edge_4": {"created_at": {"$gte": "2023-10-01", "$lt": "2024-01-01"}},
+                            "edge_1": {"metadata.created_at": {"$gte": "2023-01-01", "$lt": "2023-04-01"}},
+                            "edge_2": {"metadata.created_at": {"$gte": "2023-04-01", "$lt": "2023-07-01"}},
+                            "edge_3": {"metadata.created_at": {"$gte": "2023-07-01", "$lt": "2023-10-01"}},
+                            "edge_4": {"metadata.created_at": {"$gte": "2023-10-01", "$lt": "2024-01-01"}},
                       }
                       ```
         """
