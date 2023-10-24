@@ -1,0 +1,27 @@
+---
+prelude: >
+  The `Document` serialisation has been changed quite a bit, this will make it easier to implement
+  new Document Stores. But it will also change how filters must be declared and how certain Components work.
+
+  The most notable change is that the `Document.flatten()` method has been removed as it was deemed dangerous.
+  Since it could overwrite a `Document` field if `metadata` contained a key with the same name.
+  Now `metadata` is not flattened anymore but it's stored as a `metadata` field.
+
+  Conversion to JSON has also been simplified. Previous implementation handled custom types in metadata by
+  giving the possibility to provide custom encoders and decoders to could handle whatever types.
+  This has now changed so `metadata` must only contain primitives that can be serialised to JSON with
+  no custom encoders. If any Document Store needs custom serialisation they can implement their own logic.
+
+  `dataframe` and `blob` field serialisation is handled internally by `Document`.
+
+  We also changed how Document Store's filters must be declared when filtering `metadata`.
+  The user must now set filters using the `metadata.` prefix. The filter can be nested multiple times.
+  e.g `metadata.person.age`, `metadata.create_date`
+
+  `UrlCacheChecker` default `url_field` has been changed from `url` to `metadata.url`.
+
+  The `DocumentStoreBaseTests` utility class to test Document Stores has been changed too to handle
+  the filters changes.
+preview:
+  - |
+    Refactor Document JSON serialisation
