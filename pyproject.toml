@@ -62,7 +62,6 @@ dependencies = [
   "networkx",  # graphs library
   "quantulum3",  # quantities extraction from text
   "posthog",  # telemetry
-  # audio's espnet-model-zoo requires huggingface-hub version <0.8 while we need >=0.5 to be able to use create_repo in FARMReader
   "tenacity",  # retry decorator
   "sseclient-py",  # server side events for OpenAI streaming
   "more_itertools",  # utilities
@@ -151,9 +150,6 @@ docstores = [
 ]
 docstores-gpu = [
   "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch]",
-]
-audio = [
-  "openai-whisper"
 ]
 aws = [
   "boto3",

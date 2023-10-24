@@ -6,7 +6,8 @@ from pathlib import Path
 from haystack.preview import component, Document, default_to_dict, ComponentError
 from haystack.preview.lazy_imports import LazyImport
 
-with LazyImport("Run 'pip install openai-whisper'") as whisper_import:
+with LazyImport("Run 'pip install transformers[torch]==4.34.1' if you don't have torch installed yet and then 'pip "
+                "install --no-deps numba llvmlite 'openai-whisper>=20230818'' to install whisper") as whisper_import:
     import torch
     import whisper
 
