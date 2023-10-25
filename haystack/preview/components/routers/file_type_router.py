@@ -2,9 +2,9 @@ import logging
 import mimetypes
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Union, Optional, Dict, Any
+from typing import List, Union, Optional, Dict
 
-from haystack.preview import component, default_from_dict, default_to_dict
+from haystack.preview import component
 from haystack.preview.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
@@ -41,19 +41,6 @@ class FileTypeRouter:
 
         component.set_output_types(self, unclassified=List[Path], **{mime_type: List[Path] for mime_type in mime_types})
         self.mime_types = mime_types
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(self, mime_types=self.mime_types)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "FileTypeRouter":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     def run(self, sources: List[Union[str, Path, ByteStream]]) -> Dict[str, List[Union[ByteStream, Path]]]:
         """

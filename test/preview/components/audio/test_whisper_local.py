@@ -54,21 +54,6 @@ class TestLocalWhisperTranscriber:
         }
 
     @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "LocalWhisperTranscriber",
-            "init_parameters": {
-                "model_name_or_path": "tiny",
-                "device": "cuda",
-                "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
-            },
-        }
-        transcriber = LocalWhisperTranscriber.from_dict(data)
-        assert transcriber.model_name == "tiny"
-        assert transcriber.device == torch.device("cuda")
-        assert transcriber.whisper_params == {"return_segments": True, "temperature": [0.1, 0.6, 0.8]}
-
-    @pytest.mark.unit
     def test_warmup(self):
         with patch("haystack.preview.components.audio.whisper_local.whisper") as mocked_whisper:
             transcriber = LocalWhisperTranscriber(model_name_or_path="large-v2")
@@ -160,7 +145,7 @@ class TestLocalWhisperTranscriber:
     @pytest.mark.integration
     @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
     def test_whisper_local_transcriber(self, preview_samples_path):
-        comp = LocalWhisperTranscriber(model_name_or_path="medium")
+        comp = LocalWhisperTranscriber(model_name_or_path="medium", whisper_params={"language": "english"})
         comp.warm_up()
         output = comp.run(
             audio_files=[

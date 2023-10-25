@@ -111,39 +111,6 @@ def test_to_dict():
 
 
 @pytest.mark.unit
-def test_from_dict():
-    data = {
-        "type": "ExtractiveReader",
-        "init_parameters": {
-            "model_name_or_path": "my-model",
-            "device": "cpu",
-            "token": None,
-            "top_k": 30,
-            "confidence_threshold": 0.5,
-            "max_seq_length": 300,
-            "stride": 100,
-            "max_batch_size": 20,
-            "answers_per_seq": 5,
-            "no_answer": False,
-            "calibration_factor": 0.5,
-        },
-    }
-
-    component = ExtractiveReader.from_dict(data)
-    assert component.model_name_or_path == "my-model"
-    assert component.device == "cpu"
-    assert component.token is None
-    assert component.top_k == 30
-    assert component.confidence_threshold == 0.5
-    assert component.max_seq_length == 300
-    assert component.stride == 100
-    assert component.max_batch_size == 20
-    assert component.answers_per_seq == 5
-    assert component.no_answer is False
-    assert component.calibration_factor == 0.5
-
-
-@pytest.mark.unit
 def test_output(mock_reader: ExtractiveReader):
     answers = mock_reader.run(example_queries[0], example_documents[0], top_k=3)[
         "answers"

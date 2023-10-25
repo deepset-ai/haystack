@@ -3,7 +3,7 @@ import os
 
 import openai
 
-from haystack.preview import component, default_to_dict, default_from_dict
+from haystack.preview import component, default_to_dict
 
 
 @component
@@ -31,7 +31,8 @@ class OpenAITextEmbedder:
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         """
-
+        # if the user does not provide the API key, check if it is set in the module client
+        api_key = api_key or openai.api_key
         if api_key is None:
             try:
                 api_key = os.environ["OPENAI_API_KEY"]
@@ -65,13 +66,6 @@ class OpenAITextEmbedder:
         return default_to_dict(
             self, model_name=self.model_name, organization=self.organization, prefix=self.prefix, suffix=self.suffix
         )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAITextEmbedder":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     @component.output_types(embedding=List[float], metadata=Dict[str, Any])
     def run(self, text: str):
