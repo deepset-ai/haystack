@@ -46,10 +46,11 @@ def test_init_with_default_parameters():
 
 @pytest.mark.unit
 def test_init_with_custom_parameters():
+    some_bytes = b"some bytes"
     doc = Document(
         text="test text",
         dataframe=pd.DataFrame([0]),
-        blob=b"some bytes",
+        blob=some_bytes,
         mime_type="text/markdown",
         metadata={"text": "test text"},
         score=0.812,
@@ -58,7 +59,7 @@ def test_init_with_custom_parameters():
     assert doc.id == "ec92455f3f4576d40031163c89b1b4210b34ea1426ee0ff68ebed86cb7ba13f8"
     assert doc.text == "test text"
     assert doc.dataframe.equals(pd.DataFrame([0]))
-    assert doc.blob == bytes("some bytes")
+    assert doc.blob == some_bytes
     assert doc.mime_type == "text/markdown"
     assert doc.metadata == {"text": "test text"}
     assert doc.score == 0.812
