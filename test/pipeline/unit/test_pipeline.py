@@ -330,3 +330,45 @@ def test_falsy_connection():
     p.add_component("b", B())
     p.connect("a.y", "b.x")
     assert p.run({"a": {"x": 10}})["b"]["y"] == 0
+
+
+def test_describe_input_only_no_inputs_components():
+    A = component_class("A", input_types={}, output={"x": 0})
+    B = component_class("B", input_types={}, output={"y": 0})
+    C = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})
+    p = Pipeline()
+    p.add_component("a", A())
+    p.add_component("b", B())
+    p.add_component("c", C())
+    p.connect("a.x", "c.x")
+    p.connect("b.y", "c.y")
+    assert p.inputs() == {}
+
+
+def test_describe_input_some_components_with_no_inputs():
+    A = component_class("A", input_types={}, output={"x": 0})
+    B = component_class("B", input_types={"y": int}, output={"y": 0})
+    C = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})
+    p = Pipeline()
+    p.add_component("a", A())
+    p.add_component("b", B())
+    p.add_component("c", C())
+    p.connect("a.x", "c.x")
+    p.connect("b.y", "c.y")
+    assert p.inputs() == {"b": {"y": {"type": int, "is_optional": False}}}
+
+
+def test_describe_input_all_components_have_inputs():
+    A = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})
+    B = component_class("B", input_types={"y": int}, output={"y": 0})
+    C = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})
+    p = Pipeline()
+    p.add_component("a", A())
+    p.add_component("b", B())
+    p.add_component("c", C())
+    p.connect("a.x", "c.x")
+    p.connect("b.y", "c.y")
+    assert p.inputs() == {
+        "a": {"x": {"type": Optional[int], "is_optional": True}},
+        "b": {"y": {"type": int, "is_optional": False}},
+    }

@@ -22,7 +22,7 @@ from canals.errors import (
     PipelineValidationError,
 )
 from canals.pipeline.draw import _draw, _convert_for_debug, RenderingEngines
-from canals.pipeline.validation import validate_pipeline_input
+from canals.pipeline.validation import validate_pipeline_input, find_pipeline_inputs
 from canals.pipeline.connections import parse_connection, _find_unambiguous_connection
 from canals.type_utils import _type_name
 from canals.serialization import component_to_dict, component_from_dict
@@ -327,6 +327,17 @@ class Pipeline:
             return self.graph.nodes[name]["instance"]
         except KeyError as exc:
             raise ValueError(f"Component named {name} not found in the pipeline.") from exc
+
+    def inputs(self):
+        """
+        Returns a dictionary with the input names and types that this pipeline accepts.
+        """
+        inputs = {
+            comp: {socket.name: {"type": socket.type, "is_optional": socket.is_optional} for socket in data}
+            for comp, data in find_pipeline_inputs(self.graph).items()
+            if data
+        }
+        return inputs
 
     def draw(self, path: Path, engine: RenderingEngines = "mermaid-image") -> None:
         """
