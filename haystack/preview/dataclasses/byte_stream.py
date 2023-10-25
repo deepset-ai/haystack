@@ -13,8 +13,8 @@ class ByteStream:
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
     path: Optional[Union[str, Path]] = None
 
-    def to_file(self):
-        with open(self.path, "wb") as fd:
+    def to_file(self, destination_path: Path):
+        with open(destination_path, "wb") as fd:
             fd.write(self.data)
 
     @classmethod
