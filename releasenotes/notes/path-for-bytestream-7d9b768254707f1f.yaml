@@ -1,0 +1,2 @@
+preview:
+  - Introduces a `path` optional field to ByteStream.
