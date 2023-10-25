@@ -31,15 +31,38 @@ def test_document_str(doc, doc_str):
     assert f"Document(id={doc.id}, mimetype: 'text/plain', {doc_str})" == str(doc)
 
 
-def test_init():
-    doc = Document(text="test text", metadata={"text": "test text"})
-    assert doc.text == "test text"
+@pytest.mark.unit
+def test_init_with_default_parameters():
+    doc = Document()
+    assert doc.id == "eaefbcfb6d4274ef83b7b4726d5df854060b6079d12bac65e8ed3feb99d9f69e"
+    assert doc.text == None
     assert doc.dataframe == None
     assert doc.blob == None
     assert doc.mime_type == "text/plain"
-    assert doc.metadata == {"text": "test text"}
+    assert doc.metadata == {}
     assert doc.score == None
     assert doc.embedding == None
+
+
+@pytest.mark.unit
+def test_init_with_custom_parameters():
+    doc = Document(
+        text="test text",
+        dataframe=pd.DataFrame([0]),
+        blob=b"some bytes",
+        mime_type="text/markdown",
+        metadata={"text": "test text"},
+        score=0.812,
+        embedding=[0.1, 0.2, 0.3],
+    )
+    assert doc.id == "ec92455f3f4576d40031163c89b1b4210b34ea1426ee0ff68ebed86cb7ba13f8"
+    assert doc.text == "test text"
+    assert doc.dataframe.equals(pd.DataFrame([0]))
+    assert doc.blob == bytes("some bytes")
+    assert doc.mime_type == "text/markdown"
+    assert doc.metadata == {"text": "test text"}
+    assert doc.score == 0.812
+    assert doc.embedding == [0.1, 0.2, 0.3]
 
 
 @pytest.mark.unit
