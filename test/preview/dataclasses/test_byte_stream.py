@@ -28,6 +28,6 @@ def test_to_file(tmp_path, request):
     test_str = "Hello, world!\n"
     test_path = tmp_path / request.node.name
 
-    ByteStream(test_str.encode()).to_file(test_path)
+    ByteStream(test_str.encode(), path=test_path).to_file()
     with open(test_path, "rb") as fd:
         assert fd.read().decode() == test_str
