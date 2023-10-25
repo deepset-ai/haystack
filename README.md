@@ -69,7 +69,7 @@ An example pipeline would consist of one `Retriever` Node and one `PromptNode`. 
 
 ⚛️ **[Nodes](https://docs.haystack.deepset.ai/docs/nodes_overview):** Each Node achieves one thing. Such as preprocessing documents, retrieving documents, using language models to answer questions and so on.
 
-🕵️ **[Agent](https://docs.haystack.deepset.ai/docs/agent):** (since 1.15) An Agent is a component that is powered by an LLM, such as GPT-3. It can decide on the next best course of action so as to get to the result of a query. It uses the Tools available to it to achieve this. While a pipeline has a clear start and end, an Agent is able to decide whether the query has resolved or not. It may also make use of a Pipeline as a Tool.
+🕵️ **[Agent](https://docs.haystack.deepset.ai/docs/agent):** (since 1.15) An Agent is a component that is powered by an LLM, such as GPT-3. It can decide on the next best course of action so as to get to the result of a query. It uses the Tools available to it to achieve this. While a pipeline has a clear start and end, an Agent is able to decide whether the query has been resolved or not. It may also make use of a Pipeline as a Tool.
 
 🛠️ **[Tools](https://docs.haystack.deepset.ai/docs/agent#tools):** You can think of a Tool as an expert, that is able to do something really well. Such as a calculator, good at mathematics. Or a [WebRetriever](https://docs.haystack.deepset.ai/docs/agent#web-tools), good at retrieving pages from the internet. A Node or pipeline in Haystack can also be used as a Tool. A Tool is a component that is used by an Agent, to resolve complex queries.
 
@@ -80,7 +80,7 @@ An example pipeline would consist of one `Retriever` Node and one `PromptNode`. 
 -   Build **retrieval augmented generation (RAG)** by making use of one of the available vector databases and customizing your LLM interaction, the sky is the limit 🚀
 -   Perform Question Answering **in natural language** to find granular answers in your documents.
 -   Perform **semantic search** and retrieve documents according to meaning.
--   Build applications that can do complex decisions making to answer complex queries: such as systems that can resolve complex customer queries, do knowledge search on many disconnected resources and so on.
+-   Build applications that can make complex decisions making to answer complex queries: such as systems that can resolve complex customer queries, do knowledge search on many disconnected resources and so on.
 -   Use **off-the-shelf models** or **fine-tune** them to your data.
 -   Use **user feedback** to evaluate, benchmark, and continuously improve your models.
 
