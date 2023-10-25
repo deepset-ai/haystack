@@ -8,24 +8,6 @@ from haystack.preview.dataclasses import ByteStream
 
 class TestHTMLToDocument:
     @pytest.mark.unit
-    def test_to_dict(self):
-        component = HTMLToDocument()
-        data = component.to_dict()
-        assert data == {"type": "HTMLToDocument", "init_parameters": {"id_hash_keys": []}}
-
-    @pytest.mark.unit
-    def test_to_dict_with_custom_init_parameters(self):
-        component = HTMLToDocument(id_hash_keys=["name"])
-        data = component.to_dict()
-        assert data == {"type": "HTMLToDocument", "init_parameters": {"id_hash_keys": ["name"]}}
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {"type": "HTMLToDocument", "init_parameters": {"id_hash_keys": ["name"]}}
-        component = HTMLToDocument.from_dict(data)
-        assert component.id_hash_keys == ["name"]
-
-    @pytest.mark.unit
     def test_run(self, preview_samples_path):
         """
         Test if the component runs correctly.

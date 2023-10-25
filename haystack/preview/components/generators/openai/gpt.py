@@ -4,6 +4,7 @@ import sys
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, asdict
+import os
 
 import openai
 
@@ -43,7 +44,7 @@ class GPTGenerator:
 
     def __init__(
         self,
-        api_key: str,
+        api_key: Optional[str] = None,
         model_name: str = "gpt-3.5-turbo",
         system_prompt: Optional[str] = None,
         streaming_callback: Optional[Callable] = None,
@@ -51,9 +52,10 @@ class GPTGenerator:
         **kwargs,
     ):
         """
-        Creates an instance of GPT35Generator for OpenAI's GPT-3.5 model.
+        Creates an instance of GPTGenerator. Unless specified otherwise in the `model_name`, this is for OpenAI's GPT-3.5 model.
 
-        :param api_key: The OpenAI API key.
+        :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
+            environment variable OPENAI_API_KEY (recommended).
         :param model_name: The name of the model to use.
         :param system_prompt: An additional message to be sent to the LLM at the beginning of each conversation.
             Typically, a conversation is formatted with a system message first, followed by alternating messages from
@@ -84,12 +86,25 @@ class GPTGenerator:
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens and the
                 values are the bias to add to that token.
         """
-        self.api_key = api_key
+        # if the user does not provide the API key, check if it is set in the module client
+        api_key = api_key or openai.api_key
+        if api_key is None:
+            try:
+                api_key = os.environ["OPENAI_API_KEY"]
+            except KeyError as e:
+                raise ValueError(
+                    "GPTGenerator expects an OpenAI API key. "
+                    "Set the OPENAI_API_KEY environment variable (recommended) or pass it explicitly."
+                ) from e
+        openai.api_key = api_key
+
         self.model_name = model_name
         self.system_prompt = system_prompt
         self.model_parameters = kwargs
         self.streaming_callback = streaming_callback
+
         self.api_base_url = api_base_url
+        openai.api_base = api_base_url
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -112,7 +127,6 @@ class GPTGenerator:
 
         return default_to_dict(
             self,
-            api_key=self.api_key,
             model_name=self.model_name,
             system_prompt=self.system_prompt,
             streaming_callback=callback_name,
@@ -155,7 +169,6 @@ class GPTGenerator:
 
         completion = openai.ChatCompletion.create(
             model=self.model_name,
-            api_key=self.api_key,
             messages=[asdict(message) for message in chat],
             stream=self.streaming_callback is not None,
             **self.model_parameters,
