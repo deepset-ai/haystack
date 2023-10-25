@@ -183,6 +183,7 @@ def all_gather_list(data, group=None, max_size=16384):
         data (Any): data from the local worker to be gathered on other workers
         group (optional): group of the collective
     """
+    # pylint: disable=all
     SIZE_STORAGE_BYTES = 4  # int32 to encode the payload size
 
     enc = pickle.dumps(data)
