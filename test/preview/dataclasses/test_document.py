@@ -31,6 +31,17 @@ def test_document_str(doc, doc_str):
     assert f"Document(id={doc.id}, mimetype: 'text/plain', {doc_str})" == str(doc)
 
 
+def test_init():
+    doc = Document(text="test text", metadata={"text": "test text"})
+    assert doc.text == "test text"
+    assert doc.dataframe == None
+    assert doc.blob == None
+    assert doc.mime_type == "text/plain"
+    assert doc.metadata == {"text": "test text"}
+    assert doc.score == None
+    assert doc.embedding == None
+
+
 @pytest.mark.unit
 def test_basic_equality_type_mismatch():
     doc = Document(text="test text")
@@ -192,6 +203,7 @@ def test_full_document_from_json():
             {
                 "text": "test text",
                 "dataframe": '{"0":{"0":10,"1":20,"2":30}}',
+                "blob": [115, 111, 109, 101, 32, 98, 121, 116, 101, 115],
                 "mime_type": "application/pdf",
                 "metadata": {"create_date": -14186580},
                 "score": 0.5,
@@ -202,7 +214,7 @@ def test_full_document_from_json():
     assert doc == Document(
         text="test text",
         dataframe=pd.DataFrame([10, 20, 30]),
-        blob=None,
+        blob=b"some bytes",
         mime_type="application/pdf",
         metadata={"create_date": -14186580},
         score=0.5,
