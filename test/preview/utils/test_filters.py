@@ -4,7 +4,7 @@ import numpy as np
 
 from haystack.preview import Document
 from haystack.preview.errors import FilterError
-from haystack.preview.utils.filters import document_matches_filter, _find_nested_value
+from haystack.preview.utils.filters import document_matches_filter, _find_nested_value, _get_field_value
 
 
 class TestFilterUtils:
@@ -12,9 +12,18 @@ class TestFilterUtils:
     def test_find_nested_value(self):
         assert _find_nested_value({"a": {"b": 1}}, "a.b") == 1
         with pytest.raises(ValueError):
-            assert _find_nested_value({"a": {"b": 1}}, "a.c") == None
+            _find_nested_value({"a": {"b": 1}}, "a.c")
         with pytest.raises(ValueError):
-            assert _find_nested_value({"a": [1]}, "a.b") == None
+            _find_nested_value({"a": [1]}, "a.b")
+
+    @pytest.mark.unit
+    def test_get_field_value(self):
+        assert _get_field_value({"a": {"b": 1}}, "a") == {"b": 1}
+        assert _get_field_value({"a": {"b": 1}}, "a.b") == 1
+        with pytest.raises(ValueError):
+            _get_field_value({"a": {"b": 1}}, "a.c")
+        with pytest.raises(ValueError):
+            _get_field_value({"a": {"b": 1}}, "c")
 
     @pytest.mark.unit
     def test_eq_match(self):

@@ -26,7 +26,7 @@ def _find_nested_value(fields: Dict[str, Any], field_name: str) -> Any:
     splits = field_name.split(".")
     # Handle the first field
     first = splits[0]
-    if first not in fields:
+    if not isinstance(fields, MutableMapping) or first not in fields:
         raise ValueError
     value = fields[first]
 
@@ -38,6 +38,20 @@ def _find_nested_value(fields: Dict[str, Any], field_name: str) -> Any:
         value = value[split]
 
     return value
+
+
+def _get_field_value(fields: Dict[str, Any], field_name: str) -> Any:
+    """
+    Returns the value of a field in a dictionary.
+    `field_name` can be a nested field, like "a.b.c".
+    If the field is not found a ValueError is raised.
+    """
+    if "." in field_name:
+        # _find_nested_value raises if the field is not found
+        return _find_nested_value(fields, field_name)
+    elif not field_name in fields:
+        raise ValueError
+    return fields[field_name]
 
 
 def not_operation(conditions: List[Any], document: Document, _current_key: str):
@@ -133,15 +147,10 @@ def eq_operation(fields, field_name, value):
     :param value: the fixed value to compare against
     :return: True if the values are equal, False otherwise
     """
-    if "." in field_name:
-        try:
-            field_value = _find_nested_value(fields, field_name)
-        except ValueError:
-            return False
-    elif not field_name in fields:
+    try:
+        field_value = _get_field_value(fields, field_name)
+    except ValueError:
         return False
-    else:
-        field_value = fields[field_name]
 
     return _safe_eq(field_value, value)
 
@@ -155,15 +164,10 @@ def in_operation(fields, field_name, value):
     :param value; the fixed value to compare against
     :return: True if the document's value is included in the given list, False otherwise
     """
-    if "." in field_name:
-        try:
-            field_value = _find_nested_value(fields, field_name)
-        except ValueError:
-            return False
-    elif not field_name in fields:
+    try:
+        field_value = _get_field_value(fields, field_name)
+    except ValueError:
         return False
-    else:
-        field_value = fields[field_name]
 
     if not isinstance(value, IN_TYPES):
         raise FilterError("$in accepts only iterable values like lists, sets and tuples.")
@@ -204,15 +208,10 @@ def gt_operation(fields, field_name, value):
     :param value; the fixed value to compare against
     :return: True if the document's value is strictly larger than the fixed value, False otherwise
     """
-    if "." in field_name:
-        try:
-            field_value = _find_nested_value(fields, field_name)
-        except ValueError:
-            return False
-    elif not field_name in fields:
+    try:
+        field_value = _get_field_value(fields, field_name)
+    except ValueError:
         return False
-    else:
-        field_value = fields[field_name]
     return _safe_gt(field_value, value)
 
 
@@ -237,15 +236,10 @@ def lt_operation(fields, field_name, value):
     :param value; the fixed value to compare against
     :return: True if the document's value is strictly smaller than the fixed value, False otherwise
     """
-    if "." in field_name:
-        try:
-            field_value = _find_nested_value(fields, field_name)
-        except ValueError:
-            return False
-    elif not field_name in fields:
+    try:
+        field_value = _get_field_value(fields, field_name)
+    except ValueError:
         return False
-    else:
-        field_value = fields[field_name]
 
     return not _safe_gt(field_value, value) and not _safe_eq(field_value, value)
 
@@ -259,15 +253,10 @@ def lte_operation(fields, field_name, value):
     :param value; the fixed value to compare against
     :return: True if the document's value is smaller than or equal to the fixed value, False otherwise
     """
-    if "." in field_name:
-        try:
-            field_value = _find_nested_value(fields, field_name)
-        except ValueError:
-            return False
-    elif not field_name in fields:
+    try:
+        field_value = _get_field_value(fields, field_name)
+    except ValueError:
         return False
-    else:
-        field_value = fields[field_name]
 
     return not _safe_gt(field_value, value)
 
