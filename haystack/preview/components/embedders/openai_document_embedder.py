@@ -13,6 +13,21 @@ class OpenAIDocumentEmbedder:
     """
     A component for computing Document embeddings using OpenAI models.
     The embedding of each Document is stored in the `embedding` field of the Document.
+
+    Usage example:
+    ```python
+    from haystack.preview import Document
+    from haystack.preview.components.embedders import OpenAIDocumentEmbedder
+
+    doc = Document(text="I love pizza!")
+
+    document_embedder = OpenAIDocumentEmbedder()
+
+    result = document_embedder.run([doc])
+    print(result['documents'][0].embedding)
+
+    # [0.017020374536514282, -0.023255806416273117, ...]
+    ```
     """
 
     def __init__(
