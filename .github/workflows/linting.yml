@@ -39,7 +39,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install ".[all,dev]"
+        run: |
+          pip install ".[all,dev]"
+          pip install --no-deps llvmlite numba "openai-whisper>=20230918"
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
@@ -74,6 +76,7 @@ jobs:
       - name: Install Haystack
         run: |
           pip install ".[all,dev]"
+          pip install --no-deps llvmlite numba "openai-whisper>=20230918"
           pip install ./haystack-linter
 
       - name: Pylint
