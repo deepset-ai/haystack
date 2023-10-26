@@ -359,3 +359,15 @@ def test_from_dict_with_flat_and_non_flat_metadata():
                 "type": "article",
             }
         )
+
+
+@pytest.mark.unit
+def test_content_type():
+    assert Document(text="text").content_type == "text"
+    assert Document(dataframe=pd.DataFrame([0])).content_type == "table"
+
+    with pytest.raises(ValueError):
+        Document().content_type
+
+    with pytest.raises(ValueError):
+        Document(text="text", dataframe=pd.DataFrame([0])).content_type

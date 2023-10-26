@@ -1,16 +1,65 @@
 import hashlib
 import json
 import logging
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Dict, List, Optional
 
+import numpy
 import pandas
 
 logger = logging.getLogger(__name__)
 
 
+class _BackwardCompatible(type):
+    """
+    Metaclass that handles Document backwards compatibility.
+    """
+
+    def __call__(cls, *args, **kwargs):
+        """
+        Called before Document.__init__, will remap legacy fields to new ones.
+        Also handles building a Document from a flattened dictionary.
+        """
+        # Move `content` to new fields depending on the type
+        content = kwargs.get("content", None)
+        if isinstance(content, str):
+            kwargs["text"] = content
+        elif isinstance(content, pandas.DataFrame):
+            kwargs["dataframe"] = content
+
+        # We already moved `content` to `text` or `dataframe`, we can remove it
+        if "content" in kwargs:
+            del kwargs["content"]
+
+        # Not used anymore
+        if "content_type" in kwargs:
+            del kwargs["content_type"]
+
+        # Embedding were stored as NumPy arrays in 1.x, so we convert it to the new type
+        if isinstance(embedding := kwargs.get("embedding", None), numpy.ndarray):
+            kwargs["embedding"] = embedding.tolist()
+
+        # Not used anymore
+        if "id_hash_keys" in kwargs:
+            del kwargs["id_hash_keys"]
+
+        if kwargs.get("metadata", None) is None:
+            # This must be a flattened Document, so we treat all keys that are not
+            # Document fields as metadata.
+            metadata = kwargs.get("metadata", None) or {}
+            field_names = [f.name for f in fields(cls)]
+            keys = list(kwargs.keys())
+            for key in keys:
+                if key in field_names:
+                    continue
+                metadata[key] = kwargs.pop(key)
+            kwargs["metadata"] = metadata
+
+        return super().__call__(*args, **kwargs)
+
+
 @dataclass
-class Document:
+class Document(metaclass=_BackwardCompatible):
     """
     Base data class containing some data to be queried.
     Can contain text snippets, tables, and file paths to images or audios.
@@ -103,3 +152,19 @@ class Document:
         if blob := data.get("blob", None):
             data["blob"] = bytes(blob)
         return cls(**data)
+
+    @property
+    def content_type(self):
+        """
+        Returns the type of the content type of the document.
+        This is necessary to keep backwards compatibility with 1.x.
+        A ValueError will be raised is either both `text` and `dataframe` fields are set
+        or if neither of them is set.
+        """
+        if self.text is not None and self.dataframe is not None:
+            raise ValueError("Both text and dataframe are set.")
+        elif self.text is not None:
+            return "text"
+        elif self.dataframe is not None:
+            return "table"
+        raise ValueError("Neither text nor dataframe is set.")
