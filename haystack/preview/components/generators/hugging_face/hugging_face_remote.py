@@ -1,6 +1,6 @@
 import logging
 from dataclasses import fields, asdict
-from typing import Any, Dict, List, Optional, Union, Iterable, Callable
+from typing import Any, Dict, List, Optional, Iterable, Callable
 from urllib.parse import urlparse
 
 from huggingface_hub import InferenceClient, HfApi
@@ -80,7 +80,7 @@ class HuggingFaceRemoteGenerator:
         self,
         model: str = "HuggingFaceH4/zephyr-7b-alpha",
         model_id: Optional[str] = None,
-        token: Optional[Union[str, bool]] = None,
+        token: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
         streaming_callback: Optional[Callable] = None,
@@ -108,22 +108,36 @@ class HuggingFaceRemoteGenerator:
         generation_kwargs = generation_kwargs or {}
         check_generation_params(generation_kwargs, ["n"])
         generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", []) + (stop_words or [])
+
+        self.model_id = model_id
         self.generation_kwargs = generation_kwargs
         self.tokenizer = AutoTokenizer.from_pretrained(model_id or model, token=token)
         self.client = InferenceClient(model, token=token)
         self.streaming_callback = streaming_callback
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
-        """
-        Data that is sent to Posthog for usage analytics.
-        """
-        pass
-
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
+
+        :return: A dictionary containing the serialized component.
         """
-        pass
+        if self.streaming_callback:
+            module = self.streaming_callback.__module__
+            if module == "builtins":
+                callback_name = self.streaming_callback.__name__
+            else:
+                callback_name = f"{module}.{self.streaming_callback.__name__}"
+        else:
+            callback_name = None
+
+        return default_to_dict(
+            self,
+            model=self.client.model,
+            model_id=self.model_id,
+            stop_words=self.generation_kwargs.get("stop_sequences", []),
+            generation_kwargs=self.generation_kwargs,
+            streaming_callback=callback_name,
+        )
 
     @component.output_types(replies=List[str], metadata=List[Dict[str, Any]])
     def run(self, prompt: str, **generation_kwargs):
@@ -146,11 +160,12 @@ class HuggingFaceRemoteGenerator:
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
 
-            res: Iterable[TextGenerationStreamResponse] = self.client.text_generation(
+            res_chunk: Iterable[TextGenerationStreamResponse] = self.client.text_generation(
                 prompt, details=True, stream=True, **generation_kwargs
             )
             chunks: List[StreamingChunk] = []
-            for chunk in res:
+            # pylint: disable=not-an-iterable
+            for chunk in res_chunk:
                 token: Token = chunk.token
                 if token.special:
                     continue
@@ -160,12 +175,12 @@ class HuggingFaceRemoteGenerator:
                 self.streaming_callback(chunk)
             prompt_tokens_length = len(self.tokenizer.encode(prompt, add_special_tokens=False))
             metadata = {
-                "finish_reason": chunks[-1].metadata["finish_reason"].value,
+                "finish_reason": chunks[-1].metadata.get("finish_reason", None),
                 "model": self.client.model,
                 "usage": {
-                    "completion_tokens": chunks[-1].metadata["generated_tokens"],
+                    "completion_tokens": chunks[-1].metadata.get("generated_tokens", 0),
                     "prompt_tokens": prompt_tokens_length,
-                    "total_tokens": prompt_tokens_length + chunks[-1].metadata["generated_tokens"],
+                    "total_tokens": prompt_tokens_length + chunks[-1].metadata.get("generated_tokens", 0),
                 },
             }
             return {"replies": ["".join([chunk.content for chunk in chunks])], "metadata": [metadata]}
@@ -173,21 +188,21 @@ class HuggingFaceRemoteGenerator:
             responses: List[str] = []
             all_metadata: List[Dict[str, Any]] = []
             for _i in range(num_responses):
-                res: TextGenerationResponse = self.client.text_generation(prompt, details=True, **generation_kwargs)
+                tgr: TextGenerationResponse = self.client.text_generation(prompt, details=True, **generation_kwargs)
                 prompt_token_count = len(self.tokenizer.encode(prompt, add_special_tokens=False))
                 all_metadata.append(
                     {
                         "model": self.client.model,
                         "index": _i,
-                        "finish_reason": res.details.finish_reason.value,
+                        "finish_reason": tgr.details.finish_reason.value,
                         "usage": {
-                            "completion_tokens": len(res.details.tokens),
+                            "completion_tokens": len(tgr.details.tokens),
                             "prompt_tokens": prompt_token_count,
-                            "total_tokens": prompt_token_count + len(res.details.tokens),
+                            "total_tokens": prompt_token_count + len(tgr.details.tokens),
                         },
                     }
                 )
-                responses.append(res.generated_text)
+                responses.append(tgr.generated_text)
             return {"replies": responses, "metadata": all_metadata}
 
 
@@ -212,7 +227,7 @@ class ChatHuggingFaceRemoteGenerator:
         self,
         model: str = "meta-llama/Llama-2-13b-chat-hf",
         model_id: Optional[str] = None,
-        token: Optional[Union[str, bool]] = None,
+        token: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
         streaming_callback: Optional[Callable] = None,
@@ -245,25 +260,34 @@ class ChatHuggingFaceRemoteGenerator:
 
         generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", []) + (stop_words or [])
         self.generation_kwargs = generation_kwargs
+        self.model_id = model_id
 
         self.client = InferenceClient(model, token=token)
         self.streaming_callback = streaming_callback
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
-        """
-        Data that is sent to Posthog for usage analytics.
-
-        :return: A dictionary containing the telemetry data.
-        """
-        pass
-
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize the component to a dictionary.
+        Serialize this component to a dictionary.
 
-        :return: A dictionary representing the serialized component.
+        :return: A dictionary containing the serialized component.
         """
-        pass
+        if self.streaming_callback:
+            module = self.streaming_callback.__module__
+            if module == "builtins":
+                callback_name = self.streaming_callback.__name__
+            else:
+                callback_name = f"{module}.{self.streaming_callback.__name__}"
+        else:
+            callback_name = None
+
+        return default_to_dict(
+            self,
+            model=self.client.model,
+            model_id=self.model_id,
+            stop_words=self.generation_kwargs.get("stop_sequences", []),
+            generation_kwargs=self.generation_kwargs,
+            streaming_callback=callback_name,
+        )
 
     @component.output_types(replies=List[ChatMessage])
     def run(self, messages: List[ChatMessage], **generation_kwargs):
@@ -293,6 +317,7 @@ class ChatHuggingFaceRemoteGenerator:
                 prepared_prompt, stream=True, details=True, **generation_kwargs
             )
             chunks: List[StreamingChunk] = []
+            # pylint: disable=not-an-iterable
             for chunk in res:
                 token: Token = chunk.token
                 if token.special:
@@ -305,12 +330,12 @@ class ChatHuggingFaceRemoteGenerator:
             message = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
             message.metadata.update(
                 {
-                    "finish_reason": chunks[-1].metadata["finish_reason"].value,
+                    "finish_reason": chunks[-1].metadata.get("finish_reason", None),
                     "model": self.client.model,
                     "usage": {
-                        "completion_tokens": chunks[-1].metadata["generated_tokens"],
+                        "completion_tokens": chunks[-1].metadata.get("generated_tokens", 0),
                         "prompt_tokens": prompt_tokens_length,
-                        "total_tokens": prompt_tokens_length + chunks[-1].metadata["generated_tokens"],
+                        "total_tokens": prompt_tokens_length + chunks[-1].metadata.get("generated_tokens", 0),
                     },
                 }
             )
@@ -318,20 +343,20 @@ class ChatHuggingFaceRemoteGenerator:
         else:
             chat_messages: List[ChatMessage] = []
             for _i in range(num_responses):
-                res: TextGenerationResponse = self.client.text_generation(
+                tgr: TextGenerationResponse = self.client.text_generation(
                     prepared_prompt, details=True, **generation_kwargs
                 )
                 prompt_token_count = len(self.tokenizer.encode(prepared_prompt, add_special_tokens=False))
-                message = ChatMessage.from_assistant(res.generated_text)
+                message = ChatMessage.from_assistant(tgr.generated_text)
                 message.metadata.update(
                     {
-                        "finish_reason": res.details.finish_reason.value,
+                        "finish_reason": tgr.details.finish_reason.value,
                         "index": _i,
                         "model": self.client.model,
                         "usage": {
-                            "completion_tokens": len(res.details.tokens),
+                            "completion_tokens": len(tgr.details.tokens),
                             "prompt_tokens": prompt_token_count,
-                            "total_tokens": prompt_token_count + len(res.details.tokens),
+                            "total_tokens": prompt_token_count + len(tgr.details.tokens),
                         },
                     }
                 )
