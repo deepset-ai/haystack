@@ -87,7 +87,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
                          If not supplied, the default from OpenAI API docs is used:
                          `[["Q: What is human life expectancy in the United States?", "A: 78 years."]]`
         :param stop_words: Up to four sequences where the API stops generating further tokens. The returned text does not contain the stop sequence.
-                           If you don't provide any stop words, the default value from OpenAI API docs is used: `["\n", "<|endoftext|>"]`.
+                           If you don't provide any stop words, the default value from OpenAI API docs is used: `["\\n", "<|endoftext|>"]`.
         :param prompt_template: A PromptTemplate that tells the model how to generate answers given a
              `context` and `query` supplied at runtime. The `context` is automatically constructed at runtime from a
             list of provided documents. Use `example_context` and a list of `examples` to provide the model with examples to steer it towards the tone and answer format you would like.
@@ -95,8 +95,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
             ```python
                 PromptTemplate(
                     "Please answer the question according to the above context."
-                    "\n===\nContext: {examples_context}\n===\n{examples}\n\n"
-                    "===\nContext: {context}\n===\n{query}",
+                    "\\n===\\nContext: {examples_context}\\n===\\n{examples}\\n\\n"
+                    "===\\nContext: {context}\\n===\\n{query}",
                 )
             ```
             To learn how variables, such as '{context}', are substituted in the prompt text, see
