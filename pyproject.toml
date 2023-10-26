@@ -235,6 +235,9 @@ dev = [
   # https://opendev.org/openstack/reno/src/branch/master/requirements.txt#L7
   "dulwich>=0.21.0,<1.0.0",
 ]
+gradient = [
+  "gradientai==1.1.0"
+]
 
 formatting = [
   # Version specified following Black stability policy:

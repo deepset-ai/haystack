@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, overload
+from typing import List, Optional, Dict, Any, overload
 
 import logging
 from haystack.lazy_imports import LazyImport
@@ -57,10 +57,10 @@ class GradientGenerator:
         workspace_id: Optional[str] = None,
     ) -> None:
         self._access_token = access_token
-        self._base_model_slug = (base_model_slug,)
+        self._base_model_slug = base_model_slug
         self._host = host
         self._max_generated_token_count = max_generated_token_count
-        self._model_adapter_id = (model_adapter_id,)
+        self._model_adapter_id = model_adapter_id
         self._temperature = temperature
         self._top_k = top_k
         self._top_p = top_p
@@ -91,7 +91,7 @@ class GradientGenerator:
             workspace_id=self._workspace_id,
         )
 
-    @component.output_types(response=str)
+    @component.output_types(replies=List[str])
     def run(self, prompt: str):
         resp = self._model.complete(
             query=prompt,
@@ -100,4 +100,4 @@ class GradientGenerator:
             top_k=self._top_k,
             top_p=self._top_p,
         )
-        return {"response": resp.generated_output}
+        return {"replies": [resp.generated_output]}
