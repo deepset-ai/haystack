@@ -221,7 +221,7 @@ jobs:
     needs: unit-tests
     runs-on: macos-latest
     env:
-      PYTORCH_ENABLE_MPS_FALLBACK: 1
+      PYTORCH_MPS_HIGH_WATERMARK_RATIO: 0.0
     steps:
       - uses: actions/checkout@v4
 
