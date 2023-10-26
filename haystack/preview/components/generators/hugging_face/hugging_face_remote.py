@@ -60,22 +60,6 @@ def check_valid_model(model_id: str, token: Optional[str]):
         raise ValueError(f"Model {model_id} is not a text generation model. Please provide a text generation model.")
 
 
-def convert_to_chat_message(response: TextGenerationResponse, model_id: Optional[str] = None) -> ChatMessage:
-    """
-    Convert a TextGenerationResponse instance to a ChatMessage instance.
-
-    :param response: A TextGenerationResponse instance representing the text generation response.
-    :param model_id: An optional string representing the HuggingFace model ID.
-    :return: A ChatMessage instance representing the converted response.
-    """
-    message = ChatMessage.from_assistant(response.generated_text)
-    # TODO add token usage to metadata, it is in res.details.tokens
-    message.metadata.update(
-        {"finish_reason": response.details.finish_reason.value, "index": 0, "model": model_id or "unknown"}
-    )
-    return message
-
-
 @component
 class HuggingFaceRemoteGenerator:
     """
@@ -121,12 +105,11 @@ class HuggingFaceRemoteGenerator:
             check_valid_model(model_id, token)
         else:
             check_valid_model(model, token)
-
         generation_kwargs = generation_kwargs or {}
         check_generation_params(generation_kwargs, ["n"])
         generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", []) + (stop_words or [])
         self.generation_kwargs = generation_kwargs
-
+        self.tokenizer = AutoTokenizer.from_pretrained(model_id or model, token=token)
         self.client = InferenceClient(model, token=token)
         self.streaming_callback = streaming_callback
 
@@ -142,7 +125,7 @@ class HuggingFaceRemoteGenerator:
         """
         pass
 
-    @component.output_types(replies=List[str])
+    @component.output_types(replies=List[str], metadata=List[Dict[str, Any]])
     def run(self, prompt: str, **generation_kwargs):
         """
         Invoke the text generation inference for the given prompt and generation parameters.
@@ -164,23 +147,48 @@ class HuggingFaceRemoteGenerator:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
 
             res: Iterable[TextGenerationStreamResponse] = self.client.text_generation(
-                prompt, details=True, **generation_kwargs
+                prompt, details=True, stream=True, **generation_kwargs
             )
-            chunks: List[ChatMessage] = []
+            chunks: List[StreamingChunk] = []
             for chunk in res:
                 token: Token = chunk.token
                 if token.special:
                     continue
                 chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
                 chunk = StreamingChunk(token.text, chunk_metadata)
+                chunks.append(chunk)
                 self.streaming_callback(chunk)
-            return {"replies": ["".join([chunk.content for chunk in chunks])]}
+            prompt_tokens_length = len(self.tokenizer.encode(prompt, add_special_tokens=False))
+            metadata = {
+                "finish_reason": chunks[-1].metadata["finish_reason"].value,
+                "model": self.client.model,
+                "usage": {
+                    "completion_tokens": chunks[-1].metadata["generated_tokens"],
+                    "prompt_tokens": prompt_tokens_length,
+                    "total_tokens": prompt_tokens_length + chunks[-1].metadata["generated_tokens"],
+                },
+            }
+            return {"replies": ["".join([chunk.content for chunk in chunks])], "metadata": [metadata]}
         else:
             responses: List[str] = []
+            all_metadata: List[Dict[str, Any]] = []
             for _i in range(num_responses):
-                res: TextGenerationResponse = self.client.text_generation(prompt, **generation_kwargs)
+                res: TextGenerationResponse = self.client.text_generation(prompt, details=True, **generation_kwargs)
+                prompt_token_count = len(self.tokenizer.encode(prompt, add_special_tokens=False))
+                all_metadata.append(
+                    {
+                        "model": self.client.model,
+                        "index": _i,
+                        "finish_reason": res.details.finish_reason.value,
+                        "usage": {
+                            "completion_tokens": len(res.details.tokens),
+                            "prompt_tokens": prompt_token_count,
+                            "total_tokens": prompt_token_count + len(res.details.tokens),
+                        },
+                    }
+                )
                 responses.append(res.generated_text)
-            return {"replies": [responses]}
+            return {"replies": responses, "metadata": all_metadata}
 
 
 class ChatHuggingFaceRemoteGenerator:
@@ -293,12 +301,39 @@ class ChatHuggingFaceRemoteGenerator:
                 chunk = StreamingChunk(token.text, chunk_metadata)
                 self.streaming_callback(chunk)
                 chunks.append(chunk)
-            return {"replies": [ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))]}
+            prompt_tokens_length = len(self.tokenizer.encode(prepared_prompt, add_special_tokens=False))
+            message = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
+            message.metadata.update(
+                {
+                    "finish_reason": chunks[-1].metadata["finish_reason"].value,
+                    "model": self.client.model,
+                    "usage": {
+                        "completion_tokens": chunks[-1].metadata["generated_tokens"],
+                        "prompt_tokens": prompt_tokens_length,
+                        "total_tokens": prompt_tokens_length + chunks[-1].metadata["generated_tokens"],
+                    },
+                }
+            )
+            return {"replies": [message]}
         else:
             chat_messages: List[ChatMessage] = []
             for _i in range(num_responses):
                 res: TextGenerationResponse = self.client.text_generation(
                     prepared_prompt, details=True, **generation_kwargs
                 )
-                chat_messages.append(convert_to_chat_message(res))
-            return {"replies": [chat_messages]}
+                prompt_token_count = len(self.tokenizer.encode(prepared_prompt, add_special_tokens=False))
+                message = ChatMessage.from_assistant(res.generated_text)
+                message.metadata.update(
+                    {
+                        "finish_reason": res.details.finish_reason.value,
+                        "index": _i,
+                        "model": self.client.model,
+                        "usage": {
+                            "completion_tokens": len(res.details.tokens),
+                            "prompt_tokens": prompt_token_count,
+                            "total_tokens": prompt_token_count + len(res.details.tokens),
+                        },
+                    }
+                )
+                chat_messages.append(message)
+            return {"replies": chat_messages}
