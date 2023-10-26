@@ -58,14 +58,18 @@ def _safe_eq(first: Any, second: Any) -> bool:
     """
     Compares objects for equality, even np.ndarrays and pandas DataFrames.
     """
-    if type(first) != type(second):
-        return False
 
     if isinstance(first, pd.DataFrame):
-        return first.equals(second)
+        first = first.to_json()
+
+    if isinstance(second, pd.DataFrame):
+        second = second.to_json()
 
     if isinstance(first, np.ndarray):
-        return np.array_equal(first, second)
+        first = first.tolist()
+
+    if isinstance(second, np.ndarray):
+        second = second.tolist()
 
     return first == second
 
@@ -254,7 +258,7 @@ def document_matches_filter(conditions: Union[Dict, List], document: Document, _
                     "Filters can't start with an operator like $eq and $in. You have to specify the field name first. "
                     "See the examples in the documentation."
                 )
-            return OPERATORS[field_key](fields=document.flatten(), field_name=_current_key, value=field_value)
+            return OPERATORS[field_key](fields=document.to_dict(), field_name=_current_key, value=field_value)
 
         # Otherwise fall back to the defaults
         conditions = _list_conditions(field_value)
@@ -267,11 +271,11 @@ def document_matches_filter(conditions: Union[Dict, List], document: Document, _
             return and_operation(conditions=_list_conditions(conditions), document=document, _current_key=_current_key)
         else:
             # The default operator for a {key: [value1, value2]} filter is $in
-            return in_operation(fields=document.flatten(), field_name=_current_key, value=conditions)
+            return in_operation(fields=document.to_dict(), field_name=_current_key, value=conditions)
 
     if _current_key:
         # The default operator for a {key: value} filter is $eq
-        return eq_operation(fields=document.flatten(), field_name=_current_key, value=conditions)
+        return eq_operation(fields=document.to_dict(), field_name=_current_key, value=conditions)
 
     raise FilterError("Filters must be dictionaries or lists. See the examples in the documentation.")
 
