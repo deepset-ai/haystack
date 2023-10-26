@@ -43,16 +43,16 @@ jobs:
         # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
         run: echo "minor=$(cut -d "." -f 1,2 < VERSION.txt)" >> "$GITHUB_OUTPUT"
 
-      - name: Sync docs with unstable release
-        # Instead of putting more logic into the previous step, let's just assume that commits on `main`
-        # will always be synced to the current `X.Y-unstable` version on Readme
-        id: sync-main
-        if: github.ref_name == 'main' && github.event_name == 'push'
-        uses: readmeio/rdme@8.3.1
-        env:
-          README_API_KEY: ${{ secrets.README_API_KEY }}
-        with:
-          rdme: docs ./docs/pydoc/temp --key="$README_API_KEY" --version=${{ steps.current-version.outputs.minor }}-unstable
+#       - name: Sync docs with unstable release
+#         # Instead of putting more logic into the previous step, let's just assume that commits on `main`
+#         # will always be synced to the current `X.Y-unstable` version on Readme
+#         id: sync-main
+#         if: github.ref_name == 'main' && github.event_name == 'push'
+#         uses: readmeio/rdme@8.3.1
+#         env:
+#           README_API_KEY: ${{ secrets.README_API_KEY }}
+#         with:
+#           rdme: docs ./docs/pydoc/temp --key="$README_API_KEY" --version=${{ steps.current-version.outputs.minor }}-unstable
 
       - name: Sync preview docs with unstable release
         # Instead of putting more logic into the previous step, let's just assume that commits on `main`
@@ -66,14 +66,13 @@ jobs:
         with:
           rdme: docs ./docs/pydoc/temp-preview --key="$README_API_KEY" --version=2.0
 
-
-      - name: Sync docs with current release
-        # Mutually exclusive with the previous one, this step is supposed to only run on version branches.
-        # Sync the current Haystack version `X.Y.Z` with its corresponding Readme version `X.Y`.
-        # See https://docs.github.com/en/actions/learn-github-actions/contexts#steps-context for the condition used
-        if: steps.sync-main.outcome == 'skipped' && github.event_name == 'push'
-        uses: readmeio/rdme@8.3.1
-        env:
-          README_API_KEY: ${{ secrets.README_API_KEY }}
-        with:
-          rdme: docs ./docs/pydoc/temp --key="$README_API_KEY" --version=${{ steps.current-version.outputs.minor }}
+#       - name: Sync docs with current release
+#         # Mutually exclusive with the previous one, this step is supposed to only run on version branches.
+#         # Sync the current Haystack version `X.Y.Z` with its corresponding Readme version `X.Y`.
+#         # See https://docs.github.com/en/actions/learn-github-actions/contexts#steps-context for the condition used
+#         if: steps.sync-main.outcome == 'skipped' && github.event_name == 'push'
+#         uses: readmeio/rdme@8.3.1
+#         env:
+#           README_API_KEY: ${{ secrets.README_API_KEY }}
+#         with:
+#           rdme: docs ./docs/pydoc/temp --key="$README_API_KEY" --version=${{ steps.current-version.outputs.minor }}
