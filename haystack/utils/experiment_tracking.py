@@ -17,7 +17,7 @@ with LazyImport("Run 'pip install transformers[torch]'") as transformers_import:
     import transformers
 
 with LazyImport("Run Run 'pip install farm-haystack[metrics]'") as mlflow_import:
-    import mlflow
+    import mlflow  # pylint: disable=import-error
 
 
 logger = logging.getLogger(__name__)
