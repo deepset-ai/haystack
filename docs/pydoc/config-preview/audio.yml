@@ -13,7 +13,7 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmePreviewRenderer
-  excerpt: LocalWhisperTranscriber transcribes audio files using OpenAI's Whisper models on your local machine.
+  excerpt: LocalWhisperTranscriber transcribes audio files using OpenAI's Whisper models on your local machine
   category_slug: haystack-classes
   title: LocalWhisperTranscriber API
   slug: local-whisper-transcriber-api
