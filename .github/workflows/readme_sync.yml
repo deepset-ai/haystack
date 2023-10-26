@@ -10,6 +10,7 @@ on:
       - main
       # release branches have the form v1.9.x
       - "v[0-9].*[0-9].x"
+      - readme-sync-api-2-0
 
 jobs:
   sync:
@@ -59,7 +60,6 @@ jobs:
         # will always be synced to the current `X.Y-unstable` version on Readme
         id: sync-main-preview
         # if: github.ref_name == 'main' && github.event_name == 'push' # TODO reactivate
-        if: github.ref_name == 'readme-sync-api-2-0'
         uses: readmeio/rdme@8.3.1
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
