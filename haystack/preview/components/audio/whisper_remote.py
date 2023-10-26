@@ -128,7 +128,7 @@ class RemoteWhisperTranscriber:
             try:
                 file = io.BytesIO(stream.data)
                 file.name = stream.metadata["file_path"]
-            except Exception as e:
+            except KeyError as e:
                 logger.warning(
                     "Could not read audio file. Skipping it. Make sure the 'file_path' is present in the metadata. Error message: %s",
                     e,
