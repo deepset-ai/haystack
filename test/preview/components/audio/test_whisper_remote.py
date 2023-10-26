@@ -1,11 +1,12 @@
-from unittest.mock import patch
 import os
-import pytest
+from unittest.mock import patch
+
 import openai
+import pytest
 from openai.util import convert_to_openai_object
 
-from haystack.preview.dataclasses import ByteStream
 from haystack.preview.components.audio.whisper_remote import RemoteWhisperTranscriber
+from haystack.preview.dataclasses import ByteStream
 
 
 def mock_openai_response(response_format="json", **kwargs) -> openai.openai_object.OpenAIObject:
@@ -191,14 +192,11 @@ class TestRemoteWhisperTranscriber:
             with open(file_path, "rb") as audio_stream:
                 byte_stream = audio_stream.read()
                 audio_file = ByteStream(byte_stream, metadata={"file_path": str(file_path.absolute())})
+
                 result = transcriber.run(streams=[audio_file])
 
                 assert result["documents"][0].text == "test transcription"
                 assert result["documents"][0].metadata["file_path"] == str(file_path.absolute())
-
-                openai_audio_patch.transcribe.assert_called_once_with(
-                    file=audio_file.data, model=model, response_format="json"
-                )
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),

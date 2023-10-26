@@ -1,11 +1,11 @@
-from typing import List, Optional, Dict, Any
-
-import os
+import io
 import logging
+import os
+from typing import Any, Dict, List, Optional
 
 import openai
 
-from haystack.preview import component, Document, default_to_dict, default_from_dict
+from haystack.preview import Document, component, default_from_dict, default_to_dict
 from haystack.preview.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
@@ -125,7 +125,17 @@ class RemoteWhisperTranscriber:
         documents = []
 
         for stream in streams:
-            content = openai.Audio.transcribe(file=stream.data, model=self.model_name, **self.whisper_params)
+            try:
+                file = io.BytesIO(stream.data)
+                file.name = stream.metadata["file_path"]
+            except Exception as e:
+                logger.warning(
+                    "Could not read audio file. Skipping it. Make sure the 'file_path' is present in the metadata. Error message: %s",
+                    e,
+                )
+                continue
+
+            content = openai.Audio.transcribe(file=file, model=self.model_name, **self.whisper_params)
             doc = Document(text=content["text"], metadata=stream.metadata)
             documents.append(doc)
 
