@@ -210,7 +210,6 @@ class TestRemoteWhisperTranscriber:
             preview_samples_path / "audio" / "this is the content of the document.wav",
             preview_samples_path / "audio" / "the context for this answer is here.wav",
             preview_samples_path / "audio" / "answer.wav",
-            "rb",
         ]
 
         audio_files = []
