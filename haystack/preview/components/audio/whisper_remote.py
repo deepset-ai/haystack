@@ -125,15 +125,11 @@ class RemoteWhisperTranscriber:
         documents = []
 
         for stream in streams:
+            file = io.BytesIO(stream.data)
             try:
-                file = io.BytesIO(stream.data)
                 file.name = stream.metadata["file_path"]
-            except KeyError as e:
-                logger.warning(
-                    "Could not read audio file. Skipping it. Make sure the 'file_path' is present in the metadata. Error message: %s",
-                    e,
-                )
-                continue
+            except KeyError:
+                file.name = "audio_input.wav"
 
             content = openai.Audio.transcribe(file=file, model=self.model_name, **self.whisper_params)
             doc = Document(text=content["text"], metadata=stream.metadata)
