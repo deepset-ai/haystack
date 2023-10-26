@@ -54,9 +54,8 @@ jobs:
         with:
           rdme: docs ./docs/pydoc/temp --key="$README_API_KEY" --version=${{ steps.current-version.outputs.minor }}-unstable
 
-      - name: Sync preview docs with unstable release
-        # Instead of putting more logic into the previous step, let's just assume that commits on `main`
-        # will always be synced to the current `X.Y-unstable` version on Readme
+      - name: Sync preview docs
+        # Sync the preview docs to the `2.0` version on Readme
         id: sync-main-preview
         # if: github.ref_name == 'main' && github.event_name == 'push' # TODO reactivate
         uses: readmeio/rdme@8.3.1
