@@ -1,6 +1,7 @@
 name: Sync docs with Readme
 
 on:
+  workflow_dispatch: # Activate this workflow manually
   pull_request:
     paths:
       - "docs/pydoc/**"
@@ -52,6 +53,19 @@ jobs:
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:
           rdme: docs ./docs/pydoc/temp --key="$README_API_KEY" --version=${{ steps.current-version.outputs.minor }}-unstable
+
+      - name: Sync preview docs with unstable release
+        # Instead of putting more logic into the previous step, let's just assume that commits on `main`
+        # will always be synced to the current `X.Y-unstable` version on Readme
+        id: sync-main-preview
+        # if: github.ref_name == 'main' && github.event_name == 'push' # TODO reactivate
+        if: github.ref_name == 'readme-sync-api-2-0' && github.event_name == 'push'
+        uses: readmeio/rdme@8.3.1
+        env:
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+        with:
+          rdme: docs ./docs/pydoc/temp-preview --key="$README_API_KEY" --version=2.0
+
 
       - name: Sync docs with current release
         # Mutually exclusive with the previous one, this step is supposed to only run on version branches.
