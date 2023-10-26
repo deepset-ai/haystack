@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Any
 
 
@@ -14,4 +14,4 @@ class StreamingChunk:
     """
 
     content: str
-    metadata: Dict[str, Any]
+    metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
