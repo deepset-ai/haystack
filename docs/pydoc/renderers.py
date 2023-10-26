@@ -58,7 +58,8 @@ class ReadmeRenderer(Renderer):
 
     def init(self, context: Context) -> None:
         self.markdown.init(context)
-        self.version = self._doc_version()
+        # self.version = self._doc_version()
+        self.version = "v2.0"
         self.categories = self._readme_categories(self.version)
 
     def _doc_version(self) -> str:
