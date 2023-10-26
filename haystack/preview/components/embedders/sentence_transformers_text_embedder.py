@@ -10,6 +10,20 @@ from haystack.preview.components.embedders.backends.sentence_transformers_backen
 class SentenceTransformersTextEmbedder:
     """
     A component for embedding strings using Sentence Transformers models.
+
+    Usage example:
+    ```python
+    from haystack.preview.components.embedders import SentenceTransformersTextEmbedder
+
+    text_to_embed = "I love pizza!"
+
+    text_embedder = SentenceTransformersTextEmbedder()
+    text_embedder.warm_up()
+
+    print(text_embedder.run(text_to_embed))
+
+    # {'embedding': [-0.07804739475250244, 0.1498992145061493,, ...]}
+    ```
     """
 
     def __init__(
@@ -33,7 +47,9 @@ class SentenceTransformersTextEmbedder:
         :param token: The API token used to download private models from Hugging Face.
             If this parameter is set to `True`, then the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) will be used.
-        :param prefix: A string to add to the beginning of each text.
+        :param prefix: A string to add to the beginning of each Document text before embedding.
+            Can be used to prepend the text with an instruction, as required by some embedding models,
+            such as E5 and bge.
         :param suffix: A string to add to the end of each text.
         :param batch_size: Number of strings to encode at once.
         :param progress_bar: If true, displays progress bar during embedding.
