@@ -21,7 +21,7 @@ def test_bm25_rag_pipeline(tmp_path):
     prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
-        {{ doc.text }}
+        {{ doc.content }}
     {% endfor %}
 
     \nQuestion: {{question}}
@@ -87,7 +87,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
-        {{ doc.text }}
+        {{ doc.content }}
     {% endfor %}
 
     \nQuestion: {{question}}
