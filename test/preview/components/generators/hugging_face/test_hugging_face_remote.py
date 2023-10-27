@@ -76,7 +76,7 @@ class TestHuggingFaceRemoteGenerator:
             stop_words=stop_words,
             streaming_callback=streaming_callback,
         )
-        generator.warmup()
+        generator.warm_up()
 
         prompt = "Hello, how are you?"
         response = generator.run(prompt)
@@ -114,7 +114,7 @@ class TestHuggingFaceRemoteGenerator:
             stop_words=stop_words,
             streaming_callback=streaming_callback,
         )
-        generator.warmup()
+        generator.warm_up()
 
         prompt = "Hello, how are you?"
         response = generator.run(prompt)
@@ -159,7 +159,7 @@ class TestHuggingFaceRemoteGenerator:
     @pytest.mark.unit
     def test_generate_text_with_stop_words(self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation):
         generator = HuggingFaceRemoteGenerator()
-        generator.warmup()
+        generator.warm_up()
 
         stop_words = ["stop", "words"]
 
@@ -187,7 +187,7 @@ class TestHuggingFaceRemoteGenerator:
         self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
     ):
         generator = HuggingFaceRemoteGenerator()
-        generator.warmup()
+        generator.warm_up()
 
         generation_kwargs = {"temperature": 0.8, "max_new_tokens": 100}
         response = generator.run("How are you?", **generation_kwargs)
@@ -223,7 +223,7 @@ class TestHuggingFaceRemoteGenerator:
 
         # Create an instance of HuggingFaceRemoteGenerator
         generator = HuggingFaceRemoteGenerator(streaming_callback=streaming_callback_fn)
-        generator.warmup()
+        generator.warm_up()
 
         # Create a fake streamed response
         def mock_iter(self):
@@ -286,7 +286,7 @@ class TestChatHuggingFaceRemoteGenerator:
             stop_words=stop_words,
             streaming_callback=streaming_callback,
         )
-        generator.warmup()
+        generator.warm_up()
 
         assert generator.model_id == model
         assert generator.generation_kwargs == {**generation_kwargs, **{"stop_sequences": ["stop"]}}
@@ -313,7 +313,7 @@ class TestChatHuggingFaceRemoteGenerator:
             stop_words=stop_words,
             streaming_callback=streaming_callback,
         )
-        generator.warmup()
+        generator.warm_up()
 
         response = generator.run(messages=chat_messages)
 
@@ -347,7 +347,7 @@ class TestChatHuggingFaceRemoteGenerator:
             stop_words=stop_words,
             streaming_callback=streaming_callback,
         )
-        generator.warmup()
+        generator.warm_up()
 
         response = generator.run(chat_messages)
 
@@ -386,7 +386,7 @@ class TestChatHuggingFaceRemoteGenerator:
     @pytest.mark.unit
     def test_generate_text_with_stop_words(self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation):
         generator = ChatHuggingFaceRemoteGenerator()
-        generator.warmup()
+        generator.warm_up()
 
         stop_words = ["stop", "words"]
 
@@ -408,7 +408,7 @@ class TestChatHuggingFaceRemoteGenerator:
         self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
     ):
         generator = ChatHuggingFaceRemoteGenerator()
-        generator.warmup()
+        generator.warm_up()
 
         generation_kwargs = {"temperature": 0.8, "max_new_tokens": 100}
         response = generator.run(chat_messages, **generation_kwargs)
@@ -438,7 +438,7 @@ class TestChatHuggingFaceRemoteGenerator:
 
         # Create an instance of HuggingFaceRemoteGenerator
         generator = ChatHuggingFaceRemoteGenerator(streaming_callback=streaming_callback_fn)
-        generator.warmup()
+        generator.warm_up()
 
         # Create a fake streamed response
         def mock_iter(self):

@@ -118,7 +118,7 @@ class HuggingFaceRemoteGenerator:
         self.streaming_callback = streaming_callback
         self.tokenizer = None
 
-    def warmup(self) -> None:
+    def warm_up(self) -> None:
         """
         Load the tokenizer
         """
@@ -280,7 +280,7 @@ class ChatHuggingFaceRemoteGenerator:
         self.streaming_callback = streaming_callback
         self.tokenizer = None
 
-    def warmup(self) -> None:
+    def warm_up(self) -> None:
         """
         Load the tokenizer
         """
