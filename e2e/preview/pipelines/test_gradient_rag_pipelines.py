@@ -14,8 +14,8 @@ from haystack.preview.components.builders.prompt_builder import PromptBuilder
 
 
 @pytest.mark.skipif(
-    not os.environ.get("GRADIENT_ACCESS_TOKEN", None),
-    reason="Export an env var called GRADIENT_ACCESS_TOKEN containing the Gradient access token to run this test.",
+    not os.environ.get("GRADIENT_ACCESS_TOKEN", None) or not os.environ.get("GRADIENT_WORKSPACE_ID", None),
+    reason="Export an env variables called GRADIENT_ACCESS_TOKEN and GRADIENT_WORKSPACE_ID containing the Gradient access token to run this test.",
 )
 def test_gradient_embedding_retrieval_rag_pipeline(tmp_path):
     # Create the RAG pipeline

@@ -15,6 +15,14 @@ class GradientDocumentEmbedder:
     """
     A component for computing Document embeddings using Gradient AI API..
     The embedding of each Document is stored in the `embedding` field of the Document.
+
+    ```python
+    p = Pipeline()
+    p.add_component(instance=GradientDocumentEmbedder(), name="document_embedder")
+    p.add_component(instance=DocumentWriter(document_store=InMemoryDocumentStore()), name="document_writer")
+    p.connect("document_embedder", "document_writer")
+    p.run({"document_embedder": {"documents": documents}})
+    ```
     """
 
     def __init__(
