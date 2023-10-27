@@ -53,6 +53,16 @@ jobs:
         with:
           rdme: docs ./docs/pydoc/temp --key="$README_API_KEY" --version=${{ steps.current-version.outputs.minor }}-unstable
 
+      - name: Sync preview docs with 2.0
+        # Sync the preview docs to the `2.0` version on Readme
+        id: sync-main-preview
+        if: github.ref_name == 'main' && github.event_name == 'push'
+        uses: readmeio/rdme@8.3.1
+        env:
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+        with:
+          rdme: docs ./docs/pydoc/temp-preview --key="$README_API_KEY" --version=2.0
+
       - name: Sync docs with current release
         # Mutually exclusive with the previous one, this step is supposed to only run on version branches.
         # Sync the current Haystack version `X.Y.Z` with its corresponding Readme version `X.Y`.
