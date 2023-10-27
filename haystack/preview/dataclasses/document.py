@@ -1,5 +1,4 @@
 import hashlib
-import json
 import logging
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Dict, List, Optional
@@ -163,7 +162,8 @@ class Document(metaclass=_BackwardCompatible):
         """
         if self.text is not None and self.dataframe is not None:
             raise ValueError("Both text and dataframe are set.")
-        elif self.text is not None:
+
+        if self.text is not None:
             return "text"
         elif self.dataframe is not None:
             return "table"
