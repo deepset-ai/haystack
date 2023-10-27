@@ -219,8 +219,9 @@ jobs:
   integration-tests-macos:
     name: Integration / macos-latest
     needs: unit-tests
-    runs-on: macos-latest
+    runs-on: macos-latest-xl
     env:
+      PYTORCH_MPS_HIGH_WATERMARK_RATIO: 0.0
       USE_MPS: 0
     steps:
       - uses: actions/checkout@v4
