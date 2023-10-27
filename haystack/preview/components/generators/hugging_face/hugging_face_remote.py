@@ -180,9 +180,9 @@ class HuggingFaceRemoteGenerator:
                 if token.special:
                     continue
                 chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
-                chunk = StreamingChunk(token.text, chunk_metadata)
-                chunks.append(chunk)
-                self.streaming_callback(chunk)
+                stream_chunk = StreamingChunk(token.text, chunk_metadata)
+                chunks.append(stream_chunk)
+                self.streaming_callback(stream_chunk)
             prompt_tokens_length = len(self.tokenizer.encode(prompt, add_special_tokens=False))
             metadata = {
                 "finish_reason": chunks[-1].metadata.get("finish_reason", None),
@@ -336,9 +336,9 @@ class ChatHuggingFaceRemoteGenerator:
                 if token.special:
                     continue
                 chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
-                chunk = StreamingChunk(token.text, chunk_metadata)
-                self.streaming_callback(chunk)
-                chunks.append(chunk)
+                stream_chunk = StreamingChunk(token.text, chunk_metadata)
+                self.streaming_callback(stream_chunk)
+                chunks.append(stream_chunk)
             prompt_tokens_length = len(self.tokenizer.encode(prepared_prompt, add_special_tokens=False))
             message = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
             message.metadata.update(
