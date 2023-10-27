@@ -1,7 +1,7 @@
 import inspect
 import logging
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Iterable, Callable, Set
+from typing import Any, Dict, List, Optional, Iterable, Callable
 from urllib.parse import urlparse
 
 from huggingface_hub import InferenceClient, HfApi
@@ -111,11 +111,18 @@ class HuggingFaceRemoteGenerator:
         check_generation_params(generation_kwargs, ["n"])
         generation_kwargs.setdefault("stop_sequences", []).extend(stop_words or [])
 
-        self.model_id = model_id
+        self.model_id = model_id if is_url and model_id else model
+        self.token = token
         self.generation_kwargs = generation_kwargs
-        self.tokenizer = AutoTokenizer.from_pretrained(model_id or model, token=token)
         self.client = InferenceClient(model, token=token)
         self.streaming_callback = streaming_callback
+        self.tokenizer = None
+
+    def warmup(self) -> None:
+        """
+        Load the tokenizer
+        """
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id, token=self.token)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -158,6 +165,9 @@ class HuggingFaceRemoteGenerator:
         generation_kwargs = {**self.generation_kwargs, **generation_kwargs}
         num_responses = generation_kwargs.pop("n", 1)
         generation_kwargs.setdefault("stop_sequences", []).extend(generation_kwargs.pop("stop_words", []))
+
+        if self.tokenizer is None:
+            raise ValueError("Please call warmup() before running inference.")
 
         if self.streaming_callback:
             if num_responses > 1:
@@ -263,11 +273,18 @@ class ChatHuggingFaceRemoteGenerator:
         check_generation_params(generation_kwargs, ["n"])
         generation_kwargs.setdefault("stop_sequences", []).extend(stop_words or [])
 
+        self.model_id = model_id if is_url and model_id else model
+        self.token = token
         self.generation_kwargs = generation_kwargs
-        self.model_id = model_id
-
         self.client = InferenceClient(model, token=token)
         self.streaming_callback = streaming_callback
+        self.tokenizer = None
+
+    def warmup(self) -> None:
+        """
+        Load the tokenizer
+        """
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id, token=self.token)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -311,6 +328,9 @@ class ChatHuggingFaceRemoteGenerator:
         generation_kwargs = {**self.generation_kwargs, **generation_kwargs}
         num_responses = generation_kwargs.pop("n", 1)
         generation_kwargs.setdefault("stop_sequences", []).extend(generation_kwargs.pop("stop_words", []))
+
+        if self.tokenizer is None:
+            raise ValueError("Please call warmup() before running inference.")
 
         # apply chat template to messages to get string prompt
         prepared_prompt: str = self.tokenizer.apply_chat_template(messages, tokenize=False)
