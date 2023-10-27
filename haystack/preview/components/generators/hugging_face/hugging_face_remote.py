@@ -1,7 +1,7 @@
 import inspect
 import logging
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Iterable, Callable
+from typing import Any, Dict, List, Optional, Iterable, Callable, Set
 from urllib.parse import urlparse
 
 from huggingface_hub import InferenceClient, HfApi
@@ -15,6 +15,17 @@ from haystack.preview.dataclasses import ChatMessage, StreamingChunk
 logger = logging.getLogger(__name__)
 
 
+def accepted_generation_params() -> Set[str]:
+    """
+    Return a set of accepted text generation parameters.
+    """
+    return {
+        param
+        for param in inspect.signature(InferenceClient.text_generation).parameters.keys()
+        if param not in ["self", "prompt"]
+    }
+
+
 def check_generation_params(kwargs: Dict[str, Any], additional_accepted_params: Optional[List[str]] = None):
     """
     Check the provided generation parameters for validity.
@@ -24,11 +35,7 @@ def check_generation_params(kwargs: Dict[str, Any], additional_accepted_params: 
     :raises ValueError: If any unknown text generation parameters are provided.
     """
     if kwargs:
-        accepted_params = {
-            param
-            for param in inspect.signature(InferenceClient.text_generation).parameters.keys()
-            if param not in ["self", "prompt"]
-        }
+        accepted_params = accepted_generation_params()
         if additional_accepted_params:
             accepted_params.update(additional_accepted_params)
         unknown_params = set(kwargs.keys()) - accepted_params
@@ -36,26 +43,6 @@ def check_generation_params(kwargs: Dict[str, Any], additional_accepted_params: 
             raise ValueError(
                 f"Unknown text generation parameters: {unknown_params}, please provide {accepted_params} only."
             )
-
-
-def sanitize_generation_params(kwargs: Dict[str, Any]) -> List[str]:
-    """
-    Sanitize the provided generation parameters by removing any unknown parameters.
-
-    :param kwargs: A dictionary containing the generation parameters.
-    """
-    unknown_params: List[str] = []
-    if kwargs:
-        accepted_params = {
-            param
-            for param in inspect.signature(InferenceClient.text_generation).parameters.keys()
-            if param not in ["self", "prompt"]
-        }
-        unknown_params = list(set(kwargs.keys()) - accepted_params)
-        if unknown_params:
-            for param in unknown_params:
-                del kwargs[param]
-    return unknown_params
 
 
 def check_valid_model(model_id: str, token: Optional[str]) -> None:
@@ -125,9 +112,11 @@ class HuggingFaceRemoteGenerator:
             check_valid_model(model_id, token)
         else:
             check_valid_model(model, token)
+
+        # handle generation kwargs
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
         check_generation_params(generation_kwargs, ["n"])
-        generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", []) + (stop_words or [])
+        generation_kwargs.setdefault("stop_sequences", []).extend(stop_words or [])
 
         self.model_id = model_id
         self.generation_kwargs = generation_kwargs
@@ -168,17 +157,14 @@ class HuggingFaceRemoteGenerator:
         :param generation_kwargs: Additional keyword arguments for text generation.
         :return: A list containing the generated responses as ChatMessage instances.
         """
-        # check for unknown kwargs
+        # check generation kwargs given as parameters to override the default ones
         additional_params = ["n", "stop_words"]
         check_generation_params(generation_kwargs, additional_params)
 
-        # update generation kwargs with invocation provided kwargs
+        # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **generation_kwargs}
-        num_responses = generation_kwargs.get("n", 1)
-        generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", []) + generation_kwargs.get(
-            "stop_words", []
-        )
-        sanitize_generation_params(generation_kwargs)
+        num_responses = generation_kwargs.pop("n", 1)
+        generation_kwargs.setdefault("stop_sequences", []).extend(generation_kwargs.pop("stop_words", []))
 
         if self.streaming_callback:
             if num_responses > 1:
@@ -279,10 +265,11 @@ class ChatHuggingFaceRemoteGenerator:
             check_valid_model(model, token)
             self.tokenizer = AutoTokenizer.from_pretrained(model, token=token)
 
+        # handle generation kwargs
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
         check_generation_params(generation_kwargs, ["n"])
+        generation_kwargs.setdefault("stop_sequences", []).extend(stop_words or [])
 
-        generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", []) + (stop_words or [])
         self.generation_kwargs = generation_kwargs
         self.model_id = model_id
 
@@ -322,22 +309,18 @@ class ChatHuggingFaceRemoteGenerator:
         :param generation_kwargs: Additional keyword arguments for text generation.
         :return: A list containing the generated responses as ChatMessage instances.
         """
-        # check for unknown kwargs
+
+        # check generation kwargs given as parameters to override the default ones
         additional_params = ["n", "stop_words"]
         check_generation_params(generation_kwargs, additional_params)
 
-        # update generation kwargs with invocation provided kwargs
+        # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **generation_kwargs}
+        num_responses = generation_kwargs.pop("n", 1)
+        generation_kwargs.setdefault("stop_sequences", []).extend(generation_kwargs.pop("stop_words", []))
 
         # apply chat template to messages to get string prompt
         prepared_prompt: str = self.tokenizer.apply_chat_template(messages, tokenize=False)
-
-        num_responses = generation_kwargs.get("n", 1)
-        generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", []) + generation_kwargs.get(
-            "stop_words", []
-        )
-
-        sanitize_generation_params(generation_kwargs)
 
         if self.streaming_callback:
             if num_responses > 1:
