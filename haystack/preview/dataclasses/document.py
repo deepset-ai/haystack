@@ -1,7 +1,7 @@
 import hashlib
 import logging
 from dataclasses import asdict, dataclass, field, fields
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type, cast
 
 import numpy
 import pandas
@@ -20,7 +20,7 @@ class _BackwardCompatible(type):
         Also handles building a Document from a flattened dictionary.
         """
         # Move `content` to new fields depending on the type
-        content = kwargs.get("content", None)
+        content = kwargs.get("content")
         if isinstance(content, str):
             kwargs["text"] = content
         elif isinstance(content, pandas.DataFrame):
@@ -42,11 +42,11 @@ class _BackwardCompatible(type):
         if "id_hash_keys" in kwargs:
             del kwargs["id_hash_keys"]
 
-        if kwargs.get("metadata", None) is None:
+        if kwargs.get("metadata") is None:
             # This must be a flattened Document, so we treat all keys that are not
             # Document fields as metadata.
-            metadata = kwargs.get("metadata", None) or {}
-            field_names = [f.name for f in fields(cls)]
+            metadata = {}
+            field_names = [f.name for f in fields(cast(Type[Document], cls))]
             keys = list(kwargs.keys())
             for key in keys:
                 if key in field_names:
@@ -125,14 +125,14 @@ class Document(metaclass=_BackwardCompatible):
     def to_dict(self, flatten=True) -> Dict[str, Any]:
         """
         Converts Document into a dictionary.
-        `dataframe` and `blob` fields are converted JSON serialisable types.
+        `dataframe` and `blob` fields are converted to JSON-serialisable types.
 
-        :param flatten: Whether to flatten `metadata` field or not. Defaults to True.
+        :param flatten: Whether to flatten `metadata` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
         """
         data = asdict(self)
-        if (dataframe := data.get("dataframe", None)) is not None:
+        if (dataframe := data.get("dataframe")) is not None:
             data["dataframe"] = dataframe.to_json()
-        if blob := data.get("blob", None):
+        if (blob := data.get("blob")) is not None:
             data["blob"] = list(blob)
 
         if flatten:
