@@ -1,15 +1,11 @@
+import inspect
 import logging
-from dataclasses import fields, asdict
+from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Iterable, Callable
 from urllib.parse import urlparse
 
 from huggingface_hub import InferenceClient, HfApi
-from huggingface_hub.inference._text_generation import (
-    TextGenerationStreamResponse,
-    TextGenerationParameters,
-    TextGenerationResponse,
-    Token,
-)
+from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, TextGenerationResponse, Token
 from huggingface_hub.utils import RepositoryNotFoundError
 from transformers import AutoTokenizer
 
@@ -19,18 +15,22 @@ from haystack.preview.dataclasses import ChatMessage, StreamingChunk
 logger = logging.getLogger(__name__)
 
 
-def check_generation_params(kwargs: Dict[str, Any], additional_params: Optional[List[str]] = None):
+def check_generation_params(kwargs: Dict[str, Any], additional_accepted_params: Optional[List[str]] = None):
     """
     Check the provided generation parameters for validity.
 
     :param kwargs: A dictionary containing the generation parameters.
-    :param additional_params: An optional list of strings representing additional parameters.
+    :param additional_accepted_params: An optional list of strings representing additional accepted parameters.
     :raises ValueError: If any unknown text generation parameters are provided.
     """
     if kwargs:
-        accepted_params = {field.name for field in fields(TextGenerationParameters)}
-        if additional_params:
-            accepted_params.update(additional_params)
+        accepted_params = {
+            param
+            for param in inspect.signature(InferenceClient.text_generation).parameters.keys()
+            if param not in ["self", "prompt"]
+        }
+        if additional_accepted_params:
+            accepted_params.update(additional_accepted_params)
         unknown_params = set(kwargs.keys()) - accepted_params
         if unknown_params:
             raise ValueError(
@@ -38,7 +38,25 @@ def check_generation_params(kwargs: Dict[str, Any], additional_params: Optional[
             )
 
 
-def check_valid_model(model_id: str, token: Optional[str]):
+def sanitize_generation_params(kwargs: Dict[str, Any]):
+    """
+    Sanitize the provided generation parameters by removing any unknown parameters.
+
+    :param kwargs: A dictionary containing the generation parameters.
+    """
+    if kwargs:
+        accepted_params = {
+            param
+            for param in inspect.signature(InferenceClient.text_generation).parameters.keys()
+            if param not in ["self", "prompt"]
+        }
+        unknown_params = set(kwargs.keys()) - accepted_params
+        if unknown_params:
+            for param in unknown_params:
+                del kwargs[param]
+
+
+def check_valid_model(model_id: str, token: Optional[str]) -> None:
     """
     Check if the provided model ID corresponds to a valid model on HuggingFace Hub.
     Also check if the model is a text generation model.
@@ -105,7 +123,7 @@ class HuggingFaceRemoteGenerator:
             check_valid_model(model_id, token)
         else:
             check_valid_model(model, token)
-        generation_kwargs = generation_kwargs or {}
+        generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
         check_generation_params(generation_kwargs, ["n"])
         generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", []) + (stop_words or [])
 
@@ -148,13 +166,17 @@ class HuggingFaceRemoteGenerator:
         :param generation_kwargs: Additional keyword arguments for text generation.
         :return: A list containing the generated responses as ChatMessage instances.
         """
-        num_responses = generation_kwargs.get("n", 1)
-
         # check for unknown kwargs
-        check_generation_params(generation_kwargs, ["n"])
+        additional_params = ["n", "stop_words"]
+        check_generation_params(generation_kwargs, additional_params)
 
         # update generation kwargs with invocation provided kwargs
         generation_kwargs = {**self.generation_kwargs, **generation_kwargs}
+        num_responses = generation_kwargs.get("n", 1)
+        generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", []) + generation_kwargs.get(
+            "stop_words", []
+        )
+        sanitize_generation_params(generation_kwargs)
 
         if self.streaming_callback:
             if num_responses > 1:
@@ -255,7 +277,7 @@ class ChatHuggingFaceRemoteGenerator:
             check_valid_model(model, token)
             self.tokenizer = AutoTokenizer.from_pretrained(model, token=token)
 
-        generation_kwargs = generation_kwargs or {}
+        generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
         check_generation_params(generation_kwargs, ["n"])
 
         generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", []) + (stop_words or [])
@@ -298,16 +320,22 @@ class ChatHuggingFaceRemoteGenerator:
         :param generation_kwargs: Additional keyword arguments for text generation.
         :return: A list containing the generated responses as ChatMessage instances.
         """
-        num_responses = generation_kwargs.get("n", 1)
-
         # check for unknown kwargs
-        check_generation_params(generation_kwargs, ["n"])
+        additional_params = ["n", "stop_words"]
+        check_generation_params(generation_kwargs, additional_params)
 
         # update generation kwargs with invocation provided kwargs
         generation_kwargs = {**self.generation_kwargs, **generation_kwargs}
 
         # apply chat template to messages to get string prompt
         prepared_prompt: str = self.tokenizer.apply_chat_template(messages, tokenize=False)
+
+        num_responses = generation_kwargs.get("n", 1)
+        generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", []) + generation_kwargs.get(
+            "stop_words", []
+        )
+
+        sanitize_generation_params(generation_kwargs)
 
         if self.streaming_callback:
             if num_responses > 1:
