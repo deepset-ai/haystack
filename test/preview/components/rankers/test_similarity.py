@@ -53,7 +53,7 @@ class TestSimilarityRanker:
         docs_after = output["documents"]
 
         assert len(docs_after) == 3
-        assert docs_after[0].text == expected_first_text
+        assert docs_after[0].content == expected_first_text
 
         sorted_scores = sorted([doc.score for doc in docs_after], reverse=True)
         assert [doc.score for doc in docs_after] == sorted_scores
@@ -94,7 +94,7 @@ class TestSimilarityRanker:
         docs_after = output["documents"]
 
         assert len(docs_after) == 2
-        assert docs_after[0].text == expected_first_text
+        assert docs_after[0].content == expected_first_text
 
         sorted_scores = sorted([doc.score for doc in docs_after], reverse=True)
         assert [doc.score for doc in docs_after] == sorted_scores
