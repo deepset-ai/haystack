@@ -15,17 +15,6 @@ from haystack.preview.dataclasses import ChatMessage, StreamingChunk
 logger = logging.getLogger(__name__)
 
 
-def accepted_generation_params() -> Set[str]:
-    """
-    Return a set of accepted text generation parameters.
-    """
-    return {
-        param
-        for param in inspect.signature(InferenceClient.text_generation).parameters.keys()
-        if param not in ["self", "prompt"]
-    }
-
-
 def check_generation_params(kwargs: Dict[str, Any], additional_accepted_params: Optional[List[str]] = None):
     """
     Check the provided generation parameters for validity.
@@ -35,7 +24,11 @@ def check_generation_params(kwargs: Dict[str, Any], additional_accepted_params: 
     :raises ValueError: If any unknown text generation parameters are provided.
     """
     if kwargs:
-        accepted_params = accepted_generation_params()
+        accepted_params = {
+            param
+            for param in inspect.signature(InferenceClient.text_generation).parameters.keys()
+            if param not in ["self", "prompt"]
+        }
         if additional_accepted_params:
             accepted_params.update(additional_accepted_params)
         unknown_params = set(kwargs.keys()) - accepted_params
