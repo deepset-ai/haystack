@@ -34,8 +34,8 @@ class MarkdownToDocument:
 
     def __init__(self, table_to_single_line: bool = False, progress_bar: bool = True):
         """
-        :param add_frontmatter_to_meta: Whether to add the contents of the frontmatter to `meta`. Defaults to False.
-        :param progress_bar: Show a progress bar for the conversion.
+        :paramtable_to_single_line: Convert contents of the table to a single line. Defaults to False.
+        :param progress_bar: Show a progress bar for the conversion. Defaults to True.
         """
         markdown_conversion_imports.check()
 
