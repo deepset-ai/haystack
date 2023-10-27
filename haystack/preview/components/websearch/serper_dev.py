@@ -92,7 +92,7 @@ class SerperDevWebSearch:
 
         # we get the snippet from the json result and put it in the content field of the document
         organic = [
-            Document(metadata={k: v for k, v in d.items() if k != "snippet"}, content=d["snippet"])
+            Document(meta={k: v for k, v in d.items() if k != "snippet"}, content=d["snippet"])
             for d in json_result["organic"]
         ]
 
@@ -116,7 +116,7 @@ class SerperDevWebSearch:
                 answer_box = [
                     Document(
                         content=answer_box_content,
-                        metadata={"title": answer_dict.get("title", ""), "link": answer_dict.get("link", "")},
+                        meta={"title": answer_dict.get("title", ""), "link": answer_dict.get("link", "")},
                     )
                 ]
 
@@ -128,7 +128,7 @@ class SerperDevWebSearch:
                 people_also_ask.append(
                     Document(
                         content=result["snippet"] if result.get("snippet") else title,
-                        metadata={"title": title, "link": result.get("link", None)},
+                        meta={"title": title, "link": result.get("link", None)},
                     )
                 )
 

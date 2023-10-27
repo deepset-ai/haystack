@@ -86,7 +86,7 @@ class DocumentCleaner:
             if self.remove_repeated_substrings:
                 text = self._remove_repeated_substrings(text)
 
-            cleaned_docs.append(Document(content=text, metadata=deepcopy(doc.metadata)))
+            cleaned_docs.append(Document(content=text, meta=deepcopy(doc.meta)))
 
         return {"documents": cleaned_docs}
 

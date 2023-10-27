@@ -14,9 +14,9 @@ class TestTopPSampler:
         """
         sampler = TopPSampler(top_p=0.95, score_field="similarity_score")
         docs = [
-            Document(content="Berlin", metadata={"similarity_score": -10.6}),
-            Document(content="Belgrade", metadata={"similarity_score": -8.9}),
-            Document(content="Sarajevo", metadata={"similarity_score": -4.6}),
+            Document(content="Berlin", meta={"similarity_score": -10.6}),
+            Document(content="Belgrade", meta={"similarity_score": -8.9}),
+            Document(content="Sarajevo", meta={"similarity_score": -4.6}),
         ]
         output = sampler.run(documents=docs)
         docs = output["documents"]

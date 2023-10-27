@@ -41,7 +41,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -52,7 +52,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -63,7 +63,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "'AnswerString'"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -80,7 +80,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)

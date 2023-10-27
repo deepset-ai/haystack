@@ -123,8 +123,7 @@ class TestOpenAIDocumentEmbedder:
     @pytest.mark.unit
     def test_prepare_texts_to_embed_w_metadata(self):
         documents = [
-            Document(content=f"document number {i}:\ncontent", metadata={"meta_field": f"meta_value {i}"})
-            for i in range(5)
+            Document(content=f"document number {i}:\ncontent", meta={"meta_field": f"meta_value {i}"}) for i in range(5)
         ]
 
         embedder = OpenAIDocumentEmbedder(
@@ -185,8 +184,8 @@ class TestOpenAIDocumentEmbedder:
     @pytest.mark.unit
     def test_run(self):
         docs = [
-            Document(content="I love cheese", metadata={"topic": "Cuisine"}),
-            Document(content="A transformer is a deep learning architecture", metadata={"topic": "ML"}),
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
         model = "text-similarity-ada-001"
@@ -227,8 +226,8 @@ class TestOpenAIDocumentEmbedder:
     @pytest.mark.unit
     def test_run_custom_batch_size(self):
         docs = [
-            Document(content="I love cheese", metadata={"topic": "Cuisine"}),
-            Document(content="A transformer is a deep learning architecture", metadata={"topic": "ML"}),
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
         model = "text-similarity-ada-001"

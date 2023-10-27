@@ -97,9 +97,9 @@ class OpenAIDocumentEmbedder:
         texts_to_embed = []
         for doc in documents:
             meta_values_to_embed = [
-                str(doc.metadata[key])
+                str(doc.meta[key])
                 for key in self.metadata_fields_to_embed
-                if key in doc.metadata and doc.metadata[key] is not None
+                if key in doc.meta and doc.meta[key] is not None
             ]
 
             text_to_embed = (

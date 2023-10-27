@@ -128,12 +128,12 @@ class TestDocumentCleaner:
     def test_copy_metadata(self):
         cleaner = DocumentCleaner()
         documents = [
-            Document(content="Text. ", metadata={"name": "doc 0"}),
-            Document(content="Text. ", metadata={"name": "doc 1"}),
+            Document(content="Text. ", meta={"name": "doc 0"}),
+            Document(content="Text. ", meta={"name": "doc 1"}),
         ]
         result = cleaner.run(documents=documents)
         assert len(result["documents"]) == 2
         assert result["documents"][0].id != result["documents"][1].id
         for doc, cleaned_doc in zip(documents, result["documents"]):
-            assert doc.metadata == cleaned_doc.metadata
+            assert doc.meta == cleaned_doc.meta
             assert cleaned_doc.content == "Text."

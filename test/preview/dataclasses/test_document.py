@@ -39,8 +39,7 @@ def test_init():
     assert doc.dataframe == None
     assert doc.blob == None
     assert doc.mime_type == "text/plain"
-    assert doc.metadata == {}
-    assert doc.metadata == {}
+    assert doc.meta == {}
     assert doc.score == None
     assert doc.embedding == None
 
@@ -53,7 +52,7 @@ def test_init_with_parameters():
         dataframe=pd.DataFrame([0]),
         blob=blob,
         mime_type="text/markdown",
-        metadata={"text": "test text"},
+        meta={"text": "test text"},
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
     )
@@ -62,7 +61,7 @@ def test_init_with_parameters():
     assert doc.dataframe.equals(pd.DataFrame([0]))
     assert doc.blob == blob
     assert doc.mime_type == "text/markdown"
-    assert doc.metadata == {"text": "test text"}
+    assert doc.meta == {"text": "test text"}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
 
@@ -77,13 +76,13 @@ def test_init_with_legacy_fields():
     assert doc.dataframe == None
     assert doc.blob == None
     assert doc.mime_type == "text/plain"
-    assert doc.metadata == {}
+    assert doc.meta == {}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
 
 
 @pytest.mark.unit
-def test_init_with_legacy_field_and_flat_metadata():
+def test_init_with_legacy_field_and_flat_meta():
     doc = Document(
         content="test text",
         content_type="text",
@@ -98,13 +97,13 @@ def test_init_with_legacy_field_and_flat_metadata():
     assert doc.dataframe == None
     assert doc.blob == None
     assert doc.mime_type == "text/plain"
-    assert doc.metadata == {"date": "10-10-2023", "type": "article"}
+    assert doc.meta == {"date": "10-10-2023", "type": "article"}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
 
 
 @pytest.mark.unit
-def test_init_with_flat_metadata():
+def test_init_with_flat_meta():
     blob = b"some bytes"
     doc = Document(
         content="test text",
@@ -121,13 +120,13 @@ def test_init_with_flat_metadata():
     assert doc.dataframe.equals(pd.DataFrame([0]))
     assert doc.blob == blob
     assert doc.mime_type == "text/markdown"
-    assert doc.metadata == {"date": "10-10-2023", "type": "article"}
+    assert doc.meta == {"date": "10-10-2023", "type": "article"}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
 
 
 @pytest.mark.unit
-def test_init_with_flat_and_non_flat_metadata():
+def test_init_with_flat_and_non_flat_meta():
     with pytest.raises(TypeError):
         Document(
             content="test text",
@@ -135,7 +134,7 @@ def test_init_with_flat_and_non_flat_metadata():
             blob=b"some bytes",
             mime_type="text/markdown",
             score=0.812,
-            metadata={"test": 10},
+            meta={"test": 10},
             embedding=[0.1, 0.2, 0.3],
             date="10-10-2023",
             type="article",
@@ -162,15 +161,15 @@ def test_basic_equality_id():
 
 
 @pytest.mark.unit
-def test_equality_with_metadata_with_objects():
+def test_equality_with_meta_with_objects():
     class TestObject:
         def __eq__(self, other):
             if type(self) == type(other):
                 return True
 
     foo = TestObject()
-    doc1 = Document(content="test text", metadata={"value": [0, 1, 2], "path": Path("."), "obj": foo})
-    doc2 = Document(content="test text", metadata={"value": [0, 1, 2], "path": Path("."), "obj": foo})
+    doc1 = Document(content="test text", meta={"value": [0, 1, 2], "path": Path("."), "obj": foo})
+    doc2 = Document(content="test text", meta={"value": [0, 1, 2], "path": Path("."), "obj": foo})
     assert doc1 == doc2
 
 
@@ -197,7 +196,7 @@ def test_to_dict_without_flattening():
         "dataframe": None,
         "blob": None,
         "mime_type": "text/plain",
-        "metadata": {},
+        "meta": {},
         "score": None,
         "embedding": None,
     }
@@ -210,7 +209,7 @@ def test_to_dict_with_custom_parameters():
         dataframe=pd.DataFrame([10, 20, 30]),
         blob=b"some bytes",
         mime_type="application/pdf",
-        metadata={"some": "values", "test": 10},
+        meta={"some": "values", "test": 10},
         score=0.99,
         embedding=[10, 10],
     )
@@ -235,7 +234,7 @@ def test_to_dict_with_custom_parameters_without_flattening():
         dataframe=pd.DataFrame([10, 20, 30]),
         blob=b"some bytes",
         mime_type="application/pdf",
-        metadata={"some": "values", "test": 10},
+        meta={"some": "values", "test": 10},
         score=0.99,
         embedding=[10, 10],
     )
@@ -246,7 +245,7 @@ def test_to_dict_with_custom_parameters_without_flattening():
         "dataframe": pd.DataFrame([10, 20, 30]).to_json(),
         "blob": list(doc.blob),
         "mime_type": "application/pdf",
-        "metadata": {"some": "values", "test": 10},
+        "meta": {"some": "values", "test": 10},
         "score": 0.99,
         "embedding": [10, 10],
     }
@@ -266,7 +265,7 @@ def from_from_dict_with_parameters():
             "dataframe": pd.DataFrame([0]).to_json(),
             "blob": blob,
             "mime_type": "text/markdown",
-            "metadata": {"text": "test text"},
+            "meta": {"text": "test text"},
             "score": 0.812,
             "embedding": [0.1, 0.2, 0.3],
         }
@@ -275,7 +274,7 @@ def from_from_dict_with_parameters():
         dataframe=pd.DataFrame([0]),
         blob=blob,
         mime_type="text/markdown",
-        metadata={"text": "test text"},
+        meta={"text": "test text"},
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
     )
@@ -296,7 +295,7 @@ def test_from_dict_with_legacy_fields():
     )
 
 
-def test_from_dict_with_legacy_field_and_flat_metadata():
+def test_from_dict_with_legacy_field_and_flat_meta():
     assert Document.from_dict(
         {
             "content": "test text",
@@ -319,7 +318,7 @@ def test_from_dict_with_legacy_field_and_flat_metadata():
 
 
 @pytest.mark.unit
-def test_from_dict_with_flat_metadata():
+def test_from_dict_with_flat_meta():
     blob = b"some bytes"
     assert Document.from_dict(
         {
@@ -339,12 +338,12 @@ def test_from_dict_with_flat_metadata():
         mime_type="text/markdown",
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
-        metadata={"date": "10-10-2023", "type": "article"},
+        meta={"date": "10-10-2023", "type": "article"},
     )
 
 
 @pytest.mark.unit
-def test_from_dict_with_flat_and_non_flat_metadata():
+def test_from_dict_with_flat_and_non_flat_meta():
     with pytest.raises(TypeError):
         Document.from_dict(
             {
@@ -353,7 +352,7 @@ def test_from_dict_with_flat_and_non_flat_metadata():
                 "blob": b"some bytes",
                 "mime_type": "text/markdown",
                 "score": 0.812,
-                "metadata": {"test": 10},
+                "meta": {"test": 10},
                 "embedding": [0.1, 0.2, 0.3],
                 "date": "10-10-2023",
                 "type": "article",

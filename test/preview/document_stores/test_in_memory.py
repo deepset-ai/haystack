@@ -213,7 +213,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_filters(self, docstore: DocumentStore):
-        selected_document = Document(content="Gardening", metadata={"selected": True})
+        selected_document = Document(content="Gardening", meta={"selected": True})
         docs = [Document(), selected_document, Document(content="Bird watching")]
         docstore.write_documents(docs)
         results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
@@ -221,7 +221,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_filters_keeps_default_filters(self, docstore: DocumentStore):
-        docs = [Document(metadata={"selected": True}), Document(content="Gardening"), Document(content="Bird watching")]
+        docs = [Document(meta={"selected": True}), Document(content="Gardening"), Document(content="Bird watching")]
         docstore.write_documents(docs)
         results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
         assert not len(results)

@@ -164,9 +164,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
         embedder.embedding_backend = MagicMock()
 
-        documents = [
-            Document(content=f"document number {i}", metadata={"meta_field": f"meta_value {i}"}) for i in range(5)
-        ]
+        documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
         embedder.run(documents=documents)
 
@@ -194,9 +192,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
         embedder.embedding_backend = MagicMock()
 
-        documents = [
-            Document(content=f"document number {i}", metadata={"meta_field": f"meta_value {i}"}) for i in range(5)
-        ]
+        documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
         embedder.run(documents=documents)
 

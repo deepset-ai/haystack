@@ -69,7 +69,7 @@ class TestRemoteWhisperTranscriber:
             result = comp.run(audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"])
             expected = Document(
                 content="test transcription",
-                metadata={
+                meta={
                     "audio_file": preview_samples_path / "audio" / "this is the content of the document.wav",
                     "other_metadata": ["other", "meta", "data"],
                 },
@@ -93,7 +93,7 @@ class TestRemoteWhisperTranscriber:
             )
             expected = Document(
                 content="test transcription",
-                metadata={
+                meta={
                     "audio_file": str(
                         (preview_samples_path / "audio" / "this is the content of the document.wav").absolute()
                     ),
@@ -116,7 +116,7 @@ class TestRemoteWhisperTranscriber:
                 result = comp.transcribe(audio_files=[audio_stream])
                 expected = Document(
                     content="test transcription",
-                    metadata={"audio_file": "<<binary stream>>", "other_metadata": ["other", "meta", "data"]},
+                    meta={"audio_file": "<<binary stream>>", "other_metadata": ["other", "meta", "data"]},
                 )
                 assert result == [expected]
 
@@ -212,15 +212,13 @@ class TestRemoteWhisperTranscriber:
         assert len(docs) == 3
 
         assert docs[0].content.strip().lower() == "this is the content of the document."
-        assert (
-            preview_samples_path / "audio" / "this is the content of the document.wav" == docs[0].metadata["audio_file"]
-        )
+        assert preview_samples_path / "audio" / "this is the content of the document.wav" == docs[0].meta["audio_file"]
 
         assert docs[1].content.strip().lower() == "the context for this answer is here."
         assert (
             str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute())
-            == docs[1].metadata["audio_file"]
+            == docs[1].meta["audio_file"]
         )
 
         assert docs[2].content.strip().lower() == "answer."
-        assert docs[2].metadata["audio_file"] == "<<binary stream>>"
+        assert docs[2].meta["audio_file"] == "<<binary stream>>"
