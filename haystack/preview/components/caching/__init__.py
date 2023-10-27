@@ -1,3 +1,3 @@
-from haystack.preview.components.caching.url_cache_checker import URLCacheChecker
+from haystack.preview.components.caching.url_cache_checker import UrlCacheChecker
 
-__all__ = ["URLCacheChecker"]
+__all__ = ["UrlCacheChecker"]
