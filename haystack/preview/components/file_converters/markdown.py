@@ -1,50 +1,49 @@
 import logging
-import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Any, Dict, List, Optional, Union
 
 from tqdm import tqdm
 
 from haystack.preview import Document, component
+from haystack.preview.dataclasses import ByteStream
 from haystack.preview.lazy_imports import LazyImport
 
-with LazyImport("Run 'pip install beautifulsoup4 markdown python-frontmatter'") as markdown_conversion_imports:
-    import frontmatter
-    from bs4 import BeautifulSoup, NavigableString
-    from markdown import markdown
+with LazyImport("Run 'pip install markdown-it-py mdit_plain'") as markdown_conversion_imports:
+    from markdown_it import MarkdownIt
+    from mdit_plain.renderer import RendererPlain
 
 
 logger = logging.getLogger(__name__)
 
 
 @component
-class MarkdownToTextDocument:
+class MarkdownToDocument:
     """
     Converts a Markdown file into a text Document.
+
+    Usage example:
+    ```python
+    from haystack.preview.components.file_converters.markdown import MarkdownToDocument
+
+    converter = MarkdownToDocument()
+    results = converter.run(sources=["sample.md"])
+    documents = results["documents"]
+    print(documents[0].text)
+    # 'This is a text from the markdown file.'
     """
 
-    def __init__(
-        self,
-        remove_code_snippets: bool = True,
-        extract_headlines: bool = False,
-        add_frontmatter_to_meta: bool = False,
-        progress_bar: bool = True,
-    ):
+    def __init__(self, table_to_single_line: bool = False, progress_bar: bool = True):
         """
-        :param remove_code_snippets: Whether to remove snippets from the markdown file. Defaults to True.
-        :param extract_headlines: Whether to extract headings from the markdown file. Defaults to False.
         :param add_frontmatter_to_meta: Whether to add the contents of the frontmatter to `meta`. Defaults to False.
         :param progress_bar: Show a progress bar for the conversion.
         """
         markdown_conversion_imports.check()
 
-        self.remove_code_snippets = remove_code_snippets
-        self.extract_headlines = extract_headlines
-        self.add_frontmatter_to_meta = add_frontmatter_to_meta
+        self.table_to_single_line = table_to_single_line
         self.progress_bar = progress_bar
 
     @component.output_types(documents=List[Document])
-    def run(self, paths: List[Union[str, Path]], metadata: Optional[List[Union[Dict, Any]]] = None):
+    def run(self, sources: List[Union[str, Path, ByteStream]], metadata: Optional[List[Dict[str, Any]]] = None):
         """
         Reads text from a markdown file and executes optional preprocessing steps.
 
@@ -52,68 +51,47 @@ class MarkdownToTextDocument:
         :param metadata: Optional list of metadata to attach to the Documents.
         The length of the list must match the number of paths. Defaults to `None`.
         """
-
-        if metadata is None:
-            metadata = [None] * len(paths)
+        if self.table_to_single_line:
+            parser = MarkdownIt(renderer_cls=RendererPlain).enable("table")
+        else:
+            parser = MarkdownIt(renderer_cls=RendererPlain)
 
         documents = []
+        if metadata is None:
+            metadata = [{}] * len(sources)
 
-        for file_path, meta in tqdm(
-            zip(paths, metadata),
-            total=len(paths),
+        for source, meta in tqdm(
+            zip(sources, metadata),
+            total=len(sources),
             desc="Converting markdown files to Documents",
             disable=not self.progress_bar,
         ):
-            with open(file_path, errors="ignore") as f:
-                file_metadata, markdown_text = frontmatter.parse(f.read())
+            try:
+                file_content = self._extract_content(source)
+            except Exception as e:
+                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                continue
+            try:
+                text = parser.render(file_content)
+            except Exception as conversion_e:  # Consider specifying the expected exception type(s) here
+                logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
+                continue
 
-            # md -> html -> text since BeautifulSoup can extract text cleanly
-            html = markdown(markdown_text, extensions=["fenced_code"])
-
-            # remove code snippets
-            if self.remove_code_snippets:
-                html = re.sub(r"<pre>(.*?)</pre>", " ", html, flags=re.DOTALL)
-                html = re.sub(r"<code>(.*?)</code>", " ", html, flags=re.DOTALL)
-            soup = BeautifulSoup(html, "html.parser")
-
-            if self.add_frontmatter_to_meta:
-                if meta is None:
-                    meta = file_metadata
-                else:
-                    meta.update(file_metadata)
-
-            if self.extract_headlines:
-                text, headlines = self._extract_text_and_headlines(soup)
-                if meta is None:
-                    meta = {}
-                meta["headlines"] = headlines
-            else:
-                text = soup.get_text()
-
-            if meta is None:
-                document = Document(text=text)
-            else:
-                document = Document(text=text, metadata=meta)
+            document = Document(text=text, metadata=meta)
             documents.append(document)
 
         return {"documents": documents}
 
-    @staticmethod
-    def _extract_text_and_headlines(soup: "BeautifulSoup") -> Tuple[str, List[Dict]]:
+    def _extract_content(self, source: Union[str, Path, ByteStream]) -> str:
         """
-        Extracts text and headings from a soup object.
+        Extracts content from the given data source
+        :param source: The data source to extract content from.
+        :return: The extracted content.
         """
-        headline_tags = {"h1", "h2", "h3", "h4", "h5", "h6"}
-        headlines = []
-        text = ""
-        for desc in soup.descendants:
-            if desc.name in headline_tags:
-                current_headline = desc.get_text()
-                current_start_idx = len(text)
-                current_level = int(desc.name[-1]) - 1
-                headlines.append({"headline": current_headline, "start_idx": current_start_idx, "level": current_level})
+        if isinstance(source, (str, Path)):
+            with open(source) as text_file:
+                return text_file.read()
+        if isinstance(source, ByteStream):
+            return source.data.decode("utf-8")
 
-            if isinstance(desc, NavigableString):
-                text += desc.get_text()
-
-        return text, headlines
+        raise ValueError(f"Unsupported source type: {type(source)}")

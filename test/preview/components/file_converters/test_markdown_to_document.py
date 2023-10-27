@@ -1,54 +1,93 @@
+import logging
+
 import pytest
 
-from haystack.preview.components.file_converters.markdown import MarkdownToTextDocument
+from haystack.preview.components.file_converters.markdown import MarkdownToDocument
+from haystack.preview.dataclasses import ByteStream
 
 
-class TestMarkdownToTextDocument:
+class TestMarkdownToDocument:
     @pytest.mark.unit
-    def test_markdown_converter(self, preview_samples_path):
-        converter = MarkdownToTextDocument()
-        results = converter.run(
-            paths=[preview_samples_path / "markdown" / "sample.md", preview_samples_path / "markdown" / "sample.md"]
-        )
-        assert results["documents"][0].text.startswith("\nWhat to build with Haystack")
-        assert "# git clone https://github.com/deepset-ai/haystack.git" not in results["documents"][0].text
+    def test_init_params_default(self):
+        converter = MarkdownToDocument()
+        assert converter.table_to_single_line is False
+        assert converter.progress_bar is True
 
     @pytest.mark.unit
-    def test_markdown_converter_headline_extraction(self, preview_samples_path):
-        expected_headlines = [
-            ("What to build with Haystack", 1),
-            ("Core Features", 1),
-            ("Quick Demo", 1),
-            ("2nd level headline for testing purposes", 2),
-            ("3rd level headline for testing purposes", 3),
+    def test_init_params_custom(self):
+        converter = MarkdownToDocument(table_to_single_line=True, progress_bar=False)
+        assert converter.table_to_single_line is True
+        assert converter.progress_bar is False
+
+    @pytest.mark.unit
+    def test_run(self, preview_samples_path):
+        converter = MarkdownToDocument()
+        sources = [preview_samples_path / "markdown" / "sample.md"]
+        results = converter.run(sources=sources)
+        docs = results["documents"]
+
+        assert len(docs) == 1
+        for doc in docs:
+            assert "What to build with Haystack" in doc.text
+            assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.text
+
+    @pytest.mark.unit
+    def test_run_metadata(self, preview_samples_path):
+        converter = MarkdownToDocument()
+        sources = [preview_samples_path / "markdown" / "sample.md"]
+        metadata = [{"file_name": "sample.md"}]
+        results = converter.run(sources=sources, metadata=metadata)
+        docs = results["documents"]
+
+        assert len(docs) == 1
+        for doc in docs:
+            assert "What to build with Haystack" in doc.text
+            assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.text
+            assert doc.metadata == {"file_name": "sample.md"}
+
+    @pytest.mark.integration
+    def test_run_wrong_file_type(self, preview_samples_path, caplog):
+        """
+        Test if the component runs correctly when an input file is not of the expected type.
+        """
+        sources = [preview_samples_path / "audio" / "answer.wav"]
+        converter = MarkdownToDocument()
+        with caplog.at_level(logging.WARNING):
+            output = converter.run(sources=sources)
+            assert "codec can't decode byte" in caplog.text
+
+        docs = output["documents"]
+        assert docs == []
+
+    @pytest.mark.integration
+    def test_run_error_handling(self, caplog):
+        """
+        Test if the component correctly handles errors.
+        """
+        sources = ["non_existing_file.md"]
+        converter = MarkdownToDocument()
+        with caplog.at_level(logging.WARNING):
+            result = converter.run(sources=sources)
+            assert "Could not read non_existing_file.md" in caplog.text
+            assert result["documents"] == []
+
+    @pytest.mark.unit
+    def test_mixed_sources_run(self, preview_samples_path):
+        """
+        Test if the component runs correctly if the input is a mix of strings, paths and ByteStreams.
+        """
+        sources = [
+            preview_samples_path / "markdown" / "sample.md",
+            str((preview_samples_path / "markdown" / "sample.md").absolute()),
         ]
+        with open(preview_samples_path / "markdown" / "sample.md", "rb") as f:
+            byte_stream = f.read()
+            sources.append(ByteStream(byte_stream))
 
-        converter = MarkdownToTextDocument(extract_headlines=True, remove_code_snippets=False)
-        results = converter.run(paths=[preview_samples_path / "markdown" / "sample.md"])
-
-        # Check if correct number of headlines are extracted
-        assert len(results["documents"][0].metadata["headlines"]) == 5
-        for extracted_headline, (expected_headline, expected_level) in zip(
-            results["documents"][0].metadata["headlines"], expected_headlines
-        ):
-            # Check if correct headline and level is extracted
-            assert extracted_headline["headline"] == expected_headline
-            assert extracted_headline["level"] == expected_level
-
-            # Check if correct start_idx is extracted
-            start_idx = extracted_headline["start_idx"]
-            hl_len = len(extracted_headline["headline"])
-            assert extracted_headline["headline"] == results["documents"][0].text[start_idx : start_idx + hl_len]
-
-    @pytest.mark.unit
-    def test_markdown_converter_frontmatter_to_meta(self, preview_samples_path):
-        converter = MarkdownToTextDocument(add_frontmatter_to_meta=True)
-        results = converter.run(paths=[preview_samples_path / "markdown" / "sample.md"])
-        assert results["documents"][0].metadata["type"] == "intro"
-        assert results["documents"][0].metadata["date"] == "1.1.2023"
-
-    @pytest.mark.unit
-    def test_markdown_converter_remove_code_snippets(self, preview_samples_path):
-        converter = MarkdownToTextDocument(remove_code_snippets=False)
-        results = converter.run(paths=[preview_samples_path / "markdown" / "sample.md"])
-        assert results["documents"][0].text.startswith("pip install farm-haystack")
+        converter = MarkdownToDocument()
+        output = converter.run(sources=sources)
+        docs = output["documents"]
+        assert len(docs) == 3
+        for doc in docs:
+            assert "What to build with Haystack" in doc.text
+            assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.text
