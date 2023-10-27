@@ -92,6 +92,7 @@ class TestHuggingFaceRemoteGenerator:
         assert isinstance(response["metadata"], list)
         assert len(response["replies"]) == 1
         assert len(response["metadata"]) == 1
+        assert [isinstance(reply, str) for reply in response["replies"]]
 
     @pytest.mark.unit
     def test_generate_multiple_text_responses_with_valid_prompt_and_generation_parameters(
@@ -125,9 +126,12 @@ class TestHuggingFaceRemoteGenerator:
         assert "replies" in response
         assert "metadata" in response
         assert isinstance(response["replies"], list)
+        assert [isinstance(reply, str) for reply in response["replies"]]
+
         assert isinstance(response["metadata"], list)
         assert len(response["replies"]) == 3
         assert len(response["metadata"]) == 3
+        assert [isinstance(reply, dict) for reply in response["metadata"]]
 
     @pytest.mark.unit
     def test_initialize_with_invalid_model_path_or_url(self, mock_check_valid_model):
@@ -166,11 +170,13 @@ class TestHuggingFaceRemoteGenerator:
         assert "replies" in response
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) > 0
+        assert [isinstance(reply, str) for reply in response["replies"]]
 
         # Assert that the response contains the metadata
         assert "metadata" in response
         assert isinstance(response["metadata"], list)
         assert len(response["metadata"]) > 0
+        assert [isinstance(reply, dict) for reply in response["replies"]]
 
     @pytest.mark.unit
     def test_generate_text_with_custom_generation_parameters(
@@ -188,14 +194,16 @@ class TestHuggingFaceRemoteGenerator:
         assert "replies" in response
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) > 0
+        assert [isinstance(reply, str) for reply in response["replies"]]
         assert response["replies"][0] == "I'm fine, thanks."
 
         # Assert that the response contains the metadata
         assert "metadata" in response
         assert isinstance(response["metadata"], list)
         assert len(response["metadata"]) > 0
+        assert [isinstance(reply, str) for reply in response["replies"]]
 
-    @pytest.mark.integration
+    @pytest.mark.unit
     def test_generate_text_with_streaming_callback(
         self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
     ):
@@ -238,11 +246,13 @@ class TestHuggingFaceRemoteGenerator:
         assert "replies" in response
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) > 0
+        assert [isinstance(reply, str) for reply in response["replies"]]
 
         # Assert that the response contains the metadata
         assert "metadata" in response
         assert isinstance(response["metadata"], list)
         assert len(response["metadata"]) > 0
+        assert [isinstance(reply, dict) for reply in response["replies"]]
 
 
 chat_messages = [
@@ -400,7 +410,7 @@ class TestChatHuggingFaceRemoteGenerator:
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert response["replies"][0].content == "I'm fine, thanks."
 
-    @pytest.mark.integration
+    @pytest.mark.unit
     def test_generate_text_with_streaming_callback(
         self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
     ):
