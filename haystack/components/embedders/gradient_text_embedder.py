@@ -24,6 +24,15 @@ class GradientTextEmbedder:
         """
         Create a GradientTextEmbedder component.
 
+        ```python
+        p = Pipeline()
+        embedder = GradientTextEmbedder(access_token=gradient_access_token)
+        p.add_component(instance=embedder, name="text_embedder")
+        p.add_component(instance=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()), name="retriever")
+        p.connect("text_embedder", "retriever")
+        p.run("embed me!!!")
+        ```
+
         :param model_name: The name of the model to use.
         :param access_token: The Gradient access token. If not provided it's read from the environment
                              variable GRADIENT_ACCESS_TOKEN.
