@@ -218,7 +218,7 @@ class InMemoryDocumentStore:
         if not query:
             raise ValueError("Query should be a non-empty string")
 
-        content_type_filter = {"$or": {"text": {"$not": None}, "dataframe": {"$not": None}}}
+        content_type_filter = {"$or": {"content": {"$not": None}, "dataframe": {"$not": None}}}
         if filters:
             filters = {"$and": [content_type_filter, filters]}
         else:
@@ -228,11 +228,11 @@ class InMemoryDocumentStore:
         # Lowercase all documents
         lower_case_documents = []
         for doc in all_documents:
-            if doc.text is None and doc.dataframe is None:
+            if doc.content is None and doc.dataframe is None:
                 logger.info("Document '%s' has no text or dataframe content. Skipping it.", doc.id)
             else:
-                if doc.text is not None:
-                    lower_case_documents.append(doc.text.lower())
+                if doc.content is not None:
+                    lower_case_documents.append(doc.content.lower())
                     if doc.dataframe is not None:
                         logger.warning(
                             "Document '%s' has both text and dataframe content. "

@@ -46,7 +46,7 @@ class TikaDocumentConverter:
                 if not extracted_text:
                     logger.warning("Skipping file at '%s' as Tika was not able to extract any content.", str(path))
                     continue
-                document = Document(text=extracted_text)
+                document = Document(content=extracted_text)
                 documents.append(document)
             except Exception as e:
                 logger.error("Could not convert file at '%s' to Document. Error: %s", str(path), e)

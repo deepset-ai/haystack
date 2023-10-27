@@ -103,7 +103,7 @@ class OpenAIDocumentEmbedder:
             ]
 
             text_to_embed = (
-                self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.text or ""]) + self.suffix
+                self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""]) + self.suffix
             )
 
             # copied from OpenAI embedding_utils (https://github.com/openai/openai-python/blob/main/openai/embeddings_utils.py)

@@ -20,11 +20,13 @@ docstore = MemoryDocumentStore()
 # Write some fake documents
 docstore.write_documents(
     [
-        Document(text="This is not the answer you are looking for.", metadata={"name": "Obi-Wan Kenobi"}),
-        Document(text="This is the way.", metadata={"name": "Mandalorian"}),
-        Document(text="The answer to life, the universe and everything is 42.", metadata={"name": "Deep Thought"}),
-        Document(text="When you play the game of thrones, you win or you die.", metadata={"name": "Cersei Lannister"}),
-        Document(text="Winter is coming.", metadata={"name": "Ned Stark"}),
+        Document(content="This is not the answer you are looking for.", metadata={"name": "Obi-Wan Kenobi"}),
+        Document(content="This is the way.", metadata={"name": "Mandalorian"}),
+        Document(content="The answer to life, the universe and everything is 42.", metadata={"name": "Deep Thought"}),
+        Document(
+            content="When you play the game of thrones, you win or you die.", metadata={"name": "Cersei Lannister"}
+        ),
+        Document(content="Winter is coming.", metadata={"name": "Ned Stark"}),
     ]
 )
 
@@ -90,10 +92,13 @@ expected_output = [
             "documents": [
                 [
                     Document(
-                        text="The answer to life, the universe and everything is 42.", metadata={"name": "Deep Thought"}
+                        content="The answer to life, the universe and everything is 42.",
+                        metadata={"name": "Deep Thought"},
                     ),
-                    Document(text="This is not the answer you are looking for.", metadata={"name": "Obi-Wan Kenobi"}),
-                    Document(text="This is the way.", metadata={"name": "Mandalorian"}),
+                    Document(
+                        content="This is not the answer you are looking for.", metadata={"name": "Obi-Wan Kenobi"}
+                    ),
+                    Document(content="This is the way.", metadata={"name": "Mandalorian"}),
                 ]
             ]
         },
@@ -107,10 +112,13 @@ expected_output = [
             "documents": [
                 [
                     Document(
-                        text="The answer to life, the universe and everything is 42.", metadata={"name": "Deep Thought"}
+                        content="The answer to life, the universe and everything is 42.",
+                        metadata={"name": "Deep Thought"},
                     ),
-                    Document(text="This is not the answer you are looking for.", metadata={"name": "Obi-Wan Kenobi"}),
-                    Document(text="This is the way.", metadata={"name": "Mandalorian"}),
+                    Document(
+                        content="This is not the answer you are looking for.", metadata={"name": "Obi-Wan Kenobi"}
+                    ),
+                    Document(content="This is the way.", metadata={"name": "Mandalorian"}),
                 ]
             ]
         },
@@ -122,10 +130,13 @@ expected_output = [
             "documents": [
                 [
                     Document(
-                        text="The answer to life, the universe and everything is 42.", metadata={"name": "Deep Thought"}
+                        content="The answer to life, the universe and everything is 42.",
+                        metadata={"name": "Deep Thought"},
                     ),
-                    Document(text="This is not the answer you are looking for.", metadata={"name": "Obi-Wan Kenobi"}),
-                    Document(text="This is the way.", metadata={"name": "Mandalorian"}),
+                    Document(
+                        content="This is not the answer you are looking for.", metadata={"name": "Obi-Wan Kenobi"}
+                    ),
+                    Document(content="This is the way.", metadata={"name": "Mandalorian"}),
                 ]
             ]
         },

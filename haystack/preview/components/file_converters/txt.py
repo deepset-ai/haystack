@@ -118,7 +118,7 @@ class TextFileToDocument:
                     valid_languages,
                 )
 
-            document = Document(text=text, metadata=meta)
+            document = Document(content=text, metadata=meta)
             documents.append(document)
 
         return {"documents": documents}

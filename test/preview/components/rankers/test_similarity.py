@@ -48,7 +48,7 @@ class TestSimilarityRanker:
         """
         ranker = SimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
         ranker.warm_up()
-        docs_before = [Document(text=text) for text in docs_before_texts]
+        docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
         docs_after = output["documents"]
 
@@ -72,7 +72,7 @@ class TestSimilarityRanker:
         sampler = SimilarityRanker()
 
         with pytest.raises(ComponentError):
-            sampler.run(query="query", documents=[Document(text="document")])
+            sampler.run(query="query", documents=[Document(content="document")])
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
@@ -89,7 +89,7 @@ class TestSimilarityRanker:
         """
         ranker = SimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
         ranker.warm_up()
-        docs_before = [Document(text=text) for text in docs_before_texts]
+        docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
         docs_after = output["documents"]
 

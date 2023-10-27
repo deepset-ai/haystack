@@ -19,15 +19,9 @@ class _BackwardCompatible(type):
         Called before Document.__init__, will remap legacy fields to new ones.
         Also handles building a Document from a flattened dictionary.
         """
-        # Move `content` to new fields depending on the type
-        content = kwargs.get("content")
-        if isinstance(content, str):
-            kwargs["text"] = content
-        elif isinstance(content, pandas.DataFrame):
+        # Move `content` to new `dataframe` field if it's a Pandas DataFrame
+        if isinstance((content := kwargs.get("content")), pandas.DataFrame):
             kwargs["dataframe"] = content
-
-        # We already moved `content` to `text` or `dataframe`, we can remove it
-        if "content" in kwargs:
             del kwargs["content"]
 
         # Not used anymore
@@ -65,7 +59,7 @@ class Document(metaclass=_BackwardCompatible):
     Documents can be sorted by score and saved to/from dictionary and JSON.
 
     :param id: Unique identifier for the document. When not set, it's generated based on the Document fields' values.
-    :param text: Text of the document, if the document contains text.
+    :param content: Text of the document, if the document contains text.
     :param dataframe: Pandas dataframe with the document's content, if the document contains tabular data.
     :param blob: Binary data associated with the document, if the document has any binary data associated with it.
     :param mime_type: MIME type of the document. Defaults to "text/plain".
@@ -75,7 +69,7 @@ class Document(metaclass=_BackwardCompatible):
     """
 
     id: str = field(default="")
-    text: Optional[str] = field(default=None)
+    content: Optional[str] = field(default=None)
     dataframe: Optional[pandas.DataFrame] = field(default=None)
     blob: Optional[bytes] = field(default=None)
     mime_type: str = field(default="text/plain")
@@ -85,8 +79,10 @@ class Document(metaclass=_BackwardCompatible):
 
     def __str__(self):
         fields = [f"mimetype: '{self.mime_type}'"]
-        if self.text is not None:
-            fields.append(f"text: '{self.text}'" if len(self.text) < 100 else f"text: '{self.text[:100]}...'")
+        if self.content is not None:
+            fields.append(
+                f"content: '{self.content}'" if len(self.content) < 100 else f"content: '{self.content[:100]}...'"
+            )
         if self.dataframe is not None:
             fields.append(f"dataframe: {self.dataframe.shape}")
         if self.blob is not None:
@@ -113,7 +109,7 @@ class Document(metaclass=_BackwardCompatible):
         """
         Creates a hash of the given content that acts as the document's ID.
         """
-        text = self.text or None
+        text = self.content or None
         dataframe = self.dataframe.to_json() if self.dataframe is not None else None
         blob = self.blob or None
         mime_type = self.mime_type or None
@@ -160,10 +156,10 @@ class Document(metaclass=_BackwardCompatible):
         A ValueError will be raised is either both `text` and `dataframe` fields are set
         or if neither of them is set.
         """
-        if self.text is not None and self.dataframe is not None:
+        if self.content is not None and self.dataframe is not None:
             raise ValueError("Both text and dataframe are set.")
 
-        if self.text is not None:
+        if self.content is not None:
             return "text"
         elif self.dataframe is not None:
             return "table"

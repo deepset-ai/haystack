@@ -46,7 +46,7 @@ class HTMLToDocument:
                 logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
                 continue
 
-            document = Document(text=text)
+            document = Document(content=text)
             documents.append(document)
 
         return {"documents": documents}
