@@ -38,22 +38,24 @@ def check_generation_params(kwargs: Dict[str, Any], additional_accepted_params: 
             )
 
 
-def sanitize_generation_params(kwargs: Dict[str, Any]):
+def sanitize_generation_params(kwargs: Dict[str, Any]) -> List[str]:
     """
     Sanitize the provided generation parameters by removing any unknown parameters.
 
     :param kwargs: A dictionary containing the generation parameters.
     """
+    unknown_params: List[str] = []
     if kwargs:
         accepted_params = {
             param
             for param in inspect.signature(InferenceClient.text_generation).parameters.keys()
             if param not in ["self", "prompt"]
         }
-        unknown_params = set(kwargs.keys()) - accepted_params
+        unknown_params = list(set(kwargs.keys()) - accepted_params)
         if unknown_params:
             for param in unknown_params:
                 del kwargs[param]
+    return unknown_params
 
 
 def check_valid_model(model_id: str, token: Optional[str]) -> None:
@@ -101,7 +103,7 @@ class HuggingFaceRemoteGenerator:
         token: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
-        streaming_callback: Optional[Callable] = None,
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
     ):
         """
         Initialize the HuggingFaceRemoteGenerator instance.
@@ -252,7 +254,7 @@ class ChatHuggingFaceRemoteGenerator:
         token: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
-        streaming_callback: Optional[Callable] = None,
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
     ):
         """
         Initialize the ChatHuggingFaceRemoteGenerator instance.
