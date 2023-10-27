@@ -9,7 +9,7 @@ import openai
 from openai.openai_object import OpenAIObject
 
 from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
-from haystack.preview.dataclasses.chat_message import ChatMessage
+from haystack.preview.dataclasses import StreamingChunk, ChatMessage
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +17,12 @@ logger = logging.getLogger(__name__)
 API_BASE_URL = "https://api.openai.com/v1"
 
 
-def default_streaming_callback(chunk):
+def default_streaming_callback(chunk: StreamingChunk) -> None:
     """
     Default callback function for streaming responses from OpenAI API.
     Prints the tokens of the first completion to stdout as soon as they are received and returns the chunk unchanged.
     """
     print(chunk.content, flush=True, end="")
-    return chunk
 
 
 @component
@@ -40,7 +39,7 @@ class GPTGenerator:
         api_key: Optional[str] = None,
         model_name: str = "gpt-3.5-turbo",
         system_prompt: Optional[str] = None,
-        streaming_callback: Optional[Callable] = None,
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         api_base_url: str = API_BASE_URL,
         **kwargs,
     ):
@@ -150,9 +149,9 @@ class GPTGenerator:
     @component.output_types(replies=List[ChatMessage])
     def run(self, prompt: Union[str, List[ChatMessage]]):
         """
-        Queries the LLM with the prompts to produce replies.
+        Sends the prompt to the OpenAI LLM and returns the response.
 
-        :param prompt: The prompts to be sent to the generative model.
+        :param prompt: The prompts to be sent to LLM.
         """
         messages: List[ChatMessage] = []
         if isinstance(prompt, str):
@@ -165,14 +164,15 @@ class GPTGenerator:
                 f"Invalid prompt. Expected either a string or a list of ChatMessage(s), but got {type(prompt)}"
             )
         openai_chat_message_format = ["role", "content", "name"]
+        openai_formatted_messages = [
+            dataclasses.asdict(
+                m, dict_factory=lambda obj: {k: v for k, v in obj if k in openai_chat_message_format and v}
+            )
+            for m in messages
+        ]
         completion = openai.ChatCompletion.create(
             model=self.model_name,
-            messages=[
-                dataclasses.asdict(
-                    m, dict_factory=lambda obj: {k: v for k, v in obj if k in openai_chat_message_format and v}
-                )
-                for m in messages
-            ],
+            messages=openai_formatted_messages,
             stream=self.streaming_callback is not None,
             **self.model_parameters,
         )
@@ -185,7 +185,7 @@ class GPTGenerator:
                 if chunk.choices:
                     # we always get a chunk with a single choice.
                     # the index idx of a choice varies, idx < number of requested completions
-                    chunk_delta: ChatMessage = self._build_chunk(chunk, chunk.choices[0])
+                    chunk_delta: StreamingChunk = self._build_chunk(chunk, chunk.choices[0])
                     index = int(chunk_delta.metadata["index"])
                     chunk_buckets[index].append(chunk_delta)
                     # invoke callback with the chunk_delta
@@ -203,6 +203,9 @@ class GPTGenerator:
     def _build_message(self, completion: OpenAIObject, choice: OpenAIObject) -> ChatMessage:
         """
         Converts the response from the OpenAI API to a ChatMessage.
+        :param completion: The completion returned by the OpenAI API.
+        :param choice: The choice returned by the OpenAI API.
+        :return: The ChatMessage.
         """
         message: OpenAIObject = choice.message
         content = dict(message.function_call) if choice.finish_reason == "function_call" else message.content
@@ -217,9 +220,12 @@ class GPTGenerator:
         )
         return chat_message
 
-    def _build_chunk(self, chunk: OpenAIObject, choice: OpenAIObject) -> ChatMessage:
+    def _build_chunk(self, chunk: OpenAIObject, choice: OpenAIObject) -> StreamingChunk:
         """
-        Converts the response from the OpenAI API to a ChatMessage.
+        Converts the response from the OpenAI API to a StreamingChunk.
+        :param chunk: The chunk returned by the OpenAI API.
+        :param choice: The choice returned by the OpenAI API.
+        :return: The StreamingChunk.
         """
         has_content = bool(hasattr(choice.delta, "content") and choice.delta.content)
         if has_content:
@@ -228,14 +234,18 @@ class GPTGenerator:
             content = str(choice.delta.function_call)
         else:
             content = ""
-        # TODO: these should perhaps be ChatMessageChunk objects
-        chunk_message = ChatMessage.from_assistant(content)
+        chunk_message = StreamingChunk(content)
         chunk_message.metadata.update(
             {"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason}
         )
         return chunk_message
 
-    def _collect_chunks(self, chunk_buckets: Dict[int, List[ChatMessage]]):
+    def _collect_chunks(self, chunk_buckets: Dict[int, List[StreamingChunk]]):
+        """
+        Collects the chunks into a list of ChatMessage(s).
+        :param chunk_buckets: The buckets of chunks.
+        :return: The list of ChatMessage(s).
+        """
         content_list = ["".join([chunk.content for chunk in chunk_list]) for chunk_list in chunk_buckets.values()]
         replies: List[ChatMessage] = [
             # take metadata from the last chunk in the bucket
