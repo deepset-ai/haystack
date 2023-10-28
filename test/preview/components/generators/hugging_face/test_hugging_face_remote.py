@@ -33,6 +33,11 @@ def mock_text_generation():
         yield mock_from_pretrained
 
 
+# used to test serialization of streaming_callback
+def testing_streaming_callback(x):
+    return x
+
+
 class TestHuggingFaceRemoteGenerator:
     @pytest.mark.unit
     def test_initialize_with_valid_model_and_generation_parameters(self, mock_check_valid_model, mock_auto_tokenizer):
@@ -80,6 +85,23 @@ class TestHuggingFaceRemoteGenerator:
         assert init_params["stop_words"] == ["stop", "words"]
         assert init_params["token"] is None
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
+
+    @pytest.mark.unit
+    def test_serialize_and_deserialize(self, mock_check_valid_model, mock_auto_tokenizer):
+        generator = HuggingFaceRemoteGenerator(
+            model="HuggingFaceH4/zephyr-7b-alpha",
+            model_id="HuggingFaceH4/zephyr-7b-alpha",
+            generation_kwargs={"n": 5},
+            stop_words=["stop", "words"],
+            streaming_callback=testing_streaming_callback,
+        )
+        # Call the to_dict method
+        result = generator.to_dict()
+
+        generator_2 = HuggingFaceRemoteGenerator.from_dict(result)
+        assert generator_2.model_id == "HuggingFaceH4/zephyr-7b-alpha"
+        assert generator_2.generation_kwargs == {"n": 5, "stop_sequences": ["stop", "words"]}
+        assert generator_2.streaming_callback == testing_streaming_callback
 
     @pytest.mark.unit
     def test_initialize_with_url_for_model_without_model_id(self, mock_check_valid_model):
@@ -353,6 +375,23 @@ class TestChatHuggingFaceRemoteGenerator:
         assert init_params["stop_words"] == ["stop", "words"]
         assert init_params["token"] is None
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
+
+    @pytest.mark.unit
+    def test_serialize_and_deserialize(self, mock_check_valid_model, mock_auto_tokenizer):
+        generator = ChatHuggingFaceRemoteGenerator(
+            model="HuggingFaceH4/zephyr-7b-alpha",
+            model_id="HuggingFaceH4/zephyr-7b-alpha",
+            generation_kwargs={"n": 5},
+            stop_words=["stop", "words"],
+            streaming_callback=testing_streaming_callback,
+        )
+        # Call the to_dict method
+        result = generator.to_dict()
+
+        generator_2 = ChatHuggingFaceRemoteGenerator.from_dict(result)
+        assert generator_2.model_id == "HuggingFaceH4/zephyr-7b-alpha"
+        assert generator_2.generation_kwargs == {"n": 5, "stop_sequences": ["stop", "words"]}
+        assert generator_2.streaming_callback == testing_streaming_callback
 
     @pytest.mark.unit
     def test_initialize_with_url_for_model_without_model_id(self, mock_check_valid_model):

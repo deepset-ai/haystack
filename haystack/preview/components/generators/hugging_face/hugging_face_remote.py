@@ -1,5 +1,6 @@
 import inspect
 import logging
+import sys
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Iterable, Callable
 from urllib.parse import urlparse
@@ -9,7 +10,7 @@ from huggingface_hub.inference._text_generation import TextGenerationStreamRespo
 from huggingface_hub.utils import RepositoryNotFoundError
 from transformers import AutoTokenizer
 
-from haystack.preview import component, default_to_dict
+from haystack.preview import component, default_to_dict, default_from_dict, DeserializationError
 from haystack.preview.dataclasses import ChatMessage, StreamingChunk
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,28 @@ def check_valid_model(model_id: str, token: Optional[str]) -> None:
     allowed_model = model_info.pipeline_tag in ["text-generation", "text2text-generation"]
     if not allowed_model:
         raise ValueError(f"Model {model_id} is not a text generation model. Please provide a text generation model.")
+
+
+def serialize_callback_handler(streaming_callback: Callable[[StreamingChunk], None]) -> str:
+    module = streaming_callback.__module__
+    if module == "builtins":
+        callback_name = streaming_callback.__name__
+    else:
+        callback_name = f"{module}.{streaming_callback.__name__}"
+    return callback_name
+
+
+def deserialize_callback_handler(callback_name: str) -> Optional[Callable[[StreamingChunk], None]]:
+    parts = callback_name.split(".")
+    module_name = ".".join(parts[:-1])
+    function_name = parts[-1]
+    module = sys.modules.get(module_name, None)
+    if not module:
+        raise DeserializationError(f"Could not locate the module of the streaming callback: {module_name}")
+    streaming_callback = getattr(module, function_name, None)
+    if not streaming_callback:
+        raise DeserializationError(f"Could not locate the streaming callback: {function_name}")
+    return streaming_callback
 
 
 @component
@@ -130,24 +153,34 @@ class HuggingFaceRemoteGenerator:
 
         :return: A dictionary containing the serialized component.
         """
-        if self.streaming_callback:
-            module = self.streaming_callback.__module__
-            if module == "builtins":
-                callback_name = self.streaming_callback.__name__
-            else:
-                callback_name = f"{module}.{self.streaming_callback.__name__}"
-        else:
-            callback_name = None
-
+        callback_name = serialize_callback_handler(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
             model=self.client.model,
             model_id=self.model_id,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
-            stop_words=self.generation_kwargs.get("stop_sequences", []),
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
         )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceRemoteGenerator":
+        """
+        Deserialize this component from a dictionary.
+        """
+        init_params = data.get("init_parameters", {})
+        serialized_callback_handler = init_params.get("streaming_callback")
+        if serialized_callback_handler:
+            data["init_parameters"]["streaming_callback"] = deserialize_callback_handler(serialized_callback_handler)
+        return default_from_dict(cls, data)
+
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        # prefer model_id if available as model might be a URL and sensitive
+        # Use model only if it is not a URL
+        return {"model": self.model_id if self.model_id else self.client.model}
 
     @component.output_types(replies=List[str], metadata=List[Dict[str, Any]])
     def run(self, prompt: str, **generation_kwargs):
@@ -299,24 +332,34 @@ class ChatHuggingFaceRemoteGenerator:
 
         :return: A dictionary containing the serialized component.
         """
-        if self.streaming_callback:
-            module = self.streaming_callback.__module__
-            if module == "builtins":
-                callback_name = self.streaming_callback.__name__
-            else:
-                callback_name = f"{module}.{self.streaming_callback.__name__}"
-        else:
-            callback_name = None
-
+        callback_name = serialize_callback_handler(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
             model=self.client.model,
             model_id=self.model_id,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
-            stop_words=self.generation_kwargs.get("stop_sequences", []),
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
         )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceRemoteGenerator":
+        """
+        Deserialize this component from a dictionary.
+        """
+        init_params = data.get("init_parameters", {})
+        serialized_callback_handler = init_params.get("streaming_callback")
+        if serialized_callback_handler:
+            data["init_parameters"]["streaming_callback"] = deserialize_callback_handler(serialized_callback_handler)
+        return default_from_dict(cls, data)
+
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        # prefer model_id if available as model might be a URL and sensitive
+        # Use model only if it is not a URL
+        return {"model": self.model_id if self.model_id else self.client.model}
 
     @component.output_types(replies=List[ChatMessage])
     def run(self, messages: List[ChatMessage], **generation_kwargs):
