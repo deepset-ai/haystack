@@ -2,6 +2,8 @@ import ast
 import logging
 from typing import List, Dict, Any
 
+from asteval import Interpreter
+
 from haystack.preview import component
 
 logger = logging.getLogger(__name__)
@@ -121,11 +123,13 @@ class Router:
         :raises NoRouteSelectedException: If no route's expression evaluates to True.
         """
         local_vars = {context_var: kwargs[context_var] for context_var in self.routing_variables}
+        runtime = Interpreter(minimal=True, use_numpy=False, user_symbols=local_vars, max_statement_length=100)
         for i, route_directive in enumerate(self.routes):
             try:
-                result = eval(self.compiled_expressions[i], local_vars)
+                result = runtime.eval(route_directive["condition"])
             except Exception as e:
-                raise RouteConditionException(route_directive) from e
+                error_stacktrace = "\n".join(err for err in runtime.error) if len(runtime.error) > 0 else None
+                raise RouteConditionException(route_directive, error_stacktrace) from e
             if result:
                 output_slot = route_directive["output"]
                 return {output_slot: kwargs[output_slot]}
