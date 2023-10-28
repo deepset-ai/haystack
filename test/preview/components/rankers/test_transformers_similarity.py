@@ -1,30 +1,32 @@
 import pytest
 
 from haystack.preview import Document, ComponentError
-from haystack.preview.components.rankers.similarity import SimilarityRanker
+from haystack.preview.components.rankers.transformers_similarity import TransformersSimilarityRanker
 
 
 class TestSimilarityRanker:
     @pytest.mark.unit
     def test_to_dict(self):
-        component = SimilarityRanker()
+        component = TransformersSimilarityRanker()
         data = component.to_dict()
         assert data == {
-            "type": "SimilarityRanker",
+            "type": "TransformersSimilarityRanker",
             "init_parameters": {
                 "device": "cpu",
                 "top_k": 10,
-                "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "token": None,
+                "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
             },
         }
 
     @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
-        component = SimilarityRanker(model_name_or_path="my_model", device="cuda", token="my_token", top_k=5)
+        component = TransformersSimilarityRanker(
+            model_name_or_path="my_model", device="cuda", token="my_token", top_k=5
+        )
         data = component.to_dict()
         assert data == {
-            "type": "SimilarityRanker",
+            "type": "TransformersSimilarityRanker",
             "init_parameters": {
                 "device": "cuda",
                 "model_name_or_path": "my_model",
@@ -46,7 +48,7 @@ class TestSimilarityRanker:
         """
         Test if the component ranks documents correctly.
         """
-        ranker = SimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
+        ranker = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
         ranker.warm_up()
         docs_before = [Document(text=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
@@ -61,7 +63,7 @@ class TestSimilarityRanker:
     #  Returns an empty list if no documents are provided
     @pytest.mark.integration
     def test_returns_empty_list_if_no_documents_are_provided(self):
-        sampler = SimilarityRanker()
+        sampler = TransformersSimilarityRanker()
         sampler.warm_up()
         output = sampler.run(query="City in Germany", documents=[])
         assert output["documents"] == []
@@ -69,7 +71,7 @@ class TestSimilarityRanker:
     #  Raises ComponentError if model is not warmed up
     @pytest.mark.integration
     def test_raises_component_error_if_model_not_warmed_up(self):
-        sampler = SimilarityRanker()
+        sampler = TransformersSimilarityRanker()
 
         with pytest.raises(ComponentError):
             sampler.run(query="query", documents=[Document(text="document")])
@@ -87,7 +89,7 @@ class TestSimilarityRanker:
         """
         Test if the component ranks documents correctly with a custom top_k.
         """
-        ranker = SimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
+        ranker = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
         ranker.warm_up()
         docs_before = [Document(text=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)

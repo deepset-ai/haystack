@@ -27,6 +27,7 @@ def mock_openai_response(
 class TestOpenAIDocumentEmbedder:
     @pytest.mark.unit
     def test_init_default(self, monkeypatch):
+        openai.api_key = None
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAIDocumentEmbedder()
 
@@ -68,6 +69,7 @@ class TestOpenAIDocumentEmbedder:
 
     @pytest.mark.unit
     def test_init_fail_wo_api_key(self, monkeypatch):
+        openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="OpenAIDocumentEmbedder expects an OpenAI API key"):
             OpenAIDocumentEmbedder()
