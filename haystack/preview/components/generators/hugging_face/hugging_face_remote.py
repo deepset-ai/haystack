@@ -16,7 +16,7 @@ from haystack.preview.dataclasses import ChatMessage, StreamingChunk
 logger = logging.getLogger(__name__)
 
 
-def check_generation_params(kwargs: Dict[str, Any], additional_accepted_params: Optional[List[str]] = None):
+def _check_generation_params(kwargs: Dict[str, Any], additional_accepted_params: Optional[List[str]] = None):
     """
     Check the provided generation parameters for validity.
 
@@ -39,7 +39,7 @@ def check_generation_params(kwargs: Dict[str, Any], additional_accepted_params: 
             )
 
 
-def check_valid_model(model_id: str, token: Optional[str]) -> None:
+def _check_valid_model(model_id: str, token: Optional[str]) -> None:
     """
     Check if the provided model ID corresponds to a valid model on HuggingFace Hub.
     Also check if the model is a text generation model.
@@ -61,7 +61,10 @@ def check_valid_model(model_id: str, token: Optional[str]) -> None:
         raise ValueError(f"Model {model_id} is not a text generation model. Please provide a text generation model.")
 
 
-def serialize_callback_handler(streaming_callback: Callable[[StreamingChunk], None]) -> str:
+def _serialize_callback_handler(streaming_callback: Callable[[StreamingChunk], None]) -> str:
+    """
+    Serialize the streaming callback handler.
+    """
     module = streaming_callback.__module__
     if module == "builtins":
         callback_name = streaming_callback.__name__
@@ -70,7 +73,10 @@ def serialize_callback_handler(streaming_callback: Callable[[StreamingChunk], No
     return callback_name
 
 
-def deserialize_callback_handler(callback_name: str) -> Optional[Callable[[StreamingChunk], None]]:
+def _deserialize_callback_handler(callback_name: str) -> Optional[Callable[[StreamingChunk], None]]:
+    """
+    Deserialize the streaming callback handler.
+    """
     parts = callback_name.split(".")
     module_name = ".".join(parts[:-1])
     function_name = parts[-1]
@@ -125,13 +131,13 @@ class HuggingFaceRemoteGenerator:
                 raise ValueError(
                     "If model is a URL, you must provide a HuggingFace model_id (e.g.mistralai/Mistral-7B-v0.1)"
                 )
-            check_valid_model(model_id, token)
+            _check_valid_model(model_id, token)
         else:
-            check_valid_model(model, token)
+            _check_valid_model(model, token)
 
         # handle generation kwargs
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
-        check_generation_params(generation_kwargs, ["n"])
+        _check_generation_params(generation_kwargs, ["n"])
         generation_kwargs.setdefault("stop_sequences", []).extend(stop_words or [])
 
         self.model_id = model_id if is_url and model_id else model
@@ -153,7 +159,7 @@ class HuggingFaceRemoteGenerator:
 
         :return: A dictionary containing the serialized component.
         """
-        callback_name = serialize_callback_handler(self.streaming_callback) if self.streaming_callback else None
+        callback_name = _serialize_callback_handler(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
             model=self.client.model,
@@ -171,7 +177,7 @@ class HuggingFaceRemoteGenerator:
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
-            data["init_parameters"]["streaming_callback"] = deserialize_callback_handler(serialized_callback_handler)
+            data["init_parameters"]["streaming_callback"] = _deserialize_callback_handler(serialized_callback_handler)
         return default_from_dict(cls, data)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -193,7 +199,7 @@ class HuggingFaceRemoteGenerator:
         """
         # check generation kwargs given as parameters to override the default ones
         additional_params = ["n", "stop_words"]
-        check_generation_params(generation_kwargs, additional_params)
+        _check_generation_params(generation_kwargs, additional_params)
 
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **generation_kwargs}
@@ -304,13 +310,13 @@ class ChatHuggingFaceRemoteGenerator:
                 raise ValueError(
                     "If model is a URL, you must provide a HuggingFace model_id (e.g. meta-llama/Llama-2-7b-chat-hf)"
                 )
-            check_valid_model(model_id, token)
+            _check_valid_model(model_id, token)
         else:
-            check_valid_model(model, token)
+            _check_valid_model(model, token)
 
         # handle generation kwargs
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
-        check_generation_params(generation_kwargs, ["n"])
+        _check_generation_params(generation_kwargs, ["n"])
         generation_kwargs.setdefault("stop_sequences", []).extend(stop_words or [])
 
         self.model_id = model_id if is_url and model_id else model
@@ -332,7 +338,7 @@ class ChatHuggingFaceRemoteGenerator:
 
         :return: A dictionary containing the serialized component.
         """
-        callback_name = serialize_callback_handler(self.streaming_callback) if self.streaming_callback else None
+        callback_name = _serialize_callback_handler(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
             model=self.client.model,
@@ -350,7 +356,7 @@ class ChatHuggingFaceRemoteGenerator:
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
-            data["init_parameters"]["streaming_callback"] = deserialize_callback_handler(serialized_callback_handler)
+            data["init_parameters"]["streaming_callback"] = _deserialize_callback_handler(serialized_callback_handler)
         return default_from_dict(cls, data)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -373,7 +379,7 @@ class ChatHuggingFaceRemoteGenerator:
 
         # check generation kwargs given as parameters to override the default ones
         additional_params = ["n", "stop_words"]
-        check_generation_params(generation_kwargs, additional_params)
+        _check_generation_params(generation_kwargs, additional_params)
 
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **generation_kwargs}

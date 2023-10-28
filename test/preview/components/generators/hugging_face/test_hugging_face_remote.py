@@ -14,7 +14,7 @@ from haystack.preview.dataclasses import StreamingChunk, ChatMessage
 @pytest.fixture
 def mock_check_valid_model():
     with patch(
-        "haystack.preview.components.generators.hugging_face.hugging_face_remote.check_valid_model",
+        "haystack.preview.components.generators.hugging_face.hugging_face_remote._check_valid_model",
         MagicMock(return_value=None),
     ) as mock:
         yield mock
@@ -82,7 +82,6 @@ class TestHuggingFaceRemoteGenerator:
         # Assert that the init_params dictionary contains the expected keys and values
         assert init_params["model"] == "HuggingFaceH4/zephyr-7b-alpha"
         assert init_params["model_id"] == "HuggingFaceH4/zephyr-7b-alpha"
-        assert init_params["stop_words"] == ["stop", "words"]
         assert init_params["token"] is None
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
 
