@@ -143,6 +143,7 @@ class HuggingFaceRemoteGenerator:
             self,
             model=self.client.model,
             model_id=self.model_id,
+            token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             stop_words=self.generation_kwargs.get("stop_sequences", []),
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
@@ -167,64 +168,72 @@ class HuggingFaceRemoteGenerator:
         generation_kwargs.setdefault("stop_sequences", []).extend(generation_kwargs.pop("stop_words", []))
 
         if self.tokenizer is None:
-            raise ValueError("Please call warmup() before running inference.")
+            raise RuntimeError("Please call warm_up() before running LLM inference.")
+
+        prompt_token_count = len(self.tokenizer.encode(prompt, add_special_tokens=False))
 
         if self.streaming_callback:
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
 
-            res_chunk: Iterable[TextGenerationStreamResponse] = self.client.text_generation(
-                prompt, details=True, stream=True, **generation_kwargs
-            )
-            chunks: List[StreamingChunk] = []
-            # pylint: disable=not-an-iterable
-            for chunk in res_chunk:
-                token: Token = chunk.token
-                if token.special:
-                    continue
-                chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
-                stream_chunk = StreamingChunk(token.text, chunk_metadata)
-                chunks.append(stream_chunk)
-                self.streaming_callback(stream_chunk)
-            prompt_tokens_length = len(self.tokenizer.encode(prompt, add_special_tokens=False))
-            metadata = {
-                "finish_reason": chunks[-1].metadata.get("finish_reason", None),
-                "model": self.client.model,
-                "usage": {
-                    "completion_tokens": chunks[-1].metadata.get("generated_tokens", 0),
-                    "prompt_tokens": prompt_tokens_length,
-                    "total_tokens": prompt_tokens_length + chunks[-1].metadata.get("generated_tokens", 0),
-                },
-            }
-            return {"replies": ["".join([chunk.content for chunk in chunks])], "metadata": [metadata]}
+            return self._run_streaming(prompt, prompt_token_count, generation_kwargs)
         else:
-            responses: List[str] = []
-            all_metadata: List[Dict[str, Any]] = []
-            for _i in range(num_responses):
-                tgr: TextGenerationResponse = self.client.text_generation(prompt, details=True, **generation_kwargs)
-                prompt_token_count = len(self.tokenizer.encode(prompt, add_special_tokens=False))
-                all_metadata.append(
-                    {
-                        "model": self.client.model,
-                        "index": _i,
-                        "finish_reason": tgr.details.finish_reason.value,
-                        "usage": {
-                            "completion_tokens": len(tgr.details.tokens),
-                            "prompt_tokens": prompt_token_count,
-                            "total_tokens": prompt_token_count + len(tgr.details.tokens),
-                        },
-                    }
-                )
-                responses.append(tgr.generated_text)
-            return {"replies": responses, "metadata": all_metadata}
+            return self._run_non_streaming(prompt, prompt_token_count, num_responses, generation_kwargs)
+
+    def _run_streaming(self, prompt: str, prompt_token_count: int, generation_kwargs: Dict[str, Any]):
+        res_chunk: Iterable[TextGenerationStreamResponse] = self.client.text_generation(
+            prompt, details=True, stream=True, **generation_kwargs
+        )
+        chunks: List[StreamingChunk] = []
+        # pylint: disable=not-an-iterable
+        for chunk in res_chunk:
+            token: Token = chunk.token
+            if token.special:
+                continue
+            chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
+            stream_chunk = StreamingChunk(token.text, chunk_metadata)
+            chunks.append(stream_chunk)
+            self.streaming_callback(stream_chunk)  # type: ignore # guaranteed non-None by if statement above
+        metadata = {
+            "finish_reason": chunks[-1].metadata.get("finish_reason", None),
+            "model": self.client.model,
+            "usage": {
+                "completion_tokens": chunks[-1].metadata.get("generated_tokens", 0),
+                "prompt_tokens": prompt_token_count,
+                "total_tokens": prompt_token_count + chunks[-1].metadata.get("generated_tokens", 0),
+            },
+        }
+        return {"replies": ["".join([chunk.content for chunk in chunks])], "metadata": [metadata]}
+
+    def _run_non_streaming(
+        self, prompt: str, prompt_token_count: int, num_responses: int, generation_kwargs: Dict[str, Any]
+    ):
+        responses: List[str] = []
+        all_metadata: List[Dict[str, Any]] = []
+        for _i in range(num_responses):
+            tgr: TextGenerationResponse = self.client.text_generation(prompt, details=True, **generation_kwargs)
+            all_metadata.append(
+                {
+                    "model": self.client.model,
+                    "index": _i,
+                    "finish_reason": tgr.details.finish_reason.value,
+                    "usage": {
+                        "completion_tokens": len(tgr.details.tokens),
+                        "prompt_tokens": prompt_token_count,
+                        "total_tokens": prompt_token_count + len(tgr.details.tokens),
+                    },
+                }
+            )
+            responses.append(tgr.generated_text)
+        return {"replies": responses, "metadata": all_metadata}
 
 
 class ChatHuggingFaceRemoteGenerator:
     """
-    ChatHuggingFaceRemoteGenerator inferences remote Hugging Face chat models for text generation. It is designed to work
-    with any HuggingFace inference endpoint (https://huggingface.co/inference-endpoints) as well as models deployed
+    ChatHuggingFaceRemoteGenerator inferences remote Hugging Face chat models for text generation. It is designed to
+    work with any HuggingFace inference endpoint (https://huggingface.co/inference-endpoints) as well as models deployed
     with the Text Generation Inference (TGI) framework (https://github.com/huggingface/text-generation-inference).
-    It can also use TGI based models on the rate-limited tier called Inference API (https://huggingface.co/inference-api).
+    It can also use TGI models on the rate-limited tier called Inference API (https://huggingface.co/inference-api).
     The list of available models can be viewed with the command:
     ```
     wget -qO- https://api-inference.huggingface.co/framework/text-generation-inference | grep chat
@@ -263,10 +272,8 @@ class ChatHuggingFaceRemoteGenerator:
                     "If model is a URL, you must provide a HuggingFace model_id (e.g. meta-llama/Llama-2-7b-chat-hf)"
                 )
             check_valid_model(model_id, token)
-            self.tokenizer = AutoTokenizer.from_pretrained(model_id, token=token)
         else:
             check_valid_model(model, token)
-            self.tokenizer = AutoTokenizer.from_pretrained(model, token=token)
 
         # handle generation kwargs
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
@@ -305,6 +312,7 @@ class ChatHuggingFaceRemoteGenerator:
             self,
             model=self.client.model,
             model_id=self.model_id,
+            token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             stop_words=self.generation_kwargs.get("stop_sequences", []),
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
@@ -330,61 +338,70 @@ class ChatHuggingFaceRemoteGenerator:
         generation_kwargs.setdefault("stop_sequences", []).extend(generation_kwargs.pop("stop_words", []))
 
         if self.tokenizer is None:
-            raise ValueError("Please call warmup() before running inference.")
+            raise RuntimeError("Please call warm_up() before running LLM inference.")
 
         # apply chat template to messages to get string prompt
         prepared_prompt: str = self.tokenizer.apply_chat_template(messages, tokenize=False)
+        prompt_token_count: int = len(self.tokenizer.encode(prepared_prompt, add_special_tokens=False))
 
         if self.streaming_callback:
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
 
-            res: Iterable[TextGenerationStreamResponse] = self.client.text_generation(
-                prepared_prompt, stream=True, details=True, **generation_kwargs
+            return self._run_streaming(prepared_prompt, prompt_token_count, generation_kwargs)
+        else:
+            return self._run_non_streaming(prepared_prompt, prompt_token_count, num_responses, generation_kwargs)
+
+    def _run_streaming(
+        self, prepared_prompt: str, prompt_token_count: int, generation_kwargs: Dict[str, Any]
+    ) -> Dict[str, List[ChatMessage]]:
+        res: Iterable[TextGenerationStreamResponse] = self.client.text_generation(
+            prepared_prompt, stream=True, details=True, **generation_kwargs
+        )
+        chunks: List[StreamingChunk] = []
+        # pylint: disable=not-an-iterable
+        for chunk in res:
+            token: Token = chunk.token
+            if token.special:
+                continue
+            chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
+            stream_chunk = StreamingChunk(token.text, chunk_metadata)
+            self.streaming_callback(stream_chunk)  # type: ignore # guaranteed non-None by if statement above
+            chunks.append(stream_chunk)
+        message = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
+        message.metadata.update(
+            {
+                "finish_reason": chunks[-1].metadata.get("finish_reason", None),
+                "model": self.client.model,
+                "usage": {
+                    "completion_tokens": chunks[-1].metadata.get("generated_tokens", 0),
+                    "prompt_tokens": prompt_token_count,
+                    "total_tokens": prompt_token_count + chunks[-1].metadata.get("generated_tokens", 0),
+                },
+            }
+        )
+        return {"replies": [message]}
+
+    def _run_non_streaming(
+        self, prepared_prompt: str, prompt_token_count: int, num_responses: int, generation_kwargs: Dict[str, Any]
+    ) -> Dict[str, List[ChatMessage]]:
+        chat_messages: List[ChatMessage] = []
+        for _i in range(num_responses):
+            tgr: TextGenerationResponse = self.client.text_generation(
+                prepared_prompt, details=True, **generation_kwargs
             )
-            chunks: List[StreamingChunk] = []
-            # pylint: disable=not-an-iterable
-            for chunk in res:
-                token: Token = chunk.token
-                if token.special:
-                    continue
-                chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
-                stream_chunk = StreamingChunk(token.text, chunk_metadata)
-                self.streaming_callback(stream_chunk)
-                chunks.append(stream_chunk)
-            prompt_tokens_length = len(self.tokenizer.encode(prepared_prompt, add_special_tokens=False))
-            message = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
+            message = ChatMessage.from_assistant(tgr.generated_text)
             message.metadata.update(
                 {
-                    "finish_reason": chunks[-1].metadata.get("finish_reason", None),
+                    "finish_reason": tgr.details.finish_reason.value,
+                    "index": _i,
                     "model": self.client.model,
                     "usage": {
-                        "completion_tokens": chunks[-1].metadata.get("generated_tokens", 0),
-                        "prompt_tokens": prompt_tokens_length,
-                        "total_tokens": prompt_tokens_length + chunks[-1].metadata.get("generated_tokens", 0),
+                        "completion_tokens": len(tgr.details.tokens),
+                        "prompt_tokens": prompt_token_count,
+                        "total_tokens": prompt_token_count + len(tgr.details.tokens),
                     },
                 }
             )
-            return {"replies": [message]}
-        else:
-            chat_messages: List[ChatMessage] = []
-            for _i in range(num_responses):
-                tgr: TextGenerationResponse = self.client.text_generation(
-                    prepared_prompt, details=True, **generation_kwargs
-                )
-                prompt_token_count = len(self.tokenizer.encode(prepared_prompt, add_special_tokens=False))
-                message = ChatMessage.from_assistant(tgr.generated_text)
-                message.metadata.update(
-                    {
-                        "finish_reason": tgr.details.finish_reason.value,
-                        "index": _i,
-                        "model": self.client.model,
-                        "usage": {
-                            "completion_tokens": len(tgr.details.tokens),
-                            "prompt_tokens": prompt_token_count,
-                            "total_tokens": prompt_token_count + len(tgr.details.tokens),
-                        },
-                    }
-                )
-                chat_messages.append(message)
-            return {"replies": chat_messages}
+            chat_messages.append(message)
+        return {"replies": chat_messages}

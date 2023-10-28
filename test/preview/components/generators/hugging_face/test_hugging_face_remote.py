@@ -2,6 +2,7 @@ from unittest.mock import patch, MagicMock, Mock
 
 import pytest
 from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, Token, StreamDetails, FinishReason
+from huggingface_hub.utils import RepositoryNotFoundError
 
 from haystack.preview.components.generators.hugging_face.hugging_face_remote import (
     HuggingFaceRemoteGenerator,
@@ -56,6 +57,43 @@ class TestHuggingFaceRemoteGenerator:
         assert generator.tokenizer is None
         assert generator.client is not None
         assert generator.streaming_callback == streaming_callback
+
+    @pytest.mark.unit
+    def test_to_dict(self, mock_check_valid_model, mock_auto_tokenizer):
+        # Initialize the HuggingFaceRemoteGenerator object with valid parameters
+        generator = HuggingFaceRemoteGenerator(
+            model="HuggingFaceH4/zephyr-7b-alpha",
+            model_id="HuggingFaceH4/zephyr-7b-alpha",
+            token="token",
+            generation_kwargs={"n": 5},
+            stop_words=["stop", "words"],
+            streaming_callback=lambda x: x,
+        )
+
+        # Call the to_dict method
+        result = generator.to_dict()
+        init_params = result["init_parameters"]
+
+        # Assert that the init_params dictionary contains the expected keys and values
+        assert init_params["model"] == "HuggingFaceH4/zephyr-7b-alpha"
+        assert init_params["model_id"] == "HuggingFaceH4/zephyr-7b-alpha"
+        assert init_params["stop_words"] == ["stop", "words"]
+        assert init_params["token"] is None
+        assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
+
+    @pytest.mark.unit
+    def test_initialize_with_url_for_model_without_model_id(self, mock_check_valid_model):
+        # When model is a url, model_id must be provided
+        model = "https://huggingface.co/HuggingFaceH4/zephyr-7b-alpha"
+        model_id = None
+
+        with pytest.raises(ValueError):
+            HuggingFaceRemoteGenerator(model=model, model_id=model_id)
+
+        # but also if we provide invalid model_id
+        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
+        with pytest.raises(RepositoryNotFoundError):
+            HuggingFaceRemoteGenerator(model=model, model_id="invalid_model_id")
 
     @pytest.mark.unit
     def test_generate_text_response_with_valid_prompt_and_generation_parameters(
@@ -293,6 +331,42 @@ class TestChatHuggingFaceRemoteGenerator:
         assert generator.tokenizer is not None
         assert generator.client is not None
         assert generator.streaming_callback == streaming_callback
+
+    @pytest.mark.unit
+    def test_to_dict(self, mock_check_valid_model, mock_auto_tokenizer):
+        # Initialize the ChatHuggingFaceRemoteGenerator object with valid parameters
+        generator = ChatHuggingFaceRemoteGenerator(
+            model="NousResearch/Llama-2-7b-chat-hf",
+            token="token",
+            generation_kwargs={"n": 5},
+            stop_words=["stop", "words"],
+            streaming_callback=lambda x: x,
+        )
+
+        # Call the to_dict method
+        result = generator.to_dict()
+        init_params = result["init_parameters"]
+
+        # Assert that the init_params dictionary contains the expected keys and values
+        assert init_params["model"] == "NousResearch/Llama-2-7b-chat-hf"
+        assert init_params["model_id"] == "NousResearch/Llama-2-7b-chat-hf"
+        assert init_params["stop_words"] == ["stop", "words"]
+        assert init_params["token"] is None
+        assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
+
+    @pytest.mark.unit
+    def test_initialize_with_url_for_model_without_model_id(self, mock_check_valid_model):
+        # When model is a url, model_id must be provided
+        model = "https://some_chat_model.com"
+        model_id = None
+
+        with pytest.raises(ValueError):
+            ChatHuggingFaceRemoteGenerator(model=model, model_id=model_id)
+
+        # but also if we provide invalid model_id
+        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
+        with pytest.raises(RepositoryNotFoundError):
+            ChatHuggingFaceRemoteGenerator(model=model, model_id="invalid_model_id")
 
     @pytest.mark.unit
     def test_generate_text_response_with_valid_prompt_and_generation_parameters(
