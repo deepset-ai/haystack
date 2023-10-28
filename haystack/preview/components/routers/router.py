@@ -124,7 +124,7 @@ class Router:
         """
         local_vars = {context_var: kwargs[context_var] for context_var in self.routing_variables}
         runtime = Interpreter(minimal=True, use_numpy=False, user_symbols=local_vars, max_statement_length=100)
-        for i, route_directive in enumerate(self.routes):
+        for route_directive in self.routes:
             try:
                 result = runtime.eval(route_directive["condition"])
             except Exception as e:
