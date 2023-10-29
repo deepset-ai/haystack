@@ -3,11 +3,7 @@ import json
 from typing import Callable, Any, List
 
 from haystack.preview import component
-
-
-# TODO remove this once we have a proper ChatMessage class
-class ChatMessage:
-    pass
+from haystack.preview.dataclasses import ChatMessage
 
 
 @component
