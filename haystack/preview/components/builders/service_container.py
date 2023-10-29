@@ -20,14 +20,16 @@ class ServiceContainer:
     def __init__(self, service_instance: Any):
         self.service_instance = service_instance
 
-    def run(self, message: ChatMessage):
+    def run(self, messages: List[ChatMessage]):
         """
         Receives a ChatMessage and calls the corresponding method on the given service instance.
 
 
-        :param message: The message to process.
+        :param messages: The message to process.
         :return: The result of the method call.
         """
+        # last message is the function call
+        message = messages[-1]
         function_name = message.content["name"]
         function_args = json.loads(message.content["arguments"])
 
@@ -36,7 +38,7 @@ class ServiceContainer:
         if method is not None and callable(method):
             # pack arguments
             invocation_args = dict(function_args) if function_args else {}
-            return method(**invocation_args)
+            return {"result": method(**invocation_args), "function_name": function_name}
         else:
             raise ValueError(f"{function_name} is not a method of {self.service_instance.__class__.__name__}")
 
@@ -85,7 +87,7 @@ class ServiceContainer:
             if not arg_annotation:
                 raise ValueError(f"No type annotation for parameter {arg} in function {func.__name__}")
 
-            param_info = {"type": str(arg_annotation).lower(), "description": ""}  # Default to empty description
+            param_info = {"type": self.get_typename(arg_annotation), "description": ""}  # Default to empty description
 
             # Attempt to extract parameter description from docstring
             param_doc = f":param {arg}:"
@@ -124,3 +126,10 @@ class ServiceContainer:
             json_repr = self.generate_description(func)
             descriptions.append(json.loads(json_repr))
         return descriptions
+
+    def get_typename(self, obj: Any):
+        type_name_map = {
+            "str": "string",
+            # add more types here
+        }
+        return type_name_map.get(obj.__name__, obj.__name__)
