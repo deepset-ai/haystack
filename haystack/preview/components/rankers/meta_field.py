@@ -46,7 +46,9 @@ class MetaFieldRanker:
                 0.5 content and metadata field have the same impact.
                 1 means sorting only by metadata field, highest value comes first.
         :param top_k: The maximum number of documents to return per query.
-        :param ranking_mode
+        :param ranking_mode: The mode used to combine retriever and recentness.
+                Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
+                Make sure to use 'score' mode only with retrievers/rankers that give back OK score in range [0,1].
         """
 
         self.metadata_field = metadata_field
@@ -76,6 +78,9 @@ class MetaFieldRanker:
             )
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize object to a dictionary.
+        """
         return default_to_dict(
             self,
             metadata_field=self.metadata_field,
@@ -86,6 +91,16 @@ class MetaFieldRanker:
 
     @component.output_types(documents=List[Document])
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+        """
+        This method is used to rank a list of documents based on the selected metadata field by:
+        1. Sorting the documents by the metadata field in descending order.
+        2. Merging the scores from the metadata field with the scores from the previous component according to the strategy and weight provided.
+        3. Returning the top-k documents.
+
+        :param query: Not used in practice (so can be left blank), as this ranker does not perform sorting based on semantic closeness of documents to the query.
+        :param documents: Documents provided for ranking.
+        :param top_k: (optional) How many documents to return at the end. If not provided, all documents will be returned.
+        """
         if not documents:
             return {"documents": []}
 
