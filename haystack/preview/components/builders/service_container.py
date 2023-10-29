@@ -20,6 +20,7 @@ class ServiceContainer:
     def __init__(self, service_instance: Any):
         self.service_instance = service_instance
 
+    @component.output_types(messages=List[ChatMessage])
     def run(self, messages: List[ChatMessage]):
         """
         Receives a ChatMessage and calls the corresponding method on the given service instance.
@@ -30,15 +31,17 @@ class ServiceContainer:
         """
         # last message is the function call
         message = messages[-1]
-        function_name = message.content["name"]
-        function_args = json.loads(message.content["arguments"])
+        payload = json.loads(message.content)
+        function_name = payload["name"]
+        function_args = json.loads(payload["arguments"])
 
         # reflectively call the function
         method = getattr(self.service_instance, function_name, None)
         if method is not None and callable(method):
             # pack arguments
             invocation_args = dict(function_args) if function_args else {}
-            return {"result": method(**invocation_args), "function_name": function_name}
+            invocation_result = method(**invocation_args)
+            return {"messages": messages + [ChatMessage.from_function(str(invocation_result), function_name)]}
         else:
             raise ValueError(f"{function_name} is not a method of {self.service_instance.__class__.__name__}")
 
