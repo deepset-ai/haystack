@@ -221,8 +221,7 @@ jobs:
     needs: unit-tests
     runs-on: macos-latest-xl
     env:
-      PYTORCH_MPS_HIGH_WATERMARK_RATIO: 0.0
-      USE_MPS: 0
+      HAYSTACK_MPS_ENABLED : false
     steps:
       - uses: actions/checkout@v4
 

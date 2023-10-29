@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from pathlib import Path
+import os
 
 import numpy as np
 import pytest
@@ -707,7 +708,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
-    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available() and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false":
         device = torch.device("mps")
     else:
         device = torch.device("cpu")
@@ -755,7 +756,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
-    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available() and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false":
         device = torch.device("mps")
     else:
         device = torch.device("cpu")
@@ -883,7 +884,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
-    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available() and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false":
         device = torch.device("mps")
     else:
         device = torch.device("cpu")

@@ -236,7 +236,7 @@ def get_or_create_env_meta_data() -> Dict[str, Any]:
     from haystack.telemetry import HAYSTACK_EXECUTION_CONTEXT
 
     global env_meta_data  # pylint: disable=global-statement
-    has_mps = hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+    has_mps = hasattr(torch.backends, "mps") and torch.backends.mps.is_available() and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false":
     if not env_meta_data:
         env_meta_data = {
             "os_version": platform.release(),

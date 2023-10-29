@@ -106,7 +106,7 @@ def collect_static_system_specs() -> Dict[str, Any]:
 
     try:
         torch_import.check()
-        has_mps = hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+        has_mps = hasattr(torch.backends, "mps") and torch.backends.mps.is_available() and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false":
         specs.update(
             {
                 "libraries.torch": torch.__version__,

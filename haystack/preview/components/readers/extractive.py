@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 import math
 import warnings
+import os
 
 from haystack.preview import component, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
@@ -111,7 +112,7 @@ class ExtractiveReader:
         if self.model is None:
             if torch.cuda.is_available():
                 self.device = self.device or "cuda:0"
-            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available() and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false":
                 self.device = self.device or "mps:0"
             else:
                 self.device = self.device or "cpu:0"
