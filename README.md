@@ -9,7 +9,7 @@
 | Meta    | ![Discord](https://img.shields.io/discord/993534733298450452?logo=discord) ![Twitter Follow](https://img.shields.io/twitter/follow/deepset_ai)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 </div>
 
-[Haystack](https://haystack.deepset.ai/) is an end-to-end NLP framework that enables you to build applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform question answering, answer generation, semantic document search, or build tools that are capable of complex decision-making and query resolution, you can use the state-of-the-art NLP models with Haystack to build end-to-end NLP applications solving your use case.
+[Haystack](https://haystack.deepset.ai/) is an end-to-end NLP framework that enables you to build applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform question answering, answer generation, semantic document search or build tools that are capable of complex decision-making and query resolution, you can use  state-of-the-art NLP models with Haystack to build end-to-end NLP applications solving your use case.
 
 ## Quickstart
 
@@ -50,7 +50,7 @@ result = pipeline.run(query="Who is the father of Arya Stark?")
 print_answers(result, details="medium")
 ```
 
-The output of the pipeline will reference the documents used to generate the answer:
+The output of the pipeline will reference the documents used to generate the answer as:
 
 ```
 'Query: Who is the father of Arya Stark?'
@@ -63,9 +63,9 @@ Congratulations, you have just built your first Haystack app!
 
 ## Core Concepts
 
-🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/docs/pipelines):** This is the standard Haystack structure that builds on top of your data to perform various NLP tasks such as retrieval augmented generation, question answering and more. The data in a Pipeline flows from one Node to the next. You define how Nodes interact with each other, and how one Node pushes data to the next.
+🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/docs/pipelines):** This is the standard Haystack structure that builds on top of your data to perform various NLP tasks such as retrieval augmented generation, question answering and more. The data in a Pipeline flows from one Node to the next. You define how Nodes interact with each other and how one Node pushes data to the next.
 
-An example pipeline would consist of one `Retriever` Node and one `PromptNode`. When the pipeline runs with a query, the Retriever first retrieves the relevant context to the query from your data, and then the PromptNode uses an LLM to generate the final answer.
+An example pipeline would consist of one `Retriever` Node and one `PromptNode`. When the pipeline runs with a query, the Retriever first retrieves the relevant context to the query from your data and then the PromptNode uses an LLM to generate the final answer.
 
 ⚛️ **[Nodes](https://docs.haystack.deepset.ai/docs/nodes_overview):** Each Node achieves one thing. Such as preprocessing documents, retrieving documents, using language models to answer questions and so on.
 
