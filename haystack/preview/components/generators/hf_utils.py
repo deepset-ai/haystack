@@ -24,7 +24,7 @@ def check_generation_params(kwargs: Dict[str, Any], additional_accepted_params: 
         unknown_params = set(kwargs.keys()) - accepted_params
         if unknown_params:
             raise ValueError(
-                f"Unknown text generation parameters: {unknown_params}, please provide {accepted_params} only."
+                f"Unknown text generation parameters: {unknown_params}. The valid parameters are: {accepted_params}."
             )
 
 

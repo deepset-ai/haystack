@@ -34,7 +34,7 @@ def test_additional_accepted_params_empty_list():
 
 
 @pytest.mark.unit
-def test_additional_accepted_params_non_empty_list():
+def test_additional_accepted_params_known_parameter():
     # both are valid parameters
     kwargs = {"temperature": 0.8}
     additional_accepted_params = ["max_new_tokens"]
@@ -42,8 +42,9 @@ def test_additional_accepted_params_non_empty_list():
 
 
 @pytest.mark.unit
-def test_additional_accepted_params_valid_invalid():
+def test_additional_accepted_params_unknown_parameter():
     kwargs = {"temperature": 0.8}
     additional_accepted_params = ["valid_param"]
-    # does not raise exception because valid_param is in additional_accepted_params
+    # Although valid_param is not generation param the check_generation_params
+    # does not raise exception because valid_param is passed as additional_accepted_params
     check_generation_params(kwargs, additional_accepted_params)
