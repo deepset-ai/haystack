@@ -106,11 +106,16 @@ def collect_static_system_specs() -> Dict[str, Any]:
 
     try:
         torch_import.check()
+        has_mps = (
+            hasattr(torch.backends, "mps")
+            and torch.backends.mps.is_available()
+            and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
+        )
         specs.update(
             {
                 "libraries.torch": torch.__version__,
                 "libraries.cuda": torch.version.cuda if torch.cuda.is_available() else False,
-                "hardware.gpus": torch.cuda.device_count() if torch.cuda.is_available() else 0,
+                "hardware.gpus": torch.cuda.device_count() if torch.cuda.is_available() else 1 if has_mps else 0,
             }
         )
     except ImportError:
