@@ -112,7 +112,11 @@ def initialize_device_settings(
             else:
                 devices_to_use = [torch.device("cuda:0")]
                 n_gpu = 1
-        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available() and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false":
+        elif (
+            hasattr(torch.backends, "mps")
+            and torch.backends.mps.is_available()
+            and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
+        ):
             devices_to_use = [torch.device("mps")]
             n_gpu = 1
         else:
