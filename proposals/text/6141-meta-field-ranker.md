@@ -30,6 +30,7 @@ pipeline.add_component(component=InMemoryBM25Retriever(document_store=document_s
 , name="Retriever")
 pipeline.add_component(component=MetaFieldRanker(meta_field="rating"), name="Ranker")
 pipeline.connect("Retriever.documents", "MetaFieldRanker.documents")
+```
 
 # Motivation
 
