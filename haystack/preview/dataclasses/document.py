@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class _BackwardCompatible(type):
     """
-    Metaclass that handles Document backwards compatibility.
+    Metaclass that handles Document backward compatibility.
     """
 
     def __call__(cls, *args, **kwargs):
@@ -35,10 +35,10 @@ class _BackwardCompatible(type):
             del kwargs["content_type"]
 
         # Embedding were stored as NumPy arrays in 1.x, so we convert it to the new type
-        if isinstance(embedding := kwargs.get("embedding", None), numpy.ndarray):
+        if isinstance(embedding := kwargs.get("embedding"), numpy.ndarray):
             kwargs["embedding"] = embedding.tolist()
 
-        # Not used anymore
+        # id_hash_keys is not used anymore
         if "id_hash_keys" in kwargs:
             del kwargs["id_hash_keys"]
 
@@ -47,7 +47,7 @@ class _BackwardCompatible(type):
             # Document fields as metadata.
             metadata = {}
             field_names = [f.name for f in fields(cast(Type[Document], cls))]
-            keys = list(kwargs.keys())
+            keys = list(kwargs.keys())  # get a list of the keys as we'll modify the dict in the loop
             for key in keys:
                 if key in field_names:
                     continue
@@ -69,7 +69,7 @@ class Document(metaclass=_BackwardCompatible):
     :param dataframe: Pandas dataframe with the document's content, if the document contains tabular data.
     :param blob: Binary data associated with the document, if the document has any binary data associated with it.
     :param mime_type: MIME type of the document. Defaults to "text/plain".
-    :param metadata: Additional custom metadata for the document. Must be JSON serializable.
+    :param metadata: Additional custom metadata for the document. Must be JSON-serializable.
     :param score: Score of the document. Used for ranking, usually assigned by retrievers.
     :param embedding: Vector representation of the document.
     """
@@ -125,7 +125,7 @@ class Document(metaclass=_BackwardCompatible):
     def to_dict(self, flatten=True) -> Dict[str, Any]:
         """
         Converts Document into a dictionary.
-        `dataframe` and `blob` fields are converted to JSON-serialisable types.
+        `dataframe` and `blob` fields are converted to JSON-serializable types.
 
         :param flatten: Whether to flatten `metadata` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
         """
@@ -146,19 +146,19 @@ class Document(metaclass=_BackwardCompatible):
         Creates a new Document object from a dictionary.
         `dataframe` and `blob` fields are converted to their original types.
         """
-        if (dataframe := data.get("dataframe", None)) is not None:
+        if (dataframe := data.get("dataframe")) is not None:
             data["dataframe"] = pandas.read_json(dataframe)
-        if blob := data.get("blob", None):
+        if blob := data.get("blob"):
             data["blob"] = bytes(blob)
         return cls(**data)
 
     @property
     def content_type(self):
         """
-        Returns the type of the content type of the document.
-        This is necessary to keep backwards compatibility with 1.x.
-        A ValueError will be raised is either both `text` and `dataframe` fields are set
-        or if neither of them is set.
+        Returns the type of the content for the document.
+        This is necessary to keep backward compatibility with 1.x.
+        A ValueError will be raised if both `text` and `dataframe` fields are set
+        or both are missing.
         """
         if self.text is not None and self.dataframe is not None:
             raise ValueError("Both text and dataframe are set.")
