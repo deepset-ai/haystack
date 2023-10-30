@@ -1481,19 +1481,21 @@ class EmbeddingRetriever(DenseRetriever):
                              provided, it will be inferred automatically from the model configuration files.
                              Options:
 
-                             - ``'farm'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
-                             - ``'transformers'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
-                             - ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
-                             - ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
-                             - ``'openai'``: (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
-                             - ``'cohere'``: (will use `_CohereEmbeddingEncoder` as embedding encoder)
+        1. `farm` : (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+        2. `transformers` : (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+        3. `sentence_transformers` : (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
+        4. `retribert` : (will use `_RetribertEmbeddingEncoder` as embedding encoder)
+        5. `openai` : (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
+        6. `cohere` : (will use `_CohereEmbeddingEncoder` as embedding encoder)
+
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options:
 
-                                 - ``'cls_token'`` (sentence vector)
-                                 - ``'reduce_mean'`` (sentence vector)
-                                 - ``'reduce_max'`` (sentence vector)
-                                 - ``'per_token'`` (individual token vectors)
+        1. `cls_token` (sentence vector)
+        2. `reduce_mean` (sentence vector)
+        3. `reduce_max` (sentence vector)
+        4. `per_token` (individual token vectors)
+
         :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
