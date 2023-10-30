@@ -110,7 +110,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see see OpenAI
         [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         """
-        
+
         warnings.warn(
             "`OpenAIAnswerGenerator component is deprecated and will be removed in future versions. Use `PromptNode` "
             "instead of `OpenAIAnswerGenerator`.",
