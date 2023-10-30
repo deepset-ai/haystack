@@ -41,7 +41,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         :param api_key: The Anthropic API key.
         :param kwargs: Additional keyword arguments passed to the underlying model. The list of Anthropic-relevant
         kwargs includes: stop_sequences, temperature, top_p, top_k, and stream. For more details about these kwargs,
-        see Anthropic's [documentation](https://console.anthropic.com/docs/api/reference).
+        see Anthropic's [documentation](https://docs.anthropic.com/claude/reference/complete_post).
         """
         super().__init__(model_name_or_path)
         if not isinstance(api_key, str) or len(api_key) == 0:
