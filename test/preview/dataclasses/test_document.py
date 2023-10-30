@@ -1,12 +1,10 @@
 import json
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from haystack.preview import Document
-from haystack.preview.dataclasses.document import DocumentDecoder, DocumentEncoder
 
 
 @pytest.mark.unit
@@ -34,12 +32,114 @@ def test_document_str(doc, doc_str):
 
 
 @pytest.mark.unit
-def test_init_document_same_meta_as_main_fields():
-    """
-    This is forbidden to prevent later issues with `Document.flatten()`
-    """
-    with pytest.raises(ValueError, match="score"):
-        Document(text="test text", metadata={"score": "10/10"})
+def test_init():
+    doc = Document()
+    assert doc.id == "eaefbcfb6d4274ef83b7b4726d5df854060b6079d12bac65e8ed3feb99d9f69e"
+    assert doc.text == None
+    assert doc.dataframe == None
+    assert doc.blob == None
+    assert doc.mime_type == "text/plain"
+    assert doc.metadata == {}
+    assert doc.metadata == {}
+    assert doc.score == None
+    assert doc.embedding == None
+
+
+@pytest.mark.unit
+def test_init_with_parameters():
+    blob = b"some bytes"
+    doc = Document(
+        text="test text",
+        dataframe=pd.DataFrame([0]),
+        blob=blob,
+        mime_type="text/markdown",
+        metadata={"text": "test text"},
+        score=0.812,
+        embedding=[0.1, 0.2, 0.3],
+    )
+    assert doc.id == "ec92455f3f4576d40031163c89b1b4210b34ea1426ee0ff68ebed86cb7ba13f8"
+    assert doc.text == "test text"
+    assert doc.dataframe.equals(pd.DataFrame([0]))
+    assert doc.blob == blob
+    assert doc.mime_type == "text/markdown"
+    assert doc.metadata == {"text": "test text"}
+    assert doc.score == 0.812
+    assert doc.embedding == [0.1, 0.2, 0.3]
+
+
+@pytest.mark.unit
+def test_init_with_legacy_fields():
+    doc = Document(
+        content="test text", content_type="text", id_hash_keys=["content"], score=0.812, embedding=[0.1, 0.2, 0.3]
+    )
+    assert doc.id == "c7f3af4f4010b88e830e4dd4f93060baeea747518642293db6325e6563a1ce37"
+    assert doc.text == "test text"
+    assert doc.dataframe == None
+    assert doc.blob == None
+    assert doc.mime_type == "text/plain"
+    assert doc.metadata == {}
+    assert doc.score == 0.812
+    assert doc.embedding == [0.1, 0.2, 0.3]
+
+
+@pytest.mark.unit
+def test_init_with_legacy_field_and_flat_metadata():
+    doc = Document(
+        content="test text",
+        content_type="text",
+        id_hash_keys=["content"],
+        score=0.812,
+        embedding=[0.1, 0.2, 0.3],
+        date="10-10-2023",
+        type="article",
+    )
+    assert doc.id == "523cc14d7d8ce5e2fc69940969c40c5860a621e17f1c61eaa2655356519ac36d"
+    assert doc.text == "test text"
+    assert doc.dataframe == None
+    assert doc.blob == None
+    assert doc.mime_type == "text/plain"
+    assert doc.metadata == {"date": "10-10-2023", "type": "article"}
+    assert doc.score == 0.812
+    assert doc.embedding == [0.1, 0.2, 0.3]
+
+
+@pytest.mark.unit
+def test_init_with_flat_metadata():
+    blob = b"some bytes"
+    doc = Document(
+        text="test text",
+        dataframe=pd.DataFrame([0]),
+        blob=blob,
+        mime_type="text/markdown",
+        score=0.812,
+        embedding=[0.1, 0.2, 0.3],
+        date="10-10-2023",
+        type="article",
+    )
+    assert doc.id == "c6212ad7bb513c572367e11dd12fd671911a1a5499e3d31e4fe3bda7e87c0641"
+    assert doc.text == "test text"
+    assert doc.dataframe.equals(pd.DataFrame([0]))
+    assert doc.blob == blob
+    assert doc.mime_type == "text/markdown"
+    assert doc.metadata == {"date": "10-10-2023", "type": "article"}
+    assert doc.score == 0.812
+    assert doc.embedding == [0.1, 0.2, 0.3]
+
+
+@pytest.mark.unit
+def test_init_with_flat_and_non_flat_metadata():
+    with pytest.raises(TypeError):
+        Document(
+            text="test text",
+            dataframe=pd.DataFrame([0]),
+            blob=b"some bytes",
+            mime_type="text/markdown",
+            score=0.812,
+            metadata={"test": 10},
+            embedding=[0.1, 0.2, 0.3],
+            date="10-10-2023",
+            type="article",
+        )
 
 
 @pytest.mark.unit
@@ -75,9 +175,23 @@ def test_equality_with_metadata_with_objects():
 
 
 @pytest.mark.unit
-def test_empty_document_to_dict():
+def test_to_dict():
     doc = Document()
     assert doc.to_dict() == {
+        "id": doc._create_id(),
+        "text": None,
+        "dataframe": None,
+        "blob": None,
+        "mime_type": "text/plain",
+        "score": None,
+        "embedding": None,
+    }
+
+
+@pytest.mark.unit
+def test_to_dict_without_flattening():
+    doc = Document()
+    assert doc.to_dict(flatten=False) == {
         "id": doc._create_id(),
         "text": None,
         "dataframe": None,
@@ -90,12 +204,7 @@ def test_empty_document_to_dict():
 
 
 @pytest.mark.unit
-def test_empty_document_from_dict():
-    assert Document.from_dict({}) == Document()
-
-
-@pytest.mark.unit
-def test_full_document_to_dict():
+def test_to_dict_with_custom_parameters():
     doc = Document(
         text="test text",
         dataframe=pd.DataFrame([10, 20, 30]),
@@ -105,236 +214,160 @@ def test_full_document_to_dict():
         score=0.99,
         embedding=[10, 10],
     )
-    dictionary = doc.to_dict()
 
-    dataframe = dictionary.pop("dataframe")
-    assert dataframe.equals(doc.dataframe)
-
-    blob = dictionary.pop("blob")
-    assert blob == doc.blob
-
-    embedding = dictionary.pop("embedding")
-    assert embedding == doc.embedding
-
-    assert dictionary == {
+    assert doc.to_dict() == {
         "id": doc.id,
         "text": "test text",
+        "dataframe": pd.DataFrame([10, 20, 30]).to_json(),
+        "blob": list(doc.blob),
         "mime_type": "application/pdf",
-        "metadata": {"some": "values", "test": 10},
+        "some": "values",
+        "test": 10,
         "score": 0.99,
+        "embedding": [10, 10],
     }
 
 
 @pytest.mark.unit
-def test_document_with_most_attributes_from_dict():
-    embedding = [10, 10]
-    assert Document.from_dict(
-        {
-            "text": "test text",
-            "dataframe": pd.DataFrame([10, 20, 30]),
-            "blob": b"some bytes",
-            "mime_type": "application/pdf",
-            "metadata": {"some": "values", "test": 10},
-            "score": 0.99,
-            "embedding": embedding,
-        }
-    ) == Document(
+def test_to_dict_with_custom_parameters_without_flattening():
+    doc = Document(
         text="test text",
         dataframe=pd.DataFrame([10, 20, 30]),
         blob=b"some bytes",
         mime_type="application/pdf",
         metadata={"some": "values", "test": 10},
         score=0.99,
-        embedding=embedding,
+        embedding=[10, 10],
     )
+
+    assert doc.to_dict(flatten=False) == {
+        "id": doc.id,
+        "text": "test text",
+        "dataframe": pd.DataFrame([10, 20, 30]).to_json(),
+        "blob": list(doc.blob),
+        "mime_type": "application/pdf",
+        "metadata": {"some": "values", "test": 10},
+        "score": 0.99,
+        "embedding": [10, 10],
+    }
 
 
 @pytest.mark.unit
-def test_empty_document_to_json():
-    doc = Document()
-    assert doc.to_json() == json.dumps(
+def test_from_dict():
+    Document.from_dict({}) == Document()
+
+
+@pytest.mark.unit
+def from_from_dict_with_parameters():
+    blob = b"some bytes"
+    assert Document.from_dict(
         {
-            "id": doc.id,
-            "text": None,
-            "dataframe": None,
-            "mime_type": "text/plain",
-            "metadata": {},
-            "score": None,
-            "embedding": None,
-        }
-    )
-
-
-@pytest.mark.unit
-def test_empty_document_from_json():
-    assert Document.from_json("{}") == Document()
-
-
-@pytest.mark.unit
-def test_full_document_to_json(tmp_path):
-    class TestClass:
-        def __repr__(self):
-            return "<the object>"
-
-    doc_1 = Document(
-        text="test text",
-        dataframe=pd.DataFrame([10, 20, 30]),
-        blob=b"some bytes",
-        mime_type="application/pdf",
-        metadata={"some object": TestClass(), "a path": tmp_path / "test.txt"},
-        score=0.5,
-        embedding=[1, 2, 3, 4],
-    )
-    assert doc_1.to_json() == json.dumps(
-        {
-            "id": doc_1.id,
             "text": "test text",
-            "dataframe": '{"0":{"0":10,"1":20,"2":30}}',
-            "mime_type": "application/pdf",
-            "metadata": {"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
-            "score": 0.5,
-            "embedding": [1, 2, 3, 4],
+            "dataframe": pd.DataFrame([0]).to_json(),
+            "blob": blob,
+            "mime_type": "text/markdown",
+            "metadata": {"text": "test text"},
+            "score": 0.812,
+            "embedding": [0.1, 0.2, 0.3],
         }
+    ) == Document(
+        text="test text",
+        dataframe=pd.DataFrame([0]),
+        blob=blob,
+        mime_type="text/markdown",
+        metadata={"text": "test text"},
+        score=0.812,
+        embedding=[0.1, 0.2, 0.3],
     )
 
 
 @pytest.mark.unit
-def test_full_document_from_json(tmp_path):
-    class TestClass:
-        def __repr__(self):
-            return "'<the object>'"
+def test_from_dict_with_legacy_fields():
+    assert Document.from_dict(
+        {
+            "content": "test text",
+            "content_type": "text",
+            "id_hash_keys": ["content"],
+            "score": 0.812,
+            "embedding": [0.1, 0.2, 0.3],
+        }
+    ) == Document(
+        content="test text", content_type="text", id_hash_keys=["content"], score=0.812, embedding=[0.1, 0.2, 0.3]
+    )
 
-        def __eq__(self, other):
-            return type(self) == type(other)
 
-    doc = Document.from_json(
-        json.dumps(
+def test_from_dict_with_legacy_field_and_flat_metadata():
+    assert Document.from_dict(
+        {
+            "content": "test text",
+            "content_type": "text",
+            "id_hash_keys": ["content"],
+            "score": 0.812,
+            "embedding": [0.1, 0.2, 0.3],
+            "date": "10-10-2023",
+            "type": "article",
+        }
+    ) == Document(
+        content="test text",
+        content_type="text",
+        id_hash_keys=["content"],
+        score=0.812,
+        embedding=[0.1, 0.2, 0.3],
+        date="10-10-2023",
+        type="article",
+    )
+
+
+@pytest.mark.unit
+def test_from_dict_with_flat_metadata():
+    blob = b"some bytes"
+    assert Document.from_dict(
+        {
+            "text": "test text",
+            "dataframe": pd.DataFrame([0]).to_json(),
+            "blob": blob,
+            "mime_type": "text/markdown",
+            "score": 0.812,
+            "embedding": [0.1, 0.2, 0.3],
+            "date": "10-10-2023",
+            "type": "article",
+        }
+    ) == Document(
+        text="test text",
+        dataframe=pd.DataFrame([0]),
+        blob=blob,
+        mime_type="text/markdown",
+        score=0.812,
+        embedding=[0.1, 0.2, 0.3],
+        metadata={"date": "10-10-2023", "type": "article"},
+    )
+
+
+@pytest.mark.unit
+def test_from_dict_with_flat_and_non_flat_metadata():
+    with pytest.raises(TypeError):
+        Document.from_dict(
             {
                 "text": "test text",
-                "dataframe": '{"0":{"0":10,"1":20,"2":30}}',
-                "mime_type": "application/pdf",
-                "metadata": {"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
-                "score": 0.5,
-                "embedding": [1, 2, 3, 4],
+                "dataframe": pd.DataFrame([0]).to_json(),
+                "blob": b"some bytes",
+                "mime_type": "text/markdown",
+                "score": 0.812,
+                "metadata": {"test": 10},
+                "embedding": [0.1, 0.2, 0.3],
+                "date": "10-10-2023",
+                "type": "article",
             }
         )
-    )
-    assert doc == Document(
-        text="test text",
-        dataframe=pd.DataFrame([10, 20, 30]),
-        blob=None,
-        mime_type="application/pdf",
-        # Note the object serialization
-        metadata={"some object": "<the object>", "a path": str((tmp_path / "test.txt").absolute())},
-        score=0.5,
-        embedding=[1, 2, 3, 4],
-    )
 
 
 @pytest.mark.unit
-def test_to_json_custom_encoder():
-    class SerializableTestClass:
-        ...
+def test_content_type():
+    assert Document(text="text").content_type == "text"
+    assert Document(dataframe=pd.DataFrame([0])).content_type == "table"
 
-    class TestEncoder(DocumentEncoder):
-        def default(self, obj):
-            if isinstance(obj, SerializableTestClass):
-                return "<<CUSTOM ENCODING>>"
-            return DocumentEncoder.default(self, obj)
+    with pytest.raises(ValueError):
+        Document().content_type
 
-    doc = Document(text="test text", metadata={"some object": SerializableTestClass()})
-    doc_json = doc.to_json(indent=4, json_encoder=TestEncoder).strip()
-
-    assert doc_json == json.dumps(
-        {
-            "id": doc.id,
-            "text": "test text",
-            "dataframe": None,
-            "mime_type": "text/plain",
-            "metadata": {"some object": "<<CUSTOM ENCODING>>"},
-            "score": None,
-            "embedding": None,
-        },
-        indent=4,
-    )
-
-
-@pytest.mark.unit
-def test_from_json_custom_decoder():
-    class TestClass:
-        def __eq__(self, other):
-            return type(self) == type(other)
-
-    class TestDecoder(DocumentDecoder):
-        def __init__(self, *args, **kwargs):
-            super().__init__(object_hook=self.object_hook)
-
-        def object_hook(self, dictionary):
-            if "metadata" in dictionary:
-                for key, value in dictionary["metadata"].items():
-                    if value == "<<CUSTOM ENCODING>>":
-                        dictionary["metadata"][key] = TestClass()
-            return dictionary
-
-    doc = Document(text="test text", metadata={"some object": TestClass()})
-
-    assert doc == Document.from_json(
-        json.dumps(
-            {
-                "id": doc.id,
-                "text": "test text",
-                "dataframe": None,
-                "mime_type": "text/plain",
-                "metadata": {"some object": "<<CUSTOM ENCODING>>"},
-                "score": None,
-                "embedding": None,
-            }
-        ),
-        json_decoder=TestDecoder,
-    )
-
-
-@pytest.mark.unit
-def test_flatten_document_no_meta():
-    doc = Document(text="test text")
-    assert doc.flatten() == {
-        "id": doc.id,
-        "text": "test text",
-        "dataframe": None,
-        "blob": None,
-        "mime_type": "text/plain",
-        "score": None,
-        "embedding": None,
-    }
-
-
-@pytest.mark.unit
-def test_flatten_document_with_flat_meta():
-    doc = Document(text="test text", metadata={"some-key": "a value", "another-key": "another value!"})
-    assert doc.flatten() == {
-        "id": doc.id,
-        "text": "test text",
-        "dataframe": None,
-        "blob": None,
-        "mime_type": "text/plain",
-        "score": None,
-        "embedding": None,
-        "some-key": "a value",
-        "another-key": "another value!",
-    }
-
-
-@pytest.mark.unit
-def test_flatten_document_with_nested_meta():
-    doc = Document(text="test text", metadata={"some-key": "a value", "nested": {"key": 10, "key2": 50}})
-    assert doc.flatten() == {
-        "id": doc.id,
-        "text": "test text",
-        "dataframe": None,
-        "blob": None,
-        "mime_type": "text/plain",
-        "score": None,
-        "embedding": None,
-        "some-key": "a value",
-        "nested": {"key": 10, "key2": 50},
-    }
+    with pytest.raises(ValueError):
+        Document(text="text", dataframe=pd.DataFrame([0])).content_type
