@@ -52,9 +52,9 @@ class ServiceContainer:
 
         :return: A list of JSON strings representing the descriptions as per OpenAI functional API spec.
         """
-        return self.generate_descriptions(type(self.service_instance))
+        return self._generate_descriptions(type(self.service_instance))
 
-    def extract_description(self, docstring: str) -> str:
+    def _extract_description(self, docstring: str) -> str:
         """
         Extract the description from a docstring.
         """
@@ -67,7 +67,7 @@ class ServiceContainer:
             description_lines.append(line)
         return "\n".join(description_lines).strip()
 
-    def generate_description(self, func: Callable[..., Any]) -> str:
+    def _generate_description(self, func: Callable[..., Any]) -> str:
         """
         Generate a JSON description for a method according to OpenAI functional API spec.
         :param func: The function to generate a description for.
@@ -79,7 +79,7 @@ class ServiceContainer:
         if not docstring:
             raise ValueError(f"No docstring provided for function {func.__name__}")
 
-        description = self.extract_description(docstring)
+        description = self._extract_description(docstring)
 
         parameters = {"type": "object", "properties": {}, "required": []}
 
@@ -90,7 +90,7 @@ class ServiceContainer:
             if not arg_annotation:
                 raise ValueError(f"No type annotation for parameter {arg} in function {func.__name__}")
 
-            param_info = {"type": self.get_typename(arg_annotation), "description": ""}  # Default to empty description
+            param_info = {"type": self._get_typename(arg_annotation), "description": ""}  # Default to empty description
 
             # Attempt to extract parameter description from docstring
             param_doc = f":param {arg}:"
@@ -118,7 +118,7 @@ class ServiceContainer:
 
         return json.dumps(representation, indent=4)
 
-    def generate_descriptions(self, cls: type) -> List[dict]:
+    def _generate_descriptions(self, cls: type) -> List[dict]:
         """
         Generate a list of JSON descriptions for all methods of a class.
         :param cls: The class to generate descriptions for.
@@ -126,11 +126,11 @@ class ServiceContainer:
         """
         descriptions = []
         for name, func in inspect.getmembers(cls, predicate=inspect.isfunction):
-            json_repr = self.generate_description(func)
+            json_repr = self._generate_description(func)
             descriptions.append(json.loads(json_repr))
         return descriptions
 
-    def get_typename(self, obj: Any):
+    def _get_typename(self, obj: Any):
         type_name_map = {
             "str": "string",
             # add more types here
