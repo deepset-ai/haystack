@@ -1480,7 +1480,7 @@ class EmbeddingRetriever(DenseRetriever):
         :param model_format: Name of framework that was used for saving the model or model type. If no model_format is
                              provided, it will be inferred automatically from the model configuration files.
                              Options:
-        
+
         1. `farm` : (will use `_DefaultEmbeddingEncoder` as embedding encoder)
         2. `transformers` : (will use `_DefaultEmbeddingEncoder` as embedding encoder)
         3. `sentence_transformers` : (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
@@ -1490,12 +1490,12 @@ class EmbeddingRetriever(DenseRetriever):
 
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options:
-                                 
+
         1. `cls_token` (sentence vector)
         2. `reduce_mean` (sentence vector)
         3. `reduce_max` (sentence vector)
         4. `per_token` (individual token vectors)
-        
+
         :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
