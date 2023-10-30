@@ -1,25 +1,12 @@
 from unittest.mock import patch
 import pytest
-from pathlib import Path
-from urllib.error import URLError
-from haystack.nodes.query_classifier import TransformersQueryClassifier, SklearnQueryClassifier
-from ..conftest import fail_at_version
-
-
-@pytest.mark.unit
-@fail_at_version(1, 21)
-def test_sklearnqueryclassifier_deprecation():
-    with pytest.warns(DeprecationWarning):
-        try:
-            SklearnQueryClassifier(Path("fake_model"), Path("fake_vectorizer"))
-        except URLError:
-            pass
+from haystack.nodes.query_classifier import TransformersQueryClassifier
 
 
 @pytest.mark.unit
 def test_query_classifier_initialized_with_token_instead_of_use_auth_token():
     with patch("haystack.nodes.query_classifier.transformers.pipeline") as mock_transformers_pipeline:
-        classifier = TransformersQueryClassifier(task="zero-shot-classification")
+        TransformersQueryClassifier(task="zero-shot-classification")
         assert "token" in mock_transformers_pipeline.call_args.kwargs
         assert "use_auth_token" not in mock_transformers_pipeline.call_args.kwargs
 
@@ -88,7 +75,7 @@ def test_zero_shot_transformers_query_classifier_batch(zero_shot_transformers_qu
 
 def test_transformers_query_classifier_wrong_labels():
     with pytest.raises(ValueError, match="For text-classification, the provided labels must match the model labels"):
-        query_classifier = TransformersQueryClassifier(
+        TransformersQueryClassifier(
             model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
             use_gpu=False,
             task="text-classification",
@@ -98,7 +85,7 @@ def test_transformers_query_classifier_wrong_labels():
 
 def test_transformers_query_classifier_no_labels():
     with pytest.raises(ValueError, match="The labels must be provided"):
-        query_classifier = TransformersQueryClassifier(
+        TransformersQueryClassifier(
             model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
             use_gpu=False,
             task="text-classification",
@@ -108,7 +95,7 @@ def test_transformers_query_classifier_no_labels():
 
 def test_transformers_query_classifier_unsupported_task():
     with pytest.raises(ValueError, match="Task not supported"):
-        query_classifier = TransformersQueryClassifier(
+        TransformersQueryClassifier(
             model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
             use_gpu=False,
             task="summarization",

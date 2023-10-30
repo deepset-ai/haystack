@@ -1,0 +1,6 @@
+---
+preview:
+  - |
+    Rename `MemoryDocumentStore` to `InMemoryDocumentStore`
+    Rename `MemoryBM25Retriever` to `InMemoryBM25Retriever`
+    Rename `MemoryEmbeddingRetriever` to `InMemoryEmbeddingRetriever`

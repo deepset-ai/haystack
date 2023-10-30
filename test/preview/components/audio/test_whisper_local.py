@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
@@ -53,21 +54,6 @@ class TestLocalWhisperTranscriber:
         }
 
     @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "LocalWhisperTranscriber",
-            "init_parameters": {
-                "model_name_or_path": "tiny",
-                "device": "cuda",
-                "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
-            },
-        }
-        transcriber = LocalWhisperTranscriber.from_dict(data)
-        assert transcriber.model_name == "tiny"
-        assert transcriber.device == torch.device("cuda")
-        assert transcriber.whisper_params == {"return_segments": True, "temperature": [0.1, 0.6, 0.8]}
-
-    @pytest.mark.unit
     def test_warmup(self):
         with patch("haystack.preview.components.audio.whisper_local.whisper") as mocked_whisper:
             transcriber = LocalWhisperTranscriber(model_name_or_path="large-v2")
@@ -93,7 +79,7 @@ class TestLocalWhisperTranscriber:
         }
         results = comp.run(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
         expected = Document(
-            content="test transcription",
+            text="test transcription",
             metadata={
                 "audio_file": SAMPLES_PATH / "audio" / "this is the content of the document.wav",
                 "other_metadata": ["other", "meta", "data"],
@@ -113,7 +99,7 @@ class TestLocalWhisperTranscriber:
             audio_files=[str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute())]
         )
         expected = Document(
-            content="test transcription",
+            text="test transcription",
             metadata={
                 "audio_file": str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute()),
                 "other_metadata": ["other", "meta", "data"],
@@ -131,7 +117,7 @@ class TestLocalWhisperTranscriber:
         }
         results = comp.transcribe(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
         expected = Document(
-            content="test transcription",
+            text="test transcription",
             metadata={
                 "audio_file": SAMPLES_PATH / "audio" / "this is the content of the document.wav",
                 "other_metadata": ["other", "meta", "data"],
@@ -151,7 +137,36 @@ class TestLocalWhisperTranscriber:
             audio_files=[open(SAMPLES_PATH / "audio" / "this is the content of the document.wav", "rb")]
         )
         expected = Document(
-            content="test transcription",
+            text="test transcription",
             metadata={"audio_file": "<<binary stream>>", "other_metadata": ["other", "meta", "data"]},
         )
         assert results == [expected]
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
+    def test_whisper_local_transcriber(self, preview_samples_path):
+        comp = LocalWhisperTranscriber(model_name_or_path="medium", whisper_params={"language": "english"})
+        comp.warm_up()
+        output = comp.run(
+            audio_files=[
+                preview_samples_path / "audio" / "this is the content of the document.wav",
+                str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute()),
+                open(preview_samples_path / "audio" / "answer.wav", "rb"),
+            ]
+        )
+        docs = output["documents"]
+        assert len(docs) == 3
+
+        assert docs[0].text.strip().lower() == "this is the content of the document."
+        assert (
+            preview_samples_path / "audio" / "this is the content of the document.wav" == docs[0].metadata["audio_file"]
+        )
+
+        assert docs[1].text.strip().lower() == "the context for this answer is here."
+        assert (
+            str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute())
+            == docs[1].metadata["audio_file"]
+        )
+
+        assert docs[2].text.strip().lower() == "answer."
+        assert docs[2].metadata["audio_file"] == "<<binary stream>>"

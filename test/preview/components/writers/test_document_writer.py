@@ -75,8 +75,8 @@ class TestDocumentWriter:
         mocked_document_store = MagicMock()
         writer = DocumentWriter(mocked_document_store)
         documents = [
-            Document(content="This is the text of a document."),
-            Document(content="This is the text of another document."),
+            Document(text="This is the text of a document."),
+            Document(text="This is the text of another document."),
         ]
 
         writer.run(documents=documents)

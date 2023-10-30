@@ -29,6 +29,10 @@ class BaseImageToText(BaseComponent):
         pass
 
     def run(self, file_paths: Optional[List[str]] = None, documents: Optional[List[Document]] = None):  # type: ignore
+        """
+        :param file_paths: Paths to the images for which you want to generate captions.
+        :param documents: List of image Documents to process into text.
+        """
         if file_paths is None and documents is None:
             raise ValueError("You must either specify documents or image file_paths to process.")
 
@@ -48,4 +52,8 @@ class BaseImageToText(BaseComponent):
     def run_batch(  # type: ignore
         self, file_paths: Optional[List[str]] = None, documents: Optional[List[Document]] = None
     ):
+        """
+        :param file_paths: Paths to the images for which you want to generate captions.
+        :param documents: List of image Documents to process into text.
+        """
         return self.run(file_paths=file_paths, documents=documents)

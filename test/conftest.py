@@ -93,7 +93,7 @@ def fail_at_version(target_major, target_minor):
     of target_major and/or target_minor.
     If the current version has `rc0` set the test won't fail but only issue a warning, this
     is done because we use `rc0` to mark the development version in `main`. If we wouldn't
-    do this tests would continuosly fail in main.
+    do this tests would continuously fail in main.
 
     ```python
     from ..conftest import fail_at_version
@@ -880,6 +880,11 @@ def haystack_openai_config(request, haystack_azure_conf):
 @pytest.fixture
 def samples_path():
     return Path(__file__).parent / "samples"
+
+
+@pytest.fixture
+def sample_txt_file_paths_list(samples_path):
+    return list((samples_path / "docs").glob("*.txt"))
 
 
 @pytest.fixture

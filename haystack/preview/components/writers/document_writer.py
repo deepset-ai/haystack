@@ -19,6 +19,12 @@ class DocumentWriter:
         self.document_store = document_store
         self.policy = policy
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"document_store": type(self.document_store).__name__}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
@@ -44,13 +50,14 @@ class DocumentWriter:
         data["init_parameters"]["policy"] = DuplicatePolicy[data["init_parameters"]["policy"]]
         return default_from_dict(cls, data)
 
+    @component.output_types(documents_written=int)
     def run(self, documents: List[Document], policy: Optional[DuplicatePolicy] = None):
         """
         Run DocumentWriter on the given input data.
 
         :param documents: A list of documents to write to the store.
         :param policy: The policy to use when encountering duplicate documents.
-        :return: None
+        :return: Number of documents written
 
         :raises ValueError: If the specified document store is not found.
         """
@@ -58,4 +65,4 @@ class DocumentWriter:
             policy = self.policy
 
         self.document_store.write_documents(documents=documents, policy=policy)
-        return {}
+        return {"documents_written": len(documents)}

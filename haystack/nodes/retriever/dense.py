@@ -17,7 +17,7 @@ from haystack.errors import HaystackError
 from haystack.schema import Document, FilterType
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
-from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
+from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS, COHERE_EMBEDDING_MODELS
 from haystack.utils.early_stopping import EarlyStopping
 from haystack.telemetry import send_event
 from haystack.lazy_imports import LazyImport
@@ -484,7 +484,7 @@ class DensePassageRetriever(DenseRetriever):
         :return: dictionary of embeddings for "passages" and "query"
         """
         dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
-            dicts, indices=[i for i in range(len(dicts))], return_baskets=True
+            dicts, indices=list(range(len(dicts))), return_baskets=True
         )
 
         data_loader = NamedDataLoader(
@@ -1113,7 +1113,7 @@ class TableTextRetriever(DenseRetriever):
         """
 
         dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
-            dicts, indices=[i for i in range(len(dicts))], return_baskets=True
+            dicts, indices=list(range(len(dicts))), return_baskets=True
         )
 
         data_loader = NamedDataLoader(
@@ -1472,7 +1472,7 @@ class EmbeddingRetriever(DenseRetriever):
         :param embedding_model: Local path or name of model in Hugging Face's model hub such
                                 as ``'sentence-transformers/all-MiniLM-L6-v2'``. The embedding model could also
                                 potentially be an OpenAI model ["ada", "babbage", "davinci", "curie"] or
-                                a Cohere model ["small", "medium", "large"].
+                                a Cohere model ["embed-english-v2.0", "embed-english-light-v2.0", "embed-multilingual-v2.0"].
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to encode at once.
@@ -1481,19 +1481,21 @@ class EmbeddingRetriever(DenseRetriever):
                              provided, it will be inferred automatically from the model configuration files.
                              Options:
 
-                             - ``'farm'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
-                             - ``'transformers'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
-                             - ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
-                             - ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
-                             - ``'openai'``: (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
-                             - ``'cohere'``: (will use `_CohereEmbeddingEncoder` as embedding encoder)
+        1. `farm` : (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+        2. `transformers` : (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+        3. `sentence_transformers` : (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
+        4. `retribert` : (will use `_RetribertEmbeddingEncoder` as embedding encoder)
+        5. `openai` : (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
+        6. `cohere` : (will use `_CohereEmbeddingEncoder` as embedding encoder)
+
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options:
 
-                                 - ``'cls_token'`` (sentence vector)
-                                 - ``'reduce_mean'`` (sentence vector)
-                                 - ``'reduce_max'`` (sentence vector)
-                                 - ``'per_token'`` (individual token vectors)
+        1. `cls_token` (sentence vector)
+        2. `reduce_mean` (sentence vector)
+        3. `reduce_max` (sentence vector)
+        4. `per_token` (individual token vectors)
+
         :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
@@ -1862,7 +1864,7 @@ class EmbeddingRetriever(DenseRetriever):
             for key in self.embed_meta_fields:
                 if key in doc.meta and doc.meta[key]:
                     if isinstance(doc.meta[key], list):
-                        meta_data_fields.extend([item for item in doc.meta[key]])
+                        meta_data_fields.extend(list(doc.meta[key]))
                     else:
                         meta_data_fields.append(doc.meta[key])
             # Convert to type string (e.g. for ints or floats)
@@ -1878,7 +1880,7 @@ class EmbeddingRetriever(DenseRetriever):
         )
         if valid_openai_model_name:
             return "openai"
-        if model_name_or_path in ["small", "medium", "large", "multilingual-22-12", "finance-sentiment"]:
+        if model_name_or_path in COHERE_EMBEDDING_MODELS:
             return "cohere"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
