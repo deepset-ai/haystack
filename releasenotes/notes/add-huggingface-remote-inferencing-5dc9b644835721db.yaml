@@ -1,5 +1,0 @@
----
-preview:
-  - |
-    Introducing `HuggingFaceRemoteGenerator` and `ChatHuggingFaceRemoteGenerator` for text and chat generation.
-    These components support remote inferencing with Hugging Face models via text-generation-inference (TGI) protocol.
