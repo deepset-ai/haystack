@@ -1,3 +1,3 @@
-from haystack.preview.components.generators.chat.hugging_face_tgi import ChatHuggingFaceTGIGenerator
+from haystack.preview.components.generators.chat.hugging_face_tgi import HuggingFaceTGIChatGenerator
 
-__all__ = ["ChatHuggingFaceTGIGenerator"]
+__all__ = ["HuggingFaceTGIChatGenerator"]

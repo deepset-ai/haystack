@@ -15,7 +15,7 @@ from haystack.preview.dataclasses import ChatMessage, StreamingChunk
 logger = logging.getLogger(__name__)
 
 
-class ChatHuggingFaceTGIGenerator:
+class HuggingFaceTGIChatGenerator:
     """
     Enables text generation using HuggingFace Hub hosted chat-based LLMs. This component is designed to seamlessly
     inference chat-based models deployed on the Text Generation Inference (TGI) backend.
@@ -54,7 +54,7 @@ class ChatHuggingFaceTGIGenerator:
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
     ):
         """
-        Initialize the ChatHuggingFaceTGIGenerator instance.
+        Initialize the HuggingFaceTGIChatGenerator instance.
 
         :param model: A string representing the model path or URL. Default is "meta-llama/Llama-2-13b-chat-hf".
         :param model_id: An optional string representing the HuggingFace model ID.
@@ -109,7 +109,7 @@ class ChatHuggingFaceTGIGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ChatHuggingFaceTGIGenerator":
+    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceTGIChatGenerator":
         """
         Deserialize this component from a dictionary.
         """

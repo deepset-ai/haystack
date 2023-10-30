@@ -4,7 +4,7 @@ import pytest
 from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, Token, StreamDetails, FinishReason
 from huggingface_hub.utils import RepositoryNotFoundError
 
-from haystack.preview.components.generators.chat import ChatHuggingFaceTGIGenerator
+from haystack.preview.components.generators.chat import HuggingFaceTGIChatGenerator
 
 from haystack.preview.dataclasses import StreamingChunk, ChatMessage
 
@@ -41,7 +41,7 @@ chat_messages = [
 ]
 
 
-class TestChatHuggingFaceRemoteGenerator:
+class TestHuggingFaceTGIChatGenerator:
     @pytest.mark.unit
     def test_initialize_with_valid_model_and_generation_parameters(self, mock_check_valid_model, mock_auto_tokenizer):
         model = "HuggingFaceH4/zephyr-7b-alpha"
@@ -51,7 +51,7 @@ class TestChatHuggingFaceRemoteGenerator:
         stop_words = ["stop"]
         streaming_callback = None
 
-        generator = ChatHuggingFaceTGIGenerator(
+        generator = HuggingFaceTGIChatGenerator(
             model=model,
             model_id=model_id,
             token=token,
@@ -70,7 +70,7 @@ class TestChatHuggingFaceRemoteGenerator:
     @pytest.mark.unit
     def test_to_dict(self, mock_check_valid_model, mock_auto_tokenizer):
         # Initialize the ChatHuggingFaceRemoteGenerator object with valid parameters
-        generator = ChatHuggingFaceTGIGenerator(
+        generator = HuggingFaceTGIChatGenerator(
             model="NousResearch/Llama-2-7b-chat-hf",
             token="token",
             generation_kwargs={"n": 5},
@@ -90,7 +90,7 @@ class TestChatHuggingFaceRemoteGenerator:
 
     @pytest.mark.unit
     def test_serialize_and_deserialize(self, mock_check_valid_model, mock_auto_tokenizer):
-        generator = ChatHuggingFaceTGIGenerator(
+        generator = HuggingFaceTGIChatGenerator(
             model="HuggingFaceH4/zephyr-7b-alpha",
             model_id="HuggingFaceH4/zephyr-7b-alpha",
             generation_kwargs={"n": 5},
@@ -100,7 +100,7 @@ class TestChatHuggingFaceRemoteGenerator:
         # Call the to_dict method
         result = generator.to_dict()
 
-        generator_2 = ChatHuggingFaceTGIGenerator.from_dict(result)
+        generator_2 = HuggingFaceTGIChatGenerator.from_dict(result)
         assert generator_2.model_id == "HuggingFaceH4/zephyr-7b-alpha"
         assert generator_2.generation_kwargs == {"n": 5, "stop_sequences": ["stop", "words"]}
         assert generator_2.streaming_callback == streaming_callback_handler
@@ -112,12 +112,12 @@ class TestChatHuggingFaceRemoteGenerator:
         model_id = None
 
         with pytest.raises(ValueError):
-            ChatHuggingFaceTGIGenerator(model=model, model_id=model_id)
+            HuggingFaceTGIChatGenerator(model=model, model_id=model_id)
 
         # but also if we provide invalid model_id
         mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
         with pytest.raises(RepositoryNotFoundError):
-            ChatHuggingFaceTGIGenerator(model=model, model_id="invalid_model_id")
+            HuggingFaceTGIChatGenerator(model=model, model_id="invalid_model_id")
 
     @pytest.mark.unit
     def test_generate_text_response_with_valid_prompt_and_generation_parameters(
@@ -130,7 +130,7 @@ class TestChatHuggingFaceRemoteGenerator:
         stop_words = ["stop"]
         streaming_callback = None
 
-        generator = ChatHuggingFaceTGIGenerator(
+        generator = HuggingFaceTGIChatGenerator(
             model=model,
             model_id=model_id,
             token=token,
@@ -164,7 +164,7 @@ class TestChatHuggingFaceRemoteGenerator:
         stop_words = ["stop"]
         streaming_callback = None
 
-        generator = ChatHuggingFaceTGIGenerator(
+        generator = HuggingFaceTGIChatGenerator(
             model=model,
             model_id=model_id,
             token=token,
@@ -199,7 +199,7 @@ class TestChatHuggingFaceRemoteGenerator:
         mock_check_valid_model.side_effect = ValueError("Invalid model path or url")
 
         with pytest.raises(ValueError):
-            ChatHuggingFaceTGIGenerator(
+            HuggingFaceTGIChatGenerator(
                 model=model,
                 model_id=model_id,
                 token=token,
@@ -210,7 +210,7 @@ class TestChatHuggingFaceRemoteGenerator:
 
     @pytest.mark.unit
     def test_generate_text_with_stop_words(self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation):
-        generator = ChatHuggingFaceTGIGenerator()
+        generator = HuggingFaceTGIChatGenerator()
         generator.warm_up()
 
         stop_words = ["stop", "words"]
@@ -232,7 +232,7 @@ class TestChatHuggingFaceRemoteGenerator:
     def test_generate_text_with_custom_generation_parameters(
         self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
     ):
-        generator = ChatHuggingFaceTGIGenerator()
+        generator = HuggingFaceTGIChatGenerator()
         generator.warm_up()
 
         generation_kwargs = {"temperature": 0.8, "max_new_tokens": 100}
@@ -262,7 +262,7 @@ class TestChatHuggingFaceRemoteGenerator:
             assert isinstance(chunk, StreamingChunk)
 
         # Create an instance of HuggingFaceRemoteGenerator
-        generator = ChatHuggingFaceTGIGenerator(streaming_callback=streaming_callback_fn)
+        generator = HuggingFaceTGIChatGenerator(streaming_callback=streaming_callback_fn)
         generator.warm_up()
 
         # Create a fake streamed response
