@@ -30,11 +30,12 @@ class MarkdownToDocument:
     documents = results["documents"]
     print(documents[0].text)
     # 'This is a text from the markdown file.'
+    ```
     """
 
     def __init__(self, table_to_single_line: bool = False, progress_bar: bool = True):
         """
-        :paramtable_to_single_line: Convert contents of the table to a single line. Defaults to False.
+        :param table_to_single_line: Convert contents of the table into a single line. Defaults to False.
         :param progress_bar: Show a progress bar for the conversion. Defaults to True.
         """
         markdown_conversion_imports.check()
@@ -47,7 +48,7 @@ class MarkdownToDocument:
         """
         Reads text from a markdown file and executes optional preprocessing steps.
 
-        :param file_path: path of the file to convert
+        :param file_path: Path of the file to convert.
         :param metadata: Optional list of metadata to attach to the Documents.
         The length of the list must match the number of paths. Defaults to `None`.
         """
@@ -84,7 +85,7 @@ class MarkdownToDocument:
 
     def _extract_content(self, source: Union[str, Path, ByteStream]) -> str:
         """
-        Extracts content from the given data source
+        Extracts content from the given data source.
         :param source: The data source to extract content from.
         :return: The extracted content.
         """
