@@ -1,17 +1,17 @@
 from unittest.mock import patch
+from typing import List, cast
+
 import pytest
-from typing import List
 import numpy as np
 import openai
 from openai.util import convert_to_openai_object
+from openai.openai_object import OpenAIObject
 
 from haystack.preview import Document
 from haystack.preview.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
 
 
-def mock_openai_response(
-    input: List[str], model: str = "text-embedding-ada-002", **kwargs
-) -> openai.openai_object.OpenAIObject:
+def mock_openai_response(input: List[str], model: str = "text-embedding-ada-002", **kwargs) -> OpenAIObject:
     dict_response = {
         "object": "list",
         "data": [
@@ -21,7 +21,7 @@ def mock_openai_response(
         "usage": {"prompt_tokens": 4, "total_tokens": 4},
     }
 
-    return convert_to_openai_object(dict_response)
+    return cast(OpenAIObject, convert_to_openai_object(dict_response))
 
 
 class TestOpenAIDocumentEmbedder:

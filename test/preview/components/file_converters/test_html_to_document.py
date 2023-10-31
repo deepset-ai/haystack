@@ -31,7 +31,7 @@ class TestHTMLToDocument:
             assert "codec can't decode byte" in caplog.text
 
         docs = output["documents"]
-        assert docs == []
+        assert not docs
 
     @pytest.mark.unit
     def test_run_error_handling(self, preview_samples_path, caplog):
@@ -43,7 +43,7 @@ class TestHTMLToDocument:
         with caplog.at_level(logging.WARNING):
             result = converter.run(sources=paths)
             assert "Could not read non_existing_file.html" in caplog.text
-            assert result["documents"] == []
+            assert not result["documents"]
 
     @pytest.mark.unit
     def test_mixed_sources_run(self, preview_samples_path):

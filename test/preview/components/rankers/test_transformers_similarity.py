@@ -66,7 +66,7 @@ class TestSimilarityRanker:
         sampler = TransformersSimilarityRanker()
         sampler.warm_up()
         output = sampler.run(query="City in Germany", documents=[])
-        assert output["documents"] == []
+        assert not output["documents"]
 
     #  Raises ComponentError if model is not warmed up
     @pytest.mark.integration

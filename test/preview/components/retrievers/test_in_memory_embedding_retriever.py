@@ -1,13 +1,13 @@
 from typing import Dict, Any
 
 import pytest
+import numpy as np
 
 from haystack.preview import Pipeline, DeserializationError
 from haystack.preview.testing.factory import document_store_class
 from haystack.preview.components.retrievers.in_memory_embedding_retriever import InMemoryEmbeddingRetriever
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores import InMemoryDocumentStore
-import numpy as np
 
 
 class TestMemoryEmbeddingRetriever:

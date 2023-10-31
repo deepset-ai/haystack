@@ -120,6 +120,7 @@ def test_output(mock_reader: ExtractiveReader):
     for doc, answer in zip(example_documents[0], answers[:3]):
         assert answer.start == 11
         assert answer.end == 16
+        assert doc.content is not None
         assert answer.data == doc.content[11:16]
         assert answer.probability == pytest.approx(1 / (1 + exp(-2 * mock_reader.calibration_factor)))
         no_answer_prob *= 1 - answer.probability
@@ -209,13 +210,13 @@ def test_postprocess(mock_reader: ExtractiveReader):
 def test_nest_answers(mock_reader: ExtractiveReader):
     start = list(range(5))
     end = [i + 5 for i in start]
-    start = [start] * 6
-    end = [end] * 6
+    start = [start] * 6  # type: ignore
+    end = [end] * 6  # type: ignore
     probabilities = torch.arange(5).unsqueeze(0) / 5 + torch.arange(6).unsqueeze(-1) / 25
     query_ids = [0] * 3 + [1] * 3
     document_ids = list(range(3)) * 2
     nested_answers = mock_reader._nest_answers(
-        start, end, probabilities, example_documents[0], example_queries, 5, 3, None, query_ids, document_ids, True
+        start, end, probabilities, example_documents[0], example_queries, 5, 3, None, query_ids, document_ids, True  # type: ignore
     )
     expected_no_answers = [0.2 * 0.16 * 0.12, 0]
     for query, answers, expected_no_answer, probabilities in zip(
@@ -301,7 +302,8 @@ def test_matches_hf_pipeline():
     answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
         "answers"
     ]  # [0] Remove first two indices when batching support is reintroduced
-    answers_hf = pipeline("question-answering", model=reader.model, tokenizer=reader.tokenizer, align_to_words=False)(
+    pipe = pipeline("question-answering", model=reader.model, tokenizer=reader.tokenizer, align_to_words=False)
+    answers_hf = pipe(
         question=example_queries[0],
         context=example_documents[0][0].content,
         max_answer_len=1_000,

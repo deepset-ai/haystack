@@ -1,8 +1,8 @@
 import logging
 from unittest.mock import patch
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 from canals.errors import PipelineRuntimeError
 from langdetect import LangDetectException
@@ -10,7 +10,7 @@ from langdetect import LangDetectException
 from haystack.preview.components.file_converters.txt import TextFileToDocument
 
 
-class TestTextfileToDocument:
+class TestTextfileToDocument:  # pylint: disable=R0904
     @pytest.mark.unit
     def test_run(self, preview_samples_path):
         """

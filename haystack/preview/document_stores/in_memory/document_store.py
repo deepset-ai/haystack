@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 from haystack.preview import default_from_dict, default_to_dict
 from haystack.preview.document_stores.decorator import document_store
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores.protocols import DuplicatePolicy, DocumentStore
+from haystack.preview.document_stores.protocols import DuplicatePolicy
 from haystack.preview.utils.filters import document_matches_filter
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError, DocumentStoreError
 from haystack.preview.utils import expit
@@ -76,7 +76,7 @@ class InMemoryDocumentStore:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DocumentStore":
+    def from_dict(cls, data: Dict[str, Any]) -> "InMemoryDocumentStore":
         """
         Deserializes the store from a dictionary.
         """

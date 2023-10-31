@@ -7,7 +7,7 @@ from haystack.preview.errors import FilterError
 from haystack.preview.utils.filters import document_matches_filter
 
 
-class TestFilterUtils:
+class TestFilterUtils:  # pylint: disable=R0904
     @pytest.mark.unit
     def test_eq_match(self):
         document = Document(meta={"name": "test"})
