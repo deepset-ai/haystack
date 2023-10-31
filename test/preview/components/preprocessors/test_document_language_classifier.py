@@ -21,7 +21,7 @@ class TestDocumentLanguageClassifier:
     def test_single_document(self):
         with pytest.raises(TypeError, match="DocumentLanguageClassifier expects a list of Document as input."):
             classifier = DocumentLanguageClassifier()
-            classifier.run(documents=Document(text="This is an english sentence."))
+            classifier.run(documents=Document(content="This is an english sentence."))
 
     @pytest.mark.unit
     def test_empty_list(self):
@@ -32,14 +32,14 @@ class TestDocumentLanguageClassifier:
     @pytest.mark.unit
     def test_detect_language(self):
         classifier = DocumentLanguageClassifier()
-        detected_language = classifier.detect_language(Document(text="This is an english sentence."))
+        detected_language = classifier.detect_language(Document(content="This is an english sentence."))
         assert detected_language == "en"
 
     @pytest.mark.unit
     def test_route_to_en_and_unmatched(self):
         classifier = DocumentLanguageClassifier()
-        english_document = Document(text="This is an english sentence.")
-        german_document = Document(text="Ein deutscher Satz ohne Verb.")
+        english_document = Document(content="This is an english sentence.")
+        german_document = Document(content="Ein deutscher Satz ohne Verb.")
         result = classifier.run(documents=[english_document, german_document])
         assert result == {"en": [english_document], "unmatched": [german_document]}
 
@@ -47,5 +47,5 @@ class TestDocumentLanguageClassifier:
     def test_warning_if_no_language_detected(self, caplog):
         with caplog.at_level(logging.WARNING):
             classifier = DocumentLanguageClassifier()
-            classifier.run(documents=[Document(text=".")])
+            classifier.run(documents=[Document(content=".")])
             assert "Langdetect cannot detect the language of Document with id" in caplog.text
