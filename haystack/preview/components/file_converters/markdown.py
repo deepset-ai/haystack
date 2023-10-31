@@ -78,7 +78,7 @@ class MarkdownToDocument:
                 logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
                 continue
 
-            document = Document(text=text, metadata=meta)
+            document = Document(content=text, meta=meta)
             documents.append(document)
 
         return {"documents": documents}

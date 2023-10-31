@@ -28,8 +28,8 @@ class TestMarkdownToDocument:
 
         assert len(docs) == 1
         for doc in docs:
-            assert "What to build with Haystack" in doc.text
-            assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.text
+            assert "What to build with Haystack" in doc.content
+            assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
 
     @pytest.mark.unit
     def test_run_metadata(self, preview_samples_path):
@@ -41,9 +41,9 @@ class TestMarkdownToDocument:
 
         assert len(docs) == 1
         for doc in docs:
-            assert "What to build with Haystack" in doc.text
-            assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.text
-            assert doc.metadata == {"file_name": "sample.md"}
+            assert "What to build with Haystack" in doc.content
+            assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
+            assert doc.meta == {"file_name": "sample.md"}
 
     @pytest.mark.integration
     def test_run_wrong_file_type(self, preview_samples_path, caplog):
@@ -89,5 +89,5 @@ class TestMarkdownToDocument:
         docs = output["documents"]
         assert len(docs) == 3
         for doc in docs:
-            assert "What to build with Haystack" in doc.text
-            assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.text
+            assert "What to build with Haystack" in doc.content
+            assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
