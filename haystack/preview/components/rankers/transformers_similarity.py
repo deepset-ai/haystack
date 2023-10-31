@@ -30,7 +30,7 @@ class TransformersSimilarityRanker:
     output = ranker.run(query=query, documents=docs)
     docs = output["documents"]
     assert len(docs) == 2
-    assert docs[0].text == "Berlin"
+    assert docs[0].content == "Berlin"
     ```
     """
 

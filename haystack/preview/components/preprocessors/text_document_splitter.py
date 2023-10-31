@@ -51,7 +51,7 @@ class TextDocumentSplitter:
         for doc in documents:
             if doc.content is None:
                 raise ValueError(
-                    f"TextDocumentSplitter only works with text documents but document.text for document ID {doc.id} is None."
+                    f"TextDocumentSplitter only works with text documents but document.content for document ID {doc.id} is None."
                 )
             units = self._split_into_units(doc.content, self.split_by)
             text_splits = self._concatenate_units(units, self.split_length, self.split_overlap)

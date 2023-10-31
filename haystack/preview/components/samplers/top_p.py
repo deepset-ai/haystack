@@ -31,7 +31,7 @@ class TopPSampler:
     output = sampler.run(documents=docs)
     docs = output["documents"]
     assert len(docs) == 1
-    assert docs[0].text == "Sarajevo"
+    assert docs[0].content == "Sarajevo"
     ```
     """
 

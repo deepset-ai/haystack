@@ -157,7 +157,7 @@ class TestMemoryBM25Retriever:
         assert "retriever" in result
         results_docs = result["retriever"]["documents"]
         assert results_docs
-        assert results_docs[0].text == query_result
+        assert results_docs[0].content == query_result
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
@@ -182,4 +182,4 @@ class TestMemoryBM25Retriever:
         results_docs = result["retriever"]["documents"]
         assert results_docs
         assert len(results_docs) == top_k
-        assert results_docs[0].text == query_result
+        assert results_docs[0].content == query_result
