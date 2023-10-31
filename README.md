@@ -23,7 +23,7 @@ First, run the minimal Haystack installation:
 pip install farm-haystack
 ```
 
-Then, index your data to the DocumentStore, build a RAG pipeline, and ask a question on your data: 
+Then, index your data to the DocumentStore, build a RAG pipeline, and ask a question on your data:
 
 ```python
 from haystack.document_stores import InMemoryDocumentStore
