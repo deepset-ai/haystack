@@ -100,6 +100,6 @@ class AzureOCRDocumentConverter:
         else:
             text = result.content
 
-        document = Document(text=text)
+        document = Document(content=text)
 
         return document

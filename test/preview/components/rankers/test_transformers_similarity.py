@@ -50,12 +50,12 @@ class TestSimilarityRanker:
         """
         ranker = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
         ranker.warm_up()
-        docs_before = [Document(text=text) for text in docs_before_texts]
+        docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
         docs_after = output["documents"]
 
         assert len(docs_after) == 3
-        assert docs_after[0].text == expected_first_text
+        assert docs_after[0].content == expected_first_text
 
         sorted_scores = sorted([doc.score for doc in docs_after], reverse=True)
         assert [doc.score for doc in docs_after] == sorted_scores
@@ -66,7 +66,7 @@ class TestSimilarityRanker:
         sampler = TransformersSimilarityRanker()
         sampler.warm_up()
         output = sampler.run(query="City in Germany", documents=[])
-        assert output["documents"] == []
+        assert not output["documents"]
 
     #  Raises ComponentError if model is not warmed up
     @pytest.mark.integration
@@ -74,7 +74,7 @@ class TestSimilarityRanker:
         sampler = TransformersSimilarityRanker()
 
         with pytest.raises(ComponentError):
-            sampler.run(query="query", documents=[Document(text="document")])
+            sampler.run(query="query", documents=[Document(content="document")])
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
@@ -91,12 +91,12 @@ class TestSimilarityRanker:
         """
         ranker = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
         ranker.warm_up()
-        docs_before = [Document(text=text) for text in docs_before_texts]
+        docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
         docs_after = output["documents"]
 
         assert len(docs_after) == 2
-        assert docs_after[0].text == expected_first_text
+        assert docs_after[0].content == expected_first_text
 
         sorted_scores = sorted([doc.score for doc in docs_after], reverse=True)
         assert [doc.score for doc in docs_after] == sorted_scores
