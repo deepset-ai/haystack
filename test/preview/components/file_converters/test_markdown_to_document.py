@@ -57,7 +57,7 @@ class TestMarkdownToDocument:
             assert "codec can't decode byte" in caplog.text
 
         docs = output["documents"]
-        assert docs == []
+        assert not docs
 
     @pytest.mark.integration
     def test_run_error_handling(self, caplog):
@@ -69,7 +69,7 @@ class TestMarkdownToDocument:
         with caplog.at_level(logging.WARNING):
             result = converter.run(sources=sources)
             assert "Could not read non_existing_file.md" in caplog.text
-            assert result["documents"] == []
+            assert not result["documents"]
 
     @pytest.mark.unit
     def test_mixed_sources_run(self, preview_samples_path):
