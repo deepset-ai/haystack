@@ -30,15 +30,17 @@ def mock_text_generation():
         yield mock_from_pretrained
 
 
+@pytest.fixture
+def chat_messages():
+    return [
+        ChatMessage.from_system("You are a helpful assistant speaking on A2 level of English"),
+        ChatMessage.from_user("Tell me about Berlin"),
+    ]
+
+
 # used to test serialization of streaming_callback
 def streaming_callback_handler(x):
     return x
-
-
-chat_messages = [
-    ChatMessage.from_system("You are a helpful assistant speaking on A2 level of English"),
-    ChatMessage.from_user("Tell me about Berlin"),
-]
 
 
 class TestHuggingFaceTGIChatGenerator:
@@ -69,7 +71,7 @@ class TestHuggingFaceTGIChatGenerator:
 
     @pytest.mark.unit
     def test_to_dict(self, mock_check_valid_model, mock_auto_tokenizer):
-        # Initialize the ChatHuggingFaceRemoteGenerator object with valid parameters
+        # Initialize the HuggingFaceTGIChatGenerator object with valid parameters
         generator = HuggingFaceTGIChatGenerator(
             model="NousResearch/Llama-2-7b-chat-hf",
             token="token",
@@ -89,10 +91,10 @@ class TestHuggingFaceTGIChatGenerator:
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
 
     @pytest.mark.unit
-    def test_serialize_and_deserialize(self, mock_check_valid_model, mock_auto_tokenizer):
+    def test_from_dict(self, mock_check_valid_model, mock_auto_tokenizer):
         generator = HuggingFaceTGIChatGenerator(
-            model="HuggingFaceH4/zephyr-7b-alpha",
-            model_id="HuggingFaceH4/zephyr-7b-alpha",
+            model="NousResearch/Llama-2-7b-chat-hf",
+            model_id="NousResearch/Llama-2-7b-chat-hf",
             generation_kwargs={"n": 5},
             stop_words=["stop", "words"],
             streaming_callback=streaming_callback_handler,
@@ -101,91 +103,9 @@ class TestHuggingFaceTGIChatGenerator:
         result = generator.to_dict()
 
         generator_2 = HuggingFaceTGIChatGenerator.from_dict(result)
-        assert generator_2.model_id == "HuggingFaceH4/zephyr-7b-alpha"
+        assert generator_2.model_id == "NousResearch/Llama-2-7b-chat-hf"
         assert generator_2.generation_kwargs == {"n": 5, "stop_sequences": ["stop", "words"]}
         assert generator_2.streaming_callback is streaming_callback_handler
-
-    @pytest.mark.unit
-    def test_initialize_with_url_for_model_without_model_id(self, mock_check_valid_model):
-        # When model is a url, model_id must be provided
-        model = "https://some_chat_model.com"
-        model_id = None
-
-        with pytest.raises(ValueError):
-            HuggingFaceTGIChatGenerator(model=model, model_id=model_id)
-
-        # but also if we provide invalid model_id
-        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
-        with pytest.raises(RepositoryNotFoundError):
-            HuggingFaceTGIChatGenerator(model=model, model_id="invalid_model_id")
-
-    @pytest.mark.unit
-    def test_generate_text_response_with_valid_prompt_and_generation_parameters(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
-    ):
-        model = "meta-llama/Llama-2-13b-chat-hf"
-        model_id = None
-        token = None
-        generation_kwargs = {"n": 1}
-        stop_words = ["stop"]
-        streaming_callback = None
-
-        generator = HuggingFaceTGIChatGenerator(
-            model=model,
-            model_id=model_id,
-            token=token,
-            generation_kwargs=generation_kwargs,
-            stop_words=stop_words,
-            streaming_callback=streaming_callback,
-        )
-        generator.warm_up()
-
-        response = generator.run(messages=chat_messages)
-
-        # check kwargs passed to text_generation
-        # note how n was not passed to text_generation
-        _, kwargs = mock_text_generation.call_args
-        assert kwargs == {"details": True, "stop_sequences": ["stop"]}
-
-        assert isinstance(response, dict)
-        assert "replies" in response
-        assert isinstance(response["replies"], list)
-        assert len(response["replies"]) == 1
-        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-
-    @pytest.mark.unit
-    def test_generate_multiple_text_responses_with_valid_prompt_and_generation_parameters(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
-    ):
-        model = "meta-llama/Llama-2-13b-chat-hf"
-        model_id = None
-        token = None
-        generation_kwargs = {"n": 3}
-        stop_words = ["stop"]
-        streaming_callback = None
-
-        generator = HuggingFaceTGIChatGenerator(
-            model=model,
-            model_id=model_id,
-            token=token,
-            generation_kwargs=generation_kwargs,
-            stop_words=stop_words,
-            streaming_callback=streaming_callback,
-        )
-        generator.warm_up()
-
-        response = generator.run(chat_messages)
-
-        # check kwargs passed to text_generation
-        # note how n was not passed to text_generation
-        _, kwargs = mock_text_generation.call_args
-        assert kwargs == {"details": True, "stop_sequences": ["stop"]}
-
-        assert isinstance(response, dict)
-        assert "replies" in response
-        assert isinstance(response["replies"], list)
-        assert len(response["replies"]) == 3
-        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
     @pytest.mark.unit
     def test_initialize_with_invalid_model_path_or_url(self, mock_check_valid_model):
@@ -209,7 +129,93 @@ class TestHuggingFaceTGIChatGenerator:
             )
 
     @pytest.mark.unit
-    def test_generate_text_with_stop_words(self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation):
+    def test_initialize_with_url_without_model_id(self, mock_check_valid_model):
+        # if we provide URL as model, model_id must be provided
+        model = "https://some_chat_model.com"
+        with pytest.raises(ValueError):
+            HuggingFaceTGIChatGenerator(model=model, model_id=None)
+
+    @pytest.mark.unit
+    def test_initialize_with_url_with_invalid_model_id(self, mock_check_valid_model):
+        # When model is URL, model_id must be provided and valid HuggingFace Hub model id
+        model = "https://some_chat_model.com"
+
+        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
+        with pytest.raises(RepositoryNotFoundError):
+            HuggingFaceTGIChatGenerator(model=model, model_id="invalid_model_id")
+
+    @pytest.mark.unit
+    def test_generate_text_response_with_valid_prompt_and_generation_parameters(
+        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, chat_messages
+    ):
+        model = "meta-llama/Llama-2-13b-chat-hf"
+        model_id = None
+        token = None
+        generation_kwargs = {"n": 1}
+        stop_words = ["stop"]
+        streaming_callback = None
+
+        generator = HuggingFaceTGIChatGenerator(
+            model=model,
+            model_id=model_id,
+            token=token,
+            generation_kwargs=generation_kwargs,
+            stop_words=stop_words,
+            streaming_callback=streaming_callback,
+        )
+        generator.warm_up()
+
+        response = generator.run(messages=chat_messages)
+
+        # check kwargs passed to text_generation
+        # note how n because it is not text generation parameter was not passed to text_generation
+        _, kwargs = mock_text_generation.call_args
+        assert kwargs == {"details": True, "stop_sequences": ["stop"]}
+
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    @pytest.mark.unit
+    def test_generate_multiple_text_responses_with_valid_prompt_and_generation_parameters(
+        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, chat_messages
+    ):
+        model = "meta-llama/Llama-2-13b-chat-hf"
+        model_id = None
+        token = None
+        generation_kwargs = {"n": 3}
+        stop_words = ["stop"]
+        streaming_callback = None
+
+        generator = HuggingFaceTGIChatGenerator(
+            model=model,
+            model_id=model_id,
+            token=token,
+            generation_kwargs=generation_kwargs,
+            stop_words=stop_words,
+            streaming_callback=streaming_callback,
+        )
+        generator.warm_up()
+
+        response = generator.run(chat_messages)
+
+        # check kwargs passed to text_generation
+        _, kwargs = mock_text_generation.call_args
+        assert kwargs == {"details": True, "stop_sequences": ["stop"]}
+
+        # note how n caused n replies to be generated
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 3
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    @pytest.mark.unit
+    def test_generate_text_with_stop_words(
+        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, chat_messages
+    ):
         generator = HuggingFaceTGIChatGenerator()
         generator.warm_up()
 
@@ -219,6 +225,7 @@ class TestHuggingFaceTGIChatGenerator:
         response = generator.run(chat_messages, stop_words=stop_words)
 
         # check kwargs passed to text_generation
+        # we translate stop_words to stop_sequences
         _, kwargs = mock_text_generation.call_args
         assert kwargs == {"details": True, "stop_sequences": ["stop", "words"]}
 
@@ -230,15 +237,17 @@ class TestHuggingFaceTGIChatGenerator:
 
     @pytest.mark.unit
     def test_generate_text_with_custom_generation_parameters(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
+        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, chat_messages
     ):
+        # Create an instance of HuggingFaceRemoteGenerator with no generation parameters
         generator = HuggingFaceTGIChatGenerator()
         generator.warm_up()
 
+        # but then we pass them in run
         generation_kwargs = {"temperature": 0.8, "max_new_tokens": 100}
         response = generator.run(chat_messages, **generation_kwargs)
 
-        # check kwargs passed to text_generation
+        # again check kwargs passed to text_generation
         _, kwargs = mock_text_generation.call_args
         assert kwargs == {"details": True, "max_new_tokens": 100, "stop_sequences": [], "temperature": 0.8}
 
@@ -251,7 +260,7 @@ class TestHuggingFaceTGIChatGenerator:
 
     @pytest.mark.unit
     def test_generate_text_with_streaming_callback(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
+        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, chat_messages
     ):
         streaming_call_count = 0
 
@@ -266,6 +275,7 @@ class TestHuggingFaceTGIChatGenerator:
         generator.warm_up()
 
         # Create a fake streamed response
+        # self needed here, don't remove
         def mock_iter(self):
             yield TextGenerationStreamResponse(
                 generated_text=None, token=Token(id=1, text="I'm fine, thanks.", logprob=0.0, special=False)
