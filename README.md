@@ -13,7 +13,7 @@
 
 ## Quickstart
 
-Haystack is built around the concept of pipelines. A pipeline is a powerful structure that performs an NLP task. It's made up of components connected together. For example, you can connect a `Retriever`, and a `PromptNode` to build a Generative Question Answering pipeline that uses your own data.
+Haystack is built around the concept of pipelines. A pipeline is a powerful structure that performs an NLP task. It's made up of components connected together. For example, you can connect a `Retriever` and a `PromptNode` to build a Generative Question Answering pipeline that uses your own data.
 
 Try out how Haystack answers questions about Game of Thrones using the Retrieval Augmented Generation (RAG) approach 👇
 
@@ -65,7 +65,7 @@ Congratulations, you have just built your first Haystack app!
 
 🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/docs/pipelines):** This is the standard Haystack structure that builds on top of your data to perform various NLP tasks such as retrieval augmented generation, question answering and more. The data in a Pipeline flows from one Node to the next. You define how Nodes interact with each other and how one Node pushes data to the next.
 
-An example pipeline would consist of one `Retriever` Node, and one `PromptNode`. When the pipeline runs with a query, the Retriever first retrieves the relevant context to the query from your data and then the PromptNode uses an LLM to generate the final answer.
+An example pipeline would consist of one `Retriever` Node and one `PromptNode`. When the pipeline runs with a query, the Retriever first retrieves the relevant context to the query from your data and then the PromptNode uses an LLM to generate the final answer.
 
 ⚛️ **[Nodes](https://docs.haystack.deepset.ai/docs/nodes_overview):** Each Node achieves one thing. Such as preprocessing documents, retrieving documents, using language models to answer questions, and so on.
 
