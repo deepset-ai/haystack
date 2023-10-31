@@ -20,6 +20,41 @@ class HuggingFaceTGIChatGenerator:
     Enables text generation using HuggingFace Hub hosted chat-based LLMs. This component is designed to seamlessly
     inference chat-based models deployed on the Text Generation Inference (TGI) backend.
 
+    You can use this component for chat LLMs hosted on Hugging Face inference endpoints, the rate-limited
+    Inference API tier:
+
+    ```python
+    from haystack.preview.components.generators.chat import HuggingFaceTGIChatGenerator
+    from haystack.preview.dataclasses import ChatMessage
+
+    messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
+                ChatMessage.from_user("What's Natural Language Processing?")]
+
+
+    client = HuggingFaceTGIChatGenerator(model="meta-llama/Llama-2-70b-chat-hf", token="<your-token>")
+    client.warm_up()
+    response = client.run(messages, max_new_tokens=120)
+    print(response)
+    ```
+
+    Or for chat LLMs hosted on paid https://huggingface.co/inference-endpoints endpoint, and/or your own custom TGI
+    endpoint. In these two cases, you'll need to provide the URL of the endpoint as well as a valid token:
+
+    ```python
+    from haystack.preview.components.generators.chat import HuggingFaceTGIChatGenerator
+    from haystack.preview.dataclasses import ChatMessage
+
+    messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
+                ChatMessage.from_user("What's Natural Language Processing?")]
+
+    client = HuggingFaceTGIChatGenerator(model="meta-llama/Llama-2-70b-chat-hf",
+                                         url="<your-tgi-endpoint-url>",
+                                         token="<your-token>")
+    client.warm_up()
+    response = client.run(messages, max_new_tokens=120)
+    print(response)
+    ```
+
      Key Features and Compatibility:
          - **Primary Compatibility**: Designed to work seamlessly with any chat-based model deployed using the TGI
            framework. For more information on TGI, visit https://github.com/huggingface/text-generation-inference.
@@ -47,7 +82,7 @@ class HuggingFaceTGIChatGenerator:
     def __init__(
         self,
         model: str = "meta-llama/Llama-2-13b-chat-hf",
-        model_id: Optional[str] = None,
+        url: Optional[str] = None,
         token: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
@@ -57,32 +92,35 @@ class HuggingFaceTGIChatGenerator:
         Initialize the HuggingFaceTGIChatGenerator instance.
 
         :param model: A string representing the model path or URL. Default is "meta-llama/Llama-2-13b-chat-hf".
-        :param model_id: An optional string representing the HuggingFace model ID.
-        :param token: An optional string or boolean representing the authentication token.
-        :param generation_kwargs: An optional dictionary containing generation parameters.
+        :param url: An optional string representing the HuggingFace model ID.
+        :param token: The HuggingFace token to use as HTTP bearer authorization
+            You can find your HF token at https://huggingface.co/settings/tokens
+        :param generation_kwargs: A dictionary containing keyword arguments to customize text generation.
+            Some examples: `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
+            See Hugging Face's documentation for more information at:
+            https://huggingface.co/docs/huggingface_hub/v0.18.0.rc0/en/package_reference/inference_client#huggingface_hub.inference._text_generation.TextGenerationParameters
         :param stop_words: An optional list of strings representing the stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
-        r = urlparse(model)
-        is_url = all([r.scheme in ["http", "https"], r.netloc])
-        if is_url:
-            if not model_id:
-                raise ValueError(
-                    "If model is a URL, you must provide a HuggingFace model_id (e.g. meta-llama/Llama-2-7b-chat-hf)"
-                )
-            check_valid_model(model_id, token)
-        else:
-            check_valid_model(model, token)
+        if url:
+            r = urlparse(url)
+            is_valid_url = all([r.scheme in ["http", "https"], r.netloc])
+            if not is_valid_url:
+                raise ValueError(f"Invalid TGI endpoint URL provided: {url}")
 
-        # handle generation kwargs
+        check_valid_model(model, token)
+
+        # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
         check_generation_params(generation_kwargs, ["n"])
-        generation_kwargs.setdefault("stop_sequences", []).extend(stop_words or [])
+        generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", [])
+        generation_kwargs["stop_sequences"].extend(stop_words or [])
 
-        self.model_id = model_id if is_url and model_id else model
+        self.model = model
+        self.url = url
         self.token = token
         self.generation_kwargs = generation_kwargs
-        self.client = InferenceClient(model, token=token)
+        self.client = InferenceClient(url or model, token=token)
         self.streaming_callback = streaming_callback
         self.tokenizer = None
 
@@ -90,7 +128,7 @@ class HuggingFaceTGIChatGenerator:
         """
         Load the tokenizer
         """
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id, token=self.token)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model, token=self.token)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -101,8 +139,8 @@ class HuggingFaceTGIChatGenerator:
         callback_name = serialize_callback_handler(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
-            model=self.client.model,
-            model_id=self.model_id,
+            model=self.model,
+            url=self.url,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
@@ -123,9 +161,8 @@ class HuggingFaceTGIChatGenerator:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        # prefer model_id if available as model might be a URL and sensitive
-        # Use model only if it is not a URL
-        return {"model": self.model_id if self.model_id else self.client.model}
+        # Don't send URL as it is sensitive information
+        return {"model": self.model}
 
     @component.output_types(replies=List[ChatMessage])
     def run(self, messages: List[ChatMessage], **generation_kwargs):

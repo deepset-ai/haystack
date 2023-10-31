@@ -47,23 +47,18 @@ class TestHuggingFaceTGIChatGenerator:
     @pytest.mark.unit
     def test_initialize_with_valid_model_and_generation_parameters(self, mock_check_valid_model, mock_auto_tokenizer):
         model = "HuggingFaceH4/zephyr-7b-alpha"
-        model_id = None
-        token = None
         generation_kwargs = {"n": 1}
         stop_words = ["stop"]
         streaming_callback = None
 
         generator = HuggingFaceTGIChatGenerator(
             model=model,
-            model_id=model_id,
-            token=token,
             generation_kwargs=generation_kwargs,
             stop_words=stop_words,
             streaming_callback=streaming_callback,
         )
         generator.warm_up()
 
-        assert generator.model_id == model
         assert generator.generation_kwargs == {**generation_kwargs, **{"stop_sequences": ["stop"]}}
         assert generator.tokenizer is not None
         assert generator.client is not None
@@ -86,7 +81,6 @@ class TestHuggingFaceTGIChatGenerator:
 
         # Assert that the init_params dictionary contains the expected keys and values
         assert init_params["model"] == "NousResearch/Llama-2-7b-chat-hf"
-        assert init_params["model_id"] == "NousResearch/Llama-2-7b-chat-hf"
         assert init_params["token"] is None
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
 
@@ -94,7 +88,6 @@ class TestHuggingFaceTGIChatGenerator:
     def test_from_dict(self, mock_check_valid_model, mock_auto_tokenizer):
         generator = HuggingFaceTGIChatGenerator(
             model="NousResearch/Llama-2-7b-chat-hf",
-            model_id="NousResearch/Llama-2-7b-chat-hf",
             generation_kwargs={"n": 5},
             stop_words=["stop", "words"],
             streaming_callback=streaming_callback_handler,
@@ -103,15 +96,13 @@ class TestHuggingFaceTGIChatGenerator:
         result = generator.to_dict()
 
         generator_2 = HuggingFaceTGIChatGenerator.from_dict(result)
-        assert generator_2.model_id == "NousResearch/Llama-2-7b-chat-hf"
+        assert generator_2.model == "NousResearch/Llama-2-7b-chat-hf"
         assert generator_2.generation_kwargs == {"n": 5, "stop_sequences": ["stop", "words"]}
         assert generator_2.streaming_callback is streaming_callback_handler
 
     @pytest.mark.unit
     def test_initialize_with_invalid_model_path_or_url(self, mock_check_valid_model):
         model = "invalid_model"
-        model_id = None
-        token = None
         generation_kwargs = {"n": 1}
         stop_words = ["stop"]
         streaming_callback = None
@@ -121,44 +112,34 @@ class TestHuggingFaceTGIChatGenerator:
         with pytest.raises(ValueError):
             HuggingFaceTGIChatGenerator(
                 model=model,
-                model_id=model_id,
-                token=token,
                 generation_kwargs=generation_kwargs,
                 stop_words=stop_words,
                 streaming_callback=streaming_callback,
             )
 
     @pytest.mark.unit
-    def test_initialize_with_url_without_model_id(self, mock_check_valid_model):
-        # if we provide URL as model, model_id must be provided
-        model = "https://some_chat_model.com"
+    def test_initialize_with_invalid_url(self, mock_check_valid_model):
         with pytest.raises(ValueError):
-            HuggingFaceTGIChatGenerator(model=model, model_id=None)
+            HuggingFaceTGIChatGenerator(model="NousResearch/Llama-2-7b-chat-hf", url="invalid_url")
 
     @pytest.mark.unit
-    def test_initialize_with_url_with_invalid_model_id(self, mock_check_valid_model):
-        # When model is URL, model_id must be provided and valid HuggingFace Hub model id
-        model = "https://some_chat_model.com"
-
+    def test_initialize_with_url_but_invalid_model(self, mock_check_valid_model):
+        # When custom TGI endpoint is used via URL, model must be provided and valid HuggingFace Hub model id
         mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
         with pytest.raises(RepositoryNotFoundError):
-            HuggingFaceTGIChatGenerator(model=model, model_id="invalid_model_id")
+            HuggingFaceTGIChatGenerator(model="invalid_model_id", url="https://some_chat_model.com")
 
     @pytest.mark.unit
     def test_generate_text_response_with_valid_prompt_and_generation_parameters(
         self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, chat_messages
     ):
         model = "meta-llama/Llama-2-13b-chat-hf"
-        model_id = None
-        token = None
         generation_kwargs = {"n": 1}
         stop_words = ["stop"]
         streaming_callback = None
 
         generator = HuggingFaceTGIChatGenerator(
             model=model,
-            model_id=model_id,
-            token=token,
             generation_kwargs=generation_kwargs,
             stop_words=stop_words,
             streaming_callback=streaming_callback,
@@ -183,7 +164,6 @@ class TestHuggingFaceTGIChatGenerator:
         self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, chat_messages
     ):
         model = "meta-llama/Llama-2-13b-chat-hf"
-        model_id = None
         token = None
         generation_kwargs = {"n": 3}
         stop_words = ["stop"]
@@ -191,7 +171,6 @@ class TestHuggingFaceTGIChatGenerator:
 
         generator = HuggingFaceTGIChatGenerator(
             model=model,
-            model_id=model_id,
             token=token,
             generation_kwargs=generation_kwargs,
             stop_words=stop_words,
