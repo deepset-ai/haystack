@@ -2,12 +2,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 import math
 import warnings
+import os
 
 from haystack.preview import component, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(
-    "Run 'pip install transformers[torch,sentencepiece]==4.32.1 sentence-transformers>=2.2.0'"
+    "Run 'pip install transformers[torch,sentencepiece]==4.34.1 sentence-transformers>=2.2.0'"
 ) as torch_and_transformers_import:
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
     from tokenizers import Encoding
@@ -19,6 +20,16 @@ class ExtractiveReader:
     """
     A component for performing extractive QA.
     Every possible answer span is assigned a confidence score independent of other answer spans. This fixes a common issue of other implementations which make comparisons across documents harder by normalising each document's answers independently.
+
+    Example usage:
+    ```python
+    p = Pipeline()
+    p.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
+    p.add_component(instance=ExtractiveReader(), name="reader")
+    p.connect("retriever", "reader")
+    question = "Who lives in Berlin?"
+    p.run({"retriever": {"query": question}, "reader": {"query": question}})
+    ```
     """
 
     def __init__(
@@ -101,6 +112,12 @@ class ExtractiveReader:
         if self.model is None:
             if torch.cuda.is_available():
                 self.device = self.device or "cuda:0"
+            elif (
+                hasattr(torch.backends, "mps")
+                and torch.backends.mps.is_available()
+                and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
+            ):
+                self.device = self.device or "mps:0"
             else:
                 self.device = self.device or "cpu:0"
             self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_name_or_path, token=self.token).to(
@@ -128,16 +145,16 @@ class ExtractiveReader:
         texts = []
         document_ids = []
         for i, doc in enumerate(documents):
-            if doc.text is None:
+            if doc.content is None:
                 warnings.warn(
                     f"Document with id {doc.id} was passed to ExtractiveReader, but does not contain any text. It will be ignored."
                 )
                 continue
-            texts.append(doc.text)
+            texts.append(doc.content)
             document_ids.append(i)
         encodings_pt = self.tokenizer(
             queries,
-            [document.text for document in documents],
+            [document.content for document in documents],
             padding=True,
             truncation=True,
             max_length=max_seq_length,
@@ -192,17 +209,17 @@ class ExtractiveReader:
         start_candidates = start_candidates.cpu()
         end_candidates = end_candidates.cpu()
 
-        start_candidates = [
+        start_candidates_char_indices = [
             [encoding.token_to_chars(start)[0] for start in candidates]
             for candidates, encoding in zip(start_candidates, encodings)
         ]
-        end_candidates = [
+        end_candidates_char_indices = [
             [encoding.token_to_chars(end)[1] for end in candidates]
             for candidates, encoding in zip(end_candidates, encodings)
         ]
         probabilities = candidates.values.cpu()
 
-        return start_candidates, end_candidates, probabilities
+        return start_candidates_char_indices, end_candidates_char_indices, probabilities
 
     def _nest_answers(
         self,
@@ -227,7 +244,7 @@ class ExtractiveReader:
         ):
             for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_):
                 doc = flattened_documents[document_id]
-                flat_answers_without_queries.append({"data": doc.text[start_:end_], "document": doc, "probability": probability.item(), "start": start_, "end": end_, "metadata": {}})  # type: ignore # doc.text cannot be None, because those documents are filtered when preprocessing. However, mypy doesn't know that.
+                flat_answers_without_queries.append({"data": doc.content[start_:end_], "document": doc, "probability": probability.item(), "start": start_, "end": end_, "metadata": {}})  # type: ignore # doc.content cannot be None, because those documents are filtered when preprocessing. However, mypy doesn't know that.
         i = 0
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):
@@ -256,7 +273,7 @@ class ExtractiveReader:
     def run(
         self,
         query: str,
-        document: List[Document],
+        documents: List[Document],
         top_k: Optional[int] = None,
         confidence_threshold: Optional[float] = None,
         max_seq_length: Optional[int] = None,
@@ -267,9 +284,14 @@ class ExtractiveReader:
     ):
         """
         Performs extractive QA on the given documents using the given query.
+
+        :param query: Query string.
+        :param documents: List of Documents to search for an answer to the query.
+        :param top_k: The maximum number of answers to return.
+        :return: List of ExtractedAnswers sorted by (desc.) answer score.
         """
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2
-        documents = [document]
+        nested_documents = [documents]
         if self.model is None:
             raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
 
@@ -281,7 +303,7 @@ class ExtractiveReader:
         answers_per_seq = answers_per_seq or self.answers_per_seq or top_k or 20
         no_answer = no_answer if no_answer is not None else self.no_answer
 
-        flattened_queries, flattened_documents, query_ids = self._flatten_documents(queries, documents)
+        flattened_queries, flattened_documents, query_ids = self._flatten_documents(queries, nested_documents)
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
             flattened_queries, flattened_documents, max_seq_length, query_ids, stride
         )

@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Better management of API key in GPT Generator. The API key is never serialized.
+    Make the `api_base_url` parameter really used (previously it was ignored).

@@ -6,7 +6,10 @@ from pathlib import Path
 from haystack.preview import component, Document, default_to_dict, ComponentError
 from haystack.preview.lazy_imports import LazyImport
 
-with LazyImport("Run 'pip install openai-whisper'") as whisper_import:
+with LazyImport(
+    "Run 'pip install transformers[torch]==4.34.1' to install torch and "
+    "'pip install --no-deps numba llvmlite 'openai-whisper>=20230918'' to install whisper."
+) as whisper_import:
     import torch
     import whisper
 
@@ -110,7 +113,7 @@ class LocalWhisperTranscriber:
             content = transcript.pop("text")
             if not isinstance(audio, (str, Path)):
                 audio = "<<binary stream>>"
-            doc = Document(text=content, metadata={"audio_file": audio, **transcript})
+            doc = Document(content=content, meta={"audio_file": audio, **transcript})
             documents.append(doc)
         return documents
 

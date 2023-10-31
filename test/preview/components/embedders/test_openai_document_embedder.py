@@ -1,17 +1,17 @@
 from unittest.mock import patch
+from typing import List, cast
+
 import pytest
-from typing import List
 import numpy as np
 import openai
 from openai.util import convert_to_openai_object
+from openai.openai_object import OpenAIObject
 
 from haystack.preview import Document
 from haystack.preview.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
 
 
-def mock_openai_response(
-    input: List[str], model: str = "text-embedding-ada-002", **kwargs
-) -> openai.openai_object.OpenAIObject:
+def mock_openai_response(input: List[str], model: str = "text-embedding-ada-002", **kwargs) -> OpenAIObject:
     dict_response = {
         "object": "list",
         "data": [
@@ -21,12 +21,13 @@ def mock_openai_response(
         "usage": {"prompt_tokens": 4, "total_tokens": 4},
     }
 
-    return convert_to_openai_object(dict_response)
+    return cast(OpenAIObject, convert_to_openai_object(dict_response))
 
 
 class TestOpenAIDocumentEmbedder:
     @pytest.mark.unit
     def test_init_default(self, monkeypatch):
+        openai.api_key = None
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAIDocumentEmbedder()
 
@@ -68,6 +69,7 @@ class TestOpenAIDocumentEmbedder:
 
     @pytest.mark.unit
     def test_init_fail_wo_api_key(self, monkeypatch):
+        openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="OpenAIDocumentEmbedder expects an OpenAI API key"):
             OpenAIDocumentEmbedder()
@@ -121,8 +123,7 @@ class TestOpenAIDocumentEmbedder:
     @pytest.mark.unit
     def test_prepare_texts_to_embed_w_metadata(self):
         documents = [
-            Document(text=f"document number {i}:\ncontent", metadata={"meta_field": f"meta_value {i}"})
-            for i in range(5)
+            Document(content=f"document number {i}:\ncontent", meta={"meta_field": f"meta_value {i}"}) for i in range(5)
         ]
 
         embedder = OpenAIDocumentEmbedder(
@@ -142,7 +143,7 @@ class TestOpenAIDocumentEmbedder:
 
     @pytest.mark.unit
     def test_prepare_texts_to_embed_w_suffix(self):
-        documents = [Document(text=f"document number {i}") for i in range(5)]
+        documents = [Document(content=f"document number {i}") for i in range(5)]
 
         embedder = OpenAIDocumentEmbedder(api_key="fake-api-key", prefix="my_prefix ", suffix=" my_suffix")
 
@@ -183,8 +184,8 @@ class TestOpenAIDocumentEmbedder:
     @pytest.mark.unit
     def test_run(self):
         docs = [
-            Document(text="I love cheese", metadata={"topic": "Cuisine"}),
-            Document(text="A transformer is a deep learning architecture", metadata={"topic": "ML"}),
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
         model = "text-similarity-ada-001"
@@ -225,8 +226,8 @@ class TestOpenAIDocumentEmbedder:
     @pytest.mark.unit
     def test_run_custom_batch_size(self):
         docs = [
-            Document(text="I love cheese", metadata={"topic": "Cuisine"}),
-            Document(text="A transformer is a deep learning architecture", metadata={"topic": "ML"}),
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
         model = "text-similarity-ada-001"

@@ -13,6 +13,21 @@ class OpenAIDocumentEmbedder:
     """
     A component for computing Document embeddings using OpenAI models.
     The embedding of each Document is stored in the `embedding` field of the Document.
+
+    Usage example:
+    ```python
+    from haystack.preview import Document
+    from haystack.preview.components.embedders import OpenAIDocumentEmbedder
+
+    doc = Document(text="I love pizza!")
+
+    document_embedder = OpenAIDocumentEmbedder()
+
+    result = document_embedder.run([doc])
+    print(result['documents'][0].embedding)
+
+    # [0.017020374536514282, -0.023255806416273117, ...]
+    ```
     """
 
     def __init__(
@@ -43,7 +58,8 @@ class OpenAIDocumentEmbedder:
         :param metadata_fields_to_embed: List of meta fields that should be embedded along with the Document text.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
-
+        # if the user does not provide the API key, check if it is set in the module client
+        api_key = api_key or openai.api_key
         if api_key is None:
             try:
                 api_key = os.environ["OPENAI_API_KEY"]
@@ -96,13 +112,13 @@ class OpenAIDocumentEmbedder:
         texts_to_embed = []
         for doc in documents:
             meta_values_to_embed = [
-                str(doc.metadata[key])
+                str(doc.meta[key])
                 for key in self.metadata_fields_to_embed
-                if key in doc.metadata and doc.metadata[key] is not None
+                if key in doc.meta and doc.meta[key] is not None
             ]
 
             text_to_embed = (
-                self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.text or ""]) + self.suffix
+                self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""]) + self.suffix
             )
 
             # copied from OpenAI embedding_utils (https://github.com/openai/openai-python/blob/main/openai/embeddings_utils.py)

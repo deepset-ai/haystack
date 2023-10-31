@@ -133,3 +133,16 @@ class ReadmeRenderer(Renderer):
             slug=self.slug,
             order=self.order,
         )
+
+
+@dataclasses.dataclass
+class ReadmePreviewRenderer(ReadmeRenderer):
+    """
+    This custom Renderer behaves just like the ReadmeRenderer but renders docs with the hardcoded version 2.0 to generate correct category ids.
+    """
+
+    def _doc_version(self) -> str:
+        """
+        Returns the hardcoded docs version 2.0.
+        """
+        return "v2.0"
