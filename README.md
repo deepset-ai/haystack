@@ -50,7 +50,7 @@ result = pipeline.run(query="Who is the father of Arya Stark?")
 print_answers(result, details="medium")
 ```
 
-The output of the pipeline will reference the documents used to generate the answer as:
+The output of the pipeline will reference the documents used to generate the answer:
 
 ```
 'Query: Who is the father of Arya Stark?'
