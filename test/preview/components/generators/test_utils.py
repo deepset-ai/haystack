@@ -26,7 +26,7 @@ def test_callback_handler_deserialization():
     result = serialize_callback_handler(streaming_callback)
     fn = deserialize_callback_handler(result)
 
-    assert fn == streaming_callback
+    assert fn is streaming_callback
 
 
 @pytest.mark.unit
@@ -34,4 +34,4 @@ def test_callback_handler_deserialization_non_local():
     result = serialize_callback_handler(default_streaming_callback)
     fn = deserialize_callback_handler(result)
 
-    assert fn == default_streaming_callback
+    assert fn is default_streaming_callback
