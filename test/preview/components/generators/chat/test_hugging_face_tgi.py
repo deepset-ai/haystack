@@ -103,7 +103,7 @@ class TestHuggingFaceTGIChatGenerator:
         generator_2 = HuggingFaceTGIChatGenerator.from_dict(result)
         assert generator_2.model_id == "HuggingFaceH4/zephyr-7b-alpha"
         assert generator_2.generation_kwargs == {"n": 5, "stop_sequences": ["stop", "words"]}
-        assert generator_2.streaming_callback == streaming_callback_handler
+        assert generator_2.streaming_callback is streaming_callback_handler
 
     @pytest.mark.unit
     def test_initialize_with_url_for_model_without_model_id(self, mock_check_valid_model):
@@ -144,7 +144,7 @@ class TestHuggingFaceTGIChatGenerator:
 
         # check kwargs passed to text_generation
         # note how n was not passed to text_generation
-        args, kwargs = mock_text_generation.call_args
+        _, kwargs = mock_text_generation.call_args
         assert kwargs == {"details": True, "stop_sequences": ["stop"]}
 
         assert isinstance(response, dict)
@@ -178,7 +178,7 @@ class TestHuggingFaceTGIChatGenerator:
 
         # check kwargs passed to text_generation
         # note how n was not passed to text_generation
-        args, kwargs = mock_text_generation.call_args
+        _, kwargs = mock_text_generation.call_args
         assert kwargs == {"details": True, "stop_sequences": ["stop"]}
 
         assert isinstance(response, dict)
@@ -219,7 +219,7 @@ class TestHuggingFaceTGIChatGenerator:
         response = generator.run(chat_messages, stop_words=stop_words)
 
         # check kwargs passed to text_generation
-        args, kwargs = mock_text_generation.call_args
+        _, kwargs = mock_text_generation.call_args
         assert kwargs == {"details": True, "stop_sequences": ["stop", "words"]}
 
         # Assert that the response contains the generated replies
@@ -239,7 +239,7 @@ class TestHuggingFaceTGIChatGenerator:
         response = generator.run(chat_messages, **generation_kwargs)
 
         # check kwargs passed to text_generation
-        args, kwargs = mock_text_generation.call_args
+        _, kwargs = mock_text_generation.call_args
         assert kwargs == {"details": True, "max_new_tokens": 100, "stop_sequences": [], "temperature": 0.8}
 
         # Assert that the response contains the generated replies and the right response
@@ -283,7 +283,7 @@ class TestHuggingFaceTGIChatGenerator:
         response = generator.run(chat_messages)
 
         # check kwargs passed to text_generation
-        args, kwargs = mock_text_generation.call_args
+        _, kwargs = mock_text_generation.call_args
         assert kwargs == {"details": True, "stop_sequences": [], "stream": True}
 
         # Assert that the streaming callback was called twice
