@@ -40,7 +40,7 @@ class LocalWhisperTranscriber:
                                         - `small`
                                         - `medium`
                                         - `large`
-                                        - `large-v2`            
+                                        - `large-v2`
         :param device: Name of the torch device to use for inference. If None, CPU is used.
         """
         whisper_import.check()
