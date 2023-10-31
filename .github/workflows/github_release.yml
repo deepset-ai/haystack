@@ -1,0 +1,50 @@
+name: Project release on Github
+
+on:
+  workflow_dispatch:  # this is useful to re-generate the release page without a new tag being pushed
+  push:
+    tags:
+      - "v[0-9].[0-9]+.[0-9]+*"
+    branches:
+      - massi/reno-report  # FIXME: REMOVE BEFORE MERGE!
+
+jobs:
+  generate-notes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+          fetch-depth: 0  # slow but needed by reno
+
+      - name: Parse version
+        id: version
+        run: |
+          echo "current_release=$(awk -F \- {'print $1'} < VERSION.txt)" >> "$GITHUB_OUTPUT"
+          echo "current_pre_release=$(awk -F \- {'print $2'} < VERSION.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Install reno
+        run: |
+          python -m pip install --upgrade pip
+          pip install reno
+
+      - name: Generate release notes for release candidates
+        if: steps.version.outputs.current_pre_release != ''
+        run: |
+          reno report --no-show-source --ignore-cache --earliest-version v${{ steps.version.outputs.current_release }}-rc0 -o relnotes.rst
+
+      - name: Generate release notes for the final release
+        if: steps.version.outputs.current_pre_release == ''
+        run: |
+          reno report --no-show-source --ignore-cache --version v${{ steps.version.outputs.current_release }} -o relnotes.rst
+
+      - name: Convert to Markdown
+        uses: docker://pandoc/core:3.1
+        with:
+          args: "--from rst --to markdown_github --no-highlight relnotes.rst -o relnotes.md --wrap=none"
+
+      - name: Debug
+        run: |
+          cat relnotes.md
