@@ -1,7 +1,7 @@
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 
-from haystack.preview import component, default_from_dict, default_to_dict
+from haystack.preview import component
 from haystack.preview.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
@@ -62,19 +62,6 @@ class TextLanguageClassifier:
             output["unmatched"] = text
 
         return output
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(self, languages=self.languages)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TextLanguageClassifier":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     def detect_language(self, text: str) -> Optional[str]:
         try:

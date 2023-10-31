@@ -1,5 +1,6 @@
 # pylint: disable=too-many-public-methods
 from typing import List
+import random
 
 import pytest
 import numpy as np
@@ -11,6 +12,10 @@ from haystack.preview.document_stores.errors import MissingDocumentError, Duplic
 from haystack.preview.errors import FilterError
 
 
+def _random_embeddings(n):
+    return [random.random() for _ in range(n)]
+
+
 class DocumentStoreBaseTests:
     @pytest.fixture
     def docstore(self) -> DocumentStore:
@@ -18,45 +23,44 @@ class DocumentStoreBaseTests:
 
     @pytest.fixture
     def filterable_docs(self) -> List[Document]:
-        embedding_zero = np.zeros(768).astype(np.float32)
-        embedding_one = np.ones(768).astype(np.float32)
+        embedding_zero = [0.0] * 768
+        embedding_one = [1.0] * 768
 
         documents = []
         for i in range(3):
             documents.append(
                 Document(
-                    text=f"A Foo Document {i}",
-                    metadata={"name": f"name_{i}", "page": "100", "chapter": "intro", "number": 2},
-                    embedding=np.random.rand(768).astype(np.float32),
+                    content=f"A Foo Document {i}",
+                    meta={"name": f"name_{i}", "page": "100", "chapter": "intro", "number": 2},
+                    embedding=_random_embeddings(768),
                 )
             )
             documents.append(
                 Document(
-                    text=f"A Bar Document {i}",
-                    metadata={"name": f"name_{i}", "page": "123", "chapter": "abstract", "number": -2},
-                    embedding=np.random.rand(768).astype(np.float32),
+                    content=f"A Bar Document {i}",
+                    meta={"name": f"name_{i}", "page": "123", "chapter": "abstract", "number": -2},
+                    embedding=_random_embeddings(768),
                 )
             )
             documents.append(
                 Document(
-                    text=f"A Foobar Document {i}",
-                    metadata={"name": f"name_{i}", "page": "90", "chapter": "conclusion", "number": -10},
-                    embedding=np.random.rand(768).astype(np.float32),
+                    content=f"A Foobar Document {i}",
+                    meta={"name": f"name_{i}", "page": "90", "chapter": "conclusion", "number": -10},
+                    embedding=_random_embeddings(768),
                 )
             )
             documents.append(
                 Document(
-                    text=f"Document {i} without embedding",
-                    metadata={"name": f"name_{i}", "no_embedding": True, "chapter": "conclusion"},
+                    content=f"Document {i} without embedding",
+                    meta={"name": f"name_{i}", "no_embedding": True, "chapter": "conclusion"},
                 )
             )
-            documents.append(Document(dataframe=pd.DataFrame([i]), metadata={"name": f"table_doc_{i}"}))
-            documents.append(Document(array=np.array([i, i, i]), metadata={"name": f"array_doc_{i}"}))
+            documents.append(Document(dataframe=pd.DataFrame([i]), meta={"name": f"table_doc_{i}"}))
             documents.append(
-                Document(text=f"Doc {i} with zeros emb", metadata={"name": "zeros_doc"}, embedding=embedding_zero)
+                Document(content=f"Doc {i} with zeros emb", meta={"name": "zeros_doc"}, embedding=embedding_zero)
             )
             documents.append(
-                Document(text=f"Doc {i} with ones emb", metadata={"name": "ones_doc"}, embedding=embedding_one)
+                Document(content=f"Doc {i} with ones emb", meta={"name": "ones_doc"}, embedding=embedding_one)
             )
         return documents
 
@@ -77,7 +81,7 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_count_not_empty(self, docstore: DocumentStore):
         docstore.write_documents(
-            [Document(text="test doc 1"), Document(text="test doc 2"), Document(text="test doc 3")]
+            [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
         )
         assert docstore.count_documents() == 3
 
@@ -88,7 +92,7 @@ class DocumentStoreBaseTests:
 
     @pytest.mark.unit
     def test_no_filter_not_empty(self, docstore: DocumentStore):
-        docs = [Document(text="test doc")]
+        docs = [Document(content="test doc")]
         docstore.write_documents(docs)
         assert docstore.filter_documents() == docs
         assert docstore.filter_documents(filters={}) == docs
@@ -97,36 +101,19 @@ class DocumentStoreBaseTests:
     def test_filter_simple_metadata_value(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": "100"})
-        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.meta.get("page") == "100"])
 
     @pytest.mark.unit
     def test_filter_simple_list_single_element(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": ["100"]})
-        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.meta.get("page") == "100"])
 
     @pytest.mark.unit
-    def test_filter_document_text(self, docstore: DocumentStore, filterable_docs: List[Document]):
+    def test_filter_document_content(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"text": "A Foo Document 1"})
-        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.text == "A Foo Document 1"])
-
-    @pytest.mark.unit
-    def test_filter_document_array(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"array": np.array([1, 1, 1])})
-        assert self.contains_same_docs(
-            result,
-            [
-                doc
-                for doc in filterable_docs
-                if (
-                    doc.array is not None
-                    and doc.array.shape == np.array([1, 1, 1]).shape
-                    and (doc.array == np.array([1, 1, 1])).all()
-                )
-            ],
-        )
+        result = docstore.filter_documents(filters={"content": "A Foo Document 1"})
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.content == "A Foo Document 1"])
 
     @pytest.mark.unit
     def test_filter_document_dataframe(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -141,14 +128,14 @@ class DocumentStoreBaseTests:
     def test_filter_simple_list_one_value(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": ["100"]})
-        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") in ["100"]])
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.meta.get("page") in ["100"]])
 
     @pytest.mark.unit
     def test_filter_simple_list(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": ["100", "123"]})
         assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if doc.metadata.get("page") in ["100", "123"]]
+            result, [doc for doc in filterable_docs if doc.meta.get("page") in ["100", "123"]]
         )
 
     @pytest.mark.unit
@@ -185,13 +172,13 @@ class DocumentStoreBaseTests:
     def test_eq_filter_explicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": {"$eq": "100"}})
-        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.meta.get("page") == "100"])
 
     @pytest.mark.unit
     def test_eq_filter_implicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": "100"})
-        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.meta.get("page") == "100"])
 
     @pytest.mark.unit
     def test_eq_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -209,18 +196,16 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_eq_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        embedding = np.zeros(768).astype(np.float32)
+        embedding = [0.0] * 768
         result = docstore.filter_documents(filters={"embedding": embedding})
-        assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if np.array_equal(embedding, doc.embedding)]  # type: ignore
-        )
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if embedding == doc.embedding])
 
     @pytest.mark.unit
     def test_in_filter_explicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": {"$in": ["100", "123", "n.a."]}})
         assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if doc.metadata.get("page") in ["100", "123"]]
+            result, [doc for doc in filterable_docs if doc.meta.get("page") in ["100", "123"]]
         )
 
     @pytest.mark.unit
@@ -228,7 +213,7 @@ class DocumentStoreBaseTests:
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": ["100", "123", "n.a."]})
         assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if doc.metadata.get("page") in ["100", "123"]]
+            result, [doc for doc in filterable_docs if doc.meta.get("page") in ["100", "123"]]
         )
 
     @pytest.mark.unit
@@ -248,24 +233,19 @@ class DocumentStoreBaseTests:
     @pytest.mark.unit
     def test_in_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
-        embedding_zero = np.zeros(768, np.float32)
-        embedding_one = np.ones(768, np.float32)
+        embedding_zero = [0.0] * 768
+        embedding_one = [1.0] * 768
         result = docstore.filter_documents(filters={"embedding": {"$in": [embedding_zero, embedding_one]}})
         assert self.contains_same_docs(
             result,
-            [
-                doc
-                for doc in filterable_docs
-                if isinstance(doc.embedding, np.ndarray)
-                and (np.array_equal(embedding_zero, doc.embedding) or np.array_equal(embedding_one, doc.embedding))
-            ],
+            [doc for doc in filterable_docs if (embedding_zero == doc.embedding or embedding_one == doc.embedding)],
         )
 
     @pytest.mark.unit
     def test_ne_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": {"$ne": "100"}})
-        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") != "100"])
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.meta.get("page") != "100"])
 
     @pytest.mark.unit
     def test_ne_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -328,7 +308,7 @@ class DocumentStoreBaseTests:
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": {"$nin": ["100", "123", "n.a."]}})
         assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if doc.metadata.get("page") not in ["100", "123"]]
+            result, [doc for doc in filterable_docs if doc.meta.get("page") not in ["100", "123"]]
         )
 
     @pytest.mark.unit
@@ -336,7 +316,7 @@ class DocumentStoreBaseTests:
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$gt": 0.0}})
         assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if "number" in doc.metadata and doc.metadata["number"] > 0]
+            result, [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] > 0]
         )
 
     @pytest.mark.unit
@@ -363,7 +343,7 @@ class DocumentStoreBaseTests:
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$gte": -2}})
         assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if "number" in doc.metadata and doc.metadata["number"] >= -2]
+            result, [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] >= -2]
         )
 
     @pytest.mark.unit
@@ -390,7 +370,7 @@ class DocumentStoreBaseTests:
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$lt": 0.0}})
         assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if "number" in doc.metadata and doc.metadata["number"] < 0]
+            result, [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] < 0]
         )
 
     @pytest.mark.unit
@@ -417,7 +397,7 @@ class DocumentStoreBaseTests:
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$lte": 2.0}})
         assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if "number" in doc.metadata and doc.metadata["number"] <= 2.0]
+            result, [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] <= 2.0]
         )
 
     @pytest.mark.unit
@@ -450,7 +430,7 @@ class DocumentStoreBaseTests:
             [
                 doc
                 for doc in filterable_docs
-                if "number" in doc.metadata and doc.metadata["number"] >= 0.0 and doc.metadata["number"] <= 2.0
+                if "number" in doc.meta and doc.meta["number"] >= 0.0 and doc.meta["number"] <= 2.0
             ],
         )
 
@@ -461,7 +441,7 @@ class DocumentStoreBaseTests:
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$and": {"$gte": 0, "$lte": 2}}})
         assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if "number" in doc.metadata and 0 <= doc.metadata["number"] <= 2]
+            result, [doc for doc in filterable_docs if "number" in doc.meta and 0 <= doc.meta["number"] <= 2]
         )
 
     @pytest.mark.unit
@@ -473,7 +453,7 @@ class DocumentStoreBaseTests:
             [
                 doc
                 for doc in filterable_docs
-                if "number" in doc.metadata and doc.metadata["number"] <= 2.0 and doc.metadata["number"] >= 0.0
+                if "number" in doc.meta and doc.meta["number"] <= 2.0 and doc.meta["number"] >= 0.0
             ],
         )
 
@@ -486,7 +466,7 @@ class DocumentStoreBaseTests:
             [
                 doc
                 for doc in filterable_docs
-                if "number" in doc.metadata and doc.metadata["number"] <= 2.0 and doc.metadata["number"] >= 0.0
+                if "number" in doc.meta and doc.meta["number"] <= 2.0 and doc.meta["number"] >= 0.0
             ],
         )
 
@@ -501,10 +481,10 @@ class DocumentStoreBaseTests:
                 doc
                 for doc in filterable_docs
                 if (
-                    "number" in doc.metadata
-                    and doc.metadata["number"] >= 0
-                    and doc.metadata["number"] <= 2
-                    and doc.metadata["name"] in ["name_0", "name_1"]
+                    "number" in doc.meta
+                    and doc.meta["number"] >= 0
+                    and doc.meta["number"] <= 2
+                    and doc.meta["name"] in ["name_0", "name_1"]
                 )
             ],
         )
@@ -520,10 +500,10 @@ class DocumentStoreBaseTests:
                 doc
                 for doc in filterable_docs
                 if (
-                    "number" in doc.metadata
-                    and doc.metadata["number"] <= 2
-                    and doc.metadata["number"] >= 0
-                    and doc.metadata.get("name") in ["name_0", "name_1"]
+                    "number" in doc.meta
+                    and doc.meta["number"] <= 2
+                    and doc.meta["number"] >= 0
+                    and doc.meta.get("name") in ["name_0", "name_1"]
                 )
             ],
         )
@@ -538,10 +518,7 @@ class DocumentStoreBaseTests:
             [
                 doc
                 for doc in filterable_docs
-                if (
-                    ("number" in doc.metadata and doc.metadata["number"] < 1)
-                    or doc.metadata.get("name") in ["name_0", "name_1"]
-                )
+                if (("number" in doc.meta and doc.meta["number"] < 1) or doc.meta.get("name") in ["name_0", "name_1"])
             ],
         )
 
@@ -555,10 +532,7 @@ class DocumentStoreBaseTests:
             [
                 doc
                 for doc in filterable_docs
-                if (
-                    doc.metadata.get("name") in ["name_0", "name_1"]
-                    or ("number" in doc.metadata and doc.metadata["number"] < 1)
-                )
+                if (doc.meta.get("name") in ["name_0", "name_1"] or ("number" in doc.meta and doc.meta["number"] < 1))
             ],
         )
 
@@ -575,10 +549,10 @@ class DocumentStoreBaseTests:
                 doc
                 for doc in filterable_docs
                 if (
-                    doc.metadata.get("page") in ["123"]
+                    doc.meta.get("page") in ["123"]
                     and (
-                        doc.metadata.get("name") in ["name_0", "name_1"]
-                        or ("number" in doc.metadata and doc.metadata["number"] < 1)
+                        doc.meta.get("name") in ["name_0", "name_1"]
+                        or ("number" in doc.meta and doc.meta["number"] < 1)
                     )
                 )
             ],
@@ -598,10 +572,10 @@ class DocumentStoreBaseTests:
                 doc
                 for doc in filterable_docs
                 if (
-                    doc.metadata.get("page") in ["123"]
+                    doc.meta.get("page") in ["123"]
                     and (
-                        doc.metadata.get("name") in ["name_0", "name_1"]
-                        or ("number" in doc.metadata and doc.metadata["number"] < 1)
+                        doc.meta.get("name") in ["name_0", "name_1"]
+                        or ("number" in doc.meta and doc.meta["number"] < 1)
                     )
                 )
             ],
@@ -623,10 +597,10 @@ class DocumentStoreBaseTests:
                 doc
                 for doc in filterable_docs
                 if (
-                    ("number" in doc.metadata and doc.metadata["number"] < 1)
+                    ("number" in doc.meta and doc.meta["number"] < 1)
                     or (
-                        doc.metadata.get("name") in ["name_0", "name_1"]
-                        and ("chapter" in doc.metadata and doc.metadata["chapter"] != "intro")
+                        doc.meta.get("name") in ["name_0", "name_1"]
+                        and ("chapter" in doc.meta and doc.meta["chapter"] != "intro")
                     )
                 )
             ],
@@ -650,21 +624,21 @@ class DocumentStoreBaseTests:
                 doc
                 for doc in filterable_docs
                 if (
-                    (doc.metadata.get("name") in ["name_0", "name_1"] and doc.metadata.get("page") == "100")
-                    or (doc.metadata.get("chapter") in ["intro", "abstract"] and doc.metadata.get("page") == "123")
+                    (doc.meta.get("name") in ["name_0", "name_1"] and doc.meta.get("page") == "100")
+                    or (doc.meta.get("chapter") in ["intro", "abstract"] and doc.meta.get("page") == "123")
                 )
             ],
         )
 
     @pytest.mark.unit
     def test_write(self, docstore: DocumentStore):
-        doc = Document(text="test doc")
+        doc = Document(content="test doc")
         docstore.write_documents([doc])
         assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
 
     @pytest.mark.unit
     def test_write_duplicate_fail(self, docstore: DocumentStore):
-        doc = Document(text="test doc")
+        doc = Document(content="test doc")
         docstore.write_documents([doc])
         with pytest.raises(DuplicateDocumentError, match=f"ID '{doc.id}' already exists."):
             docstore.write_documents(documents=[doc], policy=DuplicatePolicy.FAIL)
@@ -672,15 +646,15 @@ class DocumentStoreBaseTests:
 
     @pytest.mark.unit
     def test_write_duplicate_skip(self, docstore: DocumentStore):
-        doc = Document(text="test doc")
+        doc = Document(content="test doc")
         docstore.write_documents([doc])
         docstore.write_documents(documents=[doc], policy=DuplicatePolicy.SKIP)
         assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
 
     @pytest.mark.unit
     def test_write_duplicate_overwrite(self, docstore: DocumentStore):
-        doc1 = Document(text="test doc 1")
-        doc2 = Document(text="test doc 2")
+        doc1 = Document(content="test doc 1")
+        doc2 = Document(content="test doc 2")
         object.__setattr__(doc2, "id", doc1.id)  # Make two docs with different content but same ID
 
         docstore.write_documents([doc2])
@@ -705,7 +679,7 @@ class DocumentStoreBaseTests:
 
     @pytest.mark.unit
     def test_delete_not_empty(self, docstore: DocumentStore):
-        doc = Document(text="test doc")
+        doc = Document(content="test doc")
         docstore.write_documents([doc])
 
         docstore.delete_documents([doc.id])
@@ -715,7 +689,7 @@ class DocumentStoreBaseTests:
 
     @pytest.mark.unit
     def test_delete_not_empty_nonexisting(self, docstore: DocumentStore):
-        doc = Document(text="test doc")
+        doc = Document(content="test doc")
         docstore.write_documents([doc])
 
         with pytest.raises(MissingDocumentError):

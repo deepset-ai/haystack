@@ -101,35 +101,6 @@ class TestSentenceTransformersDocumentEmbedder:
         }
 
     @pytest.mark.unit
-    def test_from_dict(self):
-        data = {
-            "type": "SentenceTransformersDocumentEmbedder",
-            "init_parameters": {
-                "model_name_or_path": "model",
-                "device": "cuda",
-                "token": None,
-                "prefix": "prefix",
-                "suffix": "suffix",
-                "batch_size": 64,
-                "progress_bar": False,
-                "normalize_embeddings": False,
-                "embedding_separator": " - ",
-                "metadata_fields_to_embed": ["meta_field"],
-            },
-        }
-        component = SentenceTransformersDocumentEmbedder.from_dict(data)
-        assert component.model_name_or_path == "model"
-        assert component.device == "cuda"
-        assert component.token is None
-        assert component.prefix == "prefix"
-        assert component.suffix == "suffix"
-        assert component.batch_size == 64
-        assert component.progress_bar is False
-        assert component.normalize_embeddings is False
-        assert component.metadata_fields_to_embed == ["meta_field"]
-        assert component.embedding_separator == " - "
-
-    @pytest.mark.unit
     @patch(
         "haystack.preview.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
@@ -158,7 +129,7 @@ class TestSentenceTransformersDocumentEmbedder:
         embedder.embedding_backend = MagicMock()
         embedder.embedding_backend.embed = lambda x, **kwargs: np.random.rand(len(x), 16).tolist()
 
-        documents = [Document(text=f"document number {i}") for i in range(5)]
+        documents = [Document(content=f"document number {i}") for i in range(5)]
 
         result = embedder.run(documents=documents)
 
@@ -193,9 +164,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
         embedder.embedding_backend = MagicMock()
 
-        documents = [
-            Document(text=f"document number {i}", metadata={"meta_field": f"meta_value {i}"}) for i in range(5)
-        ]
+        documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
         embedder.run(documents=documents)
 
@@ -223,9 +192,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
         embedder.embedding_backend = MagicMock()
 
-        documents = [
-            Document(text=f"document number {i}", metadata={"meta_field": f"meta_value {i}"}) for i in range(5)
-        ]
+        documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
         embedder.run(documents=documents)
 

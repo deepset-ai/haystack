@@ -49,7 +49,7 @@ dependencies = [
   "requests",
   "httpx",
   "pydantic<2",
-  "transformers==4.32.1",
+  "transformers==4.34.1",
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.3.0", # TF-IDF and metrics
@@ -62,7 +62,6 @@ dependencies = [
   "networkx",  # graphs library
   "quantulum3",  # quantities extraction from text
   "posthog",  # telemetry
-  # audio's espnet-model-zoo requires huggingface-hub version <0.8 while we need >=0.5 to be able to use create_repo in FARMReader
   "tenacity",  # retry decorator
   "sseclient-py",  # server side events for OpenAI streaming
   "more_itertools",  # utilities
@@ -87,7 +86,7 @@ dependencies = [
 
 [project.optional-dependencies]
 preview = [
-  "canals==0.8.1",
+  "canals==0.9.0",
   "requests",
   "pandas",
   "rank_bm25",
@@ -98,10 +97,11 @@ preview = [
 
   "Jinja2",
   "openai",
-  "pyyaml"
+  "pyyaml",
+  "more-itertools",  # TextDocumentSplitter
 ]
 inference = [
-  "transformers[torch,sentencepiece]==4.32.1",
+  "transformers[torch,sentencepiece]==4.34.1",
   "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "huggingface-hub>=0.5.0",
 ]
@@ -150,9 +150,6 @@ docstores = [
 ]
 docstores-gpu = [
   "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch]",
-]
-audio = [
-  "openai-whisper"
 ]
 aws = [
   "boto3",
@@ -227,9 +224,6 @@ dev = [
   "farm-haystack[formatting]",
   # Documentation
   "pydoc-markdown",
-  "mkdocs",
-  "jupytercontrib",
-  "watchdog",
   "toml",
   "reno",
   # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.

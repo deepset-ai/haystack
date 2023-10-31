@@ -1,9 +1,9 @@
 from copy import deepcopy
-from typing import List, Dict, Any, Literal
+from typing import List, Literal
 
 from more_itertools import windowed
 
-from haystack.preview import component, Document, default_from_dict, default_to_dict
+from haystack.preview import component, Document
 
 
 @component
@@ -39,7 +39,7 @@ class TextDocumentSplitter:
         Splits the documents by split_by after split_length units with an overlap of split_overlap units.
         Returns a list of documents with the split texts.
         A metadata field "source_id" is added to each document to keep track of the original document that was split.
-        Other metadata and id_hash_keys are copied from the original document.
+        Other metadata are copied from the original document.
         :param documents: The documents to split.
         :return: A list of documents with the split texts.
         """
@@ -49,32 +49,16 @@ class TextDocumentSplitter:
 
         split_docs = []
         for doc in documents:
-            if doc.text is None:
+            if doc.content is None:
                 raise ValueError(
-                    f"TextDocumentSplitter only works with text documents but document.text for document ID {doc.id} is None."
+                    f"TextDocumentSplitter only works with text documents but document.content for document ID {doc.id} is None."
                 )
-            units = self._split_into_units(doc.text, self.split_by)
+            units = self._split_into_units(doc.content, self.split_by)
             text_splits = self._concatenate_units(units, self.split_length, self.split_overlap)
-            metadata = deepcopy(doc.metadata)
-            id_hash_keys = deepcopy(doc.id_hash_keys)
+            metadata = deepcopy(doc.meta)
             metadata["source_id"] = doc.id
-            split_docs += [Document(text=txt, metadata=metadata, id_hash_keys=id_hash_keys) for txt in text_splits]
+            split_docs += [Document(content=txt, meta=metadata) for txt in text_splits]
         return {"documents": split_docs}
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(
-            self, split_by=self.split_by, split_length=self.split_length, split_overlap=self.split_overlap
-        )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TextDocumentSplitter":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     def _split_into_units(self, text: str, split_by: Literal["word", "sentence", "passage"]) -> List[str]:
         if split_by == "passage":
