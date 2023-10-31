@@ -28,7 +28,7 @@ class MarkdownToDocument:
     converter = MarkdownToDocument()
     results = converter.run(sources=["sample.md"])
     documents = results["documents"]
-    print(documents[0].text)
+    print(documents[0].content)
     # 'This is a text from the markdown file.'
     ```
     """
@@ -44,12 +44,12 @@ class MarkdownToDocument:
         self.progress_bar = progress_bar
 
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]], metadata: Optional[List[Dict[str, Any]]] = None):
+    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
         """
         Reads text from a markdown file and executes optional preprocessing steps.
 
-        :param file_path: Path of the file to convert.
-        :param metadata: Optional list of metadata to attach to the Documents.
+        :param sources: A list of markdown data sources (file paths or binary objects)
+        :param meta: Optional list of metadata to attach to the Documents.
         The length of the list must match the number of paths. Defaults to `None`.
         """
         if self.table_to_single_line:
