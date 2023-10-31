@@ -80,5 +80,5 @@ def test_preprocessing_pipeline(tmp_path):
         "Even contains empty lines.",
         " And extra whitespaces.",
     ]
-    assert expected_texts == [document.text for document in stored_documents]
+    assert expected_texts == [document.content for document in stored_documents]
     assert all(document.mime_type == "text/plain" for document in stored_documents)

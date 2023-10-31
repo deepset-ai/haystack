@@ -33,7 +33,9 @@ class DocumentLanguageClassifier:
 
     def __init__(self, languages: Optional[List[str]] = None):
         """
-        :param languages: A list of languages in ISO code, each corresponding to a different output connection (see [langdetect` documentation](https://github.com/Mimino666/langdetect#languages)). By default, only ["en"] is supported and Documents of any other language are routed to "unmatched".
+        :param languages: A list of languages in ISO code, each corresponding to a different output connection
+            (see [langdetect` documentation](https://github.com/Mimino666/langdetect#languages)).
+            By default, only ["en"] is supported and Documents of any other language are routed to "unmatched".
         """
         langdetect_import.check()
         if not languages:
@@ -53,7 +55,8 @@ class DocumentLanguageClassifier:
         """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
-                "DocumentLanguageClassifier expects a list of Document as input. In case you want to classify a text, please use the TextLanguageClassifier."
+                "DocumentLanguageClassifier expects a list of Document as input. "
+                "In case you want to classify a text, please use the TextLanguageClassifier."
             )
 
         output: Dict[str, List[Document]] = {language: [] for language in self.languages}
@@ -70,7 +73,7 @@ class DocumentLanguageClassifier:
 
     def detect_language(self, document: Document) -> Optional[str]:
         try:
-            language = langdetect.detect(document.text)
+            language = langdetect.detect(document.content)
         except langdetect.LangDetectException:
             logger.warning("Langdetect cannot detect the language of Document with id: %s", document.id)
             language = None
