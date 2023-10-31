@@ -21,13 +21,8 @@ class _BackwardCompatible(type):
         """
         # Move `content` to new fields depending on the type
         content = kwargs.get("content")
-        if isinstance(content, str):
-            kwargs["text"] = content
-        elif isinstance(content, pandas.DataFrame):
+        if isinstance(content, pandas.DataFrame):
             kwargs["dataframe"] = content
-
-        # We already moved `content` to `text` or `dataframe`, we can remove it
-        if "content" in kwargs:
             del kwargs["content"]
 
         # Not used anymore
@@ -138,7 +133,8 @@ class Document(metaclass=_BackwardCompatible):
             data["blob"] = list(blob)
 
         if flatten:
-            return {**data, **data.pop("meta")}
+            meta = data.pop("meta")
+            return {**data, **meta}
 
         return data
 
