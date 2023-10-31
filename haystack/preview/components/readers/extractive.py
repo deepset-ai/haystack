@@ -145,16 +145,16 @@ class ExtractiveReader:
         texts = []
         document_ids = []
         for i, doc in enumerate(documents):
-            if doc.text is None:
+            if doc.content is None:
                 warnings.warn(
                     f"Document with id {doc.id} was passed to ExtractiveReader, but does not contain any text. It will be ignored."
                 )
                 continue
-            texts.append(doc.text)
+            texts.append(doc.content)
             document_ids.append(i)
         encodings_pt = self.tokenizer(
             queries,
-            [document.text for document in documents],
+            [document.content for document in documents],
             padding=True,
             truncation=True,
             max_length=max_seq_length,
@@ -244,7 +244,7 @@ class ExtractiveReader:
         ):
             for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_):
                 doc = flattened_documents[document_id]
-                flat_answers_without_queries.append({"data": doc.text[start_:end_], "document": doc, "probability": probability.item(), "start": start_, "end": end_, "metadata": {}})  # type: ignore # doc.text cannot be None, because those documents are filtered when preprocessing. However, mypy doesn't know that.
+                flat_answers_without_queries.append({"data": doc.content[start_:end_], "document": doc, "probability": probability.item(), "start": start_, "end": end_, "metadata": {}})  # type: ignore # doc.content cannot be None, because those documents are filtered when preprocessing. However, mypy doesn't know that.
         i = 0
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):
