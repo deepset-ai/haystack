@@ -91,6 +91,7 @@ class WhisperTranscriber(BaseComponent):
         :param return_segments: If True, returns the transcription for each segment of the audio file. Supported with
         local installation of whisper only.
         :param translate: If True, translates the transcription to English.
+        :return: A dictionary containing the transcription text and metadata like timings, segments etc.
 
         """
         transcript: Dict[str, Any] = {}
@@ -176,6 +177,8 @@ class WhisperTranscriber(BaseComponent):
         :param labels: Ignored
         :param documents: Ignored
         :param meta: Ignored
+        :return: A dictionary containing a list of Document objects, one for each input file.
+
         """
         transcribed_documents: List[Document] = []
         if file_paths:

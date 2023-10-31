@@ -66,13 +66,14 @@ class DocumentCleaner:
 
         cleaned_docs = []
         for doc in documents:
-            if doc.text is None:
+            if doc.content is None:
                 logger.warning(
-                    "DocumentCleaner only cleans text documents but document.text for document ID %s is None.", doc.id
+                    "DocumentCleaner only cleans text documents but document.content for document ID %s is None.",
+                    doc.id,
                 )
                 cleaned_docs.append(doc)
                 continue
-            text = doc.text
+            text = doc.content
 
             if self.remove_extra_whitespaces:
                 text = self._remove_extra_whitespaces(text)
@@ -85,7 +86,7 @@ class DocumentCleaner:
             if self.remove_repeated_substrings:
                 text = self._remove_repeated_substrings(text)
 
-            cleaned_docs.append(Document(text=text, metadata=deepcopy(doc.metadata)))
+            cleaned_docs.append(Document(content=text, meta=deepcopy(doc.meta)))
 
         return {"documents": cleaned_docs}
 

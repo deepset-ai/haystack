@@ -1,4 +1,5 @@
 from typing import Optional, List, Union
+import os
 
 import torch
 from torch.utils.data import Dataset
@@ -44,4 +45,10 @@ def get_devices(devices: Optional[List[Union[str, torch.device]]]) -> List[torch
         return [torch.device(device) for device in devices]
     elif torch.cuda.is_available():
         return [torch.device(device) for device in range(torch.cuda.device_count())]
+    elif (
+        hasattr(torch.backends, "mps")
+        and torch.backends.mps.is_available()
+        and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
+    ):
+        return [torch.device("mps")]
     return [torch.device("cpu")]
