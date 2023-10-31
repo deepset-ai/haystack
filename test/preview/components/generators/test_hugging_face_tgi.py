@@ -91,14 +91,12 @@ class TestHuggingFaceTGIGenerator:
         assert generator_2.streaming_callback is streaming_callback_handler
 
     @pytest.mark.unit
-    def test_initialize_with_url_without_model_id(self, mock_check_valid_model):
-        # if we provide URL as model, model_id must be provided
-        model = "https://some_chat_model.com"
+    def test_initialize_with_invalid_url(self, mock_check_valid_model):
         with pytest.raises(ValueError):
-            HuggingFaceTGIGenerator(model=model, model_id=None)
+            HuggingFaceTGIGenerator(model="mistralai/Mistral-7B-v0.1", url="invalid_url")
 
     @pytest.mark.unit
-    def test_initialize_with_url_with_invalid_model_and_url(self, mock_check_valid_model):
+    def test_initialize_with_url_but_invalid_model(self, mock_check_valid_model):
         # When custom TGI endpoint is used via URL, model must be provided and valid HuggingFace Hub model id
         mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
         with pytest.raises(RepositoryNotFoundError):
