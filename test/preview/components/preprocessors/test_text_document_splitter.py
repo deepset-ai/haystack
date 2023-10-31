@@ -8,7 +8,7 @@ class TestTextDocumentSplitter:
     @pytest.mark.unit
     def test_non_text_document(self):
         with pytest.raises(
-            ValueError, match="TextDocumentSplitter only works with text documents but document.text for document ID"
+            ValueError, match="TextDocumentSplitter only works with text documents but document.content for document ID"
         ):
             splitter = TextDocumentSplitter()
             splitter.run(documents=[Document()])
