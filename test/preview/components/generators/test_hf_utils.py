@@ -43,8 +43,8 @@ def test_additional_accepted_params_known_parameter():
 
 @pytest.mark.unit
 def test_additional_accepted_params_unknown_parameter():
-    kwargs = {"temperature": 0.8}
-    additional_accepted_params = ["valid_param"]
-    # Although valid_param is not generation param the check_generation_params
-    # does not raise exception because valid_param is passed as additional_accepted_params
+    kwargs = {"strange_param": "value"}
+    additional_accepted_params = ["strange_param"]
+    # Although strange_param is not generation param the check_generation_params
+    # does not raise exception because strange_param is passed as additional_accepted_params
     check_generation_params(kwargs, additional_accepted_params)
