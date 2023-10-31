@@ -128,7 +128,7 @@ class RemoteWhisperTranscriber:
             file = io.BytesIO(stream.data)
             file.name = stream.metadata.get("file_path", "audio_input.wav")  # default name if `file_path` not found
             content = openai.Audio.transcribe(file=file, model=self.model_name, **self.whisper_params)
-            doc = Document(text=content["text"], metadata=stream.metadata)
+            doc = Document(content=content["text"], meta=stream.metadata)
             documents.append(doc)
 
         return {"documents": documents}

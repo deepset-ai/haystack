@@ -195,8 +195,8 @@ class TestRemoteWhisperTranscriber:
 
                 result = transcriber.run(streams=[audio_file])
 
-                assert result["documents"][0].text == "test transcription"
-                assert result["documents"][0].metadata["file_path"] == str(file_path.absolute())
+                assert result["documents"][0].content == "test transcription"
+                assert result["documents"][0].meta["file_path"] == str(file_path.absolute())
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -223,17 +223,17 @@ class TestRemoteWhisperTranscriber:
 
         docs = output["documents"]
         assert len(docs) == 3
-        assert docs[0].text.strip().lower() == "this is the content of the document."
+        assert docs[0].content.strip().lower() == "this is the content of the document."
         assert (
             str((preview_samples_path / "audio" / "this is the content of the document.wav").absolute())
-            == docs[0].metadata["file_path"]
+            == docs[0].meta["file_path"]
         )
 
-        assert docs[1].text.strip().lower() == "the context for this answer is here."
+        assert docs[1].content.strip().lower() == "the context for this answer is here."
         assert (
             str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute())
-            == docs[1].metadata["file_path"]
+            == docs[1].meta["file_path"]
         )
 
-        assert docs[2].text.strip().lower() == "answer."
-        assert str((preview_samples_path / "audio" / "answer.wav").absolute()) == docs[2].metadata["file_path"]
+        assert docs[2].content.strip().lower() == "answer."
+        assert str((preview_samples_path / "audio" / "answer.wav").absolute()) == docs[2].meta["file_path"]

@@ -72,10 +72,10 @@ class TestUrlCacheChecker:
     def test_run(self):
         docstore = InMemoryDocumentStore()
         documents = [
-            Document(text="doc1", metadata={"url": "https://example.com/1"}),
-            Document(text="doc2", metadata={"url": "https://example.com/2"}),
-            Document(text="doc3", metadata={"url": "https://example.com/1"}),
-            Document(text="doc4", metadata={"url": "https://example.com/2"}),
+            Document(content="doc1", meta={"url": "https://example.com/1"}),
+            Document(content="doc2", meta={"url": "https://example.com/2"}),
+            Document(content="doc3", meta={"url": "https://example.com/1"}),
+            Document(content="doc4", meta={"url": "https://example.com/2"}),
         ]
         docstore.write_documents(documents)
         checker = UrlCacheChecker(docstore)

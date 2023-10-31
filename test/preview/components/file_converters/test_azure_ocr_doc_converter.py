@@ -37,7 +37,7 @@ class TestAzureOCRDocumentConverter:
             component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
             output = component.run(paths=[preview_samples_path / "pdf" / "sample_pdf_1.pdf"])
             document = output["documents"][0]
-            assert document.text == "mocked line 1\nmocked line 2\n\f"
+            assert document.content == "mocked line 1\nmocked line 2\n\f"
             assert "raw_azure_response" in output
             assert output["raw_azure_response"][0] == {
                 "api_version": "2023-02-28-preview",
@@ -56,9 +56,9 @@ class TestAzureOCRDocumentConverter:
         output = component.run(paths=[preview_samples_path / "pdf" / "sample_pdf_1.pdf"])
         documents = output["documents"]
         assert len(documents) == 1
-        assert "A sample PDF file" in documents[0].text
-        assert "Page 2 of Sample PDF" in documents[0].text
-        assert "Page 4 of Sample PDF" in documents[0].text
+        assert "A sample PDF file" in documents[0].content
+        assert "Page 2 of Sample PDF" in documents[0].content
+        assert "Page 4 of Sample PDF" in documents[0].content
 
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
@@ -70,8 +70,8 @@ class TestAzureOCRDocumentConverter:
         output = component.run(paths=[preview_samples_path / "images" / "haystack-logo.png"])
         documents = output["documents"]
         assert len(documents) == 1
-        assert "haystack" in documents[0].text
-        assert "by deepset" in documents[0].text
+        assert "haystack" in documents[0].content
+        assert "by deepset" in documents[0].content
 
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
@@ -83,6 +83,6 @@ class TestAzureOCRDocumentConverter:
         output = component.run(paths=[preview_samples_path / "docx" / "sample_docx.docx"])
         documents = output["documents"]
         assert len(documents) == 1
-        assert "Sample Docx File" in documents[0].text
-        assert "Now we are in Page 2" in documents[0].text
-        assert "Page 3 was empty this is page 4" in documents[0].text
+        assert "Sample Docx File" in documents[0].content
+        assert "Now we are in Page 2" in documents[0].content
+        assert "Page 3 was empty this is page 4" in documents[0].content
