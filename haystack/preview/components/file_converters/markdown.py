@@ -52,17 +52,16 @@ class MarkdownToDocument:
         :param meta: Optional list of metadata to attach to the Documents.
         The length of the list must match the number of paths. Defaults to `None`.
         """
+        parser = MarkdownIt(renderer_cls=RendererPlain)
         if self.table_to_single_line:
-            parser = MarkdownIt(renderer_cls=RendererPlain).enable("table")
-        else:
-            parser = MarkdownIt(renderer_cls=RendererPlain)
+            parser.enable("table")
 
         documents = []
-        if metadata is None:
-            metadata = [{}] * len(sources)
+        if meta is None:
+            meta = [{}] * len(sources)
 
-        for source, meta in tqdm(
-            zip(sources, metadata),
+        for source, metadata in tqdm(
+            zip(sources, meta),
             total=len(sources),
             desc="Converting markdown files to Documents",
             disable=not self.progress_bar,
@@ -78,7 +77,7 @@ class MarkdownToDocument:
                 logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
                 continue
 
-            document = Document(content=text, meta=meta)
+            document = Document(content=text, meta=metadata)
             documents.append(document)
 
         return {"documents": documents}

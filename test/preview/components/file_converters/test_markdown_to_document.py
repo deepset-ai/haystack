@@ -19,7 +19,7 @@ class TestMarkdownToDocument:
         assert converter.table_to_single_line is True
         assert converter.progress_bar is False
 
-    @pytest.mark.unit
+    @pytest.mark.integration
     def test_run(self, preview_samples_path):
         converter = MarkdownToDocument()
         sources = [preview_samples_path / "markdown" / "sample.md"]
@@ -31,12 +31,12 @@ class TestMarkdownToDocument:
             assert "What to build with Haystack" in doc.content
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
 
-    @pytest.mark.unit
+    @pytest.mark.integration
     def test_run_metadata(self, preview_samples_path):
         converter = MarkdownToDocument()
         sources = [preview_samples_path / "markdown" / "sample.md"]
         metadata = [{"file_name": "sample.md"}]
-        results = converter.run(sources=sources, metadata=metadata)
+        results = converter.run(sources=sources, meta=metadata)
         docs = results["documents"]
 
         assert len(docs) == 1
