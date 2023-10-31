@@ -18,7 +18,8 @@ class DocumentLanguageClassifier:
     The set of supported languages can be specified.
     For routing plain text using the same logic, use the related TextLanguageClassifier component instead.
 
-    Example usage within an indexing pipeline, storing only documents written in English language documents to a Store:
+    Example usage within an indexing pipeline, storing in a Document Store
+    only documents written in English:
 
     ```python
     document_store = InMemoryDocumentStore()
