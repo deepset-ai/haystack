@@ -9,11 +9,11 @@
 | Meta    | ![Discord](https://img.shields.io/discord/993534733298450452?logo=discord) ![Twitter Follow](https://img.shields.io/twitter/follow/deepset_ai)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 </div>
 
-[Haystack](https://haystack.deepset.ai/) is an end-to-end NLP framework that enables you to build applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform question answering, answer generation, semantic document search or build tools that are capable of complex decision-making and query resolution, you can use  state-of-the-art NLP models with Haystack to build end-to-end NLP applications solving your use case.
+[Haystack](https://haystack.deepset.ai/) is an end-to-end NLP framework that enables you to build applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform question answering, answer generation, semantic document search, or build tools that are capable of complex decision-making and query resolution, you can use  state-of-the-art NLP models with Haystack to build end-to-end NLP applications solving your use case.
 
 ## Quickstart
 
-Haystack is built around the concept of pipelines. A pipeline is a powerful structure that performs an NLP task. It's made up of components connected together. For example, you can connect a `Retriever` and a `PromptNode` to build a Generative Question Answering pipeline that uses your own data.
+Haystack is built around the concept of pipelines. A pipeline is a powerful structure that performs an NLP task. It's made up of components connected together. For example, you can connect a `Retriever`, and a `PromptNode` to build a Generative Question Answering pipeline that uses your own data.
 
 Try out how Haystack answers questions about Game of Thrones using the Retrieval Augmented Generation (RAG) approach 👇
 
@@ -65,9 +65,9 @@ Congratulations, you have just built your first Haystack app!
 
 🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/docs/pipelines):** This is the standard Haystack structure that builds on top of your data to perform various NLP tasks such as retrieval augmented generation, question answering and more. The data in a Pipeline flows from one Node to the next. You define how Nodes interact with each other and how one Node pushes data to the next.
 
-An example pipeline would consist of one `Retriever` Node and one `PromptNode`. When the pipeline runs with a query, the Retriever first retrieves the relevant context to the query from your data and then the PromptNode uses an LLM to generate the final answer.
+An example pipeline would consist of one `Retriever` Node, and one `PromptNode`. When the pipeline runs with a query, the Retriever first retrieves the relevant context to the query from your data and then the PromptNode uses an LLM to generate the final answer.
 
-⚛️ **[Nodes](https://docs.haystack.deepset.ai/docs/nodes_overview):** Each Node achieves one thing. Such as preprocessing documents, retrieving documents, using language models to answer questions and so on.
+⚛️ **[Nodes](https://docs.haystack.deepset.ai/docs/nodes_overview):** Each Node achieves one thing. Such as preprocessing documents, retrieving documents, using language models to answer questions, and so on.
 
 🕵️ **[Agent](https://docs.haystack.deepset.ai/docs/agent):** (since 1.15) An Agent is a component that is powered by an LLM, such as GPT-3. It can decide on the next best course of action so as to get to the result of a query. It uses the Tools available to it to achieve this. While a pipeline has a clear start and end, an Agent is able to decide whether the query has been resolved or not. It may also make use of a Pipeline as a Tool.
 
