@@ -38,6 +38,15 @@ def chat_messages():
     ]
 
 
+@pytest.fixture
+def mock_auto_tokenizer():
+    # we already have this fixture but need to slightly modify it for some tests
+    with patch("transformers.AutoTokenizer.from_pretrained", autospec=True) as mock_from_pretrained:
+        mock_tokenizer = MagicMock()
+        mock_from_pretrained.return_value = mock_tokenizer
+        yield mock_tokenizer
+
+
 # used to test serialization of streaming_callback
 def streaming_callback_handler(x):
     return x
@@ -99,6 +108,46 @@ class TestHuggingFaceTGIChatGenerator:
         assert generator_2.model == "NousResearch/Llama-2-7b-chat-hf"
         assert generator_2.generation_kwargs == {"n": 5, "stop_sequences": ["stop", "words"]}
         assert generator_2.streaming_callback is streaming_callback_handler
+
+    @pytest.mark.unit
+    def test_warm_up(self, mock_check_valid_model, mock_auto_tokenizer):
+        generator = HuggingFaceTGIChatGenerator()
+        generator.warm_up()
+
+        # Assert that the tokenizer is now initialized
+        assert generator.tokenizer is not None
+
+    @pytest.mark.unit
+    def test_warm_up_no_chat_template(self, mock_check_valid_model, mock_auto_tokenizer, caplog):
+        generator = HuggingFaceTGIChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
+
+        # Set chat_template to None for this specific test
+        mock_auto_tokenizer.chat_template = None
+        generator.warm_up()
+
+        # warning message should be logged
+        assert "The model 'meta-llama/Llama-2-13b-chat-hf' on the Hugging Face Inference API" in caplog.text
+
+    @pytest.mark.unit
+    def test_custom_chat_template(
+        self, chat_messages, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
+    ):
+        custom_chat_template = "Here goes some Jinja template"
+
+        # mocked method to check if we called apply_chat_template with the custom template
+        apply_chat_template_mock = MagicMock()
+        mock_auto_tokenizer.apply_chat_template = apply_chat_template_mock
+
+        generator = HuggingFaceTGIChatGenerator(chat_template=custom_chat_template)
+        generator.warm_up()
+
+        assert generator.chat_template == custom_chat_template
+
+        generator.run(messages=chat_messages)
+
+        # and we indeed called apply_chat_template with the custom template
+        _, kwargs = apply_chat_template_mock.call_args
+        assert kwargs["chat_template"] == custom_chat_template
 
     @pytest.mark.unit
     def test_initialize_with_invalid_model_path_or_url(self, mock_check_valid_model):

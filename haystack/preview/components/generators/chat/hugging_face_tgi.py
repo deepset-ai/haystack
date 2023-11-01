@@ -84,6 +84,7 @@ class HuggingFaceTGIChatGenerator:
         model: str = "meta-llama/Llama-2-13b-chat-hf",
         url: Optional[str] = None,
         token: Optional[str] = None,
+        chat_template: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
@@ -92,7 +93,12 @@ class HuggingFaceTGIChatGenerator:
         Initialize the HuggingFaceTGIChatGenerator instance.
 
         :param model: A string representing the model path or URL. Default is "meta-llama/Llama-2-13b-chat-hf".
-        :param url: An optional string representing the HuggingFace model ID.
+        :param url: An optional string representing the URL of the TGI endpoint.
+        :param chat_template: This optional parameter allows you to specify a Jinja template for formatting chat
+            messages. While high-quality and well-supported chat models typically include their own chat templates
+            accessible through their tokenizer, there are models that do not offer this feature. For such scenarios,
+            or if you wish to use a custom template instead of the model's default, you can use this parameter to
+            set your preferred chat template.
         :param token: The HuggingFace token to use as HTTP bearer authorization
             You can find your HF token at https://huggingface.co/settings/tokens
         :param generation_kwargs: A dictionary containing keyword arguments to customize text generation.
@@ -118,6 +124,7 @@ class HuggingFaceTGIChatGenerator:
 
         self.model = model
         self.url = url
+        self.chat_template = chat_template
         self.token = token
         self.generation_kwargs = generation_kwargs
         self.client = InferenceClient(url or model, token=token)
@@ -129,6 +136,24 @@ class HuggingFaceTGIChatGenerator:
         Load the tokenizer
         """
         self.tokenizer = AutoTokenizer.from_pretrained(self.model, token=self.token)
+        # mypy can't infer that chat_template attribute exists on the object returned by AutoTokenizer.from_pretrained
+        chat_template = getattr(self.tokenizer, "chat_template", None)
+        if not chat_template and not self.chat_template:
+            if self.url:
+                logger.warning(
+                    "The model '%s' at the specified URL '%s' lacks a defined chat_template, and no chat_template was "
+                    "supplied during this component's initialization. It’s possible that the model is not set up for "
+                    "chat-based inference, potentially leading to unexpected behavior.",
+                    self.model,
+                    self.url,
+                )
+            else:
+                logger.warning(
+                    "The model '%s' on the Hugging Face Inference API lacks a defined chat_template, and no "
+                    "chat_template was supplied during this component's initialization. It’s possible that the model "
+                    "is not set up for chat-based inference, potentially leading to unexpected behavior.",
+                    self.model,
+                )
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -141,6 +166,7 @@ class HuggingFaceTGIChatGenerator:
             self,
             model=self.model,
             url=self.url,
+            chat_template=self.chat_template,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
@@ -186,8 +212,10 @@ class HuggingFaceTGIChatGenerator:
         if self.tokenizer is None:
             raise RuntimeError("Please call warm_up() before running LLM inference.")
 
-        # apply chat template to messages to get string prompt
-        prepared_prompt: str = self.tokenizer.apply_chat_template(messages, tokenize=False)
+        # apply either model's chat template or the user-provided one
+        prepared_prompt: str = self.tokenizer.apply_chat_template(
+            conversation=messages, chat_template=self.chat_template, tokenize=False
+        )
         prompt_token_count: int = len(self.tokenizer.encode(prepared_prompt, add_special_tokens=False))
 
         if self.streaming_callback:
