@@ -191,7 +191,7 @@ class HuggingFaceTGIChatGenerator:
         return {"model": self.model}
 
     @component.output_types(replies=List[ChatMessage])
-    def run(self, messages: List[ChatMessage], **generation_kwargs):
+    def run(self, messages: List[ChatMessage], generation_kwargs: Optional[Dict[str, Any]] = None):
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
 
@@ -205,7 +205,7 @@ class HuggingFaceTGIChatGenerator:
         check_generation_params(generation_kwargs, additional_params)
 
         # update generation kwargs by merging with the default ones
-        generation_kwargs = {**self.generation_kwargs, **generation_kwargs}
+        generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
         num_responses = generation_kwargs.pop("n", 1)
         generation_kwargs.setdefault("stop_sequences", []).extend(generation_kwargs.pop("stop_words", []))
 

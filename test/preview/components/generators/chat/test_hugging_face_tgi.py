@@ -233,7 +233,7 @@ class TestHuggingFaceTGIChatGenerator:
         stop_words = ["stop", "words"]
 
         # Generate text response with stop words
-        response = generator.run(chat_messages, stop_words=stop_words)
+        response = generator.run(chat_messages, generation_kwargs={"stop_words": stop_words})
 
         # check kwargs passed to text_generation
         # we translate stop_words to stop_sequences
@@ -256,7 +256,7 @@ class TestHuggingFaceTGIChatGenerator:
 
         # but then we pass them in run
         generation_kwargs = {"temperature": 0.8, "max_new_tokens": 100}
-        response = generator.run(chat_messages, **generation_kwargs)
+        response = generator.run(chat_messages, generation_kwargs=generation_kwargs)
 
         # again check kwargs passed to text_generation
         _, kwargs = mock_text_generation.call_args
