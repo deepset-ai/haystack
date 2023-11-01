@@ -19,32 +19,15 @@ def mock_check_valid_model():
 
 @pytest.fixture
 def mock_text_generation():
-    with patch("huggingface_hub.InferenceClient.text_generation", autospec=True) as mock_from_pretrained:
+    with patch("huggingface_hub.InferenceClient.text_generation", autospec=True) as mock_text_generation:
         mock_response = Mock()
         mock_response.generated_text = "I'm fine, thanks."
         details = Mock()
         details.finish_reason = MagicMock(field1="value")
         details.tokens = [1, 2, 3]
         mock_response.details = details
-        mock_from_pretrained.return_value = mock_response
-        yield mock_from_pretrained
-
-
-@pytest.fixture
-def chat_messages():
-    return [
-        ChatMessage.from_system("You are a helpful assistant speaking on A2 level of English"),
-        ChatMessage.from_user("Tell me about Berlin"),
-    ]
-
-
-@pytest.fixture
-def mock_auto_tokenizer():
-    # we already have this fixture but need to slightly modify it for some tests
-    with patch("transformers.AutoTokenizer.from_pretrained", autospec=True) as mock_from_pretrained:
-        mock_tokenizer = MagicMock()
-        mock_from_pretrained.return_value = mock_tokenizer
-        yield mock_tokenizer
+        mock_text_generation.return_value = mock_response
+        yield mock_text_generation
 
 
 # used to test serialization of streaming_callback
@@ -135,8 +118,7 @@ class TestHuggingFaceTGIChatGenerator:
         custom_chat_template = "Here goes some Jinja template"
 
         # mocked method to check if we called apply_chat_template with the custom template
-        apply_chat_template_mock = MagicMock()
-        mock_auto_tokenizer.apply_chat_template = apply_chat_template_mock
+        mock_auto_tokenizer.apply_chat_template = MagicMock(return_value="some_value")
 
         generator = HuggingFaceTGIChatGenerator(chat_template=custom_chat_template)
         generator.warm_up()
@@ -144,9 +126,10 @@ class TestHuggingFaceTGIChatGenerator:
         assert generator.chat_template == custom_chat_template
 
         generator.run(messages=chat_messages)
+        assert mock_auto_tokenizer.apply_chat_template.call_count == 1
 
         # and we indeed called apply_chat_template with the custom template
-        _, kwargs = apply_chat_template_mock.call_args
+        _, kwargs = mock_auto_tokenizer.apply_chat_template.call_args
         assert kwargs["chat_template"] == custom_chat_template
 
     @pytest.mark.unit
