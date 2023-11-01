@@ -1,6 +1,7 @@
 from typing import Dict, Any
 
 import pytest
+import numpy as np
 
 from haystack.preview import Pipeline, DeserializationError
 from haystack.preview.testing.factory import document_store_class
@@ -117,9 +118,9 @@ class TestMemoryEmbeddingRetriever:
         top_k = 3
         ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
         docs = [
-            Document(text="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(text="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
-            Document(text="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
+            Document(content="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(content="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
         ]
         ds.write_documents(docs)
 
@@ -128,7 +129,7 @@ class TestMemoryEmbeddingRetriever:
 
         assert "documents" in result
         assert len(result["documents"]) == top_k
-        assert result["documents"][0].embedding == [1.0, 1.0, 1.0, 1.0]
+        assert np.array_equal(result["documents"][0].embedding, [1.0, 1.0, 1.0, 1.0])
 
     @pytest.mark.unit
     def test_invalid_run_wrong_store_type(self):
@@ -141,9 +142,9 @@ class TestMemoryEmbeddingRetriever:
         ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
         top_k = 2
         docs = [
-            Document(text="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(text="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
-            Document(text="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
+            Document(content="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(content="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
         ]
         ds.write_documents(docs)
         retriever = InMemoryEmbeddingRetriever(ds, top_k=top_k)
@@ -159,4 +160,4 @@ class TestMemoryEmbeddingRetriever:
         results_docs = result["retriever"]["documents"]
         assert results_docs
         assert len(results_docs) == top_k
-        assert results_docs[0].embedding == [1.0, 1.0, 1.0, 1.0]
+        assert np.array_equal(results_docs[0].embedding, [1.0, 1.0, 1.0, 1.0])

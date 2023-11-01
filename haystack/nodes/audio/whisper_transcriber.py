@@ -28,6 +28,8 @@ class WhisperTranscriber(BaseComponent):
 
     To use Whisper locally, install it following the instructions on
     the Whisper [GitHub repo](https://github.com/openai/whisper) and omit the `api_key` parameter.
+    You can work around a dependency conflict caused by openai-whisper pinning an older tiktoken version than required
+    by Haystack if you install via `pip install --no-deps numba llvmlite 'openai-whisper>=20230918'`.
 
     To use the API implementation, provide an api_key. You can get one by signing up
     for an [OpenAI account](https://beta.openai.com/).
@@ -89,6 +91,7 @@ class WhisperTranscriber(BaseComponent):
         :param return_segments: If True, returns the transcription for each segment of the audio file. Supported with
         local installation of whisper only.
         :param translate: If True, translates the transcription to English.
+        :return: A dictionary containing the transcription text and metadata like timings, segments etc.
 
         """
         transcript: Dict[str, Any] = {}
@@ -174,6 +177,8 @@ class WhisperTranscriber(BaseComponent):
         :param labels: Ignored
         :param documents: Ignored
         :param meta: Ignored
+        :return: A dictionary containing a list of Document objects, one for each input file.
+
         """
         transcribed_documents: List[Document] = []
         if file_paths:

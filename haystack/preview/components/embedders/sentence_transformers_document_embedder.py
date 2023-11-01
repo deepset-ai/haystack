@@ -11,6 +11,20 @@ class SentenceTransformersDocumentEmbedder:
     """
     A component for computing Document embeddings using Sentence Transformers models.
     The embedding of each Document is stored in the `embedding` field of the Document.
+
+    Usage example:
+    ```python
+    from haystack.preview import Document
+    from haystack.preview.components.embedders import SentenceTransformersDocumentEmbedder
+    doc = Document(text="I love pizza!")
+    doc_embedder = SentenceTransformersDocumentEmbedder()
+    doc_embedder.warm_up()
+
+    result = doc_embedder.run([doc])
+    print(result['documents'][0].embedding)
+
+    # [-0.07804739475250244, 0.1498992145061493, ...]
+    ```
     """
 
     def __init__(
@@ -37,6 +51,8 @@ class SentenceTransformersDocumentEmbedder:
             If this parameter is set to `True`, then the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) will be used.
         :param prefix: A string to add to the beginning of each Document text before embedding.
+            Can be used to prepend the text with an instruction, as required by some embedding models,
+            such as E5 and bge.
         :param suffix: A string to add to the end of each Document text before embedding.
         :param batch_size: Number of strings to encode at once.
         :param progress_bar: If true, displays progress bar during embedding.
@@ -109,12 +125,10 @@ class SentenceTransformersDocumentEmbedder:
         texts_to_embed = []
         for doc in documents:
             meta_values_to_embed = [
-                str(doc.metadata[key])
-                for key in self.metadata_fields_to_embed
-                if key in doc.metadata and doc.metadata[key]
+                str(doc.meta[key]) for key in self.metadata_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
             text_to_embed = (
-                self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.text or ""]) + self.suffix
+                self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""]) + self.suffix
             )
             texts_to_embed.append(text_to_embed)
 
@@ -125,10 +139,7 @@ class SentenceTransformersDocumentEmbedder:
             normalize_embeddings=self.normalize_embeddings,
         )
 
-        documents_with_embeddings = []
         for doc, emb in zip(documents, embeddings):
-            doc_as_dict = doc.to_dict()
-            doc_as_dict["embedding"] = emb
-            documents_with_embeddings.append(Document.from_dict(doc_as_dict))
+            doc.embedding = emb
 
-        return {"documents": documents_with_embeddings}
+        return {"documents": documents}

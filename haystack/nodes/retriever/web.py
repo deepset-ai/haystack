@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from multiprocessing import cpu_count
-from typing import Dict, Iterator, List, Optional, Literal, Union, Tuple
+from typing import Dict, Iterator, List, Optional, Literal, Union, Tuple, Any
 
 from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore
@@ -50,6 +50,7 @@ class WebRetriever(BaseRetriever):
         self,
         api_key: str,
         search_engine_provider: Union[str, SearchEngine] = "SerperDev",
+        search_engine_kwargs: Optional[Dict[str, Any]] = None,
         top_search_results: Optional[int] = 10,
         top_k: Optional[int] = 5,
         mode: Literal["snippets", "raw_documents", "preprocessed_documents"] = "snippets",
@@ -64,6 +65,7 @@ class WebRetriever(BaseRetriever):
         """
         :param api_key: API key for the search engine provider.
         :param search_engine_provider: Name of the search engine provider class. The options are "SerperDev" (default), "SerpAPI", "BingAPI" or "GoogleAPI"
+        :param search_engine_kwargs: Additional parameters to pass to the search engine provider.
         :param top_search_results: Number of top search results to be retrieved.
         :param top_k: Top k documents to be returned by the retriever.
         :param mode: Whether to return snippets, raw documents, or preprocessed documents. Snippets are the default.
@@ -83,6 +85,7 @@ class WebRetriever(BaseRetriever):
             top_k=top_search_results,
             allowed_domains=allowed_domains,
             search_engine_provider=search_engine_provider,
+            search_engine_kwargs=search_engine_kwargs,
         )
         self.link_content_fetcher = link_content_fetcher or LinkContentFetcher()
         self.mode = mode

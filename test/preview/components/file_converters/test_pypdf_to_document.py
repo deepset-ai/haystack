@@ -17,7 +17,7 @@ class TestPyPDFToDocument:
         output = converter.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 1
-        assert "ReAct" in docs[0].text
+        assert "ReAct" in docs[0].content
 
     @pytest.mark.unit
     def test_run_error_handling(self, preview_samples_path, caplog):
@@ -43,5 +43,5 @@ class TestPyPDFToDocument:
         output = converter.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 2
-        assert "ReAct" in docs[0].text
-        assert "ReAct" in docs[1].text
+        assert "ReAct" in docs[0].content
+        assert "ReAct" in docs[1].content

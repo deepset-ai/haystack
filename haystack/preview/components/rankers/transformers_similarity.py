@@ -8,28 +8,29 @@ from haystack.preview.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]==4.32.1'") as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]==4.34.1'") as torch_and_transformers_import:
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
 @component
-class SimilarityRanker:
+class TransformersSimilarityRanker:
     """
     Ranks documents based on query similarity.
+    It uses a pre-trained cross-encoder model (from Hugging Face Hub) to embed the query and documents.
 
     Usage example:
     ```
     from haystack.preview import Document
-    from haystack.preview.components.rankers import SimilarityRanker
+    from haystack.preview.components.rankers import TransformersSimilarityRanker
 
-    sampler = SimilarityRanker()
+    ranker = TransformersSimilarityRanker()
     docs = [Document(text="Paris"), Document(text="Berlin")]
     query = "City in Germany"
-    output = sampler.run(query=query, documents=docs)
+    output = ranker.run(query=query, documents=docs)
     docs = output["documents"]
     assert len(docs) == 2
-    assert docs[0].text == "Berlin"
+    assert docs[0].content == "Berlin"
     ```
     """
 
@@ -41,9 +42,10 @@ class SimilarityRanker:
         top_k: int = 10,
     ):
         """
-        Creates an instance of SimilarityRanker.
+        Creates an instance of TransformersSimilarityRanker.
 
-        :param model_name_or_path: Path to a pre-trained sentence-transformers model.
+        :param model_name_or_path: The name or path of a pre-trained cross-encoder model
+            from Hugging Face Hub.
         :param device: torch device (for example, cuda:0, cpu, mps) to limit model inference to a specific device.
         :param token: The API token used to download private models from Hugging Face.
             If this parameter is set to `True`, then the token generated when running
@@ -114,7 +116,7 @@ class SimilarityRanker:
                 f"The component {self.__class__.__name__} not warmed up. Run 'warm_up()' before calling 'run()'."
             )
 
-        query_doc_pairs = [[query, doc.text] for doc in documents]
+        query_doc_pairs = [[query, doc.content] for doc in documents]
         features = self.tokenizer(
             query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
         ).to(  # type: ignore

@@ -27,7 +27,7 @@ def test_basic_loading(pretrained_model_name_or_path, lm_class, monkeypatch):
 
 @pytest.mark.unit
 def test_basic_loading_unknown_model():
-    with pytest.raises(OSError):
+    with pytest.raises(RuntimeError):
         get_language_model("model_that_doesnt_exist")
 
 
