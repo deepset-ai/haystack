@@ -195,10 +195,8 @@ class TestHuggingFaceTGIGenerator:
         generator = HuggingFaceTGIGenerator()
         generator.warm_up()
 
-        stop_words = ["stop", "words"]
-
         # Generate text response with stop words
-        response = generator.run("How are you?", stop_words=stop_words)
+        response = generator.run("How are you?", generation_kwargs={"stop_words": ["stop", "words"]})
 
         # check kwargs passed to text_generation
         _, kwargs = mock_text_generation.call_args
@@ -224,7 +222,7 @@ class TestHuggingFaceTGIGenerator:
         generator.warm_up()
 
         generation_kwargs = {"temperature": 0.8, "max_new_tokens": 100}
-        response = generator.run("How are you?", **generation_kwargs)
+        response = generator.run("How are you?", generation_kwargs=generation_kwargs)
 
         # check kwargs passed to text_generation
         _, kwargs = mock_text_generation.call_args

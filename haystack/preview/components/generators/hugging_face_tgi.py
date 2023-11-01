@@ -153,7 +153,7 @@ class HuggingFaceTGIGenerator:
         return {"model": self.model}
 
     @component.output_types(replies=List[str], metadata=List[Dict[str, Any]])
-    def run(self, prompt: str, **generation_kwargs):
+    def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
         """
         Invoke the text generation inference for the given prompt and generation parameters.
 
@@ -167,7 +167,7 @@ class HuggingFaceTGIGenerator:
         check_generation_params(generation_kwargs, additional_params)
 
         # update generation kwargs by merging with the default ones
-        generation_kwargs = {**self.generation_kwargs, **generation_kwargs}
+        generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
         num_responses = generation_kwargs.pop("n", 1)
         generation_kwargs.setdefault("stop_sequences", []).extend(generation_kwargs.pop("stop_words", []))
 
