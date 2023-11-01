@@ -37,8 +37,8 @@ class HuggingFaceTGIChatGenerator:
     print(response)
     ```
 
-    Or for chat LLMs hosted on paid https://huggingface.co/inference-endpoints endpoint, and/or your own custom TGI
-    endpoint. In these two cases, you'll need to provide the URL of the endpoint as well as a valid token:
+    For chat LLMs hosted on paid https://huggingface.co/inference-endpoints endpoint and/or your own custom TGI
+    endpoint, you'll need to provide the URL of the endpoint as well as a valid token:
 
     ```python
     from haystack.preview.components.generators.chat import HuggingFaceTGIChatGenerator
@@ -59,23 +59,23 @@ class HuggingFaceTGIChatGenerator:
          - **Primary Compatibility**: Designed to work seamlessly with any chat-based model deployed using the TGI
            framework. For more information on TGI, visit https://github.com/huggingface/text-generation-inference.
          - **Hugging Face Inference Endpoints**: Supports inference of TGI chat LLMs deployed on Hugging Face
-           inference endpoints. For more details refer to https://huggingface.co/inference-endpoints.
+           inference endpoints. For more details, refer to https://huggingface.co/inference-endpoints.
          - **Inference API Support**: Supports inference of TGI chat LLMs hosted on the rate-limited Inference
-           API tier. Learn more about the Inference API at: https://huggingface.co/inference-api
+           API tier. Learn more about the Inference API at https://huggingface.co/inference-api.
            Discover available chat models using the following command:
            ```
            wget -qO- https://api-inference.huggingface.co/framework/text-generation-inference | grep chat
            ```
-           And simply use the model ID as the model parameter for this component. You'll also need to provide a valid
+           and simply use the model ID as the model parameter for this component. You'll also need to provide a valid
            Hugging Face API token as the token parameter.
          - **Custom TGI Endpoints**: Supports inference of TGI chat LLMs deployed on custom TGI endpoints. Anyone can
-           deploy their own TGI endpoint using the TGI framework. For more details refer
+           deploy their own TGI endpoint using the TGI framework. For more details, refer
            to https://huggingface.co/inference-endpoints.
 
      Input and Output Format:
-         - **ChatMessage Format**: This component uses the ChatMessage format for structuring both input and output,
+         - **ChatMessage Format**: This component uses the ChatMessage format to structure both input and output,
            ensuring coherent and contextually relevant responses in chat-based text generation scenarios. Details on the
-           ChatMessage format can be found at: https://github.com/openai/openai-python/blob/main/chatml.md.
+           ChatMessage format can be found at https://github.com/openai/openai-python/blob/main/chatml.md.
 
     """
 
@@ -99,12 +99,12 @@ class HuggingFaceTGIChatGenerator:
             accessible through their tokenizer, there are models that do not offer this feature. For such scenarios,
             or if you wish to use a custom template instead of the model's default, you can use this parameter to
             set your preferred chat template.
-        :param token: The HuggingFace token to use as HTTP bearer authorization
-            You can find your HF token at https://huggingface.co/settings/tokens
+        :param token: The Hugging Face token for HTTP bearer authorization.
+            You can find your HF token at https://huggingface.co/settings/tokens.
         :param generation_kwargs: A dictionary containing keyword arguments to customize text generation.
             Some examples: `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
-            See Hugging Face's documentation for more information at:
-            https://huggingface.co/docs/huggingface_hub/v0.18.0.rc0/en/package_reference/inference_client#huggingface_hub.inference._text_generation.TextGenerationParameters
+            See Hugging Face's [documentation](https://huggingface.co/docs/huggingface_hub/v0.18.0.rc0/en/package_reference/inference_client#huggingface_hub.inference._text_generation.TextGenerationParameters)
+            for more information.
         :param stop_words: An optional list of strings representing the stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
@@ -133,7 +133,7 @@ class HuggingFaceTGIChatGenerator:
 
     def warm_up(self) -> None:
         """
-        Load the tokenizer
+        Load the tokenizer.
         """
         self.tokenizer = AutoTokenizer.from_pretrained(self.model, token=self.token)
         # mypy can't infer that chat_template attribute exists on the object returned by AutoTokenizer.from_pretrained
