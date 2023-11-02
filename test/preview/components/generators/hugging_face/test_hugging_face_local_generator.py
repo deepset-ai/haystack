@@ -1,3 +1,4 @@
+# pylint: disable=too-many-public-methods
 from unittest.mock import patch, Mock
 
 import pytest
