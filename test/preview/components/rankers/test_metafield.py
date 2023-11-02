@@ -37,16 +37,16 @@ class TestMetaFieldRanker:
         Test if the component ranks documents correctly.
         """
         ranker = MetaFieldRanker(metadata_field="rating")
-        docs_before = [Document(text="abc", metadata={"rating": value}) for value in metafield_values]
+        docs_before = [Document(content="abc", meta={"rating": value}) for value in metafield_values]
 
         output = ranker.run(query=query, documents=docs_before)
         docs_after = output["documents"]
 
         assert len(docs_after) == 3
-        assert docs_after[0].metadata["rating"] == expected_first_value
+        assert docs_after[0].meta["rating"] == expected_first_value
 
-        sorted_scores = sorted([doc.metadata["rating"] for doc in docs_after], reverse=True)
-        assert [doc.metadata["rating"] for doc in docs_after] == sorted_scores
+        sorted_scores = sorted([doc.meta["rating"] for doc in docs_after], reverse=True)
+        assert [doc.meta["rating"] for doc in docs_after] == sorted_scores
 
     @pytest.mark.integration
     def test_returns_empty_list_if_no_documents_are_provided(self):
@@ -58,7 +58,7 @@ class TestMetaFieldRanker:
     @pytest.mark.integration
     def test_raises_component_error_if_metadata_not_found(self):
         ranker = MetaFieldRanker(metadata_field="rating")
-        docs_before = [Document(text="abc", metadata={"wrong_field": 1.3})]
+        docs_before = [Document(content="abc", meta={"wrong_field": 1.3})]
         with pytest.raises(ComponentError):
             ranker.run(query="", documents=docs_before)
 
@@ -77,9 +77,9 @@ class TestMetaFieldRanker:
     def test_linear_score(self):
         ranker = MetaFieldRanker(metadata_field="rating", ranking_mode="linear_score", weight=0.5)
         docs_before = [
-            Document(text="abc", metadata={"rating": 1.3}, score=0.3),
-            Document(text="abc", metadata={"rating": 0.7}, score=0.4),
-            Document(text="abc", metadata={"rating": 2.1}, score=0.6),
+            Document(content="abc", meta={"rating": 1.3}, score=0.3),
+            Document(content="abc", meta={"rating": 0.7}, score=0.4),
+            Document(content="abc", meta={"rating": 2.1}, score=0.6),
         ]
         output = ranker.run(query="", documents=docs_before)
         docs_after = output["documents"]
@@ -89,9 +89,9 @@ class TestMetaFieldRanker:
     def test_reciprocal_rank_fusion(self):
         ranker = MetaFieldRanker(metadata_field="rating", ranking_mode="reciprocal_rank_fusion", weight=0.5)
         docs_before = [
-            Document(text="abc", metadata={"rating": 1.3}, score=0.3),
-            Document(text="abc", metadata={"rating": 0.7}, score=0.4),
-            Document(text="abc", metadata={"rating": 2.1}, score=0.6),
+            Document(content="abc", meta={"rating": 1.3}, score=0.3),
+            Document(content="abc", meta={"rating": 0.7}, score=0.4),
+            Document(content="abc", meta={"rating": 2.1}, score=0.6),
         ]
         output = ranker.run(query="", documents=docs_before)
         docs_after = output["documents"]

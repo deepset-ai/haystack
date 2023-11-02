@@ -110,7 +110,7 @@ class MetaFieldRanker:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
         try:
-            sorted_by_metadata = sorted(documents, key=lambda doc: doc.metadata[self.metadata_field], reverse=True)
+            sorted_by_metadata = sorted(documents, key=lambda doc: doc.meta[self.metadata_field], reverse=True)
         except KeyError:
             raise ComponentError(
                 """
@@ -118,8 +118,7 @@ class MetaFieldRanker:
                 Please double-check the names of existing metadata fields of your documents \n
                 and set <metadata_field> to the name of the field that contains the metadata you want to rank by.
                 """.format(
-                    self.metadata_field,
-                    ",".join([doc.id for doc in documents if self.metadata_field not in doc.metadata]),
+                    self.metadata_field, ",".join([doc.id for doc in documents if self.metadata_field not in doc.meta])
                 )
             )
 
