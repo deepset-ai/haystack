@@ -60,44 +60,6 @@ class TestLinkContentFetcher:
         assert fetcher.timeout == 2
 
     @pytest.mark.unit
-    def test_to_dict(self):
-        fetcher = LinkContentFetcher()
-        assert fetcher.to_dict() == {
-            "type": "LinkContentFetcher",
-            "init_parameters": {
-                "raise_on_failure": True,
-                "user_agents": [DEFAULT_USER_AGENT],
-                "retry_attempts": 2,
-                "timeout": 3,
-            },
-        }
-
-    @pytest.mark.unit
-    def test_to_dict_with_params(self):
-        fetcher = LinkContentFetcher(raise_on_failure=False, user_agents=["test"], retry_attempts=1, timeout=2)
-        assert fetcher.to_dict() == {
-            "type": "LinkContentFetcher",
-            "init_parameters": {"raise_on_failure": False, "user_agents": ["test"], "retry_attempts": 1, "timeout": 2},
-        }
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        fetcher = LinkContentFetcher.from_dict(
-            {
-                "type": "LinkContentFetcher",
-                "init_parameters": {
-                    "raise_on_failure": False,
-                    "user_agents": ["test"],
-                    "retry_attempts": 1,
-                    "timeout": 2,
-                },
-            }
-        )
-        assert fetcher.raise_on_failure is False
-        assert fetcher.user_agents == ["test"]
-        assert fetcher.retry_attempts == 1
-
-    @pytest.mark.unit
     def test_run_text(self):
         correct_response = b"Example test response"
         with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:

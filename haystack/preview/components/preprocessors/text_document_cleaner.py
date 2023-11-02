@@ -3,9 +3,9 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Any, Dict, Generator, List, Optional, Set
+from typing import Generator, List, Optional, Set
 
-from haystack.preview import Document, component, default_from_dict, default_to_dict
+from haystack.preview import Document, component
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class DocumentCleaner:
     Example usage in an indexing pipeline:
 
     ```python
-    document_store = MemoryDocumentStore()
+    document_store = InMemoryDocumentStore()
     p = Pipeline()
     p.add_component(instance=TextFileToDocument(), name="text_file_converter")
     p.add_component(instance=DocumentCleaner(), name="cleaner")
@@ -58,20 +58,22 @@ class DocumentCleaner:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
-        Run the DocumentCleaner on the given list of documents
+        Run the DocumentCleaner on the given list of documents.
+        The documents' metadata remain unchanged.
         """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError("DocumentCleaner expects a List of Documents as input.")
 
         cleaned_docs = []
         for doc in documents:
-            if doc.text is None:
+            if doc.content is None:
                 logger.warning(
-                    "DocumentCleaner only cleans text documents but document.text for document ID %s is None.", doc.id
+                    "DocumentCleaner only cleans text documents but document.content for document ID %s is None.",
+                    doc.id,
                 )
                 cleaned_docs.append(doc)
                 continue
-            text = doc.text
+            text = doc.content
 
             if self.remove_extra_whitespaces:
                 text = self._remove_extra_whitespaces(text)
@@ -84,29 +86,9 @@ class DocumentCleaner:
             if self.remove_repeated_substrings:
                 text = self._remove_repeated_substrings(text)
 
-            cleaned_docs.append(Document(text=text, metadata=deepcopy(doc.metadata)))
+            cleaned_docs.append(Document(content=text, meta=deepcopy(doc.meta)))
 
         return {"documents": cleaned_docs}
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(
-            self,
-            remove_empty_lines=self.remove_empty_lines,
-            remove_extra_whitespaces=self.remove_extra_whitespaces,
-            remove_repeated_substrings=self.remove_repeated_substrings,
-            remove_substrings=self.remove_substrings,
-            remove_regex=self.remove_regex,
-        )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DocumentCleaner":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     def _remove_empty_lines(self, text: str) -> str:
         """
