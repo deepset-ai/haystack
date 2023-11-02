@@ -1,8 +1,8 @@
 import logging
 from unittest.mock import patch
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 from canals.errors import PipelineRuntimeError
 from langdetect import LangDetectException
@@ -10,7 +10,7 @@ from langdetect import LangDetectException
 from haystack.preview.components.file_converters.txt import TextFileToDocument
 
 
-class TestTextfileToDocument:
+class TestTextfileToDocument:  # pylint: disable=R0904
     @pytest.mark.unit
     def test_run(self, preview_samples_path):
         """
@@ -21,10 +21,10 @@ class TestTextfileToDocument:
         output = converter.run(paths=paths)
         docs = output["documents"]
         assert len(docs) == 2
-        assert docs[0].text == "Some text for testing.\nTwo lines in here."
-        assert docs[1].text == "This is a test line.\n123 456 789\n987 654 321."
-        assert docs[0].metadata["file_path"] == str(paths[0])
-        assert docs[1].metadata["file_path"] == str(paths[1])
+        assert docs[0].content == "Some text for testing.\nTwo lines in here."
+        assert docs[1].content == "This is a test line.\n123 456 789\n987 654 321."
+        assert docs[0].meta["file_path"] == str(paths[0])
+        assert docs[1].meta["file_path"] == str(paths[1])
 
     @pytest.mark.unit
     def test_run_warning_for_invalid_language(self, preview_samples_path, caplog):
@@ -41,7 +41,7 @@ class TestTextfileToDocument:
 
         docs = output["documents"]
         assert len(docs) == 1
-        assert docs[0].text == "Some text for testing.\nTwo lines in here."
+        assert docs[0].content == "Some text for testing.\nTwo lines in here."
 
     @pytest.mark.unit
     def test_run_error_handling(self, preview_samples_path, caplog):
@@ -58,7 +58,7 @@ class TestTextfileToDocument:
             )
         docs = output["documents"]
         assert len(docs) == 1
-        assert docs[0].metadata["file_path"] == str(paths[0])
+        assert docs[0].meta["file_path"] == str(paths[0])
 
     @pytest.mark.unit
     def test_prepare_metadata_no_metadata(self):

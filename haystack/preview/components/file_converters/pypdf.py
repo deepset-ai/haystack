@@ -41,7 +41,7 @@ class PyPDFToDocument:
                 logger.warning("Could not read %s. Skipping it. Error message: %s", source, e)
                 continue
 
-            document = Document(text=text)
+            document = Document(content=text)
             documents.append(document)
 
         return {"documents": documents}

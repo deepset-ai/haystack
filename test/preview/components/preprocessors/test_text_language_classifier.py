@@ -10,7 +10,7 @@ class TestTextLanguageClassifier:
     def test_non_string_input(self):
         with pytest.raises(TypeError, match="TextLanguageClassifier expects a str as input."):
             classifier = TextLanguageClassifier()
-            classifier.run(text=Document(text="This is an english sentence."))
+            classifier.run(text=Document(content="This is an english sentence."))
 
     @pytest.mark.unit
     def test_list_of_string(self):
