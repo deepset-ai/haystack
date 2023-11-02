@@ -18,15 +18,15 @@ def mock_check_valid_model():
 
 @pytest.fixture
 def mock_text_generation():
-    with patch("huggingface_hub.InferenceClient.text_generation", autospec=True) as mock_from_pretrained:
+    with patch("huggingface_hub.InferenceClient.text_generation", autospec=True) as mock_text_generation:
         mock_response = Mock()
         mock_response.generated_text = "I'm fine, thanks."
         details = Mock()
         details.finish_reason = MagicMock(field1="value")
         details.tokens = [1, 2, 3]
         mock_response.details = details
-        mock_from_pretrained.return_value = mock_response
-        yield mock_from_pretrained
+        mock_text_generation.return_value = mock_response
+        yield mock_text_generation
 
 
 # used to test serialization of streaming_callback
@@ -36,7 +36,7 @@ def streaming_callback_handler(x):
 
 class TestHuggingFaceTGIGenerator:
     @pytest.mark.unit
-    def test_initialize_with_valid_model_and_generation_parameters(self, mock_check_valid_model, mock_auto_tokenizer):
+    def test_initialize_with_valid_model_and_generation_parameters(self, mock_check_valid_model):
         model = "HuggingFaceH4/zephyr-7b-alpha"
         generation_kwargs = {"n": 1}
         stop_words = ["stop"]
@@ -58,7 +58,7 @@ class TestHuggingFaceTGIGenerator:
         assert generator.streaming_callback == streaming_callback
 
     @pytest.mark.unit
-    def test_to_dict(self, mock_check_valid_model, mock_auto_tokenizer):
+    def test_to_dict(self, mock_check_valid_model):
         # Initialize the HuggingFaceRemoteGenerator object with valid parameters
         generator = HuggingFaceTGIGenerator(
             token="token", generation_kwargs={"n": 5}, stop_words=["stop", "words"], streaming_callback=lambda x: x
@@ -74,7 +74,7 @@ class TestHuggingFaceTGIGenerator:
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
 
     @pytest.mark.unit
-    def test_from_dict(self, mock_check_valid_model, mock_auto_tokenizer):
+    def test_from_dict(self, mock_check_valid_model):
         generator = HuggingFaceTGIGenerator(
             model="mistralai/Mistral-7B-v0.1",
             generation_kwargs={"n": 5},
