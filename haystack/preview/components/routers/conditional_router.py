@@ -10,60 +10,91 @@ logger = logging.getLogger(__name__)
 
 
 class NoRouteSelectedException(Exception):
-    """Exception raised when no route is selected in Router."""
+    """Exception raised when no route is selected in ConditionalRouter
+    ."""
 
 
 class RouteConditionException(Exception):
-    """Exception raised when there is an error parsing or evaluating the condition expression in Router."""
+    """Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter
+    ."""
 
 
 @component
 class ConditionalRouter:
     """
-    The Router class orchestrates the flow of data by evaluating specified route conditions
+    The ConditionalRouter class orchestrates the flow of data by evaluating specified route conditions
     to determine the appropriate route among a set of provided route alternatives.
 
-    To use a Router in Haystack 2.x pipelines we first define a list called routes, where each element
+    To use a ConditionalRouter in Haystack 2.x pipelines, we first define a list called routes, where each element
     is a dictionary representing a route.
 
-    Each route dictionary contains three keys: condition, output, and output_type.
+    Each route dictionary contains three keys: condition, output, and output_type, with an optional
+    fourth key: output_slot.
 
-    The condition is a string containing a Jinja2 boolean expression that will be evaluated to determine if
-    this route should be selected. The output is a string specifying the name of the output slot for
-    this route, and output_type is a string representation of the expected type of the output.
+    The condition is a string containing a Jinja2 expression (a templating language for Python) that will be evaluated
+    to determine if this route should be selected. The output is a string specifying the name of the output slot for
+    this route, and output_type is the expected type of the output, represented as a type (e.g., str, List[int]).
 
     Example:
 
-        In this example, we create a `Router` instance with two routes.
+        In this example, we create a `ConditionalRouter` instance with two routes.
         The first route will be selected if the number of streams is less than 2,
-        and will output the `query` variable. The second route will be selected
-        if the number of streams is 2 or more, and will output the `streams` variable.
-        These variables need to be provided in the pipeline `run()` method.
+        and will output the `query` variable. One can then connect the output of the `ConditionalRouter` `query`
+        slot to some other component in the pipeline.
+        The second route will be selected if the number of streams is 2 or more, and will output the
+        `streams` variable. Again, one can then connect the output of the `ConditionalRouter` `streams` slot to
+        some other component in the pipeline.
+        The variables `query` and `streams` need to be provided in the pipeline `run()` method.
 
         ```python
 
             routes = [
-                {"condition": "{{streams|length < 2}}", "output": "query", "output_type": "str"},
-                {"condition": "{{streams|length < 2}}", "output": "streams", "output_type": "List[ByteStream]"}
+                {"condition": "{{streams|length < 2}}", "output": "query", "output_type": str},
+                {"condition": "{{streams|length >= 2}}", "output": "streams", "output_type": List[ByteStream]}
             ]
 
-            router = Router(routes=routes)
+            router = ConditionalRouter(routes=routes)
         ```
+
+    However, in some cases, we might want to output the same variable to different output slots of the
+    ConditionalRouter.
+
+    Here is an example of how to do that:
+    ```python
+        routes = [
+            {
+                "condition": "{{streams|length > 2}}",
+                "output": "streams",
+                "output_slot": "enough_streams",
+                "output_type": List[int],
+            },
+            {
+                "condition": "{{streams|length <= 2}}",
+                "output": "streams",
+                "output_slot": "insufficient_streams",
+                "output_type": List[int],
+            },
+        ]
+        router = ConditionalRouter(routes)
+        # enough_streams output slot will fire with [1, 2, 3] list being outputted
+        kwargs = {"streams": [1, 2, 3], "query": "Haystack"}
+        result = router.run(**kwargs)
+        assert result == {"enough_streams": [1, 2, 3]}
+    ```
+
+    In this example, we create a ConditionalRouter instance with two routes. The first route will be
+    selected if the number of streams is greater than 2, and will output the streams variable to the
+    enough_streams output slot. The second route will be selected if the number of streams is 2 or
+    less, and will output the streams variable to the insufficient_streams output slot.
     """
 
     def __init__(self, routes: List[Dict]):
         """
-        Initialize the Router with a list of routes and the routing variables.
+        Initialize the ConditionalRouter with a list of routes and the routing variables.
 
         :param routes: A list of dictionaries, each representing a route with a
                        boolean condition expression (`condition`), an output slot (`output`),
                        and the output type as a string representation (`output_type`).
-
-        :param routing_variables: A list of additional pipeline variables that are
-                       used in the boolean condition expressions or as outputs of the router.
-                       These variables should be provided by either the pipeline `run()`
-                       method or by a previous component to the router in the pipeline.
-
         """
         self._validate_routes(routes)
         self.routes: List[dict] = routes
@@ -82,7 +113,8 @@ class ConditionalRouter:
             ast = env.parse(route["condition"])
             input_names.update(meta.find_undeclared_variables(ast))
 
-            output_types.update({route["output"]: route["output_type"]})
+            output_slot = route.get("output_slot", route["output"])
+            output_types.update({output_slot: route["output_type"]})
 
         component.set_input_types(self, **{var: Any for var in input_names})
         component.set_output_types(self, **output_types)
@@ -110,8 +142,11 @@ class ConditionalRouter:
             try:
                 t = env.from_string(route["condition"])
                 if t.render(**kwargs):
-                    output_slot = route["output"]
-                    return {output_slot: kwargs[output_slot]}
+                    # if optional field output_slot is not provided, use mandatory output
+                    output_slot = route.get("output_slot", route["output"])
+                    # value we output is always under the output key
+                    output_value = kwargs[route["output"]]
+                    return {output_slot: output_value}
             except Exception as e:
                 raise RouteConditionException(f"Error evaluating condition for route '{route}': {e}") from e
 
@@ -124,5 +159,12 @@ class ConditionalRouter:
             except AttributeError:
                 raise ValueError(f"Route must be a dictionary, got: {route}")
 
-            if not {"condition", "output", "output_type"}.issubset(keys):
+            mandatory_fields = {"condition", "output", "output_type"}
+            optional_fields = {"output_slot"}
+            has_all_mandatory_fields = mandatory_fields.issubset(keys)
+            if not has_all_mandatory_fields:
                 raise ValueError("Each route must contain 'condition', 'output', and 'output_type' keys.")
+            if not keys.issubset(mandatory_fields.union(optional_fields)):
+                raise ValueError(
+                    f"Route contains invalid keys. Valid keys are: {mandatory_fields.union(optional_fields)}"
+                )
