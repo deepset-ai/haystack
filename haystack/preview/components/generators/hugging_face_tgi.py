@@ -197,7 +197,7 @@ class HuggingFaceTGIGenerator:
             chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
             stream_chunk = StreamingChunk(token.text, chunk_metadata)
             chunks.append(stream_chunk)
-            self.streaming_callback(stream_chunk)  # type: ignore # guaranteed non-None by if statement above
+            self.streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
         metadata = {
             "finish_reason": chunks[-1].metadata.get("finish_reason", None),
             "model": self.client.model,
