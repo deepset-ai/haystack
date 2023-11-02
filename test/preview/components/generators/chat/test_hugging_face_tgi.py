@@ -57,7 +57,7 @@ class TestHuggingFaceTGIChatGenerator:
         assert generator.streaming_callback == streaming_callback
 
     @pytest.mark.unit
-    def test_to_dict(self, mock_check_valid_model, mock_auto_tokenizer):
+    def test_to_dict(self, mock_check_valid_model):
         # Initialize the HuggingFaceTGIChatGenerator object with valid parameters
         generator = HuggingFaceTGIChatGenerator(
             model="NousResearch/Llama-2-7b-chat-hf",
@@ -77,7 +77,7 @@ class TestHuggingFaceTGIChatGenerator:
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
 
     @pytest.mark.unit
-    def test_from_dict(self, mock_check_valid_model, mock_auto_tokenizer):
+    def test_from_dict(self, mock_check_valid_model):
         generator = HuggingFaceTGIChatGenerator(
             model="NousResearch/Llama-2-7b-chat-hf",
             generation_kwargs={"n": 5},

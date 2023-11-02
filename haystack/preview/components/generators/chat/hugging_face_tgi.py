@@ -223,8 +223,8 @@ class HuggingFaceTGIChatGenerator:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
 
             return self._run_streaming(prepared_prompt, prompt_token_count, generation_kwargs)
-        else:
-            return self._run_non_streaming(prepared_prompt, prompt_token_count, num_responses, generation_kwargs)
+
+        return self._run_non_streaming(prepared_prompt, prompt_token_count, num_responses, generation_kwargs)
 
     def _run_streaming(
         self, prepared_prompt: str, prompt_token_count: int, generation_kwargs: Dict[str, Any]
