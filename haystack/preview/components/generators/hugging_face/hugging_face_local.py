@@ -206,14 +206,24 @@ class HuggingFaceLocalGenerator:
         )
 
     @component.output_types(replies=List[str])
-    def run(self, prompt: str):
+    def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
+        """
+        Run the text generation model on the given prompt.
+
+        :param prompt: A string representing the prompt.
+        :param generation_kwargs: Additional keyword arguments for text generation.
+        :return: A dictionary containing the generated replies.
+        """
         if self.pipeline is None:
             raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
 
         if not prompt:
             return {"replies": []}
 
-        output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **self.generation_kwargs)
+        # merge generation kwargs from init method with those from run method
+        updated_generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+
+        output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **updated_generation_kwargs)
         replies = [o["generated_text"] for o in output if "generated_text" in o]
 
         if self.stop_words:
