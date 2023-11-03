@@ -98,7 +98,7 @@ preview = [
   "Jinja2",
   "openai",
   "pyyaml",
-  "more-itertools",  # TextDocumentSplitter
+  "more-itertools",  # DocumentSplitter
 ]
 inference = [
   "transformers[torch,sentencepiece]==4.34.1",

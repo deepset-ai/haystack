@@ -1,3 +1,4 @@
+# pylint: disable=too-many-public-methods
 from unittest.mock import patch, Mock
 
 import pytest
@@ -241,6 +242,23 @@ class TestHuggingFaceLocalGenerator:
         results = generator.run(prompt="")
 
         assert results == {"replies": []}
+
+    @pytest.mark.unit
+    def test_run_with_generation_kwargs(self):
+        generator = HuggingFaceLocalGenerator(
+            model_name_or_path="google/flan-t5-base",
+            task="text2text-generation",
+            generation_kwargs={"max_new_tokens": 100},
+        )
+
+        # create the pipeline object (simulating the warm_up)
+        generator.pipeline = Mock(return_value=[{"generated_text": "Rome"}])
+
+        generator.run(prompt="irrelevant", generation_kwargs={"max_new_tokens": 200, "temperature": 0.5})
+
+        generator.pipeline.assert_called_once_with(
+            "irrelevant", max_new_tokens=200, temperature=0.5, stopping_criteria=None
+        )
 
     @pytest.mark.unit
     def test_run_fails_without_warm_up(self):

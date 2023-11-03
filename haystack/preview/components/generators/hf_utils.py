@@ -5,7 +5,7 @@ from huggingface_hub import InferenceClient, HfApi
 from huggingface_hub.utils import RepositoryNotFoundError
 
 
-def check_generation_params(kwargs: Dict[str, Any], additional_accepted_params: Optional[List[str]] = None):
+def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepted_params: Optional[List[str]] = None):
     """
     Check the provided generation parameters for validity.
 
