@@ -139,21 +139,12 @@ class HuggingFaceTGIChatGenerator:
         # mypy can't infer that chat_template attribute exists on the object returned by AutoTokenizer.from_pretrained
         chat_template = getattr(self.tokenizer, "chat_template", None)
         if not chat_template and not self.chat_template:
-            if self.url:
-                logger.warning(
-                    "The model '%s' at the specified URL '%s' lacks a defined chat_template, and no chat_template was "
-                    "supplied during this component's initialization. It’s possible that the model is not set up for "
-                    "chat-based inference, potentially leading to unexpected behavior.",
-                    self.model,
-                    self.url,
-                )
-            else:
-                logger.warning(
-                    "The model '%s' on the Hugging Face Inference API lacks a defined chat_template, and no "
-                    "chat_template was supplied during this component's initialization. It’s possible that the model "
-                    "is not set up for chat-based inference, potentially leading to unexpected behavior.",
-                    self.model,
-                )
+            logger.warning(
+                "The model '%s' doesn't have a default chat_template, and no chat_template was supplied during "
+                "this component's initialization. It’s possible that the model doesn't support ChatML inference "
+                "format, potentially leading to unexpected behavior.",
+                self.model,
+            )
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -207,7 +198,10 @@ class HuggingFaceTGIChatGenerator:
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
         num_responses = generation_kwargs.pop("n", 1)
-        generation_kwargs.setdefault("stop_sequences", []).extend(generation_kwargs.pop("stop_words", []))
+
+        # merge stop_words and stop_sequences into a single list
+        generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", [])
+        generation_kwargs["stop_sequences"].extend(generation_kwargs.pop("stop_words", []))
 
         if self.tokenizer is None:
             raise RuntimeError("Please call warm_up() before running LLM inference.")
@@ -240,7 +234,7 @@ class HuggingFaceTGIChatGenerator:
                 continue
             chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
             stream_chunk = StreamingChunk(token.text, chunk_metadata)
-            self.streaming_callback(stream_chunk)  # type: ignore # guaranteed non-None by if statement above
+            self.streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
             chunks.append(stream_chunk)
         message = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
         message.metadata.update(
