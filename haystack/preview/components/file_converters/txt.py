@@ -19,7 +19,9 @@ class TextFileToDocument:
         """
         Create a TextFileToDocument component.
 
-        :param encoding: The encoding of the text files. Default: `"utf-8"`
+        :param encoding: The default encoding of the text files. Default: `"utf-8"`.
+            Note that if the encoding is specified in the metadata of a ByteStream,
+            it will override this default.
         """
         self.encoding = encoding
 
@@ -28,23 +30,31 @@ class TextFileToDocument:
         """
         Convert text files to Documents.
 
-        :param streams: A list of paths to text files or ByteStream representing such files.
+        :param streams: A list of paths to text files or ByteStream objects.
+            Note that if an encoding is specified in the metadata of a ByteStream,
+            it will override the component's default.
+        :return: A dictionary containing the converted documents.
         """
         documents = []
+        print("HELLOOOOO", streams)
         for stream in streams:
             if isinstance(stream, (Path, str)):
                 if not Path(stream).exists():
                     logger.warning("File %s does not exist. Skipping it.", stream)
                     continue
                 try:
-                    stream = ByteStream.from_file_path(stream)
-                    stream.metadata["file_path"] = str(stream)
+                    path = stream
+                    stream = ByteStream.from_file_path(Path(stream))
+                    stream.metadata["file_path"] = str(path)
                 except Exception as e:
-                    logger.warning("Could not read file %s. Skipping it. Error message: %s", stream, e)
+                    logger.warning("Could not convert file %s. Skipping it. Error message: %s", stream, e)
                     continue
-
-            document = Document(content=stream.data)
-            document.meta = stream.metadata
-            documents.append(document)
+            try:
+                encoding = stream.metadata.get("encoding", self.encoding)
+                document = Document(content=stream.data.decode(encoding))
+                document.meta = stream.metadata
+                documents.append(document)
+            except Exception as e:
+                logger.warning("Could not convert file %s. Skipping it. Error message: %s", stream, e)
 
         return {"documents": documents}
