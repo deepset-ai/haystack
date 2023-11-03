@@ -227,6 +227,7 @@ class HuggingFaceTGIChatGenerator:
             prepared_prompt, stream=True, details=True, **generation_kwargs
         )
         chunk = None
+        # pylint: disable=not-an-iterable
         for chunk in res:
             token: Token = chunk.token
             if token.special:
