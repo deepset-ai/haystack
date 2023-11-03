@@ -126,10 +126,10 @@ class RemoteWhisperTranscriber:
         documents = []
 
         for stream in streams:
-            if isinstance(stream, str):
-                stream = Path(stream)
-
             if isinstance(stream, Path):
+                stream = str(stream.absolute())
+
+            if isinstance(stream, str):
                 path = stream
                 stream = ByteStream.from_file_path(stream)
                 stream.metadata["file_path"] = path

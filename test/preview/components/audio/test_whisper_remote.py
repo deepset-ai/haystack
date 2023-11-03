@@ -193,7 +193,7 @@ class TestRemoteWhisperTranscriber:
             result = transcriber.run(streams=[file_path])
 
             assert result["documents"][0].content == "test transcription"
-            assert result["documents"][0].meta["file_path"] == Path(file_path)
+            assert result["documents"][0].meta["file_path"] == file_path
 
     @pytest.mark.unit
     def test_run_path(self, preview_samples_path):
@@ -206,7 +206,7 @@ class TestRemoteWhisperTranscriber:
             result = transcriber.run(streams=[file_path])
 
             assert result["documents"][0].content == "test transcription"
-            assert result["documents"][0].meta["file_path"] == file_path
+            assert result["documents"][0].meta["file_path"] == str(file_path.absolute())
 
     @pytest.mark.unit
     def test_run_bytestream(self, preview_samples_path):
