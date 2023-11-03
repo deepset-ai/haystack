@@ -36,7 +36,6 @@ class TextFileToDocument:
         :return: A dictionary containing the converted documents.
         """
         documents = []
-        print("HELLOOOOO", streams)
         for stream in streams:
             if isinstance(stream, (Path, str)):
                 if not Path(stream).exists():
