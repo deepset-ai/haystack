@@ -26,7 +26,7 @@ class TextFileToDocument:
         self.encoding = encoding
 
     @component.output_types(documents=List[Document])
-    def run(self, streams: List[Union[str, Path, ByteStream]]):
+    def run(self, sources: List[Union[str, Path, ByteStream]]):
         """
         Convert text files to Documents.
 
@@ -36,24 +36,24 @@ class TextFileToDocument:
         :return: A dictionary containing the converted documents.
         """
         documents = []
-        for stream in streams:
-            if isinstance(stream, (Path, str)):
-                if not Path(stream).exists():
-                    logger.warning("File %s does not exist. Skipping it.", stream)
+        for source in sources:
+            if isinstance(source, (Path, str)):
+                if not Path(source).exists():
+                    logger.warning("File %s does not exist. Skipping it.", source)
                     continue
                 try:
-                    path = stream
-                    stream = ByteStream.from_file_path(Path(stream))
-                    stream.metadata["file_path"] = str(path)
+                    path = source
+                    source = ByteStream.from_file_path(Path(source))
+                    source.metadata["file_path"] = str(path)
                 except Exception as e:
-                    logger.warning("Could not convert file %s. Skipping it. Error message: %s", stream, e)
+                    logger.warning("Could not convert file %s. Skipping it. Error message: %s", source, e)
                     continue
             try:
-                encoding = stream.metadata.get("encoding", self.encoding)
-                document = Document(content=stream.data.decode(encoding))
-                document.meta = stream.metadata
+                encoding = source.metadata.get("encoding", self.encoding)
+                document = Document(content=source.data.decode(encoding))
+                document.meta = source.metadata
                 documents.append(document)
             except Exception as e:
-                logger.warning("Could not convert file %s. Skipping it. Error message: %s", stream, e)
+                logger.warning("Could not convert file %s. Skipping it. Error message: %s", source, e)
 
         return {"documents": documents}

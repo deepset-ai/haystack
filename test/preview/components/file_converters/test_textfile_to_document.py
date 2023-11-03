@@ -23,7 +23,7 @@ class TestTextfileToDocument:
             bytestream,
         ]
         converter = TextFileToDocument()
-        output = converter.run(streams=files)
+        output = converter.run(sources=files)
         docs = output["documents"]
         assert len(docs) == 3
         assert docs[0].content == "Some text for testing.\nTwo lines in here.\n"
@@ -45,7 +45,7 @@ class TestTextfileToDocument:
         ]
         converter = TextFileToDocument()
         with caplog.at_level(logging.WARNING):
-            output = converter.run(streams=paths)
+            output = converter.run(sources=paths)
             assert "File non_existing_file.txt does not exist. Skipping it." in caplog.text
         docs = output["documents"]
         assert len(docs) == 2
@@ -61,9 +61,9 @@ class TestTextfileToDocument:
         bytestream.metadata["key"] = "value"
 
         converter = TextFileToDocument(encoding="utf-16")
-        output = converter.run(streams=[bytestream])
+        output = converter.run(sources=[bytestream])
         assert output["documents"][0].content != "Some text for testing.\nTwo lines in here.\n"
 
         bytestream.metadata["encoding"] = "utf-8"
-        output = converter.run(streams=[bytestream])
+        output = converter.run(sources=[bytestream])
         assert output["documents"][0].content == "Some text for testing.\nTwo lines in here.\n"
