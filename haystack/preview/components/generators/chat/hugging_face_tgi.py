@@ -33,7 +33,7 @@ class HuggingFaceTGIChatGenerator:
 
     client = HuggingFaceTGIChatGenerator(model="meta-llama/Llama-2-70b-chat-hf", token="<your-token>")
     client.warm_up()
-    response = client.run(messages, max_new_tokens=120)
+    response = client.run(messages, generation_kwargs={"max_new_tokens": 120})
     print(response)
     ```
 
