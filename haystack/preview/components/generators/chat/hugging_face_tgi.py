@@ -226,8 +226,7 @@ class HuggingFaceTGIChatGenerator:
         res: Iterable[TextGenerationStreamResponse] = self.client.text_generation(
             prepared_prompt, stream=True, details=True, **generation_kwargs
         )
-        chunks: List[StreamingChunk] = []
-        # pylint: disable=not-an-iterable
+        chunk = None
         for chunk in res:
             token: Token = chunk.token
             if token.special:
@@ -235,16 +234,17 @@ class HuggingFaceTGIChatGenerator:
             chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
             stream_chunk = StreamingChunk(token.text, chunk_metadata)
             self.streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
-            chunks.append(stream_chunk)
-        message = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
+
+        message = ChatMessage.from_assistant(chunk.generated_text)
         message.metadata.update(
             {
-                "finish_reason": chunks[-1].metadata.get("finish_reason", None),
+                "finish_reason": chunk.details.finish_reason.value,
+                "index": 0,
                 "model": self.client.model,
                 "usage": {
-                    "completion_tokens": chunks[-1].metadata.get("generated_tokens", 0),
+                    "completion_tokens": chunk.details.generated_tokens,
                     "prompt_tokens": prompt_token_count,
-                    "total_tokens": prompt_token_count + chunks[-1].metadata.get("generated_tokens", 0),
+                    "total_tokens": prompt_token_count + chunk.details.generated_tokens,
                 },
             }
         )
