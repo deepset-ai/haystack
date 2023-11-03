@@ -66,13 +66,9 @@ class TestDocumentJoiner:
     @pytest.mark.unit
     def test_run_with_concatenate_join_mode_and_duplicate_documents(self):
         joiner = DocumentJoiner()
-        documents_1 = [
-            Document(content="a", score=0.3, meta={"key": "1"}),
-            Document(content="b"),
-            Document(content="c"),
-        ]
+        documents_1 = [Document(content="a", score=0.3), Document(content="b"), Document(content="c")]
         documents_2 = [
-            Document(content="a", score=0.2, meta={"key": "2"}),
+            Document(content="a", score=0.2),
             Document(content="a"),
             Document(content="f", meta={"key": "value"}),
         ]
