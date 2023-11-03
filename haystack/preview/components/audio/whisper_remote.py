@@ -112,7 +112,7 @@ class RemoteWhisperTranscriber:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
-    def run(self, streams: List[Union[str, Path, ByteStream]]):
+    def run(self, sources: List[Union[str, Path, ByteStream]]):
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
@@ -125,23 +125,23 @@ class RemoteWhisperTranscriber:
         """
         documents = []
 
-        for stream in streams:
-            if isinstance(stream, Path):
-                stream = str(stream.absolute())
+        for source in sources:
+            if isinstance(source, Path):
+                source = str(source.absolute())
 
-            if isinstance(stream, str):
-                path = stream
-                stream = ByteStream.from_file_path(stream)
-                stream.metadata["file_path"] = path
+            if isinstance(source, str):
+                path = source
+                source = ByteStream.from_file_path(source)
+                source.metadata["file_path"] = path
 
-            file = io.BytesIO(stream.data)
-            file.name = stream.metadata.get("file_path", "")
+            file = io.BytesIO(source.data)
+            file.name = source.metadata.get("file_path", "")
 
-            if "file_path" in stream.metadata:
-                file.name = stream.metadata["file_path"]
+            if "file_path" in source.metadata:
+                file.name = source.metadata["file_path"]
 
             content = openai.Audio.transcribe(file=file, model=self.model_name, **self.whisper_params)
-            doc = Document(content=content["text"], meta=stream.metadata)
+            doc = Document(content=content["text"], meta=source.metadata)
             documents.append(doc)
 
         return {"documents": documents}

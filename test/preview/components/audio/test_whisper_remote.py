@@ -190,7 +190,7 @@ class TestRemoteWhisperTranscriber:
             openai_audio_patch.transcribe.side_effect = mock_openai_response
 
             transcriber = RemoteWhisperTranscriber(api_key="test_api_key", model_name=model, response_format="json")
-            result = transcriber.run(streams=[file_path])
+            result = transcriber.run(sources=[file_path])
 
             assert result["documents"][0].content == "test transcription"
             assert result["documents"][0].meta["file_path"] == file_path
@@ -203,7 +203,7 @@ class TestRemoteWhisperTranscriber:
             openai_audio_patch.transcribe.side_effect = mock_openai_response
 
             transcriber = RemoteWhisperTranscriber(api_key="test_api_key", model_name=model, response_format="json")
-            result = transcriber.run(streams=[file_path])
+            result = transcriber.run(sources=[file_path])
 
             assert result["documents"][0].content == "test transcription"
             assert result["documents"][0].meta["file_path"] == str(file_path.absolute())
@@ -220,7 +220,7 @@ class TestRemoteWhisperTranscriber:
                 byte_stream = audio_stream.read()
                 audio_file = ByteStream(byte_stream, metadata={"file_path": str(file_path.absolute())})
 
-                result = transcriber.run(streams=[audio_file])
+                result = transcriber.run(sources=[audio_file])
 
                 assert result["documents"][0].content == "test transcription"
                 assert result["documents"][0].meta["file_path"] == str(file_path.absolute())
@@ -239,7 +239,7 @@ class TestRemoteWhisperTranscriber:
             ByteStream.from_file_path(preview_samples_path / "audio" / "answer.wav"),
         ]
 
-        output = transcriber.run(streams=paths)
+        output = transcriber.run(sources=paths)
 
         docs = output["documents"]
         assert len(docs) == 3
