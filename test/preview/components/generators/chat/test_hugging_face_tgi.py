@@ -109,7 +109,7 @@ class TestHuggingFaceTGIChatGenerator:
         generator.warm_up()
 
         # warning message should be logged
-        assert "The model 'meta-llama/Llama-2-13b-chat-hf' on the Hugging Face Inference API" in caplog.text
+        assert "The model 'meta-llama/Llama-2-13b-chat-hf' doesn't have a default chat_template" in caplog.text
 
     @pytest.mark.unit
     def test_custom_chat_template(
