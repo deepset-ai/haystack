@@ -10,9 +10,9 @@ class TestDocumentCleaner:
     @pytest.mark.unit
     def test_init(self):
         cleaner = DocumentCleaner()
-        assert cleaner.remove_empty_lines == True
-        assert cleaner.remove_extra_whitespaces == True
-        assert cleaner.remove_repeated_substrings == False
+        assert cleaner.remove_empty_lines is True
+        assert cleaner.remove_extra_whitespaces is True
+        assert cleaner.remove_repeated_substrings is False
         assert cleaner.remove_substrings is None
         assert cleaner.remove_regex is None
 

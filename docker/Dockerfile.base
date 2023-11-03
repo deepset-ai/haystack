@@ -26,6 +26,10 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir .${haystack_extras} && \
     pip install --no-cache-dir ./rest_api
 
+# Downgrade trio at the last known working version. The issue only
+# surfaced in the pytorch-derived image but applying to all the
+# images for simplicity.
+RUN pip install -U "trio<0.23"
 
 FROM $base_image AS final
 
