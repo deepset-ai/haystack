@@ -2,8 +2,6 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from haystack.preview.dataclasses import ChatMessage
-
 
 @pytest.fixture
 def mock_auto_tokenizer():
@@ -21,11 +19,3 @@ def mock_auto_tokenizer():
         mock_tokenizer = MagicMock()
         mock_from_pretrained.return_value = mock_tokenizer
         yield mock_tokenizer
-
-
-@pytest.fixture
-def chat_messages():
-    return [
-        ChatMessage.from_system("You are a helpful assistant speaking A2 level of English"),
-        ChatMessage.from_user("Tell me about Berlin"),
-    ]

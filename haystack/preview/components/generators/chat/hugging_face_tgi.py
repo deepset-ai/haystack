@@ -51,7 +51,7 @@ class HuggingFaceTGIChatGenerator:
                                          url="<your-tgi-endpoint-url>",
                                          token="<your-token>")
     client.warm_up()
-    response = client.run(messages, max_new_tokens=120)
+    response = client.run(messages, generation_kwargs={"max_new_tokens": 120})
     print(response)
     ```
 
