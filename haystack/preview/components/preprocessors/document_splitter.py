@@ -7,7 +7,7 @@ from haystack.preview import component, Document
 
 
 @component
-class TextDocumentSplitter:
+class DocumentSplitter:
     """
     Splits a list of text documents into a list of text documents with shorter texts.
     This is useful for splitting documents with long texts that otherwise would not fit into the maximum text length of language models.
@@ -45,13 +45,13 @@ class TextDocumentSplitter:
         """
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
-            raise TypeError("TextDocumentSplitter expects a List of Documents as input.")
+            raise TypeError("DocumentSplitter expects a List of Documents as input.")
 
         split_docs = []
         for doc in documents:
             if doc.content is None:
                 raise ValueError(
-                    f"TextDocumentSplitter only works with text documents but document.content for document ID {doc.id} is None."
+                    f"DocumentSplitter only works with text documents but document.content for document ID {doc.id} is None."
                 )
             units = self._split_into_units(doc.content, self.split_by)
             text_splits = self._concatenate_units(units, self.split_length, self.split_overlap)
@@ -69,7 +69,7 @@ class TextDocumentSplitter:
             split_at = " "
         else:
             raise NotImplementedError(
-                "TextDocumentSplitter only supports 'passage', 'sentence' or 'word' split_by options."
+                "DocumentSplitter only supports 'passage', 'sentence' or 'word' split_by options."
             )
         units = text.split(split_at)
         # Add the delimiter back to all units except the last one
