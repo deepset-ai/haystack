@@ -50,6 +50,7 @@ def test_apply_chat_templating_on_chat_message():
     assert tokenized_messages == "<|system|>\nYou are good assistant</s>\n<|user|>\nI have a question</s>\n"
 
 
+@pytest.mark.integration
 def test_apply_custom_chat_templating_on_chat_message():
     anthropic_template = (
         "{%- for message in messages %}"
