@@ -2,7 +2,7 @@ import json
 
 from haystack.preview import Pipeline, Document
 from haystack.preview.components.embedders import SentenceTransformersTextEmbedder
-from haystack.preview.components.rankers import SimilarityRanker
+from haystack.preview.components.rankers import TransformersSimilarityRanker
 from haystack.preview.components.routers.document_joiner import DocumentJoiner
 from haystack.preview.document_stores import InMemoryDocumentStore
 from haystack.preview.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
@@ -21,7 +21,7 @@ def test_hybrid_doc_search_pipeline(tmp_path):
         instance=InMemoryEmbeddingRetriever(document_store=document_store), name="embedding_retriever"
     )
     hybrid_pipeline.add_component(instance=DocumentJoiner(), name="joiner")
-    hybrid_pipeline.add_component(instance=SimilarityRanker(top_k=20), name="ranker")
+    hybrid_pipeline.add_component(instance=TransformersSimilarityRanker(top_k=20), name="ranker")
 
     hybrid_pipeline.connect("bm25_retriever", "joiner")
     hybrid_pipeline.connect("text_embedder", "embedding_retriever")
@@ -42,10 +42,10 @@ def test_hybrid_doc_search_pipeline(tmp_path):
 
     # Populate the document store
     documents = [
-        Document(text="My name is Jean and I live in Paris."),
-        Document(text="My name is Mark and I live in Berlin."),
-        Document(text="My name is Mario and I live in the capital of Italy."),
-        Document(text="My name is Giorgio and I live in Rome."),
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Mario and I live in the capital of Italy."),
+        Document(content="My name is Giorgio and I live in Rome."),
     ]
     hybrid_pipeline.get_component("bm25_retriever").document_store.write_documents(documents)
 
@@ -53,5 +53,5 @@ def test_hybrid_doc_search_pipeline(tmp_path):
     result = hybrid_pipeline.run(
         {"bm25_retriever": {"query": query}, "text_embedder": {"text": query}, "ranker": {"query": query}}
     )
-    assert result["ranker"]["documents"][0].text == "My name is Giorgio and I live in Rome."
-    assert result["ranker"]["documents"][1].text == "My name is Mario and I live in the capital of Italy."
+    assert result["ranker"]["documents"][0].content == "My name is Giorgio and I live in Rome."
+    assert result["ranker"]["documents"][1].content == "My name is Mario and I live in the capital of Italy."
