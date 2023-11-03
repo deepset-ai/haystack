@@ -127,11 +127,18 @@ class RemoteWhisperTranscriber:
 
         for stream in streams:
             if not isinstance(stream, ByteStream):
-                stream = ByteStream.from_file_path(Path(stream))
-            file = io.BytesIO(stream.data)
-            file.name = stream.metadata.get("file_path", "audio_input.wav")  # default name if `file_path` not found
+                bytestream = ByteStream.from_file_path(Path(stream))
+                bytestream.metadata["file_path"] = stream
+            else:
+                bytestream = stream
+
+            file = io.BytesIO(bytestream.data)
+
+            if "file_path" in bytestream.metadata:
+                file.name = bytestream.metadata["file_path"]
+
             content = openai.Audio.transcribe(file=file, model=self.model_name, **self.whisper_params)
-            doc = Document(content=content["text"], meta=stream.metadata)
+            doc = Document(content=content["text"], meta=bytestream.metadata)
             documents.append(doc)
 
         return {"documents": documents}
