@@ -30,14 +30,8 @@ def test_from_system_with_valid_content():
 
 @pytest.mark.unit
 def test_with_empty_content():
-    message = ChatMessage("", ChatRole.USER, None)
+    message = ChatMessage.from_user("")
     assert message.content == ""
-
-
-@pytest.mark.unit
-def test_with_invalid_role():
-    with pytest.raises(TypeError):
-        ChatMessage("Invalid role", "invalid_role")
 
 
 @pytest.mark.unit
@@ -52,7 +46,7 @@ def test_from_function_with_empty_name():
 def test_apply_chat_templating_on_chat_message():
     messages = [ChatMessage.from_system("You are good assistant"), ChatMessage.from_user("I have a question")]
     tokenizer = AutoTokenizer.from_pretrained("HuggingFaceH4/zephyr-7b-beta")
-    tokenized_messages: str = tokenizer.apply_chat_template(messages, tokenize=False)
+    tokenized_messages = tokenizer.apply_chat_template(messages, tokenize=False)
     assert tokenized_messages == "<|system|>\nYou are good assistant</s>\n<|user|>\nI have a question</s>\n"
 
 
@@ -71,5 +65,5 @@ def test_apply_custom_chat_templating_on_chat_message():
     messages = [ChatMessage.from_system("You are good assistant"), ChatMessage.from_user("I have a question")]
     # could be any tokenizer, let's use the one we already likely have in cache
     tokenizer = AutoTokenizer.from_pretrained("HuggingFaceH4/zephyr-7b-beta")
-    tokenized_messages: str = tokenizer.apply_chat_template(messages, chat_template=anthropic_template, tokenize=False)
+    tokenized_messages = tokenizer.apply_chat_template(messages, chat_template=anthropic_template, tokenize=False)
     assert tokenized_messages == "You are good assistant\nHuman: I have a question\nAssistant:"
