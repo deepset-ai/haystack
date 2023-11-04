@@ -276,6 +276,9 @@ def document_matches_filter(conditions: Union[Dict, List], document: Document, _
             # Fallback to $in if $eq is False
             return in_operation(fields=document.to_dict(), field_name=_current_key, value=conditions)
 
+    if _current_key:
+        return eq_operation(fields=document.to_dict(), field_name=_current_key, value=conditions)
+
     raise FilterError("Filters must be dictionaries or lists. See the examples in the documentation.")
 
 

@@ -1,0 +1,3 @@
+fixes:
+  - |
+    fix implicit $eq operation for list types in InMemoryDocumentStore
