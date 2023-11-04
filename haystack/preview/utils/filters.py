@@ -270,13 +270,13 @@ def document_matches_filter(conditions: Union[Dict, List], document: Document, _
             # The default operation for a list of sibling conditions is $and
             return and_operation(conditions=_list_conditions(conditions), document=document, _current_key=_current_key)
         else:
-            # The default operator for a {key: [value1, value2]} filter is $eq
-            if eq_operation(fields=document.to_dict(), field_name=_current_key, value=conditions):
-                return True
-            # Fallback to $in if $eq is False
-            return in_operation(fields=document.to_dict(), field_name=_current_key, value=conditions)
+            # The default operator for a {key: [value1, value2]} filter is $eq or $in
+            return eq_operation(fields=document.to_dict(), field_name=_current_key, value=conditions) or in_operation(
+                fields=document.to_dict(), field_name=_current_key, value=conditions
+            )
 
     if _current_key:
+        # The default operator for a {key: value} filter is $eq
         return eq_operation(fields=document.to_dict(), field_name=_current_key, value=conditions)
 
     raise FilterError("Filters must be dictionaries or lists. See the examples in the documentation.")
