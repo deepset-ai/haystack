@@ -39,6 +39,12 @@ class TestFilterUtils:  # pylint: disable=R0904
         assert not document_matches_filter(filter, document)
 
     @pytest.mark.unit
+    def test_implicit_eq_for_lists(self):
+        document = Document(meta={"list": [0] * 10})
+        filter = {"list": [0] * 10}
+        assert document_matches_filter(filter, document)
+
+    @pytest.mark.unit
     def test_eq_dataframes(self):
         document = Document(meta={"name": pd.DataFrame({"a": [1, 2, 3]})})
         filter = {"name": pd.DataFrame({"a": [1, 2, 3]})}
