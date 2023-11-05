@@ -134,11 +134,12 @@ class MetaFieldRanker:
         """
         scores_map: Dict = defaultdict(int)
 
-        # scores coming from the retriever/ranker are weighted with (1 - self.weight)
-        for i, doc in enumerate(documents):
-            if self.ranking_mode == "reciprocal_rank_fusion":
+        if self.ranking_mode == "reciprocal_rank_fusion":
+            for i, (doc, sorted_doc) in enumerate(zip(documents, sorted_documents)):
                 scores_map[doc.id] += self._calculate_rrf(rank=i) * (1 - self.weight)
-            elif self.ranking_mode == "linear_score":
+                scores_map[sorted_doc.id] += self._calculate_rrf(rank=i) * self.weight
+        elif self.ranking_mode == "linear_score":
+            for i, (doc, sorted_doc) in enumerate(zip(documents, sorted_documents)):
                 score = float(0)
                 if doc.score is None:
                     warnings.warn("The score was not provided; defaulting to 0")
@@ -152,13 +153,7 @@ class MetaFieldRanker:
                     score = doc.score
 
                 scores_map[doc.id] += score * (1 - self.weight)
-
-        # scores coming from the metadata field are weighted with self.weight
-        for i, doc in enumerate(sorted_documents):
-            if self.ranking_mode == "reciprocal_rank_fusion":
-                scores_map[doc.id] += self._calculate_rrf(rank=i) * self.weight
-            elif self.ranking_mode == "linear_score":
-                scores_map[doc.id] += self._calc_linear_score(rank=i, amount=len(sorted_documents)) * self.weight
+                scores_map[sorted_doc.id] += self._calc_linear_score(rank=i, amount=len(sorted_documents)) * self.weight
 
         for doc in documents:
             doc.score = scores_map[doc.id]
