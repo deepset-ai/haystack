@@ -90,7 +90,7 @@ class TestRouter:
                 "condition": "{{streams|length > 2}}",
                 "output": "streams",
                 "output_slot": "enough_streams",
-                "output_type": str,
+                "output_type": List[int],
             },
             {
                 "condition": "{{streams|length <= 2}}",
