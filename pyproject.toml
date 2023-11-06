@@ -96,7 +96,7 @@ preview = [
   "posthog",  # telemetry
 
   "Jinja2",
-  "openai",
+  "openai<1.0.0",
   "pyyaml",
   "more-itertools",  # DocumentSplitter
 ]
