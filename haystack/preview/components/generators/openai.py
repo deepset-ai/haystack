@@ -19,7 +19,7 @@ API_BASE_URL = "https://api.openai.com/v1"
 @component
 class GPTGenerator:
     """
-    Enables text generation using OpenAI's large language models (LLMs). It supports gpt-4, gpt-3.5-turbo
+    Enables text generation using OpenAI's large language models (LLMs). It supports gpt-4 and gpt-3.5-turbo
     family of models.
 
     Users can pass any text generation parameters valid for the `openai.ChatCompletion.create` method
@@ -38,8 +38,8 @@ class GPTGenerator:
 
      Key Features and Compatibility:
          - **Primary Compatibility**: Designed to work seamlessly with gpt-4, gpt-3.5-turbo family of models.
-         - **Streaming Support**: Supports streaming responses from the OpenAI API
-         - **Customizability**: Supports all parameters supported by the OpenAI API
+         - **Streaming Support**: Supports streaming responses from the OpenAI API.
+         - **Customizability**: Supports all parameters supported by the OpenAI API.
 
      Input and Output Format:
          - **String Format**: This component uses the strings for both input and output.
@@ -65,16 +65,16 @@ class GPTGenerator:
             The callback function accepts StreamingChunk as an argument.
         :param api_base_url: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
         :param system_prompt: The system prompt to use for text generation. If not provided, the system prompt is
-        omitted and the default system prompt of the model is used.
+        omitted, and the default system prompt of the model is used.
         :param generation_kwargs: Other parameters to use for the model. These parameters are all sent directly to
             the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
             more details.
             Some of the supported parameters:
             - `max_tokens`: The maximum number of tokens the output text can have.
             - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
-                Try 0.9 for more creative applications, and 0 (argmax sampling) for ones with a well-defined answer.
+                Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
             - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
-                considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
+                considers the results of the tokens with top_p probability mass. So, 0.1 means only the tokens
                 comprising the top 10% probability mass are considered.
             - `n`: How many completions to generate for each prompt. For example, if the LLM gets 3 prompts and n is 2,
                 it will generate two completions for each of the three prompts, ending up with 6 completions in total.
@@ -83,7 +83,7 @@ class GPTGenerator:
                 the model will be less likely to repeat the same token in the text.
             - `frequency_penalty`: What penalty to apply if a token has already been generated in the text.
                 Bigger values mean the model will be less likely to repeat the same token in the text.
-            - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens and the
+            - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         """
         # if the user does not provide the API key, check if it is set in the module client
@@ -147,10 +147,10 @@ class GPTGenerator:
 
         :param prompt: The string prompt to use for text generation.
         :param generation_kwargs: Additional keyword arguments for text generation. These parameters will
-        potentially override the parameters passed in __init__ method.
+        potentially override the parameters passed in the __init__ method.
         For more details on the parameters supported by the OpenAI API, refer to the
         OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
-        :return: a list of strings containing the generated responses and a list of dictionaries containing the metadata
+        :return: A list of strings containing the generated responses and a list of dictionaries containing the metadata
         for each response.
         """
         message = ChatMessage.from_user(prompt)
