@@ -1,4 +1,5 @@
 import os
+from typing import List
 from unittest.mock import patch, Mock
 
 import openai
@@ -6,7 +7,7 @@ import pytest
 
 from haystack.preview.components.generators import GPTGenerator
 from haystack.preview.components.generators.utils import default_streaming_callback
-from haystack.preview.dataclasses import StreamingChunk
+from haystack.preview.dataclasses import StreamingChunk, ChatMessage
 
 
 @pytest.fixture
@@ -249,6 +250,35 @@ class TestGPTGenerator:
         assert len(response["replies"]) > 0
         assert [isinstance(reply, str) for reply in response["replies"]]
 
+    @pytest.mark.unit
+    def test_check_abnormal_completions(self, caplog):
+        component = GPTGenerator(api_key="test-api-key")
+
+        # underlying implementation uses ChatMessage objects so we have to use them here
+        messages: List[ChatMessage] = []
+        for i, _ in enumerate(range(4)):
+            message = ChatMessage.from_assistant("Hello")
+            metadata = {"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
+            message.metadata.update(metadata)
+            messages.append(message)
+
+        for m in messages:
+            component._post_receive(m)
+
+        # check truncation warning
+        message_template = (
+            "The completion for index {index} has been truncated before reaching a natural stopping point. "
+            "Increase the max_tokens parameter to allow for longer completions."
+        )
+
+        for index in [1, 3]:
+            assert caplog.records[index].message == message_template.format(index=index)
+
+        # check content filter warning
+        message_template = "The completion for index {index} has been truncated due to the content filter."
+        for index in [0, 2]:
+            assert caplog.records[index].message == message_template.format(index=index)
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
@@ -258,10 +288,18 @@ class TestGPTGenerator:
         component = GPTGenerator(api_key=os.environ.get("OPENAI_API_KEY"))
         results = component.run("What's the capital of France?")
         assert len(results["replies"]) == 1
+        assert len(results["metadata"]) == 1
         response: str = results["replies"][0]
         assert "Paris" in response
-        # TODO assert "gpt-3.5" in message.metadata["model"]
-        # TODO assert message.metadata["finish_reason"] == "stop"
+
+        metadata = results["metadata"][0]
+        assert "gpt-3.5" in metadata["model"]
+        assert metadata["finish_reason"] == "stop"
+
+        assert "usage" in metadata
+        assert "prompt_tokens" in metadata["usage"] and metadata["usage"]["prompt_tokens"] > 0
+        assert "completion_tokens" in metadata["usage"] and metadata["usage"]["completion_tokens"] > 0
+        assert "total_tokens" in metadata["usage"] and metadata["usage"]["total_tokens"] > 0
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -293,11 +331,18 @@ class TestGPTGenerator:
         results = component.run("What's the capital of France?")
 
         assert len(results["replies"]) == 1
+        assert len(results["metadata"]) == 1
         response: str = results["replies"][0]
         assert "Paris" in response
 
-        # TODO assert "gpt-3.5" in message.metadata["model"]
-        # TODO assert message.metadata["finish_reason"] == "stop"
+        metadata = results["metadata"][0]
+
+        assert "gpt-3.5" in metadata["model"]
+        assert metadata["finish_reason"] == "stop"
+
+        # unfortunately, the usage is not available for streaming calls
+        # we keep the key in the metadata for compatibility
+        assert "usage" in metadata and len(metadata["usage"]) == 0
 
         assert callback.counter > 1
         assert "Paris" in callback.responses

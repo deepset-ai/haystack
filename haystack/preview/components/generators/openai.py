@@ -1,7 +1,6 @@
 import dataclasses
 import logging
 import os
-from collections import defaultdict
 from typing import Optional, List, Callable, Dict, Any
 
 import openai
@@ -180,25 +179,43 @@ class GPTGenerator:
 
         completions: List[ChatMessage]
         if self.streaming_callback:
-            # buckets for n responses
-            chunk_buckets = defaultdict(list)
+            num_responses = generation_kwargs.pop("n", 1)
+            if num_responses > 1:
+                raise ValueError("Cannot stream multiple responses, please set n=1.")
+            chunks: List[StreamingChunk] = []
+            chunk = None
             for chunk in completion:
                 if chunk.choices:
-                    # we always get a chunk with a single choice.
-                    # the index idx of a choice varies, idx < number of requested completions
                     chunk_delta: StreamingChunk = self._build_chunk(chunk, chunk.choices[0])
-                    index = int(chunk_delta.metadata["index"])
-                    chunk_buckets[index].append(chunk_delta)
-                    # invoke callback with the chunk_delta
-                    self.streaming_callback(chunk_delta)
-            completions = self._collect_chunks(chunk_buckets)
+                    chunks.append(chunk_delta)
+                    self.streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
+            completions = [self._connect_chunks(chunk, chunks)]
         else:
             completions = [self._build_message(completion, choice) for choice in completion.choices]
+
+        # before returning, do post-processing of the completions
+        for completion in completions:
+            self._post_receive(completion)
 
         return {
             "replies": [message.content for message in completions],
             "metadata": [message.metadata for message in completions],
         }
+
+    def _connect_chunks(self, chunk: OpenAIObject, chunks: List[StreamingChunk]) -> ChatMessage:
+        """
+        Connects the streaming chunks into a single ChatMessage.
+        """
+        complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
+        complete_response.metadata.update(
+            {
+                "model": chunk.model,
+                "index": 0,
+                "finish_reason": chunk.choices[0].finish_reason,
+                "usage": {},  # we don't have usage data for streaming responses
+            }
+        )
+        return complete_response
 
     def _build_message(self, completion: OpenAIObject, choice: OpenAIObject) -> ChatMessage:
         """
@@ -239,20 +256,6 @@ class GPTGenerator:
             {"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason}
         )
         return chunk_message
-
-    def _collect_chunks(self, chunk_buckets: Dict[int, List[StreamingChunk]]):
-        """
-        Collects the chunks into a list of ChatMessage(s).
-        :param chunk_buckets: The buckets of chunks.
-        :return: The list of ChatMessage(s).
-        """
-        content_list = ["".join([chunk.content for chunk in chunk_list]) for chunk_list in chunk_buckets.values()]
-        replies: List[ChatMessage] = [
-            # take metadata from the last chunk in the bucket
-            ChatMessage.from_assistant(content)
-            for i, content in enumerate(content_list)
-        ]
-        return replies
 
     def _check_finish_reason(self, message: ChatMessage) -> None:
         """
