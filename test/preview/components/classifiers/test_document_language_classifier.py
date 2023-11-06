@@ -2,7 +2,7 @@ import logging
 import pytest
 
 from haystack.preview import Document
-from haystack.preview.components.preprocessors import DocumentLanguageClassifier
+from haystack.preview.components.classifiers import DocumentLanguageClassifier
 
 
 class TestDocumentLanguageClassifier:
