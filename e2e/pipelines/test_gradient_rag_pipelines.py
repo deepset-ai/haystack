@@ -22,7 +22,7 @@ def test_gradient_embedding_retrieval_rag_pipeline(tmp_path):
     prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
-        {{ doc.text }}
+        {{ doc.content }}
     {% endfor %}
 
     \nQuestion: {{question}}
@@ -60,9 +60,9 @@ def test_gradient_embedding_retrieval_rag_pipeline(tmp_path):
 
     # Populate the document store
     documents = [
-        Document(text="My name is Jean and I live in Paris."),
-        Document(text="My name is Mark and I live in Berlin."),
-        Document(text="My name is Giorgio and I live in Rome."),
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
     ]
     document_store = rag_pipeline.get_component("retriever").document_store
     indexing_pipeline = Pipeline()

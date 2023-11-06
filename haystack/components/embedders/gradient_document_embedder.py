@@ -75,7 +75,7 @@ class GradientDocumentEmbedder:
 
         embeddings = []
         for batch in batches:
-            response = self._embedding_model.generate_embeddings(inputs=[{"input": doc.text} for doc in batch])
+            response = self._embedding_model.generate_embeddings(inputs=[{"input": doc.content} for doc in batch])
             embeddings.extend([e.embedding for e in response.embeddings])
 
         return embeddings
