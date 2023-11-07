@@ -10,8 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class NoRouteSelectedException(Exception):
-    """Exception raised when no route is selected in ConditionalRouter
-    ."""
+    """Exception raised when no route is selected in ConditionalRouter."""
 
 
 class RouteConditionException(Exception):
