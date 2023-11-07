@@ -31,7 +31,7 @@ class GPTGenerator:
 
     ```python
     from haystack.preview.components.generators import GPTGenerator
-    client = GPTChatGenerator()
+    client = GPTGenerator()
     response = client.run("What's Natural Language Processing?")
     print(response)
     ```
