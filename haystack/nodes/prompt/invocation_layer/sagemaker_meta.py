@@ -10,9 +10,6 @@ from haystack.nodes.prompt.invocation_layer.sagemaker_base import SageMakerBaseI
 
 logger = logging.getLogger(__name__)
 
-with LazyImport(message="Run 'pip install farm-haystack[aws]'") as boto3_import:
-    pass
-
 
 class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
     """
@@ -139,7 +136,7 @@ class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
         kwargs.setdefault("model_max_length", 4096)
         super().__init__(model_name_or_path, max_length=max_length, **kwargs)
         try:
-            session = SageMakerMetaInvocationLayer.create_session(
+            session = self.get_aws_session(
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
                 aws_session_token=aws_session_token,
@@ -294,21 +291,12 @@ class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
 
         :param model_name_or_path: The model_name_or_path to check.
         """
-        aws_configuration_keys = [
-            "aws_access_key_id",
-            "aws_secret_access_key",
-            "aws_session_token",
-            "aws_region_name",
-            "aws_profile_name",
-        ]
-        aws_config_provided = any(key in kwargs for key in aws_configuration_keys)
         accept_eula = False
         if "aws_custom_attributes" in kwargs and isinstance(kwargs["aws_custom_attributes"], dict):
             accept_eula = kwargs["aws_custom_attributes"].get("accept_eula", False)
-        if aws_config_provided and accept_eula:
-            boto3_import.check()
+        if cls.aws_configured(**kwargs) and accept_eula:
             # attempt to create a session with the provided credentials
-            session = cls.check_aws_connect(aws_configuration_keys, kwargs)
+            session = cls.get_aws_session(**kwargs)
             # is endpoint in service?
             cls.check_endpoint_in_service(session, model_name_or_path)
 
