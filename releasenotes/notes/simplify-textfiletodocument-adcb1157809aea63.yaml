@@ -1,0 +1,2 @@
+preview:
+  - Simplify TextFileToDocument to make its I/O similar to all other converter's
