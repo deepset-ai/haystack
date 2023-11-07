@@ -216,6 +216,13 @@ class AmazonBedrockConfigurationError(NodeError):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
 
 
+class AmazonBedrockInferenceError(NodeError):
+    """Exception for issues that occur in the Bedrock inference node"""
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, send_message_in_event=send_message_in_event)
+
+
 class SageMakerInferenceError(NodeError):
     """Exception for issues that occur in the SageMaker inference node"""
 

@@ -5,7 +5,6 @@ from typing import Optional, Dict, List, Any, Union
 import requests
 
 from haystack.errors import SageMakerModelNotReadyError, SageMakerInferenceError, SageMakerConfigurationError
-from haystack.lazy_imports import LazyImport
 from haystack.nodes.prompt.invocation_layer.sagemaker_base import SageMakerBaseInvocationLayer
 
 logger = logging.getLogger(__name__)

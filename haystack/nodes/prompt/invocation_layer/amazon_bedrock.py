@@ -3,7 +3,7 @@ import logging
 from typing import Optional, Dict, Union, List
 
 
-from haystack.errors import AmazonBedrockConfigurationError
+from haystack.errors import AmazonBedrockConfigurationError, AmazonBedrockInferenceError
 from haystack.lazy_imports import LazyImport
 from haystack.nodes.prompt.invocation_layer.aws_base import AWSBaseInvocationLayer
 
@@ -11,8 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 with LazyImport(message="Run 'pip install farm-haystack[aws]'") as boto3_import:
-    import boto3
-    from botocore.exceptions import ClientError, BotoCoreError
+    from botocore.exceptions import ClientError
 
 
 class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
@@ -122,9 +121,14 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
     def invoke(self, *args, **kwargs):
         client = self.client
         body = self._prepare_invoke(**kwargs)
-        r = client.invoke_model(
-            body=body, modelId=self.model_name_or_path, accept="application/json", contentType="application/json"
-        )
+        try:
+            r = client.invoke_model(
+                body=body, modelId=self.model_name_or_path, accept="application/json", contentType="application/json"
+            )
+        except ClientError as e:
+            raise AmazonBedrockInferenceError(
+                f"Could not connect to Amazon Bedrock model {self.model_name_or_path}. Make sure the AWS environment is configured correctly."
+            ) from e
         if self.model_name_or_path in ["amazon.titan-text-express-v1", "amazon.titan-text-lite-v1"]:
             responses_list = self.extract_response(r)["results"]
             responses = [responses_list[i]["outputText"] for i in range(len(responses_list))]
