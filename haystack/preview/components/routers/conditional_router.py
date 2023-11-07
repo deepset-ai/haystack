@@ -160,8 +160,8 @@ class ConditionalRouter:
 
                     # output_vars is a set guaranteed to have 0 or 1 elements
                     output_vars = meta.find_undeclared_variables(env.parse(route["output"]))
-                    output_vars = output_vars.pop() if output_vars else None
-                    output_name = route.get("output_name", output_vars)
+                    output_var = output_vars.pop() if output_vars else None
+                    output_name = route.get("output_name", output_var)
                     return {output_name: output}
             except Exception as e:
                 raise RouteConditionException(f"Error evaluating condition for route '{route}': {e}") from e
