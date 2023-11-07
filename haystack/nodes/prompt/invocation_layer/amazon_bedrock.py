@@ -44,6 +44,7 @@ class AmazonBedrockBaseInvocationLayer(PromptModelInvocationLayer, ABC):
                 aws_region_name=aws_region_name,
                 aws_profile_name=aws_profile_name,
             )
+            self.bedrock = session.client("bedrock")
             self.client = session.client("bedrock-runtime")
         except:
             raise AmazonBedrockConfigurationError
@@ -57,7 +58,9 @@ class AmazonBedrockBaseInvocationLayer(PromptModelInvocationLayer, ABC):
 
     @classmethod
     def supports(cls, model_name_or_path, **kwargs):
-        model_summary = self.client.list_foundation_models(byOutputModality="TEXT")["modelSummaries"]
+        model_summary = AmazonBedrockBaseInvocationLayer(model_name_or_path, **kwargs).bedrock.list_foundation_models(
+            byOutputModality="TEXT"
+        )["modelSummaries"]
         model_list = [i["modelId"] for i in model_summary]
         return model_name_or_path in model_list
 
@@ -113,6 +116,10 @@ class AmazonBedrockBaseInvocationLayer(PromptModelInvocationLayer, ABC):
             body = json.dumps({"prompt": prompt, **kwargs})
         return body
 
+    def extract_responses(self, r):
+        out = json.loads(r["body"].read().decode())
+        return out
+
     def invoke(self, *args, **kwargs):
         client = self.client
         prompt = kwargs.get("prompt")
@@ -121,9 +128,12 @@ class AmazonBedrockBaseInvocationLayer(PromptModelInvocationLayer, ABC):
             body=body, modelId=self.model_name_or_path, accept="application/json", contentType="application/json"
         )
         if self.model_name_or_path in ["amazon.titan-text-express-v1", "amazon.titan-text-lite-v1"]:
-            responses = json.loads(r["body"].read().decode())["results"][0]["outputText"]
+            responses_list = self.extract_response(r)["results"]
+            responses = [responses_list[i]["outputText"] for i in range(len(responses_list))]
         if self.model_name_or_path in ["ai21.j2-ultra-v1", "ai21.j2-mid-v1"]:
-            responses = json.loads(r["body"].read().decode())["completions"][0]["data"]["text"]
+            repsonses_list = self.extract_responses(r)["completions"]
+            responses = [responses_list[i]["data"]["text"] for i in range(len(responses_list))]
         if self.model_name_or_path in ["cohere.command-text-v14"]:
-            responses = json.loads(r["body"].read().decode())["generations"][0]["text"]
-        return [responses]
+            responses_list = self.extract_responses(r)["generations"]
+            responses = [responses_list[i]["text"] for i in range(len(responses_list))]
+        return responses
