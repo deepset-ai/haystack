@@ -4,7 +4,7 @@ from typing import List
 import pytest
 
 from haystack.preview.components.routers import ConditionalRouter
-from haystack.preview.components.routers.conditional_router import NoRouteSelectedException
+from haystack.preview.components.routers.conditional_router import NoRouteSelectedException, RouteConditionException
 
 
 class TestRouter:
@@ -32,23 +32,14 @@ class TestRouter:
             ConditionalRouter(routes)
 
     @pytest.mark.unit
-    def test_invalid_router_fields(self):
+    def test_invalid_condition_field(self):
         """
-        ConditionalRouter init raises a ValueError if one of the routes contains invalid condition or output fields
+        ConditionalRouter init raises a ValueError if one of the routes contains invalid condition
         """
-        # invalid condition field and output field
+        # invalid condition field
         routes = [{"condition": "streams|length < 2", "output": "query", "output_type": str}]
-        with pytest.raises(ValueError, match="contains invalid field"):
+        with pytest.raises(ValueError, match="invalid jinja expression"):
             ConditionalRouter(routes)
-
-        # valid condition field, but invalid output field
-        routes = [{"condition": "{{streams|length < 2}}", "output": "query", "output_type": str}]
-        with pytest.raises(ValueError, match="contains invalid field"):
-            ConditionalRouter(routes)
-
-        # valid condition and output fields
-        routes = [{"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str}]
-        assert ConditionalRouter(routes)
 
     @pytest.mark.unit
     def test_mandatory_and_optional_fields(self):
@@ -61,6 +52,44 @@ class TestRouter:
         ]
 
         ConditionalRouter(routes)
+
+    @pytest.mark.unit
+    def test_multiple_vars_in_output_route(self):
+        """
+        Router can't accept a route with multiple variables used in the output field if no output_name is specified
+        """
+        routes = [
+            {"condition": "{{streams|length < 2}}", "output": "{{query|length > streams|length}}", "output_type": str}
+        ]
+        with pytest.raises(RouteConditionException, match="multiple variables"):
+            ConditionalRouter(routes)
+
+    @pytest.mark.unit
+    def test_no_vars_in_output_route(self):
+        """
+        Router can't accept a route with no variables used in the output field if no output_name is specified
+        """
+        routes = [{"condition": "{{streams|length < 2}}", "output": "Some constant string", "output_type": str}]
+        with pytest.raises(RouteConditionException, match="contains a constant"):
+            ConditionalRouter(routes)
+
+    @pytest.mark.unit
+    def test_no_vars_in_output_route_but_with_output_name(self):
+        """
+        Router can't accept a route with no variables used in the output field
+        """
+        routes = [
+            {
+                "condition": "{{streams|length > 2}}",
+                "output": "This is a constant",
+                "output_name": "enough_streams",
+                "output_type": str,
+            }
+        ]
+        router = ConditionalRouter(routes)
+        kwargs = {"streams": [1, 2, 3], "query": "Haystack"}
+        result = router.run(**kwargs)
+        assert result == {"enough_streams": "This is a constant"}
 
     @pytest.mark.unit
     def test_mandatory_and_optional_fields_with_extra_fields(self):

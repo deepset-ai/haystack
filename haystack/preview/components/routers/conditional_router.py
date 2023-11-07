@@ -1,8 +1,8 @@
 import logging
 from typing import List, Dict, Any, Set
 
-from jinja2.nativetypes import NativeEnvironment
 from jinja2 import meta
+from jinja2.nativetypes import NativeEnvironment
 
 from haystack.preview import component
 
@@ -102,15 +102,29 @@ class ConditionalRouter:
         input_names: Set[str] = set()  # let's just store the name, type will always be Any
         output_types: Dict[str, str] = {}
         for route in routes:
-            # Input types must include any variable that needs to be sent in output
-            output = route["output"].strip("{}")
-            input_names.add(output)
+            # Start with the "output" expression
+            output_ast = env.parse(route["output"])
+            output_vars = meta.find_undeclared_variables(output_ast)
+            if len(output_vars) != 1 and "output_name" not in route:
+                error_message = (
+                    f"The 'output' field in the route {route} uses {len(output_vars)} variables: {output_vars}. "
+                    "Specify an 'output_name' in the route if use of multiple variables is intentional."
+                    if output_vars
+                    else f"The 'output' field in the route {route} contains a constant. "
+                    "Specify an 'output_name' in the route if use of a constant is intentional."
+                )
+                raise RouteConditionException(error_message)
+
+            input_names.update(output_vars)
+
             # Also add any additional variable that might be used within a "condition" expression.
             ast = env.parse(route["condition"])
             input_names.update(meta.find_undeclared_variables(ast))
 
+            # output_vars is a set guaranteed to have 0 or 1 elements
+            output_var = output_vars.pop() if output_vars else None
+            output_name = route.get("output_name", output_var)
             # set proper output as well
-            output_name = route.get("output_name", output)
             output_types.update({output_name: route["output_type"]})
 
         component.set_input_types(self, **{var: Any for var in input_names})
@@ -141,11 +155,14 @@ class ConditionalRouter:
                 if t.render(**kwargs):
                     # if optional field output_name is not provided, use mandatory output
                     # but since output is jinja expression, we need to strip the curly braces
-                    output = route["output"].strip("{}")
-                    output_name = route.get("output_name", output)
-                    # value we output is always under the output key
-                    output_value = kwargs[output]
-                    return {output_name: output_value}
+                    t_output = env.from_string(route["output"])
+                    output = t_output.render(**kwargs)
+
+                    # output_vars is a set guaranteed to have 0 or 1 elements
+                    output_vars = meta.find_undeclared_variables(env.parse(route["output"]))
+                    output_vars = output_vars.pop() if output_vars else None
+                    output_name = route.get("output_name", output_vars)
+                    return {output_name: output}
             except Exception as e:
                 raise RouteConditionException(f"Error evaluating condition for route '{route}': {e}") from e
 
@@ -167,7 +184,7 @@ class ConditionalRouter:
                 raise ValueError(
                     f"Route contains invalid keys. Valid keys are: {mandatory_fields.union(optional_fields)}"
                 )
-            # validate condition and output are valid jinja expressions
-            for field in ["condition", "output"]:
-                if route[field].count("{{") != 1 or route[field].count("}}") != 1:
-                    raise ValueError(f"Route {route} contains invalid field: {field}")
+            # validate condition is jinja expressions
+            field = "condition"
+            if route[field].count("{{") != 1 or route[field].count("}}") != 1:
+                raise ValueError(f"Route {route} contains invalid jinja expression in 'condition' field.")
