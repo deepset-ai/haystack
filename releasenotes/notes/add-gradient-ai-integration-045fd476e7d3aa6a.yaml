@@ -1,5 +1,4 @@
 ---
 preview:
   - |
-    Add changes to Haystack version 2, or remove this section.
-    Haystack version 2 can be found under haystack/preview.
+    Adds integration with [Gradient AI](https://gradient.ai).
