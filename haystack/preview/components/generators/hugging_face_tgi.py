@@ -7,12 +7,12 @@ from haystack.preview import component, default_to_dict, default_from_dict
 from haystack.preview.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.preview.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
+from haystack.preview.components.generators.hf_utils import check_generation_params, check_valid_model
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
     from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, TextGenerationResponse, Token
     from transformers import AutoTokenizer
-    from haystack.preview.components.generators.hf_utils import check_generation_params, check_valid_model
 
 
 logger = logging.getLogger(__name__)
