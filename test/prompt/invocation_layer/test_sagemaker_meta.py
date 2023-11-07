@@ -239,7 +239,7 @@ def test_supports_for_valid_aws_configuration():
 
     # Patch the class method to return the mock session
     with patch(
-        "haystack.nodes.prompt.invocation_layer.sagemaker_base.SageMakerBaseInvocationLayer.create_session",
+        "haystack.nodes.prompt.invocation_layer.aws_base.AWSBaseInvocationLayer.get_aws_session",
         return_value=mock_session,
     ):
         supported = SageMakerMetaInvocationLayer.supports(
@@ -287,7 +287,7 @@ def test_supports_not_on_missing_eula():
 
     # Patch the class method to return the mock session
     with patch(
-        "haystack.nodes.prompt.invocation_layer.sagemaker_base.SageMakerBaseInvocationLayer.create_session",
+        "haystack.nodes.prompt.invocation_layer.aws_base.AWSBaseInvocationLayer.get_aws_session",
         return_value=mock_session,
     ):
         supported = SageMakerMetaInvocationLayer.supports(
@@ -311,7 +311,7 @@ def test_supports_not_on_eula_not_accepted():
 
     # Patch the class method to return the mock session
     with patch(
-        "haystack.nodes.prompt.invocation_layer.sagemaker_base.SageMakerBaseInvocationLayer.create_session",
+        "haystack.nodes.prompt.invocation_layer.aws_base.AWSBaseInvocationLayer.get_aws_session",
         return_value=mock_session,
     ):
         supported = SageMakerMetaInvocationLayer.supports(
