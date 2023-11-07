@@ -48,7 +48,7 @@ class AWSBaseInvocationLayer(PromptModelInvocationLayer, ABC):
         aws_region_name: Optional[str] = None,
         aws_profile_name: Optional[str] = None,
         **kwargs,
-    ) -> boto3.Session:
+    ):
         """
         Creates an AWS Session with the given parameters.
         Checks if the provided AWS credentials are valid and can be used to connect to AWS.
