@@ -4,7 +4,12 @@ from typing import Optional, Dict, List, Any, Union
 
 import requests
 
-from haystack.errors import SageMakerModelNotReadyError, SageMakerInferenceError, SageMakerConfigurationError
+from haystack.errors import (
+    AWSConfigurationError,
+    SageMakerModelNotReadyError,
+    SageMakerInferenceError,
+    SageMakerConfigurationError,
+)
 from haystack.nodes.prompt.invocation_layer.sagemaker_base import SageMakerBaseInvocationLayer
 
 logger = logging.getLogger(__name__)
@@ -295,7 +300,10 @@ class SageMakerMetaInvocationLayer(SageMakerBaseInvocationLayer):
             accept_eula = kwargs["aws_custom_attributes"].get("accept_eula", False)
         if cls.aws_configured(**kwargs) and accept_eula:
             # attempt to create a session with the provided credentials
-            session = cls.get_aws_session(**kwargs)
+            try:
+                session = cls.get_aws_session(**kwargs)
+            except AWSConfigurationError as e:
+                raise SageMakerConfigurationError from e
             # is endpoint in service?
             cls.check_endpoint_in_service(session, model_name_or_path)
 

@@ -4,7 +4,7 @@ from abc import abstractmethod, ABC
 from typing import Dict, Union, List, Any
 
 
-from haystack.errors import SageMakerConfigurationError
+from haystack.errors import AWSConfigurationError, SageMakerConfigurationError
 from haystack.lazy_imports import LazyImport
 from haystack.nodes.prompt.invocation_layer.aws_base import AWSBaseInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
@@ -72,7 +72,10 @@ class SageMakerBaseInvocationLayer(AWSBaseInvocationLayer, ABC):
         """
         if cls.aws_configured(**kwargs):
             # attempt to create a session with the provided credentials
-            session = cls.get_aws_session(**kwargs)
+            try:
+                session = cls.get_aws_session(**kwargs)
+            except AWSConfigurationError as e:
+                raise SageMakerConfigurationError from e
             # is endpoint in service?
             cls.check_endpoint_in_service(session, model_name_or_path)
 
