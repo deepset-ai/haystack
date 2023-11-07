@@ -162,8 +162,8 @@ class GPTGenerator:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
-        # adapt ChatMessage to the format expected by the OpenAI API
-        openai_formatted_messages = self._convert_message_to_openai_format(messages)
+        # adapt ChatMessage(s) to the format expected by the OpenAI API
+        openai_formatted_messages = self._convert_to_openai_format(messages)
 
         completion = openai.ChatCompletion.create(
             model=self.model_name,
@@ -197,7 +197,7 @@ class GPTGenerator:
             "metadata": [message.metadata for message in completions],
         }
 
-    def _convert_message_to_openai_format(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
+    def _convert_to_openai_format(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
         """
         Converts the list of ChatMessage to the list of messages in the format expected by the OpenAI API.
         :param messages: The list of ChatMessage.
