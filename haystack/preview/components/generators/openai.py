@@ -162,13 +162,8 @@ class GPTGenerator:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
-        openai_chat_message_format = ["role", "content", "name"]
-        openai_formatted_messages = [
-            dataclasses.asdict(
-                m, dict_factory=lambda obj: {k: v for k, v in obj if k in openai_chat_message_format and v}
-            )
-            for m in messages
-        ]
+        # adapt ChatMessage to the format expected by the OpenAI API
+        openai_formatted_messages = self._convert_message_to_openai_format(messages)
 
         completion = openai.ChatCompletion.create(
             model=self.model_name,
@@ -195,12 +190,26 @@ class GPTGenerator:
 
         # before returning, do post-processing of the completions
         for completion in completions:
-            self._post_receive(completion)
+            self._check_finish_reason(completion)
 
         return {
             "replies": [message.content for message in completions],
             "metadata": [message.metadata for message in completions],
         }
+
+    def _convert_message_to_openai_format(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
+        """
+        Converts the list of ChatMessage to the list of messages in the format expected by the OpenAI API.
+        :param messages: The list of ChatMessage.
+        :return: The list of messages in the format expected by the OpenAI API.
+        """
+        openai_chat_message_format = {"role", "content", "name"}
+        openai_formatted_messages = []
+        for m in messages:
+            message_dict = dataclasses.asdict(m)
+            filtered_message = {k: v for k, v in message_dict.items() if k in openai_chat_message_format and v}
+            openai_formatted_messages.append(filtered_message)
+        return openai_formatted_messages
 
     def _connect_chunks(self, chunk: OpenAIObject, chunks: List[StreamingChunk]) -> ChatMessage:
         """
@@ -273,10 +282,3 @@ class GPTGenerator:
             logger.warning(
                 "The completion for index %s has been truncated due to the content filter.", message.metadata["index"]
             )
-
-    def _post_receive(self, message: ChatMessage) -> None:
-        """
-        Post-processing of the message received from the LLM.
-        :param message: The message returned by the LLM.
-        """
-        self._check_finish_reason(message)

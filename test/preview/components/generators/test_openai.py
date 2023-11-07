@@ -263,7 +263,7 @@ class TestGPTGenerator:
             messages.append(message)
 
         for m in messages:
-            component._post_receive(m)
+            component._check_finish_reason(m)
 
         # check truncation warning
         message_template = (
