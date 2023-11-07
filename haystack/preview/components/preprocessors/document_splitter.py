@@ -7,7 +7,7 @@ from haystack.preview import component, Document
 
 
 @component
-class TextDocumentSplitter:
+class DocumentSplitter:
     """
     Splits a list of text documents into a list of text documents with shorter texts.
     This is useful for splitting documents with long texts that otherwise would not fit into the maximum text length of language models.
@@ -45,19 +45,19 @@ class TextDocumentSplitter:
         """
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
-            raise TypeError("TextDocumentSplitter expects a List of Documents as input.")
+            raise TypeError("DocumentSplitter expects a List of Documents as input.")
 
         split_docs = []
         for doc in documents:
-            if doc.text is None:
+            if doc.content is None:
                 raise ValueError(
-                    f"TextDocumentSplitter only works with text documents but document.text for document ID {doc.id} is None."
+                    f"DocumentSplitter only works with text documents but document.content for document ID {doc.id} is None."
                 )
-            units = self._split_into_units(doc.text, self.split_by)
+            units = self._split_into_units(doc.content, self.split_by)
             text_splits = self._concatenate_units(units, self.split_length, self.split_overlap)
-            metadata = deepcopy(doc.metadata)
+            metadata = deepcopy(doc.meta)
             metadata["source_id"] = doc.id
-            split_docs += [Document(text=txt, metadata=metadata) for txt in text_splits]
+            split_docs += [Document(content=txt, meta=metadata) for txt in text_splits]
         return {"documents": split_docs}
 
     def _split_into_units(self, text: str, split_by: Literal["word", "sentence", "passage"]) -> List[str]:
@@ -69,7 +69,7 @@ class TextDocumentSplitter:
             split_at = " "
         else:
             raise NotImplementedError(
-                "TextDocumentSplitter only supports 'passage', 'sentence' or 'word' split_by options."
+                "DocumentSplitter only supports 'passage', 'sentence' or 'word' split_by options."
             )
         units = text.split(split_at)
         # Add the delimiter back to all units except the last one

@@ -10,9 +10,9 @@ class TestDocumentCleaner:
     @pytest.mark.unit
     def test_init(self):
         cleaner = DocumentCleaner()
-        assert cleaner.remove_empty_lines == True
-        assert cleaner.remove_extra_whitespaces == True
-        assert cleaner.remove_repeated_substrings == False
+        assert cleaner.remove_empty_lines is True
+        assert cleaner.remove_extra_whitespaces is True
+        assert cleaner.remove_repeated_substrings is False
         assert cleaner.remove_substrings is None
         assert cleaner.remove_regex is None
 
@@ -21,7 +21,7 @@ class TestDocumentCleaner:
         with caplog.at_level(logging.WARNING):
             cleaner = DocumentCleaner()
             cleaner.run(documents=[Document()])
-            assert "DocumentCleaner only cleans text documents but document.text for document ID" in caplog.text
+            assert "DocumentCleaner only cleans text documents but document.content for document ID" in caplog.text
 
     @pytest.mark.unit
     def test_single_document(self):
@@ -41,7 +41,7 @@ class TestDocumentCleaner:
         result = cleaner.run(
             documents=[
                 Document(
-                    text="This is a text with some words. "
+                    content="This is a text with some words. "
                     ""
                     "There is a second sentence. "
                     ""
@@ -51,7 +51,7 @@ class TestDocumentCleaner:
         )
         assert len(result["documents"]) == 1
         assert (
-            result["documents"][0].text
+            result["documents"][0].content
             == "This is a text with some words. There is a second sentence. And there is a third sentence."
         )
 
@@ -61,7 +61,7 @@ class TestDocumentCleaner:
         result = cleaner.run(
             documents=[
                 Document(
-                    text=" This is a text with some words. "
+                    content=" This is a text with some words. "
                     ""
                     "There is a second sentence.  "
                     ""
@@ -70,23 +70,23 @@ class TestDocumentCleaner:
             ]
         )
         assert len(result["documents"]) == 1
-        assert result["documents"][0].text == (
+        assert result["documents"][0].content == (
             "This is a text with some words. " "" "There is a second sentence. " "" "And there is a third sentence."
         )
 
     @pytest.mark.unit
     def test_remove_substrings(self):
         cleaner = DocumentCleaner(remove_substrings=["This", "A", "words", "🪲"])
-        result = cleaner.run(documents=[Document(text="This is a text with some words.🪲")])
+        result = cleaner.run(documents=[Document(content="This is a text with some words.🪲")])
         assert len(result["documents"]) == 1
-        assert result["documents"][0].text == " is a text with some ."
+        assert result["documents"][0].content == " is a text with some ."
 
     @pytest.mark.unit
     def test_remove_regex(self):
         cleaner = DocumentCleaner(remove_regex=r"\s\s+")
-        result = cleaner.run(documents=[Document(text="This is a  text with   some words.")])
+        result = cleaner.run(documents=[Document(content="This is a  text with   some words.")])
         assert len(result["documents"]) == 1
-        assert result["documents"][0].text == "This is a text with some words."
+        assert result["documents"][0].content == "This is a text with some words."
 
     @pytest.mark.unit
     def test_remove_repeated_substrings(self):
@@ -121,19 +121,19 @@ class TestDocumentCleaner:
         Sid ut perspiciatis unde 4
         4
         Sed do eiusmod tempor."""
-        result = cleaner.run(documents=[Document(text=text)])
-        assert result["documents"][0].text == expected_text
+        result = cleaner.run(documents=[Document(content=text)])
+        assert result["documents"][0].content == expected_text
 
     @pytest.mark.unit
     def test_copy_metadata(self):
         cleaner = DocumentCleaner()
         documents = [
-            Document(text="Text. ", metadata={"name": "doc 0"}),
-            Document(text="Text. ", metadata={"name": "doc 1"}),
+            Document(content="Text. ", meta={"name": "doc 0"}),
+            Document(content="Text. ", meta={"name": "doc 1"}),
         ]
         result = cleaner.run(documents=documents)
         assert len(result["documents"]) == 2
         assert result["documents"][0].id != result["documents"][1].id
         for doc, cleaned_doc in zip(documents, result["documents"]):
-            assert doc.metadata == cleaned_doc.metadata
-            assert cleaned_doc.text == "Text."
+            assert doc.meta == cleaned_doc.meta
+            assert cleaned_doc.content == "Text."

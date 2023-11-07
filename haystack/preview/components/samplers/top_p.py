@@ -31,7 +31,7 @@ class TopPSampler:
     output = sampler.run(documents=docs)
     docs = output["documents"]
     assert len(docs) == 1
-    assert docs[0].text == "Sarajevo"
+    assert docs[0].content == "Sarajevo"
     ```
     """
 
@@ -108,7 +108,7 @@ class TopPSampler:
         :return: List of scores.
         """
         if self.score_field:
-            missing_scores_docs = [d for d in documents if self.score_field not in d.metadata]
+            missing_scores_docs = [d for d in documents if self.score_field not in d.meta]
             if missing_scores_docs:
                 missing_scores_docs_ids = [d.id for d in missing_scores_docs if d.id]
                 raise ComponentError(
@@ -116,7 +116,7 @@ class TopPSampler:
                     f"with IDs: {missing_scores_docs_ids}."
                     f"Make sure that all documents have a score field '{self.score_field}' in their metadata."
                 )
-            return [d.metadata[self.score_field] for d in documents]
+            return [d.meta[self.score_field] for d in documents]
         else:
             missing_scores_docs = [d for d in documents if d.score is None]
             if missing_scores_docs:
