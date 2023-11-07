@@ -28,7 +28,7 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
         aws_session_token: Optional[str] = None,
         aws_region_name: Optional[str] = None,
         aws_profile_name: Optional[str] = None,
-        max_length: Optional[str] = 2048,
+        max_length: Optional[int] = 2048,
         **kwargs,
     ):
         super().__init__(model_name_or_path, **kwargs)
