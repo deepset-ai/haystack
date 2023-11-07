@@ -1,0 +1,10 @@
+---
+prelude: >
+    New additions include a ByteStream type for binary data abstraction and the ChatMessage
+    data class to streamline chat LLM component integration. AzureOCRDocumentConverter,
+    HTMLToDocument and PyPDFToDocument further expand capability in document conversion.
+    TransformersSimilarityRanker and TopPSampler improve document ranking and query handling
+    capabilities. HuggingFaceLocalGenerator adds to ever-growing LLM components.
+
+    These significant updates, along with a host of minor fixes and refinements, mark a significant step towards the
+    upcoming Haystack 2.0 beta release.
