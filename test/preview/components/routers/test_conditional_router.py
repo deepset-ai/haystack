@@ -11,8 +11,8 @@ class TestRouter:
     @pytest.fixture
     def routes(self):
         return [
-            {"condition": "{{streams|length < 2}}", "output": "query", "output_type": str},
-            {"condition": "{{streams|length >= 2}}", "output": "streams", "output_type": List[int]},
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
+            {"condition": "{{streams|length >= 2}}", "output": "{{streams}}", "output_type": List[int]},
         ]
 
     @pytest.fixture
@@ -25,11 +25,30 @@ class TestRouter:
         Router raises a ValueError if each route does not contain 'condition', 'output', and 'output_type' keys
         """
         routes = [
-            {"condition": "{{streams|length < 2}}", "output": "query"},
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}"},
             {"condition": "{{streams|length < 2}}", "output_type": str},
         ]
         with pytest.raises(ValueError):
             ConditionalRouter(routes)
+
+    @pytest.mark.unit
+    def test_invalid_router_fields(self):
+        """
+        ConditionalRouter init raises a ValueError if one of the routes contains invalid condition or output fields
+        """
+        # invalid condition field and output field
+        routes = [{"condition": "streams|length < 2", "output": "query", "output_type": str}]
+        with pytest.raises(ValueError, match="contains invalid field"):
+            ConditionalRouter(routes)
+
+        # valid condition field, but invalid output field
+        routes = [{"condition": "{{streams|length < 2}}", "output": "query", "output_type": str}]
+        with pytest.raises(ValueError, match="contains invalid field"):
+            ConditionalRouter(routes)
+
+        # valid condition and output fields
+        routes = [{"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str}]
+        assert ConditionalRouter(routes)
 
     @pytest.mark.unit
     def test_mandatory_and_optional_fields(self):
@@ -37,8 +56,8 @@ class TestRouter:
         Router accepts a list of routes with mandatory and optional fields
         """
         routes = [
-            {"condition": "{{streams|length < 2}}", "output": "query", "output_type": str, "output_slot": "test"},
-            {"condition": "{{streams|length < 2}}", "output": "query", "output_type": str},
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "test"},
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
         ]
 
         ConditionalRouter(routes)
@@ -52,12 +71,12 @@ class TestRouter:
         routes = [
             {
                 "condition": "{{streams|length < 2}}",
-                "output": "query",
+                "output": "{{query}}",
                 "output_type": str,
-                "output_slot": "test",
+                "output_name": "test",
                 "bla": "bla",
             },
-            {"condition": "{{streams|length < 2}}", "output": "query", "output_type": str},
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
         ]
 
         with pytest.raises(ValueError):
@@ -88,14 +107,14 @@ class TestRouter:
         routes = [
             {
                 "condition": "{{streams|length > 2}}",
-                "output": "streams",
-                "output_slot": "enough_streams",
+                "output": "{{streams}}",
+                "output_name": "enough_streams",
                 "output_type": List[int],
             },
             {
                 "condition": "{{streams|length <= 2}}",
-                "output": "streams",
-                "output_slot": "insufficient_streams",
+                "output": "{{streams}}",
+                "output_name": "insufficient_streams",
                 "output_type": List[int],
             },
         ]
@@ -110,10 +129,10 @@ class TestRouter:
         routes = [
             {
                 "condition": "{{messages[-1].metadata.finish_reason == 'function_call'}}",
-                "output": "streams",
+                "output": "{{streams}}",
                 "output_type": List[int],
             },
-            {"condition": "{{True}}", "output": "query", "output_type": str},  # catch-all condition
+            {"condition": "{{True}}", "output": "{{query}}", "output_type": str},  # catch-all condition
         ]
         router = ConditionalRouter(routes)
         message = mock.MagicMock()
@@ -126,8 +145,8 @@ class TestRouter:
         # should raise an exception
         router = ConditionalRouter(
             [
-                {"condition": "{{streams|length < 2}}", "output": "query", "output_type": str},
-                {"condition": "{{streams|length >= 5}}", "output": "streams", "output_type": List[int]},
+                {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
+                {"condition": "{{streams|length >= 5}}", "output": "{{streams}}", "output_type": List[int]},
             ]
         )
 
@@ -141,7 +160,7 @@ class TestRouter:
         Router raises a ValueError if each route is not a dictionary
         """
         routes = [
-            {"condition": "{{streams|length < 2}}", "output": "query", "output_type": str},
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
             ["{{streams|length >= 2}}", "streams", List[int]],
         ]
 
@@ -154,7 +173,7 @@ class TestRouter:
         Router raises a ValueError if each route does not contain 'condition', 'output', and 'output_type' keys
         """
         routes = [
-            {"condition": "{{streams|length < 2}}", "output": "query"},
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}"},
             {"condition": "{{streams|length < 2}}", "output_type": str},
         ]
 
