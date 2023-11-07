@@ -5,7 +5,6 @@ on:
     paths:
       - "haystack/**/*.py"
       - "rest_api/**/*.py"
-      - ".github/workflows/docstring_labeler.yml"
 
 permissions:
   pull-requests: write
