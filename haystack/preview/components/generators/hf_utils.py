@@ -1,8 +1,11 @@
 import inspect
 from typing import Any, Dict, List, Optional
 
-from huggingface_hub import InferenceClient, HfApi
-from huggingface_hub.utils import RepositoryNotFoundError
+from haystack.lazy_imports import LazyImport
+
+with LazyImport(message="Run 'pip install transformers'") as transformers_import:
+    from huggingface_hub import InferenceClient, HfApi
+    from huggingface_hub.utils import RepositoryNotFoundError
 
 
 def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepted_params: Optional[List[str]] = None):
@@ -13,6 +16,8 @@ def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepte
     :param additional_accepted_params: An optional list of strings representing additional accepted parameters.
     :raises ValueError: If any unknown text generation parameters are provided.
     """
+    transformers_import.check()
+
     if kwargs:
         accepted_params = {
             param
@@ -37,6 +42,8 @@ def check_valid_model(model_id: str, token: Optional[str]) -> None:
     :param token: An optional string representing the authentication token.
     :raises ValueError: If the model is not found or is not a text generation model.
     """
+    transformers_import.check()
+
     api = HfApi()
     try:
         model_info = api.model_info(model_id, token=token)

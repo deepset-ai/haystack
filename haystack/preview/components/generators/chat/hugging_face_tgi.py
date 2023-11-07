@@ -3,14 +3,16 @@ from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Iterable, Callable
 from urllib.parse import urlparse
 
-from huggingface_hub import InferenceClient
-from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, TextGenerationResponse, Token
-from transformers import AutoTokenizer
-
 from haystack.preview import component, default_to_dict, default_from_dict
-from haystack.preview.components.generators.hf_utils import check_valid_model, check_generation_params
 from haystack.preview.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.preview.dataclasses import ChatMessage, StreamingChunk
+from haystack.preview.components.generators.hf_utils import check_valid_model, check_generation_params
+from haystack.lazy_imports import LazyImport
+
+with LazyImport(message="Run 'pip install transformers'") as transformers_import:
+    from huggingface_hub import InferenceClient
+    from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, TextGenerationResponse, Token
+    from transformers import AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +110,8 @@ class HuggingFaceTGIChatGenerator:
         :param stop_words: An optional list of strings representing the stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
+        transformers_import.check()
+
         if url:
             r = urlparse(url)
             is_valid_url = all([r.scheme in ["http", "https"], r.netloc])
