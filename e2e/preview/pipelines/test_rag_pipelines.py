@@ -7,7 +7,7 @@ from haystack.preview.document_stores import InMemoryDocumentStore
 from haystack.preview.components.writers import DocumentWriter
 from haystack.preview.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.preview.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
-from haystack.preview.components.generators.openai.gpt import GPTGenerator
+from haystack.preview.components.generators import GPTGenerator
 from haystack.preview.components.builders.answer_builder import AnswerBuilder
 from haystack.preview.components.builders.prompt_builder import PromptBuilder
 
