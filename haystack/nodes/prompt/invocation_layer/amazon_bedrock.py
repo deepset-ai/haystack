@@ -112,6 +112,14 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
             kwargs["max_tokens"] = self.max_length
             del kwargs["stop_words"]
             body = json.dumps({"prompt": prompt, **kwargs})
+        if self.model_name_or_path in ["anthropic.claude-v1", "anthropic.claude-v2", "anthropic.claude-instant-v1"]:
+            kwargs["max_tokens_to_sample"] = self.max_length
+            kwargs["temperature"] = 0 if "temperature" not in kwargs else kwargs["temperature"]
+            kwargs["top_k"] = 250 if "top_k" not in kwargs else kwargs["top_k"]
+            kwargs["top_p"] = 1 if "top_p" not in kwargs else kwargs["top_p"]
+            kwargs["stop_sequences"] = ["\n\nHuman:"] if "stop_sequences" not in kwargs else kwargs["stop_sequences"]
+            del kwargs["stop_words"]
+            body = json.dumps({"prompt": f"\n\nHuman: {prompt}\n\nAssistant:", **kwargs})
         return body
 
     def extract_responses(self, r):
@@ -138,4 +146,6 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
         if self.model_name_or_path in ["cohere.command-text-v14"]:
             responses_list = self.extract_responses(r)["generations"]
             responses = [responses_list[i]["text"] for i in range(len(responses_list))]
+        if self.model_name_or_path in ["anthropic.claude-v1", "anthropic.claude-v2", "anthropic.claude-instant-v1"]:
+            responses = [self.extract_responses(r)["completion"]]
         return responses
