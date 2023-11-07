@@ -14,8 +14,7 @@ class NoRouteSelectedException(Exception):
 
 
 class RouteConditionException(Exception):
-    """Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter
-    ."""
+    """Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter."""
 
 
 @component
