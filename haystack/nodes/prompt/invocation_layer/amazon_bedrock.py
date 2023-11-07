@@ -57,14 +57,9 @@ class AmazonBedrockBaseInvocationLayer(PromptModelInvocationLayer, ABC):
 
     @classmethod
     def supports(cls, model_name_or_path, **kwargs):
-        if model_name_or_path in [
-            "amazon.titan-text-express-v1",
-            "amazon.titan-text-lite-v1",
-            "ai21.j2-ultra-v1",
-            "ai21.j2-mid-v1",
-            "cohere.command-text-v14",
-        ]:
-            return model_name_or_path
+        model_summary = self.client.list_foundation_models(byOutputModality="TEXT")["modelSummaries"]
+        model_list = [i["modelId"] for i in model_summary]
+        return model_name_or_path in model_list
 
     @classmethod
     def create_session(
