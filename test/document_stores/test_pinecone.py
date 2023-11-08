@@ -710,6 +710,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         """
         doc = Document(content="test", meta={"_split_overlap": [{"doc_id": "test_id", "range": (0, 10)}]}, id="test_id")
         # Test writing as JSON string
+        print(mocked_ds.pinecone_indexes["document"].pool_threads)
         mocked_ds.write_documents([doc])
         call_args = mocked_ds.pinecone_indexes["document"].upsert.call_args.kwargs
         assert list(call_args["vectors"])[0][2] == {

@@ -63,11 +63,12 @@ class IndexObject:
 
 # Mock the Pinecone Index class
 class Index:
-    def __init__(self, index: str):
+    def __init__(self, index: str, pool_threads: int = 1):
         self.index = index
+        self.pool_threads = pool_threads
         self.index_config = CONFIG["indexes"][index]
 
-    def upsert(self, vectors: List[tuple], namespace: str = ""):
+    def upsert(self, vectors: List[tuple], namespace: str = "", async_req: bool = False):
         if namespace not in self.index_config.namespaces:
             self.index_config.namespaces[namespace] = {}
         upsert_count = 0
