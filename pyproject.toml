@@ -26,6 +26,7 @@ dynamic = ["version"]
 dependencies = [
   "networkx", # Pipeline graphs
   "requests", # Mermaid diagrams
+  "typing_extensions",
 ]
 
 [project.optional-dependencies]
