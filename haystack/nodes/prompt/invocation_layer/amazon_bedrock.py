@@ -59,7 +59,7 @@ class AnthropicModelAdapter(BedrockModelAdapter):
         return body
 
     def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        responses = [response_body["completion"]]
+        responses = [response_body["completion"].lstrip()]
         return responses
 
 
@@ -80,7 +80,7 @@ class CohereModelAdapter(BedrockModelAdapter):
         return body
 
     def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        responses = [generation["text"] for generation in response_body["generations"]]
+        responses = [generation["text"].lstrip() for generation in response_body["generations"]]
         return responses
 
 
@@ -101,7 +101,7 @@ class AI21ModelAdapter(BedrockModelAdapter):
         return body
 
     def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        responses = [completion["data"]["text"] for completion in response_body["completions"]]
+        responses = [completion["data"]["text"].lstrip() for completion in response_body["completions"]]
         return responses
 
 
@@ -114,7 +114,7 @@ class TitanModelAdapter(BedrockModelAdapter):
         return body
 
     def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        responses = [result["outputText"] for result in response_body["results"]]
+        responses = [result["outputText"].lstrip() for result in response_body["results"]]
         return responses
 
 
@@ -245,7 +245,9 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
             )
         except ClientError as e:
             raise AmazonBedrockInferenceError(
-                f"Could not connect to Amazon Bedrock model {self.model_name_or_path}. Make sure the AWS environment is configured correctly."
+                f"Could not connect to Amazon Bedrock model {self.model_name_or_path}. "
+                "Make sure your AWS environment is configured correctly, "
+                "the model is available in the configured AWS region and you've been granted access."
             ) from e
 
         response_body = json.loads(response.get("body").read().decode("utf-8"))
