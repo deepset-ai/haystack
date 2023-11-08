@@ -57,7 +57,7 @@ class MetaFieldRanker:
         self.ranking_mode = ranking_mode
 
         if self.weight < 0 or self.weight > 1:
-            raise ComponentError(
+            raise ValueError(
                 """
                 Param <weight> needs to be in range [0,1] but was set to '{}'.\n
                 '0' disables sorting by metadata field, '0.5' gives equal weight to previous relevance scores and metadata field, and '1' ranks by metadata field only.\n
@@ -68,7 +68,7 @@ class MetaFieldRanker:
             )
 
         if self.ranking_mode not in ["reciprocal_rank_fusion", "linear_score"]:
-            raise ComponentError(
+            raise ValueError(
                 """
                 Param <ranking_mode> needs to be 'reciprocal_rank_fusion' or 'linear_score' but was set to '{}'. \n
                 Please change the <ranking_mode> when initializing the MetaFieldRanker.

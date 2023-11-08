@@ -64,13 +64,13 @@ class TestMetaFieldRanker:
 
     @pytest.mark.integration
     def test_raises_component_error_if_wrong_ranking_mode(self):
-        with pytest.raises(ComponentError):
+        with pytest.raises(ValueError):
             MetaFieldRanker(metadata_field="rating", ranking_mode="wrong_mode")
 
     @pytest.mark.integration
     @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
     def test_raises_component_error_if_wrong_weight(self, score):
-        with pytest.raises(ComponentError):
+        with pytest.raises(ValueError):
             MetaFieldRanker(metadata_field="rating", weight=score)
 
     @pytest.mark.integration
@@ -96,3 +96,28 @@ class TestMetaFieldRanker:
         output = ranker.run(query="", documents=docs_before)
         docs_after = output["documents"]
         assert docs_after[0].score == 0.01626123744050767
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
+    def test_linear_score_raises_warning_if_doc_wrong_score(self, score):
+        ranker = MetaFieldRanker(metadata_field="rating", ranking_mode="linear_score", weight=0.5)
+        docs_before = [
+            Document(id=1, content="abc", meta={"rating": 1.3}, score=score),
+            Document(id=2, content="abc", meta={"rating": 0.7}, score=0.4),
+            Document(id=3, content="abc", meta={"rating": 2.1}, score=0.6),
+        ]
+        with pytest.warns(
+            UserWarning, match=rf"The score {score} for document 1 is outside the \[0,1\] range; defaulting to 0"
+        ):
+            ranker.run(query="", documents=docs_before)
+
+    @pytest.mark.integration
+    def test_linear_score_raises_raises_warning_if_doc_without_score(self):
+        ranker = MetaFieldRanker(metadata_field="rating", ranking_mode="linear_score", weight=0.5)
+        docs_before = [
+            Document(content="abc", meta={"rating": 1.3}),
+            Document(content="abc", meta={"rating": 0.7}),
+            Document(content="abc", meta={"rating": 2.1}),
+        ]
+        with pytest.warns(UserWarning, match="The score was not provided; defaulting to 0"):
+            ranker.run(query="", documents=docs_before)
