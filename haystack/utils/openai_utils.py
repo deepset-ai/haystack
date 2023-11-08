@@ -89,6 +89,9 @@ def _openai_text_completion_tokenization_details(model_name: str):
         elif model_name.startswith("gpt-4-32k"):
             max_tokens_limit = 32768  # tokens
             tokenizer_name = model_tokenizer
+        elif model_name.startswith("gpt-4-1106-preview"):
+            max_tokens_limit = 128000  # tokens
+            tokenizer_name = model_tokenizer
         elif model_name.startswith("gpt-4"):
             max_tokens_limit = 8192  # tokens
             tokenizer_name = model_tokenizer
