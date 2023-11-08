@@ -12,8 +12,10 @@ from haystack.preview.components.builders.answer_builder import AnswerBuilder
 from haystack.preview.components.builders.prompt_builder import PromptBuilder
 
 
-# TODO enable again once we have stabilized generators components and formats
-@pytest.mark.skip
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
 def test_bm25_rag_pipeline(tmp_path):
     # Create the RAG pipeline
     prompt_template = """
@@ -76,8 +78,10 @@ def test_bm25_rag_pipeline(tmp_path):
         assert hasattr(generated_answer, "metadata")
 
 
-# TODO enable again once we have stabilized generators components and formats
-@pytest.mark.skip
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
 def test_embedding_retrieval_rag_pipeline(tmp_path):
     # Create the RAG pipeline
     prompt_template = """

@@ -205,6 +205,7 @@ class TestGPTChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
+    @pytest.mark.unit
     def test_run_with_params(self, chat_messages, mock_chat_completion):
         component = GPTChatGenerator(api_key="test-api-key", max_tokens=10, temperature=0.5)
         response = component.run(chat_messages)
