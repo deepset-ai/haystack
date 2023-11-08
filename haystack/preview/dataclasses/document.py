@@ -65,7 +65,6 @@ class Document(metaclass=_BackwardCompatible):
     :param content: Text of the document, if the document contains text.
     :param dataframe: Pandas dataframe with the document's content, if the document contains tabular data.
     :param blob: Binary data associated with the document, if the document has any binary data associated with it.
-    :param mime_type: MIME type of the document. Defaults to "text/plain".
     :param meta: Additional custom metadata for the document. Must be JSON-serializable.
     :param score: Score of the document. Used for ranking, usually assigned by retrievers.
     :param embedding: Vector representation of the document.
