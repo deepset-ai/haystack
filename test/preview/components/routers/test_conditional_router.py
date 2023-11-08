@@ -1,10 +1,17 @@
-from unittest import mock
+import typing
 from typing import List
+from unittest import mock
 
 import pytest
 
 from haystack.preview.components.routers import ConditionalRouter
-from haystack.preview.components.routers.conditional_router import NoRouteSelectedException, RouteConditionException
+from haystack.preview.components.routers.conditional_router import (
+    NoRouteSelectedException,
+    RouteConditionException,
+    serialize,
+    deserialize,
+)
+from haystack.preview.dataclasses import ChatMessage
 
 
 class TestRouter:
@@ -208,3 +215,80 @@ class TestRouter:
 
         with pytest.raises(ValueError):
             ConditionalRouter(routes)
+
+    @pytest.mark.unit
+    def test_output_type_serialization(self):
+        assert serialize(str) == "builtins.str"
+        assert serialize(List[int]) == "typing.List"
+        assert serialize(ChatMessage) == "haystack.preview.dataclasses.chat_message.ChatMessage"
+        assert serialize(int) == "builtins.int"
+
+    @pytest.mark.unit
+    def test_output_type_deserialization(self):
+        assert deserialize("builtins.str") == str
+        assert deserialize("typing.List") == typing.List
+        assert deserialize("haystack.preview.dataclasses.chat_message.ChatMessage") == ChatMessage
+        assert deserialize("builtins.int") == int
+
+    @pytest.mark.unit
+    def test_router_de_serialization(self):
+        routes = [
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
+            {"condition": "{{streams|length >= 2}}", "output": "{{streams}}", "output_type": List[int]},
+        ]
+        router = ConditionalRouter(routes)
+        router_dict = router.to_dict()
+
+        # assert that the router dict is correct, with all keys and values being strings
+        for route in router_dict["init_parameters"]["routes"]:
+            for key in route.keys():
+                assert isinstance(key, str)
+                assert isinstance(route[key], str)
+
+        new_router = ConditionalRouter.from_dict(router_dict)
+        assert router.routes == new_router.routes
+
+        # now use both routers with the same input
+        kwargs = {"streams": [1, 2, 3], "query": "Haystack"}
+        result1 = router.run(**kwargs)
+        result2 = new_router.run(**kwargs)
+
+        # check that the result is the same and correct
+        assert result1 == result2 and result1 == {"streams": [1, 2, 3]}
+
+    @pytest.mark.unit
+    def test_router_de_serialization_user_type(self):
+        routes = [
+            {"condition": "{{streams|length < 2}}", "output": "{{message}}", "output_type": ChatMessage},
+            {"condition": "{{streams|length >= 2}}", "output": "{{streams}}", "output_type": List[int]},
+        ]
+        router = ConditionalRouter(routes)
+        router_dict = router.to_dict()
+
+        # assert that the router dict is correct, with all keys and values being strings
+        for route in router_dict["init_parameters"]["routes"]:
+            for key in route.keys():
+                assert isinstance(key, str)
+                assert isinstance(route[key], str)
+
+        # check that the output_type is a string and a proper class name
+        assert (
+            router_dict["init_parameters"]["routes"][0]["output_type"]
+            == "haystack.preview.dataclasses.chat_message.ChatMessage"
+        )
+
+        # deserialize the router
+        new_router = ConditionalRouter.from_dict(router_dict)
+
+        # check that the output_type is the right class
+        assert new_router.routes[0]["output_type"] == ChatMessage
+        assert router.routes == new_router.routes
+
+        # now use both routers to run the same message
+        message = ChatMessage.from_user("ciao")
+        kwargs = {"streams": [1], "message": message}
+        result1 = router.run(**kwargs)
+        result2 = new_router.run(**kwargs)
+
+        # check that the result is the same and correct
+        assert result1 == result2 and result1["message"].content == message.content

@@ -1,10 +1,12 @@
+import inspect
 import logging
-from typing import List, Dict, Any, Set
+import sys
+from typing import List, Dict, Any, Set, get_origin
 
 from jinja2 import meta
 from jinja2.nativetypes import NativeEnvironment
 
-from haystack.preview import component
+from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +17,41 @@ class NoRouteSelectedException(Exception):
 
 class RouteConditionException(Exception):
     """Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter."""
+
+
+def serialize(obj_instance: Any) -> str:
+    """
+    Serializes instance to a string representation of the corresponding type.
+    :param obj_instance: The instance to serialize.
+    :return: The string representation of the type.
+    """
+    is_type_or_typing = isinstance(obj_instance, type) or get_origin(obj_instance)
+    type_obj = obj_instance if is_type_or_typing else type(obj_instance)
+    module = inspect.getmodule(type_obj)
+    if module is not None:
+        full_path = f"{module.__name__}.{type_obj.__name__}"
+    else:
+        full_path = type_obj.__name__
+    return full_path
+
+
+def deserialize(type_str: str) -> Any:
+    """
+    Deserializes a type given its full import path as a string.
+    :param type_str: The string representation of the type's full import path.
+    :return: The deserialized type object.
+    :raises DeserializationError: If the type cannot be deserialized due to missing module or type.
+    """
+    parts = type_str.split(".")
+    module_name = ".".join(parts[:-1])
+    type_name = parts[-1]
+    module = sys.modules.get(module_name, None)
+    if not module:
+        raise DeserializationError(f"Could not locate the module: {module_name}")
+    deserialized_type = getattr(module, type_name, None)
+    if not deserialized_type:
+        raise DeserializationError(f"Could not locate the type: {type_name}")
+    return deserialized_type
 
 
 @component
@@ -129,6 +166,22 @@ class ConditionalRouter:
 
         component.set_input_types(self, **{var: Any for var in input_names})
         component.set_output_types(self, **output_types)
+
+    def to_dict(self) -> Dict[str, Any]:
+        for route in self.routes:
+            # output_type needs to be serialized to a string
+            route["output_type"] = serialize(route["output_type"])
+
+        return default_to_dict(self, routes=self.routes)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ConditionalRouter":
+        init_params = data.get("init_parameters", {})
+        routes = init_params.get("routes")
+        for route in routes:
+            # output_type needs to be deserialized from a string to a type
+            route["output_type"] = deserialize(route["output_type"])
+        return default_from_dict(cls, data)
 
     def run(self, **kwargs):
         """
