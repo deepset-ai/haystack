@@ -11,6 +11,18 @@ with LazyImport(message="Run 'pip install gradientai'") as gradientai_import:
 class GradientTextEmbedder:
     """
     A component for embedding strings using models hosted on Gradient AI (https://gradient.ai).
+
+    ```python
+    embedder = GradientTextEmbedder(
+        access_token=gradient_access_token,
+        workspace_id=gradient_workspace_id,
+        model_name="bge_large")
+    p = Pipeline()
+    p.add_component(instance=embedder, name="text_embedder")
+    p.add_component(instance=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()), name="retriever")
+    p.connect("text_embedder", "retriever")
+    p.run("embed me!!!")
+    ```
     """
 
     def __init__(
@@ -24,15 +36,6 @@ class GradientTextEmbedder:
         """
         Create a GradientTextEmbedder component.
 
-        ```python
-        p = Pipeline()
-        embedder = GradientTextEmbedder(access_token=gradient_access_token)
-        p.add_component(instance=embedder, name="text_embedder")
-        p.add_component(instance=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()), name="retriever")
-        p.connect("text_embedder", "retriever")
-        p.run("embed me!!!")
-        ```
-
         :param model_name: The name of the model to use.
         :param access_token: The Gradient access token. If not provided it's read from the environment
                              variable GRADIENT_ACCESS_TOKEN.
@@ -40,6 +43,7 @@ class GradientTextEmbedder:
                              variable GRADIENT_WORKSPACE_ID.
         :param host: The Gradient host. By default it uses https://api.gradient.ai/.
         """
+        gradientai_import.check()
         self._host = host
         self._model_name = model_name
 
@@ -77,4 +81,8 @@ class GradientTextEmbedder:
             raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
 
         result = self._embedding_model.generate_embeddings(inputs=[{"input": text}])
+
+        if (not result) or (result.embeddings is None) or (len(result.embeddings) == 0):
+            raise RuntimeError("The embedding model did not return any embeddings.")
+
         return {"embedding": result.embeddings[0].embedding}

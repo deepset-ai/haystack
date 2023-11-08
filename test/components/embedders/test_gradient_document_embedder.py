@@ -1,4 +1,5 @@
 import pytest
+from gradientai.openapi.client.models.generate_embedding_success import GenerateEmbeddingSuccess
 from haystack.preview.components.embedders.gradient_document_embedder import GradientDocumentEmbedder
 from unittest.mock import MagicMock, NonCallableMagicMock
 import numpy as np
@@ -11,16 +12,6 @@ workspace_id = "workspace_id"
 model = "bge-large"
 
 
-def has_gradient():
-    try:
-        import gradientai
-
-        return True
-    except ModuleNotFoundError:
-        return False
-
-
-@pytest.mark.skipif(not has_gradient(), reason="Gradient is not installed")
 class TestGradientDocumentEmbedder:
     @pytest.mark.unit
     def test_init_from_env(self, monkeypatch):
@@ -96,8 +87,6 @@ class TestGradientDocumentEmbedder:
 
     @pytest.mark.unit
     def test_run(self):
-        from gradientai.openapi.client.models.generate_embedding_success import GenerateEmbeddingSuccess
-
         embedder = GradientDocumentEmbedder(access_token=access_token, workspace_id=workspace_id)
         embedder._embedding_model = NonCallableMagicMock()
         embedder._embedding_model.generate_embeddings.return_value = GenerateEmbeddingSuccess(
@@ -108,6 +97,7 @@ class TestGradientDocumentEmbedder:
 
         result = embedder.run(documents=documents)
 
+        assert embedder._embedding_model.generate_embeddings.call_count == 1
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) == len(documents)
         for doc in result["documents"]:
@@ -140,8 +130,6 @@ class TestGradientDocumentEmbedder:
 
     @pytest.mark.unit
     def test_run_empty(self):
-        from gradientai.openapi.client.models.generate_embedding_success import GenerateEmbeddingSuccess
-
         embedder = GradientDocumentEmbedder(access_token=access_token, workspace_id=workspace_id)
         embedder._embedding_model = NonCallableMagicMock()
 

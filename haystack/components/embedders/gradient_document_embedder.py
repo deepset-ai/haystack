@@ -17,8 +17,13 @@ class GradientDocumentEmbedder:
     The embedding of each Document is stored in the `embedding` field of the Document.
 
     ```python
+    embedder = GradientDocumentEmbedder(
+        access_token=gradient_access_token,
+        workspace_id=gradient_workspace_id,
+        model_name="bge_large"))
     p = Pipeline()
-    p.add_component(instance=GradientDocumentEmbedder(), name="document_embedder")
+    p.add_component(embedder, name="document_embedder")
+    p.add_component(instance=GradientDocumentEmbedder(
     p.add_component(instance=DocumentWriter(document_store=InMemoryDocumentStore()), name="document_writer")
     p.connect("document_embedder", "document_writer")
     p.run({"document_embedder": {"documents": documents}})
@@ -43,6 +48,7 @@ class GradientDocumentEmbedder:
                              variable GRADIENT_WORKSPACE_ID.
         :param host: The Gradient host. By default it uses https://api.gradient.ai/.
         """
+        gradientai_import.check()
         self._host = host
         self._model_name = model_name
 
@@ -88,7 +94,7 @@ class GradientDocumentEmbedder:
 
         :param documents: A list of Documents to embed.
         """
-        if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
+        if not isinstance(documents, list) or documents and any(not isinstance(doc, Document) for doc in documents):
             raise TypeError(
                 "GradientDocumentEmbedder expects a list of Documents as input."
                 "In case you want to embed a list of strings, please use the GradientTextEmbedder."

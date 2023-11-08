@@ -18,37 +18,17 @@ class GradientGenerator:
 
     Queries the LLM using Gradient AI's SDK ('gradientai' package).
     See [Gradient AI API](https://docs.gradient.ai/docs/sdk-quickstart) for more details.
+
+    ```python
+    llm = GradientGenerator(
+        access_token=gradient_access_token,
+        workspace_id=gradient_workspace_id,
+        base_model_slug="llama2-7b-chat")
+    llm.warm_up()
+    print(llm.run(prompt="What is the meaning of life?"))
+    # Output: {'replies': ['42']}
+    ```
     """
-
-    @overload
-    def __init__(
-        self,
-        *,
-        access_token: Optional[str] = None,
-        base_model_slug: str,
-        host: Optional[str] = None,
-        max_generated_token_count: Optional[int] = None,
-        temperature: Optional[float] = None,
-        top_k: Optional[int] = None,
-        top_p: Optional[float] = None,
-        workspace_id: Optional[str] = None,
-    ) -> None:
-        ...
-
-    @overload
-    def __init__(
-        self,
-        *,
-        access_token: Optional[str] = None,
-        host: Optional[str] = None,
-        max_generated_token_count: Optional[int] = None,
-        model_adapter_id: str,
-        temperature: Optional[float] = None,
-        top_k: Optional[int] = None,
-        top_p: Optional[float] = None,
-        workspace_id: Optional[str] = None,
-    ) -> None:
-        ...
 
     def __init__(
         self,
@@ -78,6 +58,8 @@ class GradientGenerator:
         :param workspace_id: The Gradient workspace ID. If not provided it's read from the environment
                              variable GRADIENT_WORKSPACE_ID.
         """
+        gradientai_import.check()
+
         self._access_token = access_token
         self._base_model_slug = base_model_slug
         self._host = host
@@ -88,16 +70,20 @@ class GradientGenerator:
         self._top_p = top_p
         self._workspace_id = workspace_id
 
-        if (base_model_slug is None and model_adapter_id is None) or (
-            isinstance(base_model_slug, str) and isinstance(model_adapter_id, str)
-        ):
-            raise ValueError("expected be provided exactly one of base_model_slug or model_adapter_id")
+        has_base_model_slug = base_model_slug is not None and base_model_slug != ""
+        has_model_adapter_id = model_adapter_id is not None and model_adapter_id != ""
+
+        if not has_base_model_slug and not has_model_adapter_id:
+            raise ValueError("Either base_model_slug or model_adapter_id must be provided.")
+        if has_base_model_slug and has_model_adapter_id:
+            raise ValueError("Only one of base_model_slug or model_adapter_id must be provided.")
+
+        if has_base_model_slug:
+            self._base_model_slug = base_model_slug
+        if has_model_adapter_id:
+            self._model_adapter_id = model_adapter_id
 
         self._gradient = Gradient(access_token=access_token, host=host, workspace_id=workspace_id)
-        if isinstance(base_model_slug, str):
-            self._model = self._gradient.get_base_model(base_model_slug=base_model_slug)
-        if isinstance(model_adapter_id, str):
-            self._model = self._gradient.get_model_adapter(model_adapter_id=model_adapter_id)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -114,6 +100,16 @@ class GradientGenerator:
             top_p=self._top_p,
             workspace_id=self._workspace_id,
         )
+
+    def warm_up(self):
+        """
+        Initializes the LLM model instance if it doesn't exist.
+        """
+        if not hasattr(self, "_model"):
+            if isinstance(self._base_model_slug, str):
+                self._model = self._gradient.get_base_model(base_model_slug=self.base_model_slug)
+            if isinstance(self._model_adapter_id, str):
+                self._model = self._gradient.get_model_adapter(model_adapter_id=self.model_adapter_id)
 
     @component.output_types(replies=List[str])
     def run(self, prompt: str):
