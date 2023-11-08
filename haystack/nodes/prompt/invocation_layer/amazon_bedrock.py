@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import json
 import logging
-from typing import Any, Optional, Dict, Union, List
+from typing import Any, Optional, Dict, Type, Union, List
 
 
 from haystack.errors import AWSConfigurationError, AmazonBedrockConfigurationError, AmazonBedrockInferenceError
@@ -30,8 +30,10 @@ class BedrockModelAdapter(ABC):
         pass
 
     def _get_params(self, inference_kwargs: Dict[str, Any], default_params: Dict[str, Any]) -> Dict[str, Any]:
-        """put the param in the params if it's in kwargs and not None (e.g. it is actually defined)
-        endpoint doesn't tolerate None values, send only the params that are defined
+        """
+        Merges the default params with the inference kwargs and model kwargs.
+
+        Includes param if it's in kwargs or its default is not None (i.e. it is actually defined).
         """
         kwargs = self.model_kwargs.copy()
         kwargs.update(inference_kwargs)
@@ -121,7 +123,7 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
     Base class for Amazon Bedrock based invocation layers.
     """
 
-    SUPPORTED_MODELS = {
+    SUPPORTED_MODELS: Dict[str, Type[BedrockModelAdapter]] = {
         "amazon.titan-text-express-v1": TitanModelAdapter,
         "amazon.titan-text-lite-v1": TitanModelAdapter,
         "amazon.titan-text-agile-v1": TitanModelAdapter,
@@ -174,7 +176,7 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
             model_name_or_path="gpt2", model_max_length=model_max_length, max_length=self.max_length or 100
         )
 
-        self.model_adapter: BedrockModelAdapter = self.SUPPORTED_MODELS[self.model_name_or_path](
+        self.model_adapter = self.SUPPORTED_MODELS[self.model_name_or_path](
             model_kwargs=model_input_kwargs, max_length=self.max_length
         )
 
