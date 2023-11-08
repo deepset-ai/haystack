@@ -79,8 +79,8 @@ def test_constructor_with_model_kwargs(mock_auto_tokenizer, mock_boto3_session):
     model_kwargs = {"temperature": 0.7}
 
     layer = AmazonBedrockBaseInvocationLayer(model_name_or_path="anthropic.claude-v2", **model_kwargs)
-    assert "temperature" in layer.model_input_kwargs
-    assert layer.model_input_kwargs["temperature"] == 0.7
+    assert "temperature" in layer.model_adapter.model_kwargs
+    assert layer.model_adapter.model_kwargs["temperature"] == 0.7
 
 
 @pytest.mark.unit

@@ -161,7 +161,7 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
                 "Could not connect to Amazon Bedrock. Make sure the AWS environment is configured correctly."
             ) from e
 
-        self.model_input_kwargs = kwargs
+        model_input_kwargs = kwargs
         # We pop the model_max_length as it is not sent to the model
         # but used to truncate the prompt if needed
         model_max_length = kwargs.get("model_max_length", 4096)
@@ -175,7 +175,7 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
         )
 
         self.model_adapter: BedrockModelAdapter = self.SUPPORTED_MODELS[self.model_name_or_path](
-            model_kwargs=self.model_input_kwargs, max_length=self.max_length
+            model_kwargs=model_input_kwargs, max_length=self.max_length
         )
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
