@@ -1,2 +1,0 @@
-preview:
-  - Simplify `TextFileToDocument` by removing most runtime parameters and reduce the init ones.

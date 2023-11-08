@@ -38,9 +38,6 @@ class TextFileToDocument:
         documents = []
         for source in sources:
             if isinstance(source, (Path, str)):
-                if not Path(source).exists():
-                    logger.warning("File %s does not exist. Skipping it.", source)
-                    continue
                 try:
                     path = source
                     source = ByteStream.from_file_path(Path(source))
