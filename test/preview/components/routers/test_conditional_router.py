@@ -222,6 +222,7 @@ class TestRouter:
         assert serialize(List[int]) == "typing.List"
         assert serialize(ChatMessage) == "haystack.preview.dataclasses.chat_message.ChatMessage"
         assert serialize(int) == "builtins.int"
+        assert serialize(ChatMessage.from_user("ciao")) == "haystack.preview.dataclasses.chat_message.ChatMessage"
 
     @pytest.mark.unit
     def test_output_type_deserialization(self):
