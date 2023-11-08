@@ -7,7 +7,7 @@ from haystack.preview import component, default_to_dict, default_from_dict
 from haystack.preview.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.preview.dataclasses import ChatMessage, StreamingChunk
 from haystack.preview.components.generators.hf_utils import check_valid_model, check_generation_params
-from haystack.lazy_imports import LazyImport
+from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
