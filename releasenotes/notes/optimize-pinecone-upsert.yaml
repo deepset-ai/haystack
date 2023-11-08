@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Optimize documents upsert in PineconeDocumentStore (write_documents) by enabling asynchronous requests.
