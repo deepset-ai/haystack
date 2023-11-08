@@ -89,7 +89,7 @@ example_documents = [
 
 @pytest.mark.unit
 def test_to_dict():
-    component = ExtractiveReader("my-model", token="secret-token")
+    component = ExtractiveReader("my-model", token="secret-token", model_kwargs={"torch_dtype": "auto"})
     data = component.to_dict()
 
     assert data == {
@@ -106,6 +106,7 @@ def test_to_dict():
             "answers_per_seq": None,
             "no_answer": True,
             "calibration_factor": 0.1,
+            "model_kwargs": {"torch_dtype": "auto"},
         },
     }
 
