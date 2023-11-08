@@ -1,5 +1,4 @@
-import os
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -165,9 +164,6 @@ def test_long_prompt_is_truncated(mock_boto3_session):
 
 @pytest.mark.unit
 def test_supports_for_valid_aws_configuration():
-    """
-    Test that the AmazonBedrockBaseInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
-    """
     mock_session = MagicMock()
     mock_session.client("bedrock").list_foundation_models.return_value = {
         "modelSummaries": [{"modelId": "anthropic.claude-v2"}]
@@ -188,11 +184,7 @@ def test_supports_for_valid_aws_configuration():
 
 
 @pytest.mark.unit
-def test_supports_not_on_invalid_aws_profile_name():
-    """
-    Test that the AmazonBedrockBaseInvocationLayer raises SageMakerConfigurationError when the profile name is invalid
-    """
-
+def test_supports_raises_on_invalid_aws_profile_name():
     with patch("boto3.Session") as mock_boto3_session:
         mock_boto3_session.side_effect = BotoCoreError()
         with pytest.raises(AmazonBedrockConfigurationError, match="Failed to initialize the session"):
@@ -201,28 +193,47 @@ def test_supports_not_on_invalid_aws_profile_name():
             )
 
 
-@pytest.mark.skipif(
-    not os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT", None), reason="Skipping because SageMaker not configured"
-)
-@pytest.mark.integration
-def test_supports_triggered_for_valid_sagemaker_endpoint():
-    """
-    Test that the SageMakerMetaInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
-    """
-    model_name_or_path = os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT")
-    assert AmazonBedrockBaseInvocationLayer.supports(model_name_or_path=model_name_or_path)
+@pytest.mark.unit
+def test_supports_for_invalid_bedrock_config():
+    mock_session = MagicMock()
+    mock_session.client.side_effect = BotoCoreError()
+
+    # Patch the class method to return the mock session
+    with patch(
+        "haystack.nodes.prompt.invocation_layer.aws_base.AWSBaseInvocationLayer.get_aws_session",
+        return_value=mock_session,
+    ), pytest.raises(AmazonBedrockConfigurationError, match="Could not connect to Amazon Bedrock."):
+        AmazonBedrockBaseInvocationLayer.supports(
+            model_name_or_path="anthropic.claude-v2", aws_profile_name="some_real_profile"
+        )
 
 
-@pytest.mark.skipif(
-    not os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT", None), reason="Skipping because SageMaker not configured"
-)
-@pytest.mark.integration
-def test_supports_not_triggered_for_invalid_iam_profile():
-    """
-    Test that the SageMakerMetaInvocationLayer identifies an invalid SageMaker Inference endpoint
-    (in this case because of an invalid IAM AWS Profile via the supports() method)
-    """
-    assert not AmazonBedrockBaseInvocationLayer.supports(model_name_or_path="fake_endpoint")
-    assert not AmazonBedrockBaseInvocationLayer.supports(
-        model_name_or_path="fake_endpoint", aws_profile_name="invalid-profile"
+@pytest.mark.unit
+def test_supports_for_invalid_bedrock_config_error_on_list_models():
+    mock_session = MagicMock()
+    mock_session.client("bedrock").list_foundation_models.side_effect = BotoCoreError()
+
+    # Patch the class method to return the mock session
+    with patch(
+        "haystack.nodes.prompt.invocation_layer.aws_base.AWSBaseInvocationLayer.get_aws_session",
+        return_value=mock_session,
+    ), pytest.raises(AmazonBedrockConfigurationError, match="Could not connect to Amazon Bedrock."):
+        AmazonBedrockBaseInvocationLayer.supports(
+            model_name_or_path="anthropic.claude-v2", aws_profile_name="some_real_profile"
+        )
+
+
+@pytest.mark.unit
+def test_supports_for_no_aws_params():
+    supported = AmazonBedrockBaseInvocationLayer.supports(model_name_or_path="anthropic.claude-v2")
+
+    assert supported == False
+
+
+@pytest.mark.unit
+def test_supports_for_unknown_model():
+    supported = AmazonBedrockBaseInvocationLayer.supports(
+        model_name_or_path="unknown_model", aws_profile_name="some_real_profile"
     )
+
+    assert supported == False
