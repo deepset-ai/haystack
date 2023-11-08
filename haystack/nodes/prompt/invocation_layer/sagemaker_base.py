@@ -75,7 +75,7 @@ class SageMakerBaseInvocationLayer(AWSBaseInvocationLayer, ABC):
             try:
                 session = cls.get_aws_session(**kwargs)
             except AWSConfigurationError as e:
-                raise SageMakerConfigurationError from e
+                raise SageMakerConfigurationError(message=e.message) from e
             # is endpoint in service?
             cls.check_endpoint_in_service(session, model_name_or_path)
 
