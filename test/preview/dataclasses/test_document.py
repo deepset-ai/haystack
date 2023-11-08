@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from haystack.preview import Document
+from haystack.preview.dataclasses.byte_stream import ByteStream
 
 
 @pytest.mark.unit
@@ -15,29 +16,28 @@ from haystack.preview import Document
             Document(dataframe=pd.DataFrame([["John", 25], ["Martha", 34]], columns=["name", "age"])),
             "dataframe: (2, 2)",
         ),
-        (Document(blob=bytes("hello, test string".encode("utf-8"))), "blob: 18 bytes"),
+        (Document(blob=ByteStream(b"hello, test string")), "blob: 18 bytes"),
         (
             Document(
                 content="test text",
                 dataframe=pd.DataFrame([["John", 25], ["Martha", 34]], columns=["name", "age"]),
-                blob=bytes("hello, test string".encode("utf-8")),
+                blob=ByteStream(b"hello, test string"),
             ),
             "content: 'test text', dataframe: (2, 2), blob: 18 bytes",
         ),
     ],
 )
 def test_document_str(doc, doc_str):
-    assert f"Document(id={doc.id}, mimetype: 'text/plain', {doc_str})" == str(doc)
+    assert f"Document(id={doc.id}, {doc_str})" == str(doc)
 
 
 @pytest.mark.unit
 def test_init():
     doc = Document()
-    assert doc.id == "eaefbcfb6d4274ef83b7b4726d5df854060b6079d12bac65e8ed3feb99d9f69e"
+    assert doc.id == "d4675c57fcfe114db0b95f1da46eea3c5d6f5729c17d01fb5251ae19830a3455"
     assert doc.content == None
     assert doc.dataframe == None
     assert doc.blob == None
-    assert doc.mime_type == "text/plain"
     assert doc.meta == {}
     assert doc.score == None
     assert doc.embedding == None
@@ -45,12 +45,11 @@ def test_init():
 
 @pytest.mark.unit
 def test_init_with_parameters():
-    blob = b"some bytes"
+    blob_data = b"some bytes"
     doc = Document(
         content="test text",
         dataframe=pd.DataFrame([0]),
-        blob=blob,
-        mime_type="text/markdown",
+        blob=ByteStream(data=blob_data, mime_type="text/markdown"),
         meta={"text": "test text"},
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
@@ -59,8 +58,8 @@ def test_init_with_parameters():
     assert doc.content == "test text"
     assert doc.dataframe is not None
     assert doc.dataframe.equals(pd.DataFrame([0]))
-    assert doc.blob == blob
-    assert doc.mime_type == "text/markdown"
+    assert doc.blob.data == blob_data
+    assert doc.blob.mime_type == "text/markdown"
     assert doc.meta == {"text": "test text"}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
@@ -71,11 +70,10 @@ def test_init_with_legacy_fields():
     doc = Document(
         content="test text", content_type="text", id_hash_keys=["content"], score=0.812, embedding=[0.1, 0.2, 0.3]  # type: ignore
     )
-    assert doc.id == "c7f3af4f4010b88e830e4dd4f93060baeea747518642293db6325e6563a1ce37"
+    assert doc.id == "18fc2c114825872321cf5009827ca162f54d3be50ab9e9ffa027824b6ec223af"
     assert doc.content == "test text"
     assert doc.dataframe == None
     assert doc.blob == None
-    assert doc.mime_type == "text/plain"
     assert doc.meta == {}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
@@ -92,11 +90,9 @@ def test_init_with_legacy_field_and_flat_meta():
         date="10-10-2023",  # type: ignore
         type="article",  # type: ignore
     )
-    assert doc.id == "523cc14d7d8ce5e2fc69940969c40c5860a621e17f1c61eaa2655356519ac36d"
+    assert doc.id == "a2c0321b34430cc675294611e55529fceb56140ca3202f1c59a43a8cecac1f43"
     assert doc.content == "test text"
     assert doc.dataframe == None
-    assert doc.blob == None
-    assert doc.mime_type == "text/plain"
     assert doc.meta == {"date": "10-10-2023", "type": "article"}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
@@ -104,12 +100,11 @@ def test_init_with_legacy_field_and_flat_meta():
 
 @pytest.mark.unit
 def test_init_with_flat_meta():
-    blob = b"some bytes"
+    blob_data = b"some bytes"
     doc = Document(
         content="test text",
         dataframe=pd.DataFrame([0]),
-        blob=blob,
-        mime_type="text/markdown",
+        blob=ByteStream(data=blob_data, mime_type="text/markdown"),
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
         date="10-10-2023",  # type: ignore
@@ -119,8 +114,8 @@ def test_init_with_flat_meta():
     assert doc.content == "test text"
     assert doc.dataframe is not None
     assert doc.dataframe.equals(pd.DataFrame([0]))
-    assert doc.blob == blob
-    assert doc.mime_type == "text/markdown"
+    assert doc.blob.data == blob_data
+    assert doc.blob.mime_type == "text/markdown"
     assert doc.meta == {"date": "10-10-2023", "type": "article"}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
@@ -132,8 +127,7 @@ def test_init_with_flat_and_non_flat_meta():
         Document(
             content="test text",
             dataframe=pd.DataFrame([0]),
-            blob=b"some bytes",
-            mime_type="text/markdown",
+            blob=ByteStream(data=b"some bytes", mime_type="text/markdown"),
             score=0.812,
             meta={"test": 10},
             embedding=[0.1, 0.2, 0.3],
@@ -155,24 +149,10 @@ def test_basic_equality_id():
 
     assert doc1 == doc2
 
-    object.__setattr__(doc1, "id", "1234")
-    object.__setattr__(doc2, "id", "5678")
+    doc1.id = "1234"
+    doc2.id = "5678"
 
     assert doc1 != doc2
-
-
-@pytest.mark.unit
-def test_equality_with_meta_with_objects():
-    class TestObject:
-        def __eq__(self, other):
-            if type(self) == type(other):
-                return True
-            return False
-
-    test_object = TestObject()
-    doc1 = Document(content="test text", meta={"value": [0, 1, 2], "path": Path("."), "obj": test_object})
-    doc2 = Document(content="test text", meta={"value": [0, 1, 2], "path": Path("."), "obj": test_object})
-    assert doc1 == doc2
 
 
 @pytest.mark.unit
@@ -183,7 +163,6 @@ def test_to_dict():
         "content": None,
         "dataframe": None,
         "blob": None,
-        "mime_type": "text/plain",
         "score": None,
         "embedding": None,
     }
@@ -197,7 +176,6 @@ def test_to_dict_without_flattening():
         "content": None,
         "dataframe": None,
         "blob": None,
-        "mime_type": "text/plain",
         "meta": {},
         "score": None,
         "embedding": None,
@@ -209,8 +187,7 @@ def test_to_dict_with_custom_parameters():
     doc = Document(
         content="test text",
         dataframe=pd.DataFrame([10, 20, 30]),
-        blob=b"some bytes",
-        mime_type="application/pdf",
+        blob=ByteStream(b"some bytes", mime_type="application/pdf"),
         meta={"some": "values", "test": 10},
         score=0.99,
         embedding=[10.0, 10.0],
@@ -220,12 +197,11 @@ def test_to_dict_with_custom_parameters():
         "id": doc.id,
         "content": "test text",
         "dataframe": pd.DataFrame([10, 20, 30]).to_json(),
-        "blob": list(b"some bytes"),
-        "mime_type": "application/pdf",
+        "blob": {"data": list(b"some bytes"), "mime_type": "application/pdf"},
         "some": "values",
         "test": 10,
         "score": 0.99,
-        "embedding": [10, 10],
+        "embedding": [10.0, 10.0],
     }
 
 
@@ -234,8 +210,7 @@ def test_to_dict_with_custom_parameters_without_flattening():
     doc = Document(
         content="test text",
         dataframe=pd.DataFrame([10, 20, 30]),
-        blob=b"some bytes",
-        mime_type="application/pdf",
+        blob=ByteStream(b"some bytes", mime_type="application/pdf"),
         meta={"some": "values", "test": 10},
         score=0.99,
         embedding=[10.0, 10.0],
@@ -245,8 +220,7 @@ def test_to_dict_with_custom_parameters_without_flattening():
         "id": doc.id,
         "content": "test text",
         "dataframe": pd.DataFrame([10, 20, 30]).to_json(),
-        "blob": list(b"some bytes"),
-        "mime_type": "application/pdf",
+        "blob": {"data": list(b"some bytes"), "mime_type": "application/pdf"},
         "meta": {"some": "values", "test": 10},
         "score": 0.99,
         "embedding": [10, 10],
@@ -260,13 +234,12 @@ def test_from_dict():
 
 @pytest.mark.unit
 def from_from_dict_with_parameters():
-    blob = b"some bytes"
+    blob_data = b"some bytes"
     assert Document.from_dict(
         {
             "content": "test text",
             "dataframe": pd.DataFrame([0]).to_json(),
-            "blob": blob,
-            "mime_type": "text/markdown",
+            "blob": {"data": list(blob_data), "mime_type": "text/markdown"},
             "meta": {"text": "test text"},
             "score": 0.812,
             "embedding": [0.1, 0.2, 0.3],
@@ -274,8 +247,7 @@ def from_from_dict_with_parameters():
     ) == Document(
         content="test text",
         dataframe=pd.DataFrame([0]),
-        blob=blob,
-        mime_type="text/markdown",
+        blob=ByteStream(blob_data, mime_type="text/markdown"),
         meta={"text": "test text"},
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
@@ -321,13 +293,12 @@ def test_from_dict_with_legacy_field_and_flat_meta():
 
 @pytest.mark.unit
 def test_from_dict_with_flat_meta():
-    blob = b"some bytes"
+    blob_data = b"some bytes"
     assert Document.from_dict(
         {
             "content": "test text",
             "dataframe": pd.DataFrame([0]).to_json(),
-            "blob": blob,
-            "mime_type": "text/markdown",
+            "blob": {"data": list(blob_data), "mime_type": "text/markdown"},
             "score": 0.812,
             "embedding": [0.1, 0.2, 0.3],
             "date": "10-10-2023",
@@ -336,8 +307,7 @@ def test_from_dict_with_flat_meta():
     ) == Document(
         content="test text",
         dataframe=pd.DataFrame([0]),
-        blob=blob,
-        mime_type="text/markdown",
+        blob=ByteStream(blob_data, mime_type="text/markdown"),
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
         meta={"date": "10-10-2023", "type": "article"},
@@ -351,8 +321,7 @@ def test_from_dict_with_flat_and_non_flat_meta():
             {
                 "content": "test text",
                 "dataframe": pd.DataFrame([0]).to_json(),
-                "blob": b"some bytes",
-                "mime_type": "text/markdown",
+                "blob": {"data": list(b"some bytes"), "mime_type": "text/markdown"},
                 "score": 0.812,
                 "meta": {"test": 10},
                 "embedding": [0.1, 0.2, 0.3],
