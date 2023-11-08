@@ -31,7 +31,7 @@ def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
     """
 
     layer = AmazonBedrockBaseInvocationLayer(
-        model_name_or_path="some_fake_model",
+        model_name_or_path="anthropic.claude-v2",
         max_length=99,
         aws_access_key_id="some_fake_id",
         aws_secret_access_key="some_fake_key",
@@ -41,7 +41,7 @@ def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
     )
 
     assert layer.max_length == 99
-    assert layer.model_name_or_path == "some_fake_model"
+    assert layer.model_name_or_path == "anthropic.claude-v2"
 
     assert layer.prompt_handler is not None
     assert layer.prompt_handler.model_max_length == 4096
@@ -64,7 +64,9 @@ def test_constructor_prompt_handler_initialized(mock_auto_tokenizer, mock_boto3_
     """
     Test that the constructor sets the prompt_handler correctly, with the correct model_max_length for llama-2
     """
-    layer = AmazonBedrockBaseInvocationLayer(model_name_or_path="some_fake_model", prompt_handler=mock_prompt_handler)
+    layer = AmazonBedrockBaseInvocationLayer(
+        model_name_or_path="anthropic.claude-v2", prompt_handler=mock_prompt_handler
+    )
     assert layer.prompt_handler is not None
     assert layer.prompt_handler.model_max_length == 4096
 
@@ -76,7 +78,7 @@ def test_constructor_with_model_kwargs(mock_auto_tokenizer, mock_boto3_session):
     """
     model_kwargs = {"temperature": 0.7}
 
-    layer = AmazonBedrockBaseInvocationLayer(model_name_or_path="some_fake_model", **model_kwargs)
+    layer = AmazonBedrockBaseInvocationLayer(model_name_or_path="anthropic.claude-v2", **model_kwargs)
     assert "temperature" in layer.model_input_kwargs
     assert layer.model_input_kwargs["temperature"] == 0.7
 
@@ -121,7 +123,7 @@ def test_short_prompt_is_not_truncated(mock_boto3_session):
 
     with patch("transformers.AutoTokenizer.from_pretrained", return_value=mock_tokenizer):
         layer = AmazonBedrockBaseInvocationLayer(
-            "some_fake_endpoint", max_length=max_length_generated_text, model_max_length=total_model_max_length
+            "anthropic.claude-v2", max_length=max_length_generated_text, model_max_length=total_model_max_length
         )
         prompt_after_resize = layer._ensure_token_limit(mock_prompt_text)
 
@@ -154,7 +156,7 @@ def test_long_prompt_is_truncated(mock_boto3_session):
 
     with patch("transformers.AutoTokenizer.from_pretrained", return_value=mock_tokenizer):
         layer = AmazonBedrockBaseInvocationLayer(
-            "some_fake_endpoint", max_length=max_length_generated_text, model_max_length=total_model_max_length
+            "anthropic.claude-v2", max_length=max_length_generated_text, model_max_length=total_model_max_length
         )
         prompt_after_resize = layer._ensure_token_limit(long_prompt_text)
 
