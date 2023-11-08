@@ -38,6 +38,13 @@ class GPTChatGenerator:
     client = GPTChatGenerator()
     response = client.run(messages)
     print(response)
+
+    >>{'replies': [ChatMessage(content='Natural Language Processing (NLP) is a branch of artificial intelligence
+    >>that focuses on enabling computers to understand, interpret, and generate human language in a way that is
+    >>meaningful and useful.', role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
+    >>metadata={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop',
+    >>'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
+
     ```
 
      Key Features and Compatibility:
@@ -158,13 +165,8 @@ class GPTChatGenerator:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **generation_kwargs}
 
-        openai_chat_message_format = ["role", "content", "name"]
-        openai_formatted_messages = [
-            dataclasses.asdict(
-                m, dict_factory=lambda obj: {k: v for k, v in obj if k in openai_chat_message_format and v}
-            )
-            for m in messages
-        ]
+        # adapt ChatMessage(s) to the format expected by the OpenAI API
+        openai_formatted_messages = self._convert_to_openai_format(messages)
 
         completion = openai.ChatCompletion.create(
             model=self.model_name,
@@ -190,14 +192,30 @@ class GPTChatGenerator:
             completions = [self._build_message(completion, choice) for choice in completion.choices]
 
         # before returning, do post-processing of the completions
-        for completion in completions:
-            self._post_receive(completion)
+        for message in completions:
+            self._check_finish_reason(message)
 
         return {"replies": completions}
+
+    def _convert_to_openai_format(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
+        """
+        Converts the list of ChatMessage to the list of messages in the format expected by the OpenAI API.
+        :param messages: The list of ChatMessage.
+        :return: The list of messages in the format expected by the OpenAI API.
+        """
+        openai_chat_message_format = {"role", "content", "name"}
+        openai_formatted_messages = []
+        for m in messages:
+            message_dict = dataclasses.asdict(m)
+            filtered_message = {k: v for k, v in message_dict.items() if k in openai_chat_message_format and v}
+            openai_formatted_messages.append(filtered_message)
+        return openai_formatted_messages
 
     def _connect_chunks(self, chunk: OpenAIObject, chunks: List[StreamingChunk]) -> ChatMessage:
         """
         Connects the streaming chunks into a single ChatMessage.
+        :param chunk: The last chunk returned by the OpenAI API.
+        :param chunks: The list of all chunks returned by the OpenAI API.
         """
         complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
         complete_response.metadata.update(
@@ -212,7 +230,7 @@ class GPTChatGenerator:
 
     def _build_message(self, completion: OpenAIObject, choice: OpenAIObject) -> ChatMessage:
         """
-        Converts the response from the OpenAI API to a ChatMessage.
+        Converts the non-streaming response from the OpenAI API to a ChatMessage.
         :param completion: The completion returned by the OpenAI API.
         :param choice: The choice returned by the OpenAI API.
         :return: The ChatMessage.
@@ -232,7 +250,7 @@ class GPTChatGenerator:
 
     def _build_chunk(self, chunk: OpenAIObject, choice: OpenAIObject) -> StreamingChunk:
         """
-        Converts the response from the OpenAI API to a StreamingChunk.
+        Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
         :param chunk: The chunk returned by the OpenAI API.
         :param choice: The choice returned by the OpenAI API.
         :return: The StreamingChunk.
@@ -266,10 +284,3 @@ class GPTChatGenerator:
             logger.warning(
                 "The completion for index %s has been truncated due to the content filter.", message.metadata["index"]
             )
-
-    def _post_receive(self, message: ChatMessage) -> None:
-        """
-        Post-processing of the message received from the LLM.
-        :param message: The message returned by the LLM.
-        """
-        self._check_finish_reason(message)
