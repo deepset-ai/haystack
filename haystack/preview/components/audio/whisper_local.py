@@ -36,12 +36,9 @@ class LocalWhisperTranscriber:
     ):
         """
         :param model_name_or_path: Name of the model to use. Set it to one of the following values:
-                                        - `tiny`
-                                        - `small`
-                                        - `medium`
-                                        - `large`
-                                        - `large-v2`
+        :type model_name_or_path: Literal["tiny", "small", "medium", "large", "large-v2"]
         :param device: Name of the torch device to use for inference. If None, CPU is used.
+        :type device: Optional[str]
         """
         whisper_import.check()
         if model_name_or_path not in get_args(WhisperLocalModel):
