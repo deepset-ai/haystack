@@ -1,11 +1,12 @@
 import json
 import logging
-from typing import Optional, Dict, Union, List
+from typing import Any, Optional, Dict, Union, List
 
 
-from haystack.errors import AmazonBedrockConfigurationError, AmazonBedrockInferenceError
+from haystack.errors import AWSConfigurationError, AmazonBedrockConfigurationError, AmazonBedrockInferenceError
 from haystack.lazy_imports import LazyImport
 from haystack.nodes.prompt.invocation_layer.aws_base import AWSBaseInvocationLayer
+from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
         aws_session_token: Optional[str] = None,
         aws_region_name: Optional[str] = None,
         aws_profile_name: Optional[str] = None,
-        max_length: Optional[int] = 2048,
+        max_length: Optional[int] = 100,
         **kwargs,
     ):
         super().__init__(model_name_or_path, **kwargs)
@@ -47,14 +48,36 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
                 "Could not connect to Amazon Bedrock. Make sure the AWS environment is configured correctly."
             ) from e
 
-        self.kwargs = kwargs
+        self.model_input_kwargs = kwargs
+        # We pop the model_max_length as it is not sent to the model
+        # but used to truncate the prompt if needed
+        model_max_length = kwargs.get("model_max_length", 4096)
+
+        # Truncate prompt if prompt tokens > model_max_length-max_length
+        # (max_length is the length of the generated text)
+        # It is hard to determine which tokenizer to use for the SageMaker model
+        # so we use GPT2 tokenizer which will likely provide good token count approximation
+        self.prompt_handler = DefaultPromptHandler(
+            model_name_or_path="gpt2", model_max_length=model_max_length, max_length=self.max_length or 100
+        )
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         # the prompt for this model will be of the type str
-        print(
-            "Tokenizer for the bedrock models are not available publicly. The tokens will get truncated automatically"
-        )
-        return prompt
+        if isinstance(prompt, List):
+            raise ValueError("SageMaker invocation layer doesn't support a dictionary as prompt, only a string.")
+
+        resize_info = self.prompt_handler(prompt)
+        if resize_info["prompt_length"] != resize_info["new_prompt_length"]:
+            logger.warning(
+                "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
+                "answer length (%s tokens) fit within the max token limit (%s tokens). "
+                "Shorten the prompt to prevent it from being cut off.",
+                resize_info["prompt_length"],
+                max(0, resize_info["model_max_length"] - resize_info["max_length"]),  # type: ignore
+                resize_info["max_length"],
+                resize_info["model_max_length"],
+            )
+        return str(resize_info["resized_prompt"])
 
     @classmethod
     def supports(cls, model_name_or_path, **kwargs):
@@ -78,6 +101,8 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
             bedrock = session.client("bedrock")
             foundation_models_response = bedrock.list_foundation_models(byOutputModality="TEXT")
             available_model_ids = [entry["modelId"] for entry in foundation_models_response.get("modelSummaries", [])]
+        except AWSConfigurationError as e:
+            raise AmazonBedrockConfigurationError(message=e.message) from e
         except Exception as e:
             raise AmazonBedrockConfigurationError(
                 "Could not connect to Amazon Bedrock. Make sure the AWS environment is configured correctly."
@@ -127,10 +152,16 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
         return out
 
     def invoke(self, *args, **kwargs):
-        client = self.client
+        prompt: Any = kwargs.get("prompt")
+        if not prompt or not isinstance(prompt, (str, list)):
+            raise ValueError(
+                f"No valid prompt provided. Model {self.model_name_or_path} requires a valid prompt."
+                f"Make sure to provide a prompt in the format that the model expects."
+            )
+
         body = self._prepare_invoke(**kwargs)
         try:
-            r = client.invoke_model(
+            r = self.client.invoke_model(
                 body=body, modelId=self.model_name_or_path, accept="application/json", contentType="application/json"
             )
         except ClientError as e:
