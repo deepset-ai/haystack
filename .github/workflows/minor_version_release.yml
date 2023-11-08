@@ -41,7 +41,7 @@ jobs:
           cat VERSION.txt
           git add .
           git commit -m "Update unstable version to $NEW_VERSION"
-          git tag v"$NEW_VERSION" -m"v$NEW_VERSION"
+          git tag "v$NEW_VERSION" -m"v$NEW_VERSION"
           git push -u origin main --tags
 
       - uses: actions/setup-python@v4
