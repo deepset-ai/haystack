@@ -135,8 +135,6 @@ class RemoteWhisperTranscriber:
                 source.metadata["file_path"] = path
 
             file = io.BytesIO(source.data)
-            file.name = source.metadata.get("file_path", "")
-
             if "file_path" in source.metadata:
                 file.name = source.metadata["file_path"]
 
