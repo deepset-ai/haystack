@@ -1,5 +1,5 @@
-from haystack.preview.components.generators.openai.gpt import GPTGenerator
 from haystack.preview.components.generators.hugging_face.hugging_face_local import HuggingFaceLocalGenerator
 from haystack.preview.components.generators.hugging_face_tgi import HuggingFaceTGIGenerator
+from haystack.preview.components.generators.openai import GPTGenerator
 
-__all__ = ["GPTGenerator", "HuggingFaceLocalGenerator", "HuggingFaceTGIGenerator"]
+__all__ = ["HuggingFaceLocalGenerator", "HuggingFaceTGIGenerator", "GPTGenerator"]
