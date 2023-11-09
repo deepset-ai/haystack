@@ -130,7 +130,7 @@ class JoinDocuments(JoinNode):
                 for doc in result:
                     if doc.id == idx:
                         tmp.append(doc)
-            item_best_score = max(tmp, key=lambda x: x.score if x.score is not None else -float("inf"))
+            item_best_score = max(tmp, key=lambda x: x.score if x.score is not None else -inf)
             scores_map.update({idx: item_best_score.score})
         return scores_map
 
