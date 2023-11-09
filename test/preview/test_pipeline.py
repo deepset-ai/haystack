@@ -60,3 +60,27 @@ def test_pipeline_load(test_files_path):
         assert pipeline.max_loops_allowed == 99
         assert isinstance(pipeline.get_component("Comp1"), TestComponent)
         assert isinstance(pipeline.get_component("Comp2"), TestComponent)
+
+
+@pytest.mark.unit
+def test_pipeline_input_resolution():
+    @component
+    class Hello:
+        @component.output_types(output=str)
+        def run(self, word: str):
+            """
+            Takes a string in input and returns "Hello, <string>!"
+            in output.
+            """
+            return {"output": f"Hello, {word}!"}
+
+    pipeline = Pipeline()
+    pipeline.add_component("hello", Hello())
+    pipeline.add_component("hello2", Hello())
+
+    pipeline.connect("hello.output", "hello2.word")
+    result = pipeline.run(data={"hello": {"word": "world"}})
+    assert result == {"hello2": {"output": "Hello, Hello, world!!"}}
+
+    result = pipeline.run(word="world")
+    assert result == {"hello2": {"output": "Hello, Hello, world!!"}}
