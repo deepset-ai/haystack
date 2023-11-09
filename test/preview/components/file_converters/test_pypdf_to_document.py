@@ -49,6 +49,7 @@ class TestPyPDFToDocument:
         assert "ReAct" in docs[0].content
         assert "ReAct" in docs[1].content
 
+    @pytest.mark.unit
     def test_custom_converter(self, preview_samples_path):
         """
         Test if the component correctly handles custom converters.
@@ -64,3 +65,11 @@ class TestPyPDFToDocument:
         assert len(docs) == 1
         assert "ReAct" not in docs[0].content
         assert "I don't care about converting given pdfs, I always return this" in docs[0].content
+
+    @pytest.mark.unit
+    def test_invalid_custom_converter(self):
+        """
+        Test if the component correctly handles invalid custom converters.
+        """
+        with pytest.raises(ValueError, match="Converter must be a callable accepting"):
+            PyPDFToDocument(converter="invalid_converter")
