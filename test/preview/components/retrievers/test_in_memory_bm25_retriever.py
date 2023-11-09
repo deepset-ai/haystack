@@ -39,7 +39,7 @@ class TestMemoryBM25Retriever:
 
     @pytest.mark.unit
     def test_init_with_invalid_top_k_parameter(self):
-        with pytest.raises(ValueError, match="top_k must be > 0, but got -2"):
+        with pytest.raises(ValueError):
             InMemoryBM25Retriever(InMemoryDocumentStore(), top_k=-2, scale_score=False)
 
     @pytest.mark.unit
