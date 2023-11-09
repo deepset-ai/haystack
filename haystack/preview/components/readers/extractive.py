@@ -125,10 +125,12 @@ class ExtractiveReader:
                 self.device = self.device or "mps:0"
             else:
                 self.device = self.device or "cpu:0"
+
             if self.model_kwargs:
                 kwargs = {"token": self.token, **self.model_kwargs}
             else:
                 kwargs = {"token": self.token}
+
             self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_name_or_path, **kwargs).to(
                 self.device
             )
