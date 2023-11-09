@@ -394,13 +394,13 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def _upsert_vectors(
         self,
-        index: str,
+        index_name: str,
         data: List[Tuple],
         namespace: Optional[str],
         use_async: bool = False,
         batch_size: int = DEFAULT_BATCH_SIZE,
     ) -> None:
-        index = self.pinecone_indexes[index]
+        index = self.pinecone_indexes[index_name]
         results = [
             index.upsert(vectors=batch, namespace=namespace, async_req=use_async)
             for batch in get_batches_from_generator(data, batch_size)
@@ -580,13 +580,15 @@ class PineconeDocumentStore(BaseDocumentStore):
         pool_threads = self.pinecone_indexes[index].pool_threads
         if use_async and pool_threads == 1:
             logger.warning(
-                f"Documents will be upserted synchronosly, because the number of threads for Pinecone index is set to {pool_threads}. "
-                f"To enable upsert in parallel, initialize PineconeDocumentStore() again setting parameter `pool_threads`."
+                "Documents will be upserted synchronosly, because the number of threads for Pinecone index is set to %s. "
+                "To enable upsert in parallel, initialize PineconeDocumentStore() again setting parameter `pool_threads`.",
+                pool_threads,
             )
         elif not use_async and pool_threads != 1:
             logger.warning(
-                f"Parameter `use_async` set to `False` will be ignored and documents will be upserted asynchronously, "
-                f"because the number of threads for Pinecone index is set to {pool_threads}."
+                "Parameter `use_async` set to `False` will be ignored and documents will be upserted asynchronously, "
+                "because the number of threads for Pinecone index is set to %s.",
+                pool_threads,
             )
 
         field_map = self._create_document_field_map()
@@ -674,13 +676,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
                     data_to_write_to_pinecone = list(zip(ids, embeddings, metadata))
                     # Store chunk by chunk (for regular upsert) or chunk by chunk (for async upsert) in vector store
-                    self._upsert_vectors(
-                        index=index,
-                        data=data_to_write_to_pinecone,
-                        namespace=namespace,
-                        use_async=use_async,
-                        batch_size=batch_size,
-                    )
+                    self._upsert_vectors(index, data_to_write_to_pinecone, namespace, use_async, batch_size)  # type: ignore
                     # Add IDs to ID list
                     self._add_local_ids(index, ids)
                     progress_bar.update(chunk_size)
@@ -753,13 +749,15 @@ class PineconeDocumentStore(BaseDocumentStore):
         pool_threads = self.pinecone_indexes[index].pool_threads
         if use_async and pool_threads == 1:
             logger.warning(
-                f"Embeddings will be upserted synchronosly, because the number of threads for Pinecone index is {pool_threads}. "
-                f"To enable upsert in parallel, initialize PineconeDocumentStore() again setting parameter `pool_threads`."
+                "Embeddings will be upserted synchronosly, because the number of threads for Pinecone index is %s. "
+                "To enable upsert in parallel, initialize PineconeDocumentStore() again setting parameter `pool_threads`.",
+                pool_threads,
             )
         elif not use_async and pool_threads > 1:
             logger.warning(
-                f"Parameter `use_async` set to `False` will be ignored and embeddings will be upserted asynchronously, "
-                f"because the number of threads for Pinecone index is set to {pool_threads}."
+                "Parameter `use_async` set to `False` will be ignored and embeddings will be upserted asynchronously, "
+                "because the number of threads for Pinecone index is set to %s.",
+                pool_threads,
             )
 
         document_count = self.get_document_count(
@@ -828,7 +826,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     ids.append(doc.id)
                 # Update existing vectors in pinecone index
                 data = list(zip(ids, embeddings.tolist(), metadata))
-                self._upsert_vectors(index, data, namespace, use_async, batch_size)
+                self._upsert_vectors(index, data, namespace, use_async, batch_size)  # type: ignore
                 # Add these vector IDs to local store
                 self._add_local_ids(index, ids)
                 progress_bar.set_description_str("Documents Processed")
@@ -1088,7 +1086,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 embedding_matrix = [result["vectors"][_id]["values"] for _id in vector_id_matrix]
                 data_to_write_to_pinecone = list(zip(vector_id_matrix, embedding_matrix, meta_matrix))
                 # Store metadata nd embeddings in new target_namespace
-                self._upsert_vectors(index, data_to_write_to_pinecone, target_namespace, use_async=False)
+                self._upsert_vectors(index, data_to_write_to_pinecone, target_namespace, use_async=False)  # type: ignore
                 # Delete vectors from source_namespace
                 self.delete_documents(index=index, ids=id_batch, namespace=source_namespace, drop_ids=False)
                 progress_bar.set_description_str("Documents Moved")
@@ -1214,7 +1212,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         if doc.embedding is not None:
             meta = {"content": doc.content, "content_type": doc.content_type, **meta}
             data = [(id, doc.embedding.tolist(), meta)]
-            self._upsert_vectors(index, data, self.namespace, use_async=False)
+            self._upsert_vectors(index, data, self.namespace, use_async=False)  # type: ignore
 
     def delete_documents(
         self,
