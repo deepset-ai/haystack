@@ -14,8 +14,8 @@ class JoinDocuments(JoinNode):
     A node to join documents outputted by multiple retriever nodes.
 
     The node allows multiple join modes:
-    * concatenate: combine the documents from multiple nodes. Any duplicate documents are discarded.
-                   The score is only determined by the last node that outputs the document.
+    * concatenate: combine the documents from multiple nodes.
+                   In case of duplicate documents, the one with the highest score is kept.
     * merge: merge scores of documents from multiple nodes. Optionally, each input score can be given a different
              `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
     * reciprocal_rank_fusion: combines the documents based on their rank in multiple nodes.
@@ -130,7 +130,7 @@ class JoinDocuments(JoinNode):
                 for doc in result:
                     if doc.id == idx:
                         tmp.append(doc)
-            item_best_score = max(tmp, key=lambda x: x.score)
+            item_best_score = max(tmp, key=lambda x: x.score if x.score is not None else -float("inf"))
             scores_map.update({idx: item_best_score.score})
         return scores_map
 
