@@ -41,9 +41,9 @@ class MetaFieldRanker:
         Creates an instance of MetaFieldRanker.
 
         :param metadata_field: The name of the metadata field to rank by.
-        :param weight: in range [0,1].
+        :param weight: In range [0,1].
                 0 disables sorting by metadata field.
-                0.5 content and metadata field have the same impact.
+                0.5 content and metadata fields have the same impact.
                 1 means sorting only by metadata field, highest value comes first.
         :param top_k: The maximum number of documents to return per query.
         :param ranking_mode: The mode used to combine retriever and recentness.
