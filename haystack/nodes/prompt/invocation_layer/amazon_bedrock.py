@@ -62,6 +62,14 @@ class AnthropicModelAdapter(BedrockModelAdapter):
         responses = [response_body["completion"].lstrip()]
         return responses
 
+    def get_stream_responses(self, response_body: Dict[str, Any]) -> List[str]:
+        response_parse = lambda x: x["completion"].lstrip()
+        responses = []
+        for r in response_body:
+            r = json.loads(r["chunk"]["bytes"])
+            responses.append(response_parse(r))
+        return responses
+
 
 class CohereModelAdapter(BedrockModelAdapter):
     def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
@@ -81,6 +89,16 @@ class CohereModelAdapter(BedrockModelAdapter):
 
     def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
         responses = [generation["text"].lstrip() for generation in response_body["generations"]]
+        return responses
+
+    def get_stream_responses(self, response_body: Dict[str, Any]) -> List[str]:
+        response_parse = lambda x: x["text"].lstrip()
+        responses = []
+        for r in response_body:
+            r = json.loads(r["chunk"]["bytes"])
+            generations = r["generations"]
+            for gen in generations:
+                responses.append(response_parse(gen))
         return responses
 
 
@@ -115,6 +133,14 @@ class TitanModelAdapter(BedrockModelAdapter):
 
     def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
         responses = [result["outputText"].lstrip() for result in response_body["results"]]
+        return responses
+
+    def get_stream_responses(self, response_body: Dict[str, Any]) -> List[str]:
+        response_parse = lambda x: x["outputText"].lstrip()
+        responses = []
+        for r in response_body:
+            r = json.loads(r["chunk"]["bytes"])
+            responses.append(response_parse(r))
         return responses
 
 
@@ -158,12 +184,13 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
                 aws_profile_name=aws_profile_name,
             )
             self.client = session.client("bedrock-runtime")
+            self.bedrock = session.client("bedrock")
         except Exception as e:
             raise AmazonBedrockConfigurationError(
                 "Could not connect to Amazon Bedrock. Make sure the AWS environment is configured correctly."
             ) from e
 
-        model_input_kwargs = kwargs
+        self.model_input_kwargs = kwargs
         # We pop the model_max_length as it is not sent to the model
         # but used to truncate the prompt if needed
         model_max_length = kwargs.get("model_max_length", 4096)
@@ -177,7 +204,7 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
         )
 
         self.model_adapter = self.SUPPORTED_MODELS[self.model_name_or_path](
-            model_kwargs=model_input_kwargs, max_length=self.max_length
+            model_kwargs=self.model_input_kwargs, max_length=self.max_length
         )
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
@@ -226,9 +253,22 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
 
         return model_supported
 
+    def supports_streaming(self, model_name_or_path):
+        foundation_models_response = self.bedrock.list_foundation_models(byOutputModality="TEXT")
+        available_model_ids = [
+            entry["modelId"]
+            for entry in foundation_models_response.get("modelSummaries", [])
+            if entry.pop("responseStreamingSupported", None)
+        ]
+        if model_name_or_path not in available_model_ids:
+            raise AmazonBedrockConfigurationError(f"{model_name_or_path} does not offer streaming support")
+
     def invoke(self, *args, **kwargs):
         kwargs = kwargs.copy()
         prompt: Any = kwargs.pop("prompt", None)
+        stream: Any = self.model_input_kwargs.pop("stream", None)
+        self.supports_streaming(self.model_name_or_path)
+
         if not prompt or not isinstance(prompt, (str, list)):
             raise ValueError(
                 f"No valid prompt provided. Model {self.model_name_or_path} requires a valid prompt."
@@ -237,12 +277,20 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
 
         body = self.model_adapter.prepare_body(prompt=prompt, **kwargs)
         try:
-            response = self.client.invoke_model(
-                body=json.dumps(body),
-                modelId=self.model_name_or_path,
-                accept="application/json",
-                contentType="application/json",
-            )
+            if stream:
+                response = self.client.invoke_model_with_response_stream(
+                    body=json.dumps(body),
+                    modelId=self.model_name_or_path,
+                    accept="application/json",
+                    contentType="application/json",
+                )
+            else:
+                response = self.client.invoke_model(
+                    body=json.dumps(body),
+                    modelId=self.model_name_or_path,
+                    accept="application/json",
+                    contentType="application/json",
+                )
         except ClientError as e:
             raise AmazonBedrockInferenceError(
                 f"Could not connect to Amazon Bedrock model {self.model_name_or_path}. "
@@ -250,7 +298,11 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
                 "the model is available in the configured AWS region and you've been granted access."
             ) from e
 
-        response_body = json.loads(response.get("body").read().decode("utf-8"))
-        responses = self.model_adapter.get_responses(response_body=response_body)
+        if stream:
+            response_body = response["body"]
+            responses = self.model_adapter.get_stream_responses(response_body=response_body)
+        else:
+            response_body = json.loads(response.get("body").read().decode("utf-8"))
+            responses = self.model_adapter.get_responses(response_body=response_body)
 
         return responses
