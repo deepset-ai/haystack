@@ -1,6 +1,4 @@
 import logging
-from typing import Callable
-
 import pytest
 from pypdf import PdfReader
 
@@ -56,20 +54,13 @@ class TestPyPDFToDocument:
         """
         paths = [preview_samples_path / "pdf" / "react_paper.pdf"]
 
-        custom_converter: Callable[[PdfReader], Document] = lambda pdf_reader: Document(
-            content="I don't care about converting given pdfs, I always return this"
-        )
-        converter = PyPDFToDocument(custom_converter)
+        class MyCustomConverter:
+            def convert(self, reader: PdfReader) -> Document:
+                return Document(content="I don't care about converting given pdfs, I always return this")
+
+        converter = PyPDFToDocument(converter=MyCustomConverter())
         output = converter.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 1
         assert "ReAct" not in docs[0].content
         assert "I don't care about converting given pdfs, I always return this" in docs[0].content
-
-    @pytest.mark.unit
-    def test_invalid_custom_converter(self):
-        """
-        Test if the component correctly handles invalid custom converters.
-        """
-        with pytest.raises(ValueError, match="Converter must be a callable accepting"):
-            PyPDFToDocument(converter="invalid_converter")

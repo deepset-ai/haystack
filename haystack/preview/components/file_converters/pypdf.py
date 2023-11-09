@@ -1,6 +1,6 @@
 import io
 import logging
-from typing import List, Union, Callable, Optional
+from typing import List, Union, Optional, Protocol
 from pathlib import Path
 
 from haystack.preview.dataclasses import ByteStream
@@ -14,40 +14,56 @@ with LazyImport("Run 'pip install pypdf'") as pypdf_import:
 logger = logging.getLogger(__name__)
 
 
+class PyPDFConverter(Protocol):
+    """
+    A protocol that defines a converter which takes a PdfReader object and converts it into a Document object.
+    """
+
+    def convert(self, reader: PdfReader) -> Document:
+        """Convert a PdfReader instance to a Document instance."""
+
+
+class DefaultConverter:
+    """
+    The default converter class that extracts text from a PdfReader object's pages and returns a Document.
+    """
+
+    def convert(self, reader: PdfReader) -> Document:
+        """Extract text from the PDF and return a Document object with the text content."""
+        text = "".join(page.extract_text() for page in reader.pages if page.extract_text())
+        return Document(content=text)
+
+
 @component
 class PyPDFToDocument:
     """
-    Converts a PDF file to a Document. By default, it extracts the text from the PDF file and creates a Document
-    instance with the extracted text. You can also pass a custom converter function to the component.
+    Converts PDF files to Document objects.
+    It uses a converter that follows the PyPDFConverter protocol to perform the conversion.
+    A default text extraction converter is used if no custom converter is provided.
     """
 
-    def __init__(self, converter: Optional[Callable[[PdfReader], Document]] = None):
+    def __init__(self, converter: Optional[PyPDFConverter] = None):
         """
         Initializes the PyPDFToDocument component with an optional custom converter.
+        :param converter: A converter instance that adheres to the PyPDFConverter protocol.
+                          If None, the DefaultConverter is used.
         """
         pypdf_import.check()
-        if converter and not callable(converter):
-            raise ValueError("Converter must be a callable accepting a PdfReader object and returning a Document")
-        self.converter = (
-            converter
-            if converter
-            else lambda pdf_reader: Document(
-                content="".join(page.extract_text() for page in pdf_reader.pages if page.extract_text())
-            )
-        )
+        self.converter: PyPDFConverter = converter or DefaultConverter()
 
     @component.output_types(documents=List[Document])
     def run(self, sources: List[Union[str, Path, ByteStream]]):
         """
-        Converts PDF files to Documents.
+        Converts a list of PDF sources into Document objects using the configured converter.
 
-        :param sources: A list of PDF data sources
+        :param sources: A list of PDF data sources, which can be file paths or ByteStream objects.
+        :return: A dictionary containing a list of Document objects under the 'documents' key.
         """
         documents = []
         for source in sources:
             try:
                 pdf_reader = self._get_pdf_reader(source)
-                document = self.converter(pdf_reader)
+                document = self.converter.convert(pdf_reader)
             except Exception as e:
                 logger.warning("Could not read %s and convert it to Document, skipping. %s", source, e)
                 continue
@@ -57,10 +73,11 @@ class PyPDFToDocument:
 
     def _get_pdf_reader(self, source: Union[str, Path, ByteStream]) -> PdfReader:
         """
-        Creates a PdfReader object from the given source.
+        Creates a PdfReader object from a given source, which can be a file path or a ByteStream object.
 
-        :param source: PDF file data source
-        :return: PdfReader object
+        :param source: The source of the PDF data.
+        :return: A PdfReader instance initialized with the PDF data from the source.
+        :raises ValueError: If the source type is not supported.
         """
         if isinstance(source, (str, Path)):
             return PdfReader(str(source))
