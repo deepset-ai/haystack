@@ -1,3 +1,4 @@
+import io
 import hashlib
 import logging
 from dataclasses import asdict, dataclass, field, fields
@@ -145,7 +146,7 @@ class Document(metaclass=_BackwardCompatible):
         `dataframe` and `blob` fields are converted to their original types.
         """
         if (dataframe := data.get("dataframe")) is not None:
-            data["dataframe"] = pandas.read_json(dataframe)
+            data["dataframe"] = pandas.read_json(io.StringIO(dataframe))
         if blob := data.get("blob"):
             data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
         return cls(**data)
