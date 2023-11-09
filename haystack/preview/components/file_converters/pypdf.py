@@ -20,7 +20,6 @@ class PyPDFConverter(Protocol):
     """
 
     def convert(self, reader: "PdfReader") -> Document:
-        """Convert a PdfReader instance to a Document instance."""
         ...
 
 
