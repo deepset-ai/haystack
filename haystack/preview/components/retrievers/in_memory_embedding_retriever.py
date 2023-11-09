@@ -7,9 +7,9 @@ from haystack.preview.document_stores import InMemoryDocumentStore, document_sto
 @component
 class InMemoryEmbeddingRetriever:
     """
-    A component for retrieving documents from a InMemoryDocumentStore using a vector similarity metric.
+    Uses a vector similarity metric to retrieve documents from the InMemoryDocumentStore.
 
-    Needs to be connected to a InMemoryDocumentStore to run.
+    Needs to be connected to the InMemoryDocumentStore to run.
     """
 
     def __init__(
@@ -21,13 +21,14 @@ class InMemoryEmbeddingRetriever:
         return_embedding: bool = False,
     ):
         """
-        Create a InMemoryEmbeddingRetriever component.
+        Create the InMemoryEmbeddingRetriever component.
 
         :param document_store: An instance of InMemoryDocumentStore.
-        :param filters: A dictionary with filters to narrow down the search space. Default is None.
-        :param top_k: The maximum number of documents to retrieve. Default is 10.
-        :param scale_score: Whether to scale the scores of the retrieved documents or not. Default is True.
-        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
+        :param filters: A dictionary with filters to narrow down the search space. Defaults to `None`.
+        :param top_k: The maximum number of documents to retrieve. Defaults to `10`.
+        :param scale_score: Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant. If set to `False`, uses raw similarity scores.
+        Defaults to `True`.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is `False`.
 
         :raises ValueError: If the specified top_k is not > 0.
         """
@@ -37,7 +38,7 @@ class InMemoryEmbeddingRetriever:
         self.document_store = document_store
 
         if top_k <= 0:
-            raise ValueError(f"top_k must be > 0, but got {top_k}")
+            raise ValueError(f"top_k must be greater than 0. Currently, top_k is {top_k}")
 
         self.filters = filters
         self.top_k = top_k
@@ -97,11 +98,12 @@ class InMemoryEmbeddingRetriever:
         :param query_embedding: Embedding of the query.
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The maximum number of documents to return.
-        :param scale_score: Whether to scale the scores of the retrieved documents or not.
+        :param scale_score: Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant. If set to `False`, uses raw similarity scores.
+        Defaults to `True`.
         :param return_embedding: Whether to return the embedding of the retrieved Documents.
         :return: The retrieved documents.
 
-        :raises ValueError: If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
+        :raises ValueError: If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
         """
         if filters is None:
             filters = self.filters
