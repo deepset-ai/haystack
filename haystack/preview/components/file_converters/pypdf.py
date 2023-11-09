@@ -19,8 +19,9 @@ class PyPDFConverter(Protocol):
     A protocol that defines a converter which takes a PdfReader object and converts it into a Document object.
     """
 
-    def convert(self, reader: PdfReader) -> Document:
+    def convert(self, reader: "PdfReader") -> Document:
         """Convert a PdfReader instance to a Document instance."""
+        ...
 
 
 class DefaultConverter:
@@ -28,7 +29,7 @@ class DefaultConverter:
     The default converter class that extracts text from a PdfReader object's pages and returns a Document.
     """
 
-    def convert(self, reader: PdfReader) -> Document:
+    def convert(self, reader: "PdfReader") -> Document:
         """Extract text from the PDF and return a Document object with the text content."""
         text = "".join(page.extract_text() for page in reader.pages if page.extract_text())
         return Document(content=text)
@@ -71,7 +72,7 @@ class PyPDFToDocument:
 
         return {"documents": documents}
 
-    def _get_pdf_reader(self, source: Union[str, Path, ByteStream]) -> PdfReader:
+    def _get_pdf_reader(self, source: Union[str, Path, ByteStream]) -> "PdfReader":
         """
         Creates a PdfReader object from a given source, which can be a file path or a ByteStream object.
 
