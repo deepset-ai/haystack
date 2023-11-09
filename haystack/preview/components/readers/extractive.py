@@ -85,7 +85,7 @@ class ExtractiveReader:
         self.answers_per_seq = answers_per_seq
         self.no_answer = no_answer
         self.calibration_factor = calibration_factor
-        self.model_kwargs = model_kwargs
+        self.model_kwargs = model_kwargs or {}
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -126,14 +126,9 @@ class ExtractiveReader:
             else:
                 self.device = self.device or "cpu:0"
 
-            if self.model_kwargs:
-                kwargs = {"token": self.token, **self.model_kwargs}
-            else:
-                kwargs = {"token": self.token}
-
-            self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_name_or_path, **kwargs).to(
-                self.device
-            )
+            self.model = AutoModelForQuestionAnswering.from_pretrained(
+                self.model_name_or_path, token=self.token, **self.model_kwargs
+            ).to(self.device)
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
     def _flatten_documents(
