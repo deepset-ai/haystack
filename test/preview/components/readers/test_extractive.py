@@ -89,6 +89,30 @@ example_documents = [
 
 @pytest.mark.unit
 def test_to_dict():
+    component = ExtractiveReader("my-model", token="secret-token", model_kwargs={"torch_dtype": "auto"})
+    data = component.to_dict()
+
+    assert data == {
+        "type": "ExtractiveReader",
+        "init_parameters": {
+            "model_name_or_path": "my-model",
+            "device": None,
+            "token": None,  # don't serialize valid tokens
+            "top_k": 20,
+            "confidence_threshold": None,
+            "max_seq_length": 384,
+            "stride": 128,
+            "max_batch_size": None,
+            "answers_per_seq": None,
+            "no_answer": True,
+            "calibration_factor": 0.1,
+            "model_kwargs": {"torch_dtype": "auto"},
+        },
+    }
+
+
+@pytest.mark.unit
+def test_to_dict_empty_model_kwargs():
     component = ExtractiveReader("my-model", token="secret-token")
     data = component.to_dict()
 
@@ -106,6 +130,7 @@ def test_to_dict():
             "answers_per_seq": None,
             "no_answer": True,
             "calibration_factor": 0.1,
+            "model_kwargs": {},
         },
     }
 
