@@ -45,7 +45,7 @@ class ExtractiveReader:
         answers_per_seq: Optional[int] = None,
         no_answer: bool = True,
         calibration_factor: float = 0.1,
-        model_kwargs: Optional[dict] = None,
+        model_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Creates an ExtractiveReader
