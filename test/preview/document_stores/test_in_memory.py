@@ -72,6 +72,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
 
     @pytest.mark.unit
     def test_written_documents_count(self, docstore: InMemoryDocumentStore):
+        # FIXME Remove after the document store base tests have been rewritten
         documents = [Document(content=f"Hello world #{i}") for i in range(10)]
         docs_written = docstore.write_documents(documents[0:2])
         assert docs_written == 2
