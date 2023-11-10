@@ -17,7 +17,7 @@ class InMemoryEmbeddingRetriever:
         document_store: InMemoryDocumentStore,
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
-        scale_score: bool = True,
+        scale_score: bool = False,
         return_embedding: bool = False,
     ):
         """
@@ -27,7 +27,7 @@ class InMemoryEmbeddingRetriever:
         :param filters: A dictionary with filters to narrow down the search space. Defaults to `None`.
         :param top_k: The maximum number of documents to retrieve. Defaults to `10`.
         :param scale_score: Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant. If set to `False`, uses raw similarity scores.
-        Defaults to `True`.
+        Defaults to `False`.
         :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is `False`.
 
         :raises ValueError: If the specified top_k is not > 0.
@@ -98,8 +98,8 @@ class InMemoryEmbeddingRetriever:
         :param query_embedding: Embedding of the query.
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The maximum number of documents to return.
-        :param scale_score: Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant. If set to `False`, uses raw similarity scores.
-        Defaults to `True`.
+        :param scale_score: Scales the similarity score to a unit interval in the range of 0 to 1, where 1 means extremely relevant. If set to `False`, uses raw similarity scores.
+            If not specified, the value provided at initialization is used.
         :param return_embedding: Whether to return the embedding of the retrieved Documents.
         :return: The retrieved documents.
 

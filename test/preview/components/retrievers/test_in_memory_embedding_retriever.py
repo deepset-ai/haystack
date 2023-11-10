@@ -16,21 +16,21 @@ class TestMemoryEmbeddingRetriever:
         retriever = InMemoryEmbeddingRetriever(InMemoryDocumentStore())
         assert retriever.filters is None
         assert retriever.top_k == 10
-        assert retriever.scale_score
+        assert retriever.scale_score is False
 
     @pytest.mark.unit
     def test_init_with_parameters(self):
         retriever = InMemoryEmbeddingRetriever(
-            InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=False
+            InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=True
         )
         assert retriever.filters == {"name": "test.txt"}
         assert retriever.top_k == 5
-        assert not retriever.scale_score
+        assert retriever.scale_score
 
     @pytest.mark.unit
     def test_init_with_invalid_top_k_parameter(self):
         with pytest.raises(ValueError):
-            InMemoryEmbeddingRetriever(InMemoryDocumentStore(), top_k=-2, scale_score=False)
+            InMemoryEmbeddingRetriever(InMemoryDocumentStore(), top_k=-2)
 
     @pytest.mark.unit
     def test_to_dict(self):
@@ -46,7 +46,7 @@ class TestMemoryEmbeddingRetriever:
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": None,
                 "top_k": 10,
-                "scale_score": True,
+                "scale_score": False,
                 "return_embedding": False,
             },
         }
@@ -60,7 +60,7 @@ class TestMemoryEmbeddingRetriever:
             document_store=document_store,
             filters={"name": "test.txt"},
             top_k=5,
-            scale_score=False,
+            scale_score=True,
             return_embedding=True,
         )
         data = component.to_dict()
@@ -70,7 +70,7 @@ class TestMemoryEmbeddingRetriever:
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
-                "scale_score": False,
+                "scale_score": True,
                 "return_embedding": True,
             },
         }
@@ -90,7 +90,7 @@ class TestMemoryEmbeddingRetriever:
         assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.filters == {"name": "test.txt"}
         assert component.top_k == 5
-        assert component.scale_score
+        assert component.scale_score is False
 
     @pytest.mark.unit
     def test_from_dict_without_docstore(self):
