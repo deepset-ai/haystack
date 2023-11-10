@@ -43,7 +43,14 @@ class BaseTranslator(BaseComponent):
         answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
     ):
-        """Method that gets executed when this class is used as a Node in a Haystack Pipeline"""
+        """
+        Method that gets executed when this class is used as a Node in a Haystack Pipeline.
+        :param results: Generated QA pairs to translate.
+        :param query: The query string to translate.
+        :param documents: The documents to translate.
+        :param answers: Passes the answers to the TranslationWrapperPipeline. See [Haystack documentation](https://docs.haystack.deepset.ai/docs/ready_made_pipelines#translationwrapperpipeline) for more details.
+        :param dict_key: If you pass a dictionary in `documents`, you can specify here the field which shall be translated.
+        """
         translation_results = {}
 
         if results is not None:
@@ -80,6 +87,12 @@ class BaseTranslator(BaseComponent):
         answers: Optional[Union[List[Answer], List[List[Answer]]]] = None,
         batch_size: Optional[int] = None,
     ):
+        """
+        :param queries: List of query strings to translate.
+        :param documents: The documents to translate.
+        :param answers:
+        :param batch_size: Number of records to process at a time.
+        """
         translation_results = {}
         if queries:
             translation_results["queries"] = self.translate_batch(queries=queries)

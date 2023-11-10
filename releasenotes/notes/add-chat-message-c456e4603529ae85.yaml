@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Introduce ChatMessage data class to facilitate structured handling and processing of message content
+    within LLM chat interactions.

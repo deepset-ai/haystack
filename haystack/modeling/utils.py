@@ -112,6 +112,13 @@ def initialize_device_settings(
             else:
                 devices_to_use = [torch.device("cuda:0")]
                 n_gpu = 1
+        elif (
+            hasattr(torch.backends, "mps")
+            and torch.backends.mps.is_available()
+            and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
+        ):
+            devices_to_use = [torch.device("mps")]
+            n_gpu = 1
         else:
             devices_to_use = [torch.device("cpu")]
             n_gpu = 0
@@ -180,6 +187,7 @@ def all_gather_list(data, group=None, max_size=16384):
         data (Any): data from the local worker to be gathered on other workers
         group (optional): group of the collective
     """
+    # pylint: disable=all
     SIZE_STORAGE_BYTES = 4  # int32 to encode the payload size
 
     enc = pickle.dumps(data)

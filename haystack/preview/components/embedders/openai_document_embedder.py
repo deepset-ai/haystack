@@ -5,7 +5,7 @@ import openai
 from tqdm import tqdm
 
 
-from haystack.preview import component, Document, default_to_dict, default_from_dict
+from haystack.preview import component, Document, default_to_dict
 
 
 @component
@@ -13,6 +13,21 @@ class OpenAIDocumentEmbedder:
     """
     A component for computing Document embeddings using OpenAI models.
     The embedding of each Document is stored in the `embedding` field of the Document.
+
+    Usage example:
+    ```python
+    from haystack.preview import Document
+    from haystack.preview.components.embedders import OpenAIDocumentEmbedder
+
+    doc = Document(text="I love pizza!")
+
+    document_embedder = OpenAIDocumentEmbedder()
+
+    result = document_embedder.run([doc])
+    print(result['documents'][0].embedding)
+
+    # [0.017020374536514282, -0.023255806416273117, ...]
+    ```
     """
 
     def __init__(
@@ -43,7 +58,8 @@ class OpenAIDocumentEmbedder:
         :param metadata_fields_to_embed: List of meta fields that should be embedded along with the Document text.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
-
+        # if the user does not provide the API key, check if it is set in the module client
+        api_key = api_key or openai.api_key
         if api_key is None:
             try:
                 api_key = os.environ["OPENAI_API_KEY"]
@@ -66,6 +82,12 @@ class OpenAIDocumentEmbedder:
         if organization is not None:
             openai.organization = organization
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"model": self.model_name}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         This method overrides the default serializer in order to avoid leaking the `api_key` value passed
@@ -83,13 +105,6 @@ class OpenAIDocumentEmbedder:
             embedding_separator=self.embedding_separator,
         )
 
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIDocumentEmbedder":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
-
     def _prepare_texts_to_embed(self, documents: List[Document]) -> List[str]:
         """
         Prepare the texts to embed by concatenating the Document text with the metadata fields to embed.
@@ -97,13 +112,13 @@ class OpenAIDocumentEmbedder:
         texts_to_embed = []
         for doc in documents:
             meta_values_to_embed = [
-                str(doc.metadata[key])
+                str(doc.meta[key])
                 for key in self.metadata_fields_to_embed
-                if key in doc.metadata and doc.metadata[key] is not None
+                if key in doc.meta and doc.meta[key] is not None
             ]
 
             text_to_embed = (
-                self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.text or ""]) + self.suffix
+                self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""]) + self.suffix
             )
 
             # copied from OpenAI embedding_utils (https://github.com/openai/openai-python/blob/main/openai/embeddings_utils.py)
@@ -112,7 +127,7 @@ class OpenAIDocumentEmbedder:
             texts_to_embed.append(text_to_embed)
         return texts_to_embed
 
-    def _embed_batch(self, texts_to_embed: List[str], batch_size: int) -> Tuple[List[str], Dict[str, Any]]:
+    def _embed_batch(self, texts_to_embed: List[str], batch_size: int) -> Tuple[List[List[float]], Dict[str, Any]]:
         """
         Embed a list of texts in batches.
         """
@@ -155,10 +170,7 @@ class OpenAIDocumentEmbedder:
 
         embeddings, metadata = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
-        documents_with_embeddings = []
         for doc, emb in zip(documents, embeddings):
-            doc_as_dict = doc.to_dict()
-            doc_as_dict["embedding"] = emb
-            documents_with_embeddings.append(Document.from_dict(doc_as_dict))
+            doc.embedding = emb
 
-        return {"documents": documents_with_embeddings, "metadata": metadata}
+        return {"documents": documents, "metadata": metadata}
