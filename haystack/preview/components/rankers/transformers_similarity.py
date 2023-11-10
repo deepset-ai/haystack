@@ -25,7 +25,7 @@ class TransformersSimilarityRanker:
     from haystack.preview.components.rankers import TransformersSimilarityRanker
 
     ranker = TransformersSimilarityRanker()
-    docs = [Document(text="Paris"), Document(text="Berlin")]
+    docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "City in Germany"
     output = ranker.run(query=query, documents=docs)
     docs = output["documents"]
