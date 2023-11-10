@@ -4,15 +4,12 @@ from unittest.mock import patch, Mock
 import pytest
 import torch
 
-from haystack.preview.components.generators.hugging_face.hugging_face_local import (
-    HuggingFaceLocalGenerator,
-    StopWordsCriteria,
-)
+from haystack.preview.components.generators.hugging_face_local import HuggingFaceLocalGenerator, StopWordsCriteria
 
 
 class TestHuggingFaceLocalGenerator:
     @pytest.mark.unit
-    @patch("haystack.preview.components.generators.hugging_face.hugging_face_local.model_info")
+    @patch("haystack.preview.components.generators.hugging_face_local.model_info")
     def test_init_default(self, model_info_mock):
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
         generator = HuggingFaceLocalGenerator()
@@ -71,7 +68,7 @@ class TestHuggingFaceLocalGenerator:
         }
 
     @pytest.mark.unit
-    @patch("haystack.preview.components.generators.hugging_face.hugging_face_local.model_info")
+    @patch("haystack.preview.components.generators.hugging_face_local.model_info")
     def test_init_task_inferred_from_model_name(self, model_info_mock):
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
         generator = HuggingFaceLocalGenerator(model_name_or_path="google/flan-t5-base")
@@ -140,7 +137,7 @@ class TestHuggingFaceLocalGenerator:
             )
 
     @pytest.mark.unit
-    @patch("haystack.preview.components.generators.hugging_face.hugging_face_local.model_info")
+    @patch("haystack.preview.components.generators.hugging_face_local.model_info")
     def test_to_dict_default(self, model_info_mock):
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
 
@@ -183,7 +180,7 @@ class TestHuggingFaceLocalGenerator:
         }
 
     @pytest.mark.unit
-    @patch("haystack.preview.components.generators.hugging_face.hugging_face_local.pipeline")
+    @patch("haystack.preview.components.generators.hugging_face_local.pipeline")
     def test_warm_up(self, pipeline_mock):
         generator = HuggingFaceLocalGenerator(
             model_name_or_path="google/flan-t5-base", task="text2text-generation", token="test-token"
@@ -197,7 +194,7 @@ class TestHuggingFaceLocalGenerator:
         )
 
     @pytest.mark.unit
-    @patch("haystack.preview.components.generators.hugging_face.hugging_face_local.pipeline")
+    @patch("haystack.preview.components.generators.hugging_face_local.pipeline")
     def test_warm_up_doesn_reload(self, pipeline_mock):
         generator = HuggingFaceLocalGenerator(
             model_name_or_path="google/flan-t5-base", task="text2text-generation", token="test-token"
@@ -229,7 +226,7 @@ class TestHuggingFaceLocalGenerator:
         assert results == {"replies": ["Rome"]}
 
     @pytest.mark.unit
-    @patch("haystack.preview.components.generators.hugging_face.hugging_face_local.pipeline")
+    @patch("haystack.preview.components.generators.hugging_face_local.pipeline")
     def test_run_empty_prompt(self, pipeline_mock):
         generator = HuggingFaceLocalGenerator(
             model_name_or_path="google/flan-t5-base",
@@ -309,9 +306,9 @@ class TestHuggingFaceLocalGenerator:
         assert present_and_continuous
 
     @pytest.mark.unit
-    @patch("haystack.preview.components.generators.hugging_face.hugging_face_local.pipeline")
-    @patch("haystack.preview.components.generators.hugging_face.hugging_face_local.StopWordsCriteria")
-    @patch("haystack.preview.components.generators.hugging_face.hugging_face_local.StoppingCriteriaList")
+    @patch("haystack.preview.components.generators.hugging_face_local.pipeline")
+    @patch("haystack.preview.components.generators.hugging_face_local.StopWordsCriteria")
+    @patch("haystack.preview.components.generators.hugging_face_local.StoppingCriteriaList")
     def test_warm_up_set_stopping_criteria_list(
         self, pipeline_mock, stop_words_criteria_mock, stopping_criteria_list_mock
     ):
