@@ -1,0 +1,2 @@
+preview:
+  - Extend write_documents to return the number of documents actually written in the document store
