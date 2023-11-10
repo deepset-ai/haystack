@@ -55,6 +55,7 @@ def hybrid_search_faq_pipeline():
     # Convert Dataframe to list of dicts and index them in our DocumentStore
     docs_to_index = df.to_dict(orient="records")
     document_store.write_documents(docs_to_index)
+    document_store.update_embeddings(retriever=dense_retriever)
 
     # Initialize a Pipeline (this time without a reader) and ask questions
     pipeline = Pipeline()

@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Added DocumentLanguageClassifier component so that Documents can be routed to different components based on the detected language for example during preprocessing.
