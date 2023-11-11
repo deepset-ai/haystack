@@ -1,3 +1,4 @@
+import copy
 import typing
 from typing import List
 from unittest import mock
@@ -293,3 +294,15 @@ class TestRouter:
 
         # check that the result is the same and correct
         assert result1 == result2 and result1["message"].content == message.content
+
+    @pytest.mark.unit
+    def test_router_serialization_idempotence(self):
+        routes = [
+            {"condition": "{{streams|length < 2}}", "output": "{{message}}", "output_type": ChatMessage},
+            {"condition": "{{streams|length >= 2}}", "output": "{{streams}}", "output_type": List[int]},
+        ]
+        router = ConditionalRouter(routes)
+        # invoke to_dict twice and check that the result is the same
+        router_dict_first_invocation = copy.deepcopy(router.to_dict())
+        router_dict_second_invocation = router.to_dict()
+        assert router_dict_first_invocation == router_dict_second_invocation

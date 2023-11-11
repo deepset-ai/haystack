@@ -32,6 +32,10 @@ def serialize(target: Any) -> str:
     :return: The string representation of the type.
     :raises ValueError: If the type cannot be serialized.
     """
+    # If the target is a string and contains a dot, treat it as an already serialized type
+    if isinstance(target, str) and "." in target:
+        return target
+
     # Determine if the target is a type or an instance of a typing object
     is_type_or_typing = isinstance(target, type) or bool(get_origin(target))
     type_obj = target if is_type_or_typing else type(target)
