@@ -193,12 +193,17 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         extra_payload = {"messages": messages}
         payload = {**base_payload, **extra_payload}
         if not stream:
-            response = openai_request(url=self.url, headers=self.headers, payload=payload)
+            response = openai_request(url=self.url, headers=self.headers, payload=payload, timeout=self.timeout)
             _check_openai_finish_reason(result=response, payload=payload)
             assistant_response = [choice["message"]["content"].strip() for choice in response["choices"]]
         else:
             response = openai_request(
-                url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
+                url=self.url,
+                headers=self.headers,
+                payload=payload,
+                timeout=self.timeout,
+                read_response=False,
+                stream=True,
             )
             handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
             assistant_response = self._process_streaming_response(response=response, stream_handler=handler)
