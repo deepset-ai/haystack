@@ -568,7 +568,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
     def log_params(self):
         """
-        Logs parameteres to generic logger MlLogger
+        Logs parameters to generic logger MlLogger
         """
         params = {
             "lm_type": self.language_model.__class__.__name__,
@@ -644,7 +644,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             model=model_name,
             output=output_path / "model.onnx",
             opset=opset_version,
-            use_external_format=True if model_type == "XLMRoberta" else False,
+            use_external_format=model_type == "XLMRoberta",
             use_auth_token=use_auth_token,
         )
 

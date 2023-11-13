@@ -79,8 +79,8 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         :param port: port(s) of elasticsearch nodes
         :param username: username (standard authentication via http_auth)
         :param password: password (standard authentication via http_auth)
-        :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
-        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param api_key_id: ID of the API key (alternative authentication mode to the above http_auth)
+        :param api_key: Secret value of the API key (alternative authentication mode to the above http_auth)
         :param aws4auth: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
         :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
         :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
@@ -299,9 +299,10 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         return client
 
     def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
-        if logger.isEnabledFor(logging.DEBUG):
-            if self.client.options(headers=headers).indices.exists_alias(name=index_name):
-                logger.debug("Index name %s is an alias.", index_name)
+        if logger.isEnabledFor(logging.DEBUG) and self.client.options(headers=headers).indices.exists_alias(
+            name=index_name
+        ):
+            logger.debug("Index name %s is an alias.", index_name)
 
         return self.client.options(headers=headers).indices.exists(index=index_name)
 

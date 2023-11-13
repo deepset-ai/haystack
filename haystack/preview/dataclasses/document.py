@@ -1,217 +1,169 @@
-from typing import List, Any, Dict, Literal, Optional, Type
-
-import json
+import io
 import hashlib
 import logging
-from pathlib import Path
-from dataclasses import dataclass, field, fields, asdict
+from dataclasses import asdict, dataclass, field, fields
+from typing import Any, Dict, List, Optional, Type, cast
 
 import numpy
 import pandas
 
+from haystack.preview.dataclasses.byte_stream import ByteStream
 
 logger = logging.getLogger(__name__)
 
-ContentType = Literal["text", "table", "image", "audio"]
 
-PYTHON_TYPES_FOR_CONTENT: Dict[ContentType, type] = {
-    "text": str,
-    "table": pandas.DataFrame,
-    "image": Path,
-    "audio": Path,
-}
-
-EQUALS_BY_TYPE = {
-    Path: lambda self, other: self.absolute() == other.absolute(),
-    numpy.ndarray: lambda self, other: self.shape == other.shape and (self == other).all(),
-    pandas.DataFrame: lambda self, other: self.equals(other),
-}
-
-
-def _create_id(
-    classname: str, content: Any, metadata: Optional[Dict[str, Any]] = None, id_hash_keys: Optional[List[str]] = None
-):
+class _BackwardCompatible(type):
     """
-    Creates a hash of the content given that acts as the document's ID.
-    """
-    if not metadata:
-        metadata = {}
-    content_to_hash = f"{classname}:{content}"
-    if id_hash_keys:
-        content_to_hash = ":".join([content_to_hash, *[str(metadata.get(key, "")) for key in id_hash_keys]])
-    return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
-
-
-def _safe_equals(obj_1, obj_2) -> bool:
-    """
-    Compares two dictionaries for equality, taking arrays, dataframes and other objects into account.
-    """
-    if type(obj_1) != type(obj_2):
-        return False
-
-    if isinstance(obj_1, dict):
-        if obj_1.keys() != obj_2.keys():
-            return False
-        return all(_safe_equals(obj_1[key], obj_2[key]) for key in obj_1)
-
-    for type_, equals in EQUALS_BY_TYPE.items():
-        if isinstance(obj_1, type_):
-            return equals(obj_1, obj_2)
-
-    return obj_1 == obj_2
-
-
-class DocumentEncoder(json.JSONEncoder):
-    """
-    Encodes more exotic datatypes like pandas dataframes or file paths.
+    Metaclass that handles Document backward compatibility.
     """
 
-    def default(self, obj):
-        if isinstance(obj, numpy.ndarray):
-            return obj.tolist()
-        if isinstance(obj, pandas.DataFrame):
-            return obj.to_json()
-        if isinstance(obj, Path):
-            return str(obj.absolute())
-        try:
-            return json.JSONEncoder.default(self, obj)
-        except TypeError:
-            return str(obj)
+    def __call__(cls, *args, **kwargs):
+        """
+        Called before Document.__init__, will remap legacy fields to new ones.
+        Also handles building a Document from a flattened dictionary.
+        """
+        # Move `content` to new fields depending on the type
+        content = kwargs.get("content")
+        if isinstance(content, pandas.DataFrame):
+            kwargs["dataframe"] = content
+            del kwargs["content"]
+
+        # Not used anymore
+        if "content_type" in kwargs:
+            del kwargs["content_type"]
+
+        # Embedding were stored as NumPy arrays in 1.x, so we convert it to the new type
+        if isinstance(embedding := kwargs.get("embedding"), numpy.ndarray):
+            kwargs["embedding"] = embedding.tolist()
+
+        # id_hash_keys is not used anymore
+        if "id_hash_keys" in kwargs:
+            del kwargs["id_hash_keys"]
+
+        if kwargs.get("meta") is None:
+            # This must be a flattened Document, so we treat all keys that are not
+            # Document fields as metadata.
+            meta = {}
+            field_names = [f.name for f in fields(cast(Type[Document], cls))]
+            keys = list(kwargs.keys())  # get a list of the keys as we'll modify the dict in the loop
+            for key in keys:
+                if key in field_names:
+                    continue
+                meta[key] = kwargs.pop(key)
+            kwargs["meta"] = meta
+
+        return super().__call__(*args, **kwargs)
 
 
-class DocumentDecoder(json.JSONDecoder):
-    """
-    Decodes more exotic datatypes like pandas dataframes or file paths.
-    """
-
-    def __init__(self, *_, object_hook=None, **__):
-        super().__init__(object_hook=object_hook or self.document_decoder)
-
-    def document_decoder(self, dictionary):
-        # Decode content types
-        if "content_type" in dictionary:
-            if dictionary["content_type"] == "table":
-                dictionary["content"] = pandas.read_json(dictionary.get("content", None))
-            elif dictionary["content_type"] == "image":
-                dictionary["content"] = Path(dictionary.get("content", None))
-
-        # Decode embeddings
-        if "embedding" in dictionary and dictionary.get("embedding"):
-            dictionary["embedding"] = numpy.array(dictionary.get("embedding"))
-
-        return dictionary
-
-
-@dataclass(frozen=True)
-class Document:
+@dataclass
+class Document(metaclass=_BackwardCompatible):
     """
     Base data class containing some data to be queried.
     Can contain text snippets, tables, and file paths to images or audios.
-    Documents can be sorted by score, saved to/from dictionary and JSON, and are immutable.
+    Documents can be sorted by score and saved to/from dictionary and JSON.
 
-    Immutability is due to the fact that the document's ID depends on its content, so upon changing the content, also
-    the ID should change.  To avoid keeping IDs in sync with the content by using properties, and asking docstores to
-    be aware of this corner case, we decide to make Documents immutable and remove the issue. If you need to modify a
-    Document, consider using `to_dict()`, modifying the dict, and then create a new Document object using
-    `Document.from_dict()`.
-
-    Note that `id_hash_keys` are referring to keys in the metadata. `content` is always included in the ID hash.
-    In case of file-based documents (images, audios), the content that is hashed is the file paths,
-    so if the file is moved, the hash is different, but if the file is modified without renaming it, the has will
-    not differ.
+    :param id: Unique identifier for the document. When not set, it's generated based on the Document fields' values.
+    :param content: Text of the document, if the document contains text.
+    :param dataframe: Pandas dataframe with the document's content, if the document contains tabular data.
+    :param blob: Binary data associated with the document, if the document has any binary data associated with it.
+    :param meta: Additional custom metadata for the document. Must be JSON-serializable.
+    :param score: Score of the document. Used for ranking, usually assigned by retrievers.
+    :param embedding: Vector representation of the document.
     """
 
-    id: str = field(default_factory=str)
-    content: Any = field(default_factory=lambda: None)
-    content_type: ContentType = "text"
-    metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
-    id_hash_keys: List[str] = field(default_factory=list, hash=False)
-    score: Optional[float] = field(default=None, compare=True)
-    embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
+    id: str = field(default="")
+    content: Optional[str] = field(default=None)
+    dataframe: Optional[pandas.DataFrame] = field(default=None)
+    blob: Optional[ByteStream] = field(default=None)
+    meta: Dict[str, Any] = field(default_factory=dict)
+    score: Optional[float] = field(default=None)
+    embedding: Optional[List[float]] = field(default=None, repr=False)
 
     def __str__(self):
-        return f"{self.__class__.__name__}('{self.content}')"
+        fields = []
+        if self.content is not None:
+            fields.append(
+                f"content: '{self.content}'" if len(self.content) < 100 else f"content: '{self.content[:100]}...'"
+            )
+        if self.dataframe is not None:
+            fields.append(f"dataframe: {self.dataframe.shape}")
+        if self.blob is not None:
+            fields.append(f"blob: {len(self.blob.data)} bytes")
+        fields_str = ", ".join(fields)
+        return f"{self.__class__.__name__}(id={self.id}, {fields_str})"
 
     def __eq__(self, other):
         """
-        Compares documents for equality. Compares `embedding` properly and checks the metadata taking care of
-        embeddings, paths, dataframes, nested dictionaries and other objects.
+        Compares documents for equality. Uses the id to check whether the documents are supposed to be the same.
         """
         if type(self) == type(other):
-            return _safe_equals(self.to_dict(), other.to_dict())
+            return self.id == other.id
         return False
 
     def __post_init__(self):
         """
-        Generate the ID based on the init parameters and make sure that `content_type` matches the actual type of
-        content.
+        Generate the ID based on the init parameters.
         """
-        # Validate content_type
-        if self.content_type not in PYTHON_TYPES_FOR_CONTENT:
-            raise ValueError(
-                f"Content type unknown: '{self.content_type}'. "
-                f"Choose among: {', '.join(PYTHON_TYPES_FOR_CONTENT.keys())}"
-            )
-        if not isinstance(self.content, PYTHON_TYPES_FOR_CONTENT[self.content_type]):
-            raise ValueError(
-                f"The type of content ({type(self.content)}) does not match the "
-                f"content type: '{self.content_type}' expects '{PYTHON_TYPES_FOR_CONTENT[self.content_type]}'."
-            )
-        # Validate metadata
-        for key in self.metadata:
-            if key in [field.name for field in fields(self)]:
-                raise ValueError(f"Cannot name metadata fields as top-level document fields, like '{key}'.")
+        # Generate an id only if not explicitly set
+        self.id = self.id or self._create_id()
 
-        # Check if id_hash_keys are all present in the meta
-        for key in self.id_hash_keys:
-            if key not in self.metadata:
-                raise ValueError(
-                    f"'{key}' must be present in the metadata of the Document if you want to use it to generate the ID."
-                )
-        # Generate the ID
-        hashed_content = _create_id(
-            classname=self.__class__.__name__,
-            content=str(self.content),
-            metadata=self.metadata,
-            id_hash_keys=self.id_hash_keys,
-        )
+    def _create_id(self):
+        """
+        Creates a hash of the given content that acts as the document's ID.
+        """
+        text = self.content or None
+        dataframe = self.dataframe.to_json() if self.dataframe is not None else None
+        blob = self.blob.data if self.blob is not None else None
+        mime_type = self.blob.mime_type if self.blob is not None else None
+        meta = self.meta or {}
+        embedding = self.embedding if self.embedding is not None else None
+        data = f"{text}{dataframe}{blob}{mime_type}{meta}{embedding}"
+        return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
-        # Note: we need to set the id this way because the dataclass is frozen. See the docstring.
-        object.__setattr__(self, "id", hashed_content)
+    def to_dict(self, flatten=True) -> Dict[str, Any]:
+        """
+        Converts Document into a dictionary.
+        `dataframe` and `blob` fields are converted to JSON-serializable types.
 
-    def to_dict(self):
+        :param flatten: Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
         """
-        Saves the Document into a dictionary.
-        """
-        return asdict(self)
+        data = asdict(self)
+        if (dataframe := data.get("dataframe")) is not None:
+            data["dataframe"] = dataframe.to_json()
+        if (blob := data.get("blob")) is not None:
+            data["blob"] = {"data": list(blob["data"]), "mime_type": blob["mime_type"]}
 
-    def to_json(self, json_encoder: Optional[Type[DocumentEncoder]] = None, **json_kwargs):
-        """
-        Saves the Document into a JSON string that can be later loaded back.
-        """
-        return json.dumps(self.to_dict(), cls=json_encoder or DocumentEncoder, **json_kwargs)
+        if flatten:
+            meta = data.pop("meta")
+            return {**data, **meta}
+
+        return data
 
     @classmethod
-    def from_dict(cls, dictionary):
+    def from_dict(cls, data: Dict[str, Any]) -> "Document":
         """
-        Creates a new Document object from a dictionary of its fields.
+        Creates a new Document object from a dictionary.
+        `dataframe` and `blob` fields are converted to their original types.
         """
-        return cls(**dictionary)
+        if (dataframe := data.get("dataframe")) is not None:
+            data["dataframe"] = pandas.read_json(io.StringIO(dataframe))
+        if blob := data.get("blob"):
+            data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
+        return cls(**data)
 
-    @classmethod
-    def from_json(cls, data, json_decoder: Optional[Type[DocumentDecoder]] = None, **json_kwargs):
+    @property
+    def content_type(self):
         """
-        Creates a new Document object from a JSON string.
+        Returns the type of the content for the document.
+        This is necessary to keep backward compatibility with 1.x.
+        A ValueError will be raised if both `text` and `dataframe` fields are set
+        or both are missing.
         """
-        dictionary = json.loads(data, cls=json_decoder or DocumentDecoder, **json_kwargs)
-        return cls.from_dict(dictionary=dictionary)
+        if self.content is not None and self.dataframe is not None:
+            raise ValueError("Both text and dataframe are set.")
 
-    def flatten(self) -> Dict[str, Any]:
-        """
-        Returns a dictionary with all the fields of the document and the metadata on the same level.
-        This allows filtering by all document fields, not only the metadata.
-        """
-        dictionary = self.to_dict()
-        metadata = dictionary.pop("metadata", {})
-        dictionary = {**dictionary, **metadata}
-        return dictionary
+        if self.content is not None:
+            return "text"
+        elif self.dataframe is not None:
+            return "table"
+        raise ValueError("Neither text nor dataframe is set.")

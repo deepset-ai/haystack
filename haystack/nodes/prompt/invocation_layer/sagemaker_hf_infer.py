@@ -210,11 +210,11 @@ class SageMakerHFInferenceInvocationLayer(SageMakerBaseInvocationLayer):
             return self._extract_response(output)
         except requests.HTTPError as err:
             res = err.response
-            if res.status_code == 429:
-                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}")
+            if res.status_code == 429:  # type: ignore[union-attr]
+                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}")  # type: ignore[union-attr]
             raise SageMakerInferenceError(
-                f"SageMaker Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
-                status_code=res.status_code,
+                f"SageMaker Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",  # type: ignore[union-attr]
+                status_code=res.status_code,  # type: ignore[union-attr]
             )
 
     def _extract_response(self, json_response: Any) -> List[str]:
@@ -249,9 +249,8 @@ class SageMakerHFInferenceInvocationLayer(SageMakerBaseInvocationLayer):
         if isinstance(response, list):
             for sublist in response:
                 yield from self._unwrap_response(sublist)
-        elif isinstance(response, dict):
-            if "generated_text" in response or "generated_texts" in response:
-                yield response
+        elif isinstance(response, dict) and ("generated_text" in response or "generated_texts" in response):
+            yield response
 
     @classmethod
     def get_test_payload(cls) -> Dict[str, str]:

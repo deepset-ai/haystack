@@ -3,11 +3,12 @@ import os
 import logging
 import platform
 import json
-from typing import Dict, Union, Tuple, Optional, List
+from typing import Dict, Union, Tuple, Optional, List, cast
+
+import httpx
 import requests
 import tenacity
 import tiktoken
-from tiktoken.model import MODEL_TO_ENCODING, MODEL_PREFIX_TO_ENCODING
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError, OpenAIUnauthorizedError
 from haystack.environment import (
@@ -65,18 +66,10 @@ def _openai_text_completion_tokenization_details(model_name: str):
     """
     tokenizer_name = "gpt2"
     max_tokens_limit = 2049  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
-    model_tokenizer = None
-
-    if model_name == "gpt-35-turbo":
-        # covering the lack of support in Tiktoken. https://github.com/openai/tiktoken/pull/72
-        model_tokenizer = "cl100k_base"
-    elif model_name in MODEL_TO_ENCODING:
-        model_tokenizer = MODEL_TO_ENCODING[model_name]
-    else:
-        for model_prefix, tokenizer in MODEL_PREFIX_TO_ENCODING.items():
-            if model_name.startswith(model_prefix):
-                model_tokenizer = tokenizer
-                break
+    try:
+        model_tokenizer = tiktoken.encoding_name_for_model(model_name)
+    except KeyError:
+        model_tokenizer = None
 
     if model_tokenizer:
         # Based on OpenAI models page, 'davinci' considers have 2049 tokens,
@@ -86,7 +79,7 @@ def _openai_text_completion_tokenization_details(model_name: str):
         if "text-davinci" in model_name:
             max_tokens_limit = 4097
             tokenizer_name = model_tokenizer
-        elif model_name.startswith("gpt-3.5-turbo-16k"):
+        elif model_name.startswith("gpt-3.5-turbo-16k") or model_name.startswith("gpt-35-turbo-16k"):
             max_tokens_limit = 16384
             tokenizer_name = model_tokenizer
         elif model_name.startswith("gpt-3"):
@@ -95,6 +88,9 @@ def _openai_text_completion_tokenization_details(model_name: str):
         # Ref: https://platform.openai.com/docs/models/gpt-4
         elif model_name.startswith("gpt-4-32k"):
             max_tokens_limit = 32768  # tokens
+            tokenizer_name = model_tokenizer
+        elif model_name.startswith("gpt-4-1106-preview"):
+            max_tokens_limit = 128000  # tokens
             tokenizer_name = model_tokenizer
         elif model_name.startswith("gpt-4"):
             max_tokens_limit = 8192  # tokens
@@ -154,6 +150,53 @@ def openai_request(
         return response
 
 
+@tenacity.retry(
+    reraise=True,
+    retry=tenacity.retry_if_exception_type(OpenAIError)
+    and tenacity.retry_if_not_exception_type(OpenAIUnauthorizedError),
+    wait=tenacity.wait_exponential(multiplier=OPENAI_BACKOFF),
+    stop=tenacity.stop_after_attempt(OPENAI_MAX_RETRIES),
+)
+async def openai_async_request(
+    url: str,
+    headers: Dict,
+    payload: Dict,
+    timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT,
+    read_response: bool = True,
+    **kwargs,
+):
+    """Make a request to the OpenAI API given a `url`, `headers`, `payload`, and `timeout`.
+
+    See `openai_request`.
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.request(
+            "POST", url, headers=headers, json=payload, timeout=cast(float, timeout), **kwargs
+        )
+
+    if read_response:
+        json_response = json.loads(response.text)
+
+    if response.status_code != 200:
+        openai_error: OpenAIError
+        if response.status_code == 429:
+            openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
+        elif response.status_code == 401:
+            openai_error = OpenAIUnauthorizedError(f"API key is invalid: {response.text}")
+        else:
+            openai_error = OpenAIError(
+                f"OpenAI returned an error.\n"
+                f"Status code: {response.status_code}\n"
+                f"Response body: {response.text}",
+                status_code=response.status_code,
+            )
+        raise openai_error
+    if read_response:
+        return json_response
+    else:
+        return response
+
+
 def check_openai_policy_violation(input: Union[List[str], str], headers: Dict) -> bool:
     """
     Calls the moderation endpoint to check if the text(s) violate the policy.
@@ -161,6 +204,26 @@ def check_openai_policy_violation(input: Union[List[str], str], headers: Dict) -
     Returns true if any of the input is flagged as any of ['sexual', 'hate', 'violence', 'self-harm', 'sexual/minors', 'hate/threatening', 'violence/graphic'].
     """
     response = openai_request(url=OPENAI_MODERATION_URL, headers=headers, payload={"input": input})
+    results = response["results"]
+    flagged = any(res["flagged"] for res in results)
+    if flagged:
+        for result in results:
+            if result["flagged"]:
+                logger.debug(
+                    "OpenAI Moderation API flagged the text '%s' as a potential policy violation of the following categories: %s",
+                    input,
+                    result["categories"],
+                )
+    return flagged
+
+
+async def check_openai_async_policy_violation(input: Union[List[str], str], headers: Dict) -> bool:
+    """
+    Calls the moderation endpoint to check if the text(s) violate the policy.
+    See [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation) for more details.
+    Returns true if any of the input is flagged as any of ['sexual', 'hate', 'violence', 'self-harm', 'sexual/minors', 'hate/threatening', 'violence/graphic'].
+    """
+    response = await openai_async_request(url=OPENAI_MODERATION_URL, headers=headers, payload={"input": input})
     results = response["results"]
     flagged = any(res["flagged"] for res in results)
     if flagged:

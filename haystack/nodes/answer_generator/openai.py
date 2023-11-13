@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import List, Optional, Tuple, Union
+import warnings
 
 from haystack import Document
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
@@ -21,6 +22,10 @@ OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 
 class OpenAIAnswerGenerator(BaseGenerator):
     """
+    This component is now deprecated and will be removed in future versions.
+    Use `PromptNode` instead of `OpenAIAnswerGenerator`,
+    as explained in https://haystack.deepset.ai/tutorials/22_pipeline_with_promptnode.
+
     Uses the GPT-3 models from the OpenAI API to generate Answers based on the Documents it receives.
     The Documents can come from a Retriever or you can supply them manually.
 
@@ -53,10 +58,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
         """
         :param api_key: Your API key from OpenAI. It is required for this node to work.
         :param azure_base_url: The base URL for the Azure OpenAI API. If not supplied, Azure OpenAI API will not be used.
-                               This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com'
-
-        :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
-                                     will not be used.
+                               This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com`.
+        :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API will not be used.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
@@ -83,22 +86,20 @@ class OpenAIAnswerGenerator(BaseGenerator):
                          format you'd like. We recommend adding 2 to 3 examples.
                          If not supplied, the default from OpenAI API docs is used:
                          `[["Q: What is human life expectancy in the United States?", "A: 78 years."]]`
-        :param stop_words: Up to four sequences where the API stops generating further tokens. The returned text does
-                           not contain the stop sequence.
-                           If you don't provide any stop words, the default value from OpenAI API docs is used: `["\n", "<|endoftext|>"]`.
+        :param stop_words: Up to four sequences where the API stops generating further tokens. The returned text does not contain the stop sequence.
+                           If you don't provide any stop words, the default value from OpenAI API docs is used: `["\\n", "<|endoftext|>"]`.
         :param prompt_template: A PromptTemplate that tells the model how to generate answers given a
              `context` and `query` supplied at runtime. The `context` is automatically constructed at runtime from a
-            list of provided documents. Use `example_context` and a list of `examples` to provide
-            the model with examples to steer it towards the tone and answer format you would like.
+            list of provided documents. Use `example_context` and a list of `examples` to provide the model with examples to steer it towards the tone and answer format you would like.
             If not supplied, the default prompt template is:
             ```python
                 PromptTemplate(
                     "Please answer the question according to the above context."
-                    "\n===\nContext: {examples_context}\n===\n{examples}\n\n"
-                    "===\nContext: {context}\n===\n{query}",
+                    "\\n===\\nContext: {examples_context}\\n===\\n{examples}\\n\\n"
+                    "===\\nContext: {context}\\n===\\n{query}",
                 )
             ```
-            To learn how variables, such as'{context}', are substituted in the prompt text, see
+            To learn how variables, such as '{context}', are substituted in the prompt text, see
             [PromptTemplate](https://docs.haystack.deepset.ai/docs/prompt_node#template-structure).
         :param context_join_str: The separation string used to join the input documents to create the context
             used by the PromptTemplate.
@@ -109,6 +110,13 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see see OpenAI
         [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         """
+
+        warnings.warn(
+            "`OpenAIAnswerGenerator component is deprecated and will be removed in future versions. Use `PromptNode` "
+            "instead of `OpenAIAnswerGenerator`.",
+            category=DeprecationWarning,
+        )
+
         super().__init__(progress_bar=progress_bar)
         if (examples is None and examples_context is not None) or (examples is not None and examples_context is None):
             logger.warning(

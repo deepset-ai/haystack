@@ -1,4 +1,5 @@
-from unittest.mock import patch, Mock
+import asyncio
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -36,3 +37,24 @@ def test_construtor_with_custom_model():
 def test_constructor_with_no_supported_model():
     with pytest.raises(ValueError, match="Model some-random-model is not supported"):
         PromptModel("some-random-model")
+
+
+@pytest.mark.asyncio
+async def test_ainvoke():
+    def async_return(result):
+        f = asyncio.Future()
+        f.set_result(result)
+        return f
+
+    mock_layer = MagicMock()  # no async-defined methods, await will fail and fall back to regular `invoke`
+    mock_layer.return_value.invoke.return_value = async_return("Async Bar!")
+    model = PromptModel(invocation_layer_class=mock_layer)
+    assert await model.ainvoke("Foo") == "Async Bar!"
+
+
+@pytest.mark.asyncio
+async def test_ainvoke_falls_back_to_sync():
+    mock_layer = MagicMock()  # no async-defined methods, await will fail and fall back to regular `invoke`
+    mock_layer.return_value.invoke.return_value = "Bar!"
+    model = PromptModel(invocation_layer_class=mock_layer)
+    assert await model.ainvoke("Foo") == "Bar!"

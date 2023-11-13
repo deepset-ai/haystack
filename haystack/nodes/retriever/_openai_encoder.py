@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
 
 import numpy as np
-from tiktoken.model import MODEL_TO_ENCODING
+import tiktoken
 from tqdm import tqdm
 
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
@@ -61,7 +61,10 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
             self.query_encoder_model = model_name
             self.doc_encoder_model = model_name
             self.max_seq_len = min(8191, max_seq_len)
-            tokenizer_name = MODEL_TO_ENCODING.get(model_name, "cl100k_base")
+            try:
+                tokenizer_name = tiktoken.encoding_name_for_model(model_name)
+            except KeyError:
+                tokenizer_name = "cl100k_base"
         else:
             self.query_encoder_model = f"text-search-{model_class}-query-001"
             self.doc_encoder_model = f"text-search-{model_class}-doc-001"

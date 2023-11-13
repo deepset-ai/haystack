@@ -3,10 +3,15 @@ from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal, get_args
 import logging
 from pathlib import Path
 
-import torch
-import whisper
+from haystack.preview import component, Document, default_to_dict, ComponentError
+from haystack.preview.lazy_imports import LazyImport
 
-from haystack.preview import component, Document
+with LazyImport(
+    "Run 'pip install transformers[torch]==4.34.1' to install torch and "
+    "'pip install --no-deps numba llvmlite 'openai-whisper>=20230918'' to install whisper."
+) as whisper_import:
+    import torch
+    import whisper
 
 
 logger = logging.getLogger(__name__)
@@ -31,13 +36,11 @@ class LocalWhisperTranscriber:
     ):
         """
         :param model_name_or_path: Name of the model to use. Set it to one of the following values:
-            - `tiny`
-            - `small`
-            - `medium`
-            - `large`
-            - `large-v2`
+        :type model_name_or_path: Literal["tiny", "small", "medium", "large", "large-v2"]
         :param device: Name of the torch device to use for inference. If None, CPU is used.
+        :type device: Optional[str]
         """
+        whisper_import.check()
         if model_name_or_path not in get_args(WhisperLocalModel):
             raise ValueError(
                 f"Model name '{model_name_or_path}' not recognized. Choose one among: "
@@ -55,6 +58,14 @@ class LocalWhisperTranscriber:
         if not self._model:
             self._model = whisper.load_model(self.model_name, device=self.device)
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        return default_to_dict(
+            self, model_name_or_path=self.model_name, device=str(self.device), whisper_params=self.whisper_params
+        )
+
     @component.output_types(documents=List[Document])
     def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None):
         """
@@ -64,12 +75,15 @@ class LocalWhisperTranscriber:
         [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
         [github repo](https://github.com/openai/whisper).
 
-        :param audio_files: a list of paths or binary streams to transcribe
-        :returns: a list of Documents, one for each file. The content of the document is the transcription text,
+        :param audio_files: A list of paths or binary streams to transcribe.
+        :returns: A list of Documents, one for each file. The content of the document is the transcription text,
             while the document's metadata contains all the other values returned by the Whisper model, such as the
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
         """
+        if self._model is None:
+            raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
+
         if whisper_params is None:
             whisper_params = self.whisper_params
 
@@ -84,8 +98,8 @@ class LocalWhisperTranscriber:
         [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
         [github repo](https://github.com/openai/whisper).
 
-        :param audio_files: a list of paths or binary streams to transcribe
-        :returns: a list of Documents, one for each file. The content of the document is the transcription text,
+        :param audio_files: A list of paths or binary streams to transcribe.
+        :returns: A list of Documents, one for each file. The content of the document is the transcription text,
             while the document's metadata contains all the other values returned by the Whisper model, such as the
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
@@ -96,7 +110,7 @@ class LocalWhisperTranscriber:
             content = transcript.pop("text")
             if not isinstance(audio, (str, Path)):
                 audio = "<<binary stream>>"
-            doc = Document(content=content, metadata={"audio_file": audio, **transcript})
+            doc = Document(content=content, meta={"audio_file": audio, **transcript})
             documents.append(doc)
         return documents
 
@@ -108,10 +122,9 @@ class LocalWhisperTranscriber:
         [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
         [github repo](https://github.com/openai/whisper).
 
-        :param audio_files: a list of paths or binary streams to transcribe
-        :returns: a list of transcriptions.
+        :param audio_files: A list of paths or binary streams to transcribe.
+        :returns: A list of transcriptions.
         """
-        self.warm_up()
         return_segments = kwargs.pop("return_segments", False)
         transcriptions = []
         for audio_file in audio_files:

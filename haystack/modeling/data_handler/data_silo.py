@@ -110,11 +110,13 @@ class DataSilo:
         # loading dicts from file (default)
         if dicts is None:
             dicts = list(self.processor.file_to_dicts(filename))  # type: ignore
-            # shuffle list of dicts here if we later want to have a random dev set splitted from train set
-            if str(self.processor.train_filename) in str(filename):
-                if not self.processor.dev_filename:
-                    if self.processor.dev_split > 0.0:
-                        random.shuffle(dicts)
+            # shuffle list of dicts here if we later want to have a random dev set split from train set
+            if (
+                str(self.processor.train_filename) in str(filename)
+                and not self.processor.dev_filename
+                and self.processor.dev_split > 0.0
+            ):
+                random.shuffle(dicts)
 
         num_dicts = len(dicts)
         datasets = []
@@ -817,12 +819,12 @@ class DistillationDataSilo(DataSilo):
                 corresponding_chunks.append(i)
                 if len(batch) == self.teacher_batch_size:
                     self._pass_batches(
-                        batch, corresponding_chunks, teacher_outputs, tensor_names
+                        batch, corresponding_chunks, teacher_outputs, tensor_names  # type: ignore [arg-type]
                     )  # doing forward pass on teacher model
                     batch = []
                     corresponding_chunks = []
         if batch:
-            self._pass_batches(batch, corresponding_chunks, teacher_outputs, tensor_names)
+            self._pass_batches(batch, corresponding_chunks, teacher_outputs, tensor_names)  # type: ignore [arg-type]
 
         # appending teacher outputs to original dataset
         for dataset, teacher_output in zip(concat_datasets.datasets, teacher_outputs):

@@ -227,7 +227,7 @@ class SquadData:
     def _aggregate_answers(x):
         x = x[["answer_text", "answer_start"]]
         x = x.rename(columns={"answer_text": "text"})
-        # Span anwser
+        # Span answer
         try:
             x["answer_start"] = x["answer_start"].astype(int)
             ret = x.to_dict("records")
