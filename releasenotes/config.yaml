@@ -1,5 +1,7 @@
 default_branch: main
 collapse_pre_releases: true
+pre_release_tag_re: (?P<pre_release>-(?:[ab]|rc)+\d*)$
+prelude_section_name: ⭐ Highlights
 template: |
   ---
   prelude: >
@@ -40,11 +42,11 @@ template: |
       Haystack version 2 can be found under haystack/preview.
 sections:
   # The prelude section is implicitly included.
-  - [upgrade, Upgrade Notes]
-  - [features, New Features]
-  - [enhancements, Enhancement Notes]
+  - [upgrade, ⬆️ Upgrade Notes]
+  - [features, 🚀 New Features]
+  - [enhancements, ⚡️ Enhancement Notes]
   - [issues, Known Issues]
-  - [deprecations, Deprecation Notes]
+  - [deprecations, ⚠️ Deprecation Notes]
   - [security, Security Notes]
-  - [fixes, Bug Fixes]
-  - [preview, Haystack 2.0 preview]
+  - [fixes, 🐛 Bug Fixes]
+  - [preview, 🩵 Haystack 2.0 preview]

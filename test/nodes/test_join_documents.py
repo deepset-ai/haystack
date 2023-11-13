@@ -78,3 +78,38 @@ def test_joindocuments_concatenate_keep_only_highest_ranking_duplicate():
     result, _ = join_docs.run(inputs)
     assert len(result["documents"]) == 2
     assert result["documents"] == expected_outputs["documents"]
+
+
+@pytest.mark.unit
+def test_joindocuments_concatenate_duplicate_docs_null_score():
+    """
+    Test that the concatenate method correctly handles duplicate documents,
+    when one has a null score.
+    """
+    inputs = [
+        {
+            "documents": [
+                Document(content="text document 1", content_type="text", score=0.2),
+                Document(content="text document 2", content_type="text", score=0.3),
+                Document(content="text document 3", content_type="text", score=None),
+            ]
+        },
+        {
+            "documents": [
+                Document(content="text document 2", content_type="text", score=0.7),
+                Document(content="text document 1", content_type="text", score=None),
+            ]
+        },
+    ]
+    expected_outputs = {
+        "documents": [
+            Document(content="text document 2", content_type="text", score=0.7),
+            Document(content="text document 1", content_type="text", score=0.2),
+            Document(content="text document 3", content_type="text", score=None),
+        ]
+    }
+
+    join_docs = JoinDocuments(join_mode="concatenate")
+    result, _ = join_docs.run(inputs)
+    assert len(result["documents"]) == 3
+    assert result["documents"] == expected_outputs["documents"]
