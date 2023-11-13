@@ -1,13 +1,13 @@
 from typing import Dict, Any
 
 import pytest
+import numpy as np
 
 from haystack.preview import Pipeline, DeserializationError
 from haystack.preview.testing.factory import document_store_class
 from haystack.preview.components.retrievers.in_memory_embedding_retriever import InMemoryEmbeddingRetriever
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores import InMemoryDocumentStore
-import numpy as np
 
 
 class TestMemoryEmbeddingRetriever:
@@ -16,21 +16,21 @@ class TestMemoryEmbeddingRetriever:
         retriever = InMemoryEmbeddingRetriever(InMemoryDocumentStore())
         assert retriever.filters is None
         assert retriever.top_k == 10
-        assert retriever.scale_score
+        assert retriever.scale_score is False
 
     @pytest.mark.unit
     def test_init_with_parameters(self):
         retriever = InMemoryEmbeddingRetriever(
-            InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=False
+            InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=True
         )
         assert retriever.filters == {"name": "test.txt"}
         assert retriever.top_k == 5
-        assert not retriever.scale_score
+        assert retriever.scale_score
 
     @pytest.mark.unit
     def test_init_with_invalid_top_k_parameter(self):
-        with pytest.raises(ValueError, match="top_k must be > 0, but got -2"):
-            InMemoryEmbeddingRetriever(InMemoryDocumentStore(), top_k=-2, scale_score=False)
+        with pytest.raises(ValueError):
+            InMemoryEmbeddingRetriever(InMemoryDocumentStore(), top_k=-2)
 
     @pytest.mark.unit
     def test_to_dict(self):
@@ -46,7 +46,7 @@ class TestMemoryEmbeddingRetriever:
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": None,
                 "top_k": 10,
-                "scale_score": True,
+                "scale_score": False,
                 "return_embedding": False,
             },
         }
@@ -60,7 +60,7 @@ class TestMemoryEmbeddingRetriever:
             document_store=document_store,
             filters={"name": "test.txt"},
             top_k=5,
-            scale_score=False,
+            scale_score=True,
             return_embedding=True,
         )
         data = component.to_dict()
@@ -70,7 +70,7 @@ class TestMemoryEmbeddingRetriever:
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
-                "scale_score": False,
+                "scale_score": True,
                 "return_embedding": True,
             },
         }
@@ -90,7 +90,7 @@ class TestMemoryEmbeddingRetriever:
         assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.filters == {"name": "test.txt"}
         assert component.top_k == 5
-        assert component.scale_score
+        assert component.scale_score is False
 
     @pytest.mark.unit
     def test_from_dict_without_docstore(self):
@@ -118,9 +118,9 @@ class TestMemoryEmbeddingRetriever:
         top_k = 3
         ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
         docs = [
-            Document(text="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(text="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
-            Document(text="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
+            Document(content="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(content="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
         ]
         ds.write_documents(docs)
 
@@ -142,9 +142,9 @@ class TestMemoryEmbeddingRetriever:
         ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
         top_k = 2
         docs = [
-            Document(text="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
-            Document(text="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
-            Document(text="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
+            Document(content="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(content="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
         ]
         ds.write_documents(docs)
         retriever = InMemoryEmbeddingRetriever(ds, top_k=top_k)

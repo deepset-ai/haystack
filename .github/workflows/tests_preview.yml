@@ -117,7 +117,7 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
           pip install --no-deps llvmlite numba 'openai-whisper>=20230918'  # prevent outdated version of tiktoken pinned by openai-whisper
 
       - name: Run
@@ -178,7 +178,7 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
           pip install --no-deps llvmlite numba 'openai-whisper>=20230918'  # prevent outdated version of tiktoken pinned by openai-whisper
 
       - name: Run
@@ -219,7 +219,9 @@ jobs:
   integration-tests-macos:
     name: Integration / macos-latest
     needs: unit-tests
-    runs-on: macos-latest
+    runs-on: macos-latest-xl
+    env:
+      HAYSTACK_MPS_ENABLED : false
     steps:
       - uses: actions/checkout@v4
 
@@ -235,7 +237,7 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
           pip install --no-deps llvmlite numba 'openai-whisper>=20230918'  # prevent outdated version of tiktoken pinned by openai-whisper
 
       - name: Run Tika
@@ -289,7 +291,7 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
           pip install --no-deps llvmlite numba 'openai-whisper>=20230918'  # prevent outdated version of tiktoken pinned by openai-whisper
 
       - name: Run

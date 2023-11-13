@@ -38,14 +38,15 @@ class ChatMessage:
         return self.role == role
 
     @classmethod
-    def from_assistant(cls, content: str) -> "ChatMessage":
+    def from_assistant(cls, content: str, metadata: Optional[Dict[str, Any]] = None) -> "ChatMessage":
         """
         Create a message from the assistant.
 
         :param content: The text content of the message.
+        :param metadata: Additional metadata associated with the message.
         :return: A new ChatMessage instance.
         """
-        return cls(content, ChatRole.ASSISTANT, None)
+        return cls(content, ChatRole.ASSISTANT, None, metadata or {})
 
     @classmethod
     def from_user(cls, content: str) -> "ChatMessage":

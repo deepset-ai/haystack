@@ -25,12 +25,12 @@ class TransformersSimilarityRanker:
     from haystack.preview.components.rankers import TransformersSimilarityRanker
 
     ranker = TransformersSimilarityRanker()
-    docs = [Document(text="Paris"), Document(text="Berlin")]
+    docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "City in Germany"
     output = ranker.run(query=query, documents=docs)
     docs = output["documents"]
     assert len(docs) == 2
-    assert docs[0].text == "Berlin"
+    assert docs[0].content == "Berlin"
     ```
     """
 
@@ -116,7 +116,7 @@ class TransformersSimilarityRanker:
                 f"The component {self.__class__.__name__} not warmed up. Run 'warm_up()' before calling 'run()'."
             )
 
-        query_doc_pairs = [[query, doc.text] for doc in documents]
+        query_doc_pairs = [[query, doc.content] for doc in documents]
         features = self.tokenizer(
             query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
         ).to(  # type: ignore

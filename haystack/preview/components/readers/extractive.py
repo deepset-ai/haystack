@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 import math
 import warnings
+import os
 
 from haystack.preview import component, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
@@ -44,10 +45,11 @@ class ExtractiveReader:
         answers_per_seq: Optional[int] = None,
         no_answer: bool = True,
         calibration_factor: float = 0.1,
+        model_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Creates an ExtractiveReader
-        :param model: A HuggingFace transformers question answering model.
+        :param model_name_or_path: A HuggingFace transformers question answering model.
             Can either be a path to a folder containing the model files or an identifier for the HF hub
             Default: `'deepset/roberta-base-squad2-distilled'`
         :param device: Pytorch device string. Uses GPU by default if available
@@ -67,6 +69,8 @@ class ExtractiveReader:
             This is relevant when a document has been split into multiple sequence due to max_seq_length.
         :param no_answer: Whether to return no answer scores
         :param calibration_factor: Factor used for calibrating confidence scores
+        :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
+            when loading the model specified in `model_name_or_path`.
         """
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model_name_or_path)
@@ -81,6 +85,7 @@ class ExtractiveReader:
         self.answers_per_seq = answers_per_seq
         self.no_answer = no_answer
         self.calibration_factor = calibration_factor
+        self.model_kwargs = model_kwargs or {}
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -105,17 +110,25 @@ class ExtractiveReader:
             answers_per_seq=self.answers_per_seq,
             no_answer=self.no_answer,
             calibration_factor=self.calibration_factor,
+            model_kwargs=self.model_kwargs,
         )
 
     def warm_up(self):
         if self.model is None:
             if torch.cuda.is_available():
                 self.device = self.device or "cuda:0"
+            elif (
+                hasattr(torch.backends, "mps")
+                and torch.backends.mps.is_available()
+                and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
+            ):
+                self.device = self.device or "mps:0"
             else:
                 self.device = self.device or "cpu:0"
-            self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_name_or_path, token=self.token).to(
-                self.device
-            )
+
+            self.model = AutoModelForQuestionAnswering.from_pretrained(
+                self.model_name_or_path, token=self.token, **self.model_kwargs
+            ).to(self.device)
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
     def _flatten_documents(
@@ -138,16 +151,16 @@ class ExtractiveReader:
         texts = []
         document_ids = []
         for i, doc in enumerate(documents):
-            if doc.text is None:
+            if doc.content is None:
                 warnings.warn(
                     f"Document with id {doc.id} was passed to ExtractiveReader, but does not contain any text. It will be ignored."
                 )
                 continue
-            texts.append(doc.text)
+            texts.append(doc.content)
             document_ids.append(i)
         encodings_pt = self.tokenizer(
             queries,
-            [document.text for document in documents],
+            [document.content for document in documents],
             padding=True,
             truncation=True,
             max_length=max_seq_length,
@@ -237,7 +250,7 @@ class ExtractiveReader:
         ):
             for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_):
                 doc = flattened_documents[document_id]
-                flat_answers_without_queries.append({"data": doc.text[start_:end_], "document": doc, "probability": probability.item(), "start": start_, "end": end_, "metadata": {}})  # type: ignore # doc.text cannot be None, because those documents are filtered when preprocessing. However, mypy doesn't know that.
+                flat_answers_without_queries.append({"data": doc.content[start_:end_], "document": doc, "probability": probability.item(), "start": start_, "end": end_, "metadata": {}})  # type: ignore # doc.content cannot be None, because those documents are filtered when preprocessing. However, mypy doesn't know that.
         i = 0
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):

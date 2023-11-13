@@ -29,7 +29,7 @@ class HTMLToDocument:
         """
         Converts a list of HTML files to Documents.
 
-        :param sources: Paths to HTML files.
+        :param sources: List of HTML file paths or ByteStream objects.
         :return: List of converted Documents.
         """
         documents = []
@@ -46,7 +46,7 @@ class HTMLToDocument:
                 logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
                 continue
 
-            document = Document(text=text)
+            document = Document(content=text)
             documents.append(document)
 
         return {"documents": documents}
