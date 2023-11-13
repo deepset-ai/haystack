@@ -2,7 +2,7 @@ import io
 import hashlib
 import logging
 from dataclasses import asdict, dataclass, field, fields
-from typing import Any, Dict, List, Optional, Type, cast
+from typing import Any, Dict, List, Optional
 
 import numpy
 import pandas
