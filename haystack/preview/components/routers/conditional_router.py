@@ -20,7 +20,7 @@ class RouteConditionException(Exception):
     """Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter."""
 
 
-def serialize(target: Any) -> str:
+def serialize_type(target: Any) -> str:
     """
     Serializes a type or an instance to its string representation including the module name.
 
@@ -61,7 +61,7 @@ def serialize(target: Any) -> str:
     return full_path
 
 
-def deserialize(type_str: str) -> Any:
+def deserialize_type(type_str: str) -> Any:
     """
     Deserializes a type given its full import path as a string.
 
@@ -208,7 +208,7 @@ class ConditionalRouter:
     def to_dict(self) -> Dict[str, Any]:
         for route in self.routes:
             # output_type needs to be serialized to a string
-            route["output_type"] = serialize(route["output_type"])
+            route["output_type"] = serialize_type(route["output_type"])
 
         return default_to_dict(self, routes=self.routes)
 
@@ -218,7 +218,7 @@ class ConditionalRouter:
         routes = init_params.get("routes")
         for route in routes:
             # output_type needs to be deserialized from a string to a type
-            route["output_type"] = deserialize(route["output_type"])
+            route["output_type"] = deserialize_type(route["output_type"])
         return default_from_dict(cls, data)
 
     def run(self, **kwargs):

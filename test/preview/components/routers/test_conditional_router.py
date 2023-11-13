@@ -9,8 +9,8 @@ from haystack.preview.components.routers import ConditionalRouter
 from haystack.preview.components.routers.conditional_router import (
     NoRouteSelectedException,
     RouteConditionException,
-    serialize,
-    deserialize,
+    serialize_type,
+    deserialize_type,
 )
 from haystack.preview.dataclasses import ChatMessage
 
@@ -219,18 +219,18 @@ class TestRouter:
 
     @pytest.mark.unit
     def test_output_type_serialization(self):
-        assert serialize(str) == "builtins.str"
-        assert serialize(List[int]) == "typing.List"
-        assert serialize(ChatMessage) == "haystack.preview.dataclasses.chat_message.ChatMessage"
-        assert serialize(int) == "builtins.int"
-        assert serialize(ChatMessage.from_user("ciao")) == "haystack.preview.dataclasses.chat_message.ChatMessage"
+        assert serialize_type(str) == "builtins.str"
+        assert serialize_type(List[int]) == "typing.List"
+        assert serialize_type(ChatMessage) == "haystack.preview.dataclasses.chat_message.ChatMessage"
+        assert serialize_type(int) == "builtins.int"
+        assert serialize_type(ChatMessage.from_user("ciao")) == "haystack.preview.dataclasses.chat_message.ChatMessage"
 
     @pytest.mark.unit
     def test_output_type_deserialization(self):
-        assert deserialize("builtins.str") == str
-        assert deserialize("typing.List") == typing.List
-        assert deserialize("haystack.preview.dataclasses.chat_message.ChatMessage") == ChatMessage
-        assert deserialize("builtins.int") == int
+        assert deserialize_type("builtins.str") == str
+        assert deserialize_type("typing.List") == typing.List
+        assert deserialize_type("haystack.preview.dataclasses.chat_message.ChatMessage") == ChatMessage
+        assert deserialize_type("builtins.int") == int
 
     @pytest.mark.unit
     def test_router_de_serialization(self):
