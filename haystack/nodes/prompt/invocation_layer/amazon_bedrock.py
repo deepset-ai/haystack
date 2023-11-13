@@ -17,17 +17,21 @@ with LazyImport(message="Run 'pip install farm-haystack[aws]'") as boto3_import:
 
 
 class BedrockModelAdapter(ABC):
+    """
+    Base class for Amazon Bedrock model adapters.
+    """
+
     def __init__(self, model_kwargs: Dict[str, Any], max_length: Optional[int]) -> None:
         self.model_kwargs = model_kwargs
         self.max_length = max_length
 
     @abstractmethod
     def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
-        pass
+        """Prepares the body for the Amazon Bedrock request."""
 
     @abstractmethod
     def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        pass
+        """Extracts the responses from the Amazon Bedrock response."""
 
     def _get_params(self, inference_kwargs: Dict[str, Any], default_params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -45,6 +49,10 @@ class BedrockModelAdapter(ABC):
 
 
 class AnthropicModelAdapter(BedrockModelAdapter):
+    """
+    Model adapter for Anthropic's Claude model.
+    """
+
     def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
         default_params = {
             "max_tokens_to_sample": self.max_length,
@@ -72,6 +80,10 @@ class AnthropicModelAdapter(BedrockModelAdapter):
 
 
 class CohereModelAdapter(BedrockModelAdapter):
+    """
+    Model adapter for Cohere's Command model.
+    """
+
     def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
         default_params = {
             "max_tokens": self.max_length,
@@ -103,6 +115,10 @@ class CohereModelAdapter(BedrockModelAdapter):
 
 
 class AI21ModelAdapter(BedrockModelAdapter):
+    """
+    Model adapter for AI21's J2 models.
+    """
+
     def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
         default_params = {
             "maxTokens": self.max_length,
@@ -124,6 +140,10 @@ class AI21ModelAdapter(BedrockModelAdapter):
 
 
 class TitanModelAdapter(BedrockModelAdapter):
+    """
+    Model adapter for Amazon's Titan models.
+    """
+
     def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
         default_params = {"maxTokenCount": self.max_length, "stopSequences": None, "temperature": None, "topP": None}
         params = self._get_params(inference_kwargs, default_params)
@@ -146,7 +166,7 @@ class TitanModelAdapter(BedrockModelAdapter):
 
 class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
     """
-    Base class for Amazon Bedrock based invocation layers.
+    Base class for Amazon Bedrock invocation layers.
     """
 
     SUPPORTED_MODELS: Dict[str, Type[BedrockModelAdapter]] = {
@@ -185,10 +205,10 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
             )
             self.client = session.client("bedrock-runtime")
             self.bedrock = session.client("bedrock")
-        except Exception as e:
+        except Exception as exception:
             raise AmazonBedrockConfigurationError(
                 "Could not connect to Amazon Bedrock. Make sure the AWS environment is configured correctly."
-            ) from e
+            ) from exception
 
         self.model_input_kwargs = kwargs
         # We pop the model_max_length as it is not sent to the model
@@ -237,12 +257,12 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
             bedrock = session.client("bedrock")
             foundation_models_response = bedrock.list_foundation_models(byOutputModality="TEXT")
             available_model_ids = [entry["modelId"] for entry in foundation_models_response.get("modelSummaries", [])]
-        except AWSConfigurationError as e:
-            raise AmazonBedrockConfigurationError(message=e.message) from e
-        except Exception as e:
+        except AWSConfigurationError as exception:
+            raise AmazonBedrockConfigurationError(message=exception.message) from exception
+        except Exception as exception:
             raise AmazonBedrockConfigurationError(
                 "Could not connect to Amazon Bedrock. Make sure the AWS environment is configured correctly."
-            ) from e
+            ) from exception
 
         model_available = model_name_or_path in available_model_ids
         if not model_available:
@@ -291,12 +311,12 @@ class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
                     accept="application/json",
                     contentType="application/json",
                 )
-        except ClientError as e:
+        except ClientError as exception:
             raise AmazonBedrockInferenceError(
                 f"Could not connect to Amazon Bedrock model {self.model_name_or_path}. "
                 "Make sure your AWS environment is configured correctly, "
                 "the model is available in the configured AWS region and you've been granted access."
-            ) from e
+            ) from exception
 
         if stream:
             response_body = response["body"]
