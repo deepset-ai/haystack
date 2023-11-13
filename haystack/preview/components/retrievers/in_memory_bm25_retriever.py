@@ -17,7 +17,7 @@ class InMemoryBM25Retriever:
         document_store: InMemoryDocumentStore,
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
-        scale_score: bool = True,
+        scale_score: bool = False,
     ):
         """
         Create the InMemoryBM25Retriever component.
@@ -26,7 +26,7 @@ class InMemoryBM25Retriever:
         :param filters: A dictionary with filters to narrow down the search space. Defaults to `None`.
         :param top_k: The maximum number of documents to retrieve. Defaults to `10`.
         :param scale_score: Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant. If set to `False`, uses raw similarity scores.
-        Defaults to `True`.
+        Defaults to `False`.
 
         :raises ValueError: If the specified `top_k` is not > 0.
         """
@@ -90,7 +90,7 @@ class InMemoryBM25Retriever:
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The maximum number of documents to return.
         :param scale_score: Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant. If set to `False`, uses raw similarity scores.
-        Defaults to `True`.
+            If not specified, the value provided at initialization is used.
         :return: The retrieved documents.
 
         :raises ValueError: If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
