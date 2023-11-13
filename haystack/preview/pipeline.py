@@ -124,31 +124,50 @@ class Pipeline(canals.Pipeline):
         It is not meant to be called directly with arguments, but rather to be used by the class internally
         to handle the variations in input that a user might provide when attempting to run the pipeline.
 
-        :param args: Positional arguments
         :param kwargs: Keyword arguments
         :return: A dictionary with the outputs of the pipeline if the dispatch was successful.
         :raises TypeError: if the provided arguments do not match any expected signature for the overloaded run methods.
         """
-        # Handling the original run signature with .run(data=...)
-        if "data" in kwargs and not args:
-            data = kwargs["data"]
-            debug = kwargs.get("debug", False)
-            return self._run_internal(data, debug)
+        if "data" in kwargs:
+            data = kwargs.pop("data")
+            debug = kwargs.pop("debug", False)
+            # check whether the data is a nested dictionary of component inputs where each key is a component name
+            # and each value is a dictionary of input parameters for that component
+            is_nested_component_input = all(isinstance(value, dict) for value in data.values())
+            if is_nested_component_input:
+                return self._run_internal(data=data, debug=debug)
+            else:
+                # we likely have data dict where keys are input names and values are the corresponding values
+                # we need to convert it to a nested dictionary of component inputs
+                return self._run_internal_from_kwargs(**data, debug=debug)
 
-        # Handling the new run signature with keyword arguments only
-        if not args and kwargs:
-            pipeline_inputs, unresolved_inputs = self._prepare_pipeline_input_data(**kwargs)
-            if unresolved_inputs:
-                logger.warning("Inputs %s were not matched to any component", list(unresolved_inputs.keys()))
-            debug = kwargs.get("debug", False)
-            return self._run_internal(data=pipeline_inputs, debug=debug)
+        # Handling the raw kwargs, if we decide to support it
+        if kwargs:
+            return self._run_internal_from_kwargs(**kwargs)
 
         # Error if the signature does not match expected patterns
         raise TypeError("Unsupported signature for 'run'")
 
+    def _run_internal_from_kwargs(self, debug: bool = False, **kwargs) -> Dict[str, Any]:
+        """
+        Handles pipeline execution when invoked with keyword arguments only.
+        It prepares the input data by resolving the provided keyword arguments to the appropriate input
+        components and then invokes the underlying run method to initiate the pipeline execution.
+
+        :param debug: Flag to enable debugging mode.
+        :param kwargs: Keyword arguments for pipeline components.
+        :return: A dictionary with the outputs of the pipeline.
+        """
+        pipeline_inputs, unresolved_inputs = self._prepare_pipeline_component_input_data(**kwargs)
+
+        if unresolved_inputs:
+            logger.warning("Inputs %s were not matched to any component", list(unresolved_inputs.keys()))
+
+        return self._run_internal(data=pipeline_inputs, debug=debug)
+
     def _run_internal(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
         """
-        Runs the pipeline.
+        Runs the pipeline by invoking the underlying run to initiate the pipeline execution.
 
         :params data: the inputs to give to the input components of the Pipeline.
         :params debug: whether to collect and return debug information.
@@ -211,7 +230,7 @@ class Pipeline(canals.Pipeline):
         """
         return cls.from_dict(marshaller.unmarshal(fp.read()))
 
-    def _prepare_pipeline_input_data(self, **kwargs):
+    def _prepare_pipeline_component_input_data(self, **kwargs):
         """
         Prepares the input data for the pipeline components and identifies any unresolved parameters.
 
