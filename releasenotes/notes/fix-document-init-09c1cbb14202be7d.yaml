@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Fix Document init when passing non existing fields.

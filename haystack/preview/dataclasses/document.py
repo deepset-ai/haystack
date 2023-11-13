@@ -40,18 +40,6 @@ class _BackwardCompatible(type):
         if "id_hash_keys" in kwargs:
             del kwargs["id_hash_keys"]
 
-        if kwargs.get("meta") is None:
-            # This must be a flattened Document, so we treat all keys that are not
-            # Document fields as metadata.
-            meta = {}
-            field_names = [f.name for f in fields(cast(Type[Document], cls))]
-            keys = list(kwargs.keys())  # get a list of the keys as we'll modify the dict in the loop
-            for key in keys:
-                if key in field_names:
-                    continue
-                meta[key] = kwargs.pop(key)
-            kwargs["meta"] = meta
-
         return super().__call__(*args, **kwargs)
 
 
@@ -149,7 +137,15 @@ class Document(metaclass=_BackwardCompatible):
             data["dataframe"] = pandas.read_json(io.StringIO(dataframe))
         if blob := data.get("blob"):
             data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
-        return cls(**data)
+        # Unflatten metadata if it was flattened
+        meta = {}
+        legacy_fields = ["content_type", "id_hash_keys"]
+        field_names = legacy_fields + [f.name for f in fields(cls)]
+        for key in list(data.keys()):
+            if key not in field_names:
+                meta[key] = data.pop(key)
+
+        return cls(**data, meta=meta)
 
     @property
     def content_type(self):
