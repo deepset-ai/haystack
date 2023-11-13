@@ -7,7 +7,7 @@ from haystack.preview.document_stores import InMemoryDocumentStore
 from haystack.preview.components.writers import DocumentWriter
 from haystack.preview.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.preview.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
-from haystack.preview.components.generators.openai.gpt import GPTGenerator
+from haystack.preview.components.generators import GPTGenerator
 from haystack.preview.components.builders.answer_builder import AnswerBuilder
 from haystack.preview.components.builders.prompt_builder import PromptBuilder
 
@@ -21,7 +21,7 @@ def test_bm25_rag_pipeline(tmp_path):
     prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
-        {{ doc.text }}
+        {{ doc.content }}
     {% endfor %}
 
     \nQuestion: {{question}}
@@ -51,9 +51,9 @@ def test_bm25_rag_pipeline(tmp_path):
 
     # Populate the document store
     documents = [
-        Document(text="My name is Jean and I live in Paris."),
-        Document(text="My name is Mark and I live in Berlin."),
-        Document(text="My name is Giorgio and I live in Rome."),
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
     ]
     rag_pipeline.get_component("retriever").document_store.write_documents(documents)
 
@@ -87,7 +87,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
-        {{ doc.text }}
+        {{ doc.content }}
     {% endfor %}
 
     \nQuestion: {{question}}
@@ -124,9 +124,9 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
 
     # Populate the document store
     documents = [
-        Document(text="My name is Jean and I live in Paris."),
-        Document(text="My name is Mark and I live in Berlin."),
-        Document(text="My name is Giorgio and I live in Rome."),
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
     ]
     document_store = rag_pipeline.get_component("retriever").document_store
     indexing_pipeline = Pipeline()

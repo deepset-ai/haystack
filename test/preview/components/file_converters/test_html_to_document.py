@@ -8,24 +8,6 @@ from haystack.preview.dataclasses import ByteStream
 
 class TestHTMLToDocument:
     @pytest.mark.unit
-    def test_to_dict(self):
-        component = HTMLToDocument()
-        data = component.to_dict()
-        assert data == {"type": "HTMLToDocument", "init_parameters": {"id_hash_keys": []}}
-
-    @pytest.mark.unit
-    def test_to_dict_with_custom_init_parameters(self):
-        component = HTMLToDocument(id_hash_keys=["name"])
-        data = component.to_dict()
-        assert data == {"type": "HTMLToDocument", "init_parameters": {"id_hash_keys": ["name"]}}
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {"type": "HTMLToDocument", "init_parameters": {"id_hash_keys": ["name"]}}
-        component = HTMLToDocument.from_dict(data)
-        assert component.id_hash_keys == ["name"]
-
-    @pytest.mark.unit
     def test_run(self, preview_samples_path):
         """
         Test if the component runs correctly.
@@ -35,7 +17,7 @@ class TestHTMLToDocument:
         output = converter.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 1
-        assert "Haystack" in docs[0].text
+        assert "Haystack" in docs[0].content
 
     @pytest.mark.unit
     def test_run_wrong_file_type(self, preview_samples_path, caplog):
@@ -49,7 +31,7 @@ class TestHTMLToDocument:
             assert "codec can't decode byte" in caplog.text
 
         docs = output["documents"]
-        assert docs == []
+        assert not docs
 
     @pytest.mark.unit
     def test_run_error_handling(self, preview_samples_path, caplog):
@@ -61,7 +43,7 @@ class TestHTMLToDocument:
         with caplog.at_level(logging.WARNING):
             result = converter.run(sources=paths)
             assert "Could not read non_existing_file.html" in caplog.text
-            assert result["documents"] == []
+            assert not result["documents"]
 
     @pytest.mark.unit
     def test_mixed_sources_run(self, preview_samples_path):
@@ -78,4 +60,4 @@ class TestHTMLToDocument:
         docs = output["documents"]
         assert len(docs) == 2
         for doc in docs:
-            assert "Haystack" in doc.text
+            assert "Haystack" in doc.content

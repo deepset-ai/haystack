@@ -25,7 +25,7 @@ jobs:
 
       - name: Get changed files
         id: files
-        uses: tj-actions/changed-files@v39
+        uses: tj-actions/changed-files@v40
         with:
           files: |
             **/*.py
@@ -38,7 +38,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
+        run: |
+          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install --no-deps llvmlite numba 'openai-whisper>=20230918'  # prevent outdated version of tiktoken pinned by openai-whisper
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
@@ -58,7 +60,7 @@ jobs:
 
       - name: Get changed files
         id: files
-        uses: tj-actions/changed-files@v39
+        uses: tj-actions/changed-files@v40
         with:
           files: |
             **/*.py
@@ -72,7 +74,8 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install --no-deps llvmlite numba 'openai-whisper>=20230918'  # prevent outdated version of tiktoken pinned by openai-whisper
           pip install ./haystack-linter
 
       - name: Pylint

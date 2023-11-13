@@ -14,6 +14,11 @@ def test_from_file_path(tmp_path, request):
 
     b = ByteStream.from_file_path(test_path)
     assert b.data == test_bytes
+    assert b.mime_type == None
+
+    b = ByteStream.from_file_path(test_path, mime_type="text/plain")
+    assert b.data == test_bytes
+    assert b.mime_type == "text/plain"
 
 
 @pytest.mark.unit
@@ -21,6 +26,11 @@ def test_from_string():
     test_string = "Hello, world!"
     b = ByteStream.from_string(test_string)
     assert b.data.decode() == test_string
+    assert b.mime_type == None
+
+    b = ByteStream.from_string(test_string, mime_type="text/plain")
+    assert b.data.decode() == test_string
+    assert b.mime_type == "text/plain"
 
 
 @pytest.mark.unit
