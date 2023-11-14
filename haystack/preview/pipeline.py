@@ -78,12 +78,11 @@ class Pipeline(canals.Pipeline):
 
         This method serves as an entry point to the pipeline execution process.
 
-        The selection of the appropriate method is based on the presence or absence of certain keywords or the
-        structure of the arguments. If the arguments match neither expected pattern, a TypeError is raised.
+        **Note**: This method is part of an evolving interface and may be subject to changes in future releases.
+        We recommend using the more stable 'run(data: Dict[str, Any], debug: bool = False)' method for
+        regular use. Please keep this in mind when developing against this API.
 
-        It is not meant to be called directly with arguments, but rather to be used by the class internally
-        to handle the variations in input that a user might provide when attempting to run the pipeline.
-
+        :param args: Positional arguments
         :param kwargs: Keyword arguments
         :return: A dictionary with the outputs of the pipeline if the dispatch was successful.
         :raises TypeError: if the provided arguments do not match any expected signature for the overloaded run methods.
