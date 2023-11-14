@@ -4,7 +4,7 @@ from pathlib import Path
 from haystack.preview import Pipeline
 from haystack.preview.components.embedders import SentenceTransformersDocumentEmbedder
 from haystack.preview.components.file_converters import PyPDFToDocument, TextFileToDocument
-from haystack.preview.components.preprocessors import DocumentCleaner, TextDocumentSplitter
+from haystack.preview.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.preview.components.routers import FileTypeRouter
 from haystack.preview.components.writers import DocumentWriter
 from haystack.preview.document_stores import InMemoryDocumentStore
@@ -21,7 +21,7 @@ def test_dense_doc_search_pipeline(tmp_path):
     indexing_pipeline.add_component(instance=PyPDFToDocument(), name="pdf_file_converter")
     indexing_pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
     indexing_pipeline.add_component(
-        instance=TextDocumentSplitter(split_by="sentence", split_length=250, split_overlap=30), name="splitter"
+        instance=DocumentSplitter(split_by="sentence", split_length=250, split_overlap=30), name="splitter"
     )
     indexing_pipeline.add_component(
         instance=SentenceTransformersDocumentEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
