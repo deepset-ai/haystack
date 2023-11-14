@@ -11,6 +11,7 @@ from haystack.nodes.prompt.invocation_layer.amazon_bedrock import (
     AnthropicClaudeAdapter,
     CohereCommandAdapter,
     AmazonTitanAdapter,
+    MetaLlama2ChatAdapter,
 )
 
 with LazyImport() as boto3_import:
@@ -734,4 +735,59 @@ class TestAmazonTitanAdapter:
             "results": [{"outputText": "This is a single response."}, {"outputText": "This is a second response."}]
         }
         expected_responses = ["This is a single response.", "This is a second response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+
+class TestMetaLlama2ChatAdapter:
+    def test_prepare_body_with_default_params(self) -> None:
+        layer = MetaLlama2ChatAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {"prompt": "Hello, how are you?", "max_gen_len": 99}
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_custom_inference_params(self) -> None:
+        layer = MetaLlama2ChatAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {"prompt": "Hello, how are you?", "max_gen_len": 50, "temperature": 0.7, "top_p": 0.8}
+
+        body = layer.prepare_body(prompt, temperature=0.7, top_p=0.8, max_gen_len=50, unknown_arg="unknown_value")
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs(self) -> None:
+        layer = MetaLlama2ChatAdapter(
+            model_kwargs={"temperature": 0.7, "top_p": 0.8, "max_gen_len": 50, "unknown_arg": "unknown_value"},
+            max_length=99,
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {"prompt": "Hello, how are you?", "max_gen_len": 50, "temperature": 0.7, "top_p": 0.8}
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs_and_custom_inference_params(self) -> None:
+        layer = MetaLlama2ChatAdapter(
+            model_kwargs={"temperature": 0.6, "top_p": 0.7, "top_k": 4, "max_gen_len": 49}, max_length=99
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {"prompt": "Hello, how are you?", "max_gen_len": 50, "temperature": 0.7, "top_p": 0.7}
+
+        body = layer.prepare_body(prompt, temperature=0.7, max_gen_len=50)
+
+        assert body == expected_body
+
+    def test_get_responses(self) -> None:
+        adapter = MetaLlama2ChatAdapter(model_kwargs={}, max_length=99)
+        response_body = {"generation": "This is a single response."}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+    def test_get_responses_leading_whitespace(self) -> None:
+        adapter = MetaLlama2ChatAdapter(model_kwargs={}, max_length=99)
+        response_body = {"generation": "\n\t This is a single response."}
+        expected_responses = ["This is a single response."]
         assert adapter.get_responses(response_body) == expected_responses

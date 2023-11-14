@@ -119,7 +119,7 @@ class CohereCommandAdapter(BedrockModelAdapter):
 
 class AI21LabsJurassic2Adapter(BedrockModelAdapter):
     """
-    Model adapter for AI21's J2 models.
+    Model adapter for AI21 Labs' Jurassic 2 models.
     """
 
     def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
@@ -168,6 +168,23 @@ class AmazonTitanAdapter(BedrockModelAdapter):
         return responses
 
 
+class MetaLlama2ChatAdapter(BedrockModelAdapter):
+    """
+    Model adapter for Meta's Llama 2 Chat models.
+    """
+
+    def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
+        default_params = {"max_gen_len": self.max_length, "temperature": None, "top_p": None}
+        params = self._get_params(inference_kwargs, default_params)
+
+        body = {"prompt": prompt, **params}
+        return body
+
+    def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
+        responses = [response_body["generation"].lstrip()]
+        return responses
+
+
 class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
     """
     Invocation layer for Amazon Bedrock models.
@@ -184,6 +201,7 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
         "anthropic.claude-v1": AnthropicClaudeAdapter,
         "anthropic.claude-v2": AnthropicClaudeAdapter,
         "anthropic.claude-instant-v1": AnthropicClaudeAdapter,
+        "meta.llama2-13b-chat-v1": MetaLlama2ChatAdapter,
     }
 
     def __init__(
