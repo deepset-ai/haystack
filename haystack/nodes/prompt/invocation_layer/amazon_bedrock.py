@@ -45,7 +45,7 @@ class BedrockModelAdapter(ABC):
             chunk = event.get("chunk")
             if chunk:
                 decoded_chunk = json.loads(chunk["bytes"].decode("utf-8"))
-                token = self._extract_token_from_chunk(decoded_chunk)
+                token = self._extract_token_from_stream(decoded_chunk)
                 tokens.append(stream_handler(token, event_data=decoded_chunk))
         responses = ["".join(tokens).lstrip()]
         return responses
