@@ -69,4 +69,4 @@ class MergeLoop:
         for value in kwargs.values():
             if value is not None:
                 return {"value": value}
-        return {"value": None}
+        return {}

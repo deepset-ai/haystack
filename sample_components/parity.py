@@ -17,5 +17,5 @@ class Parity:  # pylint: disable=too-few-public-methods
         """
         remainder = value % 2
         if remainder:
-            return {"even": None, "odd": value}
-        return {"even": value, "odd": None}
+            return {"odd": value}
+        return {"even": value}

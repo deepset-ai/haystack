@@ -20,6 +20,6 @@ def test_from_dict():
 def test_parity():
     component = Parity()
     results = component.run(value=1)
-    assert results == {"odd": 1, "even": None}
+    assert results == {"odd": 1}
     results = component.run(value=2)
-    assert results == {"odd": None, "even": 2}
+    assert results == {"even": 2}

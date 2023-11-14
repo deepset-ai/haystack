@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import get_origin, get_args, List, Type, Union
+from typing import get_args, List, Type
 import logging
 from dataclasses import dataclass, field
 
@@ -15,12 +15,11 @@ logger = logging.getLogger(__name__)
 class InputSocket:
     name: str
     type: Type
-    is_optional: bool = field(init=False)
+    is_mandatory: bool = True
     is_variadic: bool = field(init=False)
-    sender: List[str] = field(default_factory=list)
+    senders: List[str] = field(default_factory=list)
 
     def __post_init__(self):
-        self.is_optional = get_origin(self.type) is Union and type(None) in get_args(self.type)
         try:
             # __metadata__ is a tuple
             self.is_variadic = self.type.__metadata__[0] == CANALS_VARIADIC_ANNOTATION
@@ -39,3 +38,4 @@ class InputSocket:
 class OutputSocket:
     name: str
     type: type
+    receivers: List[str] = field(default_factory=list)

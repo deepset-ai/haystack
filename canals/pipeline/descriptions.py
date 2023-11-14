@@ -19,19 +19,18 @@ def find_pipeline_inputs(graph: networkx.MultiDiGraph) -> Dict[str, List[InputSo
     input sockets, including all such sockets with default values.
     """
     return {
-        name: [socket for socket in data.get("input_sockets", {}).values() if not socket.sender]
+        name: [socket for socket in data.get("input_sockets", {}).values() if not socket.senders or socket.is_variadic]
         for name, data in graph.nodes(data=True)
     }
 
 
-def find_pipeline_outputs(graph) -> Dict[str, List[OutputSocket]]:
+def find_pipeline_outputs(graph: networkx.MultiDiGraph) -> Dict[str, List[OutputSocket]]:
     """
     Collect components that have disconnected output sockets. They define the pipeline output.
     """
     return {
-        node: list(data.get("output_sockets", {}).values())
-        for node, data in graph.nodes(data=True)
-        if not graph.out_edges(node)
+        name: [socket for socket in data.get("output_sockets", {}).values() if not socket.receivers]
+        for name, data in graph.nodes(data=True)
     }
 
 
@@ -40,7 +39,7 @@ def describe_pipeline_inputs(graph: networkx.MultiDiGraph):
     Returns a dictionary with the input names and types that this pipeline accepts.
     """
     inputs = {
-        comp: {socket.name: {"type": socket.type, "is_optional": socket.is_optional} for socket in data}
+        comp: {socket.name: {"type": socket.type, "is_mandatory": socket.is_mandatory} for socket in data}
         for comp, data in find_pipeline_inputs(graph).items()
         if data
     }

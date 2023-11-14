@@ -79,6 +79,7 @@ line-length = 120
 max-line-length = 120
 good-names = "e"
 max-args = 10
+max-locals = 15
 disable = [
   "fixme",
   "line-too-long",

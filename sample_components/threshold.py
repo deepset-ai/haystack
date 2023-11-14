@@ -33,5 +33,5 @@ class Threshold:  # pylint: disable=too-few-public-methods
             threshold = self.threshold
 
         if value < threshold:
-            return {"above": None, "below": value}
-        return {"above": value, "below": None}
+            return {"below": value}
+        return {"above": value}

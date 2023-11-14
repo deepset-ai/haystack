@@ -6,7 +6,6 @@ from test.sample_components.test_add_value import AddFixedValue
 from test.sample_components.test_double import Double
 from test.sample_components.test_parity import Parity
 from test.sample_components.test_greet import Greet
-from test.sample_components.test_merge_loop import MergeLoop
 from test.sample_components.test_remainder import Remainder
 from test.sample_components.test_repeat import Repeat
 from test.sample_components.test_subtract import Subtract

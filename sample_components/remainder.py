@@ -17,5 +17,5 @@ class Remainder:
         :param value: the value to check the remainder of.
         """
         remainder = value % self.divisor
-        output = {f"remainder_is_{val}": None if val != remainder else value for val in range(self.divisor)}
+        output = {f"remainder_is_{remainder}": value}
         return output

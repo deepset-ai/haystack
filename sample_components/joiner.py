@@ -33,3 +33,18 @@ class StringListJoiner:
             retval += list_of_strings
 
         return {"output": retval}
+
+
+@component
+class FirstIntSelector:
+    @component.output_types(output=int)
+    def run(self, inputs: Variadic[int]):
+        """
+        Take intd from multiple input nodes and return the first one
+        that is not None. Since `input` is Variadic, we know we'll
+        receive a List[int].
+        """
+        for inp in inputs:  # type: ignore
+            if inp is not None:
+                return {"output": inp}
+        return {}

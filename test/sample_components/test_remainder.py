@@ -34,13 +34,13 @@ def test_from_dict_with_custom_divisor_value():
 def test_remainder_default():
     component = Remainder()
     results = component.run(value=4)
-    assert results == {"remainder_is_0": None, "remainder_is_1": 4, "remainder_is_2": None}
+    assert results == {"remainder_is_1": 4}
 
 
 def test_remainder_with_divisor():
     component = Remainder(divisor=4)
     results = component.run(value=4)
-    assert results == {"remainder_is_0": 4, "remainder_is_1": None, "remainder_is_2": None, "remainder_is_3": None}
+    assert results == {"remainder_is_0": 4}
 
 
 def test_remainder_zero():

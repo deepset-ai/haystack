@@ -120,7 +120,7 @@ def test_merge_second():
 def test_merge_nones():
     component = MergeLoop(expected_type=int, inputs=["in_1", "in_2", "in_3"])
     results = component.run()
-    assert results == {"value": None}
+    assert results == {}
 
 
 def test_merge_one():
@@ -132,4 +132,4 @@ def test_merge_one():
 def test_merge_one_none():
     component = MergeLoop(expected_type=int, inputs=[])
     results = component.run()
-    assert results == {"value": None}
+    assert results == {}

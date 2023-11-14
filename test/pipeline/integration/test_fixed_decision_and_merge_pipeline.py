@@ -19,6 +19,7 @@ def test_pipeline(tmp_path):
     pipeline.add_component("double", Double())
     pipeline.add_component("add_four", AddFixedValue(add=4))
     pipeline.add_component("add_two", AddFixedValue())
+    pipeline.add_component("add_two_as_well", AddFixedValue())
     pipeline.add_component("diff", Subtract())
 
     pipeline.connect("add_one.result", "parity.value")
@@ -28,6 +29,7 @@ def test_pipeline(tmp_path):
     pipeline.connect("double.value", "diff.second_value")
     pipeline.connect("parity.odd", "add_ten.value")
     pipeline.connect("add_four.result", "add_two.value")
+    pipeline.connect("add_four.result", "add_two_as_well.value")
 
     pipeline.draw(tmp_path / "fixed_decision_and_merge_pipeline.png")
 
@@ -35,6 +37,7 @@ def test_pipeline(tmp_path):
         {
             "add_one": {"value": 1},
             "add_two": {"add": 2},
+            "add_two_as_well": {"add": 2},
         }
     )
     pprint(results)
@@ -47,6 +50,7 @@ def test_pipeline(tmp_path):
         {
             "add_one": {"value": 2},
             "add_two": {"add": 2},
+            "add_two_as_well": {"add": 2},
         }
     )
     pprint(results)

@@ -17,13 +17,13 @@ def test_pipeline(tmp_path):
     pipeline.add_component("first_addition", AddFixedValue(add=2))
     pipeline.add_component("second_addition", AddFixedValue(add=2))
     pipeline.add_component("third_addition", AddFixedValue(add=2))
-    pipeline.add_component("sum", Sum(inputs=["in_1", "in_2", "in_3"]))
+    pipeline.add_component("sum", Sum())
     pipeline.add_component("fourth_addition", AddFixedValue(add=1))
 
     pipeline.connect("first_addition.result", "second_addition.value")
-    pipeline.connect("first_addition.result", "sum.in_1")
-    pipeline.connect("second_addition.result", "sum.in_2")
-    pipeline.connect("third_addition.result", "sum.in_3")
+    pipeline.connect("first_addition.result", "sum.values")
+    pipeline.connect("second_addition.result", "sum.values")
+    pipeline.connect("third_addition.result", "sum.values")
     pipeline.connect("sum.total", "fourth_addition.value")
 
     pipeline.draw(tmp_path / "variable_merging_pipeline.png")

@@ -33,7 +33,7 @@ def test_threshold():
     component = Threshold()
 
     results = component.run(value=5, threshold=10)
-    assert results == {"above": None, "below": 5}
+    assert results == {"below": 5}
 
     results = component.run(value=15, threshold=10)
-    assert results == {"above": 15, "below": None}
+    assert results == {"above": 15}

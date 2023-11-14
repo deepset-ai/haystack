@@ -62,7 +62,7 @@ def test_draw_mermaid_img_failing_request(tmp_path):
             _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="mermaid-image")
 
 
-def test_draw_mermaid_txt(tmp_path):
+def test_draw_mermaid_text(tmp_path):
     pipe = Pipeline()
     pipe.add_component("comp1", AddFixedValue(add=3))
     pipe.add_component("comp2", Double())

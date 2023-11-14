@@ -11,7 +11,7 @@ import pytest
 from canals import Pipeline
 from canals.errors import PipelineConnectError
 from canals.testing import factory
-from canals.pipeline.connections import parse_connection
+from canals.component.connection import parse_connect_string
 from sample_components import AddFixedValue
 
 
@@ -411,6 +411,6 @@ def test_connect_many_connections_possible_no_name_matches():
 
 
 def test_parse_connection():
-    assert parse_connection("foobar") == ("foobar", None)
-    assert parse_connection("foo.bar") == ("foo", "bar")
-    assert parse_connection("foo.bar.baz") == ("foo", "bar.baz")
+    assert parse_connect_string("foobar") == ("foobar", None)
+    assert parse_connect_string("foo.bar") == ("foo", "bar")
+    assert parse_connect_string("foo.bar.baz") == ("foo", "bar.baz")

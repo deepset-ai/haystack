@@ -53,7 +53,7 @@ def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_va
                 or not socket.name in inputs_for_node.keys()
                 or inputs_for_node.get(socket.name, None) is None
             )
-            if missing_input_value and not socket.is_optional:
+            if missing_input_value and socket.is_mandatory and not socket.is_variadic:
                 all_inputs = describe_pipeline_inputs_as_string(graph)
                 raise ValueError(f"Missing input: {node}.{socket.name}\n\n{all_inputs}")
 
@@ -74,5 +74,5 @@ def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, in
                 )
 
             input_socket: InputSocket = graph.nodes[node]["input_sockets"][socket_name]
-            if input_socket.sender and not input_socket.is_variadic:
-                raise ValueError(f"The input {socket_name} of {node} is already sent by: {input_socket.sender}")
+            if input_socket.senders and not input_socket.is_variadic:
+                raise ValueError(f"The input {socket_name} of {node} is already sent by: {input_socket.senders}")
