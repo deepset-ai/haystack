@@ -10,6 +10,7 @@ from haystack.nodes.prompt.invocation_layer.amazon_bedrock import (
     AI21ModelAdapter,
     AnthropicModelAdapter,
     CohereModelAdapter,
+    TitanModelAdapter,
 )
 
 with LazyImport() as boto3_import:
@@ -625,6 +626,112 @@ class TestAI21ModelAdapter:
                 {"data": {"text": "This is a single response."}},
                 {"data": {"text": "This is a second response."}},
             ]
+        }
+        expected_responses = ["This is a single response.", "This is a second response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+
+class TestTitanModelAdapter:
+    def test_prepare_body_with_default_params(self) -> None:
+        layer = TitanModelAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {"inputText": "Hello, how are you?", "textGenerationConfig": {"maxTokenCount": 99}}
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_custom_inference_params(self) -> None:
+        layer = TitanModelAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "inputText": "Hello, how are you?",
+            "textGenerationConfig": {
+                "maxTokenCount": 50,
+                "stopSequences": ["CUSTOM_STOP"],
+                "temperature": 0.7,
+                "topP": 0.8,
+            },
+        }
+
+        body = layer.prepare_body(
+            prompt,
+            maxTokenCount=50,
+            stopSequences=["CUSTOM_STOP"],
+            temperature=0.7,
+            topP=0.8,
+            unknown_arg="unknown_value",
+        )
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs(self) -> None:
+        layer = TitanModelAdapter(
+            model_kwargs={
+                "maxTokenCount": 50,
+                "stopSequences": ["CUSTOM_STOP"],
+                "temperature": 0.7,
+                "topP": 0.8,
+                "unknown_arg": "unknown_value",
+            },
+            max_length=99,
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "inputText": "Hello, how are you?",
+            "textGenerationConfig": {
+                "maxTokenCount": 50,
+                "stopSequences": ["CUSTOM_STOP"],
+                "temperature": 0.7,
+                "topP": 0.8,
+            },
+        }
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs_and_custom_inference_params(self) -> None:
+        layer = TitanModelAdapter(
+            model_kwargs={
+                "maxTokenCount": 49,
+                "stopSequences": ["CUSTOM_STOP_MODEL_KWARGS"],
+                "temperature": 0.6,
+                "topP": 0.7,
+            },
+            max_length=99,
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "inputText": "Hello, how are you?",
+            "textGenerationConfig": {
+                "maxTokenCount": 50,
+                "stopSequences": ["CUSTOM_STOP_MODEL_KWARGS"],
+                "temperature": 0.7,
+                "topP": 0.8,
+            },
+        }
+
+        body = layer.prepare_body(prompt, temperature=0.7, topP=0.8, maxTokenCount=50)
+
+        assert body == expected_body
+
+    def test_get_responses(self) -> None:
+        adapter = TitanModelAdapter(model_kwargs={}, max_length=99)
+        response_body = {"results": [{"outputText": "This is a single response."}]}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+    def test_get_responses_leading_whitespace(self) -> None:
+        adapter = TitanModelAdapter(model_kwargs={}, max_length=99)
+        response_body = {"results": [{"outputText": "\n\t This is a single response."}]}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+    def test_get_responses_multiple_responses(self) -> None:
+        adapter = TitanModelAdapter(model_kwargs={}, max_length=99)
+        response_body = {
+            "results": [{"outputText": "This is a single response."}, {"outputText": "This is a second response."}]
         }
         expected_responses = ["This is a single response.", "This is a second response."]
         assert adapter.get_responses(response_body) == expected_responses
