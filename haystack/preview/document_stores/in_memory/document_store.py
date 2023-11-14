@@ -191,6 +191,7 @@ class InMemoryDocumentStore:
                 if policy == DuplicatePolicy.SKIP:
                     logger.warning("ID '%s' already exists", document.id)
                     written_documents -= 1
+                    continue
             self.storage[document.id] = document
         return written_documents
 
