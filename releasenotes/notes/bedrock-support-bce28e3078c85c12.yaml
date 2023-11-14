@@ -1,0 +1,17 @@
+---
+prelude: >
+    Amazon Bedrock models are now supported in Haystack. All currently available
+    models are supported, including the ones that are already announced
+    (e.g. Llamma-2-70b-chat). The models can be used in the same way as other
+    models in Haystack using its model ids as `model_name_or_path` (see
+    https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids-arns.html).
+
+    For example, the following code will load the Llama 2 Chat 13B model:
+    ```python
+    from haystack.nodes import PromptNode
+
+    prompt_node = PromptNode(model_name_or_path="meta.llama2-13b-chat-v1")
+    ```
+features:
+  - |
+    Amazon Bedrock models can be used in Haystack.
