@@ -93,6 +93,9 @@ class CohereModelAdapter(BedrockModelAdapter):
             "k": None,
             "return_likelihoods": None,
             "stream": None,
+            "logit_bias": None,
+            "num_generations": None,
+            "truncate": None,
         }
         params = self._get_params(inference_kwargs, default_params)
 

@@ -362,8 +362,11 @@ class TestCohereModelAdapter:
             "temperature": 0.7,
             "p": 0.8,
             "k": 5,
-            "return_likelihoods": {"likelihoods": True},
+            "return_likelihoods": "GENERATION",
             "stream": True,
+            "logit_bias": {"token_id": 10.0},
+            "num_generations": 1,
+            "truncate": "START",
         }
 
         body = layer.prepare_body(
@@ -373,8 +376,11 @@ class TestCohereModelAdapter:
             k=5,
             max_tokens=50,
             stop_sequences=["CUSTOM_STOP"],
-            return_likelihoods={"likelihoods": True},
+            return_likelihoods="GENERATION",
             stream=True,
+            logit_bias={"token_id": 10.0},
+            num_generations=1,
+            truncate="START",
             unknown_arg="unknown_value",
         )
 
@@ -388,8 +394,11 @@ class TestCohereModelAdapter:
                 "k": 5,
                 "max_tokens": 50,
                 "stop_sequences": ["CUSTOM_STOP"],
-                "return_likelihoods": {"likelihoods": True},
+                "return_likelihoods": "GENERATION",
                 "stream": True,
+                "logit_bias": {"token_id": 10.0},
+                "num_generations": 1,
+                "truncate": "START",
                 "unknown_arg": "unknown_value",
             },
             max_length=99,
@@ -402,8 +411,11 @@ class TestCohereModelAdapter:
             "temperature": 0.7,
             "p": 0.8,
             "k": 5,
-            "return_likelihoods": {"likelihoods": True},
+            "return_likelihoods": "GENERATION",
             "stream": True,
+            "logit_bias": {"token_id": 10.0},
+            "num_generations": 1,
+            "truncate": "START",
         }
 
         body = layer.prepare_body(prompt)
@@ -418,8 +430,11 @@ class TestCohereModelAdapter:
                 "k": 4,
                 "max_tokens": 49,
                 "stop_sequences": ["CUSTOM_STOP_MODEL_KWARGS"],
-                "return_likelihoods": {"likelihoods": "model_kwargs"},
+                "return_likelihoods": "ALL",
                 "stream": False,
+                "logit_bias": {"token_id": 9.0},
+                "num_generations": 2,
+                "truncate": "NONE",
             },
             max_length=99,
         )
@@ -431,12 +446,24 @@ class TestCohereModelAdapter:
             "temperature": 0.7,
             "p": 0.8,
             "k": 5,
-            "return_likelihoods": {"likelihoods": True},
+            "return_likelihoods": "GENERATION",
             "stream": True,
+            "logit_bias": {"token_id": 10.0},
+            "num_generations": 1,
+            "truncate": "START",
         }
 
         body = layer.prepare_body(
-            prompt, temperature=0.7, p=0.8, k=5, max_tokens=50, return_likelihoods={"likelihoods": True}, stream=True
+            prompt,
+            temperature=0.7,
+            p=0.8,
+            k=5,
+            max_tokens=50,
+            return_likelihoods="GENERATION",
+            stream=True,
+            logit_bias={"token_id": 10.0},
+            num_generations=1,
+            truncate="START",
         )
 
         assert body == expected_body
