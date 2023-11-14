@@ -7,10 +7,10 @@ from haystack.lazy_imports import LazyImport
 from haystack.errors import AmazonBedrockConfigurationError
 from haystack.nodes.prompt.invocation_layer import AmazonBedrockInvocationLayer
 from haystack.nodes.prompt.invocation_layer.amazon_bedrock import (
-    AI21ModelAdapter,
-    AnthropicModelAdapter,
-    CohereModelAdapter,
-    TitanModelAdapter,
+    AI21LabsJurassic2Adapter,
+    AnthropicClaudeAdapter,
+    CohereCommandAdapter,
+    AmazonTitanAdapter,
 )
 
 with LazyImport() as boto3_import:
@@ -245,9 +245,9 @@ def test_supports_for_unknown_model():
     assert supported == False
 
 
-class TestAnthropicModelAdapter:
+class TestAnthropicClaudeAdapter:
     def test_prepare_body_with_default_params(self) -> None:
-        layer = AnthropicModelAdapter(model_kwargs={}, max_length=99)
+        layer = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
         prompt = "Hello, how are you?"
         expected_body = {
             "prompt": "\n\nHuman: Hello, how are you?\n\nAssistant:",
@@ -260,7 +260,7 @@ class TestAnthropicModelAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_custom_inference_params(self) -> None:
-        layer = AnthropicModelAdapter(model_kwargs={}, max_length=99)
+        layer = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
         prompt = "Hello, how are you?"
         expected_body = {
             "prompt": "\n\nHuman: Hello, how are you?\n\nAssistant:",
@@ -284,7 +284,7 @@ class TestAnthropicModelAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_model_kwargs(self) -> None:
-        layer = AnthropicModelAdapter(
+        layer = AnthropicClaudeAdapter(
             model_kwargs={
                 "temperature": 0.7,
                 "top_p": 0.8,
@@ -310,7 +310,7 @@ class TestAnthropicModelAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_model_kwargs_and_custom_inference_params(self) -> None:
-        layer = AnthropicModelAdapter(
+        layer = AnthropicClaudeAdapter(
             model_kwargs={
                 "temperature": 0.6,
                 "top_p": 0.7,
@@ -335,21 +335,21 @@ class TestAnthropicModelAdapter:
         assert body == expected_body
 
     def test_get_responses(self) -> None:
-        adapter = AnthropicModelAdapter(model_kwargs={}, max_length=99)
+        adapter = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
         response_body = {"completion": "This is a single response."}
         expected_responses = ["This is a single response."]
         assert adapter.get_responses(response_body) == expected_responses
 
     def test_get_responses_leading_whitespace(self) -> None:
-        adapter = AnthropicModelAdapter(model_kwargs={}, max_length=99)
+        adapter = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
         response_body = {"completion": "\n\t This is a single response."}
         expected_responses = ["This is a single response."]
         assert adapter.get_responses(response_body) == expected_responses
 
 
-class TestCohereModelAdapter:
+class TestCohereCommandAdapter:
     def test_prepare_body_with_default_params(self) -> None:
-        layer = CohereModelAdapter(model_kwargs={}, max_length=99)
+        layer = CohereCommandAdapter(model_kwargs={}, max_length=99)
         prompt = "Hello, how are you?"
         expected_body = {"prompt": "Hello, how are you?", "max_tokens": 99}
 
@@ -358,7 +358,7 @@ class TestCohereModelAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_custom_inference_params(self) -> None:
-        layer = CohereModelAdapter(model_kwargs={}, max_length=99)
+        layer = CohereCommandAdapter(model_kwargs={}, max_length=99)
         prompt = "Hello, how are you?"
         expected_body = {
             "prompt": "Hello, how are you?",
@@ -392,7 +392,7 @@ class TestCohereModelAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_model_kwargs(self) -> None:
-        layer = CohereModelAdapter(
+        layer = CohereCommandAdapter(
             model_kwargs={
                 "temperature": 0.7,
                 "p": 0.8,
@@ -428,7 +428,7 @@ class TestCohereModelAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_model_kwargs_and_custom_inference_params(self) -> None:
-        layer = CohereModelAdapter(
+        layer = CohereCommandAdapter(
             model_kwargs={
                 "temperature": 0.6,
                 "p": 0.7,
@@ -474,19 +474,19 @@ class TestCohereModelAdapter:
         assert body == expected_body
 
     def test_get_responses(self) -> None:
-        adapter = CohereModelAdapter(model_kwargs={}, max_length=99)
+        adapter = CohereCommandAdapter(model_kwargs={}, max_length=99)
         response_body = {"generations": [{"text": "This is a single response."}]}
         expected_responses = ["This is a single response."]
         assert adapter.get_responses(response_body) == expected_responses
 
     def test_get_responses_leading_whitespace(self) -> None:
-        adapter = CohereModelAdapter(model_kwargs={}, max_length=99)
+        adapter = CohereCommandAdapter(model_kwargs={}, max_length=99)
         response_body = {"generations": [{"text": "\n\t This is a single response."}]}
         expected_responses = ["This is a single response."]
         assert adapter.get_responses(response_body) == expected_responses
 
     def test_get_responses_multiple_responses(self) -> None:
-        adapter = CohereModelAdapter(model_kwargs={}, max_length=99)
+        adapter = CohereCommandAdapter(model_kwargs={}, max_length=99)
         response_body = {
             "generations": [{"text": "This is a single response."}, {"text": "This is a second response."}]
         }
@@ -494,9 +494,9 @@ class TestCohereModelAdapter:
         assert adapter.get_responses(response_body) == expected_responses
 
 
-class TestAI21ModelAdapter:
+class TestAI21LabsJurrasic2Adapter:
     def test_prepare_body_with_default_params(self) -> None:
-        layer = AI21ModelAdapter(model_kwargs={}, max_length=99)
+        layer = AI21LabsJurassic2Adapter(model_kwargs={}, max_length=99)
         prompt = "Hello, how are you?"
         expected_body = {"prompt": "Hello, how are you?", "maxTokens": 99}
 
@@ -505,7 +505,7 @@ class TestAI21ModelAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_custom_inference_params(self) -> None:
-        layer = AI21ModelAdapter(model_kwargs={}, max_length=99)
+        layer = AI21LabsJurassic2Adapter(model_kwargs={}, max_length=99)
         prompt = "Hello, how are you?"
         expected_body = {
             "prompt": "Hello, how are you?",
@@ -535,7 +535,7 @@ class TestAI21ModelAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_model_kwargs(self) -> None:
-        layer = AI21ModelAdapter(
+        layer = AI21LabsJurassic2Adapter(
             model_kwargs={
                 "maxTokens": 50,
                 "stopSequences": ["CUSTOM_STOP"],
@@ -567,7 +567,7 @@ class TestAI21ModelAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_model_kwargs_and_custom_inference_params(self) -> None:
-        layer = AI21ModelAdapter(
+        layer = AI21LabsJurassic2Adapter(
             model_kwargs={
                 "maxTokens": 49,
                 "stopSequences": ["CUSTOM_STOP_MODEL_KWARGS"],
@@ -608,19 +608,19 @@ class TestAI21ModelAdapter:
         assert body == expected_body
 
     def test_get_responses(self) -> None:
-        adapter = AI21ModelAdapter(model_kwargs={}, max_length=99)
+        adapter = AI21LabsJurassic2Adapter(model_kwargs={}, max_length=99)
         response_body = {"completions": [{"data": {"text": "This is a single response."}}]}
         expected_responses = ["This is a single response."]
         assert adapter.get_responses(response_body) == expected_responses
 
     def test_get_responses_leading_whitespace(self) -> None:
-        adapter = AI21ModelAdapter(model_kwargs={}, max_length=99)
+        adapter = AI21LabsJurassic2Adapter(model_kwargs={}, max_length=99)
         response_body = {"completions": [{"data": {"text": "\n\t This is a single response."}}]}
         expected_responses = ["This is a single response."]
         assert adapter.get_responses(response_body) == expected_responses
 
     def test_get_responses_multiple_responses(self) -> None:
-        adapter = AI21ModelAdapter(model_kwargs={}, max_length=99)
+        adapter = AI21LabsJurassic2Adapter(model_kwargs={}, max_length=99)
         response_body = {
             "completions": [
                 {"data": {"text": "This is a single response."}},
@@ -631,9 +631,9 @@ class TestAI21ModelAdapter:
         assert adapter.get_responses(response_body) == expected_responses
 
 
-class TestTitanModelAdapter:
+class TestAmazonTitanAdapter:
     def test_prepare_body_with_default_params(self) -> None:
-        layer = TitanModelAdapter(model_kwargs={}, max_length=99)
+        layer = AmazonTitanAdapter(model_kwargs={}, max_length=99)
         prompt = "Hello, how are you?"
         expected_body = {"inputText": "Hello, how are you?", "textGenerationConfig": {"maxTokenCount": 99}}
 
@@ -642,7 +642,7 @@ class TestTitanModelAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_custom_inference_params(self) -> None:
-        layer = TitanModelAdapter(model_kwargs={}, max_length=99)
+        layer = AmazonTitanAdapter(model_kwargs={}, max_length=99)
         prompt = "Hello, how are you?"
         expected_body = {
             "inputText": "Hello, how are you?",
@@ -666,7 +666,7 @@ class TestTitanModelAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_model_kwargs(self) -> None:
-        layer = TitanModelAdapter(
+        layer = AmazonTitanAdapter(
             model_kwargs={
                 "maxTokenCount": 50,
                 "stopSequences": ["CUSTOM_STOP"],
@@ -692,7 +692,7 @@ class TestTitanModelAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_model_kwargs_and_custom_inference_params(self) -> None:
-        layer = TitanModelAdapter(
+        layer = AmazonTitanAdapter(
             model_kwargs={
                 "maxTokenCount": 49,
                 "stopSequences": ["CUSTOM_STOP_MODEL_KWARGS"],
@@ -717,19 +717,19 @@ class TestTitanModelAdapter:
         assert body == expected_body
 
     def test_get_responses(self) -> None:
-        adapter = TitanModelAdapter(model_kwargs={}, max_length=99)
+        adapter = AmazonTitanAdapter(model_kwargs={}, max_length=99)
         response_body = {"results": [{"outputText": "This is a single response."}]}
         expected_responses = ["This is a single response."]
         assert adapter.get_responses(response_body) == expected_responses
 
     def test_get_responses_leading_whitespace(self) -> None:
-        adapter = TitanModelAdapter(model_kwargs={}, max_length=99)
+        adapter = AmazonTitanAdapter(model_kwargs={}, max_length=99)
         response_body = {"results": [{"outputText": "\n\t This is a single response."}]}
         expected_responses = ["This is a single response."]
         assert adapter.get_responses(response_body) == expected_responses
 
     def test_get_responses_multiple_responses(self) -> None:
-        adapter = TitanModelAdapter(model_kwargs={}, max_length=99)
+        adapter = AmazonTitanAdapter(model_kwargs={}, max_length=99)
         response_body = {
             "results": [{"outputText": "This is a single response."}, {"outputText": "This is a second response."}]
         }

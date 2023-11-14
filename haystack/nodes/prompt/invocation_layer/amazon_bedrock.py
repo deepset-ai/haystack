@@ -48,7 +48,7 @@ class BedrockModelAdapter(ABC):
         }
 
 
-class AnthropicModelAdapter(BedrockModelAdapter):
+class AnthropicClaudeAdapter(BedrockModelAdapter):
     """
     Model adapter for Anthropic's Claude model.
     """
@@ -79,7 +79,7 @@ class AnthropicModelAdapter(BedrockModelAdapter):
         return responses
 
 
-class CohereModelAdapter(BedrockModelAdapter):
+class CohereCommandAdapter(BedrockModelAdapter):
     """
     Model adapter for Cohere's Command model.
     """
@@ -117,7 +117,7 @@ class CohereModelAdapter(BedrockModelAdapter):
         return responses
 
 
-class AI21ModelAdapter(BedrockModelAdapter):
+class AI21LabsJurassic2Adapter(BedrockModelAdapter):
     """
     Model adapter for AI21's J2 models.
     """
@@ -143,7 +143,7 @@ class AI21ModelAdapter(BedrockModelAdapter):
         return responses
 
 
-class TitanModelAdapter(BedrockModelAdapter):
+class AmazonTitanAdapter(BedrockModelAdapter):
     """
     Model adapter for Amazon's Titan models.
     """
@@ -174,16 +174,16 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
     """
 
     SUPPORTED_MODELS: Dict[str, Type[BedrockModelAdapter]] = {
-        "amazon.titan-text-express-v1": TitanModelAdapter,
-        "amazon.titan-text-lite-v1": TitanModelAdapter,
-        "amazon.titan-text-agile-v1": TitanModelAdapter,
-        "ai21.j2-ultra-v1": AI21ModelAdapter,
-        "ai21.j2-mid-v1": AI21ModelAdapter,
-        "cohere.command-text-v14": CohereModelAdapter,
-        "cohere.command-light-text-v14": CohereModelAdapter,
-        "anthropic.claude-v1": AnthropicModelAdapter,
-        "anthropic.claude-v2": AnthropicModelAdapter,
-        "anthropic.claude-instant-v1": AnthropicModelAdapter,
+        "amazon.titan-text-express-v1": AmazonTitanAdapter,
+        "amazon.titan-text-lite-v1": AmazonTitanAdapter,
+        "amazon.titan-text-agile-v1": AmazonTitanAdapter,
+        "ai21.j2-ultra-v1": AI21LabsJurassic2Adapter,
+        "ai21.j2-mid-v1": AI21LabsJurassic2Adapter,
+        "cohere.command-text-v14": CohereCommandAdapter,
+        "cohere.command-light-text-v14": CohereCommandAdapter,
+        "anthropic.claude-v1": AnthropicClaudeAdapter,
+        "anthropic.claude-v2": AnthropicClaudeAdapter,
+        "anthropic.claude-instant-v1": AnthropicClaudeAdapter,
     }
 
     def __init__(
