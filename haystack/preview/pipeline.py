@@ -72,46 +72,6 @@ class Pipeline(canals.Pipeline):
         dictionary are the component names and the values are dictionaries with the input parameters of that component.
         """
 
-    @overload
-    def run(self, **kwargs) -> Dict[str, Any]:
-        """
-        Runs the pipeline
-
-        :param kwargs: the inputs to give to the input components of the Pipeline. Each key in kwargs represents
-        an input parameter of some component in the pipeline and the value is the corresponding value to be passed.
-        The input name doesn't have to be fully qualified (no need to use 'component_name.input_name'), just having
-        input_name part is enough. If there are multiple components with the same input name, the pipeline input will be
-        passed to all of them (as long as the types match).
-
-        :return: A dictionary with the outputs of the Pipeline.
-        :raises PipelineRuntimeError: if any of the components fail or return unexpected output.
-
-        Here is an example using a simple Hello component having an input 'word', a string, and output
-        named 'output', also a string. The component just returns the input string with a greeting, i.e:
-
-        ```python
-        @component
-        class Hello:
-            @component.output_types(output=str)
-            def run(self, word: str):
-                return {"output": f"Hello, {word}!"}
-        ```
-
-        We can create a pipeline connecting two instances of this component together, and run it like so:
-
-        ```python
-        pipeline = Pipeline()
-        pipeline.add_component("hello", Hello())
-        pipeline.add_component("hello2", Hello())
-
-        pipeline.connect("hello.output", "hello2.word")
-        result = pipeline.run(word="world")
-        assert result == {'hello2': {'output': 'Hello, Hello, world!!'}}
-        ```
-        Notice how run method takes keyword arguments with the corresponding values. The pipeline will
-        automatically resolve the matching components and pass the input to them.
-        """
-
     def run(self, *args, **kwargs) -> Dict[str, Any]:
         """
         Dispatches the execution to the appropriate overloaded run method based on the input arguments.
