@@ -25,7 +25,7 @@ class MetaFieldRanker:
         Document(text="Barcelona", metadata={"rating": 2.1}),
     ]
 
-    output = ranker.run(query="", documents=docs)
+    output = ranker.run(documents=docs)
     docs = output["documents"]
     assert docs[0].text == "Barcelona"
     """
@@ -90,14 +90,13 @@ class MetaFieldRanker:
         )
 
     @component.output_types(documents=List[Document])
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+    def run(self, documents: List[Document], top_k: Optional[int] = None):
         """
         This method is used to rank a list of documents based on the selected metadata field by:
         1. Sorting the documents by the metadata field in descending order.
         2. Merging the scores from the metadata field with the scores from the previous component according to the strategy and weight provided.
         3. Returning the top-k documents.
 
-        :param query: Not used in practice (so can be left blank), as this ranker does not perform sorting based on semantic closeness of documents to the query.
         :param documents: Documents provided for ranking.
         :param top_k: (optional) How many documents to return at the end. If not provided, all documents will be returned.
         """
