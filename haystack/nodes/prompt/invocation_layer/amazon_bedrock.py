@@ -4,9 +4,6 @@ import logging
 import re
 from typing import Any, Optional, Dict, Type, Union, List
 
-from botocore.eventstream import EventStream
-
-
 from haystack.errors import AWSConfigurationError, AmazonBedrockConfigurationError, AmazonBedrockInferenceError
 from haystack.lazy_imports import LazyImport
 from haystack.nodes.prompt.invocation_layer.aws_base import AWSBaseInvocationLayer
@@ -42,7 +39,7 @@ class BedrockModelAdapter(ABC):
         responses = [completion.lstrip() for completion in completions]
         return responses
 
-    def get_stream_responses(self, stream: EventStream, stream_handler: TokenStreamingHandler) -> List[str]:
+    def get_stream_responses(self, stream, stream_handler: TokenStreamingHandler) -> List[str]:
         tokens: List[str] = []
         for event in stream:
             chunk = event.get("chunk")
