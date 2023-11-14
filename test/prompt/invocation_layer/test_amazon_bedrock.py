@@ -6,6 +6,7 @@ from haystack.lazy_imports import LazyImport
 
 from haystack.errors import AmazonBedrockConfigurationError
 from haystack.nodes.prompt.invocation_layer import AmazonBedrockInvocationLayer
+from haystack.nodes.prompt.invocation_layer.amazon_bedrock import AnthropicModelAdapter, CohereModelAdapter
 
 with LazyImport() as boto3_import:
     from botocore.exceptions import BotoCoreError
@@ -237,3 +238,225 @@ def test_supports_for_unknown_model():
     )
 
     assert supported == False
+
+
+class TestAnthropicModelAdapter:
+    def test_prepare_body_with_default_params(self) -> None:
+        layer = AnthropicModelAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "prompt": "\n\nHuman: Hello, how are you?\n\nAssistant:",
+            "max_tokens_to_sample": 99,
+            "stop_sequences": ["\n\nHuman:"],
+        }
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_custom_inference_params(self) -> None:
+        layer = AnthropicModelAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "prompt": "\n\nHuman: Hello, how are you?\n\nAssistant:",
+            "max_tokens_to_sample": 50,
+            "stop_sequences": ["CUSTOM_STOP"],
+            "temperature": 0.7,
+            "top_p": 0.8,
+            "top_k": 5,
+        }
+
+        body = layer.prepare_body(
+            prompt,
+            temperature=0.7,
+            top_p=0.8,
+            top_k=5,
+            max_tokens_to_sample=50,
+            stop_sequences=["CUSTOM_STOP"],
+            unknown_arg="unknown_value",
+        )
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs(self) -> None:
+        layer = AnthropicModelAdapter(
+            model_kwargs={
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "top_k": 5,
+                "max_tokens_to_sample": 50,
+                "stop_sequences": ["CUSTOM_STOP"],
+                "unknown_arg": "unknown_value",
+            },
+            max_length=99,
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "prompt": "\n\nHuman: Hello, how are you?\n\nAssistant:",
+            "max_tokens_to_sample": 50,
+            "stop_sequences": ["CUSTOM_STOP"],
+            "temperature": 0.7,
+            "top_p": 0.8,
+            "top_k": 5,
+        }
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs_and_custom_inference_params(self) -> None:
+        layer = AnthropicModelAdapter(
+            model_kwargs={
+                "temperature": 0.6,
+                "top_p": 0.7,
+                "top_k": 4,
+                "max_tokens_to_sample": 49,
+                "stop_sequences": ["CUSTOM_STOP_MODEL_KWARGS"],
+            },
+            max_length=99,
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "prompt": "\n\nHuman: Hello, how are you?\n\nAssistant:",
+            "max_tokens_to_sample": 50,
+            "stop_sequences": ["CUSTOM_STOP_MODEL_KWARGS"],
+            "temperature": 0.7,
+            "top_p": 0.8,
+            "top_k": 5,
+        }
+
+        body = layer.prepare_body(prompt, temperature=0.7, top_p=0.8, top_k=5, max_tokens_to_sample=50)
+
+        assert body == expected_body
+
+    def test_get_responses(self) -> None:
+        adapter = AnthropicModelAdapter(model_kwargs={}, max_length=99)
+        response_body = {"completion": "This is a single response."}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+    def test_get_responses_leading_whitespace(self) -> None:
+        adapter = AnthropicModelAdapter(model_kwargs={}, max_length=99)
+        response_body = {"completion": "\n\t This is a single response."}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+
+class TestCohereModelAdapter:
+    def test_prepare_body_with_default_params(self) -> None:
+        layer = CohereModelAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {"prompt": "Hello, how are you?", "max_tokens": 99}
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_custom_inference_params(self) -> None:
+        layer = CohereModelAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "prompt": "Hello, how are you?",
+            "max_tokens": 50,
+            "stop_sequences": ["CUSTOM_STOP"],
+            "temperature": 0.7,
+            "p": 0.8,
+            "k": 5,
+            "return_likelihoods": {"likelihoods": True},
+            "stream": True,
+        }
+
+        body = layer.prepare_body(
+            prompt,
+            temperature=0.7,
+            p=0.8,
+            k=5,
+            max_tokens=50,
+            stop_sequences=["CUSTOM_STOP"],
+            return_likelihoods={"likelihoods": True},
+            stream=True,
+            unknown_arg="unknown_value",
+        )
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs(self) -> None:
+        layer = CohereModelAdapter(
+            model_kwargs={
+                "temperature": 0.7,
+                "p": 0.8,
+                "k": 5,
+                "max_tokens": 50,
+                "stop_sequences": ["CUSTOM_STOP"],
+                "return_likelihoods": {"likelihoods": True},
+                "stream": True,
+                "unknown_arg": "unknown_value",
+            },
+            max_length=99,
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "prompt": "Hello, how are you?",
+            "max_tokens": 50,
+            "stop_sequences": ["CUSTOM_STOP"],
+            "temperature": 0.7,
+            "p": 0.8,
+            "k": 5,
+            "return_likelihoods": {"likelihoods": True},
+            "stream": True,
+        }
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs_and_custom_inference_params(self) -> None:
+        layer = CohereModelAdapter(
+            model_kwargs={
+                "temperature": 0.6,
+                "p": 0.7,
+                "k": 4,
+                "max_tokens": 49,
+                "stop_sequences": ["CUSTOM_STOP_MODEL_KWARGS"],
+                "return_likelihoods": {"likelihoods": "model_kwargs"},
+                "stream": False,
+            },
+            max_length=99,
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "prompt": "Hello, how are you?",
+            "max_tokens": 50,
+            "stop_sequences": ["CUSTOM_STOP_MODEL_KWARGS"],
+            "temperature": 0.7,
+            "p": 0.8,
+            "k": 5,
+            "return_likelihoods": {"likelihoods": True},
+            "stream": True,
+        }
+
+        body = layer.prepare_body(
+            prompt, temperature=0.7, p=0.8, k=5, max_tokens=50, return_likelihoods={"likelihoods": True}, stream=True
+        )
+
+        assert body == expected_body
+
+    def test_get_responses(self) -> None:
+        adapter = CohereModelAdapter(model_kwargs={}, max_length=99)
+        response_body = {"generations": [{"text": "This is a single response."}]}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+    def test_get_responses_leading_whitespace(self) -> None:
+        adapter = CohereModelAdapter(model_kwargs={}, max_length=99)
+        response_body = {"generations": [{"text": "\n\t This is a single response."}]}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+    def test_get_responses_multiple_responses(self) -> None:
+        adapter = CohereModelAdapter(model_kwargs={}, max_length=99)
+        response_body = {
+            "generations": [{"text": "This is a single response."}, {"text": "This is a second response."}]
+        }
+        expected_responses = ["This is a single response.", "This is a second response."]
+        assert adapter.get_responses(response_body) == expected_responses
