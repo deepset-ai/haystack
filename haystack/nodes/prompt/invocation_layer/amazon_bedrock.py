@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import json
 import logging
+import re
 from typing import Any, Optional, Dict, Type, Union, List
 
 from botocore.eventstream import EventStream
@@ -204,18 +205,12 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
     Invocation layer for Amazon Bedrock models.
     """
 
-    SUPPORTED_MODELS: Dict[str, Type[BedrockModelAdapter]] = {
-        "amazon.titan-text-express-v1": AmazonTitanAdapter,
-        "amazon.titan-text-lite-v1": AmazonTitanAdapter,
-        "amazon.titan-text-agile-v1": AmazonTitanAdapter,
-        "ai21.j2-ultra-v1": AI21LabsJurassic2Adapter,
-        "ai21.j2-mid-v1": AI21LabsJurassic2Adapter,
-        "cohere.command-text-v14": CohereCommandAdapter,
-        "cohere.command-light-text-v14": CohereCommandAdapter,
-        "anthropic.claude-v1": AnthropicClaudeAdapter,
-        "anthropic.claude-v2": AnthropicClaudeAdapter,
-        "anthropic.claude-instant-v1": AnthropicClaudeAdapter,
-        "meta.llama2-13b-chat-v1": MetaLlama2ChatAdapter,
+    SUPPORTED_MODEL_PATTERNS: Dict[str, Type[BedrockModelAdapter]] = {
+        r"amazon.titan-text.*": AmazonTitanAdapter,
+        r"ai21.j2.*": AI21LabsJurassic2Adapter,
+        r"cohere.command.*": CohereCommandAdapter,
+        r"anthropic.claude.*": AnthropicClaudeAdapter,
+        r"meta.llama2.*": MetaLlama2ChatAdapter,
     }
 
     def __init__(
@@ -259,9 +254,12 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
             model_name_or_path="gpt2", model_max_length=model_max_length, max_length=self.max_length or 100
         )
 
-        self.model_adapter = self.SUPPORTED_MODELS[self.model_name_or_path](
-            model_kwargs=model_input_kwargs, max_length=self.max_length
-        )
+        model_apapter_cls = self.get_model_adapter(model_name_or_path=model_name_or_path)
+        if not model_apapter_cls:
+            raise AmazonBedrockConfigurationError(
+                f"The model {model_name_or_path} is not supported by this invocation layer."
+            )
+        self.model_adapter = model_apapter_cls(model_kwargs=model_input_kwargs, max_length=self.max_length)
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         # the prompt for this model will be of the type str
@@ -283,8 +281,7 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path, **kwargs):
-        supported_model_ids = cls.SUPPORTED_MODELS.keys()
-        model_supported = model_name_or_path in supported_model_ids
+        model_supported = cls.get_model_adapter(model_name_or_path) is not None
         if not model_supported or not cls.aws_configured(**kwargs):
             return False
 
@@ -365,3 +362,10 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
             ) from exception
 
         return responses
+
+    @classmethod
+    def get_model_adapter(cls, model_name_or_path: str) -> Optional[Type[BedrockModelAdapter]]:
+        for pattern, adapter in cls.SUPPORTED_MODEL_PATTERNS.items():
+            if re.fullmatch(pattern, model_name_or_path):
+                return adapter
+        return None

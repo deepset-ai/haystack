@@ -1,3 +1,4 @@
+from typing import Optional, Type
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -9,6 +10,7 @@ from haystack.nodes.prompt.invocation_layer import AmazonBedrockInvocationLayer
 from haystack.nodes.prompt.invocation_layer.amazon_bedrock import (
     AI21LabsJurassic2Adapter,
     AnthropicClaudeAdapter,
+    BedrockModelAdapter,
     CohereCommandAdapter,
     AmazonTitanAdapter,
     MetaLlama2ChatAdapter,
@@ -244,6 +246,38 @@ def test_supports_for_unknown_model():
     )
 
     assert supported == False
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "model_name_or_path, expected_model_adapter",
+    [
+        ("anthropic.claude-v1", AnthropicClaudeAdapter),
+        ("anthropic.claude-v2", AnthropicClaudeAdapter),
+        ("anthropic.claude-instant-v1", AnthropicClaudeAdapter),
+        ("anthropic.claude-super-v5", AnthropicClaudeAdapter),  # artificial
+        ("cohere.command-text-v14", CohereCommandAdapter),
+        ("cohere.command-light-text-v14", CohereCommandAdapter),
+        ("cohere.command-text-v21", CohereCommandAdapter),  # artificial
+        ("ai21.j2-mid-v1", AI21LabsJurassic2Adapter),
+        ("ai21.j2-ultra-v1", AI21LabsJurassic2Adapter),
+        ("ai21.j2-mega-v5", AI21LabsJurassic2Adapter),  # artificial
+        ("amazon.titan-text-lite-v1", AmazonTitanAdapter),
+        ("amazon.titan-text-express-v1", AmazonTitanAdapter),
+        ("amazon.titan-text-agile-v1", AmazonTitanAdapter),
+        ("amazon.titan-text-lightning-v8", AmazonTitanAdapter),  # artificial
+        ("meta.llama2-13b-chat-v1", MetaLlama2ChatAdapter),
+        ("meta.llama2-70b-chat-v1", MetaLlama2ChatAdapter),
+        ("meta.llama2-130b-v5", MetaLlama2ChatAdapter),  # artificial
+        ("unknown_model", None),
+    ],
+)
+def test_get_model_adapter(model_name_or_path: str, expected_model_adapter: Optional[Type[BedrockModelAdapter]]):
+    """
+    Test that the correct model adapter is returned for a given model_name_or_path
+    """
+    model_adapter = AmazonBedrockInvocationLayer.get_model_adapter(model_name_or_path=model_name_or_path)
+    assert model_adapter == expected_model_adapter
 
 
 class TestAnthropicClaudeAdapter:
