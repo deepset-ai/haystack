@@ -180,6 +180,7 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
         "ai21.j2-ultra-v1": AI21ModelAdapter,
         "ai21.j2-mid-v1": AI21ModelAdapter,
         "cohere.command-text-v14": CohereModelAdapter,
+        "cohere.command-light-text-v14": CohereModelAdapter,
         "anthropic.claude-v1": AnthropicModelAdapter,
         "anthropic.claude-v2": AnthropicModelAdapter,
         "anthropic.claude-instant-v1": AnthropicModelAdapter,
