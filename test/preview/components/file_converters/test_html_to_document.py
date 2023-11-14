@@ -49,7 +49,26 @@ class TestHTMLToDocument:
     @pytest.mark.integration
     def test_run_bytestream_metadata(self, preview_samples_path):
         """
-        Test if the component runs correctly when metadata is read from the received ByteStream object.
+        Test if the component runs correctly when metadata is read from the ByteStream object.
+        """
+        converter = HTMLToDocument()
+        with open(preview_samples_path / "html" / "what_is_haystack.html", "rb") as file:
+            byte_stream = file.read()
+            stream = ByteStream(byte_stream, metadata={"content_type": "text/html", "url": "test_url"})
+
+        results = converter.run(sources=[stream])
+        docs = results["documents"]
+
+        assert len(docs) == 1
+        assert "Haystack" in docs[0].content
+        assert docs[0].meta == {"content_type": "text/html", "url": "test_url"}
+
+    @pytest.mark.integration
+    def test_run_bytestream_and_doc_metadata(self, preview_samples_path):
+        """
+        Test if the component runs correctly when metadata is read from the ByteStream object and supplied by the user.
+
+        There is no overlap between the metadata received.
         """
         converter = HTMLToDocument()
         with open(preview_samples_path / "html" / "what_is_haystack.html", "rb") as file:
@@ -67,9 +86,11 @@ class TestHTMLToDocument:
     @pytest.mark.integration
     def test_run_bytestream_doc_overlapping_metadata(self, preview_samples_path):
         """
-        Test if the component runs correctly when metadata is read from the received ByteStream object and supplied by the user.
+        Test if the component runs correctly when metadata is read from the ByteStream object and supplied by the user.
 
-        The component will use the supplied metadata if there is an overlap between the keys.
+        There is an overlap between the metadata received.
+
+        The component should use the supplied metadata to overwrite the values if there is an overlap between the keys.
         """
         converter = HTMLToDocument()
         with open(preview_samples_path / "html" / "what_is_haystack.html", "rb") as file:
