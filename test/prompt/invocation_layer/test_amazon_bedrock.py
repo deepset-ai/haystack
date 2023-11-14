@@ -5,7 +5,7 @@ import pytest
 from haystack.lazy_imports import LazyImport
 
 from haystack.errors import AmazonBedrockConfigurationError
-from haystack.nodes.prompt.invocation_layer import AmazonBedrockBaseInvocationLayer
+from haystack.nodes.prompt.invocation_layer import AmazonBedrockInvocationLayer
 
 with LazyImport() as boto3_import:
     from botocore.exceptions import BotoCoreError
@@ -30,7 +30,7 @@ def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
     Test that the default constructor sets the correct values
     """
 
-    layer = AmazonBedrockBaseInvocationLayer(
+    layer = AmazonBedrockInvocationLayer(
         model_name_or_path="anthropic.claude-v2",
         max_length=99,
         aws_access_key_id="some_fake_id",
@@ -64,9 +64,7 @@ def test_constructor_prompt_handler_initialized(mock_auto_tokenizer, mock_boto3_
     """
     Test that the constructor sets the prompt_handler correctly, with the correct model_max_length for llama-2
     """
-    layer = AmazonBedrockBaseInvocationLayer(
-        model_name_or_path="anthropic.claude-v2", prompt_handler=mock_prompt_handler
-    )
+    layer = AmazonBedrockInvocationLayer(model_name_or_path="anthropic.claude-v2", prompt_handler=mock_prompt_handler)
     assert layer.prompt_handler is not None
     assert layer.prompt_handler.model_max_length == 4096
 
@@ -78,7 +76,7 @@ def test_constructor_with_model_kwargs(mock_auto_tokenizer, mock_boto3_session):
     """
     model_kwargs = {"temperature": 0.7}
 
-    layer = AmazonBedrockBaseInvocationLayer(model_name_or_path="anthropic.claude-v2", **model_kwargs)
+    layer = AmazonBedrockInvocationLayer(model_name_or_path="anthropic.claude-v2", **model_kwargs)
     assert "temperature" in layer.model_adapter.model_kwargs
     assert layer.model_adapter.model_kwargs["temperature"] == 0.7
 
@@ -89,7 +87,7 @@ def test_constructor_with_empty_model_name():
     Test that the constructor raises an error when the model_name_or_path is empty
     """
     with pytest.raises(ValueError, match="cannot be None or empty string"):
-        AmazonBedrockBaseInvocationLayer(model_name_or_path="")
+        AmazonBedrockInvocationLayer(model_name_or_path="")
 
 
 @pytest.mark.unit
@@ -97,7 +95,7 @@ def test_invoke_with_no_kwargs(mock_auto_tokenizer, mock_boto3_session):
     """
     Test invoke raises an error if no prompt is provided
     """
-    layer = AmazonBedrockBaseInvocationLayer(model_name_or_path="anthropic.claude-v2")
+    layer = AmazonBedrockInvocationLayer(model_name_or_path="anthropic.claude-v2")
     with pytest.raises(ValueError, match="No valid prompt provided."):
         layer.invoke()
 
@@ -122,7 +120,7 @@ def test_short_prompt_is_not_truncated(mock_boto3_session):
     total_model_max_length = 10
 
     with patch("transformers.AutoTokenizer.from_pretrained", return_value=mock_tokenizer):
-        layer = AmazonBedrockBaseInvocationLayer(
+        layer = AmazonBedrockInvocationLayer(
             "anthropic.claude-v2", max_length=max_length_generated_text, model_max_length=total_model_max_length
         )
         prompt_after_resize = layer._ensure_token_limit(mock_prompt_text)
@@ -155,7 +153,7 @@ def test_long_prompt_is_truncated(mock_boto3_session):
     total_model_max_length = 10
 
     with patch("transformers.AutoTokenizer.from_pretrained", return_value=mock_tokenizer):
-        layer = AmazonBedrockBaseInvocationLayer(
+        layer = AmazonBedrockInvocationLayer(
             "anthropic.claude-v2", max_length=max_length_generated_text, model_max_length=total_model_max_length
         )
         prompt_after_resize = layer._ensure_token_limit(long_prompt_text)
@@ -176,7 +174,7 @@ def test_supports_for_valid_aws_configuration():
         "haystack.nodes.prompt.invocation_layer.aws_base.AWSBaseInvocationLayer.get_aws_session",
         return_value=mock_session,
     ):
-        supported = AmazonBedrockBaseInvocationLayer.supports(
+        supported = AmazonBedrockInvocationLayer.supports(
             model_name_or_path="anthropic.claude-v2", aws_profile_name="some_real_profile"
         )
     args, kwargs = mock_session.client("bedrock").list_foundation_models.call_args
@@ -190,7 +188,7 @@ def test_supports_raises_on_invalid_aws_profile_name():
     with patch("boto3.Session") as mock_boto3_session:
         mock_boto3_session.side_effect = BotoCoreError()
         with pytest.raises(AmazonBedrockConfigurationError, match="Failed to initialize the session"):
-            AmazonBedrockBaseInvocationLayer.supports(
+            AmazonBedrockInvocationLayer.supports(
                 model_name_or_path="anthropic.claude-v2", aws_profile_name="some_fake_profile"
             )
 
@@ -205,7 +203,7 @@ def test_supports_for_invalid_bedrock_config():
         "haystack.nodes.prompt.invocation_layer.aws_base.AWSBaseInvocationLayer.get_aws_session",
         return_value=mock_session,
     ), pytest.raises(AmazonBedrockConfigurationError, match="Could not connect to Amazon Bedrock."):
-        AmazonBedrockBaseInvocationLayer.supports(
+        AmazonBedrockInvocationLayer.supports(
             model_name_or_path="anthropic.claude-v2", aws_profile_name="some_real_profile"
         )
 
@@ -220,21 +218,21 @@ def test_supports_for_invalid_bedrock_config_error_on_list_models():
         "haystack.nodes.prompt.invocation_layer.aws_base.AWSBaseInvocationLayer.get_aws_session",
         return_value=mock_session,
     ), pytest.raises(AmazonBedrockConfigurationError, match="Could not connect to Amazon Bedrock."):
-        AmazonBedrockBaseInvocationLayer.supports(
+        AmazonBedrockInvocationLayer.supports(
             model_name_or_path="anthropic.claude-v2", aws_profile_name="some_real_profile"
         )
 
 
 @pytest.mark.unit
 def test_supports_for_no_aws_params():
-    supported = AmazonBedrockBaseInvocationLayer.supports(model_name_or_path="anthropic.claude-v2")
+    supported = AmazonBedrockInvocationLayer.supports(model_name_or_path="anthropic.claude-v2")
 
     assert supported == False
 
 
 @pytest.mark.unit
 def test_supports_for_unknown_model():
-    supported = AmazonBedrockBaseInvocationLayer.supports(
+    supported = AmazonBedrockInvocationLayer.supports(
         model_name_or_path="unknown_model", aws_profile_name="some_real_profile"
     )
 

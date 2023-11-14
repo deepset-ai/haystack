@@ -164,9 +164,9 @@ class TitanModelAdapter(BedrockModelAdapter):
         return responses
 
 
-class AmazonBedrockBaseInvocationLayer(AWSBaseInvocationLayer):
+class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
     """
-    Base class for Amazon Bedrock invocation layers.
+    Invocation layer for Amazon Bedrock models.
     """
 
     SUPPORTED_MODELS: Dict[str, Type[BedrockModelAdapter]] = {
