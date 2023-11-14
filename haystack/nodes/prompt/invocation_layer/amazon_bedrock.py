@@ -3,11 +3,17 @@ import json
 import logging
 from typing import Any, Optional, Dict, Type, Union, List
 
+from botocore.eventstream import EventStream
+
 
 from haystack.errors import AWSConfigurationError, AmazonBedrockConfigurationError, AmazonBedrockInferenceError
 from haystack.lazy_imports import LazyImport
 from haystack.nodes.prompt.invocation_layer.aws_base import AWSBaseInvocationLayer
-from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
+from haystack.nodes.prompt.invocation_layer.handlers import (
+    DefaultPromptHandler,
+    DefaultTokenStreamingHandler,
+    TokenStreamingHandler,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +35,22 @@ class BedrockModelAdapter(ABC):
     def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
         """Prepares the body for the Amazon Bedrock request."""
 
-    @abstractmethod
     def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
         """Extracts the responses from the Amazon Bedrock response."""
+        completions = self._extract_completions_from_response(response_body)
+        responses = [completion.lstrip() for completion in completions]
+        return responses
+
+    def get_stream_responses(self, stream: EventStream, stream_handler: TokenStreamingHandler) -> List[str]:
+        tokens: List[str] = []
+        for event in stream:
+            chunk = event.get("chunk")
+            if chunk:
+                decoded_chunk = json.loads(chunk["bytes"].decode("utf-8"))
+                token = self._extract_token_from_chunk(decoded_chunk)
+                tokens.append(stream_handler(token, event_data=decoded_chunk))
+        responses = ["".join(tokens).lstrip()]
+        return responses
 
     def _get_params(self, inference_kwargs: Dict[str, Any], default_params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -46,6 +65,14 @@ class BedrockModelAdapter(ABC):
             for param, default in default_params.items()
             if param in kwargs or default is not None
         }
+
+    @abstractmethod
+    def _extract_completions_from_response(self, response_body: Dict[str, Any]) -> List[str]:
+        """Extracts the responses from the Amazon Bedrock response."""
+
+    @abstractmethod
+    def _extract_token_from_stream(self, chunk: Dict[str, Any]) -> str:
+        """Extracts the token from a streaming chunk."""
 
 
 class AnthropicClaudeAdapter(BedrockModelAdapter):
@@ -66,17 +93,11 @@ class AnthropicClaudeAdapter(BedrockModelAdapter):
         body = {"prompt": f"\n\nHuman: {prompt}\n\nAssistant:", **params}
         return body
 
-    def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        responses = [response_body["completion"].lstrip()]
-        return responses
+    def _extract_completions_from_response(self, response_body: Dict[str, Any]) -> List[str]:
+        return [response_body["completion"]]
 
-    def get_stream_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        response_parse = lambda x: x["completion"].lstrip()
-        responses = []
-        for r in response_body:
-            r = json.loads(r["chunk"]["bytes"])
-            responses.append(response_parse(r))
-        return responses
+    def _extract_token_from_stream(self, chunk: Dict[str, Any]) -> str:
+        return chunk["completion"]
 
 
 class CohereCommandAdapter(BedrockModelAdapter):
@@ -102,19 +123,12 @@ class CohereCommandAdapter(BedrockModelAdapter):
         body = {"prompt": prompt, **params}
         return body
 
-    def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        responses = [generation["text"].lstrip() for generation in response_body["generations"]]
+    def _extract_completions_from_response(self, response_body: Dict[str, Any]) -> List[str]:
+        responses = [generation["text"] for generation in response_body["generations"]]
         return responses
 
-    def get_stream_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        response_parse = lambda x: x["text"].lstrip()
-        responses = []
-        for r in response_body:
-            r = json.loads(r["chunk"]["bytes"])
-            generations = r["generations"]
-            for gen in generations:
-                responses.append(response_parse(gen))
-        return responses
+    def _extract_token_from_stream(self, chunk: Dict[str, Any]) -> str:
+        return chunk["text"]
 
 
 class AI21LabsJurassic2Adapter(BedrockModelAdapter):
@@ -138,9 +152,12 @@ class AI21LabsJurassic2Adapter(BedrockModelAdapter):
         body = {"prompt": prompt, **params}
         return body
 
-    def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        responses = [completion["data"]["text"].lstrip() for completion in response_body["completions"]]
+    def _extract_completions_from_response(self, response_body: Dict[str, Any]) -> List[str]:
+        responses = [completion["data"]["text"] for completion in response_body["completions"]]
         return responses
+
+    def _extract_token_from_stream(self, chunk: Dict[str, Any]) -> str:
+        raise NotImplementedError("Streaming is not supported for AI21 Jurassic 2 models.")
 
 
 class AmazonTitanAdapter(BedrockModelAdapter):
@@ -155,17 +172,12 @@ class AmazonTitanAdapter(BedrockModelAdapter):
         body = {"inputText": prompt, "textGenerationConfig": params}
         return body
 
-    def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        responses = [result["outputText"].lstrip() for result in response_body["results"]]
+    def _extract_completions_from_response(self, response_body: Dict[str, Any]) -> List[str]:
+        responses = [result["outputText"] for result in response_body["results"]]
         return responses
 
-    def get_stream_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        response_parse = lambda x: x["outputText"].lstrip()
-        responses = []
-        for r in response_body:
-            r = json.loads(r["chunk"]["bytes"])
-            responses.append(response_parse(r))
-        return responses
+    def _extract_token_from_stream(self, chunk: Dict[str, Any]) -> str:
+        return chunk["outputText"]
 
 
 class MetaLlama2ChatAdapter(BedrockModelAdapter):
@@ -180,9 +192,11 @@ class MetaLlama2ChatAdapter(BedrockModelAdapter):
         body = {"prompt": prompt, **params}
         return body
 
-    def get_responses(self, response_body: Dict[str, Any]) -> List[str]:
-        responses = [response_body["generation"].lstrip()]
-        return responses
+    def _extract_completions_from_response(self, response_body: Dict[str, Any]) -> List[str]:
+        return [response_body["generation"]]
+
+    def _extract_token_from_stream(self, chunk: Dict[str, Any]) -> str:
+        return chunk["generation"]
 
 
 class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
@@ -227,13 +241,12 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
                 aws_profile_name=aws_profile_name,
             )
             self.client = session.client("bedrock-runtime")
-            self.bedrock = session.client("bedrock")
         except Exception as exception:
             raise AmazonBedrockConfigurationError(
                 "Could not connect to Amazon Bedrock. Make sure the AWS environment is configured correctly."
             ) from exception
 
-        self.model_input_kwargs = kwargs
+        model_input_kwargs = kwargs
         # We pop the model_max_length as it is not sent to the model
         # but used to truncate the prompt if needed
         model_max_length = kwargs.get("model_max_length", 4096)
@@ -247,7 +260,7 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
         )
 
         self.model_adapter = self.SUPPORTED_MODELS[self.model_name_or_path](
-            model_kwargs=self.model_input_kwargs, max_length=self.max_length
+            model_kwargs=model_input_kwargs, max_length=self.max_length
         )
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
@@ -280,6 +293,11 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
             bedrock = session.client("bedrock")
             foundation_models_response = bedrock.list_foundation_models(byOutputModality="TEXT")
             available_model_ids = [entry["modelId"] for entry in foundation_models_response.get("modelSummaries", [])]
+            model_ids_supporting_streaming = [
+                entry["modelId"]
+                for entry in foundation_models_response.get("modelSummaries", [])
+                if entry.get("responseStreamingSupported", False)
+            ]
         except AWSConfigurationError as exception:
             raise AmazonBedrockConfigurationError(message=exception.message) from exception
         except Exception as exception:
@@ -294,23 +312,20 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
                 f"Please make sure the model is available in the configured AWS region and you've been granted access."
             )
 
-        return model_supported
+        stream: bool = kwargs.get("stream", False)
+        model_supports_streaming = model_name_or_path in model_ids_supporting_streaming
+        if stream and not model_supports_streaming:
+            raise AmazonBedrockConfigurationError(
+                f"The model {model_name_or_path} does not offer streaming support. "
+                f"Please remove the `stream` parameter."
+            )
 
-    def supports_streaming(self, model_name_or_path):
-        foundation_models_response = self.bedrock.list_foundation_models(byOutputModality="TEXT")
-        available_model_ids = [
-            entry["modelId"]
-            for entry in foundation_models_response.get("modelSummaries", [])
-            if entry.pop("responseStreamingSupported", None)
-        ]
-        if model_name_or_path not in available_model_ids:
-            raise AmazonBedrockConfigurationError(f"{model_name_or_path} does not offer streaming support")
+        return model_supported
 
     def invoke(self, *args, **kwargs):
         kwargs = kwargs.copy()
-        prompt: Any = kwargs.pop("prompt", None)
-        stream: Any = self.model_input_kwargs.pop("stream", None)
-        self.supports_streaming(self.model_name_or_path)
+        prompt: str = kwargs.pop("prompt", None)
+        stream: bool = kwargs.get("stream", self.model_adapter.model_kwargs.get("stream", False))
 
         if not prompt or not isinstance(prompt, (str, list)):
             raise ValueError(
@@ -327,6 +342,12 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
                     accept="application/json",
                     contentType="application/json",
                 )
+                response_stream = response["body"]
+                handler: TokenStreamingHandler = kwargs.get(
+                    "stream_handler",
+                    self.model_adapter.model_kwargs.get("stream_handler", DefaultTokenStreamingHandler()),
+                )
+                responses = self.model_adapter.get_stream_responses(stream=response_stream, stream_handler=handler)
             else:
                 response = self.client.invoke_model(
                     body=json.dumps(body),
@@ -334,18 +355,13 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
                     accept="application/json",
                     contentType="application/json",
                 )
+                response_body = json.loads(response.get("body").read().decode("utf-8"))
+                responses = self.model_adapter.get_responses(response_body=response_body)
         except ClientError as exception:
             raise AmazonBedrockInferenceError(
                 f"Could not connect to Amazon Bedrock model {self.model_name_or_path}. "
                 "Make sure your AWS environment is configured correctly, "
                 "the model is available in the configured AWS region and you've been granted access."
             ) from exception
-
-        if stream:
-            response_body = response["body"]
-            responses = self.model_adapter.get_stream_responses(response_body=response_body)
-        else:
-            response_body = json.loads(response.get("body").read().decode("utf-8"))
-            responses = self.model_adapter.get_responses(response_body=response_body)
 
         return responses
