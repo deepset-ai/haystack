@@ -6,7 +6,11 @@ from haystack.lazy_imports import LazyImport
 
 from haystack.errors import AmazonBedrockConfigurationError
 from haystack.nodes.prompt.invocation_layer import AmazonBedrockInvocationLayer
-from haystack.nodes.prompt.invocation_layer.amazon_bedrock import AnthropicModelAdapter, CohereModelAdapter
+from haystack.nodes.prompt.invocation_layer.amazon_bedrock import (
+    AI21ModelAdapter,
+    AnthropicModelAdapter,
+    CohereModelAdapter,
+)
 
 with LazyImport() as boto3_import:
     from botocore.exceptions import BotoCoreError
@@ -484,6 +488,143 @@ class TestCohereModelAdapter:
         adapter = CohereModelAdapter(model_kwargs={}, max_length=99)
         response_body = {
             "generations": [{"text": "This is a single response."}, {"text": "This is a second response."}]
+        }
+        expected_responses = ["This is a single response.", "This is a second response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+
+class TestAI21ModelAdapter:
+    def test_prepare_body_with_default_params(self) -> None:
+        layer = AI21ModelAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {"prompt": "Hello, how are you?", "maxTokens": 99}
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_custom_inference_params(self) -> None:
+        layer = AI21ModelAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "prompt": "Hello, how are you?",
+            "maxTokens": 50,
+            "stopSequences": ["CUSTOM_STOP"],
+            "temperature": 0.7,
+            "topP": 0.8,
+            "countPenalty": {"scale": 1.0},
+            "presencePenalty": {"scale": 5.0},
+            "frequencyPenalty": {"scale": 500.0},
+            "numResults": 1,
+        }
+
+        body = layer.prepare_body(
+            prompt,
+            maxTokens=50,
+            stopSequences=["CUSTOM_STOP"],
+            temperature=0.7,
+            topP=0.8,
+            countPenalty={"scale": 1.0},
+            presencePenalty={"scale": 5.0},
+            frequencyPenalty={"scale": 500.0},
+            numResults=1,
+            unknown_arg="unknown_value",
+        )
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs(self) -> None:
+        layer = AI21ModelAdapter(
+            model_kwargs={
+                "maxTokens": 50,
+                "stopSequences": ["CUSTOM_STOP"],
+                "temperature": 0.7,
+                "topP": 0.8,
+                "countPenalty": {"scale": 1.0},
+                "presencePenalty": {"scale": 5.0},
+                "frequencyPenalty": {"scale": 500.0},
+                "numResults": 1,
+                "unknown_arg": "unknown_value",
+            },
+            max_length=99,
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "prompt": "Hello, how are you?",
+            "maxTokens": 50,
+            "stopSequences": ["CUSTOM_STOP"],
+            "temperature": 0.7,
+            "topP": 0.8,
+            "countPenalty": {"scale": 1.0},
+            "presencePenalty": {"scale": 5.0},
+            "frequencyPenalty": {"scale": 500.0},
+            "numResults": 1,
+        }
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs_and_custom_inference_params(self) -> None:
+        layer = AI21ModelAdapter(
+            model_kwargs={
+                "maxTokens": 49,
+                "stopSequences": ["CUSTOM_STOP_MODEL_KWARGS"],
+                "temperature": 0.6,
+                "topP": 0.7,
+                "countPenalty": {"scale": 0.9},
+                "presencePenalty": {"scale": 4.0},
+                "frequencyPenalty": {"scale": 499.0},
+                "numResults": 2,
+                "unknown_arg": "unknown_value",
+            },
+            max_length=99,
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "prompt": "Hello, how are you?",
+            "maxTokens": 50,
+            "stopSequences": ["CUSTOM_STOP_MODEL_KWARGS"],
+            "temperature": 0.7,
+            "topP": 0.8,
+            "countPenalty": {"scale": 1.0},
+            "presencePenalty": {"scale": 5.0},
+            "frequencyPenalty": {"scale": 500.0},
+            "numResults": 1,
+        }
+
+        body = layer.prepare_body(
+            prompt,
+            temperature=0.7,
+            topP=0.8,
+            maxTokens=50,
+            countPenalty={"scale": 1.0},
+            presencePenalty={"scale": 5.0},
+            frequencyPenalty={"scale": 500.0},
+            numResults=1,
+        )
+
+        assert body == expected_body
+
+    def test_get_responses(self) -> None:
+        adapter = AI21ModelAdapter(model_kwargs={}, max_length=99)
+        response_body = {"completions": [{"data": {"text": "This is a single response."}}]}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+    def test_get_responses_leading_whitespace(self) -> None:
+        adapter = AI21ModelAdapter(model_kwargs={}, max_length=99)
+        response_body = {"completions": [{"data": {"text": "\n\t This is a single response."}}]}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+    def test_get_responses_multiple_responses(self) -> None:
+        adapter = AI21ModelAdapter(model_kwargs={}, max_length=99)
+        response_body = {
+            "completions": [
+                {"data": {"text": "This is a single response."}},
+                {"data": {"text": "This is a second response."}},
+            ]
         }
         expected_responses = ["This is a single response.", "This is a second response."]
         assert adapter.get_responses(response_body) == expected_responses

@@ -131,6 +131,7 @@ class AI21ModelAdapter(BedrockModelAdapter):
             "countPenalty": None,
             "presencePenalty": None,
             "frequencyPenalty": None,
+            "numResults": None,
         }
         params = self._get_params(inference_kwargs, default_params)
 
