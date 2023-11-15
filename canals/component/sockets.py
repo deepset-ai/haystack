@@ -29,9 +29,18 @@ class InputSocket:
             # We need to "unpack" the type inside the Variadic annotation,
             # otherwise the pipeline connection api will try to match
             # `Annotated[type, CANALS_VARIADIC_ANNOTATION]`.
-            # Note Variadic is expressed as an annotation of one single type,
+            #
+            # Note1: Variadic is expressed as an annotation of one single type,
             # so the return value of get_args will always be a one-item tuple.
-            self.type = get_args(self.type)[0]
+            #
+            # Note2: a pipeline always passes a list of items when a component
+            # input is declared as Variadic, so the type itself always wraps
+            # an iterable of the declared type. For example, Variadic[int]
+            # is eventually an alias for Iterable[int]. Since we're interested
+            # in getting the inner type `int`, we call `get_args` twice: the
+            # first time to get `List[int]` out of `Variadic`, the second time
+            # to get `int` out of `List[int]`.
+            self.type = get_args(get_args(self.type)[0])[0]
 
 
 @dataclass

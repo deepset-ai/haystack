@@ -10,6 +10,6 @@ class Sum:
     @component.output_types(total=int)
     def run(self, values: Variadic[int]):
         """
-        :param value: the value to check the remainder of.
+        :param value: the values to sum.
         """
-        return {"total": sum(values)}  # type: ignore
+        return {"total": sum(values)}

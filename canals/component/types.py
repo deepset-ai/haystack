@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import TypeVar, Iterable
 from typing_extensions import TypeAlias, Annotated  # Python 3.8 compatibility
 
 CANALS_VARIADIC_ANNOTATION = "__canals__variadic_t"
@@ -11,4 +11,4 @@ T = TypeVar("T")
 # This type doesn't do anything else than "marking" the contained
 # type so it can be used in the `InputSocket` creation where we
 # check that its annotation equals to CANALS_VARIADIC_ANNOTATION
-Variadic: TypeAlias = Annotated[T, CANALS_VARIADIC_ANNOTATION]
+Variadic: TypeAlias = Annotated[Iterable[T], CANALS_VARIADIC_ANNOTATION]
