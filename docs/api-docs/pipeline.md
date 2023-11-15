@@ -2,8 +2,6 @@
 
 ::: canals.pipeline
 
-::: canals.pipeline.connections
-
 ::: canals.pipeline.draw
 
 ::: canals.pipeline.draw.draw
