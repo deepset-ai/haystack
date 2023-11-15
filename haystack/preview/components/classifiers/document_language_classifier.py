@@ -14,7 +14,7 @@ with LazyImport("Run 'pip install langdetect'") as langdetect_import:
 class DocumentLanguageClassifier:
     """
     Classify the language of documents and add the detected language to their metadata.
-    A MetaDataRouter can then route them onto different output connections depending on their language.
+    A MetadataRouter can then route them onto different output connections depending on their language.
     This is useful to route documents to different models in a pipeline depending on their language.
     The set of supported languages can be specified.
     For routing plain text using the same logic, use the related TextLanguageRouter component instead.
@@ -27,7 +27,7 @@ class DocumentLanguageClassifier:
     p = Pipeline()
     p.add_component(instance=TextFileToDocument(), name="text_file_converter")
     p.add_component(instance=DocumentLanguageClassifier(), name="language_classifier")
-    p.add_component(instance=MetaDataRouter(rules={"en": {"language": {"$eq": "en"}}}), name="router")
+    p.add_component(instance=MetadataRouter(rules={"en": {"language": {"$eq": "en"}}}), name="router")
     p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
     p.connect("text_file_converter.documents", "language_classifier.documents")
     p.connect("language_classifier.documents", "router.documents")
