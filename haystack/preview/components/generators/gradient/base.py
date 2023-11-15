@@ -107,9 +107,9 @@ class GradientGenerator:
         """
         if not hasattr(self, "_model"):
             if isinstance(self._base_model_slug, str):
-                self._model = self._gradient.get_base_model(base_model_slug=self.base_model_slug)
+                self._model = self._gradient.get_base_model(base_model_slug=self._base_model_slug)
             if isinstance(self._model_adapter_id, str):
-                self._model = self._gradient.get_model_adapter(model_adapter_id=self.model_adapter_id)
+                self._model = self._gradient.get_model_adapter(model_adapter_id=self._model_adapter_id)
 
     @component.output_types(replies=List[str])
     def run(self, prompt: str):

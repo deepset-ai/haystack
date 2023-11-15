@@ -83,7 +83,7 @@ class TestGradientDocumentEmbedder:
         embedder = GradientDocumentEmbedder(access_token=access_token, workspace_id=workspace_id)
 
         with pytest.raises(RuntimeError, match="warm_up()"):
-            embedder.run(documents=[Document(text=f"document number {i}") for i in range(5)])
+            embedder.run(documents=[Document(content=f"document number {i}") for i in range(5)])
 
     @pytest.mark.unit
     def test_run(self):
@@ -93,7 +93,7 @@ class TestGradientDocumentEmbedder:
             embeddings=[{"embedding": np.random.rand(1024).tolist(), "index": i} for i in range(5)]
         )
 
-        documents = [Document(text=f"document number {i}") for i in range(5)]
+        documents = [Document(content=f"document number {i}") for i in range(5)]
 
         result = embedder.run(documents=documents)
 
@@ -107,8 +107,6 @@ class TestGradientDocumentEmbedder:
 
     @pytest.mark.unit
     def test_run_batch(self):
-        from gradientai.openapi.client.models.generate_embedding_success import GenerateEmbeddingSuccess
-
         embedder = GradientDocumentEmbedder(access_token=access_token, workspace_id=workspace_id)
         embedder._embedding_model = NonCallableMagicMock()
 
@@ -116,11 +114,33 @@ class TestGradientDocumentEmbedder:
             embeddings=[{"embedding": np.random.rand(1024).tolist(), "index": i} for i in range(110)]
         )
 
-        documents = [Document(text=f"document number {i}") for i in range(110)]
+        documents = [Document(content=f"document number {i}") for i in range(110)]
 
         result = embedder.run(documents=documents)
 
         assert embedder._embedding_model.generate_embeddings.call_count == 2
+        assert isinstance(result["documents"], list)
+        assert len(result["documents"]) == len(documents)
+        for doc in result["documents"]:
+            assert isinstance(doc, Document)
+            assert isinstance(doc.embedding, list)
+            assert isinstance(doc.embedding[0], float)
+
+    @pytest.mark.unit
+    def test_run_custom_batch(self):
+        embedder = GradientDocumentEmbedder(access_token=access_token, workspace_id=workspace_id, batch_size=20)
+        embedder._embedding_model = NonCallableMagicMock()
+
+        DOCUMENT_COUNT = 101
+        embedder._embedding_model.generate_embeddings.return_value = GenerateEmbeddingSuccess(
+            embeddings=[{"embedding": np.random.rand(1024).tolist(), "index": i} for i in range(DOCUMENT_COUNT)]
+        )
+
+        documents = [Document(content=f"document number {i}") for i in range(DOCUMENT_COUNT)]
+
+        result = embedder.run(documents=documents)
+
+        assert embedder._embedding_model.generate_embeddings.call_count == 6
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) == len(documents)
         for doc in result["documents"]:

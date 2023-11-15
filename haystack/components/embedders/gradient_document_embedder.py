@@ -34,6 +34,7 @@ class GradientDocumentEmbedder:
         self,
         *,
         model_name: str = "bge-large",
+        batch_size: int = 100,
         access_token: Optional[str] = None,
         workspace_id: Optional[str] = None,
         host: Optional[str] = None,
@@ -49,6 +50,7 @@ class GradientDocumentEmbedder:
         :param host: The Gradient host. By default it uses https://api.gradient.ai/.
         """
         gradientai_import.check()
+        self._batch_size = batch_size
         self._host = host
         self._model_name = model_name
 
@@ -73,7 +75,7 @@ class GradientDocumentEmbedder:
         if not hasattr(self, "_embedding_model"):
             self._embedding_model = self._gradient.get_embeddings_model(slug=self._model_name)
 
-    def _generate_embeddings(self, documents: List[Document], batch_size=100) -> List[List[float]]:
+    def _generate_embeddings(self, documents: List[Document], batch_size: int) -> List[List[float]]:
         """
         Batches the documents and generates the embeddings.
         """
@@ -103,7 +105,7 @@ class GradientDocumentEmbedder:
         if not hasattr(self, "_embedding_model"):
             raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
 
-        embeddings = self._generate_embeddings(documents=documents)
+        embeddings = self._generate_embeddings(documents=documents, batch_size=self._batch_size)
         for doc, embedding in zip(documents, embeddings):
             doc.embedding = embedding
 
