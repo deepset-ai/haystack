@@ -18,8 +18,8 @@ with LazyImport(
 @component
 class ExtractiveReader:
     """
-    A component for performing extractive QA.
-    Every possible answer span is assigned a confidence score independent of other answer spans. This fixes a common issue of other implementations which make comparisons across documents harder by normalising each document's answers independently.
+    A component that locates and extract answers to a given query from Documents. It's used for performing extractive QA.
+    The Reader assigns a probability score to every possible answer span independently of other answer spans. This fixes a common issue of other implementations which make comparisons across documents harder by normalizing each document's answers independently.
 
     Example usage:
     ```python
@@ -49,29 +49,29 @@ class ExtractiveReader:
     ) -> None:
         """
         Creates an ExtractiveReader
-        :param model_name_or_path: A HuggingFace transformers question answering model.
-            Can either be a path to a folder containing the model files or an identifier for the HF hub
+        :param model_name_or_path: A Hugging Face transformers question answering model.
+            Can either be a path to a folder containing the model files or an identifier for the Hugging Face hub.
             Default: `'deepset/roberta-base-squad2-distilled'`
-        :param device: Pytorch device string. Uses GPU by default if available
+        :param device: Pytorch device string. Uses GPU by default, if available.
         :param token: The API token used to download private models from Hugging Face.
             If this parameter is set to `True`, then the token generated when running
-            `transformers-cli login` (stored in ~/.huggingface) will be used.
+            `transformers-cli login` (stored in ~/.huggingface) is used.
         :param top_k: Number of answers to return per query.
             It is required even if confidence_threshold is set. Defaults to 20.
-            An additional answer is returned if no_answer is set to True (default).
-        :param confidence_threshold: Answers with a confidence score below this value will not be returned
+            An additional answer with no text is returned if no_answer is set to True (default).
+        :param confidence_threshold: Returns only answers with the probability score above this threshold.
         :param max_seq_length: Maximum number of tokens.
-            If exceeded by a sequence, the sequence will be split.
+            If a sequence exceeds it, the sequence is split.
             Default: 384
-        :param stride: Number of tokens that overlap when sequence is split because it exceeds max_seq_length
+        :param stride: Number of tokens that overlap when sequence is split because it exceeds max_seq_length.
             Default: 128
-        :param max_batch_size: Maximum number of samples that are fed through the model at the same time
+        :param max_batch_size: Maximum number of samples that are fed through the model at the same time.
         :param answers_per_seq: Number of answer candidates to consider per sequence.
-            This is relevant when a document has been split into multiple sequence due to max_seq_length.
-        :param no_answer: Whether to return no answer scores
-        :param calibration_factor: Factor used for calibrating confidence scores
+            This is relevant when a Document was split into multiple sequences because of max_seq_length.
+        :param no_answer: Whether to return no answer scores.
+        :param calibration_factor: Factor used for calibrating probability scores.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
-            when loading the model specified in `model_name_or_path`.
+            when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass, see the model's documentation.
         """
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model_name_or_path)
@@ -136,7 +136,7 @@ class ExtractiveReader:
         self, queries: List[str], documents: List[List[Document]]
     ) -> Tuple[List[str], List[Document], List[int]]:
         """
-        Flattens queries and documents so all query-document pairs are arranged along one batch axis.
+        Flattens queries and Documents so all query-document pairs are arranged along one batch axis.
         """
         flattened_queries = [query for documents_, query in zip(documents, queries) for _ in documents_]
         flattened_documents = [document for documents_ in documents for document in documents_]
@@ -147,14 +147,14 @@ class ExtractiveReader:
         self, queries: List[str], documents: List[Document], max_seq_length: int, query_ids: List[int], stride: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, List[Encoding], List[int], List[int]]:
         """
-        Split and tokenise documents and preserve structures by returning mappings to query and document ids.
+        Split and tokenize Documents and preserve structures by returning mappings to query and Document IDs.
         """
         texts = []
         document_ids = []
         for i, doc in enumerate(documents):
             if doc.content is None:
                 warnings.warn(
-                    f"Document with id {doc.id} was passed to ExtractiveReader, but does not contain any text. It will be ignored."
+                    f"Document with id {doc.id} was passed to ExtractiveReader. The Document doesn't contain any text and it will be ignored."
                 )
                 continue
             texts.append(doc.content)
@@ -193,7 +193,7 @@ class ExtractiveReader:
         encodings: List[Encoding],
     ) -> Tuple[List[List[int]], List[List[int]], torch.Tensor]:
         """
-        Turn start and end logits into confidence scores for each answer span. Unlike most other implementations, there is no normalisation in each split to make the scores more comparable across different splits. The top k answer spans are returned.
+        Turn start and end logits into probability scores for each answer span. Unlike most other implementations, it doesn't normalize the scores to make them easier to compare across different splits. Returns the top k answer spans.
         """
         mask = sequence_ids == 1
         mask = torch.logical_and(mask, attention_mask == 1)
@@ -290,13 +290,24 @@ class ExtractiveReader:
         no_answer: Optional[bool] = None,
     ):
         """
-        Performs extractive QA on the given documents using the given query.
+        Locates and extracts answers from the given Documents using the given query.
 
         :param query: Query string.
-        :param documents: List of Documents to search for an answer to the query.
+        :param documents: List of Documents in which you want to search for an answer to the query.
         :param top_k: The maximum number of answers to return.
             An additional answer is returned if no_answer is set to True (default).
+        :param confidence_threshold:
         :return: List of ExtractedAnswers sorted by (desc.) answer score.
+        :param confidence_threshold: Returns only answers with the probability score above this threshold.
+        :param max_seq_length: Maximum number of tokens.
+            If a sequence exceeds it, the sequence is split.
+            Default: 384
+        :param stride: Number of tokens that overlap when sequence is split because it exceeds max_seq_length.
+            Default: 128
+        :param max_batch_size: Maximum number of samples that are fed through the model at the same time.
+        :param answers_per_seq: Number of answer candidates to consider per sequence.
+            This is relevant when a Document was split into multiple sequences because of max_seq_length.
+        :param no_answer: Whether to return no answer scores.
         """
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2
         nested_documents = [documents]
