@@ -53,6 +53,8 @@ class PromptBuilder:
         """
         if template_variables and template:
             raise ValueError("template and template_variables cannot be provided at the same time.")
+        if not template_variables and not template:
+            raise ValueError("Either template or template_variables must be provided.")
 
         # dynamic per-user message templating
         if template_variables:
@@ -62,7 +64,7 @@ class PromptBuilder:
             component.set_output_types(self, prompt=List[ChatMessage])
 
         # static templating
-        else:
+        if template:
             self.template = Template(template)
             ast = self.template.environment.parse(template)
             static_template_variables = meta.find_undeclared_variables(ast)
@@ -73,12 +75,13 @@ class PromptBuilder:
         # always provide all serialized vars, so we can serialize
         # the component regardless of the initialization method (static vs. dynamic)
         self._template_string = template
+        self._template_variables = template_variables
 
         optional_input_slots = {"messages": Optional[List[ChatMessage]], "template_variables": Optional[List[str]]}
         component.set_input_types(self, **optional_input_slots, **input_slots)
 
     def to_dict(self) -> Dict[str, Any]:
-        return default_to_dict(self, template=self._template_string)
+        return default_to_dict(self, template=self._template_string, template_variables=self._template_variables)
 
     def run(
         self,
