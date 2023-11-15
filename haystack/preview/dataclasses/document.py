@@ -1,10 +1,13 @@
+import io
 import hashlib
 import logging
 from dataclasses import asdict, dataclass, field, fields
-from typing import Any, Dict, List, Optional, Type, cast
+from typing import Any, Dict, List, Optional
 
 import numpy
 import pandas
+
+from haystack.preview.dataclasses.byte_stream import ByteStream
 
 logger = logging.getLogger(__name__)
 
@@ -37,18 +40,6 @@ class _BackwardCompatible(type):
         if "id_hash_keys" in kwargs:
             del kwargs["id_hash_keys"]
 
-        if kwargs.get("meta") is None:
-            # This must be a flattened Document, so we treat all keys that are not
-            # Document fields as metadata.
-            meta = {}
-            field_names = [f.name for f in fields(cast(Type[Document], cls))]
-            keys = list(kwargs.keys())  # get a list of the keys as we'll modify the dict in the loop
-            for key in keys:
-                if key in field_names:
-                    continue
-                meta[key] = kwargs.pop(key)
-            kwargs["meta"] = meta
-
         return super().__call__(*args, **kwargs)
 
 
@@ -63,7 +54,6 @@ class Document(metaclass=_BackwardCompatible):
     :param content: Text of the document, if the document contains text.
     :param dataframe: Pandas dataframe with the document's content, if the document contains tabular data.
     :param blob: Binary data associated with the document, if the document has any binary data associated with it.
-    :param mime_type: MIME type of the document. Defaults to "text/plain".
     :param meta: Additional custom metadata for the document. Must be JSON-serializable.
     :param score: Score of the document. Used for ranking, usually assigned by retrievers.
     :param embedding: Vector representation of the document.
@@ -72,14 +62,13 @@ class Document(metaclass=_BackwardCompatible):
     id: str = field(default="")
     content: Optional[str] = field(default=None)
     dataframe: Optional[pandas.DataFrame] = field(default=None)
-    blob: Optional[bytes] = field(default=None)
-    mime_type: str = field(default="text/plain")
+    blob: Optional[ByteStream] = field(default=None)
     meta: Dict[str, Any] = field(default_factory=dict)
     score: Optional[float] = field(default=None)
     embedding: Optional[List[float]] = field(default=None, repr=False)
 
     def __str__(self):
-        fields = [f"mimetype: '{self.mime_type}'"]
+        fields = []
         if self.content is not None:
             fields.append(
                 f"content: '{self.content}'" if len(self.content) < 100 else f"content: '{self.content[:100]}...'"
@@ -87,7 +76,7 @@ class Document(metaclass=_BackwardCompatible):
         if self.dataframe is not None:
             fields.append(f"dataframe: {self.dataframe.shape}")
         if self.blob is not None:
-            fields.append(f"blob: {len(self.blob)} bytes")
+            fields.append(f"blob: {len(self.blob.data)} bytes")
         fields_str = ", ".join(fields)
         return f"{self.__class__.__name__}(id={self.id}, {fields_str})"
 
@@ -112,8 +101,8 @@ class Document(metaclass=_BackwardCompatible):
         """
         text = self.content or None
         dataframe = self.dataframe.to_json() if self.dataframe is not None else None
-        blob = self.blob or None
-        mime_type = self.mime_type or None
+        blob = self.blob.data if self.blob is not None else None
+        mime_type = self.blob.mime_type if self.blob is not None else None
         meta = self.meta or {}
         embedding = self.embedding if self.embedding is not None else None
         data = f"{text}{dataframe}{blob}{mime_type}{meta}{embedding}"
@@ -130,7 +119,7 @@ class Document(metaclass=_BackwardCompatible):
         if (dataframe := data.get("dataframe")) is not None:
             data["dataframe"] = dataframe.to_json()
         if (blob := data.get("blob")) is not None:
-            data["blob"] = list(blob)
+            data["blob"] = {"data": list(blob["data"]), "mime_type": blob["mime_type"]}
 
         if flatten:
             meta = data.pop("meta")
@@ -145,10 +134,18 @@ class Document(metaclass=_BackwardCompatible):
         `dataframe` and `blob` fields are converted to their original types.
         """
         if (dataframe := data.get("dataframe")) is not None:
-            data["dataframe"] = pandas.read_json(dataframe)
+            data["dataframe"] = pandas.read_json(io.StringIO(dataframe))
         if blob := data.get("blob"):
-            data["blob"] = bytes(blob)
-        return cls(**data)
+            data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
+        # Unflatten metadata if it was flattened
+        meta = {}
+        legacy_fields = ["content_type", "id_hash_keys"]
+        field_names = legacy_fields + [f.name for f in fields(cls)]
+        for key in list(data.keys()):
+            if key not in field_names:
+                meta[key] = data.pop(key)
+
+        return cls(**data, meta=meta)
 
     @property
     def content_type(self):

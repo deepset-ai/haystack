@@ -69,7 +69,7 @@ class HuggingFaceLocalGenerator:
 
     Usage example:
     ```python
-    from haystack.preview.components.generators.hugging_face import HuggingFaceLocalGenerator
+    from haystack.preview.components.generators import HuggingFaceLocalGenerator
 
     generator = HuggingFaceLocalGenerator(model="google/flan-t5-large",
                                           task="text2text-generation",

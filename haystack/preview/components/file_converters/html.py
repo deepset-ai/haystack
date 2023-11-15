@@ -29,7 +29,7 @@ class HTMLToDocument:
         """
         Converts a list of HTML files to Documents.
 
-        :param sources: Paths to HTML files.
+        :param sources: List of HTML file paths or ByteStream objects.
         :return: List of converted Documents.
         """
         documents = []

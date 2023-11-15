@@ -26,21 +26,21 @@ class TestMemoryBM25Retriever:
         retriever = InMemoryBM25Retriever(InMemoryDocumentStore())
         assert retriever.filters is None
         assert retriever.top_k == 10
-        assert retriever.scale_score
+        assert retriever.scale_score is False
 
     @pytest.mark.unit
     def test_init_with_parameters(self):
         retriever = InMemoryBM25Retriever(
-            InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=False
+            InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=True
         )
         assert retriever.filters == {"name": "test.txt"}
         assert retriever.top_k == 5
-        assert not retriever.scale_score
+        assert retriever.scale_score
 
     @pytest.mark.unit
     def test_init_with_invalid_top_k_parameter(self):
-        with pytest.raises(ValueError, match="top_k must be > 0, but got -2"):
-            InMemoryBM25Retriever(InMemoryDocumentStore(), top_k=-2, scale_score=False)
+        with pytest.raises(ValueError):
+            InMemoryBM25Retriever(InMemoryDocumentStore(), top_k=-2)
 
     @pytest.mark.unit
     def test_to_dict(self):
@@ -56,7 +56,7 @@ class TestMemoryBM25Retriever:
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": None,
                 "top_k": 10,
-                "scale_score": True,
+                "scale_score": False,
             },
         }
 
@@ -66,7 +66,7 @@ class TestMemoryBM25Retriever:
         document_store = MyFakeStore()
         document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}
         component = InMemoryBM25Retriever(
-            document_store=document_store, filters={"name": "test.txt"}, top_k=5, scale_score=False
+            document_store=document_store, filters={"name": "test.txt"}, top_k=5, scale_score=True
         )
         data = component.to_dict()
         assert data == {
@@ -75,7 +75,7 @@ class TestMemoryBM25Retriever:
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
-                "scale_score": False,
+                "scale_score": True,
             },
         }
 
@@ -94,7 +94,7 @@ class TestMemoryBM25Retriever:
         assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.filters == {"name": "test.txt"}
         assert component.top_k == 5
-        assert component.scale_score
+        assert component.scale_score is False
 
     @pytest.mark.unit
     def test_from_dict_without_docstore(self):

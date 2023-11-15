@@ -45,10 +45,11 @@ class ExtractiveReader:
         answers_per_seq: Optional[int] = None,
         no_answer: bool = True,
         calibration_factor: float = 0.1,
+        model_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Creates an ExtractiveReader
-        :param model: A HuggingFace transformers question answering model.
+        :param model_name_or_path: A HuggingFace transformers question answering model.
             Can either be a path to a folder containing the model files or an identifier for the HF hub
             Default: `'deepset/roberta-base-squad2-distilled'`
         :param device: Pytorch device string. Uses GPU by default if available
@@ -57,6 +58,7 @@ class ExtractiveReader:
             `transformers-cli login` (stored in ~/.huggingface) will be used.
         :param top_k: Number of answers to return per query.
             It is required even if confidence_threshold is set. Defaults to 20.
+            An additional answer is returned if no_answer is set to True (default).
         :param confidence_threshold: Answers with a confidence score below this value will not be returned
         :param max_seq_length: Maximum number of tokens.
             If exceeded by a sequence, the sequence will be split.
@@ -68,6 +70,8 @@ class ExtractiveReader:
             This is relevant when a document has been split into multiple sequence due to max_seq_length.
         :param no_answer: Whether to return no answer scores
         :param calibration_factor: Factor used for calibrating confidence scores
+        :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
+            when loading the model specified in `model_name_or_path`.
         """
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model_name_or_path)
@@ -82,6 +86,7 @@ class ExtractiveReader:
         self.answers_per_seq = answers_per_seq
         self.no_answer = no_answer
         self.calibration_factor = calibration_factor
+        self.model_kwargs = model_kwargs or {}
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -106,6 +111,7 @@ class ExtractiveReader:
             answers_per_seq=self.answers_per_seq,
             no_answer=self.no_answer,
             calibration_factor=self.calibration_factor,
+            model_kwargs=self.model_kwargs,
         )
 
     def warm_up(self):
@@ -120,9 +126,10 @@ class ExtractiveReader:
                 self.device = self.device or "mps:0"
             else:
                 self.device = self.device or "cpu:0"
-            self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_name_or_path, token=self.token).to(
-                self.device
-            )
+
+            self.model = AutoModelForQuestionAnswering.from_pretrained(
+                self.model_name_or_path, token=self.token, **self.model_kwargs
+            ).to(self.device)
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
     def _flatten_documents(
@@ -288,6 +295,7 @@ class ExtractiveReader:
         :param query: Query string.
         :param documents: List of Documents to search for an answer to the query.
         :param top_k: The maximum number of answers to return.
+            An additional answer is returned if no_answer is set to True (default).
         :return: List of ExtractedAnswers sorted by (desc.) answer score.
         """
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2

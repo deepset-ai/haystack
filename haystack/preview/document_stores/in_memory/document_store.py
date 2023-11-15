@@ -204,7 +204,7 @@ class InMemoryDocumentStore:
             del self.storage[doc_id]
 
     def bm25_retrieval(
-        self, query: str, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = True
+        self, query: str, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = False
     ) -> List[Document]:
         """
         Retrieves documents that are most relevant to the query using BM25 algorithm.
@@ -212,7 +212,7 @@ class InMemoryDocumentStore:
         :param query: The query string.
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The number of top documents to retrieve. Default is 10.
-        :param scale_score: Whether to scale the scores of the retrieved documents. Default is True.
+        :param scale_score: Whether to scale the scores of the retrieved documents. Default is False.
         :return: A list of the top_k documents most relevant to the query.
         """
         if not query:
@@ -279,7 +279,7 @@ class InMemoryDocumentStore:
         query_embedding: List[float],
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
-        scale_score: bool = True,
+        scale_score: bool = False,
         return_embedding: bool = False,
     ) -> List[Document]:
         """
@@ -288,7 +288,7 @@ class InMemoryDocumentStore:
         :param query_embedding: Embedding of the query.
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The number of top documents to retrieve. Default is 10.
-        :param scale_score: Whether to scale the scores of the retrieved Documents. Default is True.
+        :param scale_score: Whether to scale the scores of the retrieved Documents. Default is False.
         :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
         :return: A list of the top_k documents most relevant to the query.
         """
@@ -327,14 +327,14 @@ class InMemoryDocumentStore:
         return top_documents
 
     def _compute_query_embedding_similarity_scores(
-        self, embedding: List[float], documents: List[Document], scale_score: bool = True
+        self, embedding: List[float], documents: List[Document], scale_score: bool = False
     ) -> List[float]:
         """
         Computes the similarity scores between the query embedding and the embeddings of the documents.
 
         :param embedding: Embedding of the query.
         :param documents: A list of Documents.
-        :param scale_score: Whether to scale the scores of the Documents. Default is True.
+        :param scale_score: Whether to scale the scores of the Documents. Default is False.
         :return: A list of scores.
         """
 
