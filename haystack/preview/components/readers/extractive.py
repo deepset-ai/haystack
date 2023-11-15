@@ -19,7 +19,7 @@ with LazyImport(
 class ExtractiveReader:
     """
     A component for performing extractive QA.
-    Every possible answer span is assigned a confidence score independent of other answer spans. This fixes a common issue of other implementations which make comparisons across documents harder by normalising each document's answers independently.
+    Every possible answer span is assigned a probability independent of other answer spans. This fixes a common issue of other implementations which make comparisons across documents harder by normalising each document's answers independently.
 
     Example usage:
     ```python
@@ -38,7 +38,7 @@ class ExtractiveReader:
         device: Optional[str] = None,
         token: Union[bool, str, None] = None,
         top_k: int = 20,
-        confidence_threshold: Optional[float] = None,
+        probability_threshold: Optional[float] = None,
         max_seq_length: int = 384,
         stride: int = 128,
         max_batch_size: Optional[int] = None,
@@ -57,9 +57,9 @@ class ExtractiveReader:
             If this parameter is set to `True`, then the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) will be used.
         :param top_k: Number of answers to return per query.
-            It is required even if confidence_threshold is set. Defaults to 20.
+            It is required even if probability_threshold is set. Defaults to 20.
             An additional answer is returned if no_answer is set to True (default).
-        :param confidence_threshold: Answers with a confidence score below this value will not be returned
+        :param probability_threshold: Answers with a probability below this value will not be returned
         :param max_seq_length: Maximum number of tokens.
             If exceeded by a sequence, the sequence will be split.
             Default: 384
@@ -68,8 +68,9 @@ class ExtractiveReader:
         :param max_batch_size: Maximum number of samples that are fed through the model at the same time
         :param answers_per_seq: Number of answer candidates to consider per sequence.
             This is relevant when a document has been split into multiple sequence due to max_seq_length.
-        :param no_answer: Whether to return no answer scores
-        :param calibration_factor: Factor used for calibrating confidence scores
+        :param no_answer: Whether to return an additional `no answer` with an empty text and the probability that the
+            other top_k answers are incorrect.
+        :param calibration_factor: Factor used for calibrating probabilities
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
             when loading the model specified in `model_name_or_path`.
         """
@@ -80,7 +81,7 @@ class ExtractiveReader:
         self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
-        self.confidence_threshold = confidence_threshold
+        self.probability_threshold = probability_threshold
         self.stride = stride
         self.max_batch_size = max_batch_size
         self.answers_per_seq = answers_per_seq
@@ -105,7 +106,7 @@ class ExtractiveReader:
             token=self.token if not isinstance(self.token, str) else None,
             max_seq_length=self.max_seq_length,
             top_k=self.top_k,
-            confidence_threshold=self.confidence_threshold,
+            probability_threshold=self.probability_threshold,
             stride=self.stride,
             max_batch_size=self.max_batch_size,
             answers_per_seq=self.answers_per_seq,
@@ -193,7 +194,7 @@ class ExtractiveReader:
         encodings: List[Encoding],
     ) -> Tuple[List[List[int]], List[List[int]], torch.Tensor]:
         """
-        Turn start and end logits into confidence scores for each answer span. Unlike most other implementations, there is no normalisation in each split to make the scores more comparable across different splits. The top k answer spans are returned.
+        Turn start and end logits into probabilities for each answer span. Unlike most other implementations, there is no normalisation in each split to make the probabilities more comparable across different splits. The top k answer spans are returned.
         """
         mask = sequence_ids == 1
         mask = torch.logical_and(mask, attention_mask == 1)
@@ -237,7 +238,7 @@ class ExtractiveReader:
         queries: List[str],
         answers_per_seq: int,
         top_k: Optional[int],
-        confidence_threshold: Optional[float],
+        probability_threshold: Optional[float],
         query_ids: List[int],
         document_ids: List[int],
         no_answer: bool,
@@ -270,8 +271,8 @@ class ExtractiveReader:
                 )
                 current_answers.append(answer_)
             current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
-            if confidence_threshold is not None:
-                current_answers = [answer for answer in current_answers if answer.probability >= confidence_threshold]
+            if probability_threshold is not None:
+                current_answers = [answer for answer in current_answers if answer.probability >= probability_threshold]
             nested_answers.append(current_answers)
 
         return nested_answers
@@ -282,7 +283,7 @@ class ExtractiveReader:
         query: str,
         documents: List[Document],
         top_k: Optional[int] = None,
-        confidence_threshold: Optional[float] = None,
+        probability_threshold: Optional[float] = None,
         max_seq_length: Optional[int] = None,
         stride: Optional[int] = None,
         max_batch_size: Optional[int] = None,
@@ -296,7 +297,7 @@ class ExtractiveReader:
         :param documents: List of Documents to search for an answer to the query.
         :param top_k: The maximum number of answers to return.
             An additional answer is returned if no_answer is set to True (default).
-        :return: List of ExtractedAnswers sorted by (desc.) answer score.
+        :return: List of ExtractedAnswers sorted by (desc.) answer probability.
         """
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2
         nested_documents = [documents]
@@ -304,7 +305,7 @@ class ExtractiveReader:
             raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
 
         top_k = top_k or self.top_k
-        confidence_threshold = confidence_threshold or self.confidence_threshold
+        probability_threshold = probability_threshold or self.probability_threshold
         max_seq_length = max_seq_length or self.max_seq_length
         stride = stride or self.stride
         max_batch_size = max_batch_size or self.max_batch_size
@@ -352,7 +353,7 @@ class ExtractiveReader:
             queries,
             answers_per_seq,
             top_k,
-            confidence_threshold,
+            probability_threshold,
             query_ids,
             document_ids,
             no_answer,
