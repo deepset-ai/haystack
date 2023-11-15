@@ -315,8 +315,7 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
         model_supports_streaming = model_name_or_path in model_ids_supporting_streaming
         if stream and not model_supports_streaming:
             raise AmazonBedrockConfigurationError(
-                f"The model {model_name_or_path} doesn't support streaming. "
-                f"Remove the `stream` parameter."
+                f"The model {model_name_or_path} doesn't support streaming. Remove the `stream` parameter."
             )
 
         return model_supported
