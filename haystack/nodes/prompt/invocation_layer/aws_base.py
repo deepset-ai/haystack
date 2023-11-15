@@ -58,7 +58,8 @@ class AWSBaseInvocationLayer(PromptModelInvocationLayer, ABC):
         :param aws_session_token: AWS session token.
         :param aws_region_name: AWS region name.
         :param aws_profile_name: AWS profile name.
-        :param kwargs: The kwargs passed down to the service client.
+        :param kwargs: The kwargs passed down to the service client. Supported kwargs depend on the model chosen.
+            See https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html.
         :raises AWSConfigurationError: If the provided AWS credentials are invalid.
         :return: The created AWS session.
         """

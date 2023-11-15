@@ -75,7 +75,7 @@ class BedrockModelAdapter(ABC):
 
 class AnthropicClaudeAdapter(BedrockModelAdapter):
     """
-    Model adapter for Anthropic's Claude model.
+    Model adapter for the Anthropic's Claude model.
     """
 
     def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
@@ -100,7 +100,7 @@ class AnthropicClaudeAdapter(BedrockModelAdapter):
 
 class CohereCommandAdapter(BedrockModelAdapter):
     """
-    Model adapter for Cohere's Command model.
+    Model adapter for the Cohere's Command model.
     """
 
     def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
@@ -235,7 +235,8 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
             self.client = session.client("bedrock-runtime")
         except Exception as exception:
             raise AmazonBedrockConfigurationError(
-                "Could not connect to Amazon Bedrock. Make sure the AWS environment is configured correctly."
+                "Could not connect to Amazon Bedrock. Make sure the AWS environment is configured correctly. "
+                "See https://boto3.amazonaws.com/v1/documentation/api/latest/guide/quickstart.html#configuration"
             ) from exception
 
         model_input_kwargs = kwargs
@@ -254,21 +255,24 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
         model_apapter_cls = self.get_model_adapter(model_name_or_path=model_name_or_path)
         if not model_apapter_cls:
             raise AmazonBedrockConfigurationError(
-                f"The model {model_name_or_path} is not supported by this invocation layer."
+                f"This invocation layer doesn't support the model {model_name_or_path}."
             )
         self.model_adapter = model_apapter_cls(model_kwargs=model_input_kwargs, max_length=self.max_length)
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         # the prompt for this model will be of the type str
         if isinstance(prompt, List):
-            raise ValueError("SageMaker invocation layer doesn't support a dictionary as prompt, only a string.")
+            raise ValueError(
+                "The SageMaker invocation layer only supports a string as a prompt, "
+                "while currently, the prompt is a dictionary."
+            )
 
         resize_info = self.prompt_handler(prompt)
         if resize_info["prompt_length"] != resize_info["new_prompt_length"]:
             logger.warning(
-                "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
-                "answer length (%s tokens) fit within the max token limit (%s tokens). "
-                "Shorten the prompt to prevent it from being cut off.",
+                "The prompt was truncated from %s tokens to %s tokens so that the prompt length and "
+                "the answer length (%s tokens) fit within the model's max token limit (%s tokens). "
+                "Shorten the prompt or it will be cut off.",
                 resize_info["prompt_length"],
                 max(0, resize_info["model_max_length"] - resize_info["max_length"]),  # type: ignore
                 resize_info["max_length"],
@@ -296,22 +300,23 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
             raise AmazonBedrockConfigurationError(message=exception.message) from exception
         except Exception as exception:
             raise AmazonBedrockConfigurationError(
-                "Could not connect to Amazon Bedrock. Make sure the AWS environment is configured correctly."
+                "Could not connect to Amazon Bedrock. Make sure the AWS environment is configured correctly. "
+                "See https://boto3.amazonaws.com/v1/documentation/api/latest/guide/quickstart.html#configuration"
             ) from exception
 
         model_available = model_name_or_path in available_model_ids
         if not model_available:
             raise AmazonBedrockConfigurationError(
                 f"The model {model_name_or_path} is not available in Amazon Bedrock. "
-                f"Please make sure the model is available in the configured AWS region and you've been granted access."
+                f"Make sure the model you want to use is available in the configured AWS region and you have access."
             )
 
         stream: bool = kwargs.get("stream", False)
         model_supports_streaming = model_name_or_path in model_ids_supporting_streaming
         if stream and not model_supports_streaming:
             raise AmazonBedrockConfigurationError(
-                f"The model {model_name_or_path} does not offer streaming support. "
-                f"Please remove the `stream` parameter."
+                f"The model {model_name_or_path} doesn't support streaming. "
+                f"Remove the `stream` parameter."
             )
 
         return model_supported
@@ -323,7 +328,7 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
 
         if not prompt or not isinstance(prompt, (str, list)):
             raise ValueError(
-                f"No valid prompt provided. Model {self.model_name_or_path} requires a valid prompt."
+                f"The model {self.model_name_or_path} requires a valid prompt, but currently, it has no prompt."
                 f"Make sure to provide a prompt in the format that the model expects."
             )
 
@@ -355,7 +360,7 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
             raise AmazonBedrockInferenceError(
                 f"Could not connect to Amazon Bedrock model {self.model_name_or_path}. "
                 "Make sure your AWS environment is configured correctly, "
-                "the model is available in the configured AWS region and you've been granted access."
+                "the model is available in the configured AWS region, and you have access."
             ) from exception
 
         return responses
