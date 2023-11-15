@@ -63,10 +63,7 @@ jobs:
         uses: tj-actions/changed-files@v40
         with:
           files: |
-            **/*.py
-          files_ignore: |
-            test/**
-            rest_api/test/**
+            haystack/preview/**/*.py
 
       - uses: actions/setup-python@v4
         with:
