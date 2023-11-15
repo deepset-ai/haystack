@@ -95,7 +95,7 @@ class AnthropicClaudeAdapter(BedrockModelAdapter):
         return [response_body["completion"]]
 
     def _extract_token_from_stream(self, chunk: Dict[str, Any]) -> str:
-        return chunk["completion"]
+        return chunk.get("completion", "")
 
 
 class CohereCommandAdapter(BedrockModelAdapter):
@@ -126,7 +126,7 @@ class CohereCommandAdapter(BedrockModelAdapter):
         return responses
 
     def _extract_token_from_stream(self, chunk: Dict[str, Any]) -> str:
-        return chunk["text"]
+        return chunk.get("text", "")
 
 
 class AI21LabsJurassic2Adapter(BedrockModelAdapter):
@@ -175,7 +175,7 @@ class AmazonTitanAdapter(BedrockModelAdapter):
         return responses
 
     def _extract_token_from_stream(self, chunk: Dict[str, Any]) -> str:
-        return chunk["outputText"]
+        return chunk.get("outputText", "")
 
 
 class MetaLlama2ChatAdapter(BedrockModelAdapter):
@@ -194,7 +194,7 @@ class MetaLlama2ChatAdapter(BedrockModelAdapter):
         return [response_body["generation"]]
 
     def _extract_token_from_stream(self, chunk: Dict[str, Any]) -> str:
-        return chunk["generation"]
+        return chunk.get("generation", "")
 
 
 class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):

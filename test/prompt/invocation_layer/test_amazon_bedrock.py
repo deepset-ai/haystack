@@ -616,6 +616,7 @@ class TestCohereCommandAdapter:
             {"chunk": {"bytes": b'{"text": " a"}'}},
             {"chunk": {"bytes": b'{"text": " single"}'}},
             {"chunk": {"bytes": b'{"text": " response."}'}},
+            {"chunk": {"bytes": b'{"finish_reason": "MAX_TOKENS", "is_finished": true}'}},
         ]
 
         stream_handler_mock.side_effect = lambda token_received, **kwargs: token_received
@@ -631,6 +632,7 @@ class TestCohereCommandAdapter:
                 call(" a", event_data={"text": " a"}),
                 call(" single", event_data={"text": " single"}),
                 call(" response.", event_data={"text": " response."}),
+                call("", event_data={"finish_reason": "MAX_TOKENS", "is_finished": True}),
             ]
         )
 
