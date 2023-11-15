@@ -18,7 +18,7 @@ def find_component_inputs(component: Any) -> Dict[str, Dict[str, Any]]:
         )
 
     return {
-        name: {"type": socket.type, "is_optional": socket.is_optional}
+        name: {"type": socket.type, "is_mandatory": socket.is_mandatory, "is_variadic": socket.is_variadic}
         for name, socket in component.__canals_input__.items()
     }
 

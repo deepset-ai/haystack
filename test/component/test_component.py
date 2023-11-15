@@ -184,7 +184,7 @@ def test_inputs_method_one_input():
             return {"value": 1}
 
     comp = MockComponent()
-    assert find_component_inputs(comp) == {"value": {"is_optional": False, "type": int}}
+    assert find_component_inputs(comp) == {"value": {"is_mandatory": True, "is_variadic": False, "type": int}}
 
 
 def test_inputs_method_multiple_inputs():
@@ -195,8 +195,8 @@ def test_inputs_method_multiple_inputs():
 
     comp = MockComponent()
     assert find_component_inputs(comp) == {
-        "value1": {"is_optional": False, "type": int},
-        "value2": {"is_optional": False, "type": str},
+        "value1": {"is_mandatory": True, "is_variadic": False, "type": int},
+        "value2": {"is_mandatory": True, "is_variadic": False, "type": str},
     }
 
 
@@ -208,8 +208,8 @@ def test_inputs_method_multiple_inputs_optional():
 
     comp = MockComponent()
     assert find_component_inputs(comp) == {
-        "value1": {"is_optional": False, "type": int},
-        "value2": {"is_optional": True, "type": typing.Optional[str]},
+        "value1": {"is_mandatory": True, "is_variadic": False, "type": int},
+        "value2": {"is_mandatory": True, "is_variadic": False, "type": typing.Optional[str]},
     }
 
 
@@ -223,7 +223,7 @@ def test_inputs_method_variadic_positional_args():
             return {"value": 1}
 
     comp = MockComponent()
-    assert find_component_inputs(comp) == {"value": {"is_optional": False, "type": typing.Any}}
+    assert find_component_inputs(comp) == {"value": {"is_mandatory": True, "is_variadic": False, "type": typing.Any}}
 
 
 def test_inputs_method_variadic_keyword_positional_args():
@@ -236,7 +236,7 @@ def test_inputs_method_variadic_keyword_positional_args():
             return {"value": 1}
 
     comp = MockComponent()
-    assert find_component_inputs(comp) == {"value": {"is_optional": False, "type": typing.Any}}
+    assert find_component_inputs(comp) == {"value": {"is_mandatory": True, "is_variadic": False, "type": typing.Any}}
 
 
 def test_inputs_dynamic_from_init():
@@ -249,7 +249,7 @@ def test_inputs_dynamic_from_init():
             return {"value": 1}
 
     comp = MockComponent()
-    assert find_component_inputs(comp) == {"value": {"is_optional": False, "type": int}}
+    assert find_component_inputs(comp) == {"value": {"is_mandatory": True, "is_variadic": False, "type": int}}
 
 
 def test_outputs_method_no_outputs():
