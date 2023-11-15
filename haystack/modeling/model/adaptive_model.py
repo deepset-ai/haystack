@@ -722,8 +722,8 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
 
         if str(device) == "cuda" and onnxruntime.get_device() != "GPU":
             raise Exception(
-                f"Device {device} not available for Inference. For CPU, run 'pip install onnxruntime' and"
-                f"for GPU run 'pip install onnxruntime-gpu'"
+                f"Device {device} not available for Inference. For CPU, run pip install onnxruntime and"
+                f"for GPU run pip install onnxruntime-gpu"
             )
         self.onnx_session = onnx_session
         self.language_model_class = language_model_class
