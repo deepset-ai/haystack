@@ -374,3 +374,56 @@ def test_describe_input_all_components_have_inputs():
         "a": {"x": {"type": Optional[int], "is_mandatory": True}},
         "b": {"y": {"type": int, "is_mandatory": True}},
     }
+
+
+def test_describe_output_multiple_possible():
+    """
+    This pipeline has two outputs:
+    {"b": {"output_b": {"type": str}}, "a": {"output_a": {"type": str}}}
+    """
+    A = component_class("A", input_types={"input_a": str}, output={"output_a": "str", "output_b": "str"})
+    B = component_class("B", input_types={"input_b": str}, output={"output_b": "str"})
+
+    pipe = Pipeline()
+    pipe.add_component("a", A())
+    pipe.add_component("b", B())
+    pipe.connect("a.output_b", "b.input_b")
+
+    # waiting for https://github.com/deepset-ai/canals/pull/148 to be merged
+    # then this unit test will pass
+    assert pipe.outputs() == {"b": {"output_b": {"type": str}}, "a": {"output_a": {"type": str}}}
+
+
+def test_describe_output_single():
+    """
+    This pipeline has one output:
+    {"c": {"z": {"type": int}}}
+    """
+    A = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})
+    B = component_class("B", input_types={"y": int}, output={"y": 0})
+    C = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})
+    p = Pipeline()
+    p.add_component("a", A())
+    p.add_component("b", B())
+    p.add_component("c", C())
+    p.connect("a.x", "c.x")
+    p.connect("b.y", "c.y")
+
+    assert p.outputs() == {"c": {"z": {"type": int}}}
+
+
+def test_describe_no_outputs():
+    """
+    This pipeline sets up elaborate connections between three components but in fact it has no outputs:
+    Check that p.outputs() == {}
+    """
+    A = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})
+    B = component_class("B", input_types={"y": int}, output={"y": 0})
+    C = component_class("C", input_types={"x": int, "y": int}, output={})
+    p = Pipeline()
+    p.add_component("a", A())
+    p.add_component("b", B())
+    p.add_component("c", C())
+    p.connect("a.x", "c.x")
+    p.connect("b.y", "c.y")
+    assert p.outputs() == {}

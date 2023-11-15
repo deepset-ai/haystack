@@ -21,6 +21,7 @@ from canals.errors import (
     PipelineRuntimeError,
     PipelineValidationError,
 )
+from canals.pipeline.descriptions import find_pipeline_outputs
 from canals.pipeline.draw import _draw, _convert_for_debug, RenderingEngines
 from canals.pipeline.validation import validate_pipeline_input, find_pipeline_inputs
 from canals.component.connection import Connection, parse_connect_string
@@ -335,9 +336,15 @@ class Pipeline:
         except KeyError as exc:
             raise ValueError(f"Component named {name} not found in the pipeline.") from exc
 
-    def inputs(self):
+    def inputs(self) -> Dict[str, Dict[str, Any]]:
         """
-        Returns a dictionary with the input names and types that this pipeline accepts.
+        Returns a dictionary containing the inputs of a pipeline. Each key in the dictionary
+        corresponds to a component name, and its value is another dictionary that describes the
+        input sockets of that component, including their types and whether they are optional.
+
+        Returns:
+            A dictionary where each key is a pipeline component name and each value is a dictionary of
+            inputs sockets of that component.
         """
         inputs = {
             comp: {socket.name: {"type": socket.type, "is_mandatory": socket.is_mandatory} for socket in data}
@@ -345,6 +352,23 @@ class Pipeline:
             if data
         }
         return inputs
+
+    def outputs(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Returns a dictionary containing the outputs of a pipeline. Each key in the dictionary
+        corresponds to a component name, and its value is another dictionary that describes the
+        output sockets of that component.
+
+        Returns:
+            A dictionary where each key is a pipeline component name and each value is a dictionary of
+            output sockets of that component.
+        """
+        outputs = {
+            comp: {socket.name: {"type": socket.type} for socket in data}
+            for comp, data in find_pipeline_outputs(self.graph).items()
+            if data
+        }
+        return outputs
 
     def draw(self, path: Path, engine: RenderingEngines = "mermaid-image") -> None:
         """
