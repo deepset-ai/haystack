@@ -105,7 +105,7 @@ def test_invoke_with_no_kwargs(mock_auto_tokenizer, mock_boto3_session):
     Test invoke raises an error if no prompt is provided
     """
     layer = AmazonBedrockInvocationLayer(model_name_or_path="anthropic.claude-v2")
-    with pytest.raises(ValueError, match="No valid prompt provided."):
+    with pytest.raises(ValueError, match="The model anthropic.claude-v2 requires a valid prompt."):
         layer.invoke()
 
 
@@ -278,9 +278,7 @@ def test_supports_with_stream_true_for_model_that_does_not_support_streaming():
     with patch(
         "haystack.nodes.prompt.invocation_layer.aws_base.AWSBaseInvocationLayer.get_aws_session",
         return_value=mock_session,
-    ), pytest.raises(
-        AmazonBedrockConfigurationError, match="The model ai21.j2-mid-v1 does not offer streaming support."
-    ):
+    ), pytest.raises(AmazonBedrockConfigurationError, match="The model ai21.j2-mid-v1 doesn't support streaming."):
         AmazonBedrockInvocationLayer.supports(
             model_name_or_path="ai21.j2-mid-v1", aws_profile_name="some_real_profile", stream=True
         )

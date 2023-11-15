@@ -327,7 +327,7 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
 
         if not prompt or not isinstance(prompt, (str, list)):
             raise ValueError(
-                f"The model {self.model_name_or_path} requires a valid prompt, but currently, it has no prompt."
+                f"The model {self.model_name_or_path} requires a valid prompt, but currently, it has no prompt. "
                 f"Make sure to provide a prompt in the format that the model expects."
             )
 
