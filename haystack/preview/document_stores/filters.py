@@ -53,17 +53,12 @@ def _internal_convert(filters: Union[List[Any], Dict[str, Any]], previous_key=No
     Recursively convert filters from legacy to new style.
     """
     conditions = []
-    if isinstance(filters, list):
-        if previous_key in LOGIC_OPERATORS:
-            return [_internal_convert(f) for f in filters]
-        elif previous_key not in COMPARISON_OPERATORS:
-            return {"field": previous_key, "operator": "in", "value": filters}
+
+    if isinstance(filters, list) and (result := _handle_list(filters, previous_key)) is not None:
+        return result
 
     if not isinstance(filters, dict):
-        if previous_key not in ALL_OPERATORS:
-            return {"field": previous_key, "operator": "==", "value": filters}
-        else:
-            return filters
+        return _handle_non_dict(filters, previous_key)
 
     for key, value in filters.items():
         if key not in ALL_OPERATORS:
@@ -91,6 +86,20 @@ def _internal_convert(filters: Union[List[Any], Dict[str, Any]], previous_key=No
         return {"operator": "AND", "conditions": conditions}
 
     return conditions
+
+
+def _handle_list(filters, previous_key):
+    if previous_key in LOGIC_OPERATORS:
+        return [_internal_convert(f) for f in filters]
+    elif previous_key not in COMPARISON_OPERATORS:
+        return {"field": previous_key, "operator": "in", "value": filters}
+    return None
+
+
+def _handle_non_dict(filters, previous_key):
+    if previous_key not in ALL_OPERATORS:
+        return {"field": previous_key, "operator": "==", "value": filters}
+    return filters
 
 
 # Operator mappings from legacy style to new one
