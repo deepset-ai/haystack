@@ -11,22 +11,23 @@ with LazyImport("Run 'pip install langdetect'") as langdetect_import:
 
 
 @component
-class TextLanguageClassifier:
+class TextLanguageRouter:
     """
     Routes a text input onto one of different output connections depending on its language.
     This is useful for routing queries to different models in a pipeline depending on their language.
     The set of supported languages can be specified.
-    For routing Documents based on their language use the related DocumentLanguageClassifier component.
+    For routing Documents based on their language use the related DocumentLanguageClassifier component to first
+    classify the documents and then the MetaDataRouter to route them.
 
     Example usage in a retrieval pipeline that passes only English language queries to the retriever:
 
     ```python
     document_store = InMemoryDocumentStore()
     p = Pipeline()
-    p.add_component(instance=TextLanguageClassifier(), name="text_language_classifier")
+    p.add_component(instance=TextLanguageRouter(), name="text_language_router")
     p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="retriever")
-    p.connect("text_language_classifier.en", "retriever.query")
-    p.run({"text_language_classifier": {"text": "What's your query?"}})
+    p.connect("text_language_router.en", "retriever.query")
+    p.run({"text_language_router": {"text": "What's your query?"}})
     ```
     """
 
@@ -42,7 +43,7 @@ class TextLanguageClassifier:
 
     def run(self, text: str) -> Dict[str, str]:
         """
-        Run the TextLanguageClassifier. This method routes the text one of different edges based on its language.
+        Run the TextLanguageRouter. This method routes the text one of different edges based on its language.
         If the text does not match any of the languages specified at initialization, it is routed to
         a connection named "unmatched".
 
@@ -50,7 +51,7 @@ class TextLanguageClassifier:
         """
         if not isinstance(text, str):
             raise TypeError(
-                "TextLanguageClassifier expects a str as input. In case you want to classify a document, please use the DocumentLanguageClassifier."
+                "TextLanguageRouter expects a str as input. In case you want to classify a document, please use the DocumentLanguageClassifier and MetaDataRouter."
             )
 
         output: Dict[str, str] = {}
