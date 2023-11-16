@@ -137,14 +137,19 @@ class Document(metaclass=_BackwardCompatible):
             data["dataframe"] = pandas.read_json(io.StringIO(dataframe))
         if blob := data.get("blob"):
             data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
-        # Unflatten metadata if it was flattened
-        meta = {}
+        # Store metadata for a moment while we try un-flattening allegedly flatten metadata.
+        # Normally we don't expect both a `meta=` keyword and flatten metadata keys,
+        # but this way the logic is more robust.
+        meta = data.pop("meta", {})
+        # Unflatten metadata if it was flattened. We assume any keyword argument that's not
+        # a document field as a metadata key. We treat legacy fields as document fields
+        # for backward compatibility.
         legacy_fields = ["content_type", "id_hash_keys"]
-        field_names = legacy_fields + [f.name for f in fields(cls)]
+        document_fields = legacy_fields + [f.name for f in fields(cls)]
         for key in list(data.keys()):
-            if key not in field_names:
+            if key not in document_fields:
                 meta[key] = data.pop(key)
-
+        # Finally put back all the metadata
         return cls(**data, meta=meta)
 
     @property
