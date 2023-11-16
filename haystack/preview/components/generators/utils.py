@@ -6,6 +6,14 @@ from haystack.preview import DeserializationError
 from haystack.preview.dataclasses import StreamingChunk
 
 
+def default_streaming_callback(chunk: StreamingChunk) -> None:
+    """
+    Default callback function for streaming responses.
+    Prints the tokens of the first completion to stdout as soon as they are received
+    """
+    print(chunk.content, flush=True, end="")
+
+
 def serialize_callback_handler(streaming_callback: Callable[[StreamingChunk], None]) -> str:
     """
     Serializes the streaming callback handler.

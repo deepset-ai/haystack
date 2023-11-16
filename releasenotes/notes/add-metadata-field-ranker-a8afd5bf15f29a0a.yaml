@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Adds MetaFieldRanker, a component that ranks a list of Documents based on the value of a metadata field of choice.
