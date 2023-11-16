@@ -7,9 +7,7 @@ import os
 from haystack.preview import component, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
 
-with LazyImport(
-    "Run 'pip install transformers[torch,sentencepiece]==4.34.1 sentence-transformers>=2.2.0'"
-) as torch_and_transformers_import:
+with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
     from tokenizers import Encoding
     import torch
