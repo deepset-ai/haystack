@@ -86,4 +86,4 @@ def test_preprocessing_pipeline(tmp_path):
         " And extra whitespaces.",
     ]
     assert expected_texts == [document.content for document in stored_documents]
-    assert all(document.mime_type == "text/plain" for document in stored_documents)
+    assert all(document.meta["language"] == "en" for document in stored_documents)
