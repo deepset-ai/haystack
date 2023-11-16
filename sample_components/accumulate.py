@@ -51,8 +51,8 @@ class Accumulate:
     def from_dict(cls, data: Dict[str, Any]) -> "Accumulate":  # pylint: disable=missing-function-docstring
         if "type" not in data:
             raise ComponentDeserializationError("Missing 'type' in component serialization data")
-        if data["type"] != cls.__name__:
-            raise ComponentDeserializationError(f"Component '{data['type']}' can't be deserialized as '{cls.__name__}'")
+        if data["type"] != f"{cls.__module__}.{cls.__name__}":
+            raise ComponentDeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
 
         init_params = data.get("init_parameters", {})
 

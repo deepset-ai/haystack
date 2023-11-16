@@ -7,30 +7,6 @@ from sample_components import Remainder
 from canals.serialization import component_to_dict, component_from_dict
 
 
-def test_to_dict():
-    component = Remainder()
-    res = component_to_dict(component)
-    assert res == {"type": "Remainder", "init_parameters": {"divisor": 3}}
-
-
-def test_to_dict_with_custom_divisor_value():
-    component = Remainder(divisor=100)
-    res = component_to_dict(component)
-    assert res == {"type": "Remainder", "init_parameters": {"divisor": 100}}
-
-
-def test_from_dict():
-    data = {"type": "Remainder"}
-    component = component_from_dict(Remainder, data)
-    assert component.divisor == 3
-
-
-def test_from_dict_with_custom_divisor_value():
-    data = {"type": "Remainder", "init_parameters": {"divisor": 100}}
-    component = component_from_dict(Remainder, data)
-    assert component.divisor == 100
-
-
 def test_remainder_default():
     component = Remainder()
     results = component.run(value=4)

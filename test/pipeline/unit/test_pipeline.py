@@ -57,15 +57,15 @@ def test_to_dict():
         "max_loops_allowed": 42,
         "components": {
             "add_two": {
-                "type": "AddFixedValue",
+                "type": "sample_components.add_value.AddFixedValue",
                 "init_parameters": {"add": 2},
             },
             "add_default": {
-                "type": "AddFixedValue",
+                "type": "sample_components.add_value.AddFixedValue",
                 "init_parameters": {"add": 1},
             },
             "double": {
-                "type": "Double",
+                "type": "sample_components.double.Double",
                 "init_parameters": {},
             },
         },
@@ -83,15 +83,15 @@ def test_from_dict():
         "max_loops_allowed": 101,
         "components": {
             "add_two": {
-                "type": "AddFixedValue",
+                "type": "sample_components.add_value.AddFixedValue",
                 "init_parameters": {"add": 2},
             },
             "add_default": {
-                "type": "AddFixedValue",
+                "type": "sample_components.add_value.AddFixedValue",
                 "init_parameters": {"add": 1},
             },
             "double": {
-                "type": "Double",
+                "type": "sample_components.double.Double",
                 "init_parameters": {},
             },
         },
@@ -183,7 +183,7 @@ def test_from_dict_with_components_instances():
             "add_two": {},
             "add_default": {},
             "double": {
-                "type": "Double",
+                "type": "sample_components.double.Double",
                 "init_parameters": {},
             },
         },
@@ -281,8 +281,7 @@ def test_from_dict_without_registered_component_type(request):
         "max_loops_allowed": 100,
         "components": {
             "add_two": {
-                # We use the test function name as component type to make sure it's not registered.
-                "type": request.node.name,
+                "type": "foo.bar.baz",
                 "init_parameters": {"add": 2},
             },
         },
@@ -291,7 +290,7 @@ def test_from_dict_without_registered_component_type(request):
     with pytest.raises(PipelineError) as err:
         Pipeline.from_dict(data)
 
-    err.match(f"Component '{request.node.name}' not imported.")
+    err.match(f"Component .+ not imported.")
 
 
 def test_from_dict_without_connection_sender():

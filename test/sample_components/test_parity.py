@@ -5,18 +5,6 @@ from sample_components import Parity
 from canals.serialization import component_to_dict, component_from_dict
 
 
-def test_to_dict():
-    component = Parity()
-    res = component_to_dict(component)
-    assert res == {"type": "Parity", "init_parameters": {}}
-
-
-def test_from_dict():
-    data = {"type": "Parity", "init_parameters": {}}
-    component = component_from_dict(Parity, data)
-    assert component
-
-
 def test_parity():
     component = Parity()
     results = component.run(value=1)

@@ -82,7 +82,7 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
     ```
     """
     return {
-        "type": obj.__class__.__name__,
+        "type": f"{obj.__class__.__module__}.{obj.__class__.__name__}",
         "init_parameters": init_parameters,
     }
 
@@ -101,6 +101,6 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     init_params = data.get("init_parameters", {})
     if "type" not in data:
         raise DeserializationError("Missing 'type' in serialization data")
-    if data["type"] != cls.__name__:
+    if data["type"] != f"{cls.__module__}.{cls.__name__}":
         raise DeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
     return cls(**init_params)

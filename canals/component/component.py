@@ -286,15 +286,16 @@ class _Component:
         class_ = new_class(class_.__name__, class_.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace)
 
         # Save the component in the class registry (for deserialization)
-        if class_.__name__ in self.registry:
+        class_path = f"{class_.__module__}.{class_.__name__}"
+        if class_path in self.registry:
             # Corner case, but it may occur easily in notebooks when re-running cells.
             logger.debug(
                 "Component %s is already registered. Previous imported from '%s', new imported from '%s'",
-                class_.__name__,
-                self.registry[class_.__name__],
+                class_path,
+                self.registry[class_path],
                 class_,
             )
-        self.registry[class_.__name__] = class_
+        self.registry[class_path] = class_
         logger.debug("Registered Component %s", class_)
 
         return class_

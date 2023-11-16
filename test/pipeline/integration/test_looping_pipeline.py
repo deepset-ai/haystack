@@ -33,7 +33,6 @@ def test_pipeline(tmp_path):
 
     results = pipeline.run({"add_one": {"value": 3}})
     pprint(results)
-    print("accumulator: ", accumulator.state)
 
     assert results == {"add_two": {"result": 18}}
     assert accumulator.state == 16
@@ -55,7 +54,6 @@ def test_pipeline_direct_io_loop(tmp_path):
 
     results = pipeline.run({"merge": {"in_1": 4}})
     pprint(results)
-    print("accumulator: ", accumulator.state)
 
     assert results == {"below_10": {"above": 16}}
     assert accumulator.state == 16
@@ -103,7 +101,6 @@ def test_pipeline_variadic_merger_input(tmp_path):
 
     results = pipeline.run({"merge": {"inputs": 4}})
     pprint(results)
-    print("accumulator: ", accumulator.state)
 
     assert results == {"add_two": {"result": 18}}
     assert accumulator.state == 16

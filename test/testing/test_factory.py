@@ -20,7 +20,7 @@ def test_component_class_default():
 
 def test_component_class_is_registered():
     MyComponent = factory.component_class("MyComponent")
-    assert component.registry["MyComponent"] == MyComponent
+    assert component.registry["canals.testing.factory.MyComponent"] == MyComponent
 
 
 def test_component_class_with_input_types():

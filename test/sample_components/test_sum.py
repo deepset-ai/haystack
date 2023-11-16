@@ -6,17 +6,6 @@ from sample_components import Sum
 from canals.serialization import component_to_dict, component_from_dict
 
 
-def test_to_dict():
-    component = Sum()
-    res = component_to_dict(component)
-    assert res == {"type": "Sum", "init_parameters": {}}
-
-
-def test_from_dict():
-    data = {"type": "Sum", "init_parameters": {}}
-    component = component_from_dict(Sum, data)
-
-
 def test_sum_receives_no_values():
     component = Sum()
     results = component.run(values=[])

@@ -25,7 +25,7 @@ def test_correct_declaration():
 
     # Verifies also instantiation works with no issues
     assert MockComponent()
-    assert component.registry["MockComponent"] == MockComponent
+    assert component.registry["test_component.MockComponent"] == MockComponent
 
 
 def test_correct_declaration_with_additional_readonly_property():
@@ -48,7 +48,7 @@ def test_correct_declaration_with_additional_readonly_property():
 
     # Verifies that instantiation works with no issues
     assert MockComponent()
-    assert component.registry["MockComponent"] == MockComponent
+    assert component.registry["test_component.MockComponent"] == MockComponent
     assert MockComponent().store == "test_store"
 
 
@@ -75,7 +75,7 @@ def test_correct_declaration_with_additional_writable_property():
             return {"output_value": input_value}
 
     # Verifies that instantiation works with no issues
-    assert component.registry["MockComponent"] == MockComponent
+    assert component.registry["test_component.MockComponent"] == MockComponent
     comp = MockComponent()
     comp.store = "test_store"
     assert comp.store == "test_store"

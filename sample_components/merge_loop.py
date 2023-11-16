@@ -35,8 +35,8 @@ class MergeLoop:
     def from_dict(cls, data: Dict[str, Any]) -> "MergeLoop":  # pylint: disable=missing-function-docstring
         if "type" not in data:
             raise DeserializationError("Missing 'type' in component serialization data")
-        if data["type"] != cls.__name__:
-            raise DeserializationError(f"Component '{data['type']}' can't be deserialized as '{cls.__name__}'")
+        if data["type"] != f"{cls.__module__}.{cls.__name__}":
+            raise DeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
 
         init_params = data.get("init_parameters", {})
 
