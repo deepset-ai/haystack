@@ -142,7 +142,7 @@ class Document(metaclass=_BackwardCompatible):
         # ValueError later if this is the case.
         meta = data.pop("meta", {})
         # Unflatten metadata if it was flattened. We assume any keyword argument that's not
-        # a document field as a metadata key. We treat legacy fields as document fields
+        # a document field is a metadata key. We treat legacy fields as document fields
         # for backward compatibility.
         flatten_meta = {}
         legacy_fields = ["content_type", "id_hash_keys"]
