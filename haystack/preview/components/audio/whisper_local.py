@@ -7,8 +7,8 @@ from haystack.preview import component, Document, default_to_dict, ComponentErro
 from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(
-    "Run 'pip install transformers[torch]==4.34.1' to install torch and "
-    "'pip install --no-deps numba llvmlite 'openai-whisper>=20230918'' to install whisper."
+    "Run 'pip install transformers[torch]' to install torch and "
+    "'pip install --no-deps numba llvmlite \"openai-whisper>=20230918\"' to install whisper."
 ) as whisper_import:
     import torch
     import whisper
