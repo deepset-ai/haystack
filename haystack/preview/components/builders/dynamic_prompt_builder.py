@@ -27,7 +27,7 @@ class DynamicPromptBuilder:
     generated prompts based on runtime conditions and user inputs.
     """
 
-    def __init__(self, expected_runtime_variables: List[str], chat_mode: Optional[bool] = True):
+    def __init__(self, expected_runtime_variables: Optional[List[str]] = None, chat_mode: Optional[bool] = True):
         """
         Initializes DynamicPromptBuilder with the provided variable names. These variable names are used to resolve
         variables and their values during pipeline runtime execution. Depending on the components connected to the
@@ -38,11 +38,13 @@ class DynamicPromptBuilder:
         the `run` method. See run method for more details.
 
         :param expected_runtime_variables: A list of template variable names to be used in chat prompt construction.
-        :type expected_runtime_variables: List[str]
+        :type expected_runtime_variables: Optional[List[str]]
         :param chat_mode: A boolean flag to indicate if the chat prompt is being built for a chat based prompt
         templating. Defaults to True.
         :type chat_mode: Optional[bool]
         """
+        expected_runtime_variables = expected_runtime_variables or []
+
         if not expected_runtime_variables:
             logger.warning(
                 "template_variables were not provided, DynamicPromptBuilder will not resolve any pipeline variables."
