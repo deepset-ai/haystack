@@ -2,8 +2,6 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from tqdm import tqdm
-
 from haystack.preview import Document, component
 from haystack.preview.dataclasses import ByteStream
 from haystack.preview.lazy_imports import LazyImport
@@ -32,15 +30,11 @@ class HTMLToDocument:
 
     """
 
-    def __init__(self, progress_bar: bool = True):
+    def __init__(self):
         """
         Initializes the HTMLToDocument component.
-
-        :param progress_bar: Show a progress bar for the conversion. Defaults to True.
         """
         boilerpy3_import.check()
-
-        self.progress_bar = progress_bar
 
     @component.output_types(documents=List[Document])
     def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
@@ -61,12 +55,7 @@ class HTMLToDocument:
 
         extractor = extractors.ArticleExtractor(raise_on_failure=False)
 
-        for source, metadata in tqdm(
-            zip(sources, meta),
-            total=len(sources),
-            desc="Converting HTML files to Documents",
-            disable=not self.progress_bar,
-        ):
+        for source, metadata in zip(sources, meta):
             try:
                 file_content, extracted_meta = self._extract_content(source)
             except Exception as e:

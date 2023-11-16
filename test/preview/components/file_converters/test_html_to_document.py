@@ -7,18 +7,6 @@ from haystack.preview.dataclasses import ByteStream
 
 
 class TestHTMLToDocument:
-    @pytest.mark.unit
-    def test_init_params_default(self):
-        """Test if the component sets default initialization parameters correctly."""
-        converter = HTMLToDocument()
-        assert converter.progress_bar is True
-
-    @pytest.mark.unit
-    def test_init_params_custom(self):
-        """Test if the component sets custom initialization parameters correctly."""
-        converter = HTMLToDocument(progress_bar=False)
-        assert converter.progress_bar is False
-
     @pytest.mark.integration
     def test_run(self, preview_samples_path):
         """
@@ -125,7 +113,7 @@ class TestHTMLToDocument:
         docs = output["documents"]
         assert not docs
 
-    @pytest.mark.unit
+    @pytest.mark.integration
     def test_run_error_handling(self, caplog):
         """
         Test if the component correctly handles errors.
@@ -137,7 +125,7 @@ class TestHTMLToDocument:
             assert "Could not read non_existing_file.html" in caplog.text
             assert not result["documents"]
 
-    @pytest.mark.unit
+    @pytest.mark.integration
     def test_mixed_sources_run(self, preview_samples_path):
         """
         Test if the component runs correctly if the input is a mix of paths and ByteStreams.
