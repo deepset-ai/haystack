@@ -234,6 +234,10 @@ formatting = [
   "black[jupyter]~=23.0",
 ]
 
+audio = [
+  "openai-whisper>=20231106"
+]
+
 all = [
   "farm-haystack[inference,docstores,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview]",
 ]
