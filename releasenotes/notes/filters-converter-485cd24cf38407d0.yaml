@@ -5,7 +5,7 @@ prelude: >
   we introduce a utility function to convert the legacy style to the new style.
 
   This will make life easier for developers when implementing new Document Stores
-  as it will only be necessary to filtering logic for the new style filters, as
+  as it will only be necessary for filtering logic for the new style filters, as
   conversion will be completely handled by the utility function.
 
   An example usage would be something similar to this:
