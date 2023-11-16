@@ -137,15 +137,29 @@ class Document(metaclass=_BackwardCompatible):
             data["dataframe"] = pandas.read_json(io.StringIO(dataframe))
         if blob := data.get("blob"):
             data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
-        # Unflatten metadata if it was flattened
-        meta = {}
+        # Store metadata for a moment while we try un-flattening allegedly flatten metadata.
+        # We don't expect both a `meta=` keyword and flatten metadata keys so we'll raise a
+        # ValueError later if this is the case.
+        meta = data.pop("meta", {})
+        # Unflatten metadata if it was flattened. We assume any keyword argument that's not
+        # a document field is a metadata key. We treat legacy fields as document fields
+        # for backward compatibility.
+        flatten_meta = {}
         legacy_fields = ["content_type", "id_hash_keys"]
-        field_names = legacy_fields + [f.name for f in fields(cls)]
+        document_fields = legacy_fields + [f.name for f in fields(cls)]
         for key in list(data.keys()):
-            if key not in field_names:
-                meta[key] = data.pop(key)
+            if key not in document_fields:
+                flatten_meta[key] = data.pop(key)
 
-        return cls(**data, meta=meta)
+        # We don't support passing both flatten keys and the `meta` keyword parameter
+        if meta and flatten_meta:
+            raise ValueError(
+                "You can pass either the 'meta' parameter or flattened metadata keys as keyword arguments, "
+                "but currently you're passing both. Pass either the 'meta' parameter or flattened metadata keys."
+            )
+
+        # Finally put back all the metadata
+        return cls(**data, meta={**meta, **flatten_meta})
 
     @property
     def content_type(self):
