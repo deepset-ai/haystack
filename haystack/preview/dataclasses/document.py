@@ -154,7 +154,8 @@ class Document(metaclass=_BackwardCompatible):
         # We don't support passing both flatten keys and the `meta` keyword parameter
         if meta and flatten_meta:
             raise ValueError(
-                "Passing the 'meta' parameter together with flatten metadata keys as keyword arguments is not supported."
+                "You can pass either the 'meta' parameter or flattened metadata keys as keyword arguments, "
+                "but currently you're passing both. Pass either the 'meta' parameter or flattened metadata keys."
             )
 
         # Finally put back all the metadata
