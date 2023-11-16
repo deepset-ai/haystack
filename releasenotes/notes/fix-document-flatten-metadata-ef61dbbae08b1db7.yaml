@@ -1,0 +1,6 @@
+---
+
+preview:
+  - |
+    Fix a failure that occurred when creating a document passing the 'meta' keyword 
+    to the constructor.
