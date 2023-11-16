@@ -133,19 +133,18 @@ class ComponentMeta(type):
             # to the actual instance, so that different instances of the same class won't share this data.
             instance.__canals_output__ = deepcopy(getattr(instance.run, "_output_types_cache", {}))
 
-        # If the __init__ called component.set_input_types(), __canals_input__ is already populated
+        # Create the sockets if set_input_types() wasn't called in the constructor.
+        # If it was called and there are some parameters also in the `run()` method, these take precedence.
         if not hasattr(instance, "__canals_input__"):
-            run_signature = inspect.signature(getattr(cls, "run"))
-            instance.__canals_input__ = {
-                # Create the input sockets
-                param: InputSocket(
+            instance.__canals_input__ = {}
+        run_signature = inspect.signature(getattr(cls, "run"))
+        for param in list(run_signature.parameters)[1:]:  # First is 'self' and it doesn't matter.
+            if run_signature.parameters[param].kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:  # ignore `**kwargs`
+                instance.__canals_input__[param] = InputSocket(
                     name=param,
                     type=run_signature.parameters[param].annotation,
                     is_mandatory=run_signature.parameters[param].default == inspect.Parameter.empty,
                 )
-                for param in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
-            }
-
         return instance
 
 
@@ -186,6 +185,28 @@ class _Component:
             def run(self, **kwargs):
                 return {"output_1": kwargs["value_1"], "output_2": ""}
         ```
+
+        Note that if the `run()` method also specifies some parameters, those will take precedence.
+
+        For example:
+
+        ```python
+        @component
+        class MyComponent:
+
+            def __init__(self, value: int):
+                component.set_input_types(value_1=str, value_2=str)
+                ...
+
+            @component.output_types(output_1=int, output_2=str)
+            def run(self, value_0: str, value_1: Optional[str] = None, **kwargs):
+                return {"output_1": kwargs["value_1"], "output_2": ""}
+        ```
+
+        would add a mandatory `value_0` parameters, make the `value_1`
+        parameter optional with a default None, and keep the `value_2`
+        parameter mandatory as specified in `set_input_types`.
+
         """
         instance.__canals_input__ = {name: InputSocket(name=name, type=type_) for name, type_ in types.items()}
 

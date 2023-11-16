@@ -17,6 +17,7 @@ from sample_components.hello import Hello
 from sample_components.text_splitter import TextSplitter
 from sample_components.merge_loop import MergeLoop
 from sample_components.self_loop import SelfLoop
+from sample_components.fstring import FString
 
 __all__ = [
     "Concatenate",
@@ -37,4 +38,5 @@ __all__ = [
     "StringListJoiner",
     "FirstIntSelector",
     "SelfLoop",
+    "FString",
 ]
