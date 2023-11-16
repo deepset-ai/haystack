@@ -138,19 +138,27 @@ class Document(metaclass=_BackwardCompatible):
         if blob := data.get("blob"):
             data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
         # Store metadata for a moment while we try un-flattening allegedly flatten metadata.
-        # Normally we don't expect both a `meta=` keyword and flatten metadata keys,
-        # but this way the logic is more robust.
+        # We don't expect both a `meta=` keyword and flatten metadata keys so we'll raise a
+        # ValueError later if this is the case.
         meta = data.pop("meta", {})
         # Unflatten metadata if it was flattened. We assume any keyword argument that's not
         # a document field as a metadata key. We treat legacy fields as document fields
         # for backward compatibility.
+        flatten_meta = {}
         legacy_fields = ["content_type", "id_hash_keys"]
         document_fields = legacy_fields + [f.name for f in fields(cls)]
         for key in list(data.keys()):
             if key not in document_fields:
-                meta[key] = data.pop(key)
+                flatten_meta[key] = data.pop(key)
+
+        # We don't support passing both flatten keys and the `meta` keyword parameter
+        if meta and flatten_meta:
+            raise ValueError(
+                "Passing the 'meta' parameter together with flatten metadata keys as keyword arguments is not supported."
+            )
+
         # Finally put back all the metadata
-        return cls(**data, meta=meta)
+        return cls(**data, meta=meta | flatten_meta)
 
     @property
     def content_type(self):

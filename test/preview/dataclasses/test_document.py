@@ -282,18 +282,22 @@ def test_from_dict_with_flat_meta():
 
 @pytest.mark.unit
 def test_from_dict_with_flat_and_non_flat_meta():
-    Document.from_dict(
-        {
-            "content": "test text",
-            "dataframe": pd.DataFrame([0]).to_json(),
-            "blob": {"data": list(b"some bytes"), "mime_type": "text/markdown"},
-            "score": 0.812,
-            "meta": {"test": 10},
-            "embedding": [0.1, 0.2, 0.3],
-            "date": "10-10-2023",
-            "type": "article",
-        }
-    )
+    with pytest.raises(
+        ValueError,
+        match="Passing the 'meta' parameter together with flatten metadata keys as keyword arguments is not supported",
+    ):
+        Document.from_dict(
+            {
+                "content": "test text",
+                "dataframe": pd.DataFrame([0]).to_json(),
+                "blob": {"data": list(b"some bytes"), "mime_type": "text/markdown"},
+                "score": 0.812,
+                "meta": {"test": 10},
+                "embedding": [0.1, 0.2, 0.3],
+                "date": "10-10-2023",
+                "type": "article",
+            }
+        )
 
 
 @pytest.mark.unit
