@@ -285,10 +285,9 @@ class ExtractiveReader:
                     {
                         "data": doc.content[start_:end_],  # type: ignore
                         "document": doc,
-                        "probability": probability.item(),
-                        "start": start_,
-                        "end": end_,
-                        "metadata": {},
+                        "score": probability.item(),
+                        "document_offset": ExtractedAnswer.Span(start_, end_),
+                        "meta": {},
                     }
                 )
         i = 0
@@ -300,17 +299,17 @@ class ExtractiveReader:
                 answer["query"] = queries[query_id]
                 current_answers.append(ExtractedAnswer(**answer))
                 i += 1
-            current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
+            current_answers = sorted(current_answers, key=lambda answer: answer.score, reverse=True)
             current_answers = current_answers[:top_k]
             if no_answer:
-                no_answer_probability = math.prod(1 - answer.probability for answer in current_answers)
+                no_answer_score = math.prod(1 - answer.score for answer in current_answers)
                 answer_ = ExtractedAnswer(
-                    data=None, query=queries[query_id], metadata={}, document=None, probability=no_answer_probability
+                    data=None, query=queries[query_id], meta={}, document=None, score=no_answer_score
                 )
                 current_answers.append(answer_)
-            current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
+            current_answers = sorted(current_answers, key=lambda answer: answer.score, reverse=True)
             if confidence_threshold is not None:
-                current_answers = [answer for answer in current_answers if answer.probability >= confidence_threshold]
+                current_answers = [answer for answer in current_answers if answer.score >= confidence_threshold]
             nested_answers.append(current_answers)
 
         return nested_answers

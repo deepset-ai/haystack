@@ -17,7 +17,7 @@ class TestAnswerBuilder:
         output = component.run(query="query", replies=["reply1"])
         answers = output["answers"]
         assert answers[0].data == "reply1"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -27,7 +27,7 @@ class TestAnswerBuilder:
         output = component.run(query="query", replies=["reply1"], metadata=[])
         answers = output["answers"]
         assert answers[0].data == "reply1"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -38,7 +38,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -49,7 +49,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -60,7 +60,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "'AnswerString'"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -77,7 +77,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -93,7 +93,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 2
         assert answers[0].documents[0].content == "test doc 1"
@@ -110,7 +110,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString[2]"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 1
         assert answers[0].documents[0].content == "test doc 2"
@@ -127,7 +127,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString[3]"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 0
         assert "Document index '3' referenced in Generator output is out of range." in caplog.text
@@ -144,7 +144,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString[2][3]"
-        assert answers[0].metadata == {}
+        assert answers[0].meta == {}
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 2
         assert answers[0].documents[0].content == "test doc 2"
