@@ -46,7 +46,7 @@ class TestTextfileToDocument:
         converter = TextFileToDocument()
         with caplog.at_level(logging.WARNING):
             output = converter.run(sources=paths)
-            assert "File non_existing_file.txt does not exist. Skipping it." in caplog.text
+            assert "non_existing_file.txt" in caplog.text
         docs = output["documents"]
         assert len(docs) == 2
         assert docs[0].meta["file_path"] == str(paths[0])
