@@ -30,9 +30,12 @@ class DynamicPromptBuilder:
     def __init__(self, expected_runtime_variables: List[str], chat_mode: Optional[bool] = True):
         """
         Initializes DynamicPromptBuilder with the provided variable names. These variable names are used to resolve
-        variables and their values during pipeline runtime execution. The values associated with variables from the
-        pipeline runtime are then injected into template placeholders of either a ChatMessage or a string template
-        that is provided to the `run` method. See run method for more details.
+        variables and their values during pipeline runtime execution. Depending on the components connected to the
+        DynamicPromptBuilder in the pipeline, these variable names can be different. For example, if your component
+        connected to the DynamicPromptBuilder has an output named `documents`, the expected_runtime_variables should
+        contain `documents` as one of its values. The values associated with variables from the pipeline runtime are
+        then injected into template placeholders of either a ChatMessage or a string template that is provided to
+        the `run` method. See run method for more details.
 
         :param expected_runtime_variables: A list of template variable names to be used in chat prompt construction.
         :type expected_runtime_variables: List[str]
@@ -59,7 +62,7 @@ class DynamicPromptBuilder:
         else:
             component.set_output_types(self, prompt=str)
 
-        self.expected_variables = expected_runtime_variables
+        self.expected_runtime_variables = expected_runtime_variables
         self.chat_mode = chat_mode
 
     def to_dict(self) -> Dict[str, Any]:
@@ -69,7 +72,9 @@ class DynamicPromptBuilder:
         :return: A dictionary representation of the `DynamicPromptBuilder` instance, including its template variables.
         :rtype: Dict[str, Any]
         """
-        return default_to_dict(self, expected_variables=self.expected_variables, chat_mode=self.chat_mode)
+        return default_to_dict(
+            self, expected_runtime_variables=self.expected_runtime_variables, chat_mode=self.chat_mode
+        )
 
     def run(
         self,
