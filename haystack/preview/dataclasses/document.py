@@ -82,11 +82,12 @@ class Document(metaclass=_BackwardCompatible):
 
     def __eq__(self, other):
         """
-        Compares documents for equality. Uses the id to check whether the documents are supposed to be the same.
+        Compares Documents for equality.
+        Two Documents are considered equals if their dictionary representation is identical.
         """
-        if type(self) == type(other):
-            return self.id == other.id
-        return False
+        if type(self) != type(other):
+            return False
+        return self.to_dict() == other.to_dict()
 
     def __post_init__(self):
         """
