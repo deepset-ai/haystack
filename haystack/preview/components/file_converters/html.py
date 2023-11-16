@@ -43,14 +43,17 @@ class HTMLToDocument:
 
         :param sources: List of HTML file paths or ByteStream objects.
         :param meta: Optional list of metadata to attach to the Documents.
-        The length of the list must match the number of paths. Defaults to `None`.
+        The length of the list must match the number of sources. Defaults to `None`.
         :return: List of converted Documents.
         """
 
         documents = []
 
         # Create metadata placeholders if not provided
-        if meta is None:
+        if meta is not None:
+            if len(sources) != len(meta):
+                raise ValueError("The length of the metadata list must match the number of sources.")
+        else:
             meta = [{}] * len(sources)
 
         extractor = extractors.ArticleExtractor(raise_on_failure=False)

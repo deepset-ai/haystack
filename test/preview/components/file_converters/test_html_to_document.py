@@ -35,6 +35,17 @@ class TestHTMLToDocument:
         assert docs[0].meta == {"file_name": "what_is_haystack.html"}
 
     @pytest.mark.integration
+    def test_incorrect_meta(self, preview_samples_path):
+        """
+        Test if the component raises an error when incorrect metadata is supplied by the user.
+        """
+        converter = HTMLToDocument()
+        sources = [preview_samples_path / "html" / "what_is_haystack.html"]
+        metadata = [{"file_name": "what_is_haystack.html"}, {"file_name": "haystack.html"}]
+        with pytest.raises(ValueError, match="The length of the metadata list must match the number of sources."):
+            converter.run(sources=sources, meta=metadata)
+
+    @pytest.mark.integration
     def test_run_bytestream_metadata(self, preview_samples_path):
         """
         Test if the component runs correctly when metadata is read from the ByteStream object.
