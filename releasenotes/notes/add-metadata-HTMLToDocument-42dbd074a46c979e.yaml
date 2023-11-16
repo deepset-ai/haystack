@@ -2,4 +2,3 @@
 preview:
   - |
     Adds support for adding additional metadata and utilizing metadata received from ByteStream sources when creating documents using HTMLToDocument.
-    Adds progress bar to HTMLToDocument.
