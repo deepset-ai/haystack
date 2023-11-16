@@ -8,7 +8,7 @@ from haystack.preview.lazy_imports import LazyImport
 
 with LazyImport(
     "Run 'pip install transformers[torch]' to install torch and "
-    "'pip install --no-deps numba llvmlite \"openai-whisper>=20230918\"' to install whisper."
+    "'pip install \"openai-whisper>=20231106\"' to install whisper."
 ) as whisper_import:
     import torch
     import whisper
