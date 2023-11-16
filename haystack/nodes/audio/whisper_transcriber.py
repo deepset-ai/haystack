@@ -28,8 +28,6 @@ class WhisperTranscriber(BaseComponent):
 
     To use Whisper locally, install it following the instructions on
     the Whisper [GitHub repo](https://github.com/openai/whisper) and omit the `api_key` parameter.
-    You can work around a dependency conflict caused by openai-whisper pinning an older tiktoken version than required
-    by Haystack if you install via `pip install --no-deps numba llvmlite 'openai-whisper>=20230918'`.
 
     To use the API implementation, provide an api_key. You can get one by signing up
     for an [OpenAI account](https://beta.openai.com/).

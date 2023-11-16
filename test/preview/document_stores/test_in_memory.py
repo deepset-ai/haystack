@@ -199,10 +199,10 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         ]
         docstore.write_documents(docs)
         results = docstore.bm25_retrieval(query="Gardening", top_k=2)
-        assert document in results
+        assert document.id in [d.id for d in results]
         assert "both text and dataframe content" in caplog.text
         results = docstore.bm25_retrieval(query="Python", top_k=2)
-        assert document not in results
+        assert document.id not in [d.id for d in results]
 
     @pytest.mark.unit
     def test_bm25_retrieval_default_filter_for_text_and_dataframes(self, docstore: InMemoryDocumentStore):
@@ -217,7 +217,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         docs = [Document(), selected_document, Document(content="Bird watching")]
         docstore.write_documents(docs)
         results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
-        assert results == [selected_document]
+        assert len(results) == 1
+        assert results[0].id == selected_document.id
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_filters_keeps_default_filters(self, docstore: InMemoryDocumentStore):
@@ -232,7 +233,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         docs = [Document(), Document(content="Gardening"), Document(content="Bird watching"), document]
         docstore.write_documents(docs)
         results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"content": None})
-        assert results == [document]
+        assert len(results) == 1
+        assert results[0].id == document.id
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_documents_with_mixed_content(self, docstore: InMemoryDocumentStore):
@@ -240,7 +242,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         docs = [Document(embedding=[1.0, 2.0, 3.0]), double_document, Document(content="Bird watching")]
         docstore.write_documents(docs)
         results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"embedding": {"$not": None}})
-        assert results == [double_document]
+        assert len(results) == 1
+        assert results[0].id == double_document.id
 
     @pytest.mark.unit
     def test_embedding_retrieval(self):
