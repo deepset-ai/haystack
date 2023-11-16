@@ -158,7 +158,7 @@ class Document(metaclass=_BackwardCompatible):
             )
 
         # Finally put back all the metadata
-        return cls(**data, meta=meta | flatten_meta)
+        return cls(**data, meta={**meta, **flatten_meta})
 
     @property
     def content_type(self):
