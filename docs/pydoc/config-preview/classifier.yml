@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/preview/components/classifiers]
-    modules: ["document_language_classifier", "text_language_classifier"]
+    modules: ["document_language_classifier"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
