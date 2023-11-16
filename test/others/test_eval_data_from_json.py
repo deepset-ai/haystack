@@ -54,17 +54,12 @@ def test_eval_data_from_json(temp_squad_file):
     # Call the function with the temporary file
     docs, labels = eval_data_from_json(temp_squad_file)
 
-    # Add your assertions based on the structure of your data
     assert len(docs) == 1
     assert len(labels) == 2
 
-    # Assuming that your Document and Label classes have attributes like 'text', 'question', 'answer', etc.
     assert docs[0].content == "This is the context of the article."
     assert labels[0].query == "What is the SQuAD dataset?"
     assert labels[0].meta == {"annotator": "annotator0", "date": "2023-11-07"}
 
     assert labels[1].query == "Another question?"
     assert labels[1].meta == {"annotator": "annotator1", "date": "2023-12-09"}
-
-    # Clean up: Remove the temporary file
-    os.remove(temp_squad_file)
