@@ -223,7 +223,7 @@ def test_supports_for_valid_aws_configuration():
 
     # Patch the class method to return the mock session
     with patch(
-        "haystack.nodes.prompt.invocation_layer.sagemaker_base.SageMakerBaseInvocationLayer.create_session",
+        "haystack.nodes.prompt.invocation_layer.aws_base.AWSBaseInvocationLayer.get_aws_session",
         return_value=mock_session,
     ):
         supported = SageMakerHFInferenceInvocationLayer.supports(
@@ -245,12 +245,10 @@ def test_supports_not_on_invalid_aws_profile_name():
 
     with patch("boto3.Session") as mock_boto3_session:
         mock_boto3_session.side_effect = BotoCoreError()
-        with pytest.raises(SageMakerConfigurationError) as exc_info:
-            supported = SageMakerHFInferenceInvocationLayer.supports(
+        with pytest.raises(SageMakerConfigurationError, match="Failed to initialize the session"):
+            SageMakerHFInferenceInvocationLayer.supports(
                 model_name_or_path="some_fake_model", aws_profile_name="some_fake_profile"
             )
-            assert "Failed to initialize the session" in exc_info.value
-            assert not supported
 
 
 @pytest.mark.skipif(

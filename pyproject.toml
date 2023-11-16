@@ -152,12 +152,8 @@ docstores-gpu = [
   "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch]",
 ]
 aws = [
-  "boto3",
-  # Costraint botocore to avoid taking to much time to resolve the dependency tree.
-  # boto3 used to constraint it at this version more than a year ago. To avoid breaking
-  # people using old versions we use a similar constraint without upper bound.
-  # https://github.com/boto/boto3/blob/dae73bef223abbedfa7317a783070831febc0c90/setup.py#L16
-  "botocore>=1.27",
+  # first version to support Amazon Bedrock
+  "boto3>=1.28.57",
 ]
 crawler = [
   "selenium>=4.11.0"

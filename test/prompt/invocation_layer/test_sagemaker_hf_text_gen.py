@@ -81,9 +81,8 @@ def test_invoke_with_no_kwargs(mock_auto_tokenizer, mock_boto3_session):
     Test that invoke raises an error if no prompt is provided
     """
     layer = SageMakerHFTextGenerationInvocationLayer(model_name_or_path="some_fake_model")
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError, match="No prompt provided."):
         layer.invoke()
-        assert e.match("No prompt provided.")
 
 
 @pytest.mark.unit
@@ -223,7 +222,7 @@ def test_supports_for_valid_aws_configuration():
 
     # Patch the class method to return the mock session
     with patch(
-        "haystack.nodes.prompt.invocation_layer.sagemaker_base.SageMakerBaseInvocationLayer.create_session",
+        "haystack.nodes.prompt.invocation_layer.aws_base.AWSBaseInvocationLayer.get_aws_session",
         return_value=mock_session,
     ):
         supported = SageMakerHFTextGenerationInvocationLayer.supports(
@@ -245,12 +244,10 @@ def test_supports_not_on_invalid_aws_profile_name():
 
     with patch("boto3.Session") as mock_boto3_session:
         mock_boto3_session.side_effect = BotoCoreError()
-        with pytest.raises(SageMakerConfigurationError) as exc_info:
-            supported = SageMakerHFTextGenerationInvocationLayer.supports(
+        with pytest.raises(SageMakerConfigurationError, match="Failed to initialize the session"):
+            SageMakerHFTextGenerationInvocationLayer.supports(
                 model_name_or_path="some_fake_model", aws_profile_name="some_fake_profile"
             )
-            assert "Failed to initialize the session" in exc_info.value
-            assert not supported
 
 
 @pytest.mark.skipif(
