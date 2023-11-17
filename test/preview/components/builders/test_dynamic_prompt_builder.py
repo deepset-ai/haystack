@@ -42,7 +42,7 @@ class TestDynamicPromptBuilder:
         chat_mode = True
         builder = DynamicPromptBuilder(expected_runtime_variables, chat_mode)
         expected_dict = {
-            "type": "DynamicPromptBuilder",
+            "type": "haystack.preview.components.builders.dynamic_prompt_builder.DynamicPromptBuilder",
             "init_parameters": {"expected_runtime_variables": expected_runtime_variables, "chat_mode": chat_mode},
         }
         assert builder.to_dict() == expected_dict
