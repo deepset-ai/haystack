@@ -104,8 +104,8 @@ class ConditionalRouter:
     - 'condition': A Jinja2 string expression that determines if the route is selected.
     - 'output': A Jinja2 expression defining the route's output value.
     - 'output_type': The type of the output data (e.g., str, List[int]).
-    - 'output_name': The name under which the output of the route is published. Similar to other Haystack components,
-    ConditionalRouter allows specifying output types with the 'output_type' key.
+    - 'output_name': The name under which the `output` value of the route is published. This name is used to connect
+    the router to other components in the pipeline.
 
     Here's an example:
 
@@ -125,7 +125,7 @@ class ConditionalRouter:
         },
     ]
     router = ConditionalRouter(routes)
-    # When 'streams' has more than 2 items, 'enough_streams' will activate, emitting the list [1, 2, 3]
+    # When 'streams' has more than 2 items, 'enough_streams' output will activate, emitting the list [1, 2, 3]
     kwargs = {"streams": [1, 2, 3], "query": "Haystack"}
     result = router.run(**kwargs)
     assert result == {"enough_streams": [1, 2, 3]}
@@ -134,6 +134,41 @@ class ConditionalRouter:
     In this example, two routes are configured. The first route sends the 'streams' value to 'enough_streams' if the
     stream count exceeds two. Conversely, the second route directs 'streams' to 'insufficient_streams' when there
     are two or fewer streams.
+
+    In the pipeline setup, the router is connected to other components using the output names. For example, the
+    'enough_streams' output might be connected to another component that processes the streams, while the
+    'insufficient_streams' output might be connected to a component that fetches more streams etc.
+
+    Here is a pseudocode example of a pipeline that uses the ConditionalRouter and routes fetched ByteStreams to
+    different components depending on the number of streams fetched:
+
+    ```python
+    from haystack import Pipeline
+    from haystack.preview.dataclasses import ByteStream
+    from haystack.preview.components.routers import ConditionalRouter
+
+    routes = [
+        {
+            "condition": "{{streams|length > 2}}",
+            "output": "{{streams}}",
+            "output_name": "enough_streams",
+            "output_type": List[ByteStream],
+        },
+        {
+            "condition": "{{streams|length <= 2}}",
+            "output": "{{streams}}",
+            "output_name": "insufficient_streams",
+            "output_type": List[ByteStream],
+        },
+    ]
+
+    pipe = Pipeline()
+    pipe.add_component("router", router)
+    ...
+    pipe.connect("router.enough_streams", "some_component_a.streams")
+    pipe.connect("router.insufficient_streams", "some_component_b.streams_or_some_other_input")
+    ...
+    ```
     """
 
     def __init__(self, routes: List[Dict]):
