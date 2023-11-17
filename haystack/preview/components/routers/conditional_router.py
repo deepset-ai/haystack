@@ -249,7 +249,8 @@ class ConditionalRouter:
                     t_output = env.from_string(route["output"])
                     output = t_output.render(**kwargs)
 
-                    # output_vars is a set guaranteed to have 0 or 1 elements
+                    # In case `output_name` was not specified, we use the name of the variable contained
+                    # in `output` to address the appropriate output socket for this component.
                     output_vars = meta.find_undeclared_variables(env.parse(route["output"]))
                     output_var = output_vars.pop() if output_vars else None
                     output_name = route.get("output_name", output_var)
