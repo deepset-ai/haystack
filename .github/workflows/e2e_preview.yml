@@ -36,7 +36,7 @@ jobs:
         sudo apt install ffmpeg  # for local Whisper tests
 
     - name: Install Haystack
-      run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2'
+      run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2'
 
     - name: Run tests
       run: pytest e2e/preview

@@ -49,7 +49,7 @@ dependencies = [
   "requests",
   "httpx",
   "pydantic<2",
-  "transformers==4.34.1",
+  "transformers==4.35.2",
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.3.0", # TF-IDF and metrics
@@ -101,7 +101,7 @@ preview = [
   "more-itertools",  # DocumentSplitter
 ]
 inference = [
-  "transformers[torch,sentencepiece]==4.34.1",
+  "transformers[torch,sentencepiece]==4.35.2",
   "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "huggingface-hub>=0.5.0",
 ]

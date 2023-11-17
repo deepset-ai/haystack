@@ -116,7 +116,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run
         run: pytest -m "unit" test/preview
@@ -175,7 +175,7 @@ jobs:
           sudo apt install ffmpeg  # for local Whisper tests
 
       - name: Install Haystack
-        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test/preview
@@ -232,7 +232,7 @@ jobs:
           colima start
 
       - name: Install Haystack
-        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run Tika
         run: docker run -d -p 9998:9998 apache/tika:2.9.0.0
@@ -284,7 +284,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test/preview -k 'not tika'
