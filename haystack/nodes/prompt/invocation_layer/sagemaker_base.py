@@ -1,12 +1,12 @@
 import json
 import logging
 from abc import abstractmethod, ABC
-from typing import Optional, Dict, Union, List, Any
+from typing import Dict, Union, List, Any
 
 
-from haystack.errors import SageMakerConfigurationError
+from haystack.errors import AWSConfigurationError, SageMakerConfigurationError
 from haystack.lazy_imports import LazyImport
-from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
+from haystack.nodes.prompt.invocation_layer.aws_base import AWSBaseInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
 
 logger = logging.getLogger(__name__)
@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 
 with LazyImport(message="Run 'pip install farm-haystack[aws]'") as boto3_import:
     import boto3
-    from botocore.exceptions import ClientError, BotoCoreError
+    from botocore.exceptions import ClientError
 
 
-class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
+class SageMakerBaseInvocationLayer(AWSBaseInvocationLayer, ABC):
     """
     Base class for SageMaker based invocation layers.
     """
@@ -70,18 +70,12 @@ class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
 
         :param model_name_or_path: The model_name_or_path to check.
         """
-        aws_configuration_keys = [
-            "aws_access_key_id",
-            "aws_secret_access_key",
-            "aws_session_token",
-            "aws_region_name",
-            "aws_profile_name",
-        ]
-        aws_config_provided = any(key in kwargs for key in aws_configuration_keys)
-        if aws_config_provided:
-            boto3_import.check()
+        if cls.aws_configured(**kwargs):
             # attempt to create a session with the provided credentials
-            session = cls.check_aws_connect(aws_configuration_keys, kwargs)
+            try:
+                session = cls.get_aws_session(**kwargs)
+            except AWSConfigurationError as e:
+                raise SageMakerConfigurationError(message=e.message) from e
             # is endpoint in service?
             cls.check_endpoint_in_service(session, model_name_or_path)
 
@@ -90,24 +84,6 @@ class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
             supported = cls.check_model_input_format(session, model_name_or_path, test_payload, **kwargs)
             return supported
         return False
-
-    @classmethod
-    def check_aws_connect(cls, aws_configuration_keys: List[str], kwargs):
-        """
-        Checks if the provided AWS credentials are valid and can be used to connect to SageMaker.
-        :param aws_configuration_keys: The AWS configuration keys to check.
-        :param kwargs: The kwargs passed down to the SageMakerClient.
-        :return: The boto3 session.
-        """
-        boto3_import.check()
-        try:
-            session = cls.create_session(**kwargs)
-        except BotoCoreError as e:
-            provided_aws_config = {k: v for k, v in kwargs.items() if k in aws_configuration_keys}
-            raise SageMakerConfigurationError(
-                f"Failed to initialize the session or client with provided AWS credentials {provided_aws_config}"
-            ) from e
-        return session
 
     @classmethod
     def check_endpoint_in_service(cls, session: "boto3.Session", endpoint: str):
@@ -176,33 +152,3 @@ class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
             if client:
                 client.close()
         return True
-
-    @classmethod
-    def create_session(
-        cls,
-        aws_access_key_id: Optional[str] = None,
-        aws_secret_access_key: Optional[str] = None,
-        aws_session_token: Optional[str] = None,
-        aws_region_name: Optional[str] = None,
-        aws_profile_name: Optional[str] = None,
-        **kwargs,
-    ):
-        """
-        Creates an AWS Session with the given parameters.
-
-        :param aws_access_key_id: AWS access key ID.
-        :param aws_secret_access_key: AWS secret access key.
-        :param aws_session_token: AWS session token.
-        :param aws_region_name: AWS region name.
-        :param aws_profile_name: AWS profile name.
-        :raise NoCredentialsError: If the AWS credentials are not provided or invalid.
-        :return: The created AWS Session.
-        """
-        boto3_import.check()
-        return boto3.Session(
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-            aws_session_token=aws_session_token,
-            region_name=aws_region_name,
-            profile_name=aws_profile_name,
-        )
