@@ -236,7 +236,8 @@ class GPTChatGenerator:
         :return: The ChatMessage.
         """
         message: OpenAIObject = choice.message
-        content = message.function_call if choice.finish_reason == "function_call" else message.content
+        # message.content is str but message.function_call is OpenAIObject but JSON in fact, convert to str
+        content = str(message.function_call) if choice.finish_reason == "function_call" else message.content
         chat_message = ChatMessage.from_assistant(content)
         chat_message.metadata.update(
             {
