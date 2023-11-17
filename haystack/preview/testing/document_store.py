@@ -225,7 +225,72 @@ class LegacyFilterDocumentsInvalidFiltersTest(FilterableDocsFixtureMixin):
             docstore.filter_documents(filters={"number": {"page": {"chapter": "intro"}}})
 
 
-class LegacyFilterDocumentsTest(LegacyFilterDocumentsInvalidFiltersTest):
+class LegacyFilterDocumentsEqualTest(FilterableDocsFixtureMixin):
+    """
+    Utility class to test a Document Store `filter_documents` method using implicit and explicit '$eq' legacy filters
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(LegacyFilterDocumentsEqualTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @pytest.mark.unit
+    def test_filter_document_content(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"content": "A Foo Document 1"})
+        assert result == [doc for doc in filterable_docs if doc.content == "A Foo Document 1"]
+
+    @pytest.mark.unit
+    def test_filter_simple_metadata_value(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"page": "100"})
+        assert result == [doc for doc in filterable_docs if doc.meta.get("page") == "100"]
+
+    @pytest.mark.unit
+    def test_filter_document_dataframe(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"dataframe": pd.DataFrame([1])})
+        assert result == [
+            doc for doc in filterable_docs if doc.dataframe is not None and doc.dataframe.equals(pd.DataFrame([1]))
+        ]
+
+    @pytest.mark.unit
+    def test_eq_filter_explicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"page": {"$eq": "100"}})
+        assert result == [doc for doc in filterable_docs if doc.meta.get("page") == "100"]
+
+    @pytest.mark.unit
+    def test_eq_filter_implicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"page": "100"})
+        assert result == [doc for doc in filterable_docs if doc.meta.get("page") == "100"]
+
+    @pytest.mark.unit
+    def test_eq_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"dataframe": pd.DataFrame([1])})
+        assert result == [
+            doc
+            for doc in filterable_docs
+            if isinstance(doc.dataframe, pd.DataFrame) and doc.dataframe.equals(pd.DataFrame([1]))
+        ]
+
+    @pytest.mark.unit
+    def test_eq_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        embedding = [0.0] * 768
+        result = docstore.filter_documents(filters={"embedding": embedding})
+        assert result == [doc for doc in filterable_docs if embedding == doc.embedding]
+
+
+class LegacyFilterDocumentsTest(LegacyFilterDocumentsInvalidFiltersTest, LegacyFilterDocumentsEqualTest):
     """
     Utility class to test a Document Store `filter_documents` method using different types of legacy filters
 
@@ -259,30 +324,10 @@ class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocum
         raise NotImplementedError()
 
     @pytest.mark.unit
-    def test_filter_simple_metadata_value(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": "100"})
-        assert result == [doc for doc in filterable_docs if doc.meta.get("page") == "100"]
-
-    @pytest.mark.unit
     def test_filter_simple_list_single_element(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": ["100"]})
         assert result == [doc for doc in filterable_docs if doc.meta.get("page") == "100"]
-
-    @pytest.mark.unit
-    def test_filter_document_content(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"content": "A Foo Document 1"})
-        assert result == [doc for doc in filterable_docs if doc.content == "A Foo Document 1"]
-
-    @pytest.mark.unit
-    def test_filter_document_dataframe(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"dataframe": pd.DataFrame([1])})
-        assert result == [
-            doc for doc in filterable_docs if doc.dataframe is not None and doc.dataframe.equals(pd.DataFrame([1]))
-        ]
 
     @pytest.mark.unit
     def test_filter_simple_list_one_value(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -307,35 +352,6 @@ class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocum
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": ["nope"]})
         assert len(result) == 0
-
-    @pytest.mark.unit
-    def test_eq_filter_explicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": {"$eq": "100"}})
-        assert result == [doc for doc in filterable_docs if doc.meta.get("page") == "100"]
-
-    @pytest.mark.unit
-    def test_eq_filter_implicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": "100"})
-        assert result == [doc for doc in filterable_docs if doc.meta.get("page") == "100"]
-
-    @pytest.mark.unit
-    def test_eq_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"dataframe": pd.DataFrame([1])})
-        assert result == [
-            doc
-            for doc in filterable_docs
-            if isinstance(doc.dataframe, pd.DataFrame) and doc.dataframe.equals(pd.DataFrame([1]))
-        ]
-
-    @pytest.mark.unit
-    def test_eq_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        embedding = [0.0] * 768
-        result = docstore.filter_documents(filters={"embedding": embedding})
-        assert result == [doc for doc in filterable_docs if embedding == doc.embedding]
 
     @pytest.mark.unit
     def test_in_filter_explicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
