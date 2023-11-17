@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Split Document Store utility testing class into different ones.
+    This will ease testing during development of new Document Stores and also easier to remove tests for deprecated features.
