@@ -823,7 +823,7 @@ class LegacyFilterDocumentsNestedLogicalTest(FilterableDocsFixtureMixin):
         ]
 
 
-class LegacyFilterDocumentsTest(
+class LegacyFilterDocumentsTest(  # pylint: disable=too-many-ancestors
     LegacyFilterDocumentsInvalidFiltersTest,
     LegacyFilterDocumentsEqualTest,
     LegacyFilterDocumentsNotEqualTest,
@@ -864,7 +864,9 @@ class LegacyFilterDocumentsTest(
 
 
 # TODO: Remove this when Document Stores tests are update to use each test class separately
-class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, LegacyFilterDocumentsTest):
+class DocumentStoreBaseTests(
+    CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, LegacyFilterDocumentsTest
+):  # pylint: disable=too-many-ancestors
     """
     Utility class to test a Document Store.
 
@@ -878,5 +880,3 @@ class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocum
             return MyDocumentStore()
     ```
     """
-
-    ...
