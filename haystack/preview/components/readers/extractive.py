@@ -7,9 +7,7 @@ import os
 from haystack.preview import component, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.preview.lazy_imports import LazyImport
 
-with LazyImport(
-    "Run 'pip install transformers[torch,sentencepiece]==4.34.1 sentence-transformers>=2.2.0'"
-) as torch_and_transformers_import:
+with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
     from tokenizers import Encoding
     import torch
@@ -58,6 +56,7 @@ class ExtractiveReader:
             `transformers-cli login` (stored in ~/.huggingface) will be used.
         :param top_k: Number of answers to return per query.
             It is required even if confidence_threshold is set. Defaults to 20.
+            An additional answer is returned if no_answer is set to True (default).
         :param confidence_threshold: Answers with a confidence score below this value will not be returned
         :param max_seq_length: Maximum number of tokens.
             If exceeded by a sequence, the sequence will be split.
@@ -294,6 +293,7 @@ class ExtractiveReader:
         :param query: Query string.
         :param documents: List of Documents to search for an answer to the query.
         :param top_k: The maximum number of answers to return.
+            An additional answer is returned if no_answer is set to True (default).
         :return: List of ExtractedAnswers sorted by (desc.) answer score.
         """
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2

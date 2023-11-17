@@ -26,21 +26,21 @@ class TestMemoryBM25Retriever:
         retriever = InMemoryBM25Retriever(InMemoryDocumentStore())
         assert retriever.filters is None
         assert retriever.top_k == 10
-        assert retriever.scale_score
+        assert retriever.scale_score is False
 
     @pytest.mark.unit
     def test_init_with_parameters(self):
         retriever = InMemoryBM25Retriever(
-            InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=False
+            InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=True
         )
         assert retriever.filters == {"name": "test.txt"}
         assert retriever.top_k == 5
-        assert not retriever.scale_score
+        assert retriever.scale_score
 
     @pytest.mark.unit
     def test_init_with_invalid_top_k_parameter(self):
         with pytest.raises(ValueError):
-            InMemoryBM25Retriever(InMemoryDocumentStore(), top_k=-2, scale_score=False)
+            InMemoryBM25Retriever(InMemoryDocumentStore(), top_k=-2)
 
     @pytest.mark.unit
     def test_to_dict(self):
@@ -51,12 +51,12 @@ class TestMemoryBM25Retriever:
 
         data = component.to_dict()
         assert data == {
-            "type": "InMemoryBM25Retriever",
+            "type": "haystack.preview.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": None,
                 "top_k": 10,
-                "scale_score": True,
+                "scale_score": False,
             },
         }
 
@@ -66,16 +66,16 @@ class TestMemoryBM25Retriever:
         document_store = MyFakeStore()
         document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}
         component = InMemoryBM25Retriever(
-            document_store=document_store, filters={"name": "test.txt"}, top_k=5, scale_score=False
+            document_store=document_store, filters={"name": "test.txt"}, top_k=5, scale_score=True
         )
         data = component.to_dict()
         assert data == {
-            "type": "InMemoryBM25Retriever",
+            "type": "haystack.preview.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
-                "scale_score": False,
+                "scale_score": True,
             },
         }
 
@@ -83,9 +83,9 @@ class TestMemoryBM25Retriever:
     def test_from_dict(self):
         document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         data = {
-            "type": "InMemoryBM25Retriever",
+            "type": "haystack.preview.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {
-                "document_store": {"type": "MyFakeStore", "init_parameters": {}},
+                "document_store": {"type": "haystack.preview.testing.factory.MyFakeStore", "init_parameters": {}},
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
             },
@@ -94,7 +94,7 @@ class TestMemoryBM25Retriever:
         assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.filters == {"name": "test.txt"}
         assert component.top_k == 5
-        assert component.scale_score
+        assert component.scale_score is False
 
     @pytest.mark.unit
     def test_from_dict_without_docstore(self):
@@ -111,7 +111,7 @@ class TestMemoryBM25Retriever:
     @pytest.mark.unit
     def test_from_dict_nonexisting_docstore(self):
         data = {
-            "type": "InMemoryBM25Retriever",
+            "type": "haystack.preview.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {"document_store": {"type": "NonexistingDocstore", "init_parameters": {}}},
         }
         with pytest.raises(DeserializationError, match="DocumentStore type 'NonexistingDocstore' not found"):
