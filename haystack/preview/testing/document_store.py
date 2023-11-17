@@ -43,7 +43,65 @@ class CountDocumentsTest:
         assert docstore.count_documents() == 3
 
 
-class DocumentStoreBaseTests(CountDocumentsTest):
+class WriteDocumentsTest:
+    """
+    Utility class to test a Document Store `write_documents` method.
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(WriteDocumentsTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @pytest.mark.unit
+    def test_write(self, docstore: DocumentStore):
+        doc = Document(content="test doc")
+        docstore.write_documents([doc])
+        assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
+
+    @pytest.mark.unit
+    def test_write_duplicate_fail(self, docstore: DocumentStore):
+        doc = Document(content="test doc")
+        docstore.write_documents([doc])
+        with pytest.raises(DuplicateDocumentError, match=f"ID '{doc.id}' already exists."):
+            docstore.write_documents(documents=[doc], policy=DuplicatePolicy.FAIL)
+        assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
+
+    @pytest.mark.unit
+    def test_write_duplicate_skip(self, docstore: DocumentStore):
+        doc = Document(content="test doc")
+        docstore.write_documents([doc])
+        docstore.write_documents(documents=[doc], policy=DuplicatePolicy.SKIP)
+        assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
+
+    @pytest.mark.unit
+    def test_write_duplicate_overwrite(self, docstore: DocumentStore):
+        doc1 = Document(content="test doc 1")
+        doc2 = Document(content="test doc 2")
+        object.__setattr__(doc2, "id", doc1.id)  # Make two docs with different content but same ID
+
+        docstore.write_documents([doc2])
+        assert docstore.filter_documents(filters={"id": doc1.id}) == [doc2]
+        docstore.write_documents(documents=[doc1], policy=DuplicatePolicy.OVERWRITE)
+        assert docstore.filter_documents(filters={"id": doc1.id}) == [doc1]
+
+    @pytest.mark.unit
+    def test_write_not_docs(self, docstore: DocumentStore):
+        with pytest.raises(ValueError):
+            docstore.write_documents(["not a document for sure"])  # type: ignore
+
+    @pytest.mark.unit
+    def test_write_not_list(self, docstore: DocumentStore):
+        with pytest.raises(ValueError):
+            docstore.write_documents("not a list actually")  # type: ignore
+
+
+class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest):
     @pytest.fixture
     def docstore(self) -> DocumentStore:
         raise NotImplementedError()
@@ -558,48 +616,6 @@ class DocumentStoreBaseTests(CountDocumentsTest):
                 or (doc.meta.get("chapter") in ["intro", "abstract"] and doc.meta.get("page") == "123")
             )
         ]
-
-    @pytest.mark.unit
-    def test_write(self, docstore: DocumentStore):
-        doc = Document(content="test doc")
-        docstore.write_documents([doc])
-        assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
-
-    @pytest.mark.unit
-    def test_write_duplicate_fail(self, docstore: DocumentStore):
-        doc = Document(content="test doc")
-        docstore.write_documents([doc])
-        with pytest.raises(DuplicateDocumentError, match=f"ID '{doc.id}' already exists."):
-            docstore.write_documents(documents=[doc], policy=DuplicatePolicy.FAIL)
-        assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
-
-    @pytest.mark.unit
-    def test_write_duplicate_skip(self, docstore: DocumentStore):
-        doc = Document(content="test doc")
-        docstore.write_documents([doc])
-        docstore.write_documents(documents=[doc], policy=DuplicatePolicy.SKIP)
-        assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
-
-    @pytest.mark.unit
-    def test_write_duplicate_overwrite(self, docstore: DocumentStore):
-        doc1 = Document(content="test doc 1")
-        doc2 = Document(content="test doc 2")
-        object.__setattr__(doc2, "id", doc1.id)  # Make two docs with different content but same ID
-
-        docstore.write_documents([doc2])
-        assert docstore.filter_documents(filters={"id": doc1.id}) == [doc2]
-        docstore.write_documents(documents=[doc1], policy=DuplicatePolicy.OVERWRITE)
-        assert docstore.filter_documents(filters={"id": doc1.id}) == [doc1]
-
-    @pytest.mark.unit
-    def test_write_not_docs(self, docstore: DocumentStore):
-        with pytest.raises(ValueError):
-            docstore.write_documents(["not a document for sure"])  # type: ignore
-
-    @pytest.mark.unit
-    def test_write_not_list(self, docstore: DocumentStore):
-        with pytest.raises(ValueError):
-            docstore.write_documents("not a list actually")  # type: ignore
 
     @pytest.mark.unit
     def test_delete_empty(self, docstore: DocumentStore):
