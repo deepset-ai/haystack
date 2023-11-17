@@ -145,7 +145,7 @@ class TestHuggingFaceLocalGenerator:
         data = component.to_dict()
 
         assert data == {
-            "type": "HuggingFaceLocalGenerator",
+            "type": "haystack.preview.components.generators.hugging_face_local.HuggingFaceLocalGenerator",
             "init_parameters": {
                 "pipeline_kwargs": {"model": "google/flan-t5-base", "task": "text2text-generation", "token": None},
                 "generation_kwargs": {},
@@ -166,7 +166,7 @@ class TestHuggingFaceLocalGenerator:
         data = component.to_dict()
 
         assert data == {
-            "type": "HuggingFaceLocalGenerator",
+            "type": "haystack.preview.components.generators.hugging_face_local.HuggingFaceLocalGenerator",
             "init_parameters": {
                 "pipeline_kwargs": {
                     "model": "gpt2",

@@ -25,7 +25,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         store = InMemoryDocumentStore()
         data = store.to_dict()
         assert data == {
-            "type": "InMemoryDocumentStore",
+            "type": "haystack.preview.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": r"(?u)\b\w\w+\b",
                 "bm25_algorithm": "BM25Okapi",
@@ -44,7 +44,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         )
         data = store.to_dict()
         assert data == {
-            "type": "InMemoryDocumentStore",
+            "type": "haystack.preview.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": "custom_regex",
                 "bm25_algorithm": "BM25Plus",
@@ -57,7 +57,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
     @patch("haystack.preview.document_stores.in_memory.document_store.re")
     def test_from_dict(self, mock_regex):
         data = {
-            "type": "InMemoryDocumentStore",
+            "type": "haystack.preview.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": "custom_regex",
                 "bm25_algorithm": "BM25Plus",
