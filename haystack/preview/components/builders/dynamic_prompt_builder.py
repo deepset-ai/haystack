@@ -106,6 +106,43 @@ class DynamicPromptBuilder:
     >> metadata={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage':
     >> {'prompt_tokens': 51, 'completion_tokens': 2, 'total_tokens': 53}})]}}
     ```
+
+    Similarly to chat prompt generation, DynamicPromptBuilder can also be used to generate non-chat based prompts.
+    The following example demonstrates how to use DynamicPromptBuilder to generate a non-chat prompt:
+
+    ```python
+    prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"], chat_mode=False)
+    llm = GPTGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
+
+
+    @component
+    class DocumentProducer:
+
+      @component.output_types(documents=List[Document])
+      def run(self, doc_input: str):
+        return {"documents": [Document(content=doc_input)]}
+
+
+    pipe = Pipeline()
+    pipe.add_component("doc_producer", DocumentProducer())
+    pipe.add_component("prompt_builder", prompt_builder)
+    pipe.add_component("llm", llm)
+    pipe.connect("doc_producer.documents", "prompt_builder.documents")
+    pipe.connect("prompt_builder.prompt", "llm.prompt")
+
+    template = "Here is the document: {{documents[0].content}} \n Answer: {{query}}"
+    pipe.run(data={"doc_producer": {"doc_input": "Hello world, I live in Berlin"},
+               "prompt_builder": {"prompt_source": template,
+                                  "template_variables":{"query": "Where does the speaker live?"}}})
+
+    >> {'llm': {'replies': ['The speaker lives in Berlin.'],
+    >> 'metadata': [{'model': 'gpt-3.5-turbo-0613',
+    >> 'index': 0,
+    >> 'finish_reason': 'stop',
+    >> 'usage': {'prompt_tokens': 28,
+    >> 'completion_tokens': 6,
+    >> 'total_tokens': 34}}]}}
+
     """
 
     def __init__(self, expected_runtime_variables: Optional[List[str]] = None, chat_mode: Optional[bool] = True):
