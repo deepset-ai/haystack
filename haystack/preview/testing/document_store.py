@@ -580,6 +580,47 @@ class LegacyFilterDocumentsLessThanTest(FilterableDocsFixtureMixin):
             docstore.filter_documents(filters={"embedding": {"$lt": embedding_ones}})
 
 
+class LegacyFilterDocumentsLessThanEqualTest(FilterableDocsFixtureMixin):
+    """
+    Utility class to test a Document Store `filter_documents` method using explicit '$lte' legacy filters
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(LegacyFilterDocumentsLessThanEqualTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @pytest.mark.unit
+    def test_lte_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"number": {"$lte": 2.0}})
+        assert result == [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] <= 2.0]
+
+    @pytest.mark.unit
+    def test_lte_filter_non_numeric(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            docstore.filter_documents(filters={"page": {"$lte": "100"}})
+
+    @pytest.mark.unit
+    def test_lte_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            docstore.filter_documents(filters={"dataframe": {"$lte": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
+
+    @pytest.mark.unit
+    def test_lte_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        embedding_ones = np.ones([768, 1]).astype(np.float32)
+        with pytest.raises(FilterError):
+            docstore.filter_documents(filters={"embedding": {"$lte": embedding_ones}})
+
+
 class LegacyFilterDocumentsTest(  # pylint: disable=too-many-ancestors
     LegacyFilterDocumentsInvalidFiltersTest,
     LegacyFilterDocumentsEqualTest,
@@ -589,6 +630,7 @@ class LegacyFilterDocumentsTest(  # pylint: disable=too-many-ancestors
     LegacyFilterDocumentsGreaterThanTest,
     LegacyFilterDocumentsGreaterThanEqualTest,
     LegacyFilterDocumentsLessThanTest,
+    LegacyFilterDocumentsLessThanEqualTest,
 ):
     """
     Utility class to test a Document Store `filter_documents` method using different types of legacy filters
@@ -623,31 +665,6 @@ class DocumentStoreBaseTests(
     @pytest.fixture
     def docstore(self) -> DocumentStore:
         raise NotImplementedError()
-
-    @pytest.mark.unit
-    def test_lte_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$lte": 2.0}})
-        assert result == [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] <= 2.0]
-
-    @pytest.mark.unit
-    def test_lte_filter_non_numeric(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"page": {"$lte": "100"}})
-
-    @pytest.mark.unit
-    def test_lte_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"dataframe": {"$lte": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
-
-    @pytest.mark.unit
-    def test_lte_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        embedding_ones = np.ones([768, 1]).astype(np.float32)
-        with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"embedding": {"$lte": embedding_ones}})
 
     @pytest.mark.unit
     def test_filter_simple_implicit_and_with_multi_key_dict(
