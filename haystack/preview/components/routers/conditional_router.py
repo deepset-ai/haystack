@@ -237,7 +237,7 @@ class ConditionalRouter:
 
         :raises NoRouteSelectedException: If no route's expression evaluates to True.
         """
-        # Create a Jinja native environment evaluate the condition templates
+        # Create a Jinja native environment to evaluate the condition templates as Python expressions
         env = NativeEnvironment()
 
         for route in self.routes:
