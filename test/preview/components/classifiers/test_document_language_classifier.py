@@ -27,7 +27,7 @@ class TestDocumentLanguageClassifier:
     def test_empty_list(self):
         classifier = DocumentLanguageClassifier()
         result = classifier.run(documents=[])
-        assert result == {"en": [], "unmatched": []}
+        assert result == {"documents": []}
 
     @pytest.mark.unit
     def test_detect_language(self):
@@ -36,12 +36,13 @@ class TestDocumentLanguageClassifier:
         assert detected_language == "en"
 
     @pytest.mark.unit
-    def test_route_to_en_and_unmatched(self):
+    def test_classify_as_en_and_unmatched(self):
         classifier = DocumentLanguageClassifier()
         english_document = Document(content="This is an english sentence.")
         german_document = Document(content="Ein deutscher Satz ohne Verb.")
         result = classifier.run(documents=[english_document, german_document])
-        assert result == {"en": [english_document], "unmatched": [german_document]}
+        assert result["documents"][0].meta["language"] == "en"
+        assert result["documents"][1].meta["language"] == "unmatched"
 
     @pytest.mark.unit
     def test_warning_if_no_language_detected(self, caplog):

@@ -282,7 +282,7 @@ def test_from_dict_with_flat_meta():
 
 @pytest.mark.unit
 def test_from_dict_with_flat_and_non_flat_meta():
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError, match="Pass either the 'meta' parameter or flattened metadata keys"):
         Document.from_dict(
             {
                 "content": "test text",
