@@ -48,7 +48,7 @@ def test_extractive_qa_pipeline(tmp_path):
         # the best answer should contain the spyword
         assert spyword in extracted_answers[0].data
 
-        # no_answer case
+        # no_answer
         assert extracted_answers[-1].data is None
 
         # since these questions are easily answerable, the best answer should have higher probability than no_answer
