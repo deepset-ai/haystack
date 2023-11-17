@@ -4,7 +4,7 @@
 from typing import Dict, Any
 import logging
 
-import networkx
+import networkx  # type:ignore
 
 from canals.errors import PipelineValidationError
 from canals.component.sockets import InputSocket

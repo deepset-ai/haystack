@@ -6,7 +6,7 @@ from typing import Literal, Optional, Dict, get_args, Any
 import logging
 from pathlib import Path
 
-import networkx
+import networkx  # type:ignore
 
 from canals.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
 from canals.pipeline.draw.graphviz import _to_agraph

@@ -5,7 +5,7 @@ import logging
 import base64
 
 import requests
-import networkx
+import networkx  # type:ignore
 
 from canals.errors import PipelineDrawingError
 from canals.type_utils import _type_name

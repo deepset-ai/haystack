@@ -3,12 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 
-import networkx
+import networkx  # type:ignore
 
-from networkx.drawing.nx_agraph import to_agraph as nx_to_agraph
+from networkx.drawing.nx_agraph import to_agraph as nx_to_agraph  # type:ignore
 
 
 logger = logging.getLogger(__name__)
+
+# pyright: reportMissingImports=false
+# pylint: disable=unused-import,import-outside-toplevel
 
 
 def _to_agraph(graph: networkx.MultiDiGraph):
@@ -16,7 +19,7 @@ def _to_agraph(graph: networkx.MultiDiGraph):
     Renders a pipeline graph using PyGraphViz. You need to install it and all its system dependencies for it to work.
     """
     try:
-        import pygraphviz  # pylint: disable=unused-import,import-outside-toplevel
+        import pygraphviz  # type: ignore
     except (ModuleNotFoundError, ImportError) as exc:
         raise ImportError(
             "Can't use 'pygraphviz' to draw this pipeline: pygraphviz could not be imported. "

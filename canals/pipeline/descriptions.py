@@ -4,7 +4,7 @@
 from typing import List, Dict
 import logging
 
-import networkx
+import networkx  # type:ignore
 
 from canals.type_utils import _type_name
 from canals.component.sockets import InputSocket, OutputSocket
