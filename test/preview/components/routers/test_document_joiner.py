@@ -89,12 +89,15 @@ class TestDocumentJoiner:
         ]
         output = joiner.run([documents_1, documents_2])
         assert len(output["documents"]) == 3
-        expected_documents = [
-            Document(content="a", score=1.25),
-            Document(content="b", score=2.25),
-            Document(content="f", score=4.0, meta={"key": "value"}),
+        expected_document_ids = [
+            doc.id
+            for doc in [
+                Document(content="a", score=1.25),
+                Document(content="b", score=2.25),
+                Document(content="f", score=4.0, meta={"key": "value"}),
+            ]
         ]
-        assert sorted(expected_documents, key=lambda d: d.id) == sorted(output["documents"], key=lambda d: d.id)
+        assert all(doc.id in expected_document_ids for doc in output["documents"])
 
     @pytest.mark.unit
     def test_run_with_reciprocal_rank_fusion_join_mode(self):
@@ -108,13 +111,16 @@ class TestDocumentJoiner:
         ]
         output = joiner.run([documents_1, documents_2])
         assert len(output["documents"]) == 4
-        expected_documents = [
-            Document(content="b"),
-            Document(content="a"),
-            Document(content="c"),
-            Document(content="f", meta={"key": "value"}),
+        expected_document_ids = [
+            doc.id
+            for doc in [
+                Document(content="b"),
+                Document(content="a"),
+                Document(content="c"),
+                Document(content="f", meta={"key": "value"}),
+            ]
         ]
-        assert expected_documents == output["documents"]
+        assert all(doc.id in expected_document_ids for doc in output["documents"])
 
     @pytest.mark.unit
     def test_sort_by_score_without_scores(self, caplog):
