@@ -101,7 +101,48 @@ class WriteDocumentsTest:
             docstore.write_documents("not a list actually")  # type: ignore
 
 
-class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest):
+class DeleteDocumentsTest:
+    """
+    Utility class to test a Document Store `delete_documents` method.
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(DeleteDocumentsTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @pytest.mark.unit
+    def test_delete_empty(self, docstore: DocumentStore):
+        with pytest.raises(MissingDocumentError):
+            docstore.delete_documents(["test"])
+
+    @pytest.mark.unit
+    def test_delete_not_empty(self, docstore: DocumentStore):
+        doc = Document(content="test doc")
+        docstore.write_documents([doc])
+
+        docstore.delete_documents([doc.id])
+
+        with pytest.raises(Exception):
+            assert docstore.filter_documents(filters={"id": doc.id})
+
+    @pytest.mark.unit
+    def test_delete_not_empty_nonexisting(self, docstore: DocumentStore):
+        doc = Document(content="test doc")
+        docstore.write_documents([doc])
+
+        with pytest.raises(MissingDocumentError):
+            docstore.delete_documents(["non_existing"])
+
+        assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
+
+
+class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest):
     @pytest.fixture
     def docstore(self) -> DocumentStore:
         raise NotImplementedError()
@@ -616,28 +657,3 @@ class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest):
                 or (doc.meta.get("chapter") in ["intro", "abstract"] and doc.meta.get("page") == "123")
             )
         ]
-
-    @pytest.mark.unit
-    def test_delete_empty(self, docstore: DocumentStore):
-        with pytest.raises(MissingDocumentError):
-            docstore.delete_documents(["test"])
-
-    @pytest.mark.unit
-    def test_delete_not_empty(self, docstore: DocumentStore):
-        doc = Document(content="test doc")
-        docstore.write_documents([doc])
-
-        docstore.delete_documents([doc.id])
-
-        with pytest.raises(Exception):
-            assert docstore.filter_documents(filters={"id": doc.id})
-
-    @pytest.mark.unit
-    def test_delete_not_empty_nonexisting(self, docstore: DocumentStore):
-        doc = Document(content="test doc")
-        docstore.write_documents([doc])
-
-        with pytest.raises(MissingDocumentError):
-            docstore.delete_documents(["non_existing"])
-
-        assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
