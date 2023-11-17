@@ -457,6 +457,9 @@ class Pipeline:
 
         for node_name, input_data in data.items():
             for socket_name, value in input_data.items():
+                # Make a copy of the input value so components don't need to
+                # take care of mutability.
+                value = deepcopy(value)
                 connection = Connection(
                     None, None, node_name, self.graph.nodes[node_name]["input_sockets"][socket_name]
                 )
