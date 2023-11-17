@@ -80,7 +80,7 @@ class TestRemoteWhisperTranscriber:
         transcriber = RemoteWhisperTranscriber(api_key="test_api_key")
         data = transcriber.to_dict()
         assert data == {
-            "type": "RemoteWhisperTranscriber",
+            "type": "haystack.preview.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
                 "model_name": "whisper-1",
                 "api_base_url": "https://api.openai.com/v1",
@@ -103,7 +103,7 @@ class TestRemoteWhisperTranscriber:
         )
         data = transcriber.to_dict()
         assert data == {
-            "type": "RemoteWhisperTranscriber",
+            "type": "haystack.preview.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
                 "model_name": "whisper-1",
                 "organization": "test-org",
@@ -119,7 +119,7 @@ class TestRemoteWhisperTranscriber:
         monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
 
         data = {
-            "type": "RemoteWhisperTranscriber",
+            "type": "haystack.preview.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
                 "model_name": "whisper-1",
                 "api_base_url": "https://api.openai.com/v1",
@@ -140,7 +140,7 @@ class TestRemoteWhisperTranscriber:
         monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
 
         data = {
-            "type": "RemoteWhisperTranscriber",
+            "type": "haystack.preview.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
                 "model_name": "whisper-1",
                 "organization": "test-org",
@@ -169,7 +169,7 @@ class TestRemoteWhisperTranscriber:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
         data = {
-            "type": "RemoteWhisperTranscriber",
+            "type": "haystack.preview.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
                 "model_name": "whisper-1",
                 "api_base_url": "https://api.openai.com/v1",
