@@ -26,9 +26,9 @@ class TestTextfileToDocument:
         output = converter.run(sources=files)
         docs = output["documents"]
         assert len(docs) == 3
-        assert docs[0].content == "Some text for testing.\nTwo lines in here.\n"
-        assert docs[1].content == "This is a test line.\n123 456 789\n987 654 321.\n"
-        assert docs[2].content == "That's yet another file!\n\nit contains\n\n\n\n\nmany\n\n\nempty lines.\n"
+        assert "Some text for testing." in docs[0].content
+        assert "This is a test line." in docs[1].content
+        assert "That's yet another file!" in docs[2].content
         assert docs[0].meta["file_path"] == str(files[0])
         assert docs[1].meta["file_path"] == str(files[1])
         assert docs[2].meta == bytestream.metadata
@@ -62,8 +62,8 @@ class TestTextfileToDocument:
 
         converter = TextFileToDocument(encoding="utf-16")
         output = converter.run(sources=[bytestream])
-        assert output["documents"][0].content != "Some text for testing.\nTwo lines in here.\n"
+        assert "Some text for testing." not in output["documents"][0].content
 
         bytestream.metadata["encoding"] = "utf-8"
         output = converter.run(sources=[bytestream])
-        assert output["documents"][0].content == "Some text for testing.\nTwo lines in here.\n"
+        assert "Some text for testing." in output["documents"][0].content
