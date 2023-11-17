@@ -64,4 +64,5 @@ def test_extractive_qa_pipeline(tmp_path):
             assert hasattr(answer, "document")
             # the answer is extracted from the correct document
             if answer.document is not None:
-                assert answer.document == doc
+                assert answer.document.content == doc.content
+                assert answer.document.id == doc.id
