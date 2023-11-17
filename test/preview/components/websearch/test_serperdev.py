@@ -121,7 +121,7 @@ class TestSerperDevSearchAPI:
         )
         data = component.to_dict()
         assert data == {
-            "type": "SerperDevWebSearch",
+            "type": "haystack.preview.components.websearch.serper_dev.SerperDevWebSearch",
             "init_parameters": {"top_k": 10, "allowed_domains": ["test.com"], "search_params": {"param": "test"}},
         }
 

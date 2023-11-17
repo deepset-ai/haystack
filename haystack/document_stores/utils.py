@@ -172,6 +172,9 @@ def _extract_docs_and_labels_from_dict(
 
         ## Assign Labels to corresponding documents
         for qa in paragraph["qas"]:
+            meta_qa = {
+                k: v for k, v in qa.items() if k not in ("is_impossible", "answers", "question", "id", "missing")
+            }
             if not qa.get("is_impossible", False):
                 for answer in qa["answers"]:
                     ans = answer["text"]
@@ -191,6 +194,7 @@ def _extract_docs_and_labels_from_dict(
                             is_correct_answer=True,
                             is_correct_document=True,
                             origin="gold-label",
+                            meta=meta_qa,
                         )
                         labels.append(label)
                     else:
@@ -234,6 +238,7 @@ def _extract_docs_and_labels_from_dict(
                             is_correct_answer=True,
                             is_correct_document=True,
                             origin="gold-label",
+                            meta=meta_qa,
                         )
                         labels.append(label)
             else:
@@ -252,6 +257,7 @@ def _extract_docs_and_labels_from_dict(
                         is_correct_answer=True,
                         is_correct_document=True,
                         origin="gold-label",
+                        meta=meta_qa,
                     )
 
                     labels.append(label)

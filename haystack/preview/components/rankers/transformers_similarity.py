@@ -8,7 +8,7 @@ from haystack.preview.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]==4.34.1'") as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -25,7 +25,7 @@ class TransformersSimilarityRanker:
     from haystack.preview.components.rankers import TransformersSimilarityRanker
 
     ranker = TransformersSimilarityRanker()
-    docs = [Document(text="Paris"), Document(text="Berlin")]
+    docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "City in Germany"
     output = ranker.run(query=query, documents=docs)
     docs = output["documents"]
