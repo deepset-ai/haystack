@@ -65,9 +65,9 @@ class Document(metaclass=_BackwardCompatible):
     blob: Optional[ByteStream] = field(default=None)
     meta: Dict[str, Any] = field(default_factory=dict)
     score: Optional[float] = field(default=None)
-    embedding: Optional[List[float]] = field(default=None, repr=False)
+    embedding: Optional[List[float]] = field(default=None)
 
-    def __str__(self):
+    def __repr__(self):
         fields = []
         if self.content is not None:
             fields.append(
@@ -77,6 +77,12 @@ class Document(metaclass=_BackwardCompatible):
             fields.append(f"dataframe: {self.dataframe.shape}")
         if self.blob is not None:
             fields.append(f"blob: {len(self.blob.data)} bytes")
+        if len(self.meta) > 0:
+            fields.append(f"meta: {self.meta}")
+        if self.score is not None:
+            fields.append(f"score: {self.score}")
+        if self.embedding is not None:
+            fields.append(f"embedding: vector of size {len(self.embedding)}")
         fields_str = ", ".join(fields)
         return f"{self.__class__.__name__}(id={self.id}, {fields_str})"
 
