@@ -70,7 +70,28 @@ class Pipeline(canals.Pipeline):
 
         Notice how run method takes a data dictionary with the inputs for each component. The keys of the
         dictionary are the component names and the values are dictionaries with the input parameters of that component.
+
+        We can also run the pipeline by passing the inputs directly to the run method like so:
+
+        ```python
+        result = pipeline.run(data={"word": "world"})
+        assert result == {"hello2": {"output": "Hello, Hello, world!!"}}
+        ```
+        In this case, the pipeline will try to resolve the input parameters to the appropriate components and
+        if successful, it will run the pipeline and return the outputs.
         """
+        pass
+
+    @overload
+    def run(self, **kwargs) -> Dict[str, Any]:
+        """
+        Runs the pipeline
+
+        **Note**: This method is part of an evolving interface and may be subject to changes in future releases.
+        We recommend using the more stable 'run(data: Dict[str, Any], debug: bool = False)' method for
+        regular use. Please keep this in mind when developing against this API.
+        """
+        pass
 
     def run(self, *args, **kwargs) -> Dict[str, Any]:
         """
@@ -78,15 +99,14 @@ class Pipeline(canals.Pipeline):
 
         This method serves as an entry point to the pipeline execution process.
 
-        **Note**: This method is part of an evolving interface and may be subject to changes in future releases.
-        We recommend using the more stable 'run(data: Dict[str, Any], debug: bool = False)' method for
-        regular use. Please keep this in mind when developing against this API.
-
         :param args: Positional arguments
         :param kwargs: Keyword arguments
         :return: A dictionary with the outputs of the pipeline if the dispatch was successful.
         :raises TypeError: if the provided arguments do not match any expected signature for the overloaded run methods.
         """
+        if args:
+            raise TypeError("Unsupported signature for 'run'")
+
         if "data" in kwargs:
             data = kwargs.pop("data")
             debug = kwargs.pop("debug", False)
