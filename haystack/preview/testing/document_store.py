@@ -290,7 +290,52 @@ class LegacyFilterDocumentsEqualTest(FilterableDocsFixtureMixin):
         assert result == [doc for doc in filterable_docs if embedding == doc.embedding]
 
 
-class LegacyFilterDocumentsTest(LegacyFilterDocumentsInvalidFiltersTest, LegacyFilterDocumentsEqualTest):
+class LegacyFilterDocumentsNotEqualTest(FilterableDocsFixtureMixin):
+    """
+    Utility class to test a Document Store `filter_documents` method using explicit '$ne' legacy filters
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(LegacyFilterDocumentsNotEqualTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @pytest.mark.unit
+    def test_ne_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"page": {"$ne": "100"}})
+        assert result == [doc for doc in filterable_docs if doc.meta.get("page") != "100"]
+
+    @pytest.mark.unit
+    def test_ne_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"dataframe": {"$ne": pd.DataFrame([1])}})
+        assert result == [
+            doc
+            for doc in filterable_docs
+            if not isinstance(doc.dataframe, pd.DataFrame) or not doc.dataframe.equals(pd.DataFrame([1]))
+        ]
+
+    @pytest.mark.unit
+    def test_ne_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        embedding = np.zeros([768, 1]).astype(np.float32)
+        result = docstore.filter_documents(filters={"embedding": {"$ne": embedding}})
+        assert result == [
+            doc
+            for doc in filterable_docs
+            if not isinstance(doc.dataframe, np.ndarray) or not np.array_equal(embedding, doc.embedding)  # type: ignore
+        ]
+
+
+class LegacyFilterDocumentsTest(
+    LegacyFilterDocumentsInvalidFiltersTest, LegacyFilterDocumentsEqualTest, LegacyFilterDocumentsNotEqualTest
+):
     """
     Utility class to test a Document Store `filter_documents` method using different types of legacy filters
 
@@ -318,7 +363,9 @@ class LegacyFilterDocumentsTest(LegacyFilterDocumentsInvalidFiltersTest, LegacyF
         assert docstore.filter_documents(filters={}) == docs
 
 
-class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, LegacyFilterDocumentsTest):
+class DocumentStoreBaseTests(
+    CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, LegacyFilterDocumentsTest
+):  # pylint: disable=too-many-ancestors
     @pytest.fixture
     def docstore(self) -> DocumentStore:
         raise NotImplementedError()
@@ -384,33 +431,6 @@ class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocum
         result = docstore.filter_documents(filters={"embedding": {"$in": [embedding_zero, embedding_one]}})
         assert result == [
             doc for doc in filterable_docs if (embedding_zero == doc.embedding or embedding_one == doc.embedding)
-        ]
-
-    @pytest.mark.unit
-    def test_ne_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"page": {"$ne": "100"}})
-        assert result == [doc for doc in filterable_docs if doc.meta.get("page") != "100"]
-
-    @pytest.mark.unit
-    def test_ne_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"dataframe": {"$ne": pd.DataFrame([1])}})
-        assert result == [
-            doc
-            for doc in filterable_docs
-            if not isinstance(doc.dataframe, pd.DataFrame) or not doc.dataframe.equals(pd.DataFrame([1]))
-        ]
-
-    @pytest.mark.unit
-    def test_ne_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        embedding = np.zeros([768, 1]).astype(np.float32)
-        result = docstore.filter_documents(filters={"embedding": {"$ne": embedding}})
-        assert result == [
-            doc
-            for doc in filterable_docs
-            if not isinstance(doc.dataframe, np.ndarray) or not np.array_equal(embedding, doc.embedding)  # type: ignore
         ]
 
     @pytest.mark.unit
