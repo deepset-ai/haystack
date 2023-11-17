@@ -170,7 +170,7 @@ class ConditionalRouter:
         self._validate_routes(routes)
         self.routes: List[dict] = routes
 
-        # Create a Jinja native environment to extract variables from the condition templates
+        # Create a Jinja native environment to inspect variables in the condition templates
         env = NativeEnvironment()
 
         # Inspect the routes to determine input and output types.
