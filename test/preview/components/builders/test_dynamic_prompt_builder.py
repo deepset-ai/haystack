@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import pytest
 from jinja2 import TemplateSyntaxError
@@ -24,12 +24,8 @@ class TestDynamicPromptBuilder:
         # response is always prompt regardless of chat mode
         assert set(builder.__canals_output__.keys()) == {"prompt"}
 
-        # now the differences, input first, we have different types for prompt_source
-        # depending on the chat mode
-        if chat_mode:
-            assert builder.__canals_input__["prompt_source"].type == List[ChatMessage]
-        else:
-            assert builder.__canals_input__["prompt_source"].type == str
+        # prompt_source is a list of ChatMessage or a string
+        assert builder.__canals_input__["prompt_source"].type == Union[List[ChatMessage], str]
 
         # output is always prompt, but the type is different depending on the chat mode
         if chat_mode:
