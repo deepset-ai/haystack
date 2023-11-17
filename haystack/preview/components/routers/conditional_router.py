@@ -110,6 +110,8 @@ class ConditionalRouter:
     Here's an example:
 
     ```python
+    from haystack.preview.components.routers import ConditionalRouter
+
     routes = [
         {
             "condition": "{{streams|length > 2}}",
@@ -142,7 +144,8 @@ class ConditionalRouter:
     Here is a pseudocode example of a pipeline that uses the ConditionalRouter and routes fetched ByteStreams to
     different components depending on the number of streams fetched:
 
-    ```python
+    ```
+    from typing import List
     from haystack import Pipeline
     from haystack.preview.dataclasses import ByteStream
     from haystack.preview.components.routers import ConditionalRouter
@@ -177,7 +180,7 @@ class ConditionalRouter:
 
         :param routes: A list of dictionaries, each defining a route with a boolean condition expression
                        ('condition'), an output value ('output'), the output type ('output_type') and
-                       'output_name' that defines output name for the variable defined in 'output'.
+                       ('output_name') that defines output name for the variable defined in 'output'.
         """
         self._validate_routes(routes)
         self.routes: List[dict] = routes
