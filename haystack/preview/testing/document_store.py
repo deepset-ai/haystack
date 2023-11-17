@@ -191,10 +191,20 @@ class FilterableDocsFixtureMixin:
         return documents
 
 
-class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, FilterableDocsFixtureMixin):
-    @pytest.fixture
-    def docstore(self) -> DocumentStore:
-        raise NotImplementedError()
+class LegacyFilterDocumentsTest(FilterableDocsFixtureMixin):
+    """
+    Utility class to test a Document Store `filter_documents` method using different types of legacy filters
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(LegacyFilterDocumentsTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
 
     @pytest.mark.unit
     def test_no_filter_empty(self, docstore: DocumentStore):
@@ -207,6 +217,12 @@ class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocum
         docstore.write_documents(docs)
         assert docstore.filter_documents() == docs
         assert docstore.filter_documents(filters={}) == docs
+
+
+class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, LegacyFilterDocumentsTest):
+    @pytest.fixture
+    def docstore(self) -> DocumentStore:
+        raise NotImplementedError()
 
     @pytest.mark.unit
     def test_filter_simple_metadata_value(self, docstore: DocumentStore, filterable_docs: List[Document]):
