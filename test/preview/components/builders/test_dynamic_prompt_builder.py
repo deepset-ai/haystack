@@ -8,7 +8,6 @@ from haystack.preview.dataclasses import ChatMessage
 
 
 class TestDynamicPromptBuilder:
-    @pytest.mark.unit
     @pytest.mark.parametrize(
         "expected_runtime_variables, chat_mode", [(["var1", "var2", "var3"], True), (["var1", "var2"], False)]
     )
@@ -38,7 +37,6 @@ class TestDynamicPromptBuilder:
         else:
             assert builder.__canals_output__["prompt"].type == str
 
-    @pytest.mark.unit
     def test_to_dict_method_returns_expected_dictionary(self):
         expected_runtime_variables = ["var1", "var2", "var3"]
         chat_mode = True
@@ -49,7 +47,6 @@ class TestDynamicPromptBuilder:
         }
         assert builder.to_dict() == expected_dict
 
-    @pytest.mark.unit
     def test_processing_a_simple_template_with_provided_variables(self):
         expected_runtime_variables = ["var1", "var2", "var3"]
         chat_mode = True
@@ -62,7 +59,6 @@ class TestDynamicPromptBuilder:
 
         assert builder._process_simple_template(template, template_variables) == expected_result
 
-    @pytest.mark.unit
     def test_processing_a_simple_template_with_invalid_template(self):
         expected_runtime_variables = ["var1", "var2", "var3"]
         chat_mode = True
@@ -74,7 +70,6 @@ class TestDynamicPromptBuilder:
         with pytest.raises(TemplateSyntaxError):
             builder._process_simple_template(template, template_variables)
 
-    @pytest.mark.unit
     def test_processing_a_simple_template_with_missing_variables(self):
         expected_runtime_variables = ["var1", "var2", "var3"]
 
@@ -83,7 +78,6 @@ class TestDynamicPromptBuilder:
         with pytest.raises(ValueError, match="requires specific template variables that are missing"):
             builder._process_simple_template("Hello, {{ name }}!", {})
 
-    @pytest.mark.unit
     def test_non_empty_chat_messages(self):
         prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"], chat_mode=True)
         prompt_source = [ChatMessage.from_system(content="Hello"), ChatMessage.from_user(content="Hello, {{ who }}!")]
@@ -93,7 +87,6 @@ class TestDynamicPromptBuilder:
 
         assert result == [ChatMessage.from_system(content="Hello"), ChatMessage.from_user(content="Hello, World!")]
 
-    @pytest.mark.unit
     def test_single_chat_message(self):
         prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"], chat_mode=True)
         prompt_source = [ChatMessage.from_user(content="Hello, {{ who }}!")]
@@ -103,14 +96,12 @@ class TestDynamicPromptBuilder:
 
         assert result == [ChatMessage.from_user(content="Hello, World!")]
 
-    @pytest.mark.unit
     def test_empty_chat_message_list(self):
         prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"], chat_mode=True)
 
         with pytest.raises(ValueError):
             prompt_builder._process_chat_messages(prompt_source=[], template_variables={})
 
-    @pytest.mark.unit
     def test_chat_message_list_with_mixed_object_list(self):
         prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"], chat_mode=True)
 
@@ -119,7 +110,6 @@ class TestDynamicPromptBuilder:
                 prompt_source=[ChatMessage.from_user("Hello"), "there world"], template_variables={}
             )
 
-    @pytest.mark.unit
     def test_chat_message_list_with_missing_variables(self):
         prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"], chat_mode=True)
         prompt_source = [ChatMessage.from_user(content="Hello, {{ who }}!")]
@@ -128,7 +118,6 @@ class TestDynamicPromptBuilder:
         with pytest.raises(ValueError):
             prompt_builder._process_chat_messages(prompt_source, template_variables={})
 
-    @pytest.mark.unit
     def test_missing_template_variables(self):
         prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"])
 
@@ -144,7 +133,6 @@ class TestDynamicPromptBuilder:
         with pytest.raises(ValueError):
             prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"age"})
 
-    @pytest.mark.unit
     def test_provided_template_variables(self):
         prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"])
 
