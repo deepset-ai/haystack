@@ -10,7 +10,7 @@ class TestSimilarityRanker:
         component = TransformersSimilarityRanker()
         data = component.to_dict()
         assert data == {
-            "type": "TransformersSimilarityRanker",
+            "type": "haystack.preview.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
                 "device": "cpu",
                 "top_k": 10,
@@ -26,7 +26,7 @@ class TestSimilarityRanker:
         )
         data = component.to_dict()
         assert data == {
-            "type": "TransformersSimilarityRanker",
+            "type": "haystack.preview.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
                 "device": "cuda",
                 "model_name_or_path": "my_model",

@@ -13,21 +13,21 @@ def test_document_store_class_default():
     assert store.filter_documents() == []
     assert store.write_documents([]) is None
     assert store.delete_documents([]) is None
-    assert store.to_dict() == {"type": "MyStore", "init_parameters": {}}
+    assert store.to_dict() == {"type": "haystack.preview.testing.factory.MyStore", "init_parameters": {}}
 
 
 @pytest.mark.unit
 def test_document_store_from_dict():
     MyStore = document_store_class("MyStore")
 
-    store = MyStore.from_dict({"type": "MyStore", "init_parameters": {}})
+    store = MyStore.from_dict({"type": "haystack.preview.testing.factory.MyStore", "init_parameters": {}})
     assert isinstance(store, MyStore)
 
 
 @pytest.mark.unit
 def test_document_store_class_is_registered():
     MyStore = document_store_class("MyStore")
-    assert document_store.registry["MyStore"] == MyStore
+    assert document_store.registry["haystack.preview.testing.factory.MyStore"] == MyStore
 
 
 @pytest.mark.unit

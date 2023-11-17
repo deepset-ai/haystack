@@ -32,7 +32,7 @@ class TestLocalWhisperTranscriber:
         transcriber = LocalWhisperTranscriber()
         data = transcriber.to_dict()
         assert data == {
-            "type": "LocalWhisperTranscriber",
+            "type": "haystack.preview.components.audio.whisper_local.LocalWhisperTranscriber",
             "init_parameters": {"model_name_or_path": "large", "device": "cpu", "whisper_params": {}},
         }
 
@@ -45,7 +45,7 @@ class TestLocalWhisperTranscriber:
         )
         data = transcriber.to_dict()
         assert data == {
-            "type": "LocalWhisperTranscriber",
+            "type": "haystack.preview.components.audio.whisper_local.LocalWhisperTranscriber",
             "init_parameters": {
                 "model_name_or_path": "tiny",
                 "device": "cuda",
