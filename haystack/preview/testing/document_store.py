@@ -688,51 +688,20 @@ class LegacyFilterDocumentsSimpleLogicalTest(FilterableDocsFixtureMixin):
         ]
 
 
-class LegacyFilterDocumentsTest(  # pylint: disable=too-many-ancestors
-    LegacyFilterDocumentsInvalidFiltersTest,
-    LegacyFilterDocumentsEqualTest,
-    LegacyFilterDocumentsNotEqualTest,
-    LegacyFilterDocumentsInTest,
-    LegacyFilterDocumentsNotInTest,
-    LegacyFilterDocumentsGreaterThanTest,
-    LegacyFilterDocumentsGreaterThanEqualTest,
-    LegacyFilterDocumentsLessThanTest,
-    LegacyFilterDocumentsLessThanEqualTest,
-    LegacyFilterDocumentsSimpleLogicalTest,
-):
+class LegacyFilterDocumentsNestedLogicalTest(FilterableDocsFixtureMixin):
     """
-    Utility class to test a Document Store `filter_documents` method using different types of legacy filters
+    Utility class to test a Document Store `filter_documents` method using multiple nested logical '$and', '$or' and '$not' legacy filters
 
     To use it create a custom test class and override the `docstore` fixture to return your Document Store.
     Example usage:
 
     ```python
-    class MyDocumentStoreTest(LegacyFilterDocumentsTest):
+    class MyDocumentStoreTest(LegacyFilterDocumentsNestedLogicalTest):
         @pytest.fixture
         def docstore(self):
             return MyDocumentStore()
     ```
     """
-
-    @pytest.mark.unit
-    def test_no_filter_empty(self, docstore: DocumentStore):
-        assert docstore.filter_documents() == []
-        assert docstore.filter_documents(filters={}) == []
-
-    @pytest.mark.unit
-    def test_no_filter_not_empty(self, docstore: DocumentStore):
-        docs = [Document(content="test doc")]
-        docstore.write_documents(docs)
-        assert docstore.filter_documents() == docs
-        assert docstore.filter_documents(filters={}) == docs
-
-
-class DocumentStoreBaseTests(
-    CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, LegacyFilterDocumentsTest
-):  # pylint: disable=too-many-ancestors
-    @pytest.fixture
-    def docstore(self) -> DocumentStore:
-        raise NotImplementedError()
 
     @pytest.mark.unit
     def test_filter_nested_explicit_and(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -852,3 +821,51 @@ class DocumentStoreBaseTests(
                 or (doc.meta.get("chapter") in ["intro", "abstract"] and doc.meta.get("page") == "123")
             )
         ]
+
+
+class LegacyFilterDocumentsTest(  # pylint: disable=too-many-ancestors
+    LegacyFilterDocumentsInvalidFiltersTest,
+    LegacyFilterDocumentsEqualTest,
+    LegacyFilterDocumentsNotEqualTest,
+    LegacyFilterDocumentsInTest,
+    LegacyFilterDocumentsNotInTest,
+    LegacyFilterDocumentsGreaterThanTest,
+    LegacyFilterDocumentsGreaterThanEqualTest,
+    LegacyFilterDocumentsLessThanTest,
+    LegacyFilterDocumentsLessThanEqualTest,
+    LegacyFilterDocumentsSimpleLogicalTest,
+    LegacyFilterDocumentsNestedLogicalTest,
+):
+    """
+    Utility class to test a Document Store `filter_documents` method using different types of legacy filters
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(LegacyFilterDocumentsTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @pytest.mark.unit
+    def test_no_filter_empty(self, docstore: DocumentStore):
+        assert docstore.filter_documents() == []
+        assert docstore.filter_documents(filters={}) == []
+
+    @pytest.mark.unit
+    def test_no_filter_not_empty(self, docstore: DocumentStore):
+        docs = [Document(content="test doc")]
+        docstore.write_documents(docs)
+        assert docstore.filter_documents() == docs
+        assert docstore.filter_documents(filters={}) == docs
+
+
+class DocumentStoreBaseTests(
+    CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, LegacyFilterDocumentsTest
+):  # pylint: disable=too-many-ancestors
+    @pytest.fixture
+    def docstore(self) -> DocumentStore:
+        raise NotImplementedError()
