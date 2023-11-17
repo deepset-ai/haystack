@@ -126,12 +126,9 @@ class RemoteWhisperTranscriber:
         documents = []
 
         for source in sources:
-            if isinstance(source, Path):
-                source = str(source.absolute())
-
-            if isinstance(source, str):
+            if not isinstance(source, ByteStream):
                 path = source
-                source = ByteStream.from_file_path(source)
+                source = ByteStream.from_file_path(Path(source))
                 source.metadata["file_path"] = path
 
             file = io.BytesIO(source.data)
