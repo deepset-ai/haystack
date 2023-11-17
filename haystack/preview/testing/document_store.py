@@ -621,25 +621,15 @@ class LegacyFilterDocumentsLessThanEqualTest(FilterableDocsFixtureMixin):
             docstore.filter_documents(filters={"embedding": {"$lte": embedding_ones}})
 
 
-class LegacyFilterDocumentsTest(  # pylint: disable=too-many-ancestors
-    LegacyFilterDocumentsInvalidFiltersTest,
-    LegacyFilterDocumentsEqualTest,
-    LegacyFilterDocumentsNotEqualTest,
-    LegacyFilterDocumentsInTest,
-    LegacyFilterDocumentsNotInTest,
-    LegacyFilterDocumentsGreaterThanTest,
-    LegacyFilterDocumentsGreaterThanEqualTest,
-    LegacyFilterDocumentsLessThanTest,
-    LegacyFilterDocumentsLessThanEqualTest,
-):
+class LegacyFilterDocumentsSimpleLogicalTest(FilterableDocsFixtureMixin):
     """
-    Utility class to test a Document Store `filter_documents` method using different types of legacy filters
+    Utility class to test a Document Store `filter_documents` method using logical '$and', '$or' and '$not' legacy filters
 
     To use it create a custom test class and override the `docstore` fixture to return your Document Store.
     Example usage:
 
     ```python
-    class MyDocumentStoreTest(LegacyFilterDocumentsTest):
+    class MyDocumentStoreTest(LegacyFilterDocumentsSimpleLogicalTest):
         @pytest.fixture
         def docstore(self):
             return MyDocumentStore()
@@ -647,24 +637,15 @@ class LegacyFilterDocumentsTest(  # pylint: disable=too-many-ancestors
     """
 
     @pytest.mark.unit
-    def test_no_filter_empty(self, docstore: DocumentStore):
-        assert docstore.filter_documents() == []
-        assert docstore.filter_documents(filters={}) == []
-
-    @pytest.mark.unit
-    def test_no_filter_not_empty(self, docstore: DocumentStore):
-        docs = [Document(content="test doc")]
-        docstore.write_documents(docs)
-        assert docstore.filter_documents() == docs
-        assert docstore.filter_documents(filters={}) == docs
-
-
-class DocumentStoreBaseTests(
-    CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, LegacyFilterDocumentsTest
-):  # pylint: disable=too-many-ancestors
-    @pytest.fixture
-    def docstore(self) -> DocumentStore:
-        raise NotImplementedError()
+    def test_filter_simple_or(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        filters = {"$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}}}
+        result = docstore.filter_documents(filters=filters)
+        assert result == [
+            doc
+            for doc in filterable_docs
+            if (("number" in doc.meta and doc.meta["number"] < 1) or doc.meta.get("name") in ["name_0", "name_1"])
+        ]
 
     @pytest.mark.unit
     def test_filter_simple_implicit_and_with_multi_key_dict(
@@ -706,6 +687,22 @@ class DocumentStoreBaseTests(
             if "number" in doc.meta and doc.meta["number"] <= 2.0 and doc.meta["number"] >= 0.0
         ]
 
+
+class LegacyFilterDocumentsNestedLogicalTest(FilterableDocsFixtureMixin):
+    """
+    Utility class to test a Document Store `filter_documents` method using multiple nested logical '$and', '$or' and '$not' legacy filters
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(LegacyFilterDocumentsNestedLogicalTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
     @pytest.mark.unit
     def test_filter_nested_explicit_and(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
@@ -736,17 +733,6 @@ class DocumentStoreBaseTests(
                 and doc.meta["number"] >= 0
                 and doc.meta.get("name") in ["name_0", "name_1"]
             )
-        ]
-
-    @pytest.mark.unit
-    def test_filter_simple_or(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        filters = {"$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}}}
-        result = docstore.filter_documents(filters=filters)
-        assert result == [
-            doc
-            for doc in filterable_docs
-            if (("number" in doc.meta and doc.meta["number"] < 1) or doc.meta.get("name") in ["name_0", "name_1"])
         ]
 
     @pytest.mark.unit
@@ -835,3 +821,51 @@ class DocumentStoreBaseTests(
                 or (doc.meta.get("chapter") in ["intro", "abstract"] and doc.meta.get("page") == "123")
             )
         ]
+
+
+class LegacyFilterDocumentsTest(  # pylint: disable=too-many-ancestors
+    LegacyFilterDocumentsInvalidFiltersTest,
+    LegacyFilterDocumentsEqualTest,
+    LegacyFilterDocumentsNotEqualTest,
+    LegacyFilterDocumentsInTest,
+    LegacyFilterDocumentsNotInTest,
+    LegacyFilterDocumentsGreaterThanTest,
+    LegacyFilterDocumentsGreaterThanEqualTest,
+    LegacyFilterDocumentsLessThanTest,
+    LegacyFilterDocumentsLessThanEqualTest,
+    LegacyFilterDocumentsSimpleLogicalTest,
+    LegacyFilterDocumentsNestedLogicalTest,
+):
+    """
+    Utility class to test a Document Store `filter_documents` method using different types of legacy filters
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(LegacyFilterDocumentsTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @pytest.mark.unit
+    def test_no_filter_empty(self, docstore: DocumentStore):
+        assert docstore.filter_documents() == []
+        assert docstore.filter_documents(filters={}) == []
+
+    @pytest.mark.unit
+    def test_no_filter_not_empty(self, docstore: DocumentStore):
+        docs = [Document(content="test doc")]
+        docstore.write_documents(docs)
+        assert docstore.filter_documents() == docs
+        assert docstore.filter_documents(filters={}) == docs
+
+
+class DocumentStoreBaseTests(
+    CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, LegacyFilterDocumentsTest
+):  # pylint: disable=too-many-ancestors
+    @pytest.fixture
+    def docstore(self) -> DocumentStore:
+        raise NotImplementedError()
