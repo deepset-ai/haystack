@@ -539,6 +539,47 @@ class LegacyFilterDocumentsGreaterThanEqualTest(FilterableDocsFixtureMixin):
             docstore.filter_documents(filters={"embedding": {"$gte": embedding_zeros}})
 
 
+class LegacyFilterDocumentsLessThanTest(FilterableDocsFixtureMixin):
+    """
+    Utility class to test a Document Store `filter_documents` method using explicit '$lt' legacy filters
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(LegacyFilterDocumentsLessThanTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @pytest.mark.unit
+    def test_lt_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"number": {"$lt": 0.0}})
+        assert result == [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] < 0]
+
+    @pytest.mark.unit
+    def test_lt_filter_non_numeric(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            docstore.filter_documents(filters={"page": {"$lt": "100"}})
+
+    @pytest.mark.unit
+    def test_lt_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            docstore.filter_documents(filters={"dataframe": {"$lt": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
+
+    @pytest.mark.unit
+    def test_lt_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        embedding_ones = np.ones([768, 1]).astype(np.float32)
+        with pytest.raises(FilterError):
+            docstore.filter_documents(filters={"embedding": {"$lt": embedding_ones}})
+
+
 class LegacyFilterDocumentsTest(  # pylint: disable=too-many-ancestors
     LegacyFilterDocumentsInvalidFiltersTest,
     LegacyFilterDocumentsEqualTest,
@@ -547,6 +588,7 @@ class LegacyFilterDocumentsTest(  # pylint: disable=too-many-ancestors
     LegacyFilterDocumentsNotInTest,
     LegacyFilterDocumentsGreaterThanTest,
     LegacyFilterDocumentsGreaterThanEqualTest,
+    LegacyFilterDocumentsLessThanTest,
 ):
     """
     Utility class to test a Document Store `filter_documents` method using different types of legacy filters
@@ -581,31 +623,6 @@ class DocumentStoreBaseTests(
     @pytest.fixture
     def docstore(self) -> DocumentStore:
         raise NotImplementedError()
-
-    @pytest.mark.unit
-    def test_lt_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$lt": 0.0}})
-        assert result == [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] < 0]
-
-    @pytest.mark.unit
-    def test_lt_filter_non_numeric(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"page": {"$lt": "100"}})
-
-    @pytest.mark.unit
-    def test_lt_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"dataframe": {"$lt": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
-
-    @pytest.mark.unit
-    def test_lt_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        embedding_ones = np.ones([768, 1]).astype(np.float32)
-        with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"embedding": {"$lt": embedding_ones}})
 
     @pytest.mark.unit
     def test_lte_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
