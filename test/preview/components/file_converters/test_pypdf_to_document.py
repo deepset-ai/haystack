@@ -1,7 +1,8 @@
 import logging
-
 import pytest
+from pypdf import PdfReader
 
+from haystack.preview import Document
 from haystack.preview.components.file_converters.pypdf import PyPDFToDocument
 from haystack.preview.dataclasses import ByteStream
 
@@ -45,3 +46,21 @@ class TestPyPDFToDocument:
         assert len(docs) == 2
         assert "ReAct" in docs[0].content
         assert "ReAct" in docs[1].content
+
+    @pytest.mark.unit
+    def test_custom_converter(self, preview_samples_path):
+        """
+        Test if the component correctly handles custom converters.
+        """
+        paths = [preview_samples_path / "pdf" / "react_paper.pdf"]
+
+        class MyCustomConverter:
+            def convert(self, reader: PdfReader) -> Document:
+                return Document(content="I don't care about converting given pdfs, I always return this")
+
+        converter = PyPDFToDocument(converter=MyCustomConverter())
+        output = converter.run(sources=paths)
+        docs = output["documents"]
+        assert len(docs) == 1
+        assert "ReAct" not in docs[0].content
+        assert "I don't care about converting given pdfs, I always return this" in docs[0].content

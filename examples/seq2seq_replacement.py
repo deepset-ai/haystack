@@ -21,7 +21,7 @@ documents = [
 # query_and_docs = "question: {} context: {}".format(query, conditioned_doc)
 
 # Or use the PromptTemplate as shown here
-pt = PromptTemplate("lfqa", "question: {query} context: {join(documents, delimiter='<P>')}")
+pt = PromptTemplate("lfqa", "question: {query} context: {join(documents, delimiter='<P>')}")  # type: ignore [arg-type]
 
 res = p.prompt(prompt_template=pt, query=query, documents=[Document(d) for d in documents])
 

@@ -1,7 +1,8 @@
+import io
 import hashlib
 import logging
 from dataclasses import asdict, dataclass, field, fields
-from typing import Any, Dict, List, Optional, Type, cast
+from typing import Any, Dict, List, Optional
 
 import numpy
 import pandas
@@ -38,18 +39,6 @@ class _BackwardCompatible(type):
         # id_hash_keys is not used anymore
         if "id_hash_keys" in kwargs:
             del kwargs["id_hash_keys"]
-
-        if kwargs.get("meta") is None:
-            # This must be a flattened Document, so we treat all keys that are not
-            # Document fields as metadata.
-            meta = {}
-            field_names = [f.name for f in fields(cast(Type[Document], cls))]
-            keys = list(kwargs.keys())  # get a list of the keys as we'll modify the dict in the loop
-            for key in keys:
-                if key in field_names:
-                    continue
-                meta[key] = kwargs.pop(key)
-            kwargs["meta"] = meta
 
         return super().__call__(*args, **kwargs)
 
@@ -93,11 +82,12 @@ class Document(metaclass=_BackwardCompatible):
 
     def __eq__(self, other):
         """
-        Compares documents for equality. Uses the id to check whether the documents are supposed to be the same.
+        Compares Documents for equality.
+        Two Documents are considered equals if their dictionary representation is identical.
         """
-        if type(self) == type(other):
-            return self.id == other.id
-        return False
+        if type(self) != type(other):
+            return False
+        return self.to_dict() == other.to_dict()
 
     def __post_init__(self):
         """
@@ -145,10 +135,32 @@ class Document(metaclass=_BackwardCompatible):
         `dataframe` and `blob` fields are converted to their original types.
         """
         if (dataframe := data.get("dataframe")) is not None:
-            data["dataframe"] = pandas.read_json(dataframe)
+            data["dataframe"] = pandas.read_json(io.StringIO(dataframe))
         if blob := data.get("blob"):
             data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
-        return cls(**data)
+        # Store metadata for a moment while we try un-flattening allegedly flatten metadata.
+        # We don't expect both a `meta=` keyword and flatten metadata keys so we'll raise a
+        # ValueError later if this is the case.
+        meta = data.pop("meta", {})
+        # Unflatten metadata if it was flattened. We assume any keyword argument that's not
+        # a document field is a metadata key. We treat legacy fields as document fields
+        # for backward compatibility.
+        flatten_meta = {}
+        legacy_fields = ["content_type", "id_hash_keys"]
+        document_fields = legacy_fields + [f.name for f in fields(cls)]
+        for key in list(data.keys()):
+            if key not in document_fields:
+                flatten_meta[key] = data.pop(key)
+
+        # We don't support passing both flatten keys and the `meta` keyword parameter
+        if meta and flatten_meta:
+            raise ValueError(
+                "You can pass either the 'meta' parameter or flattened metadata keys as keyword arguments, "
+                "but currently you're passing both. Pass either the 'meta' parameter or flattened metadata keys."
+            )
+
+        # Finally put back all the metadata
+        return cls(**data, meta={**meta, **flatten_meta})
 
     @property
     def content_type(self):

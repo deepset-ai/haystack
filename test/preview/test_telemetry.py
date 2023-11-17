@@ -30,7 +30,7 @@ def test_pipeline_running(telemetry):
         {
             "pipeline_id": str(id(pipe)),
             "runs": 1,
-            "components": {"Component": [{"name": "component", "key": "values"}]},
+            "components": {"test_telemetry.Component": [{"name": "component", "key": "values"}]},
         },
     )
 
@@ -49,6 +49,6 @@ def test_pipeline_running(telemetry):
         {
             "pipeline_id": str(id(pipe)),
             "runs": 3,
-            "components": {"Component": [{"name": "component", "key": "values"}]},
+            "components": {"test_telemetry.Component": [{"name": "component", "key": "values"}]},
         },
     )

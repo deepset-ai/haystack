@@ -61,7 +61,7 @@ class GPTGenerator:
         **generation_kwargs,
     ):
         """
-        Creates an instance of ChatGPTGenerator. Unless specified otherwise in the `model_name`, this is for OpenAI's
+        Creates an instance of GPTGenerator. Unless specified otherwise in the `model_name`, this is for OpenAI's
         GPT-3.5 model.
 
         :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
