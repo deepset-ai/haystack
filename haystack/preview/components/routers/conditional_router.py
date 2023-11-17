@@ -4,7 +4,7 @@ import logging
 import sys
 from typing import List, Dict, Any, Set, get_origin
 
-from jinja2 import meta
+from jinja2 import meta, Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 
 from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
@@ -29,6 +29,7 @@ def serialize_type(target: Any) -> str:
     an error if a type cannot be serialized.
 
     :param target: The object to serialize, which can be an instance or a type.
+    :type target: Any
     :return: The string representation of the type.
     :raises ValueError: If the type cannot be serialized.
     """
@@ -95,39 +96,16 @@ def deserialize_type(type_str: str) -> Any:
 @component
 class ConditionalRouter:
     """
-    The ConditionalRouter manages data flow by evaluating route conditions to select the appropriate
-    route from a set of specified routes.
+    ConditionalRouter in Haystack 2.x pipelines is designed to manage data routing based on specific conditions.
+    This is achieved by defining a list named 'routes'. Each element in this list is a dictionary representing a
+    single route.
 
-    In Haystack 2.x pipelines, utilize a ConditionalRouter by defining a list named 'routes', with
-    each list element being a dictionary that represents a single route.
-
-    Each route dictionary must include three keys: 'condition', 'output', and 'output_type'. An
-    optional fourth key, 'output_name', is also supported.
-
-    'condition' is a string with a Jinja2 expression that is evaluated to decide if the route is chosen.
-    'output' is a Jinja2 expression that determines the output name for the route, and 'output_type'
-    specifies the expected output data type (e.g., str, List[int]).
-
-    Example:
-
-        Below, we instantiate a `ConditionalRouter` with two routes. The first route is taken if there are
-        fewer than two streams, directing to the `query` output. The second is selected for two or more
-        streams, pointing to the `streams` output. Variables `query` and `streams` should be provided in the
-        pipeline's `run()` method.
-
-        ```python
-        routes = [
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
-            {"condition": "{{streams|length >= 2}}", "output": "{{streams}}", "output_type": List[ByteStream]}
-        ]
-
-        router = ConditionalRouter(routes=routes)
-        ```
-
-    Note the use of the router's 'output' field to denote both the output name and the variable value to emit.
-    For more complex scenarios, 'output_name' can specify a different output name for the variable defined
-    in 'output' expression This flexibility allows more expressive and rich data flow management with the
-    ConditionalRouter.
+    A route dictionary comprises four key elements:
+    - 'condition': A Jinja2 string expression that determines if the route is selected.
+    - 'output': A Jinja2 expression defining the route's output value.
+    - 'output_type': The type of the output data (e.g., str, List[int]).
+    - 'output_name': The name under which the output of the route is published. Similar to other Haystack components,
+    ConditionalRouter allows specifying output types with the 'output_type' key.
 
     Here's an example:
 
@@ -153,9 +131,9 @@ class ConditionalRouter:
     assert result == {"enough_streams": [1, 2, 3]}
     ```
 
-    In this scenario, the ConditionalRouter is configured with two routes: the first emits value of 'streams'
-    variable to 'enough_streams' output if there are more than two streams; the second routes 'streams' to
-    'insufficient_streams' output when there are two or fewer streams.
+    In this example, two routes are configured. The first route sends the 'streams' value to 'enough_streams' if the
+    stream count exceeds two. Conversely, the second route directs 'streams' to 'insufficient_streams' when there
+    are two or fewer streams.
     """
 
     def __init__(self, routes: List[Dict]):
@@ -163,9 +141,8 @@ class ConditionalRouter:
         Initializes the ConditionalRouter with a list of routes detailing the conditions for routing.
 
         :param routes: A list of dictionaries, each defining a route with a boolean condition expression
-                       ('condition'), an output ('output'), and the output type as a string representation
-                       ('output_type'). An optional 'output_name' can be specified to define a different
-                        output name for the variable defined in 'output'.
+                       ('condition'), an output value ('output'), the output type ('output_type') and
+                       'output_name' that defines output name for the variable defined in 'output'.
         """
         self._validate_routes(routes)
         self.routes: List[dict] = routes
@@ -174,35 +151,18 @@ class ConditionalRouter:
         env = NativeEnvironment()
 
         # Inspect the routes to determine input and output types.
-        input_names: Set[str] = set()  # let's just store the name, type will always be Any
+        input_types: Set[str] = set()  # let's just store the name, type will always be Any
         output_types: Dict[str, str] = {}
+
         for route in routes:
-            # Start with the "output" expression
-            output_ast = env.parse(route["output"])
-            output_vars = meta.find_undeclared_variables(output_ast)
-            if len(output_vars) != 1 and "output_name" not in route:
-                error_message = (
-                    f"The 'output' field in the route {route} uses {len(output_vars)} variables: {output_vars}. "
-                    "Specify an 'output_name' in the route if use of multiple variables is intentional."
-                    if output_vars
-                    else f"The 'output' field in the route {route} contains a constant. "
-                    "Specify an 'output_name' in the route if use of a constant is intentional."
-                )
-                raise RouteConditionException(error_message)
+            # extract inputs
+            route_input_names = self._extract_variables(env, [route["output"], route["condition"]])
+            input_types.update(route_input_names)
 
-            input_names.update(output_vars)
+            # extract outputs
+            output_types.update({route["output_name"]: route["output_type"]})
 
-            # Also add any additional variable that might be used within a "condition" expression.
-            ast = env.parse(route["condition"])
-            input_names.update(meta.find_undeclared_variables(ast))
-
-            # output_vars is a set guaranteed to have 0 or 1 elements
-            output_var = output_vars.pop() if output_vars else None
-            output_name = route.get("output_name", output_var)
-            # set proper output as well
-            output_types.update({output_name: route["output_type"]})
-
-        component.set_input_types(self, **{var: Any for var in input_names})
+        component.set_input_types(self, **{var: Any for var in input_types})
         component.set_output_types(self, **output_types)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -244,39 +204,68 @@ class ConditionalRouter:
             try:
                 t = env.from_string(route["condition"])
                 if t.render(**kwargs):
-                    # We now evaluate the `output` expression to determine what will be this
-                    # component's output.
+                    # We now evaluate the `output` expression to determine the route output
                     t_output = env.from_string(route["output"])
                     output = t_output.render(**kwargs)
-
-                    # In case `output_name` was not specified, we use the name of the variable contained
-                    # in `output` to address the appropriate output socket for this component.
-                    output_vars = meta.find_undeclared_variables(env.parse(route["output"]))
-                    output_var = output_vars.pop() if output_vars else None
-                    output_name = route.get("output_name", output_var)
-                    return {output_name: output}
+                    # and return the output as a dictionary under the output_name key
+                    return {route["output_name"]: output}
             except Exception as e:
                 raise RouteConditionException(f"Error evaluating condition for route '{route}': {e}") from e
 
         raise NoRouteSelectedException(f"No route fired. Routes: {self.routes}")
 
     def _validate_routes(self, routes: List[Dict]):
+        """
+        Validates a list of routes.
+
+        :param routes: A list of routes.
+        :type routes: List[Dict]
+        """
+        env = NativeEnvironment()
         for route in routes:
             try:
                 keys = set(route.keys())
             except AttributeError:
                 raise ValueError(f"Route must be a dictionary, got: {route}")
 
-            mandatory_fields = {"condition", "output", "output_type"}
-            optional_fields = {"output_name"}
+            mandatory_fields = {"condition", "output", "output_type", "output_name"}
             has_all_mandatory_fields = mandatory_fields.issubset(keys)
             if not has_all_mandatory_fields:
-                raise ValueError("Each route must contain 'condition', 'output', and 'output_type' keys.")
-            if not keys.issubset(mandatory_fields.union(optional_fields)):
                 raise ValueError(
-                    f"Route contains invalid keys. Valid keys are: {mandatory_fields.union(optional_fields)}"
+                    f"Route must contain 'condition', 'output', 'output_type' and 'output_name' fields: {route}"
                 )
-            # validate condition is jinja expressions
-            field = "condition"
-            if route[field].count("{{") != 1 or route[field].count("}}") != 1:
-                raise ValueError(f"Route {route} contains invalid jinja expression in 'condition' field.")
+            for field in ["condition", "output"]:
+                if not self._validate_template(env, route[field]):
+                    raise ValueError(f"Invalid template for field '{field}': {route[field]}")
+
+    def _extract_variables(self, env: NativeEnvironment, templates: List[str]) -> Set[str]:
+        """
+        Extracts all variables from a list of Jinja template strings.
+
+        :param env: A Jinja environment.
+        :type env: Environment
+        :param templates: A list of Jinja template strings.
+        :type templates: List[str]
+        :return: A set of variable names.
+        """
+        variables = set()
+        for template in templates:
+            ast = env.parse(template)
+            variables.update(meta.find_undeclared_variables(ast))
+        return variables
+
+    def _validate_template(self, env: Environment, template_text: str):
+        """
+        Validates a template string by parsing it with Jinja.
+
+        :param env: A Jinja environment.
+        :type env: Environment
+        :param template_text: A Jinja template string.
+        :type template_text: str
+        :return: True if the template is valid, False otherwise.
+        """
+        try:
+            env.parse(template_text)
+            return True
+        except TemplateSyntaxError:
+            return False

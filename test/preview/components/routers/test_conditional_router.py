@@ -8,7 +8,6 @@ import pytest
 from haystack.preview.components.routers import ConditionalRouter
 from haystack.preview.components.routers.conditional_router import (
     NoRouteSelectedException,
-    RouteConditionException,
     serialize_type,
     deserialize_type,
 )
@@ -19,8 +18,13 @@ class TestRouter:
     @pytest.fixture
     def routes(self):
         return [
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
-            {"condition": "{{streams|length >= 2}}", "output": "{{streams}}", "output_type": List[int]},
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": "{{streams}}",
+                "output_type": List[int],
+                "output_name": "streams",
+            },
         ]
 
     @pytest.fixture
@@ -45,40 +49,8 @@ class TestRouter:
         ConditionalRouter init raises a ValueError if one of the routes contains invalid condition
         """
         # invalid condition field
-        routes = [{"condition": "streams|length < 2", "output": "query", "output_type": str}]
-        with pytest.raises(ValueError, match="invalid jinja expression"):
-            ConditionalRouter(routes)
-
-    @pytest.mark.unit
-    def test_mandatory_and_optional_fields(self):
-        """
-        Router accepts a list of routes with mandatory and optional fields
-        """
-        routes = [
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "test"},
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
-        ]
-
-        ConditionalRouter(routes)
-
-    @pytest.mark.unit
-    def test_multiple_vars_in_output_route(self):
-        """
-        Router can't accept a route with multiple variables used in the output field if no output_name is specified
-        """
-        routes = [
-            {"condition": "{{streams|length < 2}}", "output": "{{query|length > streams|length}}", "output_type": str}
-        ]
-        with pytest.raises(RouteConditionException, match="multiple variables"):
-            ConditionalRouter(routes)
-
-    @pytest.mark.unit
-    def test_no_vars_in_output_route(self):
-        """
-        Router can't accept a route with no variables used in the output field if no output_name is specified
-        """
-        routes = [{"condition": "{{streams|length < 2}}", "output": "Some constant string", "output_type": str}]
-        with pytest.raises(RouteConditionException, match="contains a constant"):
+        routes = [{"condition": "{{streams|length < 2", "output": "query", "output_type": str, "output_name": "test"}]
+        with pytest.raises(ValueError, match="Invalid template"):
             ConditionalRouter(routes)
 
     @pytest.mark.unit
@@ -168,8 +140,14 @@ class TestRouter:
                 "condition": "{{messages[-1].metadata.finish_reason == 'function_call'}}",
                 "output": "{{streams}}",
                 "output_type": List[int],
+                "output_name": "streams",
             },
-            {"condition": "{{True}}", "output": "{{query}}", "output_type": str},  # catch-all condition
+            {
+                "condition": "{{True}}",
+                "output": "{{query}}",
+                "output_type": str,
+                "output_name": "query",
+            },  # catch-all condition
         ]
         router = ConditionalRouter(routes)
         message = mock.MagicMock()
@@ -182,8 +160,18 @@ class TestRouter:
         # should raise an exception
         router = ConditionalRouter(
             [
-                {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
-                {"condition": "{{streams|length >= 5}}", "output": "{{streams}}", "output_type": List[int]},
+                {
+                    "condition": "{{streams|length < 2}}",
+                    "output": "{{query}}",
+                    "output_type": str,
+                    "output_name": "query",
+                },
+                {
+                    "condition": "{{streams|length >= 5}}",
+                    "output": "{{streams}}",
+                    "output_type": List[int],
+                    "output_name": "streams",
+                },
             ]
         )
 
@@ -197,7 +185,7 @@ class TestRouter:
         Router raises a ValueError if each route is not a dictionary
         """
         routes = [
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
             ["{{streams|length >= 2}}", "streams", List[int]],
         ]
 
@@ -235,8 +223,13 @@ class TestRouter:
     @pytest.mark.unit
     def test_router_de_serialization(self):
         routes = [
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
-            {"condition": "{{streams|length >= 2}}", "output": "{{streams}}", "output_type": List[int]},
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": "{{streams}}",
+                "output_type": List[int],
+                "output_name": "streams",
+            },
         ]
         router = ConditionalRouter(routes)
         router_dict = router.to_dict()
@@ -261,8 +254,18 @@ class TestRouter:
     @pytest.mark.unit
     def test_router_de_serialization_user_type(self):
         routes = [
-            {"condition": "{{streams|length < 2}}", "output": "{{message}}", "output_type": ChatMessage},
-            {"condition": "{{streams|length >= 2}}", "output": "{{streams}}", "output_type": List[int]},
+            {
+                "condition": "{{streams|length < 2}}",
+                "output": "{{message}}",
+                "output_type": ChatMessage,
+                "output_name": "message",
+            },
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": "{{streams}}",
+                "output_type": List[int],
+                "output_name": "streams",
+            },
         ]
         router = ConditionalRouter(routes)
         router_dict = router.to_dict()
@@ -298,8 +301,18 @@ class TestRouter:
     @pytest.mark.unit
     def test_router_serialization_idempotence(self):
         routes = [
-            {"condition": "{{streams|length < 2}}", "output": "{{message}}", "output_type": ChatMessage},
-            {"condition": "{{streams|length >= 2}}", "output": "{{streams}}", "output_type": List[int]},
+            {
+                "condition": "{{streams|length < 2}}",
+                "output": "{{message}}",
+                "output_type": ChatMessage,
+                "output_name": "message",
+            },
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": "{{streams}}",
+                "output_type": List[int],
+                "output_name": "streams",
+            },
         ]
         router = ConditionalRouter(routes)
         # invoke to_dict twice and check that the result is the same
