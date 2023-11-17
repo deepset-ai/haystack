@@ -244,8 +244,8 @@ class ConditionalRouter:
             try:
                 t = env.from_string(route["condition"])
                 if t.render(**kwargs):
-                    # if optional field output_name is not provided, use mandatory output
-                    # but since output is jinja expression, we need to strip the curly braces
+                    # We now evaluate the `output` expression to determine what will be this
+                    # component's output.
                     t_output = env.from_string(route["output"])
                     output = t_output.render(**kwargs)
 
