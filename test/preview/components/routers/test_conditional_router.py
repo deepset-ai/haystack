@@ -31,7 +31,6 @@ class TestRouter:
     def router(self, routes):
         return ConditionalRouter(routes)
 
-    @pytest.mark.unit
     def test_missing_mandatory_fields(self):
         """
         Router raises a ValueError if each route does not contain 'condition', 'output', and 'output_type' keys
@@ -43,7 +42,6 @@ class TestRouter:
         with pytest.raises(ValueError):
             ConditionalRouter(routes)
 
-    @pytest.mark.unit
     def test_invalid_condition_field(self):
         """
         ConditionalRouter init raises a ValueError if one of the routes contains invalid condition
@@ -53,7 +51,6 @@ class TestRouter:
         with pytest.raises(ValueError, match="Invalid template"):
             ConditionalRouter(routes)
 
-    @pytest.mark.unit
     def test_no_vars_in_output_route_but_with_output_name(self):
         """
         Router can't accept a route with no variables used in the output field
@@ -71,7 +68,6 @@ class TestRouter:
         result = router.run(**kwargs)
         assert result == {"enough_streams": "This is a constant"}
 
-    @pytest.mark.unit
     def test_mandatory_and_optional_fields_with_extra_fields(self):
         """
         Router accepts a list of routes with mandatory and optional fields but not if some new field is added
@@ -91,7 +87,6 @@ class TestRouter:
         with pytest.raises(ValueError):
             ConditionalRouter(routes)
 
-    @pytest.mark.unit
     def test_router_initialized(self, routes):
         router = ConditionalRouter(routes)
 
@@ -99,7 +94,6 @@ class TestRouter:
         assert set(router.__canals_input__.keys()) == {"query", "streams"}
         assert set(router.__canals_output__.keys()) == {"query", "streams"}
 
-    @pytest.mark.unit
     def test_router_evaluate_condition_expressions(self, router):
         # first route should be selected
         kwargs = {"streams": [1, 2, 3], "query": "test"}
@@ -111,7 +105,6 @@ class TestRouter:
         result = router.run(**kwargs)
         assert result == {"query": "test"}
 
-    @pytest.mark.unit
     def test_router_evaluate_condition_expressions_using_output_slot(self):
         routes = [
             {
@@ -133,7 +126,6 @@ class TestRouter:
         result = router.run(**kwargs)
         assert result == {"enough_streams": [1, 2, 3]}
 
-    @pytest.mark.unit
     def test_complex_condition(self):
         routes = [
             {
@@ -155,7 +147,6 @@ class TestRouter:
         result = router.run(messages=[message], streams=[1, 2, 3], query="my query")
         assert result == {"streams": [1, 2, 3]}
 
-    @pytest.mark.unit
     def test_router_no_route(self, router):
         # should raise an exception
         router = ConditionalRouter(
@@ -179,7 +170,6 @@ class TestRouter:
         with pytest.raises(NoRouteSelectedException):
             router.run(**kwargs)
 
-    @pytest.mark.unit
     def test_router_raises_value_error_if_route_not_dictionary(self):
         """
         Router raises a ValueError if each route is not a dictionary
@@ -192,7 +182,6 @@ class TestRouter:
         with pytest.raises(ValueError):
             ConditionalRouter(routes)
 
-    @pytest.mark.unit
     def test_router_raises_value_error_if_route_missing_keys(self):
         """
         Router raises a ValueError if each route does not contain 'condition', 'output', and 'output_type' keys
@@ -205,7 +194,6 @@ class TestRouter:
         with pytest.raises(ValueError):
             ConditionalRouter(routes)
 
-    @pytest.mark.unit
     def test_output_type_serialization(self):
         assert serialize_type(str) == "builtins.str"
         assert serialize_type(List[int]) == "typing.List"
@@ -213,14 +201,12 @@ class TestRouter:
         assert serialize_type(int) == "builtins.int"
         assert serialize_type(ChatMessage.from_user("ciao")) == "haystack.preview.dataclasses.chat_message.ChatMessage"
 
-    @pytest.mark.unit
     def test_output_type_deserialization(self):
         assert deserialize_type("builtins.str") == str
         assert deserialize_type("typing.List") == typing.List
         assert deserialize_type("haystack.preview.dataclasses.chat_message.ChatMessage") == ChatMessage
         assert deserialize_type("builtins.int") == int
 
-    @pytest.mark.unit
     def test_router_de_serialization(self):
         routes = [
             {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
@@ -251,7 +237,6 @@ class TestRouter:
         # check that the result is the same and correct
         assert result1 == result2 and result1 == {"streams": [1, 2, 3]}
 
-    @pytest.mark.unit
     def test_router_de_serialization_user_type(self):
         routes = [
             {
@@ -298,7 +283,6 @@ class TestRouter:
         # check that the result is the same and correct
         assert result1 == result2 and result1["message"].content == message.content
 
-    @pytest.mark.unit
     def test_router_serialization_idempotence(self):
         routes = [
             {
