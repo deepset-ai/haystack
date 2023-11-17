@@ -457,12 +457,54 @@ class LegacyFilterDocumentsNotInTest(FilterableDocsFixtureMixin):
         assert result == [doc for doc in filterable_docs if doc.meta.get("page") not in ["100", "123"]]
 
 
+class LegacyFilterDocumentsGreaterThanTest(FilterableDocsFixtureMixin):
+    """
+    Utility class to test a Document Store `filter_documents` method using explicit '$gt' legacy filters
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(LegacyFilterDocumentsGreaterThanTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @pytest.mark.unit
+    def test_gt_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"number": {"$gt": 0.0}})
+        assert result == [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] > 0]
+
+    @pytest.mark.unit
+    def test_gt_filter_non_numeric(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            docstore.filter_documents(filters={"page": {"$gt": "100"}})
+
+    @pytest.mark.unit
+    def test_gt_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            docstore.filter_documents(filters={"dataframe": {"$gt": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
+
+    @pytest.mark.unit
+    def test_gt_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        embedding_zeros = np.zeros([768, 1]).astype(np.float32)
+        with pytest.raises(FilterError):
+            docstore.filter_documents(filters={"embedding": {"$gt": embedding_zeros}})
+
+
 class LegacyFilterDocumentsTest(
     LegacyFilterDocumentsInvalidFiltersTest,
     LegacyFilterDocumentsEqualTest,
     LegacyFilterDocumentsNotEqualTest,
     LegacyFilterDocumentsInTest,
     LegacyFilterDocumentsNotInTest,
+    LegacyFilterDocumentsGreaterThanTest,
 ):
     """
     Utility class to test a Document Store `filter_documents` method using different types of legacy filters
@@ -497,31 +539,6 @@ class DocumentStoreBaseTests(
     @pytest.fixture
     def docstore(self) -> DocumentStore:
         raise NotImplementedError()
-
-    @pytest.mark.unit
-    def test_gt_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$gt": 0.0}})
-        assert result == [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] > 0]
-
-    @pytest.mark.unit
-    def test_gt_filter_non_numeric(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"page": {"$gt": "100"}})
-
-    @pytest.mark.unit
-    def test_gt_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"dataframe": {"$gt": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
-
-    @pytest.mark.unit
-    def test_gt_filter_embedding(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        embedding_zeros = np.zeros([768, 1]).astype(np.float32)
-        with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"embedding": {"$gt": embedding_zeros}})
 
     @pytest.mark.unit
     def test_gte_filter(self, docstore: DocumentStore, filterable_docs: List[Document]):
