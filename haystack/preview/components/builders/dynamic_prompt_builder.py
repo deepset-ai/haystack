@@ -25,6 +25,87 @@ class DynamicPromptBuilder:
     Additional template variables can be provided directly to the pipeline `run` method, which are merged with the
     variables resolved from the pipeline runtime. This allows for greater flexibility and customization of the
     generated prompts based on runtime conditions and user inputs.
+
+    The following example demonstrates how to use DynamicPromptBuilder to generate a chat prompt:
+
+    ```python
+    from haystack.preview.components.builders import DynamicPromptBuilder
+    from haystack.preview.components.generators.chat import GPTChatGenerator
+    from haystack.preview.dataclasses import ChatMessage
+    from haystack.preview import Pipeline
+
+    # no parameter init, we don't use any runtime template variables
+    prompt_builder = DynamicPromptBuilder()
+    llm = GPTChatGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
+
+    pipe = Pipeline()
+    pipe.add_component("prompt_builder", prompt_builder)
+    pipe.add_component("llm", llm)
+    pipe.connect("prompt_builder.prompt", "llm.messages")
+
+    location = "Berlin"
+    messages = [ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
+                ChatMessage.from_user("Tell me about {{location}}")]
+
+
+    pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "prompt_source": messages}})
+
+    >> {'llm': {'replies': [ChatMessage(content='Berlin ist die Hauptstadt Deutschlands und die größte Stadt des Landes.
+    >> Es ist eine lebhafte Metropole, die für ihre Geschichte, Kultur und einzigartigen Sehenswürdigkeiten bekannt ist.
+    >> Berlin bietet eine vielfältige Kulturszene, beeindruckende architektonische Meisterwerke wie den Berliner Dom
+    >> und das Brandenburger Tor, sowie weltberühmte Museen wie das Pergamonmuseum. Die Stadt hat auch eine pulsierende
+    >> Clubszene und ist für ihr aufregendes Nachtleben berühmt. Berlin ist ein Schmelztiegel verschiedener Kulturen und
+    >> zieht jedes Jahr Millionen von Touristen an.', role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
+    >> metadata={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 32,
+    >> 'completion_tokens': 153, 'total_tokens': 185}})]}}
+    ```
+
+    The following example demonstrates how to use DynamicPromptBuilder to generate chat prompt but with resolution
+    of pipeline runtime variables (i.e. documents):
+
+    ```python
+    from haystack.preview.components.builders import DynamicPromptBuilder
+    from haystack.preview.components.generators.chat import GPTChatGenerator
+    from haystack.preview.dataclasses import ChatMessage, Document
+    from haystack.preview import Pipeline, component
+    from typing import List
+
+    # we'll use documents runtime variable in our template, so we need to specify it in the init
+    prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"])
+    llm = GPTChatGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
+
+
+    @component
+    class DocumentProducer:
+
+        @component.output_types(documents=List[Document])
+        def run(self, doc_input: str):
+            return {"documents": [Document(content=doc_input)]}
+
+
+
+    pipe = Pipeline()
+    pipe.add_component("doc_producer", DocumentProducer())
+    pipe.add_component("prompt_builder", prompt_builder)
+    pipe.add_component("llm", llm)
+
+    # note here how prompt_builder.documents is received from doc_producer.documents
+    pipe.connect("doc_producer.documents", "prompt_builder.documents")
+    pipe.connect("prompt_builder.prompt", "llm.messages")
+
+    messages = [ChatMessage.from_system("Be helpful assistant, but brief!"),
+                ChatMessage.from_user("Here is the document: {{documents[0].content}} Now, answer the
+                following: {{query}}")]
+
+
+    pipe.run(data={"doc_producer": {"doc_input": "Hello world, I'm Haystack!"},
+                   "prompt_builder": {"prompt_source": messages,
+                                      "template_variables":{"query": "who's making a greeting?"}}})
+
+    >> {'llm': {'replies': [ChatMessage(content='Haystack', role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
+    >> metadata={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage':
+    >> {'prompt_tokens': 51, 'completion_tokens': 2, 'total_tokens': 53}})]}}
+    ```
     """
 
     def __init__(self, expected_runtime_variables: Optional[List[str]] = None, chat_mode: Optional[bool] = True):
