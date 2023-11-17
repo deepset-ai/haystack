@@ -16,7 +16,34 @@ def _random_embeddings(n):
     return [random.random() for _ in range(n)]
 
 
-class DocumentStoreBaseTests:
+class CountDocumentsTest:
+    """
+    Utility class to test a Document Store `count_documents` method.
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(CountDocumentsTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @pytest.mark.unit
+    def test_count_empty(self, docstore: DocumentStore):
+        assert docstore.count_documents() == 0
+
+    @pytest.mark.unit
+    def test_count_not_empty(self, docstore: DocumentStore):
+        docstore.write_documents(
+            [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
+        )
+        assert docstore.count_documents() == 3
+
+
+class DocumentStoreBaseTests(CountDocumentsTest):
     @pytest.fixture
     def docstore(self) -> DocumentStore:
         raise NotImplementedError()
@@ -63,17 +90,6 @@ class DocumentStoreBaseTests:
                 Document(content=f"Doc {i} with ones emb", meta={"name": "ones_doc"}, embedding=embedding_one)
             )
         return documents
-
-    @pytest.mark.unit
-    def test_count_empty(self, docstore: DocumentStore):
-        assert docstore.count_documents() == 0
-
-    @pytest.mark.unit
-    def test_count_not_empty(self, docstore: DocumentStore):
-        docstore.write_documents(
-            [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
-        )
-        assert docstore.count_documents() == 3
 
     @pytest.mark.unit
     def test_no_filter_empty(self, docstore: DocumentStore):
