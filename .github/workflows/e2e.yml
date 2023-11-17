@@ -59,7 +59,7 @@ jobs:
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.17.2
 
     - name: Install Haystack
-      run: pip install -e .[inference,elasticsearch7,faiss,weaviate,opensearch,dev,pdf,preview]
+      run: pip install -e .[inference,elasticsearch7,faiss,weaviate,opensearch,dev,pdf,preview] langdetect
 
     # FIXME caching prevents PRs from running the e2e tests properly
 
