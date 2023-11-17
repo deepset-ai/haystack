@@ -44,6 +44,12 @@ def test_init():
 
 
 @pytest.mark.unit
+def test_init_with_wrong_parameters():
+    with pytest.raises(TypeError):
+        Document(text="")
+
+
+@pytest.mark.unit
 def test_init_with_parameters():
     blob_data = b"some bytes"
     doc = Document(
@@ -80,15 +86,14 @@ def test_init_with_legacy_fields():
 
 
 @pytest.mark.unit
-def test_init_with_legacy_field_and_flat_meta():
+def test_init_with_legacy_field():
     doc = Document(
         content="test text",
         content_type="text",  # type: ignore
         id_hash_keys=["content"],  # type: ignore
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
-        date="10-10-2023",  # type: ignore
-        type="article",  # type: ignore
+        meta={"date": "10-10-2023", "type": "article"},
     )
     assert doc.id == "a2c0321b34430cc675294611e55529fceb56140ca3202f1c59a43a8cecac1f43"
     assert doc.content == "test text"
@@ -96,44 +101,6 @@ def test_init_with_legacy_field_and_flat_meta():
     assert doc.meta == {"date": "10-10-2023", "type": "article"}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
-
-
-@pytest.mark.unit
-def test_init_with_flat_meta():
-    blob_data = b"some bytes"
-    doc = Document(
-        content="test text",
-        dataframe=pd.DataFrame([0]),
-        blob=ByteStream(data=blob_data, mime_type="text/markdown"),
-        score=0.812,
-        embedding=[0.1, 0.2, 0.3],
-        date="10-10-2023",  # type: ignore
-        type="article",  # type: ignore
-    )
-    assert doc.id == "c6212ad7bb513c572367e11dd12fd671911a1a5499e3d31e4fe3bda7e87c0641"
-    assert doc.content == "test text"
-    assert doc.dataframe is not None
-    assert doc.dataframe.equals(pd.DataFrame([0]))
-    assert doc.blob.data == blob_data
-    assert doc.blob.mime_type == "text/markdown"
-    assert doc.meta == {"date": "10-10-2023", "type": "article"}
-    assert doc.score == 0.812
-    assert doc.embedding == [0.1, 0.2, 0.3]
-
-
-@pytest.mark.unit
-def test_init_with_flat_and_non_flat_meta():
-    with pytest.raises(TypeError):
-        Document(
-            content="test text",
-            dataframe=pd.DataFrame([0]),
-            blob=ByteStream(data=b"some bytes", mime_type="text/markdown"),
-            score=0.812,
-            meta={"test": 10},
-            embedding=[0.1, 0.2, 0.3],
-            date="10-10-2023",  # type: ignore
-            type="article",  # type: ignore
-        )
 
 
 @pytest.mark.unit
@@ -286,8 +253,7 @@ def test_from_dict_with_legacy_field_and_flat_meta():
         id_hash_keys=["content"],  # type: ignore
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
-        date="10-10-2023",  # type: ignore
-        type="article",  # type: ignore
+        meta={"date": "10-10-2023", "type": "article"},
     )
 
 
@@ -316,7 +282,7 @@ def test_from_dict_with_flat_meta():
 
 @pytest.mark.unit
 def test_from_dict_with_flat_and_non_flat_meta():
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError, match="Pass either the 'meta' parameter or flattened metadata keys"):
         Document.from_dict(
             {
                 "content": "test text",

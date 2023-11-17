@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Upgrade Transformers to the latest version 4.35.2
+    This version adds support for DistilWhisper, Fuyu, Kosmos-2, SeamlessM4T, Owl-v2.

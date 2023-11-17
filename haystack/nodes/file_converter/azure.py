@@ -15,7 +15,7 @@ from haystack.schema import Document
 logger = logging.getLogger(__name__)
 
 with LazyImport(
-    message="Run 'pip install farm-haystack[file-conversion]' or 'pip install " "azure-ai-formrecognizer>=3.2.0b2'"
+    message="Run 'pip install farm-haystack[file-conversion]' or 'pip install \"azure-ai-formrecognizer>=3.2.0b2\"'"
 ) as azure_import:
     from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
     from azure.core.credentials import AzureKeyCredential
