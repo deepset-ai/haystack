@@ -142,10 +142,10 @@ class DeleteDocumentsTest:
         assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
 
 
-class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest):
-    @pytest.fixture
-    def docstore(self) -> DocumentStore:
-        raise NotImplementedError()
+class FilterableDocsFixtureMixin:
+    """
+    Mixin class that adds a filterable_docs() fixture to a test class.
+    """
 
     @pytest.fixture
     def filterable_docs(self) -> List[Document]:
@@ -189,6 +189,12 @@ class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocum
                 Document(content=f"Doc {i} with ones emb", meta={"name": "ones_doc"}, embedding=embedding_one)
             )
         return documents
+
+
+class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, FilterableDocsFixtureMixin):
+    @pytest.fixture
+    def docstore(self) -> DocumentStore:
+        raise NotImplementedError()
 
     @pytest.mark.unit
     def test_no_filter_empty(self, docstore: DocumentStore):
