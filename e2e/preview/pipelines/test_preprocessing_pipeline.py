@@ -5,7 +5,7 @@ from haystack.preview.components.embedders import SentenceTransformersDocumentEm
 from haystack.preview.components.file_converters import TextFileToDocument
 from haystack.preview.components.preprocessors import DocumentSplitter, DocumentCleaner
 from haystack.preview.components.classifiers import DocumentLanguageClassifier
-from haystack.preview.components.routers import FileTypeRouter
+from haystack.preview.components.routers import FileTypeRouter, MetadataRouter
 from haystack.preview.components.writers import DocumentWriter
 from haystack.preview.document_stores import InMemoryDocumentStore
 
@@ -17,6 +17,9 @@ def test_preprocessing_pipeline(tmp_path):
     preprocessing_pipeline.add_component(instance=FileTypeRouter(mime_types=["text/plain"]), name="file_type_router")
     preprocessing_pipeline.add_component(instance=TextFileToDocument(), name="text_file_converter")
     preprocessing_pipeline.add_component(instance=DocumentLanguageClassifier(), name="language_classifier")
+    preprocessing_pipeline.add_component(
+        instance=MetadataRouter(rules={"en": {"language": {"$eq": "en"}}}), name="router"
+    )
     preprocessing_pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
     preprocessing_pipeline.add_component(
         instance=DocumentSplitter(split_by="sentence", split_length=1), name="splitter"
@@ -28,7 +31,8 @@ def test_preprocessing_pipeline(tmp_path):
     preprocessing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
     preprocessing_pipeline.connect("file_type_router.text/plain", "text_file_converter.paths")
     preprocessing_pipeline.connect("text_file_converter.documents", "language_classifier.documents")
-    preprocessing_pipeline.connect("language_classifier.en", "cleaner.documents")
+    preprocessing_pipeline.connect("language_classifier.documents", "router.documents")
+    preprocessing_pipeline.connect("router.en", "cleaner.documents")
     preprocessing_pipeline.connect("cleaner.documents", "splitter.documents")
     preprocessing_pipeline.connect("splitter.documents", "embedder.documents")
     preprocessing_pipeline.connect("embedder.documents", "writer.documents")
@@ -82,4 +86,4 @@ def test_preprocessing_pipeline(tmp_path):
         " And extra whitespaces.",
     ]
     assert expected_texts == [document.content for document in stored_documents]
-    assert all(document.mime_type == "text/plain" for document in stored_documents)
+    assert all(document.meta["language"] == "en" for document in stored_documents)
