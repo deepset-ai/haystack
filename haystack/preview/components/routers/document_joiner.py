@@ -59,10 +59,9 @@ class DocumentJoiner:
         self.weights = [float(i) / sum(weights) for i in weights] if weights else None
         self.top_k = top_k
         self.sort_by_score = sort_by_score
-        component.set_input_types(self, documents=Variadic[List[Document]])
 
     @component.output_types(documents=List[Document])
-    def run(self, documents):
+    def run(self, documents: Variadic[List[Document]]):
         """
         Run the DocumentJoiner. This method joins the input lists of documents into one output list based on the join_mode specified during initialization.
 
