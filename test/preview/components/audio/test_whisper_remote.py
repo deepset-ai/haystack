@@ -244,15 +244,9 @@ class TestRemoteWhisperTranscriber:
         docs = output["documents"]
         assert len(docs) == 3
         assert docs[0].content.strip().lower() == "this is the content of the document."
-        assert (
-            str((preview_samples_path / "audio" / "this is the content of the document.wav").absolute())
-            == docs[0].meta["file_path"]
-        )
+        assert preview_samples_path / "audio" / "this is the content of the document.wav" == docs[0].meta["file_path"]
 
         assert docs[1].content.strip().lower() == "the context for this answer is here."
-        assert (
-            str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute())
-            == docs[1].meta["file_path"]
-        )
+        assert preview_samples_path / "audio" / "the context for this answer is here.wav" == docs[1].meta["file_path"]
 
         assert docs[2].content.strip().lower() == "answer."
