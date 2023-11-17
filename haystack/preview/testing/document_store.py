@@ -333,42 +333,20 @@ class LegacyFilterDocumentsNotEqualTest(FilterableDocsFixtureMixin):
         ]
 
 
-class LegacyFilterDocumentsTest(
-    LegacyFilterDocumentsInvalidFiltersTest, LegacyFilterDocumentsEqualTest, LegacyFilterDocumentsNotEqualTest
-):
+class LegacyFilterDocumentsInTest(FilterableDocsFixtureMixin):
     """
-    Utility class to test a Document Store `filter_documents` method using different types of legacy filters
+    Utility class to test a Document Store `filter_documents` method using implicit and explicit '$in' legacy filters
 
     To use it create a custom test class and override the `docstore` fixture to return your Document Store.
     Example usage:
 
     ```python
-    class MyDocumentStoreTest(LegacyFilterDocumentsTest):
+    class MyDocumentStoreTest(LegacyFilterDocumentsInTest):
         @pytest.fixture
         def docstore(self):
             return MyDocumentStore()
     ```
     """
-
-    @pytest.mark.unit
-    def test_no_filter_empty(self, docstore: DocumentStore):
-        assert docstore.filter_documents() == []
-        assert docstore.filter_documents(filters={}) == []
-
-    @pytest.mark.unit
-    def test_no_filter_not_empty(self, docstore: DocumentStore):
-        docs = [Document(content="test doc")]
-        docstore.write_documents(docs)
-        assert docstore.filter_documents() == docs
-        assert docstore.filter_documents(filters={}) == docs
-
-
-class DocumentStoreBaseTests(
-    CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, LegacyFilterDocumentsTest
-):  # pylint: disable=too-many-ancestors
-    @pytest.fixture
-    def docstore(self) -> DocumentStore:
-        raise NotImplementedError()
 
     @pytest.mark.unit
     def test_filter_simple_list_single_element(self, docstore: DocumentStore, filterable_docs: List[Document]):
@@ -432,6 +410,47 @@ class DocumentStoreBaseTests(
         assert result == [
             doc for doc in filterable_docs if (embedding_zero == doc.embedding or embedding_one == doc.embedding)
         ]
+
+
+class LegacyFilterDocumentsTest(
+    LegacyFilterDocumentsInvalidFiltersTest,
+    LegacyFilterDocumentsEqualTest,
+    LegacyFilterDocumentsNotEqualTest,
+    LegacyFilterDocumentsInTest,
+):
+    """
+    Utility class to test a Document Store `filter_documents` method using different types of legacy filters
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(LegacyFilterDocumentsTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @pytest.mark.unit
+    def test_no_filter_empty(self, docstore: DocumentStore):
+        assert docstore.filter_documents() == []
+        assert docstore.filter_documents(filters={}) == []
+
+    @pytest.mark.unit
+    def test_no_filter_not_empty(self, docstore: DocumentStore):
+        docs = [Document(content="test doc")]
+        docstore.write_documents(docs)
+        assert docstore.filter_documents() == docs
+        assert docstore.filter_documents(filters={}) == docs
+
+
+class DocumentStoreBaseTests(
+    CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, LegacyFilterDocumentsTest
+):  # pylint: disable=too-many-ancestors
+    @pytest.fixture
+    def docstore(self) -> DocumentStore:
+        raise NotImplementedError()
 
     @pytest.mark.unit
     def test_nin_filter_table(self, docstore: DocumentStore, filterable_docs: List[Document]):
