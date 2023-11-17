@@ -4,4 +4,3 @@ from haystack.preview.components.routers.conditional_router import ConditionalRo
 from haystack.preview.components.routers.text_language_router import TextLanguageRouter
 
 __all__ = ["FileTypeRouter", "MetadataRouter", "TextLanguageRouter", "ConditionalRouter"]
-
