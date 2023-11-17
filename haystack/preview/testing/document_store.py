@@ -191,7 +191,41 @@ class FilterableDocsFixtureMixin:
         return documents
 
 
-class LegacyFilterDocumentsTest(FilterableDocsFixtureMixin):
+class LegacyFilterDocumentsInvalidFiltersTest(FilterableDocsFixtureMixin):
+    """
+    Utility class to test a Document Store `filter_documents` method using invalid legacy filters
+
+    To use it create a custom test class and override the `docstore` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(LegacyFilterDocumentsInvalidFiltersTest):
+        @pytest.fixture
+        def docstore(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @pytest.mark.unit
+    def test_incorrect_filter_type(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            docstore.filter_documents(filters="something odd")  # type: ignore
+
+    @pytest.mark.unit
+    def test_incorrect_filter_nesting(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            docstore.filter_documents(filters={"number": {"page": "100"}})
+
+    @pytest.mark.unit
+    def test_deeper_incorrect_filter_nesting(self, docstore: DocumentStore, filterable_docs: List[Document]):
+        docstore.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            docstore.filter_documents(filters={"number": {"page": {"chapter": "intro"}}})
+
+
+class LegacyFilterDocumentsTest(LegacyFilterDocumentsInvalidFiltersTest):
     """
     Utility class to test a Document Store `filter_documents` method using different types of legacy filters
 
@@ -269,28 +303,10 @@ class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocum
         assert len(result) == 0
 
     @pytest.mark.unit
-    def test_incorrect_filter_type(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            docstore.filter_documents(filters="something odd")  # type: ignore
-
-    @pytest.mark.unit
     def test_incorrect_filter_value(self, docstore: DocumentStore, filterable_docs: List[Document]):
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": ["nope"]})
         assert len(result) == 0
-
-    @pytest.mark.unit
-    def test_incorrect_filter_nesting(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"number": {"page": "100"}})
-
-    @pytest.mark.unit
-    def test_deeper_incorrect_filter_nesting(self, docstore: DocumentStore, filterable_docs: List[Document]):
-        docstore.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            docstore.filter_documents(filters={"number": {"page": {"chapter": "intro"}}})
 
     @pytest.mark.unit
     def test_eq_filter_explicit(self, docstore: DocumentStore, filterable_docs: List[Document]):
