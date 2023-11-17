@@ -41,7 +41,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString"
-        assert answers[0].meta == {}
+        assert answers[0].metadata == {}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -52,7 +52,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
-        assert answers[0].meta == {}
+        assert answers[0].metadata == {}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -63,7 +63,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "'AnswerString'"
-        assert answers[0].meta == {}
+        assert answers[0].metadata == {}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -80,7 +80,7 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
-        assert answers[0].meta == {}
+        assert answers[0].metadata == {}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -99,8 +99,8 @@ class TestAnswerBuilder:
         assert answers[0].metadata == {}
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 2
-        assert answers[0].documents[0].text == "test doc 1"
-        assert answers[0].documents[1].text == "test doc 2"
+        assert answers[0].documents[0].content == "test doc 1"
+        assert answers[0].documents[1].content == "test doc 2"
 
     def test_run_with_documents_with_reference_pattern(self):
         component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]")
@@ -116,7 +116,7 @@ class TestAnswerBuilder:
         assert answers[0].metadata == {}
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 1
-        assert answers[0].documents[0].text == "test doc 2"
+        assert answers[0].documents[0].content == "test doc 2"
 
     def test_run_with_documents_with_reference_pattern_and_no_match(self, caplog):
         component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]")
@@ -150,5 +150,5 @@ class TestAnswerBuilder:
         assert answers[0].metadata == {}
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 2
-        assert answers[0].documents[0].text == "test doc 2"
-        assert answers[0].documents[1].text == "test doc 3"
+        assert answers[0].documents[0].content == "test doc 2"
+        assert answers[0].documents[1].content == "test doc 3"

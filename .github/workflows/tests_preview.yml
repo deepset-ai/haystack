@@ -119,7 +119,7 @@ jobs:
         run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run
-        run: pytest -m "unit" test/preview
+        run: pytest -m "not integration" test/preview
 
       - name: Calculate alert data
         id: calculator
@@ -151,7 +151,6 @@ jobs:
                 - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
 
   integration-tests-linux:
     name: Integration / ubuntu-latest
@@ -211,13 +210,12 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-
   integration-tests-macos:
     name: Integration / macos-latest
     needs: unit-tests
     runs-on: macos-latest-xl
     env:
-      HAYSTACK_MPS_ENABLED : false
+      HAYSTACK_MPS_ENABLED: false
     steps:
       - uses: actions/checkout@v4
 
@@ -270,7 +268,6 @@ jobs:
                 - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
 
   integration-tests-windows:
     name: Integration / windows-latest
