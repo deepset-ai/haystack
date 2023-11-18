@@ -112,7 +112,7 @@ def openai_request(
     url: str,
     headers: Dict,
     payload: Dict,
-    timeout: Union[float, Tuple[float, float]] = None,
+    timeout: Optional[Union[float, Tuple[float, float]]] = None,
     read_response: Optional[bool] = True,
     **kwargs,
 ):
