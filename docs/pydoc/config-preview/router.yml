@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/preview/components/routers]
-    modules: ["file_type_router", "metadata_router", "text_language_router"]
+    modules: ["document_joiner", "file_type_router", "metadata_router", "text_language_router"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
