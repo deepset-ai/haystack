@@ -61,7 +61,7 @@ class MetaFieldRanker:
                 """
                 Parameter <weight> must be in range [0,1] but is currently set to '{}'.\n
                 '0' disables sorting by a metadata field, '0.5' assigns equal weight to the previous relevance scores and the metadata field, and '1' ranks by the metadata field only.\n
-                Change the <weight> parameter to a value in range o to 1 when initializing the MetaFieldRanker.
+                Change the <weight> parameter to a value in range 0 to 1 when initializing the MetaFieldRanker.
                 """.format(
                     self.weight
                 )
