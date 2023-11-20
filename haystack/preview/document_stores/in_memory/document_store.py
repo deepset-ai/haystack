@@ -322,11 +322,11 @@ class InMemoryDocumentStore:
         # create Documents with the similarity score for the top k results
         top_documents = []
         for doc, score in sorted(zip(documents_with_embeddings, scores), key=lambda x: x[1], reverse=True)[:top_k]:
-            relevant_doc_dict = doc.to_dict()
-            relevant_doc_dict["score"] = score
+            doc_fields = doc.to_dict()
+            doc_fields["score"] = score
             if return_embedding is False:
-                relevant_doc_dict["embedding"] = None
-            top_documents.append(Document.from_dict(relevant_doc_dict))
+                doc_fields["embedding"] = None
+            top_documents.append(Document.from_dict(doc_fields))
 
         return top_documents
 
