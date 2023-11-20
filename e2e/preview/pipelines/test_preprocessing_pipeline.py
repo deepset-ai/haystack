@@ -75,7 +75,7 @@ def test_preprocessing_pipeline(tmp_path):
     filled_document_store = preprocessing_pipeline.get_component("writer").document_store
     assert filled_document_store.count_documents() == 6
 
-    # Check preprocessed texts and mime_types
+    # Check preprocessed texts
     stored_documents = filled_document_store.filter_documents()
     expected_texts = [
         "This is an english sentence.",
