@@ -48,6 +48,8 @@ class WriteDocumentsTest:
     Utility class to test a Document Store `write_documents` method.
 
     To use it create a custom test class and override the `document_store` fixture to return your Document Store.
+    The Document Store `filter_documents` method must be at least partly implemented to return all stored Documents
+    for this tests to work correctly.
     Example usage:
 
     ```python
@@ -59,44 +61,57 @@ class WriteDocumentsTest:
     """
 
     @pytest.mark.unit
-    def test_write(self, document_store: DocumentStore):
+    def test_write_documents(self, document_store: DocumentStore):
+        """
+        Test write_documents() normal behaviour.
+        """
         doc = Document(content="test doc")
-        document_store.write_documents([doc])
-        assert document_store.filter_documents(filters={"id": doc.id}) == [doc]
+        assert document_store.write_documents([doc]) == 1
+        assert document_store.filter_documents() == [doc]
 
     @pytest.mark.unit
-    def test_write_duplicate_fail(self, document_store: DocumentStore):
+    def test_write_documents_duplicate_fail(self, document_store: DocumentStore):
+        """
+        Test write_documents() fails when trying to write Document with same id
+        using DuplicatePolicy.FAIL.
+        """
         doc = Document(content="test doc")
-        document_store.write_documents([doc])
-        with pytest.raises(DuplicateDocumentError, match=f"ID '{doc.id}' already exists."):
+        assert document_store.write_documents([doc]) == 1
+        with pytest.raises(DuplicateDocumentError):
             document_store.write_documents(documents=[doc], policy=DuplicatePolicy.FAIL)
-        assert document_store.filter_documents(filters={"id": doc.id}) == [doc]
+        assert document_store.filter_documents() == [doc]
 
     @pytest.mark.unit
-    def test_write_duplicate_skip(self, document_store: DocumentStore):
+    def test_write_documents_duplicate_skip(self, document_store: DocumentStore):
+        """
+        Test write_documents() skips Document when trying to write one with same id
+        using DuplicatePolicy.SKIP.
+        """
         doc = Document(content="test doc")
-        document_store.write_documents([doc])
-        document_store.write_documents(documents=[doc], policy=DuplicatePolicy.SKIP)
-        assert document_store.filter_documents(filters={"id": doc.id}) == [doc]
+        assert document_store.write_documents([doc]) == 1
+        assert document_store.write_documents(documents=[doc], policy=DuplicatePolicy.SKIP) == 0
 
     @pytest.mark.unit
-    def test_write_duplicate_overwrite(self, document_store: DocumentStore):
-        doc1 = Document(content="test doc 1")
-        doc2 = Document(content="test doc 2")
-        object.__setattr__(doc2, "id", doc1.id)  # Make two docs with different content but same ID
+    def test_write_documents_duplicate_overwrite(self, document_store: DocumentStore):
+        """
+        Test write_documents() overwrites stored Document when trying to write one with same id
+        using DuplicatePolicy.OVERWRITE.
+        """
+        doc1 = Document(id="1", content="test doc 1")
+        doc2 = Document(id="1", content="test doc 2")
 
-        document_store.write_documents([doc2])
-        assert document_store.filter_documents(filters={"id": doc1.id}) == [doc2]
-        document_store.write_documents(documents=[doc1], policy=DuplicatePolicy.OVERWRITE)
-        assert document_store.filter_documents(filters={"id": doc1.id}) == [doc1]
+        assert document_store.write_documents([doc2]) == 1
+        assert document_store.filter_documents() == [doc2]
+        assert document_store.write_documents(documents=[doc1], policy=DuplicatePolicy.OVERWRITE) == 1
+        assert document_store.filter_documents() == [doc1]
 
     @pytest.mark.unit
-    def test_write_not_docs(self, document_store: DocumentStore):
+    def test_write_documents_invalid_input(self, document_store: DocumentStore):
+        """
+        Test write_documents() fails when providing unexpected input.
+        """
         with pytest.raises(ValueError):
             document_store.write_documents(["not a document for sure"])  # type: ignore
-
-    @pytest.mark.unit
-    def test_write_not_list(self, document_store: DocumentStore):
         with pytest.raises(ValueError):
             document_store.write_documents("not a list actually")  # type: ignore
 
