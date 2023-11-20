@@ -105,7 +105,7 @@ class TestMetaFieldRanker:
             Document(id=3, content="abc", meta={"rating": 2.1}, score=0.6),
         ]
         with pytest.warns(
-            UserWarning, match=rf"The score {score} for document 1 is outside the \[0,1\] range; defaulting to 0"
+            UserWarning, match=rf"The score {score} for Document 1 is outside the \[0,1\] range; defaulting to 0"
         ):
             ranker.run(documents=docs_before)
 
@@ -117,5 +117,6 @@ class TestMetaFieldRanker:
             Document(content="abc", meta={"rating": 0.7}),
             Document(content="abc", meta={"rating": 2.1}),
         ]
-        with pytest.warns(UserWarning, match="The score was not provided; defaulting to 0"):
+
+        with pytest.warns(UserWarning, match="The score wasn't provided; defaulting to 0."):
             ranker.run(documents=docs_before)
