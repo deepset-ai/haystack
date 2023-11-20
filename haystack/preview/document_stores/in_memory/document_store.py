@@ -12,7 +12,7 @@ from haystack.preview.document_stores.decorator import document_store
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.protocols import DuplicatePolicy
 from haystack.preview.utils.filters import document_matches_filter
-from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError, DocumentStoreError
+from haystack.preview.document_stores.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.preview.utils import expit
 
 logger = logging.getLogger(__name__)
@@ -198,13 +198,11 @@ class InMemoryDocumentStore:
     def delete_documents(self, document_ids: List[str]) -> None:
         """
         Deletes all documents with matching document_ids from the DocumentStore.
-        Fails with `MissingDocumentError` if no document with this id is present in the DocumentStore.
-
         :param object_ids: The object_ids to delete.
         """
         for doc_id in document_ids:
             if doc_id not in self.storage.keys():
-                raise MissingDocumentError(f"ID '{doc_id}' not found, cannot delete it.")
+                continue
             del self.storage[doc_id]
 
     def bm25_retrieval(
