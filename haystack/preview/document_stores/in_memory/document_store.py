@@ -163,7 +163,7 @@ class InMemoryDocumentStore:
             return [doc for doc in self.storage.values() if document_matches_filter(conditions=filters, document=doc)]
         return list(self.storage.values())
 
-    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
+    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int:
         """
         Writes (or overwrites) documents into the DocumentStore.
 
@@ -183,13 +183,17 @@ class InMemoryDocumentStore:
         ):
             raise ValueError("Please provide a list of Documents.")
 
+        written_documents = len(documents)
         for document in documents:
             if policy != DuplicatePolicy.OVERWRITE and document.id in self.storage.keys():
                 if policy == DuplicatePolicy.FAIL:
                     raise DuplicateDocumentError(f"ID '{document.id}' already exists.")
                 if policy == DuplicatePolicy.SKIP:
                     logger.warning("ID '%s' already exists", document.id)
+                    written_documents -= 1
+                    continue
             self.storage[document.id] = document
+        return written_documents
 
     def delete_documents(self, document_ids: List[str]) -> None:
         """

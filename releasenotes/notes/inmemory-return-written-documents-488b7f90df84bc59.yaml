@@ -1,0 +1,2 @@
+preview:
+  - Make `InMemoryDocumentStore.write_documents()` return the number of docs actually written
