@@ -1,5 +1,5 @@
 ---
 preview:
   - |
-    Renamed Reader's confidence_threshold to probability_threshold as ExtractedAnswers have a probability and this is what the threshold is for.
-    For consistency, the terms confidence or score are not mentioned anymore in favor of probability.
+    Renamed Reader's confidence_threshold to score_threshold as ExtractedAnswers have a score and this is what the threshold is for.
+    For consistency, the term confidence is not mentioned anymore in favor of score.

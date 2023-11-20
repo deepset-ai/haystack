@@ -19,7 +19,7 @@ with LazyImport(
 class ExtractiveReader:
     """
     A component for performing extractive QA.
-    Every possible answer span is assigned a probability independent of other answer spans. This fixes a common issue of other implementations which make comparisons across documents harder by normalising each document's answers independently.
+    Every possible answer span is assigned a score independent of other answer spans. This fixes a common issue of other implementations which make comparisons across documents harder by normalising each document's answers independently.
 
     Example usage:
     ```python
@@ -38,7 +38,7 @@ class ExtractiveReader:
         device: Optional[str] = None,
         token: Union[bool, str, None] = None,
         top_k: int = 20,
-        probability_threshold: Optional[float] = None,
+        score_threshold: Optional[float] = None,
         max_seq_length: int = 384,
         stride: int = 128,
         max_batch_size: Optional[int] = None,
@@ -57,9 +57,9 @@ class ExtractiveReader:
             If this parameter is set to `True`, then the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) will be used.
         :param top_k: Number of answers to return per query.
-            It is required even if probability_threshold is set. Defaults to 20.
+            It is required even if score_threshold is set. Defaults to 20.
             An additional answer is returned if no_answer is set to True (default).
-        :param probability_threshold: Answers with a probability below this value will not be returned
+        :param score_threshold: Answers with a score below this value will not be returned
         :param max_seq_length: Maximum number of tokens.
             If exceeded by a sequence, the sequence will be split.
             Default: 384
@@ -68,8 +68,8 @@ class ExtractiveReader:
         :param max_batch_size: Maximum number of samples that are fed through the model at the same time
         :param answers_per_seq: Number of answer candidates to consider per sequence.
             This is relevant when a document has been split into multiple sequence due to max_seq_length.
-        :param no_answer: Whether to return an additional `no answer` with an empty text and the probability that the
-            other top_k answers are incorrect.
+        :param no_answer: Whether to return an additional `no answer` with an empty text and a score representing the
+            probability that the other top_k answers are incorrect.
         :param calibration_factor: Factor used for calibrating probabilities
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
             when loading the model specified in `model_name_or_path`.
@@ -81,7 +81,7 @@ class ExtractiveReader:
         self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
-        self.probability_threshold = probability_threshold
+        self.score_threshold = score_threshold
         self.stride = stride
         self.max_batch_size = max_batch_size
         self.answers_per_seq = answers_per_seq
@@ -106,7 +106,7 @@ class ExtractiveReader:
             token=self.token if not isinstance(self.token, str) else None,
             max_seq_length=self.max_seq_length,
             top_k=self.top_k,
-            probability_threshold=self.probability_threshold,
+            score_threshold=self.score_threshold,
             stride=self.stride,
             max_batch_size=self.max_batch_size,
             answers_per_seq=self.answers_per_seq,
@@ -238,13 +238,13 @@ class ExtractiveReader:
         queries: List[str],
         answers_per_seq: int,
         top_k: Optional[int],
-        probability_threshold: Optional[float],
+        score_threshold: Optional[float],
         query_ids: List[int],
         document_ids: List[int],
         no_answer: bool,
     ) -> List[List[ExtractedAnswer]]:
         """
-        Reconstructs the nested structure that existed before flattening. Also computes a no answer probability. This probability is different from most other implementations because it does not consider the no answer logit introduced with SQuAD 2. Instead, it just computes the probability that the answer does not exist in the top k or top p.
+        Reconstructs the nested structure that existed before flattening. Also computes a no answer score. This score is different from most other implementations because it does not consider the no answer logit introduced with SQuAD 2. Instead, it just computes the probability that the answer does not exist in the top k or top p.
         """
         flat_answers_without_queries = []
         for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
@@ -271,8 +271,8 @@ class ExtractiveReader:
                 )
                 current_answers.append(answer_)
             current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
-            if probability_threshold is not None:
-                current_answers = [answer for answer in current_answers if answer.probability >= probability_threshold]
+            if score_threshold is not None:
+                current_answers = [answer for answer in current_answers if answer.probability >= score_threshold]
             nested_answers.append(current_answers)
 
         return nested_answers
@@ -283,7 +283,7 @@ class ExtractiveReader:
         query: str,
         documents: List[Document],
         top_k: Optional[int] = None,
-        probability_threshold: Optional[float] = None,
+        score_threshold: Optional[float] = None,
         max_seq_length: Optional[int] = None,
         stride: Optional[int] = None,
         max_batch_size: Optional[int] = None,
@@ -297,7 +297,7 @@ class ExtractiveReader:
         :param documents: List of Documents to search for an answer to the query.
         :param top_k: The maximum number of answers to return.
             An additional answer is returned if no_answer is set to True (default).
-        :return: List of ExtractedAnswers sorted by (desc.) answer probability.
+        :return: List of ExtractedAnswers sorted by (desc.) answer score.
         """
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2
         nested_documents = [documents]
@@ -305,7 +305,7 @@ class ExtractiveReader:
             raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
 
         top_k = top_k or self.top_k
-        probability_threshold = probability_threshold or self.probability_threshold
+        score_threshold = score_threshold or self.score_threshold
         max_seq_length = max_seq_length or self.max_seq_length
         stride = stride or self.stride
         max_batch_size = max_batch_size or self.max_batch_size
@@ -353,7 +353,7 @@ class ExtractiveReader:
             queries,
             answers_per_seq,
             top_k,
-            probability_threshold,
+            score_threshold,
             query_ids,
             document_ids,
             no_answer,
