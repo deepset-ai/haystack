@@ -22,7 +22,7 @@ class DynamicPromptBuilder:
     allows DynamicPromptBuilder to be versatile in handling different types of prompt sources, making it suitable for
     both chat-based and non-chat-based prompt generation scenarios.
 
-    Additional template variables can be provided directly to the pipeline `run` method, which are merged with the
+    You can provide additional template variables directly to the pipeline `run` method. They are then merged with the
     variables resolved from the pipeline runtime. This allows for greater flexibility and customization of the
     generated prompts based on runtime conditions and user inputs.
 
@@ -60,8 +60,8 @@ class DynamicPromptBuilder:
     >> 'completion_tokens': 153, 'total_tokens': 185}})]}}
     ```
 
-    The following example demonstrates how to use DynamicPromptBuilder to generate chat prompt but with resolution
-    of pipeline runtime variables (i.e. documents):
+    The following example demonstrates how to use DynamicPromptBuilder to generate a chat prompt with resolution
+    of pipeline runtime variables (such as documents):
 
     ```python
     from haystack.preview.components.builders import DynamicPromptBuilder
@@ -107,7 +107,7 @@ class DynamicPromptBuilder:
     >> {'prompt_tokens': 51, 'completion_tokens': 2, 'total_tokens': 53}})]}}
     ```
 
-    Similarly to chat prompt generation, DynamicPromptBuilder can also be used to generate non-chat based prompts.
+    Similarly to chat prompt generation, you can use DynamicPromptBuilder to generate non-chat-based prompts.
     The following example demonstrates how to use DynamicPromptBuilder to generate a non-chat prompt:
 
     ```python
@@ -150,14 +150,14 @@ class DynamicPromptBuilder:
         Initializes DynamicPromptBuilder with the provided variable names. These variable names are used to resolve
         variables and their values during pipeline runtime execution. Depending on the components connected to the
         DynamicPromptBuilder in the pipeline, these variable names can be different. For example, if your component
-        connected to the DynamicPromptBuilder has an output named `documents`, the expected_runtime_variables should
+        connected to the DynamicPromptBuilder has an output named `documents`, the `expected_runtime_variables` should
         contain `documents` as one of its values. The values associated with variables from the pipeline runtime are
         then injected into template placeholders of either a ChatMessage or a string template that is provided to
         the `run` method. See run method for more details.
 
-        :param expected_runtime_variables: A list of template variable names to be used in chat prompt construction.
+        :param expected_runtime_variables: A list of template variable names you can use in chat prompt construction.
         :type expected_runtime_variables: Optional[List[str]]
-        :param chat_mode: A boolean flag to indicate if the chat prompt is being built for a chat based prompt
+        :param chat_mode: A boolean flag to indicate if the chat prompt is being built for a chat-based prompt
         templating. Defaults to True.
         :type chat_mode: Optional[bool]
         """
@@ -203,15 +203,15 @@ class DynamicPromptBuilder:
         **kwargs,
     ):
         """
-        Executes the dynamic prompt building process. Depending on the type of `prompt_source` provided, this method
+        Executes the dynamic prompt building process. Depending on the provided type of `prompt_source`, this method
         either processes a list of `ChatMessage` instances or a string template. In the case of `ChatMessage` instances,
         the last user message is treated as a template and rendered with the resolved pipeline variables and any
         additional template variables provided. For a string template, it directly applies the template variables to
-        render the final prompt. Additional template variables can be provided directly to this method, which are merged
+        render the final prompt. You can provide additional template variables directly to this method, that are then merged
         with the variables resolved from the pipeline runtime.
 
         :param prompt_source: A list of `ChatMessage` instances or a string template. The list scenario assumes the last
-        user message as the template for the chat prompt, while the string scenario is used for non-chat based prompts.
+        user message as the template for the chat prompt, while the string scenario is used for non-chat-based prompts.
         :type prompt_source: Union[List[ChatMessage], str]
 
         :param template_variables: An optional dictionary of template variables. Template variables provided at
@@ -232,7 +232,7 @@ class DynamicPromptBuilder:
         if not template_variables_combined:
             raise ValueError(
                 "The DynamicPromptBuilder run method requires template variables, but none were provided. "
-                "Please provide appropriate template variable to enable prompt generation."
+                "Please provide an appropriate template variable to enable prompt generation."
             )
         # some of these checks are superfluous because pipeline will check them as well but let's
         # handle them anyway for better error messages and robustness
@@ -281,7 +281,7 @@ class DynamicPromptBuilder:
         templated version.
         :rtype: List[ChatMessage]
 
-        :raises ValueError: If `chat_messages` is empty or if it contains elements that are not instances of
+        :raises ValueError: If `chat_messages` is empty or contains elements that are not instances of
         `ChatMessage`.
         :raises ValueError: If the last message in `chat_messages` is not from a user.
         """
