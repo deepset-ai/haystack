@@ -13,9 +13,12 @@ class TestUrlCacheChecker:
         component = UrlCacheChecker(document_store=mocked_docstore_class())
         data = component.to_dict()
         assert data == {
-            "type": "UrlCacheChecker",
+            "type": "haystack.preview.components.caching.url_cache_checker.UrlCacheChecker",
             "init_parameters": {
-                "document_store": {"type": "MockedDocumentStore", "init_parameters": {}},
+                "document_store": {
+                    "type": "haystack.preview.testing.factory.MockedDocumentStore",
+                    "init_parameters": {},
+                },
                 "url_field": "url",
             },
         }
@@ -26,9 +29,12 @@ class TestUrlCacheChecker:
         component = UrlCacheChecker(document_store=mocked_docstore_class(), url_field="my_url_field")
         data = component.to_dict()
         assert data == {
-            "type": "UrlCacheChecker",
+            "type": "haystack.preview.components.caching.url_cache_checker.UrlCacheChecker",
             "init_parameters": {
-                "document_store": {"type": "MockedDocumentStore", "init_parameters": {}},
+                "document_store": {
+                    "type": "haystack.preview.testing.factory.MockedDocumentStore",
+                    "init_parameters": {},
+                },
                 "url_field": "my_url_field",
             },
         }
@@ -37,9 +43,12 @@ class TestUrlCacheChecker:
     def test_from_dict(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
         data = {
-            "type": "UrlCacheChecker",
+            "type": "haystack.preview.components.caching.url_cache_checker.UrlCacheChecker",
             "init_parameters": {
-                "document_store": {"type": "MockedDocumentStore", "init_parameters": {}},
+                "document_store": {
+                    "type": "haystack.preview.testing.factory.MockedDocumentStore",
+                    "init_parameters": {},
+                },
                 "url_field": "my_url_field",
             },
         }
@@ -49,20 +58,23 @@ class TestUrlCacheChecker:
 
     @pytest.mark.unit
     def test_from_dict_without_docstore(self):
-        data = {"type": "UrlCacheChecker", "init_parameters": {}}
+        data = {"type": "haystack.preview.components.caching.url_cache_checker.UrlCacheChecker", "init_parameters": {}}
         with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
             UrlCacheChecker.from_dict(data)
 
     @pytest.mark.unit
     def test_from_dict_without_docstore_type(self):
-        data = {"type": "UrlCacheChecker", "init_parameters": {"document_store": {"init_parameters": {}}}}
+        data = {
+            "type": "haystack.preview.components.caching.url_cache_checker.UrlCacheChecker",
+            "init_parameters": {"document_store": {"init_parameters": {}}},
+        }
         with pytest.raises(DeserializationError, match="Missing 'type' in document store's serialization data"):
             UrlCacheChecker.from_dict(data)
 
     @pytest.mark.unit
     def test_from_dict_nonexisting_docstore(self):
         data = {
-            "type": "UrlCacheChecker",
+            "type": "haystack.preview.components.caching.url_cache_checker.UrlCacheChecker",
             "init_parameters": {"document_store": {"type": "NonexistingDocumentStore", "init_parameters": {}}},
         }
         with pytest.raises(DeserializationError, match="DocumentStore of type 'NonexistingDocumentStore' not found."):

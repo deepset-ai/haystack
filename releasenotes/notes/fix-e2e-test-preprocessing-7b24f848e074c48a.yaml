@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Updated end-to-end test to use the DocumentLanguageClassifier with a MetadataRouter in a preprocessing pipeline.

@@ -8,7 +8,7 @@ from haystack.preview.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]==4.34.1'") as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 

@@ -53,7 +53,7 @@ class TestSentenceTransformersDocumentEmbedder:
         component = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
         data = component.to_dict()
         assert data == {
-            "type": "SentenceTransformersDocumentEmbedder",
+            "type": "haystack.preview.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
                 "device": "cpu",
@@ -85,7 +85,7 @@ class TestSentenceTransformersDocumentEmbedder:
         data = component.to_dict()
 
         assert data == {
-            "type": "SentenceTransformersDocumentEmbedder",
+            "type": "haystack.preview.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
                 "device": "cuda",

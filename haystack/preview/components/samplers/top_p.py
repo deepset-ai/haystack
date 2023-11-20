@@ -7,7 +7,7 @@ from haystack.preview.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport(message="Run 'pip install torch>=1.13'") as torch_import:
+with LazyImport(message="Run 'pip install \"torch>=1.13\"'") as torch_import:
     import torch
 
 

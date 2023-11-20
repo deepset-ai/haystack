@@ -112,7 +112,7 @@ def openai_request(
     url: str,
     headers: Dict,
     payload: Dict,
-    timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT,
+    timeout: Optional[Union[float, Tuple[float, float]]] = None,
     read_response: Optional[bool] = True,
     **kwargs,
 ):
@@ -124,6 +124,8 @@ def openai_request(
     :param timeout: The timeout length of the request. The default is 30s.
     :param read_response: Whether to read the response as JSON. The default is True.
     """
+    if timeout is None:
+        timeout = OPENAI_TIMEOUT
     response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout, **kwargs)
     if read_response:
         json_response = json.loads(response.text)
