@@ -326,7 +326,7 @@ class InMemoryDocumentStore:
             doc_fields["score"] = score
             if return_embedding is False:
                 doc_fields["embedding"] = None
-            top_documents.append(Document(**doc_fields))
+            top_documents.append(Document.from_dict(doc_fields))
 
         return top_documents
 
