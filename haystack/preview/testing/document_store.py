@@ -8,7 +8,7 @@ import pandas as pd
 
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores import DocumentStore, DuplicatePolicy
-from haystack.preview.document_stores.errors import MissingDocumentError, DuplicateDocumentError
+from haystack.preview.document_stores.errors import DuplicateDocumentError
 from haystack.preview.errors import FilterError
 
 
@@ -121,6 +121,7 @@ class DeleteDocumentsTest:
     Utility class to test a Document Store `delete_documents` method.
 
     To use it create a custom test class and override the `document_store` fixture to return your Document Store.
+    The Document Store `write_documents` and `count_documents` methods must be implemented for this tests to work correctly.
     Example usage:
 
     ```python
@@ -132,29 +133,37 @@ class DeleteDocumentsTest:
     """
 
     @pytest.mark.unit
-    def test_delete_empty(self, document_store: DocumentStore):
-        with pytest.raises(MissingDocumentError):
-            document_store.delete_documents(["test"])
-
-    @pytest.mark.unit
-    def test_delete_not_empty(self, document_store: DocumentStore):
+    def test_delete_documents(self, document_store: DocumentStore):
+        """
+        Test delete_documents() normal behaviour.
+        """
         doc = Document(content="test doc")
         document_store.write_documents([doc])
+        assert document_store.count_documents() == 1
 
         document_store.delete_documents([doc.id])
-
-        with pytest.raises(Exception):
-            assert document_store.filter_documents(filters={"id": doc.id})
+        assert document_store.count_documents() == 0
 
     @pytest.mark.unit
-    def test_delete_not_empty_nonexisting(self, document_store: DocumentStore):
+    def test_delete_documents_empty_document_store(self, document_store: DocumentStore):
+        """
+        Test delete_documents() doesn't fail when called using an empty Document Store.
+        """
+        document_store.delete_documents(["non_existing_id"])
+
+    @pytest.mark.unit
+    def test_delete_documents_non_existing_document(self, document_store: DocumentStore):
+        """
+        Test delete_documents() doesn't delete any Document when called with non existing id.
+        """
         doc = Document(content="test doc")
         document_store.write_documents([doc])
+        assert document_store.count_documents() == 1
 
-        with pytest.raises(MissingDocumentError):
-            document_store.delete_documents(["non_existing"])
+        document_store.delete_documents(["non_existing_id"])
 
-        assert document_store.filter_documents(filters={"id": doc.id}) == [doc]
+        # No Document has been deleted
+        assert document_store.count_documents() == 1
 
 
 class FilterableDocsFixtureMixin:
