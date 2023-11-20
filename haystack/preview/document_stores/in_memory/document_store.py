@@ -1,3 +1,4 @@
+from copy import copy
 import re
 from typing import Literal, Any, Dict, List, Optional, Iterable
 
@@ -322,10 +323,11 @@ class InMemoryDocumentStore:
         # create Documents with the similarity score for the top k results
         top_documents = []
         for doc, score in sorted(zip(documents_with_embeddings, scores), key=lambda x: x[1], reverse=True)[:top_k]:
-            doc.score = score
+            relevant_doc = copy(doc)
+            relevant_doc.score = score
             if return_embedding is False:
-                doc.embedding = None
-            top_documents.append(doc)
+                relevant_doc.embedding = None
+            top_documents.append(relevant_doc)
 
         return top_documents
 
