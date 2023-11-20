@@ -17,13 +17,13 @@ class DocumentJoiner:
     A component that joins input lists of Documents from multiple connections and outputs them as one list.
 
     The component allows multiple join modes:
-    * concatenate: Combine Documents from multiple components. Any duplicate Documents are discarded.
+    * concatenate: Combine Documents from multiple components. Discards duplicate Documents.
                     Documents get their scores from the last component in the pipeline that assigns scores.
                     This join mode doesn't influence Document scores.
     * merge: Merge scores of duplicate Documents coming from multiple components.
             Optionally, you can assign a weight to the scores and set the top_k limit for this join mode.
             You can also use this join mode to rerank retrieved Documents.
-    * reciprocal_rank_fusion: Combine Documents based on their ranking received from multiple components.
+    * reciprocal_rank_fusion: Combine Documents into a single list based on their ranking received from multiple components.
 
     Example usage in a hybrid retrieval pipeline:
     ```python
@@ -47,12 +47,12 @@ class DocumentJoiner:
         """
         Initialize the DocumentJoiner.
 
-        :param join_mode: `concatenate` to combine Documents from multiple Retrievers, `merge` to aggregate scores of
-                          individual Documents, `reciprocal_rank_fusion` to apply rank based scoring.
-        :param weights: A component-wise list (length of list must be equal to the number of input components) of weights for
+        :param join_mode: Specifies the join mode to use. Available modes: `concatenate` to combine Documents from multiple Retrievers, `merge` to aggregate the scores of
+                          individual Documents, `reciprocal_rank_fusion` to apply rank-based scoring.
+        :param weights: A component-wise list (the length of the list must be equal to the number of input components) of weights for
                         adjusting Document scores when using the `merge` join_mode. By default, equal weight is given
                         to each Retriever score. This param is not compatible with the `concatenate` join_mode.
-        :param top_k: How many Documents should be returned in the output at maximum. By default, all are returned.
+        :param top_k: The maximum number of Documents to be returned as output. By default, returns all Documents.
         :param sort_by_score: Whether the output list of Documents should be sorted by Document scores in descending order.
                               By default, the output is sorted.
                               Documents without score are handled as if their score was -infinity.
