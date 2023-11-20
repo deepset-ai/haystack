@@ -21,7 +21,7 @@ class DocumentJoiner:
                    The score is only determined by the last node that outputs the document.
     * merge: merge scores of documents from multiple nodes. Optionally, each input score can be given a different
              `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
-    * reciprocal_rank_fusion: combines the documents based on their rank in multiple nodes.
+    * reciprocal_rank_fusion: combines the Documents into a single list based on their rank in multiple nodes.
 
     Example usage in a hybrid retrieval pipeline:
     ```python
@@ -45,12 +45,12 @@ class DocumentJoiner:
         """
         Initialize the DocumentJoiner.
 
-        :param join_mode: `concatenate` to combine documents from multiple retrievers, `merge` to aggregate scores of
-                          individual documents, `reciprocal_rank_fusion` to apply rank based scoring.
-        :param weights: A node-wise list(length of list must be equal to the number of input nodes) of weights for
+        :param join_mode: Specifies the join mode to use. Available modes: `concatenate` to combine Documents from multiple Retrievers, `merge` to aggregate the scores of
+                          individual Documents, `reciprocal_rank_fusion` to apply rank-based scoring.
+        :param weights: A component-wise list (the length of the list must be equal to the number of input components) of weights for
                         adjusting document scores when using the `merge` join_mode. By default, equal weight is given
                         to each retriever score. This param is not compatible with the `concatenate` join_mode.
-        :param top_k: How many documents should be returned in the output at maximum. By default, all are returned.
+        :param top_k: The maximum number of Documents to be returned as output. By default, returns all Documents.
         :param sort_by_score: Whether the output list of documents should be sorted by document scores in descending order. By default the output is sorted. Documents without score are handled as if their score was -infinity.
         """
         if join_mode not in ["concatenate", "merge", "reciprocal_rank_fusion"]:
