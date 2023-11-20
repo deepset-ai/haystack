@@ -128,7 +128,7 @@ class TestDocumentJoiner:
         with caplog.at_level(logging.INFO):
             documents = [Document(content="a"), Document(content="b", score=0.5)]
             output = joiner.run([documents])
-            assert "documents were sorted as if their score was `-infinity`" in caplog.text
+            assert "those with score=None were sorted as if they had a score of -infinity" in caplog.text
             assert output["documents"] == documents[::-1]
 
     @pytest.mark.unit
