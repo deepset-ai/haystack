@@ -120,4 +120,3 @@ class TestMetaFieldRanker:
 
         with pytest.warns(UserWarning, match="The score wasn't provided; defaulting to 0."):
             ranker.run(query="", documents=docs_before)
-
