@@ -14,14 +14,16 @@ logger = logging.getLogger(__name__)
 @component
 class DocumentJoiner:
     """
-    A component that joins input lists of documents from multiple connections and outputs them as one list.
+    A component that joins input lists of Documents from multiple connections and outputs them as one list.
 
     The component allows multiple join modes:
-    * concatenate: combine the documents from multiple nodes. Any duplicate documents are discarded.
-                   The score is only determined by the last node that outputs the document.
-    * merge: merge scores of documents from multiple nodes. Optionally, each input score can be given a different
-             `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
-    * reciprocal_rank_fusion: combines the documents based on their rank in multiple nodes.
+    * concatenate: Combine Documents from multiple components. Any duplicate Documents are discarded.
+                    Documents get their scores from the last component in the pipeline that assigns scores.
+                    This join mode doesn't influence Document scores.
+    * merge: Merge scores of duplicate Documents coming from multiple components.
+            Optionally, you can assign a weight to the scores and set the top_k limit for this join mode.
+            You can also use this join mode to rerank retrieved Documents.
+    * reciprocal_rank_fusion: Combine Documents based on their ranking received from multiple components.
 
     Example usage in a hybrid retrieval pipeline:
     ```python
@@ -45,13 +47,15 @@ class DocumentJoiner:
         """
         Initialize the DocumentJoiner.
 
-        :param join_mode: `concatenate` to combine documents from multiple retrievers, `merge` to aggregate scores of
-                          individual documents, `reciprocal_rank_fusion` to apply rank based scoring.
-        :param weights: A node-wise list(length of list must be equal to the number of input nodes) of weights for
-                        adjusting document scores when using the `merge` join_mode. By default, equal weight is given
-                        to each retriever score. This param is not compatible with the `concatenate` join_mode.
-        :param top_k: How many documents should be returned in the output at maximum. By default, all are returned.
-        :param sort_by_score: Whether the output list of documents should be sorted by document scores in descending order. By default the output is sorted. Documents without score are handled as if their score was -infinity.
+        :param join_mode: `concatenate` to combine Documents from multiple Retrievers, `merge` to aggregate scores of
+                          individual Documents, `reciprocal_rank_fusion` to apply rank based scoring.
+        :param weights: A component-wise list (length of list must be equal to the number of input components) of weights for
+                        adjusting Document scores when using the `merge` join_mode. By default, equal weight is given
+                        to each Retriever score. This param is not compatible with the `concatenate` join_mode.
+        :param top_k: How many Documents should be returned in the output at maximum. By default, all are returned.
+        :param sort_by_score: Whether the output list of Documents should be sorted by Document scores in descending order.
+                              By default, the output is sorted.
+                              Documents without score are handled as if their score was -infinity.
         """
         if join_mode not in ["concatenate", "merge", "reciprocal_rank_fusion"]:
             raise ValueError(f"DocumentJoiner component does not support '{join_mode}' join_mode.")
@@ -63,9 +67,9 @@ class DocumentJoiner:
     @component.output_types(documents=List[Document])
     def run(self, documents: Variadic[List[Document]]):
         """
-        Run the DocumentJoiner. This method joins the input lists of documents into one output list based on the join_mode specified during initialization.
+        Run the DocumentJoiner. This method joins the input lists of Documents into one output list based on the join_mode specified during initialization.
 
-        :param documents: An arbitrary number of lists of documents to join.
+        :param documents: An arbitrary number of lists of Documents to join.
         """
         output_documents = []
         if self.join_mode == "concatenate":
@@ -81,9 +85,8 @@ class DocumentJoiner:
             )
             if any(doc.score is None for doc in output_documents):
                 logger.info(
-                    "The `DocumentJoiner` component has received some documents with `score=None` - and was requested "
-                    "to sort the documents by score, so the `score=None` documents were sorted as if their "
-                    "score was `-infinity`."
+                    "Some of the Documents DocumentJoiner got have score=None. It was configured to sort Documents by "
+                    "score, so those with score=None were sorted as if they had a score of -infinity."
                 )
 
         if self.top_k:
@@ -92,7 +95,7 @@ class DocumentJoiner:
 
     def _concatenate(self, document_lists):
         """
-        Concatenate multiple lists of documents and return only the document with the highest score for duplicate documents.
+        Concatenate multiple lists of Documents and return only the Document with the highest score for duplicate Documents.
         """
         output = []
         docs_per_id = defaultdict(list)
@@ -105,7 +108,7 @@ class DocumentJoiner:
 
     def _merge(self, document_lists):
         """
-        Merge multiple lists of documents and calculate a weighted sum of the scores of duplicate documents.
+        Merge multiple lists of Documents and calculate a weighted sum of the scores of duplicate Documents.
         """
         scores_map = defaultdict(int)
         documents_map = {}
@@ -123,7 +126,7 @@ class DocumentJoiner:
 
     def _reciprocal_rank_fusion(self, document_lists):
         """
-        Merge multiple lists of documents and assign scores based on reciprocal rank fusion.
+        Merge multiple lists of Documents and assign scores based on reciprocal rank fusion.
         The constant k is set to 61 (60 was suggested by the original paper,
         plus 1 as python lists are 0-based and the paper used 1-based ranking).
         """
