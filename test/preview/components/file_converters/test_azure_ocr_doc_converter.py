@@ -18,7 +18,7 @@ class TestAzureOCRDocumentConverter:
         component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
         data = component.to_dict()
         assert data == {
-            "type": "AzureOCRDocumentConverter",
+            "type": "haystack.preview.components.file_converters.azure.AzureOCRDocumentConverter",
             "init_parameters": {"endpoint": "test_endpoint", "model_id": "prebuilt-read"},
         }
 

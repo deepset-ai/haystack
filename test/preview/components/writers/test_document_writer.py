@@ -15,9 +15,12 @@ class TestDocumentWriter:
         component = DocumentWriter(document_store=mocked_docstore_class())
         data = component.to_dict()
         assert data == {
-            "type": "DocumentWriter",
+            "type": "haystack.preview.components.writers.document_writer.DocumentWriter",
             "init_parameters": {
-                "document_store": {"type": "MockedDocumentStore", "init_parameters": {}},
+                "document_store": {
+                    "type": "haystack.preview.testing.factory.MockedDocumentStore",
+                    "init_parameters": {},
+                },
                 "policy": "FAIL",
             },
         }
@@ -28,9 +31,12 @@ class TestDocumentWriter:
         component = DocumentWriter(document_store=mocked_docstore_class(), policy=DuplicatePolicy.SKIP)
         data = component.to_dict()
         assert data == {
-            "type": "DocumentWriter",
+            "type": "haystack.preview.components.writers.document_writer.DocumentWriter",
             "init_parameters": {
-                "document_store": {"type": "MockedDocumentStore", "init_parameters": {}},
+                "document_store": {
+                    "type": "haystack.preview.testing.factory.MockedDocumentStore",
+                    "init_parameters": {},
+                },
                 "policy": "SKIP",
             },
         }
@@ -39,9 +45,12 @@ class TestDocumentWriter:
     def test_from_dict(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
         data = {
-            "type": "DocumentWriter",
+            "type": "haystack.preview.components.writers.document_writer.DocumentWriter",
             "init_parameters": {
-                "document_store": {"type": "MockedDocumentStore", "init_parameters": {}},
+                "document_store": {
+                    "type": "haystack.preview.testing.factory.MockedDocumentStore",
+                    "init_parameters": {},
+                },
                 "policy": "SKIP",
             },
         }

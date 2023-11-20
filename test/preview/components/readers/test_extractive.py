@@ -93,7 +93,7 @@ def test_to_dict():
     data = component.to_dict()
 
     assert data == {
-        "type": "ExtractiveReader",
+        "type": "haystack.preview.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
             "model_name_or_path": "my-model",
             "device": None,
@@ -117,7 +117,7 @@ def test_to_dict_empty_model_kwargs():
     data = component.to_dict()
 
     assert data == {
-        "type": "ExtractiveReader",
+        "type": "haystack.preview.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
             "model_name_or_path": "my-model",
             "device": None,

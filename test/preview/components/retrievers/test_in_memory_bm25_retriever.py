@@ -51,7 +51,7 @@ class TestMemoryBM25Retriever:
 
         data = component.to_dict()
         assert data == {
-            "type": "InMemoryBM25Retriever",
+            "type": "haystack.preview.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": None,
@@ -70,7 +70,7 @@ class TestMemoryBM25Retriever:
         )
         data = component.to_dict()
         assert data == {
-            "type": "InMemoryBM25Retriever",
+            "type": "haystack.preview.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": {"name": "test.txt"},
@@ -83,9 +83,9 @@ class TestMemoryBM25Retriever:
     def test_from_dict(self):
         document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         data = {
-            "type": "InMemoryBM25Retriever",
+            "type": "haystack.preview.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {
-                "document_store": {"type": "MyFakeStore", "init_parameters": {}},
+                "document_store": {"type": "haystack.preview.testing.factory.MyFakeStore", "init_parameters": {}},
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
             },
@@ -111,7 +111,7 @@ class TestMemoryBM25Retriever:
     @pytest.mark.unit
     def test_from_dict_nonexisting_docstore(self):
         data = {
-            "type": "InMemoryBM25Retriever",
+            "type": "haystack.preview.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {"document_store": {"type": "NonexistingDocstore", "init_parameters": {}}},
         }
         with pytest.raises(DeserializationError, match="DocumentStore type 'NonexistingDocstore' not found"):
