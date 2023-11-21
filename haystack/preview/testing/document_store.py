@@ -3,7 +3,6 @@ from typing import List
 import random
 
 import pytest
-import numpy as np
 import pandas as pd
 
 from haystack.preview.dataclasses import Document
@@ -14,6 +13,13 @@ from haystack.preview.errors import FilterError
 
 def _random_embeddings(n):
     return [random.random() for _ in range(n)]
+
+
+# These are random embedding that are used to test filters.
+# We declare them here as they're used both in the `filterable_docs` fixture
+# and the body of several `filter_documents` tests.
+TEST_EMBEDDING_1 = _random_embeddings(768)
+TEST_EMBEDDING_2 = _random_embeddings(768)
 
 
 class CountDocumentsTest:
@@ -173,9 +179,6 @@ class FilterableDocsFixtureMixin:
 
     @pytest.fixture
     def filterable_docs(self) -> List[Document]:
-        embedding_zero = [0.0] * 768
-        embedding_one = [1.0] * 768
-
         documents = []
         for i in range(3):
             documents.append(
@@ -207,10 +210,10 @@ class FilterableDocsFixtureMixin:
             )
             documents.append(Document(dataframe=pd.DataFrame([i]), meta={"name": f"table_doc_{i}"}))
             documents.append(
-                Document(content=f"Doc {i} with zeros emb", meta={"name": "zeros_doc"}, embedding=embedding_zero)
+                Document(content=f"Doc {i} with zeros emb", meta={"name": "zeros_doc"}, embedding=TEST_EMBEDDING_1)
             )
             documents.append(
-                Document(content=f"Doc {i} with ones emb", meta={"name": "ones_doc"}, embedding=embedding_one)
+                Document(content=f"Doc {i} with ones emb", meta={"name": "ones_doc"}, embedding=TEST_EMBEDDING_2)
             )
         return documents
 
@@ -348,13 +351,8 @@ class LegacyFilterDocumentsNotEqualTest(FilterableDocsFixtureMixin):
     @pytest.mark.unit
     def test_ne_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
-        embedding = np.zeros([768, 1]).astype(np.float32)
-        result = document_store.filter_documents(filters={"embedding": {"$ne": embedding}})
-        assert result == [
-            doc
-            for doc in filterable_docs
-            if not isinstance(doc.dataframe, np.ndarray) or not np.array_equal(embedding, doc.embedding)  # type: ignore
-        ]
+        result = document_store.filter_documents(filters={"embedding": {"$ne": TEST_EMBEDDING_1}})
+        assert result == [doc for doc in filterable_docs if doc.embedding != TEST_EMBEDDING_1]
 
 
 class LegacyFilterDocumentsInTest(FilterableDocsFixtureMixin):
@@ -467,14 +465,8 @@ class LegacyFilterDocumentsNotInTest(FilterableDocsFixtureMixin):
     @pytest.mark.unit
     def test_nin_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
-        embedding_zeros = np.zeros([768, 1]).astype(np.float32)
-        embedding_ones = np.zeros([768, 1]).astype(np.float32)
-        result = document_store.filter_documents(filters={"embedding": {"$nin": [embedding_ones, embedding_zeros]}})
-        assert result == [
-            doc
-            for doc in filterable_docs
-            if not (np.array_equal(embedding_zeros, doc.embedding) or np.array_equal(embedding_ones, doc.embedding))  # type: ignore[arg-type]
-        ]
+        result = document_store.filter_documents(filters={"embedding": {"$nin": [TEST_EMBEDDING_1, TEST_EMBEDDING_2]}})
+        assert result == [doc for doc in filterable_docs if doc.embedding not in [TEST_EMBEDDING_1, TEST_EMBEDDING_2]]
 
     @pytest.mark.unit
     def test_nin_filter(self, document_store: DocumentStore, filterable_docs: List[Document]):
@@ -519,9 +511,8 @@ class LegacyFilterDocumentsGreaterThanTest(FilterableDocsFixtureMixin):
     @pytest.mark.unit
     def test_gt_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
-        embedding_zeros = np.zeros([768, 1]).astype(np.float32)
         with pytest.raises(FilterError):
-            document_store.filter_documents(filters={"embedding": {"$gt": embedding_zeros}})
+            document_store.filter_documents(filters={"embedding": {"$gt": TEST_EMBEDDING_1}})
 
 
 class LegacyFilterDocumentsGreaterThanEqualTest(FilterableDocsFixtureMixin):
@@ -560,9 +551,8 @@ class LegacyFilterDocumentsGreaterThanEqualTest(FilterableDocsFixtureMixin):
     @pytest.mark.unit
     def test_gte_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
-        embedding_zeros = np.zeros([768, 1]).astype(np.float32)
         with pytest.raises(FilterError):
-            document_store.filter_documents(filters={"embedding": {"$gte": embedding_zeros}})
+            document_store.filter_documents(filters={"embedding": {"$gte": TEST_EMBEDDING_1}})
 
 
 class LegacyFilterDocumentsLessThanTest(FilterableDocsFixtureMixin):
@@ -601,9 +591,8 @@ class LegacyFilterDocumentsLessThanTest(FilterableDocsFixtureMixin):
     @pytest.mark.unit
     def test_lt_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
-        embedding_ones = np.ones([768, 1]).astype(np.float32)
         with pytest.raises(FilterError):
-            document_store.filter_documents(filters={"embedding": {"$lt": embedding_ones}})
+            document_store.filter_documents(filters={"embedding": {"$lt": TEST_EMBEDDING_2}})
 
 
 class LegacyFilterDocumentsLessThanEqualTest(FilterableDocsFixtureMixin):
@@ -642,9 +631,8 @@ class LegacyFilterDocumentsLessThanEqualTest(FilterableDocsFixtureMixin):
     @pytest.mark.unit
     def test_lte_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
-        embedding_ones = np.ones([768, 1]).astype(np.float32)
         with pytest.raises(FilterError):
-            document_store.filter_documents(filters={"embedding": {"$lte": embedding_ones}})
+            document_store.filter_documents(filters={"embedding": {"$lte": TEST_EMBEDDING_1}})
 
 
 class LegacyFilterDocumentsSimpleLogicalTest(FilterableDocsFixtureMixin):
