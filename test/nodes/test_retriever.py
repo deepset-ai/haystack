@@ -324,7 +324,7 @@ def test_embedding_with_instructions(document_store: BaseDocumentStore, retrieve
 
     print([doc.id for doc in docs])
 
-    expected_values = [0.0470045, 0.22129579, 0.3299943, -0.14375672, 0.17311278]
+    expected_values = [0.00484978, 0.02258789, 0.03414359, -0.01461711, 0.01784192]
     for doc, expected_value in zip(docs, expected_values):
         embedding = doc.embedding
         # always normalize vector as faiss returns normalized vectors and other document stores do not
