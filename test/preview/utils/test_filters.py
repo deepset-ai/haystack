@@ -653,9 +653,27 @@ filters_data = [
         },
         id="Root explicit $not",
     ),
+    pytest.param(
+        {"page": {"$not": 102}},
+        {"operator": "NOT", "conditions": [{"field": "page", "operator": "==", "value": 102}]},
+        id="Explicit $not with implicit $eq",
+    ),
 ]
 
 
 @pytest.mark.parametrize("old_style, new_style", filters_data)
 def test_convert(old_style, new_style):
     assert convert(old_style) == new_style
+
+
+def test_convert_with_incorrect_input_type():
+    with pytest.raises(ValueError):
+        convert("some string")
+
+
+def test_convert_with_incorrect_filter_nesting():
+    with pytest.raises(FilterError):
+        convert({"number": {"page": "100"}})
+
+    with pytest.raises(FilterError):
+        convert({"number": {"page": {"chapter": "intro"}}})
