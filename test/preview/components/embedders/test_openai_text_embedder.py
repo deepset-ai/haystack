@@ -59,7 +59,7 @@ class TestOpenAITextEmbedder:
         component = OpenAITextEmbedder(api_key="fake-api-key")
         data = component.to_dict()
         assert data == {
-            "type": "OpenAITextEmbedder",
+            "type": "haystack.preview.components.embedders.openai_text_embedder.OpenAITextEmbedder",
             "init_parameters": {
                 "model_name": "text-embedding-ada-002",
                 "organization": None,
@@ -79,7 +79,7 @@ class TestOpenAITextEmbedder:
         )
         data = component.to_dict()
         assert data == {
-            "type": "OpenAITextEmbedder",
+            "type": "haystack.preview.components.embedders.openai_text_embedder.OpenAITextEmbedder",
             "init_parameters": {
                 "model_name": "model",
                 "organization": "fake-organization",

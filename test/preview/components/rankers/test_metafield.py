@@ -10,7 +10,7 @@ class TestMetaFieldRanker:
         component = MetaFieldRanker(metadata_field="rating")
         data = component.to_dict()
         assert data == {
-            "type": "MetaFieldRanker",
+            "type": "haystack.preview.components.rankers.meta_field.MetaFieldRanker",
             "init_parameters": {
                 "metadata_field": "rating",
                 "weight": 1.0,
@@ -24,22 +24,20 @@ class TestMetaFieldRanker:
         component = MetaFieldRanker(metadata_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score")
         data = component.to_dict()
         assert data == {
-            "type": "MetaFieldRanker",
+            "type": "haystack.preview.components.rankers.meta_field.MetaFieldRanker",
             "init_parameters": {"metadata_field": "rating", "weight": 0.5, "top_k": 5, "ranking_mode": "linear_score"},
         }
 
     @pytest.mark.integration
-    @pytest.mark.parametrize(
-        "query, metafield_values, expected_first_value", [("", [1.3, 0.7, 2.1], 2.1), ("", [1, 5, 8], 8)]
-    )
-    def test_run(self, query, metafield_values, expected_first_value):
+    @pytest.mark.parametrize("metafield_values, expected_first_value", [([1.3, 0.7, 2.1], 2.1), ([1, 5, 8], 8)])
+    def test_run(self, metafield_values, expected_first_value):
         """
         Test if the component ranks documents correctly.
         """
         ranker = MetaFieldRanker(metadata_field="rating")
         docs_before = [Document(content="abc", meta={"rating": value}) for value in metafield_values]
 
-        output = ranker.run(query=query, documents=docs_before)
+        output = ranker.run(documents=docs_before)
         docs_after = output["documents"]
 
         assert len(docs_after) == 3
@@ -51,7 +49,7 @@ class TestMetaFieldRanker:
     @pytest.mark.integration
     def test_returns_empty_list_if_no_documents_are_provided(self):
         ranker = MetaFieldRanker(metadata_field="rating")
-        output = ranker.run(query="", documents=[])
+        output = ranker.run(documents=[])
         docs_after = output["documents"]
         assert docs_after == []
 
@@ -60,7 +58,7 @@ class TestMetaFieldRanker:
         ranker = MetaFieldRanker(metadata_field="rating")
         docs_before = [Document(content="abc", meta={"wrong_field": 1.3})]
         with pytest.raises(ComponentError):
-            ranker.run(query="", documents=docs_before)
+            ranker.run(documents=docs_before)
 
     @pytest.mark.integration
     def test_raises_component_error_if_wrong_ranking_mode(self):
@@ -81,7 +79,7 @@ class TestMetaFieldRanker:
             Document(content="abc", meta={"rating": 0.7}, score=0.4),
             Document(content="abc", meta={"rating": 2.1}, score=0.6),
         ]
-        output = ranker.run(query="", documents=docs_before)
+        output = ranker.run(documents=docs_before)
         docs_after = output["documents"]
         assert docs_after[0].score == 0.8
 
@@ -93,7 +91,7 @@ class TestMetaFieldRanker:
             Document(content="abc", meta={"rating": 0.7}, score=0.4),
             Document(content="abc", meta={"rating": 2.1}, score=0.6),
         ]
-        output = ranker.run(query="", documents=docs_before)
+        output = ranker.run(documents=docs_before)
         docs_after = output["documents"]
         assert docs_after[0].score == 0.01626123744050767
 
@@ -107,9 +105,9 @@ class TestMetaFieldRanker:
             Document(id=3, content="abc", meta={"rating": 2.1}, score=0.6),
         ]
         with pytest.warns(
-            UserWarning, match=rf"The score {score} for document 1 is outside the \[0,1\] range; defaulting to 0"
+            UserWarning, match=rf"The score {score} for Document 1 is outside the \[0,1\] range; defaulting to 0"
         ):
-            ranker.run(query="", documents=docs_before)
+            ranker.run(documents=docs_before)
 
     @pytest.mark.integration
     def test_linear_score_raises_raises_warning_if_doc_without_score(self):
@@ -119,5 +117,6 @@ class TestMetaFieldRanker:
             Document(content="abc", meta={"rating": 0.7}),
             Document(content="abc", meta={"rating": 2.1}),
         ]
-        with pytest.warns(UserWarning, match="The score was not provided; defaulting to 0"):
-            ranker.run(query="", documents=docs_before)
+
+        with pytest.warns(UserWarning, match="The score wasn't provided; defaulting to 0."):
+            ranker.run(documents=docs_before)
