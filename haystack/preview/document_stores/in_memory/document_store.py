@@ -12,7 +12,7 @@ from haystack.preview.document_stores.decorator import document_store
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.protocols import DuplicatePolicy
 from haystack.preview.utils.filters import document_matches_filter
-from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError, DocumentStoreError
+from haystack.preview.document_stores.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.preview.utils import expit
 
 logger = logging.getLogger(__name__)
@@ -163,7 +163,7 @@ class InMemoryDocumentStore:
             return [doc for doc in self.storage.values() if document_matches_filter(conditions=filters, document=doc)]
         return list(self.storage.values())
 
-    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
+    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int:
         """
         Writes (or overwrites) documents into the DocumentStore.
 
@@ -183,24 +183,26 @@ class InMemoryDocumentStore:
         ):
             raise ValueError("Please provide a list of Documents.")
 
+        written_documents = len(documents)
         for document in documents:
             if policy != DuplicatePolicy.OVERWRITE and document.id in self.storage.keys():
                 if policy == DuplicatePolicy.FAIL:
                     raise DuplicateDocumentError(f"ID '{document.id}' already exists.")
                 if policy == DuplicatePolicy.SKIP:
                     logger.warning("ID '%s' already exists", document.id)
+                    written_documents -= 1
+                    continue
             self.storage[document.id] = document
+        return written_documents
 
     def delete_documents(self, document_ids: List[str]) -> None:
         """
         Deletes all documents with matching document_ids from the DocumentStore.
-        Fails with `MissingDocumentError` if no document with this id is present in the DocumentStore.
-
         :param object_ids: The object_ids to delete.
         """
         for doc_id in document_ids:
             if doc_id not in self.storage.keys():
-                raise MissingDocumentError(f"ID '{doc_id}' not found, cannot delete it.")
+                continue
             del self.storage[doc_id]
 
     def bm25_retrieval(
@@ -322,7 +324,7 @@ class InMemoryDocumentStore:
             doc_fields["score"] = score
             if return_embedding is False:
                 doc_fields["embedding"] = None
-            top_documents.append(Document(**doc_fields))
+            top_documents.append(Document.from_dict(doc_fields))
 
         return top_documents
 

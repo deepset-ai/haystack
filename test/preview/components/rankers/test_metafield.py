@@ -10,7 +10,7 @@ class TestMetaFieldRanker:
         component = MetaFieldRanker(metadata_field="rating")
         data = component.to_dict()
         assert data == {
-            "type": "MetaFieldRanker",
+            "type": "haystack.preview.components.rankers.meta_field.MetaFieldRanker",
             "init_parameters": {
                 "metadata_field": "rating",
                 "weight": 1.0,
@@ -24,7 +24,7 @@ class TestMetaFieldRanker:
         component = MetaFieldRanker(metadata_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score")
         data = component.to_dict()
         assert data == {
-            "type": "MetaFieldRanker",
+            "type": "haystack.preview.components.rankers.meta_field.MetaFieldRanker",
             "init_parameters": {"metadata_field": "rating", "weight": 0.5, "top_k": 5, "ranking_mode": "linear_score"},
         }
 
@@ -105,7 +105,7 @@ class TestMetaFieldRanker:
             Document(id=3, content="abc", meta={"rating": 2.1}, score=0.6),
         ]
         with pytest.warns(
-            UserWarning, match=rf"The score {score} for document 1 is outside the \[0,1\] range; defaulting to 0"
+            UserWarning, match=rf"The score {score} for Document 1 is outside the \[0,1\] range; defaulting to 0"
         ):
             ranker.run(documents=docs_before)
 
@@ -117,5 +117,6 @@ class TestMetaFieldRanker:
             Document(content="abc", meta={"rating": 0.7}),
             Document(content="abc", meta={"rating": 2.1}),
         ]
-        with pytest.warns(UserWarning, match="The score was not provided; defaulting to 0"):
+
+        with pytest.warns(UserWarning, match="The score wasn't provided; defaulting to 0."):
             ranker.run(documents=docs_before)

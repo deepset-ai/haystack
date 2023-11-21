@@ -37,6 +37,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         max_length: Optional[int] = 100,
         api_base: str = "https://api.openai.com/v1",
         openai_organization: Optional[str] = None,
+        timeout: Optional[float] = None,
         **kwargs,
     ):
         """
@@ -66,6 +67,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         self.api_key = api_key
         self.api_base = api_base
         self.openai_organization = openai_organization
+        self.timeout = timeout
 
         # 16 is the default length for answers from OpenAI shown in the docs
         # here, https://platform.openai.com/docs/api-reference/completions/create.

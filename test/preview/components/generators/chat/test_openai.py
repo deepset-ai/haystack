@@ -105,7 +105,7 @@ class TestGPTChatGenerator:
         component = GPTChatGenerator(api_key="test-api-key")
         data = component.to_dict()
         assert data == {
-            "type": "GPTChatGenerator",
+            "type": "haystack.preview.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-3.5-turbo",
                 "streaming_callback": None,
@@ -125,7 +125,7 @@ class TestGPTChatGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "GPTChatGenerator",
+            "type": "haystack.preview.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "max_tokens": 10,
@@ -147,7 +147,7 @@ class TestGPTChatGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "GPTChatGenerator",
+            "type": "haystack.preview.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "max_tokens": 10,
@@ -161,7 +161,7 @@ class TestGPTChatGenerator:
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
-            "type": "GPTChatGenerator",
+            "type": "haystack.preview.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "max_tokens": 10,
@@ -181,7 +181,7 @@ class TestGPTChatGenerator:
         openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         data = {
-            "type": "GPTChatGenerator",
+            "type": "haystack.preview.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "max_tokens": 10,

@@ -29,7 +29,7 @@ def test_preprocessing_pipeline(tmp_path):
         name="embedder",
     )
     preprocessing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
-    preprocessing_pipeline.connect("file_type_router.text/plain", "text_file_converter.paths")
+    preprocessing_pipeline.connect("file_type_router.text/plain", "text_file_converter.sources")
     preprocessing_pipeline.connect("text_file_converter.documents", "language_classifier.documents")
     preprocessing_pipeline.connect("language_classifier.documents", "router.documents")
     preprocessing_pipeline.connect("router.en", "cleaner.documents")
@@ -75,7 +75,7 @@ def test_preprocessing_pipeline(tmp_path):
     filled_document_store = preprocessing_pipeline.get_component("writer").document_store
     assert filled_document_store.count_documents() == 6
 
-    # Check preprocessed texts and mime_types
+    # Check preprocessed texts
     stored_documents = filled_document_store.filter_documents()
     expected_texts = [
         "This is an english sentence.",
