@@ -14,7 +14,7 @@ class TestHuggingFaceLocalGenerator:
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
         generator = HuggingFaceLocalGenerator()
 
-        assert generator.pipeline_kwargs == {
+        assert generator.huggingface_pipeline_kwargs == {
             "model": "google/flan-t5-base",
             "task": "text2text-generation",
             "token": None,
@@ -28,7 +28,7 @@ class TestHuggingFaceLocalGenerator:
             model_name_or_path="google/flan-t5-base", task="text2text-generation", token="test-token"
         )
 
-        assert generator.pipeline_kwargs == {
+        assert generator.huggingface_pipeline_kwargs == {
             "model": "google/flan-t5-base",
             "task": "text2text-generation",
             "token": "test-token",
@@ -40,7 +40,7 @@ class TestHuggingFaceLocalGenerator:
             model_name_or_path="google/flan-t5-base", task="text2text-generation", device="cuda:0"
         )
 
-        assert generator.pipeline_kwargs == {
+        assert generator.huggingface_pipeline_kwargs == {
             "model": "google/flan-t5-base",
             "task": "text2text-generation",
             "token": None,
@@ -51,17 +51,17 @@ class TestHuggingFaceLocalGenerator:
     def test_init_task_parameter(self):
         generator = HuggingFaceLocalGenerator(task="text2text-generation")
 
-        assert generator.pipeline_kwargs == {
+        assert generator.huggingface_pipeline_kwargs == {
             "model": "google/flan-t5-base",
             "task": "text2text-generation",
             "token": None,
         }
 
     @pytest.mark.unit
-    def test_init_task_in_pipeline_kwargs(self):
-        generator = HuggingFaceLocalGenerator(pipeline_kwargs={"task": "text2text-generation"})
+    def test_init_task_in_huggingface_pipeline_kwargs(self):
+        generator = HuggingFaceLocalGenerator(huggingface_pipeline_kwargs={"task": "text2text-generation"})
 
-        assert generator.pipeline_kwargs == {
+        assert generator.huggingface_pipeline_kwargs == {
             "model": "google/flan-t5-base",
             "task": "text2text-generation",
             "token": None,
@@ -73,7 +73,7 @@ class TestHuggingFaceLocalGenerator:
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
         generator = HuggingFaceLocalGenerator(model_name_or_path="google/flan-t5-base")
 
-        assert generator.pipeline_kwargs == {
+        assert generator.huggingface_pipeline_kwargs == {
             "model": "google/flan-t5-base",
             "task": "text2text-generation",
             "token": None,
@@ -85,13 +85,13 @@ class TestHuggingFaceLocalGenerator:
             HuggingFaceLocalGenerator(task="text-classification")
 
     @pytest.mark.unit
-    def test_init_pipeline_kwargs_override_other_parameters(self):
+    def test_init_huggingface_pipeline_kwargs_override_other_parameters(self):
         """
-        pipeline_kwargs represent the main configuration of this component.
+        huggingface_pipeline_kwargs represent the main configuration of this component.
         If they are provided, they should override other init parameters.
         """
 
-        pipeline_kwargs = {
+        huggingface_pipeline_kwargs = {
             "model": "gpt2",
             "task": "text-generation",
             "device": "cuda:0",
@@ -103,10 +103,10 @@ class TestHuggingFaceLocalGenerator:
             task="text2text-generation",
             device="cpu",
             token="test-token",
-            pipeline_kwargs=pipeline_kwargs,
+            huggingface_pipeline_kwargs=huggingface_pipeline_kwargs,
         )
 
-        assert generator.pipeline_kwargs == pipeline_kwargs
+        assert generator.huggingface_pipeline_kwargs == huggingface_pipeline_kwargs
 
     @pytest.mark.unit
     def test_init_generation_kwargs(self):
@@ -145,9 +145,13 @@ class TestHuggingFaceLocalGenerator:
         data = component.to_dict()
 
         assert data == {
-            "type": "haystack.preview.components.generators.hugging_face_local.HuggingFaceLocalGenerator",
+            "type": "HuggingFaceLocalGenerator",
             "init_parameters": {
-                "pipeline_kwargs": {"model": "google/flan-t5-base", "task": "text2text-generation", "token": None},
+                "huggingface_pipeline_kwargs": {
+                    "model": "google/flan-t5-base",
+                    "task": "text2text-generation",
+                    "token": None,
+                },
                 "generation_kwargs": {},
                 "stop_words": None,
             },
@@ -166,9 +170,9 @@ class TestHuggingFaceLocalGenerator:
         data = component.to_dict()
 
         assert data == {
-            "type": "haystack.preview.components.generators.hugging_face_local.HuggingFaceLocalGenerator",
+            "type": "HuggingFaceLocalGenerator",
             "init_parameters": {
-                "pipeline_kwargs": {
+                "huggingface_pipeline_kwargs": {
                     "model": "gpt2",
                     "task": "text-generation",
                     "token": None,  # we don't want serialize valid tokens
