@@ -5,7 +5,7 @@ from haystack.preview import Pipeline
 from haystack.preview.components.embedders import SentenceTransformersDocumentEmbedder
 from haystack.preview.components.file_converters import PyPDFToDocument, TextFileToDocument
 from haystack.preview.components.preprocessors import DocumentCleaner, DocumentSplitter
-from haystack.preview.components.routers import FileTypeRouter
+from haystack.preview.components.routers import FileTypeRouter, DocumentJoiner
 from haystack.preview.components.writers import DocumentWriter
 from haystack.preview.document_stores import InMemoryDocumentStore
 from haystack.preview.components.retrievers import InMemoryEmbeddingRetriever
@@ -19,6 +19,7 @@ def test_dense_doc_search_pipeline(tmp_path):
     )
     indexing_pipeline.add_component(instance=TextFileToDocument(), name="text_file_converter")
     indexing_pipeline.add_component(instance=PyPDFToDocument(), name="pdf_file_converter")
+    indexing_pipeline.add_component(instance=DocumentJoiner(), name="joiner")
     indexing_pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
     indexing_pipeline.add_component(
         instance=DocumentSplitter(split_by="sentence", split_length=250, split_overlap=30), name="splitter"
@@ -29,10 +30,11 @@ def test_dense_doc_search_pipeline(tmp_path):
     )
     indexing_pipeline.add_component(instance=DocumentWriter(document_store=InMemoryDocumentStore()), name="writer")
 
-    indexing_pipeline.connect("file_type_router.text/plain", "text_file_converter.paths")
+    indexing_pipeline.connect("file_type_router.text/plain", "text_file_converter.sources")
     indexing_pipeline.connect("file_type_router.application/pdf", "pdf_file_converter.sources")
-    indexing_pipeline.connect("text_file_converter.documents", "cleaner.documents")
-    indexing_pipeline.connect("pdf_file_converter.documents", "cleaner.documents")
+    indexing_pipeline.connect("text_file_converter.documents", "joiner.documents")
+    indexing_pipeline.connect("pdf_file_converter.documents", "joiner.documents")
+    indexing_pipeline.connect("joiner.documents", "cleaner.documents")
     indexing_pipeline.connect("cleaner.documents", "splitter.documents")
     indexing_pipeline.connect("splitter.documents", "embedder.documents")
     indexing_pipeline.connect("embedder.documents", "writer.documents")
