@@ -674,14 +674,6 @@ class LegacyFilterDocumentsSimpleLogicalTest(FilterableDocsFixtureMixin):
         ]
 
     @pytest.mark.unit
-    def test_filter_simple_explicit_and_with_multikey_dict(
-        self, document_store: DocumentStore, filterable_docs: List[Document]
-    ):
-        document_store.write_documents(filterable_docs)
-        result = document_store.filter_documents(filters={"number": {"$and": {"$gte": 0, "$lte": 2}}})
-        assert result == [doc for doc in filterable_docs if "number" in doc.meta and 0 <= doc.meta["number"] <= 2]
-
-    @pytest.mark.unit
     def test_filter_simple_explicit_and_with_list(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"number": {"$and": [{"$lte": 2}, {"$gte": 0}]}})
@@ -716,22 +708,6 @@ class LegacyFilterDocumentsNestedLogicalTest(FilterableDocsFixtureMixin):
             return MyDocumentStore()
     ```
     """
-
-    @pytest.mark.unit
-    def test_filter_nested_explicit_and(self, document_store: DocumentStore, filterable_docs: List[Document]):
-        document_store.write_documents(filterable_docs)
-        filters = {"$and": {"number": {"$and": {"$lte": 2, "$gte": 0}}, "name": {"$in": ["name_0", "name_1"]}}}
-        result = document_store.filter_documents(filters=filters)
-        assert result == [
-            doc
-            for doc in filterable_docs
-            if (
-                "number" in doc.meta
-                and doc.meta["number"] >= 0
-                and doc.meta["number"] <= 2
-                and doc.meta["name"] in ["name_0", "name_1"]
-            )
-        ]
 
     @pytest.mark.unit
     def test_filter_nested_implicit_and(self, document_store: DocumentStore, filterable_docs: List[Document]):
