@@ -97,7 +97,7 @@ class TestGPTGenerator:
         component = GPTGenerator(api_key="test-api-key")
         data = component.to_dict()
         assert data == {
-            "type": "GPTGenerator",
+            "type": "haystack.preview.components.generators.openai.GPTGenerator",
             "init_parameters": {
                 "model_name": "gpt-3.5-turbo",
                 "streaming_callback": None,
@@ -118,7 +118,7 @@ class TestGPTGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "GPTGenerator",
+            "type": "haystack.preview.components.generators.openai.GPTGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "system_prompt": None,
@@ -139,7 +139,7 @@ class TestGPTGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "GPTGenerator",
+            "type": "haystack.preview.components.generators.openai.GPTGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "system_prompt": None,
@@ -153,7 +153,7 @@ class TestGPTGenerator:
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
-            "type": "GPTGenerator",
+            "type": "haystack.preview.components.generators.openai.GPTGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "system_prompt": None,
@@ -173,7 +173,7 @@ class TestGPTGenerator:
         openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         data = {
-            "type": "GPTGenerator",
+            "type": "haystack.preview.components.generators.openai.GPTGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "api_base_url": "test-base-url",

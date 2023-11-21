@@ -101,7 +101,8 @@ class HuggingFaceLocalGenerator:
             If not specified, the component will attempt to infer the task from the model name,
             calling the Hugging Face Hub API.
         :param device: The device on which the model is loaded. (e.g., "cpu", "cuda:0").
-            If `device` or `device_map` is specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
+            If `device` or `device_map` is specified in the `huggingface_pipeline_kwargs`,
+            this parameter will be ignored.
         :param token: The token to use as HTTP bearer authorization for remote files.
             If True, will use the token generated when running huggingface-cli login (stored in ~/.huggingface).
             If the token is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
