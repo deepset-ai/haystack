@@ -50,7 +50,7 @@ class HTMLToDocument:
         documents = []
 
         # Create metadata placeholders if not provided
-        if meta is not None:
+        if meta:
             if len(sources) != len(meta):
                 raise ValueError("The length of the metadata list must match the number of sources.")
         else:
@@ -71,7 +71,7 @@ class HTMLToDocument:
                 continue
 
             # Merge metadata received from ByteStream with supplied metadata
-            if extracted_meta is not None:
+            if extracted_meta:
                 # Supplied metadata overwrites metadata from ByteStream for overlapping keys.
                 metadata = {**extracted_meta, **metadata}
             document = Document(content=text, meta=metadata)
