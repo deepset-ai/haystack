@@ -6,6 +6,16 @@ from pathlib import Path
 class PptxConverter(BaseComponent):
   outgoing_edges = 1
 
+  """
+  Microsoft powerpoint converter.
+
+  :param file_paths: Location of the file.
+  :param meta: User defined meta data to use for the Document object.
+  :usage pptx_converter = PptxConverter()
+  p.add_node(component=pptx_converter, name='PptxConverter', inputs=['File'])
+  p.run(file_paths=myfile.pptx, meta={'doc_name': 'myfile.pptx'})
+  """
+
   def __init__(self):
     pass
 
