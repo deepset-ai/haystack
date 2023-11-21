@@ -247,6 +247,8 @@ class TestRemoteWhisperTranscriber:
         assert preview_samples_path / "audio" / "this is the content of the document.wav" == docs[0].meta["file_path"]
 
         assert docs[1].content.strip().lower() == "the context for this answer is here."
-        assert preview_samples_path / "audio" / "the context for this answer is here.wav" == docs[1].meta["file_path"]
+        assert (
+            str(preview_samples_path / "audio" / "the context for this answer is here.wav") == docs[1].meta["file_path"]
+        )
 
         assert docs[2].content.strip().lower() == "answer."
