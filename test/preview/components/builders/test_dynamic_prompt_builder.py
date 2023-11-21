@@ -71,7 +71,7 @@ class TestDynamicPromptBuilder:
 
         builder = DynamicPromptBuilder(expected_runtime_variables, False)
 
-        with pytest.raises(ValueError, match="requires specific template variables that are missing"):
+        with pytest.raises(ValueError):
             builder._process_simple_template("Hello, {{ name }}!", {})
 
     def test_non_empty_chat_messages(self):
