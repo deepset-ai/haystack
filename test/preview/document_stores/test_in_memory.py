@@ -17,7 +17,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
     """
 
     @pytest.fixture
-    def docstore(self) -> InMemoryDocumentStore:
+    def document_store(self) -> InMemoryDocumentStore:
         return InMemoryDocumentStore()
 
     @pytest.mark.unit
@@ -71,45 +71,45 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert store.bm25_parameters == {"key": "value"}
 
     @pytest.mark.unit
-    def test_written_documents_count(self, docstore: InMemoryDocumentStore):
+    def test_written_documents_count(self, document_store: InMemoryDocumentStore):
         # FIXME Remove after the document store base tests have been rewritten
         documents = [Document(content=f"Hello world #{i}") for i in range(10)]
-        docs_written = docstore.write_documents(documents[0:2])
+        docs_written = document_store.write_documents(documents[0:2])
         assert docs_written == 2
-        assert docstore.filter_documents() == documents[0:2]
+        assert document_store.filter_documents() == documents[0:2]
 
-        docs_written = docstore.write_documents(documents, DuplicatePolicy.SKIP)
+        docs_written = document_store.write_documents(documents, DuplicatePolicy.SKIP)
         assert docs_written == len(documents) - 2
-        assert docstore.filter_documents() == documents
+        assert document_store.filter_documents() == documents
 
     @pytest.mark.unit
-    def test_bm25_retrieval(self, docstore: InMemoryDocumentStore):
-        docstore = InMemoryDocumentStore()
+    def test_bm25_retrieval(self, document_store: InMemoryDocumentStore):
+        document_store = InMemoryDocumentStore()
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
-        docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="What languages?", top_k=1)
+        document_store.write_documents(docs)
+        results = document_store.bm25_retrieval(query="What languages?", top_k=1)
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
 
     @pytest.mark.unit
-    def test_bm25_retrieval_with_empty_document_store(self, docstore: InMemoryDocumentStore, caplog):
+    def test_bm25_retrieval_with_empty_document_store(self, document_store: InMemoryDocumentStore, caplog):
         caplog.set_level(logging.INFO)
         # Tests if the bm25_retrieval method correctly returns an empty list when there are no documents in the DocumentStore.
-        results = docstore.bm25_retrieval(query="How to test this?", top_k=2)
+        results = document_store.bm25_retrieval(query="How to test this?", top_k=2)
         assert len(results) == 0
         assert "No documents found for BM25 retrieval. Returning empty list." in caplog.text
 
     @pytest.mark.unit
-    def test_bm25_retrieval_empty_query(self, docstore: InMemoryDocumentStore):
+    def test_bm25_retrieval_empty_query(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method returns a document when the query is an empty string.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
-        docstore.write_documents(docs)
+        document_store.write_documents(docs)
         with pytest.raises(ValueError, match="Query should be a non-empty string"):
-            docstore.bm25_retrieval(query="", top_k=1)
+            document_store.bm25_retrieval(query="", top_k=1)
 
     @pytest.mark.unit
-    def test_bm25_retrieval_with_different_top_k(self, docstore: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_different_top_k(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method correctly changes the number of returned documents
         # based on the top_k parameter.
         docs = [
@@ -117,19 +117,19 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             Document(content="Haystack supports multiple languages"),
             Document(content="Python is a popular programming language"),
         ]
-        docstore.write_documents(docs)
+        document_store.write_documents(docs)
 
         # top_k = 2
-        results = docstore.bm25_retrieval(query="languages", top_k=2)
+        results = document_store.bm25_retrieval(query="languages", top_k=2)
         assert len(results) == 2
 
         # top_k = 3
-        results = docstore.bm25_retrieval(query="languages", top_k=3)
+        results = document_store.bm25_retrieval(query="languages", top_k=3)
         assert len(results) == 3
 
     # Test two queries and make sure the results are different
     @pytest.mark.unit
-    def test_bm25_retrieval_with_two_queries(self, docstore: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_two_queries(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method returns different documents for different queries.
         docs = [
             Document(content="Javascript is a popular programming language"),
@@ -138,60 +138,60 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             Document(content="Ruby is a popular programming language"),
             Document(content="PHP is a popular programming language"),
         ]
-        docstore.write_documents(docs)
+        document_store.write_documents(docs)
 
-        results = docstore.bm25_retrieval(query="Java", top_k=1)
+        results = document_store.bm25_retrieval(query="Java", top_k=1)
         assert results[0].content == "Java is a popular programming language"
 
-        results = docstore.bm25_retrieval(query="Python", top_k=1)
+        results = document_store.bm25_retrieval(query="Python", top_k=1)
         assert results[0].content == "Python is a popular programming language"
 
     @pytest.mark.skip(reason="Filter is not working properly, see https://github.com/deepset-ai/haystack/issues/6153")
-    def test_eq_filter_embedding(self, docstore: InMemoryDocumentStore, filterable_docs):
+    def test_eq_filter_embedding(self, document_store: InMemoryDocumentStore, filterable_docs):
         pass
 
     # Test a query, add a new document and make sure results are appropriately updated
     @pytest.mark.unit
-    def test_bm25_retrieval_with_updated_docs(self, docstore: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_updated_docs(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method correctly updates the retrieved documents when new
         # documents are added to the DocumentStore.
         docs = [Document(content="Hello world")]
-        docstore.write_documents(docs)
+        document_store.write_documents(docs)
 
-        results = docstore.bm25_retrieval(query="Python", top_k=1)
+        results = document_store.bm25_retrieval(query="Python", top_k=1)
         assert len(results) == 1
 
-        docstore.write_documents([Document(content="Python is a popular programming language")])
-        results = docstore.bm25_retrieval(query="Python", top_k=1)
+        document_store.write_documents([Document(content="Python is a popular programming language")])
+        results = document_store.bm25_retrieval(query="Python", top_k=1)
         assert len(results) == 1
         assert results[0].content == "Python is a popular programming language"
 
-        docstore.write_documents([Document(content="Java is a popular programming language")])
-        results = docstore.bm25_retrieval(query="Python", top_k=1)
+        document_store.write_documents([Document(content="Java is a popular programming language")])
+        results = document_store.bm25_retrieval(query="Python", top_k=1)
         assert len(results) == 1
         assert results[0].content == "Python is a popular programming language"
 
     @pytest.mark.unit
-    def test_bm25_retrieval_with_scale_score(self, docstore: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_scale_score(self, document_store: InMemoryDocumentStore):
         docs = [Document(content="Python programming"), Document(content="Java programming")]
-        docstore.write_documents(docs)
+        document_store.write_documents(docs)
 
-        results1 = docstore.bm25_retrieval(query="Python", top_k=1, scale_score=True)
+        results1 = document_store.bm25_retrieval(query="Python", top_k=1, scale_score=True)
         # Confirm that score is scaled between 0 and 1
         assert results1[0].score is not None
         assert 0.0 <= results1[0].score <= 1.0
 
         # Same query, different scale, scores differ when not scaled
-        results = docstore.bm25_retrieval(query="Python", top_k=1, scale_score=False)
+        results = document_store.bm25_retrieval(query="Python", top_k=1, scale_score=False)
         assert results[0].score != results1[0].score
 
     @pytest.mark.unit
-    def test_bm25_retrieval_with_table_content(self, docstore: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_table_content(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method correctly returns a dataframe when the content_type is table.
         table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
         docs = [Document(dataframe=table_content), Document(content="Gardening"), Document(content="Bird watching")]
-        docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="Java", top_k=1)
+        document_store.write_documents(docs)
+        results = document_store.bm25_retrieval(query="Java", top_k=1)
         assert len(results) == 1
 
         df = results[0].dataframe
@@ -199,7 +199,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert df.equals(table_content)
 
     @pytest.mark.unit
-    def test_bm25_retrieval_with_text_and_table_content(self, docstore: InMemoryDocumentStore, caplog):
+    def test_bm25_retrieval_with_text_and_table_content(self, document_store: InMemoryDocumentStore, caplog):
         table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
         document = Document(content="Gardening", dataframe=table_content)
         docs = [
@@ -209,51 +209,51 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             Document(content="Gardening"),
             Document(content="Java"),
         ]
-        docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="Gardening", top_k=2)
+        document_store.write_documents(docs)
+        results = document_store.bm25_retrieval(query="Gardening", top_k=2)
         assert document.id in [d.id for d in results]
         assert "both text and dataframe content" in caplog.text
-        results = docstore.bm25_retrieval(query="Python", top_k=2)
+        results = document_store.bm25_retrieval(query="Python", top_k=2)
         assert document.id not in [d.id for d in results]
 
     @pytest.mark.unit
-    def test_bm25_retrieval_default_filter_for_text_and_dataframes(self, docstore: InMemoryDocumentStore):
+    def test_bm25_retrieval_default_filter_for_text_and_dataframes(self, document_store: InMemoryDocumentStore):
         docs = [Document(), Document(content="Gardening"), Document(content="Bird watching")]
-        docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="doesn't matter, top_k is 10", top_k=10)
+        document_store.write_documents(docs)
+        results = document_store.bm25_retrieval(query="doesn't matter, top_k is 10", top_k=10)
         assert len(results) == 2
 
     @pytest.mark.unit
-    def test_bm25_retrieval_with_filters(self, docstore: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_filters(self, document_store: InMemoryDocumentStore):
         selected_document = Document(content="Gardening", meta={"selected": True})
         docs = [Document(), selected_document, Document(content="Bird watching")]
-        docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
+        document_store.write_documents(docs)
+        results = document_store.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
         assert len(results) == 1
         assert results[0].id == selected_document.id
 
     @pytest.mark.unit
-    def test_bm25_retrieval_with_filters_keeps_default_filters(self, docstore: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_filters_keeps_default_filters(self, document_store: InMemoryDocumentStore):
         docs = [Document(meta={"selected": True}), Document(content="Gardening"), Document(content="Bird watching")]
-        docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
+        document_store.write_documents(docs)
+        results = document_store.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
         assert len(results) == 0
 
     @pytest.mark.unit
-    def test_bm25_retrieval_with_filters_on_text_or_dataframe(self, docstore: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_filters_on_text_or_dataframe(self, document_store: InMemoryDocumentStore):
         document = Document(dataframe=pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web"]}))
         docs = [Document(), Document(content="Gardening"), Document(content="Bird watching"), document]
-        docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"content": None})
+        document_store.write_documents(docs)
+        results = document_store.bm25_retrieval(query="Java", top_k=10, filters={"content": None})
         assert len(results) == 1
         assert results[0].id == document.id
 
     @pytest.mark.unit
-    def test_bm25_retrieval_with_documents_with_mixed_content(self, docstore: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_documents_with_mixed_content(self, document_store: InMemoryDocumentStore):
         double_document = Document(content="Gardening", embedding=[1.0, 2.0, 3.0])
         docs = [Document(embedding=[1.0, 2.0, 3.0]), double_document, Document(content="Bird watching")]
-        docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="Java", top_k=10, filters={"embedding": {"$not": None}})
+        document_store.write_documents(docs)
+        results = document_store.bm25_retrieval(query="Java", top_k=10, filters={"embedding": {"$not": None}})
         assert len(results) == 1
         assert results[0].id == double_document.id
 
