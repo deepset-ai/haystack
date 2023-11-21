@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 @component
 class MetaFieldRanker:
     """
-    Ranks documents based on the value of a metadata field.
+    Ranks Documents based on the value of their specific metadata field. The ranking is done in a descending order.
 
     Usage example:
     ```
@@ -42,13 +42,13 @@ class MetaFieldRanker:
 
         :param metadata_field: The name of the metadata field to rank by.
         :param weight: In range [0,1].
-                0 disables sorting by metadata field.
-                0.5 content and metadata fields have the same impact.
-                1 means sorting only by metadata field, highest value comes first.
-        :param top_k: The maximum number of documents to return.
-        :param ranking_mode: The mode used to combine retriever and recentness.
+                0 disables ranking by a metadata field.
+                0.5 content and metadata fields have the same impact for the ranking.
+                1 means ranking by a metadata field only. The highest value comes first.
+        :param top_k: The maximum number of Documents you want the Ranker to return per query.
+        :param ranking_mode: The mode used to combine the Retriever's and Ranker's scores.
                 Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
-                Make sure to use 'score' mode only with retrievers/rankers that give back OK score in range [0,1].
+                Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
         """
 
         self.metadata_field = metadata_field
@@ -59,9 +59,9 @@ class MetaFieldRanker:
         if self.weight < 0 or self.weight > 1:
             raise ValueError(
                 """
-                Param <weight> needs to be in range [0,1] but was set to '{}'.\n
-                '0' disables sorting by metadata field, '0.5' gives equal weight to previous relevance scores and metadata field, and '1' ranks by metadata field only.\n
-                Please change param <weight> when initializing the MetaFieldRanker.
+                Parameter <weight> must be in range [0,1] but is currently set to '{}'.\n
+                '0' disables sorting by a metadata field, '0.5' assigns equal weight to the previous relevance scores and the metadata field, and '1' ranks by the metadata field only.\n
+                Change the <weight> parameter to a value in range 0 to 1 when initializing the MetaFieldRanker.
                 """.format(
                     self.weight
                 )
@@ -70,8 +70,8 @@ class MetaFieldRanker:
         if self.ranking_mode not in ["reciprocal_rank_fusion", "linear_score"]:
             raise ValueError(
                 """
-                Param <ranking_mode> needs to be 'reciprocal_rank_fusion' or 'linear_score' but was set to '{}'. \n
-                Please change the <ranking_mode> when initializing the MetaFieldRanker.
+                The value of parameter <ranking_mode> must be 'reciprocal_rank_fusion' or 'linear_score', but is currently set to '{}'. \n
+                Change the <ranking_mode> value to 'reciprocal_rank_fusion' or 'linear_score' when initializing the MetaFieldRanker.
                 """.format(
                     self.ranking_mode
                 )
@@ -92,13 +92,13 @@ class MetaFieldRanker:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document], top_k: Optional[int] = None):
         """
-        This method is used to rank a list of documents based on the selected metadata field by:
-        1. Sorting the documents by the metadata field in descending order.
+        Use this method to rank a list of Documents based on the selected metadata field by:
+        1. Sorting the Documents by the metadata field in descending order.
         2. Merging the scores from the metadata field with the scores from the previous component according to the strategy and weight provided.
         3. Returning the top-k documents.
 
-        :param documents: Documents provided for ranking.
-        :param top_k: (optional) How many documents to return at the end. If not provided, all documents will be returned.
+        :param documents: Documents to be ranked.
+        :param top_k: (optional) The number of Documents you want the Ranker to return. If not provided, the Ranker returns all Documents it received.
         """
         if not documents:
             return {"documents": []}
@@ -113,9 +113,9 @@ class MetaFieldRanker:
         except KeyError:
             raise ComponentError(
                 """
-                Param <metadata_field> was set to '{}' but document(s) {} do not contain this metadata key.\n
-                Please double-check the names of existing metadata fields of your documents \n
-                and set <metadata_field> to the name of the field that contains the metadata you want to rank by.
+                The parameter <metadata_field> is currently set to '{}' but the Documents {} don't have this metadata key.\n
+                Double-check the names of the metadata fields in your documents \n
+                and set <metadata_field> to the name of the field that contains the metadata you want to use for ranking.
                 """.format(
                     self.metadata_field, ",".join([doc.id for doc in documents if self.metadata_field not in doc.meta])
                 )
@@ -129,7 +129,7 @@ class MetaFieldRanker:
 
     def _merge_scores(self, documents: List[Document], sorted_documents: List[Document]) -> List[Document]:
         """
-        Merge scores for documents sorted both by content and by metadata field.
+        Merge scores for Documents sorted both by their content and by their metadata field.
         """
         scores_map: Dict = defaultdict(int)
 
@@ -141,10 +141,10 @@ class MetaFieldRanker:
             for i, (doc, sorted_doc) in enumerate(zip(documents, sorted_documents)):
                 score = float(0)
                 if doc.score is None:
-                    warnings.warn("The score was not provided; defaulting to 0")
+                    warnings.warn("The score wasn't provided; defaulting to 0.")
                 elif doc.score < 0 or doc.score > 1:
                     warnings.warn(
-                        "The score {} for document {} is outside the [0,1] range; defaulting to 0".format(
+                        "The score {} for Document {} is outside the [0,1] range; defaulting to 0".format(
                             doc.score, doc.id
                         )
                     )
@@ -164,7 +164,7 @@ class MetaFieldRanker:
     def _calculate_rrf(rank: int, k: int = 61) -> float:
         """
         Calculates the reciprocal rank fusion. The constant K is set to 61 (60 was suggested by the original paper,
-        plus 1 as python lists are 0-based and the paper [https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf] used 1-based ranking).
+        plus 1 as python lists are 0-based and the [paper](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf) used 1-based ranking).
         """
         return 1 / (k + rank)
 
@@ -172,9 +172,9 @@ class MetaFieldRanker:
     def _calc_linear_score(rank: int, amount: int) -> float:
         """
         Calculate the metadata field score as a linear score between the greatest and the lowest score in the list.
-        This linear scaling is useful to
-          a) reduce the effect of outliers and
-          b) create scores that are meaningfully distributed in [0,1],
-             similar to scores coming from a retriever/ranker.
+        This linear scaling is useful for:
+          - Reducing the effect of outliers
+          - Creating scores that are meaningfully distributed in the range [0,1],
+             similar to scores coming from a Retriever or Ranker.
         """
         return (amount - rank) / amount
