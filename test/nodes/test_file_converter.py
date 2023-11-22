@@ -207,11 +207,13 @@ def test_docx_converter(samples_path):
     document = converter.convert(file_path=samples_path / "docx" / "sample_docx.docx")[0]
     assert document.content.startswith("Sample Docx File")
 
+
 @pytest.mark.unit
 def test_pptx_converter(samples_path):
     converter = PptxConverter()
     document = converter.convert(file_path=samples_path / "pptx" / "sample_pptx.pptx")[0]
     assert document.content.startswith("Sample Pptx File")
+
 
 @pytest.mark.unit
 def test_markdown_converter(samples_path):

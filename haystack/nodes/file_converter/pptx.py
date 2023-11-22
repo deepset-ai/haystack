@@ -15,7 +15,7 @@ with LazyImport("Run 'pip install python-pptx'") as pptx_import:
 
 
 class PptxConverter(BaseConverter):
-  def __init__(
+    def __init__(
         self,
         remove_numeric_tables: bool = False,
         valid_languages: Optional[List[str]] = None,
@@ -30,7 +30,7 @@ class PptxConverter(BaseConverter):
             progress_bar=progress_bar,
         )
 
-  def convert(
+    def convert(
         self,
         file_path: Path,
         meta: Optional[Dict[str, str]] = None,
@@ -72,13 +72,13 @@ class PptxConverter(BaseConverter):
             raise Exception("Language validation using 'valid_languages' is not supported by PptxToTextConverter.")
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
-          
+
         pres = Presentation(file_path)
         text = ""
         for slide in pres.slides:
-          for shape in slide.shapes:
-            if hasattr(shape, "text"):
-              text += shape.text
-              
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    text += shape.text
+
         document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
-        return [document]  
+        return [document]
