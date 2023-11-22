@@ -57,6 +57,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         ef_search: int = 20,
         ef_construction: int = 80,
         validate_index_sync: bool = True,
+        batch_size: int = 10_000,
     ):
         """
         :param sql_url: SQL connection URL for the database. The default value is "sqlite:///faiss_document_store.db"`. It defaults to a local, file-based SQLite DB. For large scale deployment, we recommend Postgres.
@@ -152,6 +153,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
+        self.batch_size = batch_size
 
         self.progress_bar = progress_bar
 
@@ -216,7 +218,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         self,
         documents: Union[List[dict], List[Document]],
         index: Optional[str] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         duplicate_documents: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> None:
@@ -240,6 +242,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise NotImplementedError("FAISSDocumentStore does not support headers.")
 
         index = index or self.index
+        batch_size = batch_size or self.batch_size
+
         duplicate_documents = duplicate_documents or self.duplicate_documents
         assert (
             duplicate_documents in self.duplicate_documents_options
@@ -324,7 +328,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
         filters: Optional[FilterType] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -342,6 +346,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :return: None
         """
         index = index or self.index
+        batch_size = batch_size or self.batch_size
 
         if update_existing_embeddings is True:
             if filters is None:
@@ -404,9 +409,11 @@ class FAISSDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
+
+        batch_size = batch_size or self.batch_size
         if headers:
             raise NotImplementedError("FAISSDocumentStore does not support headers.")
 
@@ -421,7 +428,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> Generator[Document, None, None]:
         """
@@ -440,6 +447,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise NotImplementedError("FAISSDocumentStore does not support headers.")
 
         index = index or self.index
+        batch_size = batch_size or self.batch_size
         documents = super(FAISSDocumentStore, self).get_all_documents_generator(
             index=index, filters=filters, batch_size=batch_size, return_embedding=False
         )
@@ -455,13 +463,15 @@ class FAISSDocumentStore(SQLDocumentStore):
         self,
         ids: List[str],
         index: Optional[str] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         if headers:
             raise NotImplementedError("FAISSDocumentStore does not support headers.")
 
         index = index or self.index
+        batch_size = batch_size or self.batch_size
+
         documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
         if self.return_embedding:
             for doc in documents:
