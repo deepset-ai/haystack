@@ -1,5 +1,6 @@
 import os
 from unittest.mock import patch
+from pathlib import Path
 
 import openai
 import pytest
@@ -182,7 +183,33 @@ class TestRemoteWhisperTranscriber:
             RemoteWhisperTranscriber.from_dict(data)
 
     @pytest.mark.unit
-    def test_run(self, preview_samples_path):
+    def test_run_str(self, preview_samples_path):
+        with patch("haystack.preview.components.audio.whisper_remote.openai.Audio") as openai_audio_patch:
+            model = "whisper-1"
+            file_path = str(preview_samples_path / "audio" / "this is the content of the document.wav")
+            openai_audio_patch.transcribe.side_effect = mock_openai_response
+
+            transcriber = RemoteWhisperTranscriber(api_key="test_api_key", model_name=model, response_format="json")
+            result = transcriber.run(sources=[file_path])
+
+            assert result["documents"][0].content == "test transcription"
+            assert result["documents"][0].meta["file_path"] == file_path
+
+    @pytest.mark.unit
+    def test_run_path(self, preview_samples_path):
+        with patch("haystack.preview.components.audio.whisper_remote.openai.Audio") as openai_audio_patch:
+            model = "whisper-1"
+            file_path = preview_samples_path / "audio" / "this is the content of the document.wav"
+            openai_audio_patch.transcribe.side_effect = mock_openai_response
+
+            transcriber = RemoteWhisperTranscriber(api_key="test_api_key", model_name=model, response_format="json")
+            result = transcriber.run(sources=[file_path])
+
+            assert result["documents"][0].content == "test transcription"
+            assert result["documents"][0].meta["file_path"] == file_path
+
+    @pytest.mark.unit
+    def test_run_bytestream(self, preview_samples_path):
         with patch("haystack.preview.components.audio.whisper_remote.openai.Audio") as openai_audio_patch:
             model = "whisper-1"
             file_path = preview_samples_path / "audio" / "this is the content of the document.wav"
@@ -193,7 +220,7 @@ class TestRemoteWhisperTranscriber:
                 byte_stream = audio_stream.read()
                 audio_file = ByteStream(byte_stream, metadata={"file_path": str(file_path.absolute())})
 
-                result = transcriber.run(streams=[audio_file])
+                result = transcriber.run(sources=[audio_file])
 
                 assert result["documents"][0].content == "test transcription"
                 assert result["documents"][0].meta["file_path"] == str(file_path.absolute())
@@ -208,32 +235,20 @@ class TestRemoteWhisperTranscriber:
 
         paths = [
             preview_samples_path / "audio" / "this is the content of the document.wav",
-            preview_samples_path / "audio" / "the context for this answer is here.wav",
-            preview_samples_path / "audio" / "answer.wav",
+            str(preview_samples_path / "audio" / "the context for this answer is here.wav"),
+            ByteStream.from_file_path(preview_samples_path / "audio" / "answer.wav"),
         ]
 
-        audio_files = []
-        for file_path in paths:
-            with open(file_path, "rb") as audio_stream:
-                byte_stream = audio_stream.read()
-                audio_file = ByteStream(byte_stream, metadata={"file_path": str(file_path.absolute())})
-                audio_files.append(audio_file)
-
-        output = transcriber.run(streams=audio_files)
+        output = transcriber.run(sources=paths)
 
         docs = output["documents"]
         assert len(docs) == 3
         assert docs[0].content.strip().lower() == "this is the content of the document."
-        assert (
-            str((preview_samples_path / "audio" / "this is the content of the document.wav").absolute())
-            == docs[0].meta["file_path"]
-        )
+        assert preview_samples_path / "audio" / "this is the content of the document.wav" == docs[0].meta["file_path"]
 
         assert docs[1].content.strip().lower() == "the context for this answer is here."
         assert (
-            str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute())
-            == docs[1].meta["file_path"]
+            str(preview_samples_path / "audio" / "the context for this answer is here.wav") == docs[1].meta["file_path"]
         )
 
         assert docs[2].content.strip().lower() == "answer."
-        assert str((preview_samples_path / "audio" / "answer.wav").absolute()) == docs[2].meta["file_path"]
