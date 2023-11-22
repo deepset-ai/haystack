@@ -214,14 +214,24 @@ class ExtractiveReader:
         start_candidates = start_candidates.cpu()
         end_candidates = end_candidates.cpu()
 
-        start_candidates_char_indices = [
-            [encoding.token_to_chars(start)[0] for start in candidates]
+        start_candidates_tokens_to_chars = [
+            [encoding.token_to_chars(start) for start in candidates]
             for candidates, encoding in zip(start_candidates, encodings)
         ]
-        end_candidates_char_indices = [
-            [encoding.token_to_chars(end)[1] for end in candidates]
+        start_candidates_char_indices = [
+            [token_to_chars[0] if token_to_chars else None for token_to_chars in candidates]
+            for candidates in start_candidates_tokens_to_chars
+        ]
+
+        end_candidates_tokens_to_chars = [
+            [encoding.token_to_chars(end) for end in candidates]
             for candidates, encoding in zip(end_candidates, encodings)
         ]
+        end_candidates_char_indices = [
+            [token_to_chars[1] if token_to_chars else None for token_to_chars in candidates]
+            for candidates in end_candidates_tokens_to_chars
+        ]
+
         probabilities = candidates.values.cpu()
 
         return start_candidates_char_indices, end_candidates_char_indices, probabilities
