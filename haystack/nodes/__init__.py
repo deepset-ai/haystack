@@ -7,6 +7,7 @@ from haystack.nodes.file_classifier import FileTypeClassifier
 from haystack.nodes.file_converter import (
     BaseConverter,
     DocxToTextConverter,
+    PptxConverter,
     ImageToTextConverter,
     MarkdownConverter,
     PDFToTextConverter,
