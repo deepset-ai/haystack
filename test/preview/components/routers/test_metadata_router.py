@@ -8,8 +8,20 @@ class TestMetadataRouter:
     @pytest.mark.unit
     def test_run(self):
         rules = {
-            "edge_1": {"created_at": {"$gte": "2023-01-01", "$lt": "2023-04-01"}},
-            "edge_2": {"created_at": {"$gte": "2023-04-01", "$lt": "2023-07-01"}},
+            "edge_1": {
+                "operator": "AND",
+                "conditions": [
+                    {"field": "created_at", "operator": ">=", "value": "2023-01-01"},
+                    {"field": "created_at", "operator": "<", "value": "2023-04-01"},
+                ],
+            },
+            "edge_2": {
+                "operator": "AND",
+                "conditions": [
+                    {"field": "created_at", "operator": ">=", "value": "2023-04-01"},
+                    {"field": "created_at", "operator": "<", "value": "2023-07-01"},
+                ],
+            },
         }
         router = MetadataRouter(rules=rules)
         documents = [
