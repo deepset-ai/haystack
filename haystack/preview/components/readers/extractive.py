@@ -222,7 +222,7 @@ class ExtractiveReader:
             [encoding.token_to_chars(start) for start in candidates]
             for candidates, encoding in zip(start_candidates, encodings)
         ]
-        if any(token_to_chars is None for token_to_chars in start_candidates_tokens_to_chars):
+        if any(any(pair is None for pair in token_to_chars) for token_to_chars in start_candidates_tokens_to_chars):
             logger.warning("Some starting tokens could not be found in the context.")
         start_candidates_char_indices = [
             [token_to_chars[0] if token_to_chars else None for token_to_chars in candidates]
@@ -233,7 +233,7 @@ class ExtractiveReader:
             [encoding.token_to_chars(end) for end in candidates]
             for candidates, encoding in zip(end_candidates, encodings)
         ]
-        if any(token_to_chars is None for token_to_chars in end_candidates_tokens_to_chars):
+        if any(any(pair is None for pair in token_to_chars) for token_to_chars in end_candidates_tokens_to_chars):
             logger.warning("Some end tokens could not be found in the context.")
         end_candidates_char_indices = [
             [token_to_chars[1] if token_to_chars else None for token_to_chars in candidates]
