@@ -236,7 +236,7 @@ class LegacyFilterDocumentsInvalidFiltersTest(FilterableDocsFixtureMixin):
     @pytest.mark.unit
     def test_incorrect_filter_type(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
+        with pytest.raises(ValueError):
             document_store.filter_documents(filters="something odd")  # type: ignore
 
     @pytest.mark.unit
