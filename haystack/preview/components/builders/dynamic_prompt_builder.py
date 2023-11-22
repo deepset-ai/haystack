@@ -226,9 +226,9 @@ class DynamicPromptBuilder:
         instances or the rendered string template, forming the complete dynamic prompt.
         :rtype: Dict[str, Union[List[ChatMessage], str]]
         """
-        template_variables_combined = (
-            {**(kwargs or {}), **(template_variables or {})} if (template_variables or kwargs) else {}
-        )
+        kwargs = kwargs or {}
+        template_variables = template_variables or {}
+        template_variables_combined = {**kwargs, **template_variables}
         if not template_variables_combined:
             raise ValueError(
                 "The DynamicPromptBuilder run method requires template variables, but none were provided. "
