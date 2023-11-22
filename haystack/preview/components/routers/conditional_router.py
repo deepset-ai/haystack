@@ -22,13 +22,13 @@ class RouteConditionException(Exception):
 
 def serialize_type(target: Any) -> str:
     """
-    Serializes a type or an instance to its string representation including the module name.
+    Serializes a type or an instance to its string representation, including the module name.
 
     This function handles types, instances of types, and special typing objects.
     It assumes that non-typing objects will have a '__name__' attribute and raises
     an error if a type cannot be serialized.
 
-    :param target: The object to serialize, which can be an instance or a type.
+    :param target: The object to serialize, can be an instance or a type.
     :type target: Any
     :return: The string representation of the type.
     :raises ValueError: If the type cannot be serialized.
@@ -70,7 +70,7 @@ def deserialize_type(type_str: str) -> Any:
     """
     Deserializes a type given its full import path as a string, including nested generic types.
 
-    This function will dynamically import the module if it's not already imported,
+    This function will dynamically import the module if it's not already imported
     and then retrieve the type object from it. It also handles nested generic types like 'typing.List[typing.Dict[int, str]]'.
 
     :param type_str: The string representation of the type's full import path.
@@ -171,13 +171,13 @@ class ConditionalRouter:
     assert result == {"enough_streams": [1, 2, 3]}
     ```
 
-    In this example, two routes are configured. The first route sends the 'streams' value to 'enough_streams' if the
+    In this example, we configure two routes. The first route sends the 'streams' value to 'enough_streams' if the
     stream count exceeds two. Conversely, the second route directs 'streams' to 'insufficient_streams' when there
     are two or fewer streams.
 
     In the pipeline setup, the router is connected to other components using the output names. For example, the
     'enough_streams' output might be connected to another component that processes the streams, while the
-    'insufficient_streams' output might be connected to a component that fetches more streams etc.
+    'insufficient_streams' output might be connected to a component that fetches more streams, and so on.
 
     Here is a pseudocode example of a pipeline that uses the ConditionalRouter and routes fetched ByteStreams to
     different components depending on the number of streams fetched:
@@ -218,7 +218,7 @@ class ConditionalRouter:
 
         :param routes: A list of dictionaries, each defining a route with a boolean condition expression
                        ('condition'), an output value ('output'), the output type ('output_type') and
-                       ('output_name') that defines output name for the variable defined in 'output'.
+                       ('output_name') that defines the output name for the variable defined in 'output'.
         """
         self._validate_routes(routes)
         self.routes: List[dict] = routes
@@ -261,7 +261,7 @@ class ConditionalRouter:
         """
         Executes the routing logic by evaluating the specified boolean condition expressions
         for each route in the order they are listed. The method directs the flow
-        of data to the output specified in the first route whose expression
+        of data to the output specified in the first route, whose expression
         evaluates to True. If no route's expression evaluates to True, an exception
         is raised.
 
