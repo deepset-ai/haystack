@@ -8,13 +8,11 @@ from haystack.preview.dataclasses import ChatMessage
 
 
 class TestDynamicPromptBuilder:
-    @pytest.mark.parametrize(
-        "expected_runtime_variables, chat_mode", [(["var1", "var2", "var3"], True), (["var1", "var2"], False)]
-    )
-    def test_initialization(self, expected_runtime_variables: List[str], chat_mode: bool):
-        builder = DynamicPromptBuilder(expected_runtime_variables, chat_mode)
+    def test_initialization_chat_on(self):
+        expected_runtime_variables = ["var1", "var2", "var3"]
+        builder = DynamicPromptBuilder(expected_runtime_variables, chat_mode=True)
         assert builder.expected_runtime_variables == expected_runtime_variables
-        assert builder.chat_mode == chat_mode
+        assert builder.chat_mode
 
         # regardless of the chat mode
         # we have inputs that contain: prompt_source, template_variables + expected_runtime_variables
@@ -28,10 +26,27 @@ class TestDynamicPromptBuilder:
         assert builder.__canals_input__["prompt_source"].type == Union[List[ChatMessage], str]
 
         # output is always prompt, but the type is different depending on the chat mode
-        if chat_mode:
-            assert builder.__canals_output__["prompt"].type == List[ChatMessage]
-        else:
-            assert builder.__canals_output__["prompt"].type == str
+        assert builder.__canals_output__["prompt"].type == List[ChatMessage]
+
+    def test_initialization_chat_off(self):
+        expected_runtime_variables = ["var1", "var2"]
+        builder = DynamicPromptBuilder(expected_runtime_variables, False)
+        assert builder.expected_runtime_variables == expected_runtime_variables
+        assert not builder.chat_mode
+
+        # regardless of the chat mode
+        # we have inputs that contain: prompt_source, template_variables + expected_runtime_variables
+        expected_keys = set(expected_runtime_variables + ["prompt_source", "template_variables"])
+        assert set(builder.__canals_input__.keys()) == expected_keys
+
+        # response is always prompt regardless of chat mode
+        assert set(builder.__canals_output__.keys()) == {"prompt"}
+
+        # prompt_source is a list of ChatMessage or a string
+        assert builder.__canals_input__["prompt_source"].type == Union[List[ChatMessage], str]
+
+        # output is always prompt, but the type is different depending on the chat mode
+        assert builder.__canals_output__["prompt"].type == str
 
     def test_to_dict_method_returns_expected_dictionary(self):
         expected_runtime_variables = ["var1", "var2", "var3"]
