@@ -574,7 +574,9 @@ class LegacyFilterDocumentsLessThanTest(FilterableDocsFixtureMixin):
     def test_lt_filter(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"number": {"$lt": 0.0}})
-        assert result == [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] < 0]
+        assert result == [
+            doc for doc in filterable_docs if doc.meta.get("number", None) is None or doc.meta["number"] < 0
+        ]
 
     @pytest.mark.unit
     def test_lt_filter_non_numeric(self, document_store: DocumentStore, filterable_docs: List[Document]):
@@ -614,7 +616,9 @@ class LegacyFilterDocumentsLessThanEqualTest(FilterableDocsFixtureMixin):
     def test_lte_filter(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"number": {"$lte": 2.0}})
-        assert result == [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] <= 2.0]
+        assert result == [
+            doc for doc in filterable_docs if doc.meta.get("number", None) is None or doc.meta["number"] <= 2.0
+        ]
 
     @pytest.mark.unit
     def test_lte_filter_non_numeric(self, document_store: DocumentStore, filterable_docs: List[Document]):
@@ -658,7 +662,8 @@ class LegacyFilterDocumentsSimpleLogicalTest(FilterableDocsFixtureMixin):
         assert result == [
             doc
             for doc in filterable_docs
-            if (("number" in doc.meta and doc.meta["number"] < 1) or doc.meta.get("name") in ["name_0", "name_1"])
+            if (doc.meta.get("number", None) is None or doc.meta["number"] < 1)
+            or doc.meta.get("name") in ["name_0", "name_1"]
         ]
 
     @pytest.mark.unit
@@ -733,7 +738,10 @@ class LegacyFilterDocumentsNestedLogicalTest(FilterableDocsFixtureMixin):
         assert result == [
             doc
             for doc in filterable_docs
-            if (doc.meta.get("name") in ["name_0", "name_1"] or ("number" in doc.meta and doc.meta["number"] < 1))
+            if (
+                doc.meta.get("name") in ["name_0", "name_1"]
+                or (doc.meta.get("number", None) is None or doc.meta["number"] < 1)
+            )
         ]
 
     @pytest.mark.unit
@@ -783,10 +791,10 @@ class LegacyFilterDocumentsNestedLogicalTest(FilterableDocsFixtureMixin):
             doc
             for doc in filterable_docs
             if (
-                ("number" in doc.meta and doc.meta["number"] < 1)
+                (doc.meta.get("number", None) is None or doc.meta["number"] < 1)
                 or (
                     doc.meta.get("name") in ["name_0", "name_1"]
-                    and ("chapter" in doc.meta and doc.meta["chapter"] != "intro")
+                    and (doc.meta.get("chapter", None) is None or doc.meta["chapter"] != "intro")
                 )
             )
         ]
