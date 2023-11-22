@@ -65,7 +65,7 @@ class GPTChatGenerator:
         model_name: str = "gpt-3.5-turbo",
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         api_base_url: str = API_BASE_URL,
-        **generation_kwargs,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of ChatGPTGenerator. Unless specified otherwise in the `model_name`, this is for OpenAI's
@@ -110,7 +110,7 @@ class GPTChatGenerator:
         openai.api_key = api_key
 
         self.model_name = model_name
-        self.generation_kwargs = generation_kwargs
+        self.generation_kwargs = generation_kwargs or {}
         self.streaming_callback = streaming_callback
 
         self.api_base_url = api_base_url
@@ -133,7 +133,7 @@ class GPTChatGenerator:
             model_name=self.model_name,
             streaming_callback=callback_name,
             api_base_url=self.api_base_url,
-            **self.generation_kwargs,
+            generation_kwargs=self.generation_kwargs,
         )
 
     @classmethod
