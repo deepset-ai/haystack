@@ -5,6 +5,9 @@ from enum import Enum
 from haystack.preview.dataclasses import Document
 
 
+# Ellipsis are needed for the type checker, it's safe to disable module-wide
+# pylint: disable=unnecessary-ellipsis
+
 logger = logging.getLogger(__name__)
 
 
