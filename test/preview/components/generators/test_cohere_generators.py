@@ -140,7 +140,7 @@ class TestGPTGenerator:
     )
     @pytest.mark.integration
     def test_cohere_generator_run_wrong_model_name(self):
-        component = CohereGenerator(model="something-obviously-wrong", api_key=os.environ.get("COHERE_API_KEY"))
+        component = CohereGenerator(model_name="something-obviously-wrong", api_key=os.environ.get("COHERE_API_KEY"))
         with pytest.raises(
             cohere.CohereAPIError,
             match="model not found, make sure the correct model ID was used and that you have access to the model.",
