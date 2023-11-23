@@ -1,6 +1,4 @@
-from haystack.preview.components.preprocessors.text_document_cleaner import DocumentCleaner
-from haystack.preview.components.preprocessors.text_document_splitter import TextDocumentSplitter
-from haystack.preview.components.preprocessors.document_language_classifier import DocumentLanguageClassifier
-from haystack.preview.components.preprocessors.text_language_classifier import TextLanguageClassifier
+from haystack.preview.components.preprocessors.document_cleaner import DocumentCleaner
+from haystack.preview.components.preprocessors.document_splitter import DocumentSplitter
 
-__all__ = ["TextDocumentSplitter", "DocumentCleaner", "TextLanguageClassifier", "DocumentLanguageClassifier"]
+__all__ = ["DocumentSplitter", "DocumentCleaner"]

@@ -1,7 +1,8 @@
 import io
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from pathlib import Path
 
 import openai
 
@@ -111,7 +112,7 @@ class RemoteWhisperTranscriber:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
-    def run(self, streams: List[ByteStream]):
+    def run(self, sources: List[Union[str, Path, ByteStream]]):
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
@@ -124,11 +125,17 @@ class RemoteWhisperTranscriber:
         """
         documents = []
 
-        for stream in streams:
-            file = io.BytesIO(stream.data)
-            file.name = stream.metadata.get("file_path", "audio_input.wav")  # default name if `file_path` not found
+        for source in sources:
+            if not isinstance(source, ByteStream):
+                path = source
+                source = ByteStream.from_file_path(Path(source))
+                source.metadata["file_path"] = path
+
+            file = io.BytesIO(source.data)
+            file.name = str(source.metadata["file_path"]) if "file_path" in source.metadata else "__fallback__.wav"
+
             content = openai.Audio.transcribe(file=file, model=self.model_name, **self.whisper_params)
-            doc = Document(content=content["text"], meta=stream.metadata)
+            doc = Document(content=content["text"], meta=source.metadata)
             documents.append(doc)
 
         return {"documents": documents}

@@ -7,7 +7,8 @@ on:
       - main
   pull_request:
     paths:
-      - examples/**
+      - "examples/**"
+      - "!examples/preview/**"
     types:
       - opened
       - reopened
@@ -47,7 +48,7 @@ jobs:
           pip install .[inference,dev,elasticsearch,preprocessing,file-conversion]
 
       - name: Run
-        run: pytest examples/
+        run: pytest examples/  --ignore examples/preview/
 
       - name: Calculate alert data
         id: calculator

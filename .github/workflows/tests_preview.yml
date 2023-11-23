@@ -117,11 +117,12 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' cohere pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' cohere pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
           pip install --no-deps llvmlite numba 'openai-whisper>=20230918'  # prevent outdated version of tiktoken pinned by openai-whisper
 
+
       - name: Run
-        run: pytest -m "unit" test/preview
+        run: pytest -m "not integration" test/preview
 
       - name: Calculate alert data
         id: calculator
@@ -154,7 +155,6 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-
   integration-tests-linux:
     name: Integration / ubuntu-latest
     needs: unit-tests
@@ -178,9 +178,9 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' cohere pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' cohere pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
           pip install --no-deps llvmlite numba 'openai-whisper>=20230918'  # prevent outdated version of tiktoken pinned by openai-whisper
-
+          
       - name: Run
         run: pytest --maxfail=5 -m "integration" test/preview
 
@@ -215,13 +215,12 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-
   integration-tests-macos:
     name: Integration / macos-latest
     needs: unit-tests
     runs-on: macos-latest-xl
     env:
-      HAYSTACK_MPS_ENABLED : false
+      HAYSTACK_MPS_ENABLED: false
     steps:
       - uses: actions/checkout@v4
 
@@ -237,7 +236,7 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' cohere pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' cohere pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
           pip install --no-deps llvmlite numba 'openai-whisper>=20230918'  # prevent outdated version of tiktoken pinned by openai-whisper
 
       - name: Run Tika
@@ -277,7 +276,6 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-
   integration-tests-windows:
     name: Integration / windows-latest
     needs: unit-tests
@@ -291,8 +289,9 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' cohere pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' cohere pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
           pip install --no-deps llvmlite numba 'openai-whisper>=20230918'  # prevent outdated version of tiktoken pinned by openai-whisper
+
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test/preview -k 'not tika'

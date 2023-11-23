@@ -39,7 +39,7 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' cohere pypdf tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' cohere pypdf tika 'azure-ai-formrecognizer>=3.2.0b2'
           pip install --no-deps llvmlite numba 'openai-whisper>=20230918'  # prevent outdated version of tiktoken pinned by openai-whisper
 
       - name: Mypy
@@ -63,10 +63,7 @@ jobs:
         uses: tj-actions/changed-files@v40
         with:
           files: |
-            **/*.py
-          files_ignore: |
-            test/**
-            rest_api/test/**
+            haystack/preview/**/*.py
 
       - uses: actions/setup-python@v4
         with:
@@ -74,8 +71,9 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' cohere pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+          pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.34.1 'sentence-transformers>=2.2.0' cohere pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
           pip install --no-deps llvmlite numba 'openai-whisper>=20230918'  # prevent outdated version of tiktoken pinned by openai-whisper
+
           pip install ./haystack-linter
 
       - name: Pylint
