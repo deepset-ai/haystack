@@ -3,11 +3,20 @@ import pytest
 from pypdf import PdfReader
 
 from haystack.preview import Document
-from haystack.preview.components.converters.pypdf import PyPDFToDocument
+from haystack.preview.components.converters.pypdf import PyPDFToDocument, CONVERTERS_REGISTRY
 from haystack.preview.dataclasses import ByteStream
 
 
 class TestPyPDFToDocument:
+    def test_init(self):
+        component = PyPDFToDocument()
+        assert component.converter_name == "default"
+        assert hasattr(component, "_converter")
+
+    def test_init_fail_nonexisting_converter(self):
+        with pytest.raises(ValueError):
+            PyPDFToDocument(converter_name="non_existing_converter")
+
     @pytest.mark.unit
     def test_run(self, preview_samples_path):
         """
@@ -58,7 +67,9 @@ class TestPyPDFToDocument:
             def convert(self, reader: PdfReader) -> Document:
                 return Document(content="I don't care about converting given pdfs, I always return this")
 
-        converter = PyPDFToDocument(converter=MyCustomConverter())
+        CONVERTERS_REGISTRY["custom"] = MyCustomConverter()
+
+        converter = PyPDFToDocument(converter_name="custom")
         output = converter.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 1
