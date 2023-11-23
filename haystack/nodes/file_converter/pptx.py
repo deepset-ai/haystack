@@ -1,9 +1,10 @@
+from typing import List, Optional, Dict
+from pathlib import Path
+import logging
+
 from haystack.schema import Document
 from haystack.lazy_imports import LazyImport
 from haystack.nodes.file_converter.base import BaseConverter
-from typing import Tuple, List, Optional, Any, Dict
-from pathlib import Path
-import logging
 
 
 logger = logging.getLogger(__name__)
