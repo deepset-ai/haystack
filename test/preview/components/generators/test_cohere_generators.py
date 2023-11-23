@@ -44,11 +44,7 @@ class TestGPTGenerator:
         data = component.to_dict()
         assert data == {
             "type": "haystack.preview.components.generators.cohere.CohereGenerator",
-            "init_parameters": {
-                "model": "command",
-                "streaming_callback": None,
-                "api_base_url": cohere.COHERE_API_URL,
-            },
+            "init_parameters": {"model": "command", "streaming_callback": None, "api_base_url": cohere.COHERE_API_URL},
         }
 
     def test_to_dict_with_parameters(self):

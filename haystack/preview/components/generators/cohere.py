@@ -63,7 +63,9 @@ class CohereGenerator:
         if not api_key:
             api_key = os.environ.get("COHERE_API_KEY")
         if not api_key:
-            raise ValueError("CohereGenerator needs an API key to run. Either provide it as init parameter or set the env var COHERE_API_KEY.")
+            raise ValueError(
+                "CohereGenerator needs an API key to run. Either provide it as init parameter or set the env var COHERE_API_KEY."
+            )
 
         self.api_key = api_key
         self.model = model
