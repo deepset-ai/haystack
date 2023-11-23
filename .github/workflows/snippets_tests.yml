@@ -1,4 +1,4 @@
-name: Examples tests
+name: Test documentation snippets for Haystack 2.x
 
 on:
   workflow_dispatch: # Activate this workflow manually
@@ -7,8 +7,7 @@ on:
       - main
   pull_request:
     paths:
-      - "examples/**"
-      - "!examples/preview/**"
+      - examples/preview/**
     types:
       - opened
       - reopened
@@ -17,23 +16,12 @@ on:
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
-  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-  HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.8"
 
 jobs:
   tests:
-    name: Examples
+    name: Snippets
     runs-on: ubuntu-latest
-    services:
-      elasticsearch:
-        image: elasticsearch:7.17.6
-        env:
-          discovery.type: "single-node"
-          ES_JAVA_OPTS: "-Xms128m -Xmx256m"
-        ports:
-          - 9200:9200
 
     steps:
       - uses: actions/checkout@v4
@@ -42,13 +30,24 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Haystack
+      - name: Install snippets dependencies
         run: |
           pip install --upgrade pip
-          pip install .[inference,dev,elasticsearch,preprocessing,file-conversion]
+          pip install ".[preview]" torch
 
-      - name: Run
-        run: pytest examples/  --ignore examples/preview/
+      - name: Get changed files
+        id: files
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            examples/preview/**.py
+
+      - name: Run each snippet
+        run: |
+          CHANGED_FILES=${{ steps.files.outputs.all_changed_files }}
+          for file in $CHANGED_FILES; do
+            python "$file"
+          done
 
       - name: Calculate alert data
         id: calculator
