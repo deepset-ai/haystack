@@ -73,11 +73,12 @@ class PptxConverter(BaseConverter):
             id_hash_keys = self.id_hash_keys
 
         pres = Presentation(file_path)
-        text = ""
+        text_parts = []
         for slide in pres.slides:
             for shape in slide.shapes:
                 if hasattr(shape, "text"):
-                    text += shape.text
+                    text_parts.append(shape.text)
+        text = "\n".join(text_parts)
 
         document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
         return [document]
