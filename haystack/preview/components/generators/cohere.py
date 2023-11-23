@@ -3,7 +3,7 @@ import os
 import sys
 from typing import Any, Callable, Dict, List, Optional
 
-from haystack.lazy_imports import LazyImport
+from haystack.preview.lazy_imports import LazyImport
 from haystack.preview import DeserializationError, component, default_from_dict, default_to_dict
 
 with LazyImport(message="Run 'pip install cohere'") as cohere_import:
