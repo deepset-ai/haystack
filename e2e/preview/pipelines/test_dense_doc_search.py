@@ -11,7 +11,7 @@ from haystack.preview.document_stores import InMemoryDocumentStore
 from haystack.preview.components.retrievers import InMemoryEmbeddingRetriever
 
 
-def test_dense_doc_search_pipeline(tmp_path):
+def test_dense_doc_search_pipeline(tmp_path, samples_path):
     # Create the indexing pipeline
     indexing_pipeline = Pipeline()
     indexing_pipeline.add_component(
@@ -51,7 +51,7 @@ def test_dense_doc_search_pipeline(tmp_path):
     with open(tmp_path / "test_dense_doc_search_indexing_pipeline.json", "r") as f:
         indexing_pipeline = Pipeline.from_dict(json.load(f))
 
-    indexing_result = indexing_pipeline.run({"file_type_router": {"sources": Path("../samples/").iterdir()}})
+    indexing_result = indexing_pipeline.run({"file_type_router": {"sources": samples_path.iterdir()}})
     filled_document_store = indexing_pipeline.get_component("writer").document_store
 
     assert indexing_result["writer"]["documents_written"] == 2
