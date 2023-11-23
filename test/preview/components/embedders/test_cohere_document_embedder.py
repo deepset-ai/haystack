@@ -139,8 +139,8 @@ class TestCohereDocumentEmbedder:
         embedder.run = lambda x, **kwargs: np.random.rand(len(x), 2).tolist()
 
         docs = [
-            Document(text="I love cheese", metadata={"topic": "Cuisine"}),
-            Document(text="A transformer is a deep learning architecture", metadata={"topic": "ML"}),
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
         result = embedder.run(docs)
