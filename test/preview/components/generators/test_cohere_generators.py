@@ -46,7 +46,7 @@ class TestGPTGenerator:
         component = CohereGenerator(api_key="test-api-key")
         data = component.to_dict()
         assert data == {
-            "type": "CohereGenerator",
+            "type": "haystack.preview.components.generators.cohere.CohereGenerator",
             "init_parameters": {
                 "api_key": "test-api-key",
                 "model": "command",
@@ -67,7 +67,7 @@ class TestGPTGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "CohereGenerator",
+            "type": "haystack.preview.components.generators.cohere.CohereGenerator",
             "init_parameters": {
                 "api_key": "test-api-key",
                 "model": "command-light",
@@ -90,7 +90,7 @@ class TestGPTGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "CohereGenerator",
+            "type": "haystack.preview.components.generators.cohere.CohereGenerator",
             "init_parameters": {
                 "api_key": "test-api-key",
                 "model": "command",
@@ -104,7 +104,7 @@ class TestGPTGenerator:
     @pytest.mark.unit
     def test_from_dict(self):
         data = {
-            "type": "CohereGenerator",
+            "type": "haystack.preview.components.generators.cohere.CohereGenerator",
             "init_parameters": {
                 "api_key": "test-api-key",
                 "model": "command",
