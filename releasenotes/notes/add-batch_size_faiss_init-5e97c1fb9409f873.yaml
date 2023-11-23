@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+  Add batch_size to the __init__ method of FAISS Document Store. This works as the default value for all methods of
+  FAISS Document Store that support batch_size.
