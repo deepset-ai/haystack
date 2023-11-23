@@ -31,7 +31,7 @@ class CohereGenerator:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "command",
+        model_name: str = "command",
         streaming_callback: Optional[Callable] = None,
         api_base_url: str = COHERE_API_URL,
         **kwargs,
@@ -69,7 +69,7 @@ class CohereGenerator:
             )
 
         self.api_key = api_key
-        self.model = model
+        self.model_name = model_name
         self.streaming_callback = streaming_callback
         self.api_base_url = api_base_url
         self.model_parameters = kwargs
@@ -90,7 +90,7 @@ class CohereGenerator:
 
         return default_to_dict(
             self,
-            model=self.model,
+            model_name=self.model_name,
             streaming_callback=callback_name,
             api_base_url=self.api_base_url,
             **self.model_parameters,
@@ -123,7 +123,7 @@ class CohereGenerator:
         :param prompt: The prompt to be sent to the generative model.
         """
         response = self.client.generate(
-            model=self.model, prompt=prompt, stream=self.streaming_callback is not None, **self.model_parameters
+            model=self.model_name, prompt=prompt, stream=self.streaming_callback is not None, **self.model_parameters
         )
         if self.streaming_callback:
             metadata_dict: Dict[str, Any] = {}
