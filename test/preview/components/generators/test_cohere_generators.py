@@ -15,7 +15,7 @@ def default_streaming_callback(chunk):
 
 
 class TestGPTGenerator:
-    @pytest.mark.unit
+
     def test_init_default(self):
         component = CohereGenerator(api_key="test-api-key")
         assert component.api_key == "test-api-key"
@@ -24,7 +24,6 @@ class TestGPTGenerator:
         assert component.api_base_url == cohere.COHERE_API_URL
         assert component.model_parameters == {}
 
-    @pytest.mark.unit
     def test_init_with_parameters(self):
         callback = lambda x: x
         component = CohereGenerator(
@@ -41,7 +40,6 @@ class TestGPTGenerator:
         assert component.api_base_url == "test-base-url"
         assert component.model_parameters == {"max_tokens": 10, "some_test_param": "test-params"}
 
-    @pytest.mark.unit
     def test_to_dict_default(self):
         component = CohereGenerator(api_key="test-api-key")
         data = component.to_dict()
@@ -55,7 +53,6 @@ class TestGPTGenerator:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_parameters(self):
         component = CohereGenerator(
             api_key="test-api-key",
@@ -78,7 +75,6 @@ class TestGPTGenerator:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_lambda_streaming_callback(self):
         component = CohereGenerator(
             api_key="test-api-key",
@@ -101,7 +97,6 @@ class TestGPTGenerator:
             },
         }
 
-    @pytest.mark.unit
     def test_from_dict(self):
         data = {
             "type": "haystack.preview.components.generators.cohere.CohereGenerator",
@@ -121,7 +116,6 @@ class TestGPTGenerator:
         assert component.api_base_url == "test-base-url"
         assert component.model_parameters == {"max_tokens": 10, "some_test_param": "test-params"}
 
-    @pytest.mark.unit
     def test_check_truncated_answers(self, caplog):
         component = CohereGenerator(api_key="test-api-key")
         metadata = [{"finish_reason": "MAX_TOKENS"}]

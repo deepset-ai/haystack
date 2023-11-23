@@ -17,6 +17,14 @@ class CohereGenerator:
 
     Queries the LLM using Cohere's API. Invocations are made using 'cohere' package.
     See [Cohere API](https://docs.cohere.com/reference/generate) for more details.
+    
+    Example usage:
+
+    ```python
+    from haystack.preview.generators import CohereGenerator
+    generator = CohereGenerator(api_key="test-api-key")
+    generator.run(prompt="What's the capital of France?")
+    ```
     """
 
     def __init__(
@@ -74,7 +82,6 @@ class CohereGenerator:
 
         return default_to_dict(
             self,
-            api_key=self.api_key,
             model=self.model,
             streaming_callback=callback_name,
             api_base_url=self.api_base_url,
@@ -105,7 +112,7 @@ class CohereGenerator:
     def run(self, prompt: str):
         """
         Queries the LLM with the prompts to produce replies.
-        :param prompt: The prompts to be sent to the generative model.
+        :param prompt: The prompt to be sent to the generative model.
         """
         response = self.client.generate(
             model=self.model, prompt=prompt, stream=self.streaming_callback is not None, **self.model_parameters
