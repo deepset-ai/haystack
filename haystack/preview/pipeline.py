@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Dict, Optional, Union, TextIO, overload
+from typing import Any, Dict, Optional, Union, TextIO
 from pathlib import Path
 import datetime
 import logging
@@ -34,7 +34,6 @@ class Pipeline(canals.Pipeline):
         self._last_telemetry_sent: Optional[datetime.datetime] = None
         super().__init__(metadata=metadata, max_loops_allowed=max_loops_allowed, debug_path=debug_path)
 
-    @overload
     def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
         """
         Runs the pipeline
@@ -69,9 +68,11 @@ class Pipeline(canals.Pipeline):
         ```
 
         Notice how run method takes a data dictionary with the inputs for each component. The keys of the
-        dictionary are the component names and the values are dictionaries with the input parameters of that component.
+        dictionary are the component names and the values are dictionaries with the input parameters of
+        that component.
 
-        We can also run the pipeline by passing the inputs directly to the run method like so:
+        We can also run the pipeline by passing the inputs directly to the run method, omitting component names,
+        as in the following example:
 
         ```python
         result = pipeline.run(data={"word": "world"})
@@ -80,69 +81,23 @@ class Pipeline(canals.Pipeline):
         In this case, the pipeline will try to resolve the input parameters to the appropriate components and
         if successful, it will run the pipeline and return the outputs.
         """
-        pass
+        # check whether the data is a nested dictionary of component inputs where each key is a component name
+        # and each value is a dictionary of input parameters for that component
+        is_nested_component_input = all(isinstance(value, dict) for value in data.values())
+        if is_nested_component_input:
+            return self._run_internal(data=data, debug=debug)
+        else:
+            # flat input, a dict where keys are input names and values are the corresponding values
+            # we need to convert it to a nested dictionary of component inputs and then run the pipeline
+            # just like in the previous case
+            pipeline_inputs, unresolved_inputs = self._prepare_pipeline_component_input_data(data)
+            if unresolved_inputs:
+                logger.warning(
+                    "Inputs %s were not matched to any component inputs, please check your " "pipeline run parameters.",
+                    list(unresolved_inputs.keys()),
+                )
 
-    @overload
-    def run(self, **kwargs) -> Dict[str, Any]:
-        """
-        Runs the pipeline
-
-        **Note**: This method is part of an evolving interface and may be subject to changes in future releases.
-        We recommend using the more stable 'run(data: Dict[str, Any], debug: bool = False)' method for
-        regular use. Please keep this in mind when developing against this API.
-        """
-        pass
-
-    def run(self, *args, **kwargs) -> Dict[str, Any]:
-        """
-        Dispatches the execution to the appropriate overloaded run method based on the input arguments.
-
-        This method serves as an entry point to the pipeline execution process.
-
-        :param args: Positional arguments
-        :param kwargs: Keyword arguments
-        :return: A dictionary with the outputs of the pipeline if the dispatch was successful.
-        :raises TypeError: if the provided arguments do not match any expected signature for the overloaded run methods.
-        """
-        if args:
-            raise TypeError("Unsupported signature for 'run'")
-
-        if "data" in kwargs:
-            data = kwargs.pop("data")
-            debug = kwargs.pop("debug", False)
-            # check whether the data is a nested dictionary of component inputs where each key is a component name
-            # and each value is a dictionary of input parameters for that component
-            is_nested_component_input = all(isinstance(value, dict) for value in data.values())
-            if is_nested_component_input:
-                return self._run_internal(data=data, debug=debug)
-            else:
-                # we likely have data dict where keys are input names and values are the corresponding values
-                # we need to convert it to a nested dictionary of component inputs
-                return self._run_internal_from_kwargs(**data, debug=debug)
-
-        # Handling the raw kwargs, if we decide to support it
-        if kwargs:
-            return self._run_internal_from_kwargs(**kwargs)
-
-        # Error if the signature does not match expected patterns
-        raise TypeError("Unsupported signature for 'run'")
-
-    def _run_internal_from_kwargs(self, debug: bool = False, **kwargs) -> Dict[str, Any]:
-        """
-        Handles pipeline execution when invoked with keyword arguments only.
-        It prepares the input data by resolving the provided keyword arguments to the appropriate input
-        components and then invokes the underlying run method to initiate the pipeline execution.
-
-        :param debug: Flag to enable debugging mode.
-        :param kwargs: Keyword arguments for pipeline components.
-        :return: A dictionary with the outputs of the pipeline.
-        """
-        pipeline_inputs, unresolved_inputs = self._prepare_pipeline_component_input_data(**kwargs)
-
-        if unresolved_inputs:
-            logger.warning("Inputs %s were not matched to any component", list(unresolved_inputs.keys()))
-
-        return self._run_internal(data=pipeline_inputs, debug=debug)
+            return self._run_internal(data=pipeline_inputs, debug=debug)
 
     def _run_internal(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
         """
@@ -209,15 +164,15 @@ class Pipeline(canals.Pipeline):
         """
         return cls.from_dict(marshaller.unmarshal(fp.read()))
 
-    def _prepare_pipeline_component_input_data(self, **kwargs):
+    def _prepare_pipeline_component_input_data(self, data: Dict[str, Any]):
         """
         Prepares the input data for the pipeline components and identifies any unresolved parameters.
 
         This method organizes the inputs for each component in the pipeline based on the provided
-        keyword arguments (kwargs).
-        It also keeps track of any kwargs that do not correspond to input slots of any component.
+        data arguments. It also keeps track of any inputs that do not correspond to input slots of
+        any component.
 
-        :param kwargs: Arbitrary keyword arguments that are inputs to the components of the pipeline.
+        :param data: flat dict of inputs where the keys are the input names and the values are the input values.
         :return: A tuple containing the organized input data for the pipeline components (as a dictionary) and
                  a dictionary of any unresolved keyword arguments.
         """
@@ -227,8 +182,8 @@ class Pipeline(canals.Pipeline):
         # Retrieve the input slots for each component in the pipeline
         available_inputs: Dict[str, Dict[str, Any]] = self.inputs()
 
-        # Go through all provided kwargs to distribute them to the appropriate component inputs
-        for input_name, input_value in kwargs.items():
+        # Go through all provided to distribute them to the appropriate component inputs
+        for input_name, input_value in data.items():
             resolved_at_least_once = False
 
             # Check each component to see if it has a slot for the current kwarg
