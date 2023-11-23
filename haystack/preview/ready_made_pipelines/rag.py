@@ -20,8 +20,8 @@ class RAGPipeline(Pipeline):
 
     ```python
     rag_pipe = RAGPipeline(document_store=InMemoryDocumentStore())
-    answers = rag_pipe.run(query="Who lives in Rome?", top_k=2)
-    >>> [Answer(data="Giorgio"), Answer(data="Giorgio lives in Rome")]
+    answers = rag_pipe.run(query="Who lives in Rome?")
+    >>> Answer(data="Giorgio")
     ```
 
     """
