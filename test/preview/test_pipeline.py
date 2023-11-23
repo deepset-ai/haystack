@@ -146,3 +146,25 @@ def test_pipeline_resolution_with_mixed_correct_and_incorrect_input_names(caplog
 
     # important to check that the warning is logged for UX purposes, leave it here
     assert "were not matched to any component" in caplog.text
+
+
+def test_pipeline_resolution_duplicate_input_names_across_components():
+    @component
+    class Hello:
+        @component.output_types(output=str)
+        def run(self, who: str, what: str):
+            return {"output": f"Hello {who} {what}!"}
+
+    pipe = Pipeline()
+    pipe.add_component("hello", Hello())
+    pipe.add_component("hello2", Hello())
+
+    pipe.connect("hello.output", "hello2.who")
+
+    result = pipe.run(data={"what": "Haystack", "who": "world"})
+    assert result == {"hello2": {"output": "Hello Hello world Haystack! Haystack!"}}
+
+    resolved, _ = pipe._prepare_pipeline_component_input_data(data={"what": "Haystack", "who": "world"})
+
+    # why does hello2 have only one input? Because who of hello2 is inserted from hello.output
+    assert resolved == {"hello": {"what": "Haystack", "who": "world"}, "hello2": {"what": "Haystack"}}
