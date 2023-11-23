@@ -4,6 +4,7 @@ from pypdf import PdfReader
 
 from haystack.preview import Document
 from haystack.preview.components.converters.pypdf import PyPDFToDocument
+from haystack.preview.components.converters.pypdf import CONVERTERS_REGISTRY
 from haystack.preview.dataclasses import ByteStream
 
 
@@ -58,7 +59,10 @@ class TestPyPDFToDocument:
             def convert(self, reader: PdfReader) -> Document:
                 return Document(content="I don't care about converting given pdfs, I always return this")
 
-        converter = PyPDFToDocument(converter=MyCustomConverter())
+        CONVERTERS_REGISTRY["custom"] = MyCustomConverter()
+
+        converter = PyPDFToDocument(converter_name="custom")
+        print(converter._converter)
         output = converter.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 1

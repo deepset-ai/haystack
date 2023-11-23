@@ -1,11 +1,11 @@
 import io
 import logging
-from typing import List, Union, Optional, Protocol
+from typing import List, Union, Protocol, Dict
 from pathlib import Path
 
 from haystack.preview.dataclasses import ByteStream
 from haystack.preview.lazy_imports import LazyImport
-from haystack.preview import Document, component
+from haystack.preview import Document, component, default_to_dict
 
 with LazyImport("Run 'pip install pypdf'") as pypdf_import:
     from pypdf import PdfReader
@@ -34,6 +34,11 @@ class DefaultConverter:
         return Document(content=text)
 
 
+# This registry is used to store converters names and instances.
+# It can be used to register custom converters.
+CONVERTERS_REGISTRY: Dict[str, PyPDFConverter] = {"default": DefaultConverter()}
+
+
 @component
 class PyPDFToDocument:
     """
@@ -42,14 +47,19 @@ class PyPDFToDocument:
     A default text extraction converter is used if no custom converter is provided.
     """
 
-    def __init__(self, converter: Optional[PyPDFConverter] = None):
+    def __init__(self, converter_name: str = "default"):
         """
         Initializes the PyPDFToDocument component with an optional custom converter.
-        :param converter: A converter instance that adheres to the PyPDFConverter protocol.
-                          If None, the DefaultConverter is used.
+        :param converter_name: A converter name that is registered in the CONVERTER_REGISTRY.
+            Defaults to 'default'.
         """
         pypdf_import.check()
-        self.converter: PyPDFConverter = converter or DefaultConverter()
+        self.converter_name = converter_name
+        self._converter: PyPDFConverter = CONVERTERS_REGISTRY[converter_name]
+
+    def to_dict(self):
+        # do not serialize the _converter instance
+        return default_to_dict(self, converter_name=self.converter_name)
 
     @component.output_types(documents=List[Document])
     def run(self, sources: List[Union[str, Path, ByteStream]]):
@@ -63,7 +73,7 @@ class PyPDFToDocument:
         for source in sources:
             try:
                 pdf_reader = self._get_pdf_reader(source)
-                document = self.converter.convert(pdf_reader)
+                document = self._converter.convert(pdf_reader)
             except Exception as e:
                 logger.warning("Could not read %s and convert it to Document, skipping. %s", source, e)
                 continue
