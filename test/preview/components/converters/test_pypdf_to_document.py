@@ -70,7 +70,6 @@ class TestPyPDFToDocument:
         CONVERTERS_REGISTRY["custom"] = MyCustomConverter()
 
         converter = PyPDFToDocument(converter_name="custom")
-        print(converter._converter)
         output = converter.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 1
