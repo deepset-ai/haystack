@@ -412,7 +412,6 @@ class FAISSDocumentStore(SQLDocumentStore):
         batch_size: Optional[int] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
-
         batch_size = batch_size or self.batch_size
         if headers:
             raise NotImplementedError("FAISSDocumentStore does not support headers.")
