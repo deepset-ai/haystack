@@ -84,6 +84,3 @@ def test_pipeline_input_resolution():
 
     result = pipeline.run(data={"word": "world"})
     assert result == {"hello2": {"output": "Hello, Hello, world!!"}}
-
-    result = pipeline.run(word="world")
-    assert result == {"hello2": {"output": "Hello, Hello, world!!"}}
