@@ -50,7 +50,7 @@ class PyPDFToDocument:
     def __init__(self, converter_name: str = "default"):
         """
         Initializes the PyPDFToDocument component with an optional custom converter.
-        :param converter_name: A converter name that is registered in the CONVERTER_REGISTRY.
+        :param converter_name: A converter name that is registered in the CONVERTERS_REGISTRY.
             Defaults to 'default'.
         """
         pypdf_import.check()
