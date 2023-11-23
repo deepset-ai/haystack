@@ -18,7 +18,7 @@ class TestGPTGenerator:
     def test_init_default(self):
         component = CohereGenerator(api_key="test-api-key")
         assert component.api_key == "test-api-key"
-        assert component.model == "command"
+        assert component.model_name == "command"
         assert component.streaming_callback is None
         assert component.api_base_url == cohere.COHERE_API_URL
         assert component.model_parameters == {}
@@ -27,14 +27,14 @@ class TestGPTGenerator:
         callback = lambda x: x
         component = CohereGenerator(
             api_key="test-api-key",
-            model="command-light",
+            model_name="command-light",
             max_tokens=10,
             some_test_param="test-params",
             streaming_callback=callback,
             api_base_url="test-base-url",
         )
         assert component.api_key == "test-api-key"
-        assert component.model == "command-light"
+        assert component.model_name == "command-light"
         assert component.streaming_callback == callback
         assert component.api_base_url == "test-base-url"
         assert component.model_parameters == {"max_tokens": 10, "some_test_param": "test-params"}
@@ -44,13 +44,13 @@ class TestGPTGenerator:
         data = component.to_dict()
         assert data == {
             "type": "haystack.preview.components.generators.cohere.CohereGenerator",
-            "init_parameters": {"model": "command", "streaming_callback": None, "api_base_url": cohere.COHERE_API_URL},
+            "init_parameters": {"model_name": "command", "streaming_callback": None, "api_base_url": cohere.COHERE_API_URL},
         }
 
     def test_to_dict_with_parameters(self):
         component = CohereGenerator(
             api_key="test-api-key",
-            model="command-light",
+            momodel_namedel="command-light",
             max_tokens=10,
             some_test_param="test-params",
             streaming_callback=default_streaming_callback,
@@ -60,7 +60,7 @@ class TestGPTGenerator:
         assert data == {
             "type": "haystack.preview.components.generators.cohere.CohereGenerator",
             "init_parameters": {
-                "model": "command-light",
+                "model_name": "command-light",
                 "max_tokens": 10,
                 "some_test_param": "test-params",
                 "api_base_url": "test-base-url",
@@ -71,7 +71,7 @@ class TestGPTGenerator:
     def test_to_dict_with_lambda_streaming_callback(self):
         component = CohereGenerator(
             api_key="test-api-key",
-            model="command",
+            model_name="command",
             max_tokens=10,
             some_test_param="test-params",
             streaming_callback=lambda x: x,
@@ -81,7 +81,7 @@ class TestGPTGenerator:
         assert data == {
             "type": "haystack.preview.components.generators.cohere.CohereGenerator",
             "init_parameters": {
-                "model": "command",
+                "model_name": "command",
                 "streaming_callback": "test_cohere_generators.<lambda>",
                 "api_base_url": "test-base-url",
                 "max_tokens": 10,
@@ -94,7 +94,7 @@ class TestGPTGenerator:
         data = {
             "type": "haystack.preview.components.generators.cohere.CohereGenerator",
             "init_parameters": {
-                "model": "command",
+                "model_name": "command",
                 "max_tokens": 10,
                 "some_test_param": "test-params",
                 "api_base_url": "test-base-url",
@@ -103,7 +103,7 @@ class TestGPTGenerator:
         }
         component = CohereGenerator.from_dict(data)
         assert component.api_key == "test-key"
-        assert component.model == "command"
+        assert component.model_name == "command"
         assert component.streaming_callback == default_streaming_callback
         assert component.api_base_url == "test-base-url"
         assert component.model_parameters == {"max_tokens": 10, "some_test_param": "test-params"}
