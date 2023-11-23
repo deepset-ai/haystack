@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from haystack.preview.components.file_converters import HTMLToDocument
+from haystack.preview.components.converters import HTMLToDocument
 from haystack.preview.dataclasses import ByteStream
 
 

@@ -19,7 +19,7 @@ class HTMLToDocument:
 
     Usage example:
     ```python
-    from haystack.preview.components.file_converters.html import HTMLToDocument
+    from haystack.preview.components.converters.html import HTMLToDocument
 
     converter = HTMLToDocument()
     results = converter.run(sources=["sample.html"])
