@@ -106,7 +106,7 @@ class TestGPTGenerator:
             },
         }
         component = CohereGenerator.from_dict(data)
-        assert component.api_key = "test-key"
+        assert component.api_key == "test-key"
         assert component.model == "command"
         assert component.streaming_callback == default_streaming_callback
         assert component.api_base_url == "test-base-url"
