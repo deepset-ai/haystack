@@ -68,6 +68,9 @@ def test_dense_doc_search_pipeline(tmp_path):
     )
     query_pipeline.connect("text_embedder", "embedding_retriever")
 
+    querying_result = query_pipeline.run({"text_embedder": {"text": "Who lives in Rome?"}})
+    assert querying_result["embedding_retriever"]["documents"][0].content == "My name is Giorgio and I live in Rome."
+
     # Draw the querying pipeline
     query_pipeline.draw(tmp_path / "test_dense_doc_search_query_pipeline.png")
 
@@ -79,6 +82,3 @@ def test_dense_doc_search_pipeline(tmp_path):
     # Load the querying pipeline back
     with open(tmp_path / "test_dense_doc_search_query_pipeline.json", "r") as f:
         query_pipeline = Pipeline.from_dict(json.load(f))
-
-    querying_result = query_pipeline.run({"text_embedder": {"text": "Who lives in Rome?"}})
-    assert querying_result["embedding_retriever"]["documents"][0].text == "My name is Giorgio and I live in Rome."
