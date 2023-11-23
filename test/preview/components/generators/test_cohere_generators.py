@@ -54,7 +54,7 @@ class TestGPTGenerator:
     def test_to_dict_with_parameters(self):
         component = CohereGenerator(
             api_key="test-api-key",
-            momodel_namedel="command-light",
+            model_name="command-light",
             max_tokens=10,
             some_test_param="test-params",
             streaming_callback=default_streaming_callback,
