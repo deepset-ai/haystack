@@ -39,8 +39,8 @@ def mock_chat_completion():
 
 def test_rag_pipeline(mock_chat_completion):
     rag_pipe = RAGPipeline(document_store=InMemoryDocumentStore())
-    answers = rag_pipe.run(query="question")
-    assert isinstance(answers[0], Answer)
+    answer = rag_pipe.run(query="question")
+    assert isinstance(answer, Answer)
 
 
 def test_rag_pipeline_other_docstore():
