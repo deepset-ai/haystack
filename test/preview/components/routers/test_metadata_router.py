@@ -13,11 +13,11 @@ class TestMetadataRouter:
         }
         router = MetadataRouter(rules=rules)
         documents = [
-            Document(metadata={"created_at": "2023-02-01"}),
-            Document(metadata={"created_at": "2023-05-01"}),
-            Document(metadata={"created_at": "2023-08-01"}),
+            Document(meta={"created_at": "2023-02-01"}),
+            Document(meta={"created_at": "2023-05-01"}),
+            Document(meta={"created_at": "2023-08-01"}),
         ]
         output = router.run(documents=documents)
-        assert output["edge_1"][0].metadata["created_at"] == "2023-02-01"
-        assert output["edge_2"][0].metadata["created_at"] == "2023-05-01"
-        assert output["unmatched"][0].metadata["created_at"] == "2023-08-01"
+        assert output["edge_1"][0].meta["created_at"] == "2023-02-01"
+        assert output["edge_2"][0].meta["created_at"] == "2023-05-01"
+        assert output["unmatched"][0].meta["created_at"] == "2023-08-01"

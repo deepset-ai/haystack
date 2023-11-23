@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Added a new DocumentJoiner component so that hybrid retrieval pipelines can merge the document result lists of multiple retrievers.
+    Similarly, indexing pipelines can use DocumentJoiner to merge multiple lists of documents created by different file converters.

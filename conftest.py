@@ -11,6 +11,9 @@ def pytest_addoption(parser):
 
 
 def pytest_generate_tests(metafunc):
+    # Ugly hack to avoid polluting preview tests this with unwanted fixtures
+    if "test/preview" in metafunc.module.__file__ or "test\\preview" in metafunc.module.__file__:
+        return
     # Get selected docstores from CLI arg
     document_store_type = metafunc.config.option.document_store_type
     selected_doc_stores = [item.strip() for item in document_store_type.split(",")]

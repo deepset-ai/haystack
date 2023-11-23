@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Removes the unused query parameter from the run method of MetaFieldRanker.

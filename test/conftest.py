@@ -647,6 +647,15 @@ def get_retriever(retriever_type, document_store):
             model_format="sentence_transformers",
             use_gpu=False,
         )
+    elif retriever_type == "embedding_sbert_instructions":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="sentence-transformers/msmarco-distilbert-dot-v5",
+            model_format="sentence_transformers",
+            query_prompt="Embed this query for retrieval:",
+            passage_prompt="Embed this passage for retrieval:",
+            use_gpu=False,
+        )
     elif retriever_type == "retribert":
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="yjernite/retribert-base-uncased", use_gpu=False

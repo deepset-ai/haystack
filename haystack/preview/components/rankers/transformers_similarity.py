@@ -8,7 +8,7 @@ from haystack.preview.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]==4.34.1'") as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -16,8 +16,8 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]==4.3
 @component
 class TransformersSimilarityRanker:
     """
-    Ranks documents based on query similarity.
-    It uses a pre-trained cross-encoder model (from Hugging Face Hub) to embed the query and documents.
+    Ranks Documents based on their similarity to the query.
+    It uses a pre-trained cross-encoder model (from the Hugging Face Hub) to embed the query and the Documents.
 
     Usage example:
     ```
@@ -25,12 +25,12 @@ class TransformersSimilarityRanker:
     from haystack.preview.components.rankers import TransformersSimilarityRanker
 
     ranker = TransformersSimilarityRanker()
-    docs = [Document(text="Paris"), Document(text="Berlin")]
+    docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "City in Germany"
     output = ranker.run(query=query, documents=docs)
     docs = output["documents"]
     assert len(docs) == 2
-    assert docs[0].text == "Berlin"
+    assert docs[0].content == "Berlin"
     ```
     """
 
@@ -45,12 +45,12 @@ class TransformersSimilarityRanker:
         Creates an instance of TransformersSimilarityRanker.
 
         :param model_name_or_path: The name or path of a pre-trained cross-encoder model
-            from Hugging Face Hub.
-        :param device: torch device (for example, cuda:0, cpu, mps) to limit model inference to a specific device.
+            from the Hugging Face Hub.
+        :param device: The torch device (for example, cuda:0, cpu, mps) to which you want to limit model inference.
         :param token: The API token used to download private models from Hugging Face.
-            If this parameter is set to `True`, then the token generated when running
-            `transformers-cli login` (stored in ~/.huggingface) will be used.
-        :param top_k: The maximum number of documents to return per query.
+            If this parameter is set to `True`, the token generated when running
+            `transformers-cli login` (stored in ~/.huggingface) is used.
+        :param top_k: The maximum number of Documents to return per query.
         """
         torch_and_transformers_import.check()
 
@@ -71,7 +71,7 @@ class TransformersSimilarityRanker:
 
     def warm_up(self):
         """
-        Warm up the model and tokenizer used in scoring the documents.
+        Warm up the model and tokenizer used for scoring the Documents.
         """
         if self.model_name_or_path and not self.model:
             self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name_or_path, token=self.token)
@@ -94,12 +94,12 @@ class TransformersSimilarityRanker:
     @component.output_types(documents=List[Document])
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
-        Returns a list of documents ranked by their similarity to the given query
+        Returns a list of Documents ranked by their similarity to the given query.
 
         :param query: Query string.
         :param documents: List of Documents.
-        :param top_k: The maximum number of documents to return.
-        :return: List of Documents sorted by (desc.) similarity with the query.
+        :param top_k: The maximum number of Documents you want the Ranker to return.
+        :return: List of Documents sorted by their similarity to the query with the most similar Documents appearing first.
         """
         if not documents:
             return {"documents": []}
@@ -113,10 +113,10 @@ class TransformersSimilarityRanker:
         # If a model path is provided but the model isn't loaded
         if self.model_name_or_path and not self.model:
             raise ComponentError(
-                f"The component {self.__class__.__name__} not warmed up. Run 'warm_up()' before calling 'run()'."
+                f"The component {self.__class__.__name__} wasn't warmed up. Run 'warm_up()' before calling 'run()'."
             )
 
-        query_doc_pairs = [[query, doc.text] for doc in documents]
+        query_doc_pairs = [[query, doc.content] for doc in documents]
         features = self.tokenizer(
             query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
         ).to(  # type: ignore

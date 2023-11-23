@@ -64,5 +64,5 @@ class DocumentWriter:
         if policy is None:
             policy = self.policy
 
-        self.document_store.write_documents(documents=documents, policy=policy)
-        return {"documents_written": len(documents)}
+        documents_written = self.document_store.write_documents(documents=documents, policy=policy)
+        return {"documents_written": documents_written}

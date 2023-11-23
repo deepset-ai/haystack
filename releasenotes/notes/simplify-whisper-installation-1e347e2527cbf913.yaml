@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Upgraded openai-whisper to version 20231106 and simplified installation through re-introduced audio extra.
+    The latest openai-whisper version unpins its tiktoken dependency, which resolved a version conflict with Haystack's dependencies.

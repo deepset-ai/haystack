@@ -10,9 +10,9 @@ from tqdm.auto import tqdm
 from haystack.preview import default_from_dict, default_to_dict
 from haystack.preview.document_stores.decorator import document_store
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores.protocols import DuplicatePolicy, DocumentStore
+from haystack.preview.document_stores.protocols import DuplicatePolicy
 from haystack.preview.utils.filters import document_matches_filter
-from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError, DocumentStoreError
+from haystack.preview.document_stores.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.preview.utils import expit
 
 logger = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ class InMemoryDocumentStore:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DocumentStore":
+    def from_dict(cls, data: Dict[str, Any]) -> "InMemoryDocumentStore":
         """
         Deserializes the store from a dictionary.
         """
@@ -163,7 +163,7 @@ class InMemoryDocumentStore:
             return [doc for doc in self.storage.values() if document_matches_filter(conditions=filters, document=doc)]
         return list(self.storage.values())
 
-    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
+    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int:
         """
         Writes (or overwrites) documents into the DocumentStore.
 
@@ -183,28 +183,30 @@ class InMemoryDocumentStore:
         ):
             raise ValueError("Please provide a list of Documents.")
 
+        written_documents = len(documents)
         for document in documents:
             if policy != DuplicatePolicy.OVERWRITE and document.id in self.storage.keys():
                 if policy == DuplicatePolicy.FAIL:
                     raise DuplicateDocumentError(f"ID '{document.id}' already exists.")
                 if policy == DuplicatePolicy.SKIP:
                     logger.warning("ID '%s' already exists", document.id)
+                    written_documents -= 1
+                    continue
             self.storage[document.id] = document
+        return written_documents
 
     def delete_documents(self, document_ids: List[str]) -> None:
         """
         Deletes all documents with matching document_ids from the DocumentStore.
-        Fails with `MissingDocumentError` if no document with this id is present in the DocumentStore.
-
         :param object_ids: The object_ids to delete.
         """
         for doc_id in document_ids:
             if doc_id not in self.storage.keys():
-                raise MissingDocumentError(f"ID '{doc_id}' not found, cannot delete it.")
+                continue
             del self.storage[doc_id]
 
     def bm25_retrieval(
-        self, query: str, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = True
+        self, query: str, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = False
     ) -> List[Document]:
         """
         Retrieves documents that are most relevant to the query using BM25 algorithm.
@@ -212,13 +214,13 @@ class InMemoryDocumentStore:
         :param query: The query string.
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The number of top documents to retrieve. Default is 10.
-        :param scale_score: Whether to scale the scores of the retrieved documents. Default is True.
+        :param scale_score: Whether to scale the scores of the retrieved documents. Default is False.
         :return: A list of the top_k documents most relevant to the query.
         """
         if not query:
             raise ValueError("Query should be a non-empty string")
 
-        content_type_filter = {"$or": {"text": {"$not": None}, "dataframe": {"$not": None}}}
+        content_type_filter = {"$or": {"content": {"$not": None}, "dataframe": {"$not": None}}}
         if filters:
             filters = {"$and": [content_type_filter, filters]}
         else:
@@ -228,11 +230,11 @@ class InMemoryDocumentStore:
         # Lowercase all documents
         lower_case_documents = []
         for doc in all_documents:
-            if doc.text is None and doc.dataframe is None:
+            if doc.content is None and doc.dataframe is None:
                 logger.info("Document '%s' has no text or dataframe content. Skipping it.", doc.id)
             else:
-                if doc.text is not None:
-                    lower_case_documents.append(doc.text.lower())
+                if doc.content is not None:
+                    lower_case_documents.append(doc.content.lower())
                     if doc.dataframe is not None:
                         logger.warning(
                             "Document '%s' has both text and dataframe content. "
@@ -270,7 +272,7 @@ class InMemoryDocumentStore:
             doc = all_documents[i]
             doc_fields = doc.to_dict()
             doc_fields["score"] = docs_scores[i]
-            return_document = Document(**doc_fields)
+            return_document = Document.from_dict(doc_fields)
             return_documents.append(return_document)
         return return_documents
 
@@ -279,7 +281,7 @@ class InMemoryDocumentStore:
         query_embedding: List[float],
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
-        scale_score: bool = True,
+        scale_score: bool = False,
         return_embedding: bool = False,
     ) -> List[Document]:
         """
@@ -288,7 +290,7 @@ class InMemoryDocumentStore:
         :param query_embedding: Embedding of the query.
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The number of top documents to retrieve. Default is 10.
-        :param scale_score: Whether to scale the scores of the retrieved Documents. Default is True.
+        :param scale_score: Whether to scale the scores of the retrieved Documents. Default is False.
         :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
         :return: A list of the top_k documents most relevant to the query.
         """
@@ -322,19 +324,19 @@ class InMemoryDocumentStore:
             doc_fields["score"] = score
             if return_embedding is False:
                 doc_fields["embedding"] = None
-            top_documents.append(Document(**doc_fields))
+            top_documents.append(Document.from_dict(doc_fields))
 
         return top_documents
 
     def _compute_query_embedding_similarity_scores(
-        self, embedding: List[float], documents: List[Document], scale_score: bool = True
+        self, embedding: List[float], documents: List[Document], scale_score: bool = False
     ) -> List[float]:
         """
         Computes the similarity scores between the query embedding and the embeddings of the documents.
 
         :param embedding: Embedding of the query.
         :param documents: A list of Documents.
-        :param scale_score: Whether to scale the scores of the Documents. Default is True.
+        :param scale_score: Whether to scale the scores of the Documents. Default is False.
         :return: A list of scores.
         """
 

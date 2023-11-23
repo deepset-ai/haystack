@@ -27,9 +27,9 @@ def test_extractive_qa_pipeline(tmp_path):
 
     # Populate the document store
     documents = [
-        Document(text="My name is Jean and I live in Paris."),
-        Document(text="My name is Mark and I live in Berlin."),
-        Document(text="My name is Giorgio and I live in Rome."),
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
     ]
     qa_pipeline.get_component("retriever").document_store.write_documents(documents)
 
@@ -64,4 +64,4 @@ def test_extractive_qa_pipeline(tmp_path):
             assert hasattr(answer, "document")
             # the answer is extracted from the correct document
             if answer.document is not None:
-                assert answer.document == doc
+                assert answer.document.id == doc.id
