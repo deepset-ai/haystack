@@ -10,7 +10,7 @@ from haystack.preview.components.builders.answer_builder import AnswerBuilder
 from haystack.preview.components.builders.prompt_builder import PromptBuilder
 
 
-class RAGPipeline(Pipeline):
+class RAGPipeline:
     """
     A simple ready-made pipeline for RAG. It requires a populated document store.
 
