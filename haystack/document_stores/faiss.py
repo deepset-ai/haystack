@@ -104,6 +104,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param ef_search: Used only if `index_factory == "HNSW"`.
         :param ef_construction: Used only if `index_factory == "HNSW"`.
         :param validate_index_sync: Checks if the document count equals the embedding count at initialization time.
+        :param batch_size: Number of Documents to index at once / Number of queries to execute at once. If you face
+                           memory issues, decrease the batch_size.
         """
         faiss_import.check()
         # special case if we want to load an existing index from disk
