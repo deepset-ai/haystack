@@ -26,7 +26,7 @@ classifiers = [
 ]
 dependencies = [
     "farm-haystack",
-    "fastapi<0.104.0",  # https://github.com/deepset-ai/haystack/issues/6119
+    "fastapi",
     "uvicorn<1",
     "python-multipart<1",  # optional FastAPI dependency for form data
     "pynvml",
