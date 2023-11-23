@@ -39,49 +39,46 @@ def test_dense_doc_search_pipeline(tmp_path):
     indexing_pipeline.connect("splitter.documents", "embedder.documents")
     indexing_pipeline.connect("embedder.documents", "writer.documents")
 
-    # Draw the pipeline
+    # Draw the indexing pipeline
     indexing_pipeline.draw(tmp_path / "test_dense_doc_search_indexing_pipeline.png")
 
-    # Serialize the pipeline to JSON
+    # Serialize the indexing pipeline to JSON
     with open(tmp_path / "test_dense_doc_search_indexing_pipeline.json", "w") as f:
         print(json.dumps(indexing_pipeline.to_dict(), indent=4))
         json.dump(indexing_pipeline.to_dict(), f)
 
-    # Load the pipeline back
+    # Load the indexing pipeline back
     with open(tmp_path / "test_dense_doc_search_indexing_pipeline.json", "r") as f:
         indexing_pipeline = Pipeline.from_dict(json.load(f))
 
+    indexing_result = indexing_pipeline.run({"file_type_router": {"sources": Path("../samples/").iterdir()}})
+    filled_document_store = indexing_pipeline.get_component("writer").document_store
+
+    assert indexing_result["writer"]["documents_written"] == 2
+    assert filled_document_store.count_documents() == 2
+
+    # Create the querying pipeline
     query_pipeline = Pipeline()
     query_pipeline.add_component(
         instance=SentenceTransformersTextEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
         name="text_embedder",
     )
     query_pipeline.add_component(
-        instance=InMemoryEmbeddingRetriever(
-            document_store=indexing_pipeline.get_component("writer").document_store, top_k=20
-        ),
-        name="embedding_retriever",
+        instance=InMemoryEmbeddingRetriever(document_store=filled_document_store, top_k=20), name="embedding_retriever"
     )
     query_pipeline.connect("text_embedder", "embedding_retriever")
 
-    # Draw the pipeline
+    # Draw the querying pipeline
     query_pipeline.draw(tmp_path / "test_dense_doc_search_query_pipeline.png")
 
-    # Serialize the pipeline to JSON
+    # Serialize the querying pipeline to JSON
     with open(tmp_path / "test_dense_doc_search_query_pipeline.json", "w") as f:
         print(json.dumps(query_pipeline.to_dict(), indent=4))
         json.dump(query_pipeline.to_dict(), f)
 
-    # Load the pipeline back
+    # Load the querying pipeline back
     with open(tmp_path / "test_dense_doc_search_query_pipeline.json", "r") as f:
         query_pipeline = Pipeline.from_dict(json.load(f))
 
-    # TODO Ensure there is a directory with a txt file and a pdf file
-    result = indexing_pipeline.run({"file_type_router": {"sources": Path(tmp_path).iterdir()}})
-
-    filled_document_store = indexing_pipeline.get_component("writer").document_store
-    assert result["writer"]["documents_written"] == 3
-    assert filled_document_store.count_documents() == 3
-
-    result = query_pipeline.run({"text_embedder": {"text": "Who lives in Rome?"}})
-    assert result["retriever"]["documents"][0].text == "My name is Giorgio and I live in Rome."
+    querying_result = query_pipeline.run({"text_embedder": {"text": "Who lives in Rome?"}})
+    assert querying_result["embedding_retriever"]["documents"][0].text == "My name is Giorgio and I live in Rome."
