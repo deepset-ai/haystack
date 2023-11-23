@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from haystack.preview import Pipeline
-from haystack.preview.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.preview.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
 from haystack.preview.components.converters import PyPDFToDocument, TextFileToDocument
 from haystack.preview.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.preview.components.routers import FileTypeRouter, DocumentJoiner
@@ -53,11 +53,16 @@ def test_dense_doc_search_pipeline(tmp_path):
 
     query_pipeline = Pipeline()
     query_pipeline.add_component(
+        instance=SentenceTransformersTextEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
+        name="text_embedder",
+    )
+    query_pipeline.add_component(
         instance=InMemoryEmbeddingRetriever(
             document_store=indexing_pipeline.get_component("writer").document_store, top_k=20
         ),
-        name="retriever",
+        name="embedding_retriever",
     )
+    query_pipeline.connect("text_embedder", "embedding_retriever")
 
     # Draw the pipeline
     query_pipeline.draw(tmp_path / "test_dense_doc_search_query_pipeline.png")
@@ -78,5 +83,5 @@ def test_dense_doc_search_pipeline(tmp_path):
     assert result["writer"]["documents_written"] == 3
     assert filled_document_store.count_documents() == 3
 
-    result = query_pipeline.run({"retriever": {"query": "Who lives in Rome?"}})
+    result = query_pipeline.run({"text_embedder": {"text": "Who lives in Rome?"}})
     assert result["retriever"]["documents"][0].text == "My name is Giorgio and I live in Rome."
