@@ -4,6 +4,7 @@ from haystack.preview.components.converters.azure import AzureOCRDocumentConvert
 from haystack.preview.components.converters.pypdf import PyPDFToDocument
 from haystack.preview.components.converters.html import HTMLToDocument
 from haystack.preview.components.converters.markdown import MarkdownToDocument
+from haystack.preview.components.converters.openapi_functions import OpenAPIServiceToFunctions
 
 __all__ = [
     "TextFileToDocument",
@@ -12,4 +13,5 @@ __all__ = [
     "PyPDFToDocument",
     "HTMLToDocument",
     "MarkdownToDocument",
+    "OpenAPIServiceToFunctions",
 ]
