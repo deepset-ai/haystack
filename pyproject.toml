@@ -165,6 +165,7 @@ preprocessing = [
 file-conversion = [
   "azure-ai-formrecognizer>=3.2.0b2",  # Microsoft Azure's Form Recognizer service (text and table exctrator)
   "python-docx",
+  "python-pptx",
   "tika",  # Apache Tika (text & metadata extractor)
   "beautifulsoup4",
   "markdown",
@@ -219,7 +220,6 @@ dev = [
   "pylint",
   "farm-haystack[formatting]",
   # Documentation
-  "pydoc-markdown",
   "toml",
   "reno",
   # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.
