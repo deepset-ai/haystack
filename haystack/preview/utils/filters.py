@@ -52,6 +52,8 @@ def _greater_than(document_value: Any, filter_value: Any) -> bool:
         return False
     if document_value is not None and filter_value is None:
         return True
+    if document_value is None and filter_value is None:
+        return False
     if isinstance(document_value, str) or isinstance(filter_value, str):
         try:
             document_value = datetime.fromisoformat(document_value)

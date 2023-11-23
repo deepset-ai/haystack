@@ -156,6 +156,12 @@ document_matches_filter_data = [
         True,
         id="> operator with None filter value",
     ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": None},
+        Document(meta={"page": None}),
+        False,
+        id="> operator with None Document and filter value",
+    ),
     # >= operator params
     pytest.param(
         {"field": "meta.page", "operator": ">=", "value": 10},
@@ -210,6 +216,12 @@ document_matches_filter_data = [
         Document(meta={"page": 10}),
         True,
         id=">= operator with None filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": None},
+        Document(meta={"page": None}),
+        True,
+        id=">= operator with None Document and filter value",
     ),
     # < operator params
     pytest.param(
@@ -266,6 +278,12 @@ document_matches_filter_data = [
         False,
         id="< operator with None filter value",
     ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": None},
+        Document(meta={"page": None}),
+        False,
+        id="< operator with None Document and filter value",
+    ),
     # <= operator params
     pytest.param(
         {"field": "meta.page", "operator": "<=", "value": 10},
@@ -320,6 +338,12 @@ document_matches_filter_data = [
         Document(meta={"page": 10}),
         False,
         id="<= operator with None filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": None},
+        Document(meta={"page": None}),
+        True,
+        id="<= operator with None Document and filter value",
     ),
     # in operator params
     pytest.param(
