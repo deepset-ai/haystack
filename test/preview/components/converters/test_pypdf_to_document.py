@@ -3,7 +3,7 @@ import pytest
 from pypdf import PdfReader
 
 from haystack.preview import Document
-from haystack.preview.components.file_converters.pypdf import PyPDFToDocument
+from haystack.preview.components.converters.pypdf import PyPDFToDocument
 from haystack.preview.dataclasses import ByteStream
 
 

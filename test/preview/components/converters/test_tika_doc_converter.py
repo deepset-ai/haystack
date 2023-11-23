@@ -2,14 +2,14 @@ from unittest.mock import patch
 
 import pytest
 
-from haystack.preview.components.file_converters.tika import TikaDocumentConverter
+from haystack.preview.components.converters.tika import TikaDocumentConverter
 
 
 class TestTikaDocumentConverter:
     @pytest.mark.unit
     def test_run(self):
         component = TikaDocumentConverter()
-        with patch("haystack.preview.components.file_converters.tika.tika_parser.from_file") as mock_tika_parser:
+        with patch("haystack.preview.components.converters.tika.tika_parser.from_file") as mock_tika_parser:
             mock_tika_parser.return_value = {"content": "Content of mock_file.pdf"}
             documents = component.run(paths=["mock_file.pdf"])["documents"]
 
@@ -19,7 +19,7 @@ class TestTikaDocumentConverter:
     @pytest.mark.unit
     def test_run_logs_warning_if_content_empty(self, caplog):
         component = TikaDocumentConverter()
-        with patch("haystack.preview.components.file_converters.tika.tika_parser.from_file") as mock_tika_parser:
+        with patch("haystack.preview.components.converters.tika.tika_parser.from_file") as mock_tika_parser:
             mock_tika_parser.return_value = {"content": ""}
             with caplog.at_level("WARNING"):
                 component.run(paths=["mock_file.pdf"])
@@ -28,7 +28,7 @@ class TestTikaDocumentConverter:
     @pytest.mark.unit
     def test_run_logs_error(self, caplog):
         component = TikaDocumentConverter()
-        with patch("haystack.preview.components.file_converters.tika.tika_parser.from_file") as mock_tika_parser:
+        with patch("haystack.preview.components.converters.tika.tika_parser.from_file") as mock_tika_parser:
             mock_tika_parser.side_effect = Exception("Some error")
             with caplog.at_level("ERROR"):
                 component.run(paths=["mock_file.pdf"])
