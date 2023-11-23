@@ -292,3 +292,137 @@ def _list_conditions(conditions: Any) -> List[Any]:
     if isinstance(conditions, dict):
         return [{key: value} for key, value in conditions.items()]
     return [conditions]
+
+
+def convert(filters: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Convert a filter declared using the legacy style into the new style.
+    This is mostly meant to ease migration from Haystack 1.x to 2.x for developers
+    of Document Stores and Components that use filters.
+
+    This function doesn't verify if `filters` are declared using the legacy style.
+
+    Example usage:
+    ```python
+    legacy_filter = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {"genre": {"$in": ["economy", "politics"]}, "publisher": {"$eq": "nytimes"}},
+        }
+    }
+    assert convert(legacy_filter) == {
+        "operator": "AND",
+        "conditions": [
+            {"field": "type", "operator": "==", "value": "article"},
+            {"field": "date", "operator": ">=", "value": "2015-01-01"},
+            {"field": "date", "operator": "<", "value": "2021-01-01"},
+            {"field": "rating", "operator": ">=", "value": 3},
+            {
+                "operator": "OR",
+                "conditions": [
+                    {"field": "genre", "operator": "in", "value": ["economy", "politics"]},
+                    {"field": "publisher", "operator": "==", "value": "nytimes"},
+                ],
+            },
+        ],
+    }
+    ```
+    """
+    if not isinstance(filters, dict):
+        msg = f"Can't convert filters from type '{type(filters)}'"
+        raise ValueError(msg)
+
+    converted = _internal_convert(filters)
+    if "conditions" not in converted:
+        # This is done to handle a corner case when filter is really simple like so:
+        #   {"text": "A Foo Document 1"}
+        # The root '$and' operator is implicit so the conversion doesn't handle
+        # it and it must be added explicitly like so.
+        # This only happens for simple filters like the one above.
+        return {"operator": "AND", "conditions": [converted]}
+    return converted
+
+
+def _internal_convert(filters: Union[List[Any], Dict[str, Any]], previous_key=None) -> Any:
+    """
+    Recursively convert filters from legacy to new style.
+    """
+    conditions = []
+
+    if isinstance(filters, list) and (result := _handle_list(filters, previous_key)) is not None:
+        return result
+
+    if not isinstance(filters, dict):
+        return _handle_non_dict(filters, previous_key)
+
+    for key, value in filters.items():
+        if (
+            previous_key is not None
+            and previous_key not in ALL_LEGACY_OPERATORS_MAPPING
+            and key not in ALL_LEGACY_OPERATORS_MAPPING
+        ):
+            msg = f"This filter ({filters}) seems to be malformed."
+            raise FilterError(msg)
+        if key not in ALL_LEGACY_OPERATORS_MAPPING:
+            converted = _internal_convert(value, previous_key=key)
+            if isinstance(converted, list):
+                conditions.extend(converted)
+            else:
+                conditions.append(converted)
+        elif key in LEGACY_LOGICAL_OPERATORS_MAPPING:
+            if previous_key not in ALL_LEGACY_OPERATORS_MAPPING and isinstance(value, list):
+                converted = [_internal_convert({previous_key: v}) for v in value]
+                conditions.append({"operator": ALL_LEGACY_OPERATORS_MAPPING[key], "conditions": converted})
+            else:
+                converted = _internal_convert(value, previous_key=key)
+                if key == "$not" and type(converted) not in [dict, list]:
+                    # This handles a corner when '$not' is used like this:
+                    # '{"page": {"$not": 102}}'
+                    # Without this check we would miss the implicit '$eq'
+                    converted = {"field": previous_key, "operator": "==", "value": value}
+                if not isinstance(converted, list):
+                    converted = [converted]
+                conditions.append({"operator": ALL_LEGACY_OPERATORS_MAPPING[key], "conditions": converted})
+        elif key in LEGACY_COMPARISON_OPERATORS_MAPPING:
+            conditions.append({"field": previous_key, "operator": ALL_LEGACY_OPERATORS_MAPPING[key], "value": value})
+
+    if len(conditions) == 1:
+        return conditions[0]
+
+    if previous_key is None:
+        return {"operator": "AND", "conditions": conditions}
+
+    return conditions
+
+
+def _handle_list(filters, previous_key):
+    if previous_key in LEGACY_LOGICAL_OPERATORS_MAPPING:
+        return [_internal_convert(f) for f in filters]
+    elif previous_key not in LEGACY_COMPARISON_OPERATORS_MAPPING:
+        return {"field": previous_key, "operator": "in", "value": filters}
+    return None
+
+
+def _handle_non_dict(filters, previous_key):
+    if previous_key not in ALL_LEGACY_OPERATORS_MAPPING:
+        return {"field": previous_key, "operator": "==", "value": filters}
+    return filters
+
+
+# Operator mappings from legacy style to new one
+LEGACY_LOGICAL_OPERATORS_MAPPING = {"$and": "AND", "$or": "OR", "$not": "NOT"}
+
+LEGACY_COMPARISON_OPERATORS_MAPPING = {
+    "$eq": "==",
+    "$ne": "!=",
+    "$gt": ">",
+    "$gte": ">=",
+    "$lt": "<",
+    "$lte": "<=",
+    "$in": "in",
+    "$nin": "not in",
+}
+
+ALL_LEGACY_OPERATORS_MAPPING = {**LEGACY_LOGICAL_OPERATORS_MAPPING, **LEGACY_COMPARISON_OPERATORS_MAPPING}

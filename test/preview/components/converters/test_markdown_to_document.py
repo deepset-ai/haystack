@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from haystack.preview.components.file_converters.markdown import MarkdownToDocument
+from haystack.preview.components.converters.markdown import MarkdownToDocument
 from haystack.preview.dataclasses import ByteStream
 
 

@@ -30,10 +30,18 @@ class DocumentJoiner:
     document_store = InMemoryDocumentStore()
     p = Pipeline()
     p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="bm25_retriever")
+    p.add_component(
+            instance=SentenceTransformersTextEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
+            name="text_embedder",
+        )
     p.add_component(instance=InMemoryEmbeddingRetriever(document_store=document_store), name="embedding_retriever")
     p.add_component(instance=DocumentJoiner(), name="joiner")
     p.connect("bm25_retriever", "joiner")
     p.connect("embedding_retriever", "joiner")
+    p.connect("text_embedder", "embedding_retriever")
+    query = "What is the capital of France?"
+    p.run(data={"bm25_retriever": {"query": query},
+                "text_embedder": {"text": query}})
     ```
     """
 

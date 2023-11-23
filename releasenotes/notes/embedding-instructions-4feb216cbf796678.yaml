@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Support for dense embedding instructions, used in retrieval models such as BGE and LLM-Embedder.
