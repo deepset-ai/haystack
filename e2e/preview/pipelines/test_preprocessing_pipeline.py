@@ -2,7 +2,7 @@ import json
 
 from haystack.preview import Pipeline
 from haystack.preview.components.embedders import SentenceTransformersDocumentEmbedder
-from haystack.preview.components.file_converters import TextFileToDocument
+from haystack.preview.components.converters import TextFileToDocument
 from haystack.preview.components.preprocessors import DocumentSplitter, DocumentCleaner
 from haystack.preview.components.classifiers import DocumentLanguageClassifier
 from haystack.preview.components.routers import FileTypeRouter, MetadataRouter

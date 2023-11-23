@@ -23,7 +23,7 @@ class MarkdownToDocument:
 
     Usage example:
     ```python
-    from haystack.preview.components.file_converters.markdown import MarkdownToDocument
+    from haystack.preview.components.converters.markdown import MarkdownToDocument
 
     converter = MarkdownToDocument()
     results = converter.run(sources=["sample.md"])
