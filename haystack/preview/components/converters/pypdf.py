@@ -54,8 +54,18 @@ class PyPDFToDocument:
             Defaults to 'default'.
         """
         pypdf_import.check()
+
+        if not isinstance(converter_name, str):
+            raise TypeError(f"converter_name must be a string, got {type(converter_name)}")
         self.converter_name = converter_name
-        self._converter: PyPDFConverter = CONVERTERS_REGISTRY[converter_name]
+        try:
+            converter = CONVERTERS_REGISTRY[converter_name]
+        except KeyError:
+            msg = (
+                f"Invalid converter_name: {converter_name}.\n Available converters: {list(CONVERTERS_REGISTRY.keys())}"
+            )
+            raise ValueError(msg) from KeyError
+        self._converter: PyPDFConverter = converter
 
     def to_dict(self):
         # do not serialize the _converter instance

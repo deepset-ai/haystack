@@ -3,12 +3,24 @@ import pytest
 from pypdf import PdfReader
 
 from haystack.preview import Document
-from haystack.preview.components.converters.pypdf import PyPDFToDocument
-from haystack.preview.components.converters.pypdf import CONVERTERS_REGISTRY
+from haystack.preview.components.converters.pypdf import PyPDFToDocument, CONVERTERS_REGISTRY
 from haystack.preview.dataclasses import ByteStream
 
 
 class TestPyPDFToDocument:
+    def test_init(self):
+        component = PyPDFToDocument()
+        assert component.converter_name == "default"
+        assert hasattr(component, "_converter")
+
+    def test_init_fail_non_string_converter_name(self):
+        with pytest.raises(TypeError):
+            PyPDFToDocument(converter_name=[1, 2, 3])
+
+    def test_init_fail_nonexisting_converter(self):
+        with pytest.raises(ValueError):
+            PyPDFToDocument(converter_name="non_existing_converter")
+
     @pytest.mark.unit
     def test_run(self, preview_samples_path):
         """
