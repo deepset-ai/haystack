@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from haystack.preview.dataclasses import ByteStream
-from haystack.preview.components.file_converters.txt import TextFileToDocument
+from haystack.preview.components.converters.txt import TextFileToDocument
 
 
 class TestTextfileToDocument:

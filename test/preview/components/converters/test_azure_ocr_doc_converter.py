@@ -3,7 +3,7 @@ from unittest.mock import patch, Mock
 
 import pytest
 
-from haystack.preview.components.file_converters.azure import AzureOCRDocumentConverter
+from haystack.preview.components.converters.azure import AzureOCRDocumentConverter
 
 
 class TestAzureOCRDocumentConverter:
@@ -18,13 +18,13 @@ class TestAzureOCRDocumentConverter:
         component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.file_converters.azure.AzureOCRDocumentConverter",
+            "type": "haystack.preview.components.converters.azure.AzureOCRDocumentConverter",
             "init_parameters": {"endpoint": "test_endpoint", "model_id": "prebuilt-read"},
         }
 
     @pytest.mark.unit
     def test_run(self, preview_samples_path):
-        with patch("haystack.preview.components.file_converters.azure.DocumentAnalysisClient") as mock_azure_client:
+        with patch("haystack.preview.components.converters.azure.DocumentAnalysisClient") as mock_azure_client:
             mock_result = Mock(pages=[Mock(lines=[Mock(content="mocked line 1"), Mock(content="mocked line 2")])])
             mock_result.to_dict.return_value = {
                 "api_version": "2023-02-28-preview",

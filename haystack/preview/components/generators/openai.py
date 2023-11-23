@@ -58,7 +58,7 @@ class GPTGenerator:
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         api_base_url: str = API_BASE_URL,
         system_prompt: Optional[str] = None,
-        **generation_kwargs,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of GPTGenerator. Unless specified otherwise in the `model_name`, this is for OpenAI's
@@ -105,7 +105,7 @@ class GPTGenerator:
         openai.api_key = api_key
 
         self.model_name = model_name
-        self.generation_kwargs = generation_kwargs
+        self.generation_kwargs = generation_kwargs or {}
         self.system_prompt = system_prompt
         self.streaming_callback = streaming_callback
 
@@ -129,7 +129,7 @@ class GPTGenerator:
             model_name=self.model_name,
             streaming_callback=callback_name,
             api_base_url=self.api_base_url,
-            **self.generation_kwargs,
+            generation_kwargs=self.generation_kwargs,
             system_prompt=self.system_prompt,
         )
 
