@@ -42,6 +42,8 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     from haystack.modeling.infer import Inferencer
     from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 
+with LazyImport(message="Run 'pip install boto3'") as boto3_import:
+    import boto3
 
 COHERE_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 COHERE_BACKOFF = int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
@@ -433,6 +435,57 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
     def save(self, save_dir: Union[Path, str]):
         raise NotImplementedError(f"Saving is not implemented for {self.__class__}")
 
+
+class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
+    def __init__(self, retriever: "EmbeddingRetriever"):
+        boto3_import.check()
+
+        # See https://docs.aws.amazon.com/bedrock/latest/userguide/embeddings.html for more details
+        # The maximum input text is 8K tokens and the maximum output vector length is 1536
+        # Bedrock embeddings do not support batch operations
+        self.model: str = "amazon.titan-embed-text-v1"
+        self.client = retriever.client
+
+    def embed(self, text: str) -> np.ndarray:
+        input_body = {}
+        input_body["inputText"] = text
+        body = json.dumps(input_body)
+        response = self.client.invoke_model(
+                body=body,
+                modelId=self.model,
+                accept="application/json",
+                contentType="application/json",
+            )
+
+        response_body = json.loads(response.get("body").read())
+        return np.array(response_body.get("embedding"))
+
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        all_embeddings = []
+        for q in queries:
+            generated_embeddings = self.embed(q)
+            all_embeddings.append(generated_embeddings)
+        return np.concatenate(all_embeddings)
+
+    def embed_documents(self, docs: List[Document]) -> np.ndarray:
+        return self.embed_queries([d.content for d in docs])
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: Optional[int] = None,
+        batch_size: int = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
+    ):
+        raise NotImplementedError(f"Training is not implemented for {self.__class__}")
+
+    def save(self, save_dir: Union[Path, str]):
+        raise NotImplementedError(f"Saving is not implemented for {self.__class__}")
 
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "farm": _DefaultEmbeddingEncoder,
