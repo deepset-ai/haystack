@@ -148,12 +148,11 @@ class DynamicPromptBuilder:
     def __init__(self, runtime_variables: Optional[List[str]] = None, chat_mode: Optional[bool] = True):
         """
         Initializes DynamicPromptBuilder with the provided variable names. These variable names are used to resolve
-        variables and their values during pipeline runtime execution. Depending on the components connected to the
-        DynamicPromptBuilder in the pipeline, these variable names can be different. For example, if your component
-        connected to the DynamicPromptBuilder has an output named `documents`, the `runtime_variables` should
-        contain `documents` as one of its values. The values associated with variables from the pipeline runtime are
-        then injected into template placeholders of either a ChatMessage or a string template that is provided to
-        the `run` method. See run method for more details.
+        variables and their values during pipeline runtime execution. For example, if `runtime_variables` contains
+        `documents` your instance of DynamicPromptBuilder will expect an input called `documents`.
+        The values associated with variables from the pipeline runtime are then injected into template placeholders
+        of either a ChatMessage or a string template that is provided to the `run` method.
+        See `run` method for more details.
 
         :param runtime_variables: A list of template variable names you can use in chat prompt construction.
         :type runtime_variables: Optional[List[str]]
