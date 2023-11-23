@@ -79,22 +79,22 @@ def document_matches_filter(filters: Dict[str, Any], document: Document) -> bool
     return _logic_condition(filters, document)
 
 
-def __and__(document: Document, conditions: Dict[str, Any]) -> bool:
+def _and(document: Document, conditions: List[Dict[str, Any]]) -> bool:
     return all(_comparison_condition(condition, document) for condition in conditions)
 
 
-def __or__(document: Document, conditions: Dict[str, Any]) -> bool:
+def _or(document: Document, conditions: List[Dict[str, Any]]) -> bool:
     return any(_comparison_condition(condition, document) for condition in conditions)
 
 
-def __not__(document: Document, conditions: Dict[str, Any]) -> bool:
-    return not __and__(document, conditions)
+def _not(document: Document, conditions: List[Dict[str, Any]]) -> bool:
+    return not _and(document, conditions)
 
 
-LOGICAL_OPERATORS = {"NOT": __not__, "OR": __or__, "AND": __and__}
+LOGICAL_OPERATORS = {"NOT": _not, "OR": _or, "AND": _and}
 
 
-def __eq__(document_value: Any, filter_value: Any) -> bool:
+def _equal(document_value: Any, filter_value: Any) -> bool:
     if isinstance(document_value, pd.DataFrame):
         document_value = document_value.to_json()
 
@@ -104,11 +104,11 @@ def __eq__(document_value: Any, filter_value: Any) -> bool:
     return document_value == filter_value
 
 
-def __ne__(document_value: Any, filter_value: Any) -> bool:
-    return not __eq__(document_value=document_value, filter_value=filter_value)
+def _not_equal(document_value: Any, filter_value: Any) -> bool:
+    return not _equal(document_value=document_value, filter_value=filter_value)
 
 
-def __gt__(document_value: Any, filter_value: Any) -> bool:
+def _greater_than(document_value: Any, filter_value: Any) -> bool:
     if document_value is None and filter_value is not None:
         return False
     if document_value is not None and filter_value is None:
@@ -129,42 +129,42 @@ def __gt__(document_value: Any, filter_value: Any) -> bool:
     return document_value > filter_value
 
 
-def __ge__(document_value: Any, filter_value: Any) -> bool:
-    return __eq__(document_value=document_value, filter_value=filter_value) or __gt__(
+def _greater_than_equal(document_value: Any, filter_value: Any) -> bool:
+    return _equal(document_value=document_value, filter_value=filter_value) or _greater_than(
         document_value=document_value, filter_value=filter_value
     )
 
 
-def __lt__(document_value: Any, filter_value: Any) -> bool:
-    return not __ge__(document_value=document_value, filter_value=filter_value)
+def _less_than(document_value: Any, filter_value: Any) -> bool:
+    return not _greater_than_equal(document_value=document_value, filter_value=filter_value)
 
 
-def __le__(document_value: Any, filter_value: Any) -> bool:
-    return not __gt__(document_value=document_value, filter_value=filter_value)
+def _less_than_equal(document_value: Any, filter_value: Any) -> bool:
+    return not _greater_than(document_value=document_value, filter_value=filter_value)
 
 
-def __contains__(document_value: Any, filter_value: Any) -> bool:
+def _in(document_value: Any, filter_value: Any) -> bool:
     if not isinstance(filter_value, list):
         msg = (
             f"Filter value must be a `list` when using operator 'in' or 'not in', received type '{type(filter_value)}'"
         )
         raise FilterError(msg)
-    return any(__eq__(e, document_value) for e in filter_value)
+    return any(_equal(e, document_value) for e in filter_value)
 
 
-def __not_contains__(document_value: Any, filter_value: Any) -> bool:
-    return not __contains__(document_value=document_value, filter_value=filter_value)
+def _not_in(document_value: Any, filter_value: Any) -> bool:
+    return not _in(document_value=document_value, filter_value=filter_value)
 
 
 COMPARISON_OPERATORS = {
-    "==": __eq__,
-    "!=": __ne__,
-    ">": __gt__,
-    ">=": __ge__,
-    "<": __lt__,
-    "<=": __le__,
-    "in": __contains__,
-    "not in": __not_contains__,
+    "==": _equal,
+    "!=": _not_equal,
+    ">": _greater_than,
+    ">=": _greater_than_equal,
+    "<": _less_than,
+    "<=": _less_than_equal,
+    "in": _in,
+    "not in": _not_in,
 }
 
 
@@ -176,7 +176,7 @@ def _logic_condition(condition: Dict[str, Any], document: Document) -> bool:
         msg = f"'conditions' key missing in {condition}"
         raise FilterError(msg)
     operator: str = condition["operator"]
-    conditions: str = condition["conditions"]
+    conditions: List[Dict[str, Any]] = condition["conditions"]
     return LOGICAL_OPERATORS[operator](document, conditions)
 
 
@@ -216,7 +216,7 @@ def _comparison_condition(condition: Dict[str, Any], document: Document) -> bool
     else:
         document_value = getattr(document, field)
     operator: str = condition["operator"]
-    filter_value: str = condition["value"]
+    filter_value: Any = condition["value"]
     return COMPARISON_OPERATORS[operator](filter_value=filter_value, document_value=document_value)
 
 
