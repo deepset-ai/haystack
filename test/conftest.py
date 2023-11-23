@@ -647,6 +647,15 @@ def get_retriever(retriever_type, document_store):
             model_format="sentence_transformers",
             use_gpu=False,
         )
+    elif retriever_type == "embedding_sbert_instructions":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="sentence-transformers/msmarco-distilbert-dot-v5",
+            model_format="sentence_transformers",
+            query_prompt="Embed this query for retrieval:",
+            passage_prompt="Embed this passage for retrieval:",
+            use_gpu=False,
+        )
     elif retriever_type == "retribert":
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="yjernite/retribert-base-uncased", use_gpu=False
@@ -880,6 +889,11 @@ def haystack_openai_config(request, haystack_azure_conf):
 @pytest.fixture
 def samples_path():
     return Path(__file__).parent / "samples"
+
+
+@pytest.fixture
+def sample_txt_file_paths_list(samples_path):
+    return list((samples_path / "docs").glob("*.txt"))
 
 
 @pytest.fixture

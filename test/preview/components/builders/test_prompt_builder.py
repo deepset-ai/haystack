@@ -13,14 +13,10 @@ def test_init():
 def test_to_dict():
     builder = PromptBuilder(template="This is a {{ variable }}")
     res = builder.to_dict()
-    assert res == {"type": "PromptBuilder", "init_parameters": {"template": "This is a {{ variable }}"}}
-
-
-@pytest.mark.unit
-def test_from_dict():
-    data = {"type": "PromptBuilder", "init_parameters": {"template": "This is a {{ variable }}"}}
-    builder = PromptBuilder.from_dict(data)
-    builder._template_string == "This is a {{ variable }}"
+    assert res == {
+        "type": "haystack.preview.components.builders.prompt_builder.PromptBuilder",
+        "init_parameters": {"template": "This is a {{ variable }}"},
+    }
 
 
 @pytest.mark.unit

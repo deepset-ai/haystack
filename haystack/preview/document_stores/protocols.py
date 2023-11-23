@@ -5,6 +5,9 @@ from enum import Enum
 from haystack.preview.dataclasses import Document
 
 
+# Ellipsis are needed for the type checker, it's safe to disable module-wide
+# pylint: disable=unnecessary-ellipsis
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,17 +32,20 @@ class DocumentStore(Protocol):
         """
         Serializes this store to a dictionary.
         """
+        ...
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DocumentStore":
         """
         Deserializes the store from a dictionary.
         """
+        ...
 
     def count_documents(self) -> int:
         """
         Returns the number of documents stored.
         """
+        ...
 
     def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
         """
@@ -112,8 +118,9 @@ class DocumentStore(Protocol):
         :param filters: the filters to apply to the document list.
         :return: a list of Documents that match the given filters.
         """
+        ...
 
-    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
+    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int:
         """
         Writes (or overwrites) documents into the DocumentStore.
 
@@ -124,8 +131,11 @@ class DocumentStore(Protocol):
              - overwrite: remove the old document and write the new one.
              - fail: an error is raised
         :raises DuplicateError: Exception trigger on duplicate document if `policy=DuplicatePolicy.FAIL`
-        :return: None
+        :return: The number of documents that was written.
+            If DuplicatePolicy.OVERWRITE is used, this number is always equal to the number of documents in input.
+            If DuplicatePolicy.SKIP is used, this number can be lower than the number of documents in the input list.
         """
+        ...
 
     def delete_documents(self, document_ids: List[str]) -> None:
         """
@@ -134,3 +144,4 @@ class DocumentStore(Protocol):
 
         :param object_ids: the object_ids to delete
         """
+        ...

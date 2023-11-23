@@ -1,20 +1,20 @@
-import os
 import logging
-from typing import Optional, Union, List, Dict, Any, Tuple
-from unittest.mock import patch, Mock, MagicMock, AsyncMock
+import os
+from typing import Any, Dict, List, Optional, Tuple, Union
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from prompthub import Prompt
 
-from haystack import Document, Pipeline, BaseComponent, MultiLabel
-from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
-from haystack.nodes.prompt.prompt_template import LEGACY_DEFAULT_TEMPLATES
+from haystack import BaseComponent, Document, MultiLabel, Pipeline
+from haystack.nodes.prompt import PromptModel, PromptNode, PromptTemplate
 from haystack.nodes.prompt.invocation_layer import (
     AzureChatGPTInvocationLayer,
     AzureOpenAIInvocationLayer,
-    OpenAIInvocationLayer,
     ChatGPTInvocationLayer,
+    OpenAIInvocationLayer,
 )
+from haystack.nodes.prompt.prompt_template import LEGACY_DEFAULT_TEMPLATES
 
 
 @pytest.fixture
@@ -1082,8 +1082,8 @@ def test_content_moderation_gpt_35():
     ChatGPTInvocationLayer.
     """
     prompt_node = PromptNode(model_name_or_path="gpt-3.5-turbo", api_key="key", model_kwargs={"moderate_content": True})
-    with patch("haystack.nodes.prompt.invocation_layer.open_ai.check_openai_policy_violation") as mock_check, patch(
-        "haystack.nodes.prompt.invocation_layer.open_ai.openai_request"
+    with patch("haystack.nodes.prompt.invocation_layer.chatgpt.check_openai_policy_violation") as mock_check, patch(
+        "haystack.nodes.prompt.invocation_layer.chatgpt.openai_request"
     ) as mock_request:
         VIOLENT_TEXT = "some violent text"
         mock_check.side_effect = lambda input, headers: input == VIOLENT_TEXT or input == [VIOLENT_TEXT]
@@ -1093,11 +1093,15 @@ def test_content_moderation_gpt_35():
         assert prompt_node(VIOLENT_TEXT) == []
         # case 2: prompt passes the moderation check but the generated output fails the check
         # function should also return an empty list
-        mock_request.return_value = {"choices": [{"text": VIOLENT_TEXT, "finish_reason": ""}]}
+        mock_request.return_value = {
+            "choices": [{"message": {"content": VIOLENT_TEXT, "role": "assistant"}, "finish_reason": ""}]
+        }
         assert prompt_node("normal prompt") == []
         # case 3: both prompt and output pass the moderation check
         # function should return the output
-        mock_request.return_value = {"choices": [{"text": "normal output", "finish_reason": ""}]}
+        mock_request.return_value = {
+            "choices": [{"message": {"content": "normal output", "role": "assistant"}, "finish_reason": ""}]
+        }
         assert prompt_node("normal prompt") == ["normal output"]
 
 

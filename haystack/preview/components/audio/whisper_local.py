@@ -3,10 +3,13 @@ from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal, get_args
 import logging
 from pathlib import Path
 
-from haystack.preview import component, Document, default_to_dict, default_from_dict, ComponentError
+from haystack.preview import component, Document, default_to_dict, ComponentError
 from haystack.preview.lazy_imports import LazyImport
 
-with LazyImport("Run 'pip install openai-whisper'") as whisper_import:
+with LazyImport(
+    "Run 'pip install transformers[torch]' to install torch and "
+    "'pip install \"openai-whisper>=20231106\"' to install whisper."
+) as whisper_import:
     import torch
     import whisper
 
@@ -33,12 +36,9 @@ class LocalWhisperTranscriber:
     ):
         """
         :param model_name_or_path: Name of the model to use. Set it to one of the following values:
-            - `tiny`
-            - `small`
-            - `medium`
-            - `large`
-            - `large-v2`
+        :type model_name_or_path: Literal["tiny", "small", "medium", "large", "large-v2"]
         :param device: Name of the torch device to use for inference. If None, CPU is used.
+        :type device: Optional[str]
         """
         whisper_import.check()
         if model_name_or_path not in get_args(WhisperLocalModel):
@@ -66,13 +66,6 @@ class LocalWhisperTranscriber:
             self, model_name_or_path=self.model_name, device=str(self.device), whisper_params=self.whisper_params
         )
 
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LocalWhisperTranscriber":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
-
     @component.output_types(documents=List[Document])
     def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None):
         """
@@ -82,8 +75,8 @@ class LocalWhisperTranscriber:
         [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
         [github repo](https://github.com/openai/whisper).
 
-        :param audio_files: a list of paths or binary streams to transcribe
-        :returns: a list of Documents, one for each file. The content of the document is the transcription text,
+        :param audio_files: A list of paths or binary streams to transcribe.
+        :returns: A list of Documents, one for each file. The content of the document is the transcription text,
             while the document's metadata contains all the other values returned by the Whisper model, such as the
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
@@ -105,8 +98,8 @@ class LocalWhisperTranscriber:
         [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
         [github repo](https://github.com/openai/whisper).
 
-        :param audio_files: a list of paths or binary streams to transcribe
-        :returns: a list of Documents, one for each file. The content of the document is the transcription text,
+        :param audio_files: A list of paths or binary streams to transcribe.
+        :returns: A list of Documents, one for each file. The content of the document is the transcription text,
             while the document's metadata contains all the other values returned by the Whisper model, such as the
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
@@ -117,7 +110,7 @@ class LocalWhisperTranscriber:
             content = transcript.pop("text")
             if not isinstance(audio, (str, Path)):
                 audio = "<<binary stream>>"
-            doc = Document(text=content, metadata={"audio_file": audio, **transcript})
+            doc = Document(content=content, meta={"audio_file": audio, **transcript})
             documents.append(doc)
         return documents
 
@@ -129,8 +122,8 @@ class LocalWhisperTranscriber:
         [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
         [github repo](https://github.com/openai/whisper).
 
-        :param audio_files: a list of paths or binary streams to transcribe
-        :returns: a list of transcriptions.
+        :param audio_files: A list of paths or binary streams to transcribe.
+        :returns: A list of transcriptions.
         """
         return_segments = kwargs.pop("return_segments", False)
         transcriptions = []

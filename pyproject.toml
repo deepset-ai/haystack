@@ -49,7 +49,7 @@ dependencies = [
   "requests",
   "httpx",
   "pydantic<2",
-  "transformers==4.32.1",
+  "transformers==4.35.2",
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.3.0", # TF-IDF and metrics
@@ -62,7 +62,6 @@ dependencies = [
   "networkx",  # graphs library
   "quantulum3",  # quantities extraction from text
   "posthog",  # telemetry
-  # audio's espnet-model-zoo requires huggingface-hub version <0.8 while we need >=0.5 to be able to use create_repo in FARMReader
   "tenacity",  # retry decorator
   "sseclient-py",  # server side events for OpenAI streaming
   "more_itertools",  # utilities
@@ -87,19 +86,22 @@ dependencies = [
 
 [project.optional-dependencies]
 preview = [
-  "canals==0.8.1",
+  "canals==0.10.1",
   "requests",
   "pandas",
   "rank_bm25",
   "tqdm",
   "tenacity",
   "lazy-imports",
+  "posthog",  # telemetry
 
   "Jinja2",
-  "openai",
+  "openai<1.0.0",
+  "pyyaml",
+  "more-itertools",  # DocumentSplitter
 ]
 inference = [
-  "transformers[torch,sentencepiece]==4.32.1",
+  "transformers[torch,sentencepiece]==4.35.2",
   "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "huggingface-hub>=0.5.0",
 ]
@@ -149,19 +151,9 @@ docstores = [
 docstores-gpu = [
   "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch]",
 ]
-audio = [
-  "openai-whisper"
-]
-beir = [
-  "beir; platform_system != 'Windows'",
-]
 aws = [
-  "boto3",
-  # Costraint botocore to avoid taking to much time to resolve the dependency tree.
-  # boto3 used to constraint it at this version more than a year ago. To avoid breaking
-  # people using old versions we use a similar constraint without upper bound.
-  # https://github.com/boto/boto3/blob/dae73bef223abbedfa7317a783070831febc0c90/setup.py#L16
-  "botocore>=1.27",
+  # first version to support Amazon Bedrock
+  "boto3>=1.28.57",
 ]
 crawler = [
   "selenium>=4.11.0"
@@ -198,9 +190,6 @@ onnx-gpu = [
 metrics = [  # for metrics
   "scipy>=1.3.2",
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
-  # Pin setuptools_scm to prevent errors in Windows tests while installing seqeval
-  # https://github.com/deepset-ai/haystack/issues/5889
-  "setuptools_scm<8.0; platform_system == 'Windows'",
   "seqeval",
   "mlflow",
 ]
@@ -231,9 +220,6 @@ dev = [
   "farm-haystack[formatting]",
   # Documentation
   "pydoc-markdown",
-  "mkdocs",
-  "jupytercontrib",
-  "watchdog",
   "toml",
   "reno",
   # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.
@@ -246,15 +232,18 @@ formatting = [
   # Version specified following Black stability policy:
   # https://black.readthedocs.io/en/stable/the_black_code_style/index.html#stability-policy
   "black[jupyter]~=23.0",
-  "isort~=5.12"
+]
+
+audio = [
+  "openai-whisper>=20231106"
 ]
 
 all = [
-  "farm-haystack[inference,docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,preview]",
+  "farm-haystack[inference,docstores,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview,audio]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[inference,docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics,aws,preview]",
+  "farm-haystack[inference,docstores-gpu,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview,audio]",
 ]
 
 [project.scripts]
@@ -290,7 +279,7 @@ line-length = 120
 skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
 
 [tool.codespell]
-ignore-words-list = "ans,astroid,nd,ned,nin,ue"
+ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist"
 quiet-level = 3
 skip = "test/nodes/*,test/others/*,test/samples/*"
 
@@ -451,5 +440,3 @@ max-statements = 105  # Default is 50
 omit = [
     "haystack/testing/*",
 ]
-[tool.isort]
-profile = "black"

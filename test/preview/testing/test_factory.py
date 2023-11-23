@@ -13,26 +13,26 @@ def test_document_store_class_default():
     assert store.filter_documents() == []
     assert store.write_documents([]) is None
     assert store.delete_documents([]) is None
-    assert store.to_dict() == {"type": "MyStore", "init_parameters": {}}
+    assert store.to_dict() == {"type": "haystack.preview.testing.factory.MyStore", "init_parameters": {}}
 
 
 @pytest.mark.unit
 def test_document_store_from_dict():
     MyStore = document_store_class("MyStore")
 
-    store = MyStore.from_dict({"type": "MyStore", "init_parameters": {}})
+    store = MyStore.from_dict({"type": "haystack.preview.testing.factory.MyStore", "init_parameters": {}})
     assert isinstance(store, MyStore)
 
 
 @pytest.mark.unit
 def test_document_store_class_is_registered():
     MyStore = document_store_class("MyStore")
-    assert document_store.registry["MyStore"] == MyStore
+    assert document_store.registry["haystack.preview.testing.factory.MyStore"] == MyStore
 
 
 @pytest.mark.unit
 def test_document_store_class_with_documents():
-    doc = Document(id="fake_id", text="This is a document")
+    doc = Document(id="fake_id", content="This is a document")
     MyStore = document_store_class("MyStore", documents=[doc])
     store = MyStore()
     assert store.count_documents() == 1
@@ -49,7 +49,7 @@ def test_document_store_class_with_documents_count():
 
 @pytest.mark.unit
 def test_document_store_class_with_documents_and_documents_count():
-    doc = Document(id="fake_id", text="This is a document")
+    doc = Document(id="fake_id", content="This is a document")
     MyStore = document_store_class("MyStore", documents=[doc], documents_count=100)
     store = MyStore()
     assert store.count_documents() == 100

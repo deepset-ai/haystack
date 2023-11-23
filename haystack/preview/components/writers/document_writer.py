@@ -19,6 +19,12 @@ class DocumentWriter:
         self.document_store = document_store
         self.policy = policy
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"document_store": type(self.document_store).__name__}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
@@ -58,5 +64,5 @@ class DocumentWriter:
         if policy is None:
             policy = self.policy
 
-        self.document_store.write_documents(documents=documents, policy=policy)
-        return {"documents_written": len(documents)}
+        documents_written = self.document_store.write_documents(documents=documents, policy=policy)
+        return {"documents_written": documents_written}

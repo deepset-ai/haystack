@@ -116,10 +116,10 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
+        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run
-        run: pytest -m "unit" test/preview
+        run: pytest -m "not integration" test/preview
 
       - name: Calculate alert data
         id: calculator
@@ -152,7 +152,6 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-
   integration-tests-linux:
     name: Integration / ubuntu-latest
     needs: unit-tests
@@ -175,7 +174,7 @@ jobs:
           sudo apt install ffmpeg  # for local Whisper tests
 
       - name: Install Haystack
-        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
+        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test/preview
@@ -211,11 +210,12 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-
   integration-tests-macos:
     name: Integration / macos-latest
     needs: unit-tests
-    runs-on: macos-latest
+    runs-on: macos-latest-xl
+    env:
+      HAYSTACK_MPS_ENABLED: false
     steps:
       - uses: actions/checkout@v4
 
@@ -230,7 +230,7 @@ jobs:
           colima start
 
       - name: Install Haystack
-        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
+        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run Tika
         run: docker run -d -p 9998:9998 apache/tika:2.9.0.0
@@ -269,7 +269,6 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-
   integration-tests-windows:
     name: Integration / windows-latest
     needs: unit-tests
@@ -282,7 +281,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2'
+        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test/preview -k 'not tika'
