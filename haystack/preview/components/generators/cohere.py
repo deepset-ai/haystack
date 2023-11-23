@@ -17,7 +17,7 @@ class CohereGenerator:
 
     Queries the LLM using Cohere's API. Invocations are made using 'cohere' package.
     See [Cohere API](https://docs.cohere.com/reference/generate) for more details.
-    
+
     Example usage:
 
     ```python

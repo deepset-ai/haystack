@@ -15,7 +15,6 @@ def default_streaming_callback(chunk):
 
 
 class TestGPTGenerator:
-
     def test_init_default(self):
         component = CohereGenerator(api_key="test-api-key")
         assert component.api_key == "test-api-key"
