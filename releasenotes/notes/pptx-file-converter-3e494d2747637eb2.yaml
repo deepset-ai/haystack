@@ -1,0 +1,4 @@
+---
+  features:
+    - |
+      Adding a Microsoft pptx converter in order to convert pptx files into text.
