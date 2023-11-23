@@ -71,7 +71,7 @@ class DynamicPromptBuilder:
     from typing import List
 
     # we'll use documents runtime variable in our template, so we need to specify it in the init
-    prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"])
+    prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"])
     llm = GPTChatGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
 
 
@@ -111,7 +111,7 @@ class DynamicPromptBuilder:
     The following example demonstrates how to use DynamicPromptBuilder to generate a non-chat prompt:
 
     ```python
-    prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"], chat_mode=False)
+    prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"], chat_mode=False)
     llm = GPTGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
 
 
@@ -145,25 +145,25 @@ class DynamicPromptBuilder:
 
     """
 
-    def __init__(self, expected_runtime_variables: Optional[List[str]] = None, chat_mode: Optional[bool] = True):
+    def __init__(self, runtime_variables: Optional[List[str]] = None, chat_mode: Optional[bool] = True):
         """
         Initializes DynamicPromptBuilder with the provided variable names. These variable names are used to resolve
         variables and their values during pipeline runtime execution. Depending on the components connected to the
         DynamicPromptBuilder in the pipeline, these variable names can be different. For example, if your component
-        connected to the DynamicPromptBuilder has an output named `documents`, the `expected_runtime_variables` should
+        connected to the DynamicPromptBuilder has an output named `documents`, the `runtime_variables` should
         contain `documents` as one of its values. The values associated with variables from the pipeline runtime are
         then injected into template placeholders of either a ChatMessage or a string template that is provided to
         the `run` method. See run method for more details.
 
-        :param expected_runtime_variables: A list of template variable names you can use in chat prompt construction.
-        :type expected_runtime_variables: Optional[List[str]]
+        :param runtime_variables: A list of template variable names you can use in chat prompt construction.
+        :type runtime_variables: Optional[List[str]]
         :param chat_mode: A boolean flag to indicate if the chat prompt is being built for a chat-based prompt
         templating. Defaults to True.
         :type chat_mode: Optional[bool]
         """
-        expected_runtime_variables = expected_runtime_variables or []
+        runtime_variables = runtime_variables or []
 
-        if not expected_runtime_variables:
+        if not runtime_variables:
             logger.warning(
                 "template_variables were not provided, DynamicPromptBuilder will not resolve any pipeline variables."
             )
@@ -173,7 +173,7 @@ class DynamicPromptBuilder:
         else:
             run_input_slots = {"prompt_source": str, "template_variables": Optional[Dict[str, Any]]}
 
-        kwargs_input_slots = {var: Optional[Any] for var in expected_runtime_variables}
+        kwargs_input_slots = {var: Optional[Any] for var in runtime_variables}
         component.set_input_types(self, **run_input_slots, **kwargs_input_slots)
 
         # setup outputs
@@ -182,7 +182,7 @@ class DynamicPromptBuilder:
         else:
             component.set_output_types(self, prompt=str)
 
-        self.expected_runtime_variables = expected_runtime_variables
+        self.runtime_variables = runtime_variables
         self.chat_mode = chat_mode
 
     def to_dict(self) -> Dict[str, Any]:
@@ -192,9 +192,7 @@ class DynamicPromptBuilder:
         :return: A dictionary representation of the `DynamicPromptBuilder` instance, including its template variables.
         :rtype: Dict[str, Any]
         """
-        return default_to_dict(
-            self, expected_runtime_variables=self.expected_runtime_variables, chat_mode=self.chat_mode
-        )
+        return default_to_dict(self, runtime_variables=self.runtime_variables, chat_mode=self.chat_mode)
 
     def run(
         self,

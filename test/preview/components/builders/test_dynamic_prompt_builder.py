@@ -9,14 +9,14 @@ from haystack.preview.dataclasses import ChatMessage
 
 class TestDynamicPromptBuilder:
     def test_initialization_chat_on(self):
-        expected_runtime_variables = ["var1", "var2", "var3"]
-        builder = DynamicPromptBuilder(expected_runtime_variables, chat_mode=True)
-        assert builder.expected_runtime_variables == expected_runtime_variables
+        runtime_variables = ["var1", "var2", "var3"]
+        builder = DynamicPromptBuilder(runtime_variables, chat_mode=True)
+        assert builder.runtime_variables == runtime_variables
         assert builder.chat_mode
 
         # regardless of the chat mode
-        # we have inputs that contain: prompt_source, template_variables + expected_runtime_variables
-        expected_keys = set(expected_runtime_variables + ["prompt_source", "template_variables"])
+        # we have inputs that contain: prompt_source, template_variables + runtime_variables
+        expected_keys = set(runtime_variables + ["prompt_source", "template_variables"])
         assert set(builder.__canals_input__.keys()) == expected_keys
 
         # response is always prompt regardless of chat mode
@@ -29,14 +29,14 @@ class TestDynamicPromptBuilder:
         assert builder.__canals_output__["prompt"].type == List[ChatMessage]
 
     def test_initialization_chat_off(self):
-        expected_runtime_variables = ["var1", "var2"]
-        builder = DynamicPromptBuilder(expected_runtime_variables, False)
-        assert builder.expected_runtime_variables == expected_runtime_variables
+        runtime_variables = ["var1", "var2"]
+        builder = DynamicPromptBuilder(runtime_variables, False)
+        assert builder.runtime_variables == runtime_variables
         assert not builder.chat_mode
 
         # regardless of the chat mode
-        # we have inputs that contain: prompt_source, template_variables + expected_runtime_variables
-        expected_keys = set(expected_runtime_variables + ["prompt_source", "template_variables"])
+        # we have inputs that contain: prompt_source, template_variables + runtime_variables
+        expected_keys = set(runtime_variables + ["prompt_source", "template_variables"])
         assert set(builder.__canals_input__.keys()) == expected_keys
 
         # response is always prompt regardless of chat mode
@@ -49,20 +49,20 @@ class TestDynamicPromptBuilder:
         assert builder.__canals_output__["prompt"].type == str
 
     def test_to_dict_method_returns_expected_dictionary(self):
-        expected_runtime_variables = ["var1", "var2", "var3"]
+        runtime_variables = ["var1", "var2", "var3"]
         chat_mode = True
-        builder = DynamicPromptBuilder(expected_runtime_variables, chat_mode)
+        builder = DynamicPromptBuilder(runtime_variables, chat_mode)
         expected_dict = {
             "type": "haystack.preview.components.builders.dynamic_prompt_builder.DynamicPromptBuilder",
-            "init_parameters": {"expected_runtime_variables": expected_runtime_variables, "chat_mode": chat_mode},
+            "init_parameters": {"runtime_variables": runtime_variables, "chat_mode": chat_mode},
         }
         assert builder.to_dict() == expected_dict
 
     def test_processing_a_simple_template_with_provided_variables(self):
-        expected_runtime_variables = ["var1", "var2", "var3"]
+        runtime_variables = ["var1", "var2", "var3"]
         chat_mode = True
 
-        builder = DynamicPromptBuilder(expected_runtime_variables, chat_mode)
+        builder = DynamicPromptBuilder(runtime_variables, chat_mode)
 
         template = "Hello, {{ name }}!"
         template_variables = {"name": "John"}
@@ -71,10 +71,10 @@ class TestDynamicPromptBuilder:
         assert builder._process_simple_template(template, template_variables) == expected_result
 
     def test_processing_a_simple_template_with_invalid_template(self):
-        expected_runtime_variables = ["var1", "var2", "var3"]
+        runtime_variables = ["var1", "var2", "var3"]
         chat_mode = True
 
-        builder = DynamicPromptBuilder(expected_runtime_variables, chat_mode)
+        builder = DynamicPromptBuilder(runtime_variables, chat_mode)
 
         template = "Hello, {{ name }!"
         template_variables = {"name": "John"}
@@ -82,15 +82,15 @@ class TestDynamicPromptBuilder:
             builder._process_simple_template(template, template_variables)
 
     def test_processing_a_simple_template_with_missing_variables(self):
-        expected_runtime_variables = ["var1", "var2", "var3"]
+        runtime_variables = ["var1", "var2", "var3"]
 
-        builder = DynamicPromptBuilder(expected_runtime_variables, False)
+        builder = DynamicPromptBuilder(runtime_variables, False)
 
         with pytest.raises(ValueError):
             builder._process_simple_template("Hello, {{ name }}!", {})
 
     def test_non_empty_chat_messages(self):
-        prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"], chat_mode=True)
+        prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"], chat_mode=True)
         prompt_source = [ChatMessage.from_system(content="Hello"), ChatMessage.from_user(content="Hello, {{ who }}!")]
         template_variables = {"who": "World"}
 
@@ -99,7 +99,7 @@ class TestDynamicPromptBuilder:
         assert result == [ChatMessage.from_system(content="Hello"), ChatMessage.from_user(content="Hello, World!")]
 
     def test_single_chat_message(self):
-        prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"], chat_mode=True)
+        prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"], chat_mode=True)
         prompt_source = [ChatMessage.from_user(content="Hello, {{ who }}!")]
         template_variables = {"who": "World"}
 
@@ -108,13 +108,13 @@ class TestDynamicPromptBuilder:
         assert result == [ChatMessage.from_user(content="Hello, World!")]
 
     def test_empty_chat_message_list(self):
-        prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"], chat_mode=True)
+        prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"], chat_mode=True)
 
         with pytest.raises(ValueError):
             prompt_builder._process_chat_messages(prompt_source=[], template_variables={})
 
     def test_chat_message_list_with_mixed_object_list(self):
-        prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"], chat_mode=True)
+        prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"], chat_mode=True)
 
         with pytest.raises(ValueError):
             prompt_builder._process_chat_messages(
@@ -122,7 +122,7 @@ class TestDynamicPromptBuilder:
             )
 
     def test_chat_message_list_with_missing_variables(self):
-        prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"], chat_mode=True)
+        prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"], chat_mode=True)
         prompt_source = [ChatMessage.from_user(content="Hello, {{ who }}!")]
 
         # Call the _process_chat_messages method and expect a ValueError
@@ -130,7 +130,7 @@ class TestDynamicPromptBuilder:
             prompt_builder._process_chat_messages(prompt_source, template_variables={})
 
     def test_missing_template_variables(self):
-        prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"])
+        prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"])
 
         # missing template variable city
         with pytest.raises(ValueError):
@@ -145,7 +145,7 @@ class TestDynamicPromptBuilder:
             prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"age"})
 
     def test_provided_template_variables(self):
-        prompt_builder = DynamicPromptBuilder(expected_runtime_variables=["documents"])
+        prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"])
 
         # both variables are provided
         prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name", "city"})

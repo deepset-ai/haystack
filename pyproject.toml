@@ -279,7 +279,7 @@ line-length = 120
 skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
 
 [tool.codespell]
-ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge"
+ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist"
 quiet-level = 3
 skip = "test/nodes/*,test/others/*,test/samples/*"
 
