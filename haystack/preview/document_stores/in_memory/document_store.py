@@ -92,65 +92,7 @@ class InMemoryDocumentStore:
         """
         Returns the documents that match the filters provided.
 
-        Filters are defined as nested dictionaries. There are two types of dictionaries:
-        - Comparison
-        - Logic
-
-        Top level must be either be a Logic dictionary.
-        Comparison dictionaries must contain the keys:
-
-        - `field`
-        - `operator`
-        - `value`
-
-        Logic dictionaries must contain the keys:
-
-        - `operator`
-        - `conditions`
-
-        `conditions` key must be a list of dictionaries, either Comparison or Logic.
-
-        `operator` values in Comparison dictionaries must be:
-
-        - `==`
-        - `!=`
-        - `>`
-        - `>=`
-        - `<`
-        - `<=`
-        - `in`
-        - `not in`
-
-        `operator` values in Logic dictionaries must be:
-
-        - `NOT`
-        - `OR`
-        - `AND`
-
-
-        A simple filter:
-        ```python
-        filters = {"field": "meta.type", "operator": "==", "value": "article"}
-        ```
-
-        A more complex filter:
-        ```python
-        filters = {
-            "operator": "AND",
-            "conditions": [
-                {"field": "meta.type", "operator": "==", "value": "article"},
-                {"field": "meta.date", "operator": ">=", "value": 1420066800},
-                {"field": "meta.date", "operator": "<", "value": 1609455600},
-                {"field": "meta.rating", "operator": ">=", "value": 3},
-                {
-                    "operator": "OR",
-                    "conditions": [
-                        {"field": "meta.genre", "operator": "in", "value": ["economy", "politics"]},
-                        {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
-                    ],
-                },
-            ],
-        }
+        For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol documentation.
 
         :param filters: The filters to apply to the document list.
         :return: A list of Documents that match the given filters.

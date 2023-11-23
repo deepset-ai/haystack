@@ -51,11 +51,11 @@ class DocumentStore(Protocol):
         """
         Returns the documents that match the filters provided.
 
-        Filters are defined as nested dictionaries. There are two types of dictionaries:
+        Filters are defined as nested dictionaries that can be of two types:
         - Comparison
         - Logic
 
-        Top level must be either be a Logic dictionary.
+        The outer dictionary must be of type Comparison or Logic.
         Comparison dictionaries must contain the keys:
 
         - `field`
@@ -67,9 +67,9 @@ class DocumentStore(Protocol):
         - `operator`
         - `conditions`
 
-        `conditions` key must be a list of dictionaries, either Comparison or Logic.
+        The `conditions` key must be a list of dictionaries, either of type Comparison or Logic.
 
-        `operator` values in Comparison dictionaries must be:
+        The `operator` value in Comparison dictionaries must be one of:
 
         - `==`
         - `!=`
@@ -80,7 +80,7 @@ class DocumentStore(Protocol):
         - `in`
         - `not in`
 
-        `operator` values in Logic dictionaries must be:
+        The `operator` values in Logic dictionaries must be one of:
 
         - `NOT`
         - `OR`

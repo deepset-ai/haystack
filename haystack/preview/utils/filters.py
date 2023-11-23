@@ -11,68 +11,7 @@ from haystack.preview.errors import FilterError
 def document_matches_filter(filters: Dict[str, Any], document: Document) -> bool:
     """
     Return whether `filters` match the Document.
-
-    Filters are defined as nested dictionaries. There are two types of dictionaries:
-        - Comparison
-        - Logic
-
-        Top level can be either be a Comparison or Logic dictionary.
-        Comparison dictionaries must contain the keys:
-
-        - `field`
-        - `operator`
-        - `value`
-
-        Logic dictionaries must contain the keys:
-
-        - `operator`
-        - `conditions`
-
-        `conditions` key must be a list of dictionaries, either Comparison or Logic.
-
-        `operator` values in Comparison dictionaries must be:
-
-        - `==`
-        - `!=`
-        - `>`
-        - `>=`
-        - `<`
-        - `<=`
-        - `in`
-        - `not in`
-
-        `operator` values in Logic dictionaries must be:
-
-        - `NOT`
-        - `OR`
-        - `AND`
-
-
-        A simple filter:
-
-        ```python
-        filters = {"field": "meta.type", "operator": "==", "value": "article"}
-        ```
-
-        A more complex filter:
-        ```python
-        filters = {
-            "operator": "AND",
-            "conditions": [
-                {"field": "meta.type", "operator": "==", "value": "article"},
-                {"field": "meta.date", "operator": ">=", "value": 1420066800},
-                {"field": "meta.date", "operator": "<", "value": 1609455600},
-                {"field": "meta.rating", "operator": ">=", "value": 3},
-                {
-                    "operator": "OR",
-                    "conditions": [
-                        {"field": "meta.genre", "operator": "in", "value": ["economy", "politics"]},
-                        {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
-                    ],
-                },
-            ],
-        }
-        ```
+    For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol documentation.
     """
     if "field" in filters:
         return _comparison_condition(filters, document)
