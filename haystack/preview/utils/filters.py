@@ -1,5 +1,6 @@
 from typing import List, Any, Union, Dict
 from dataclasses import fields
+from datetime import datetime
 
 import pandas as pd
 
@@ -112,21 +113,26 @@ def __gt__(document_value: Any, filter_value: Any) -> bool:
         return False
     if document_value is not None and filter_value is None:
         return True
-    if type(filter_value) in [str, list, pd.DataFrame]:
-        msg = f"Filter value can't be of type {type(filter_value)} using operator '>'"
+    if isinstance(document_value, str) or isinstance(filter_value, str):
+        try:
+            document_value = datetime.fromisoformat(document_value)
+            filter_value = datetime.fromisoformat(filter_value)
+        except (ValueError, TypeError) as exc:
+            msg = (
+                "Can't compare strings using operators '>', '>=', '<', '<='. "
+                "Strings are only comparable if they are ISO formatted dates."
+            )
+            raise FilterError(msg) from exc
+    if type(filter_value) in [list, pd.DataFrame]:
+        msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
         raise FilterError(msg)
     return document_value > filter_value
 
 
 def __ge__(document_value: Any, filter_value: Any) -> bool:
-    if document_value is None and filter_value is not None:
-        return False
-    if document_value is not None and filter_value is None:
-        return True
-    if type(filter_value) in [str, list, pd.DataFrame]:
-        msg = f"Filter value can't be of type {type(filter_value)} using operator '>='"
-        raise FilterError(msg)
-    return document_value >= filter_value
+    return __eq__(document_value=document_value, filter_value=filter_value) or __gt__(
+        document_value=document_value, filter_value=filter_value
+    )
 
 
 def __lt__(document_value: Any, filter_value: Any) -> bool:
@@ -139,15 +145,14 @@ def __le__(document_value: Any, filter_value: Any) -> bool:
 
 def __contains__(document_value: Any, filter_value: Any) -> bool:
     if not isinstance(filter_value, list):
-        msg = f"Filter value must be a `list` when using operator 'in', received type '{type(filter_value)}'"
+        msg = (
+            f"Filter value must be a `list` when using operator 'in' or 'not in', received type '{type(filter_value)}'"
+        )
         raise FilterError(msg)
     return any(__eq__(e, document_value) for e in filter_value)
 
 
 def __not_contains__(document_value: Any, filter_value: Any) -> bool:
-    if not isinstance(filter_value, list):
-        msg = f"Filter value must be a `list` when using operator 'not in', received type '{type(filter_value)}'"
-        raise FilterError(msg)
     return not __contains__(document_value=document_value, filter_value=filter_value)
 
 
