@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
 
 
-with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'.") as transformers_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as transformers_import:
     import transformers
     from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig, AutoFeatureExtractor, AutoTokenizer
 
@@ -382,7 +382,7 @@ def _words_to_tokens(
         first_token = True
         for token in tokens_word:
             token_offsets.append(word_offset)
-            # Depending on the tokenizer type special chars are added to distinguish tokens with preceeding
+            # Depending on the tokenizer type special chars are added to distinguish tokens with preceding
             # whitespace (=> "start of a word"). We need to get rid of these to calculate the original length of the token
             original_token = re.sub(SPECIAL_TOKENIZER_CHARS, "", token)
             # Don't use length of unk token for offset calculation

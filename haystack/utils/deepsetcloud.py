@@ -1,17 +1,16 @@
 import json
-from mimetypes import guess_type
-from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union, Literal
-
 import logging
 import os
 import time
 from enum import Enum
+from mimetypes import guess_type
+from pathlib import Path
+from typing import Any, Dict, Generator, List, Literal, Optional, Tuple, Union
 
 import pandas as pd
 import requests
 import yaml
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.schema import Answer, Document, EvaluationResult, FilterType, Label
 
@@ -28,11 +27,11 @@ class PipelineStatus(Enum):
     UNDEPLOYMENT_SCHEDULED: str = "UNDEPLOYMENT_SCHEDULED"
     DEPLOYMENT_FAILED: str = "DEPLOYMENT_FAILED"
     UNDEPLOYMENT_FAILED: str = "UNDEPLOYMENT_FAILED"
-    UKNOWN: str = "UNKNOWN"
+    UNKNOWN: str = "UNKNOWN"
 
     @classmethod
     def from_str(cls, status_string: str) -> "PipelineStatus":
-        return cls.__dict__.get(status_string, PipelineStatus.UKNOWN)
+        return cls.__dict__.get(status_string, PipelineStatus.UNKNOWN)
 
 
 SATISFIED_STATES_KEY = "satisfied_states"
@@ -560,10 +559,11 @@ class PipelineClient:
         :param workspace: Specifies the name of the workspace on deepset Cloud.
         :param headers: Headers to pass to the API call.
         """
-        config["name"] = pipeline_config_name
         workspace_url = self._build_workspace_url(workspace=workspace)
         pipelines_url = f"{workspace_url}/pipelines"
-        response = self.client.post(url=pipelines_url, data=yaml.dump(config), headers=headers).json()
+        response = self.client.post(
+            url=pipelines_url, json={"name": pipeline_config_name, "config": yaml.dump(config)}, headers=headers
+        ).json()
         if "name" not in response or response["name"] != pipeline_config_name:
             logger.warning("Unexpected response from saving pipeline config: %s", response)
 
@@ -582,7 +582,6 @@ class PipelineClient:
         :param workspace: Specifies the name of the workspace on deepset Cloud.
         :param headers: Headers to pass to the API call.
         """
-        config["name"] = pipeline_config_name
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
         yaml_url = f"{pipeline_url}/yaml"
         response = self.client.put(url=yaml_url, data=yaml.dump(config), headers=headers).json()
@@ -902,7 +901,7 @@ class EvaluationSetClient:
         """
         evaluation_sets_response = self._get_evaluation_sets(workspace=workspace)
 
-        return [eval_set for eval_set in evaluation_sets_response]
+        return list(evaluation_sets_response)
 
     def _get_evaluation_sets(self, workspace: Optional[str] = None) -> Generator:
         url = self._build_workspace_url(workspace=workspace)
@@ -1117,7 +1116,7 @@ class EvaluationRunClient:
         :param pipeline_config_name: The name of the pipeline to evaluate.
         :param evaluation_set: The name of the evaluation set to use.
         :param eval_mode: The evaluation mode to use.
-        :param debug: Wheter to enable debug output.
+        :param debug: Whether to enable debug output.
         :param comment: Comment to add about to the evaluation run.
         :param tags: Tags to add to the evaluation run.
         :param headers: Headers to pass to the API call
@@ -1166,7 +1165,7 @@ class EvaluationRunClient:
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_runs"
         response = self.client.get_with_auto_paging(eval_run_url, headers=headers)
-        return [eval_run for eval_run in response]
+        return list(response)
 
     def delete_eval_run(self, eval_run_name: str, workspace: Optional[str] = None, headers: Optional[dict] = None):
         """
@@ -1219,7 +1218,7 @@ class EvaluationRunClient:
         :param pipeline_config_name: The name of the pipeline to evaluate.
         :param evaluation_set: The name of the evaluation set to use.
         :param eval_mode: The evaluation mode to use.
-        :param debug: Wheter to enable debug output.
+        :param debug: Whether to enable debug output.
         :param comment: Comment to add about to the evaluation run.
         :param tags: Tags to add to the evaluation run.
         :param headers: Headers to pass to the API call
@@ -1279,7 +1278,7 @@ class EvaluationRunClient:
         workspace_url = self._build_workspace_url(workspace)
         eval_run_prediction_url = f"{workspace_url}/eval_runs/{eval_run_name}/nodes/{node_name}/predictions"
         response = self.client.get_with_auto_paging(eval_run_prediction_url, headers=headers)
-        return [prediction for prediction in response]
+        return list(response)
 
     def _build_workspace_url(self, workspace: Optional[str] = None):
         if workspace is None:
@@ -1560,7 +1559,7 @@ class DeepsetCloudExperiments:
         :param pipeline_config_name: The name of the pipeline to evaluate. Use `list_pipelines()` to list all available pipelines.
         :param evaluation_set: The name of the evaluation set to use. Use `list_evaluation_sets()` to list all available evaluation sets.
         :param eval_mode: The evaluation mode to use.
-        :param debug: Wheter to enable debug output.
+        :param debug: Whether to enable debug output.
         :param comment: Comment to add about to the evaluation run.
         :param tags: Tags to add to the evaluation run.
         :param api_key: Secret value of the API key.
@@ -1603,7 +1602,7 @@ class DeepsetCloudExperiments:
         :param pipeline_config_name: The name of the pipeline to evaluate. Use `list_pipelines()` to list all available pipelines.
         :param evaluation_set: The name of the evaluation set to use. Use `list_evaluation_sets()` to list all available evaluation sets.
         :param eval_mode: The evaluation mode to use.
-        :param debug: Wheter to enable debug output.
+        :param debug: Whether to enable debug output.
         :param comment: Comment to add about to the evaluation run.
         :param tags: Tags to add to the evaluation run.
         :param api_key: Secret value of the API key.
@@ -1691,7 +1690,7 @@ class DeepsetCloudExperiments:
         """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         client.start_eval_run(eval_run_name=eval_run_name)
-        logger.info("You can check run progess by inspecting the `status` field returned from `get_run()`.")
+        logger.info("You can check run progress by inspecting the `status` field returned from `get_run()`.")
 
     @classmethod
     def create_and_start_run(
@@ -1716,7 +1715,7 @@ class DeepsetCloudExperiments:
         :param pipeline_config_name: The name of the pipeline to evaluate. Use `list_pipelines()` to list all available pipelines.
         :param evaluation_set: The name of the evaluation set to use. Use `list_evaluation_sets()` to list all available evaluation sets.
         :param eval_mode: The evaluation mode to use.
-        :param debug: Wheter to enable debug output.
+        :param debug: Whether to enable debug output.
         :param comment: Comment to add about to the evaluation run.
         :param tags: Tags to add to the evaluation run.
         :param api_key: Secret value of the API key.

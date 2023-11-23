@@ -1,3 +1,4 @@
+import copy
 from typing import Union, List, Optional, Dict, Generator
 
 import json
@@ -8,20 +9,16 @@ from copy import deepcopy
 from inspect import Signature, signature
 
 import numpy as np
-from tqdm.auto import tqdm
-
-try:
-    # These deps are optional, but get installed with the `faiss` extra
-    import faiss
-    from haystack.document_stores.sql import SQLDocumentStore  # type: ignore
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "faiss", ie)
+from tqdm import tqdm
 
 from haystack.schema import Document, FilterType
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.utils.batching import get_batches_from_generator
 from haystack.nodes.retriever import DenseRetriever
+from haystack.document_stores.sql import SQLDocumentStore
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install farm-haystack[faiss]'") as faiss_import:
+    import faiss
 
 
 logger = logging.getLogger(__name__)
@@ -107,6 +104,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param ef_construction: Used only if `index_factory == "HNSW"`.
         :param validate_index_sync: Checks if the document count equals the embedding count at initialization time.
         """
+        faiss_import.check()
         # special case if we want to load an existing index from disk
         # load init params from disk and run init again
         if faiss_index_path is not None:
@@ -259,54 +257,63 @@ class FAISSDocumentStore(SQLDocumentStore):
         document_objects = self._handle_duplicate_documents(
             documents=document_objects, index=index, duplicate_documents=duplicate_documents
         )
-        if len(document_objects) > 0:
-            add_vectors = all(doc.embedding is not None for doc in document_objects)
 
-            if self.duplicate_documents == "overwrite" and add_vectors:
-                logger.warning(
-                    "You have to provide `duplicate_documents = 'overwrite'` arg and "
-                    "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
-                    "Please call `update_embeddings` method to repopulate `faiss_index`"
-                )
+        if len(document_objects) == 0:
+            return
 
-            vector_id = self.faiss_indexes[index].ntotal
-            with tqdm(
-                total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
-            ) as progress_bar:
-                for i in range(0, len(document_objects), batch_size):
+        vector_id = self.faiss_indexes[index].ntotal
+        add_vectors = all(doc.embedding is not None for doc in document_objects)
+
+        if vector_id > 0 and self.duplicate_documents == "overwrite" and add_vectors:
+            logger.warning(
+                "`FAISSDocumentStore` is adding new vectors to an existing `faiss_index`.\n"
+                "Please call `update_embeddings` method to correctly repopulate `faiss_index`"
+            )
+
+        with tqdm(
+            total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
+        ) as progress_bar:
+            for i in range(0, len(document_objects), batch_size):
+                batch_documents = document_objects[i : i + batch_size]
+                if add_vectors:
+                    if not self.faiss_indexes[index].is_trained:
+                        raise ValueError(
+                            f"FAISS index of type {self.faiss_index_factory_str} must be trained before adding vectors. Call `train_index()` "
+                            "method before adding the vectors. For details, refer to the documentation: "
+                            "[FAISSDocumentStore API](https://docs.haystack.deepset.ai/reference/document-store-api#faissdocumentstoretrain_index)."
+                        )
+
+                    embeddings = [doc.embedding for doc in batch_documents]
+                    embeddings_to_index = np.array(embeddings, dtype="float32")
+
+                    if self.similarity == "cosine":
+                        self.normalize_embedding(embeddings_to_index)
+
+                    self.faiss_indexes[index].add(embeddings_to_index)
+
+                # write_documents method (duplicate_documents="overwrite") should properly work in combination with
+                # update_embeddings method (update_existing_embeddings=False).
+                # If no new embeddings are provided, we save the existing FAISS vector ids
+                elif self.duplicate_documents == "overwrite":
+                    existing_docs = self.get_documents_by_id(ids=[doc.id for doc in batch_documents], index=index)
+                    existing_docs_vector_ids = {
+                        doc.id: doc.meta["vector_id"] for doc in existing_docs if doc.meta and "vector_id" in doc.meta
+                    }
+
+                docs_to_write_in_sql = []
+                for doc in batch_documents:
+                    meta = doc.meta
                     if add_vectors:
-                        if not self.faiss_indexes[index].is_trained:
-                            raise ValueError(
-                                "FAISS index of type {} must be trained before adding vectors. Call `train_index()` "
-                                "method before adding the vectors. For details, refer to the documentation: "
-                                "[FAISSDocumentStore API](https://docs.haystack.deepset.ai/reference/document-store-api#faissdocumentstoretrain_index)."
-                                "".format(self.faiss_index_factory_str)
-                            )
+                        meta["vector_id"] = vector_id
+                        vector_id += 1
+                    elif self.duplicate_documents == "overwrite" and doc.id in existing_docs_vector_ids:
+                        meta["vector_id"] = existing_docs_vector_ids[doc.id]
+                    docs_to_write_in_sql.append(doc)
 
-                        embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
-                        embeddings_to_index = np.array(embeddings, dtype="float32")
-
-                        if self.similarity == "cosine":
-                            self.normalize_embedding(embeddings_to_index)
-
-                        self.faiss_indexes[index].add(embeddings_to_index)
-
-                    docs_to_write_in_sql = []
-                    for doc in document_objects[i : i + batch_size]:
-                        meta = doc.meta
-                        if add_vectors:
-                            meta["vector_id"] = vector_id
-                            vector_id += 1
-                        docs_to_write_in_sql.append(doc)
-
-                    super(FAISSDocumentStore, self).write_documents(
-                        docs_to_write_in_sql,
-                        index=index,
-                        duplicate_documents=duplicate_documents,
-                        batch_size=batch_size,
-                    )
-                    progress_bar.update(batch_size)
-            progress_bar.close()
+                super(FAISSDocumentStore, self).write_documents(
+                    docs_to_write_in_sql, index=index, duplicate_documents=duplicate_documents, batch_size=batch_size
+                )
+                progress_bar.update(batch_size)
 
     def _create_document_field_map(self) -> Dict:
         return {self.index: self.embedding_field}
@@ -440,9 +447,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             return_embedding = self.return_embedding
 
         for doc in documents:
-            if return_embedding:
-                if doc.meta and doc.meta.get("vector_id") is not None:
-                    doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
+            if return_embedding and doc.meta and doc.meta.get("vector_id") is not None:
+                doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
             yield doc
 
     def get_documents_by_id(
@@ -634,16 +640,18 @@ class FAISSDocumentStore(SQLDocumentStore):
         scores_for_vector_ids: Dict[str, float] = {
             str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])
         }
+        return_documents = []
         for doc in documents:
             score = scores_for_vector_ids[doc.meta["vector_id"]]
             if scale_score:
                 score = self.scale_to_unit_interval(score, self.similarity)
             doc.score = score
-
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
+            return_document = copy.copy(doc)
+            return_documents.append(return_document)
 
-        return documents
+        return return_documents
 
     def save(self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         """

@@ -5,10 +5,15 @@ import platform
 import sys
 from typing import Any, Dict, Optional
 
-import torch
-import transformers
-
 from haystack import __version__
+from haystack.lazy_imports import LazyImport
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
+    import torch
+
+with LazyImport() as transformers_import:
+    import transformers
+
 
 # Any remote API (OpenAI, Cohere etc.)
 HAYSTACK_REMOTE_API_BACKOFF_SEC = "HAYSTACK_REMOTE_API_BACKOFF_SEC"
@@ -83,11 +88,8 @@ def collect_static_system_specs() -> Dict[str, Any]:
     operating system, python version, Haystack version, transformers version,
     pytorch version, number of GPUs, execution environment.
     """
-    return {
+    specs = {
         "libraries.haystack": __version__,
-        "libraries.transformers": transformers.__version__ if "transformers" in sys.modules.keys() else False,
-        "libraries.torch": torch.__version__ if "torch" in sys.modules.keys() else False,
-        "libraries.cuda": torch.version.cuda if "torch" in sys.modules.keys() and torch.cuda.is_available() else False,
         "os.containerized": is_containerized(),
         # FIXME review these
         "os.version": platform.release(),
@@ -95,8 +97,30 @@ def collect_static_system_specs() -> Dict[str, Any]:
         "os.machine": platform.machine(),
         "python.version": platform.python_version(),  # FIXME verify
         "hardware.cpus": os.cpu_count(),  # FIXME verify
-        "hardware.gpus": torch.cuda.device_count() if torch.cuda.is_available() else 0,  # probably ok
     }
+    try:
+        transformers_import.check()
+        specs["libraries.transformers"] = transformers.__version__
+    except ImportError:
+        specs["libraries.transformers"] = False
+
+    try:
+        torch_import.check()
+        has_mps = (
+            hasattr(torch.backends, "mps")
+            and torch.backends.mps.is_available()
+            and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
+        )
+        specs.update(
+            {
+                "libraries.torch": torch.__version__,
+                "libraries.cuda": torch.version.cuda if torch.cuda.is_available() else False,
+                "hardware.gpus": torch.cuda.device_count() if torch.cuda.is_available() else 1 if has_mps else 0,
+            }
+        )
+    except ImportError:
+        specs.update({"libraries.torch": False, "libraries.cuda": False, "hardware.gpus": 0})
+    return specs
 
 
 def collect_dynamic_system_specs() -> Dict[str, Any]:

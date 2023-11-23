@@ -1,32 +1,29 @@
 from __future__ import annotations
+
+import ast
 import csv
 import hashlib
 import inspect
-
-from typing import Any, Optional, Dict, List, Union, Literal
-
-from pathlib import Path
-from uuid import uuid4
+import json
 import logging
 import time
-import json
-import ast
 from dataclasses import asdict
+from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional, Union
+from uuid import uuid4
 
 import numpy as np
-from numpy import ndarray
 import pandas as pd
+from numpy import ndarray
 from pandas import DataFrame
-
 from pydantic import BaseConfig, Field
-from pydantic.json import pydantic_encoder
 
 # We are using Pydantic dataclasses instead of vanilla Python's
 # See #1598 for the reasons behind this choice & performance considerations
 from pydantic.dataclasses import dataclass
+from pydantic.json import pydantic_encoder
 
 from haystack.mmh3 import hash128
-
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +34,8 @@ BaseConfig.arbitrary_types_allowed = True
 #: Types of content_types supported
 ContentTypes = Literal["text", "table", "image", "audio"]
 FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
+
+LABEL_DATETIME_FORMAT: str = "%Y-%m-%d %H:%M:%S"
 
 
 @dataclass
@@ -106,15 +105,16 @@ class Document:
 
         allowed_hash_key_attributes = ["content", "content_type", "score", "meta", "embedding"]
 
-        if id_hash_keys is not None:
-            if not all(key in allowed_hash_key_attributes or key.startswith("meta.") for key in id_hash_keys):
-                raise ValueError(
-                    f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
-                    f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}) or "
-                    f"a key of meta with a maximum depth of 1 (like meta.url). "
-                    "See [Custom id hashing on documentstore level](https://github.com/deepset-ai/haystack/pull/1910) and "
-                    "[Allow more flexible Document id hashing](https://github.com/deepset-ai/haystack/issues/4317) for details"
-                )
+        if id_hash_keys is not None and not all(
+            key in allowed_hash_key_attributes or key.startswith("meta.") for key in id_hash_keys
+        ):
+            raise ValueError(
+                f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
+                f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}) or "
+                f"a key of meta with a maximum depth of 1 (like meta.url). "
+                "See [Custom id hashing on documentstore level](https://github.com/deepset-ai/haystack/pull/1910) and "
+                "[Allow more flexible Document id hashing](https://github.com/deepset-ai/haystack/issues/4317) for details"
+            )
         # We store id_hash_keys to be able to clone documents, for example when splitting them during pre-processing
         self.id_hash_keys = id_hash_keys or ["content"]
 
@@ -181,10 +181,9 @@ class Document:
             # Exclude internal fields (Pydantic, ...) fields from the conversion process
             if k.startswith("__"):
                 continue
-            if k == "content":
                 # Convert pd.DataFrame to list of rows for serialization
-                if self.content_type == "table" and isinstance(self.content, DataFrame):
-                    v = dataframe_to_list(self.content)
+            if k == "content" and self.content_type == "table" and isinstance(self.content, DataFrame):
+                v = dataframe_to_list(self.content)
             k = k if k not in inv_field_map else inv_field_map[k]
             _doc[k] = v
         return _doc
@@ -526,7 +525,7 @@ class Label:
         :param pipeline_id: pipeline identifier (any str) that was involved for generating this label (in-case of user feedback).
         :param created_at: Timestamp of creation with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S").
-        :param created_at: Timestamp of update with format yyyy-MM-dd HH:mm:ss.
+        :param updated_at: Timestamp of update with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S")
         :param meta: Meta fields like "annotator_name" in the form of a custom dict (any keys and values allowed).
         :param filters: filters that should be applied to the query to rule out non-relevant documents. For example, if there are different correct answers
@@ -540,7 +539,7 @@ class Label:
             self.id = str(uuid4())
 
         if created_at is None:
-            created_at = time.strftime("%Y-%m-%d %H:%M:%S")
+            created_at = time.strftime(LABEL_DATETIME_FORMAT)
         self.created_at = created_at
 
         self.updated_at = updated_at
@@ -633,7 +632,7 @@ def is_positive_label(label):
 
 
 class MultiLabel:
-    def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
+    def __init__(self, labels: List[Label], drop_negative_labels: bool = False, drop_no_answers: bool = False):
         """
         There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
         answers for one question or multiple documents contain the information you want for a query.
@@ -753,12 +752,17 @@ class MultiLabel:
 
     def to_dict(self):
         # convert internal attribute names to property names
-        return {k[1:] if k[0] == "_" else k: v for k, v in vars(self).items()}
+        result = {k[1:] if k[0] == "_" else k: v for k, v in vars(self).items()}
+        # convert Label object to dict
+        result["labels"] = [label.to_dict() for label in result["labels"]]
+        return result
 
     @classmethod
     def from_dict(cls, dict: Dict):
         # exclude extra arguments
-        return cls(**{k: v for k, v in dict.items() if k in inspect.signature(cls).parameters})
+        inputs = {k: v for k, v in dict.items() if k in inspect.signature(cls).parameters}
+        inputs["labels"] = [Label.from_dict(label) for label in inputs["labels"]]
+        return cls(**inputs)
 
     def to_json(self):
         return json.dumps(self.to_dict(), default=pydantic_encoder)
@@ -769,7 +773,6 @@ class MultiLabel:
             dict_data = json.loads(data)
         else:
             dict_data = data
-        dict_data["labels"] = [Label.from_dict(l) for l in dict_data["labels"]]
         return cls.from_dict(dict_data)
 
     def __eq__(self, other):
@@ -1482,7 +1485,7 @@ class EvaluationResult:
             gold_document_ids = [id for id in gold_document_ids if id != "00"]
 
             num_labels = len(gold_document_ids)
-            num_matched_labels = len(set(idx for idxs in relevant_rows["matched_label_idxs"] for idx in idxs))
+            num_matched_labels = len({idx for idxs in relevant_rows["matched_label_idxs"] for idx in idxs})
             num_missing_labels = num_labels - num_matched_labels
 
             relevance_criterion_ids = list(relevant_rows["document_id"].values)

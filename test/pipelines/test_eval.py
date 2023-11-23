@@ -7,7 +7,6 @@ import pandas as pd
 from copy import deepcopy
 
 import responses
-from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.answer_generator.openai import OpenAIAnswerGenerator
 from haystack.nodes.preprocessor import PreProcessor
@@ -31,14 +30,16 @@ from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabe
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
-def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, retriever_with_docs):
+def test_summarizer_calculate_metrics(
+    document_store_with_docs: ElasticsearchDocumentStore, retriever_with_docs, eval_labels
+):
     document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
     summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distill-pegasus-xsum-16-4", use_gpu=False)
     pipeline = SearchSummarizationPipeline(
         retriever=retriever_with_docs, summarizer=summarizer, return_in_answer_format=True
     )
     eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}}, context_matching_min_length=10
+        labels=eval_labels, params={"Retriever": {"top_k": 5}}, context_matching_min_length=10
     )
 
     metrics = eval_result.calculate_metrics(document_scope="context")
@@ -249,39 +250,6 @@ def test_eval_data_split_passage(document_store, samples_path):
     assert len(docs[1].content) == 56
 
 
-EVAL_LABELS = [
-    MultiLabel(
-        labels=[
-            Label(
-                query="Who lives in Berlin?",
-                answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]),
-                document=Document(
-                    id="a0747b83aea0b60c4b114b15476dd32d",
-                    content_type="text",
-                    content="My name is Carla and I live in Berlin",
-                ),
-                is_correct_answer=True,
-                is_correct_document=True,
-                origin="gold-label",
-            )
-        ]
-    ),
-    MultiLabel(
-        labels=[
-            Label(
-                query="Who lives in Munich?",
-                answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]),
-                document=Document(
-                    id="something_else", content_type="text", content="My name is Carla and I live in Munich"
-                ),
-                is_correct_answer=True,
-                is_correct_document=True,
-                origin="gold-label",
-            )
-        ]
-    ),
-]
-
 NO_ANSWER_EVAL_LABELS = [
     MultiLabel(
         labels=[
@@ -451,6 +419,7 @@ EVAL_TABLE_LABELS = [
 ]
 
 
+@pytest.mark.skip(reason="Should be an end-to-end test since it uses model inferencing")
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
@@ -499,8 +468,8 @@ def test_table_qa_eval(table_reader_and_param, document_store, retriever):
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
-    labels = EVAL_LABELS[:1]
+def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path, eval_labels):
+    labels = eval_labels[:1]
 
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
@@ -568,10 +537,10 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 
     # all expected columns are part of the evaluation result dataframe
     assert sorted(expected_reader_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(reader_result.columns)
+        reader_result.columns
     )
     assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(retriever_result.columns)
+        retriever_result.columns
     )
 
     assert (
@@ -630,8 +599,8 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @responses.activate
-def test_generative_qa_eval(retriever_with_docs, tmp_path):
-    labels = EVAL_LABELS[:1]
+def test_generative_qa_eval(retriever_with_docs, tmp_path, eval_labels):
+    labels = eval_labels[:1]
     responses.add(
         responses.POST,
         "https://api.openai.com/v1/completions",
@@ -707,10 +676,10 @@ def test_generative_qa_eval(retriever_with_docs, tmp_path):
 
     # all expected columns are part of the evaluation result dataframe
     assert sorted(expected_generator_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(generator_result.columns)
+        generator_result.columns
     )
     assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(retriever_result.columns)
+        retriever_result.columns
     )
 
     assert generator_result["prompt"].iloc[0] is not None
@@ -732,8 +701,8 @@ def test_generative_qa_eval(retriever_with_docs, tmp_path):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path):
-    labels = EVAL_LABELS[:1]
+def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path, eval_labels):
+    labels = eval_labels[:1]
     pipeline = Pipeline()
     pipeline.add_node(retriever_with_docs, name="Retriever", inputs=["Query"])
     pipeline.add_node(
@@ -808,10 +777,10 @@ def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path):
 
     # all expected columns are part of the evaluation result dataframe
     assert sorted(expected_generator_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(generator_result.columns)
+        generator_result.columns
     )
     assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(retriever_result.columns)
+        retriever_result.columns
     )
 
     assert generator_result["prompt"].iloc[0] is not None
@@ -834,9 +803,9 @@ def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path):
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_path):
+def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_path, eval_labels):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
+    eval_result: EvaluationResult = pipeline.eval(labels=eval_labels, params={"Retriever": {"top_k": 5}})
 
     metrics = eval_result.calculate_metrics(document_scope="document_id")
 
@@ -981,10 +950,10 @@ def test_extractive_qa_labels_with_filters(reader, retriever_with_docs, tmp_path
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_eval_sas(reader, retriever_with_docs):
+def test_extractive_qa_eval_sas(reader, retriever_with_docs, eval_labels):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
+        labels=eval_labels,
         params={"Retriever": {"top_k": 5}},
         sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
     )
@@ -1009,12 +978,12 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs):
 
 
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_reader_eval_in_pipeline(reader):
+def test_reader_eval_in_pipeline(reader, eval_labels):
     pipeline = Pipeline()
     pipeline.add_node(component=reader, name="Reader", inputs=["Query"])
     eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
-        documents=[[label.document for label in multilabel.labels] for multilabel in EVAL_LABELS],
+        labels=eval_labels,
+        documents=[[label.document for label in multilabel.labels] for multilabel in eval_labels],
         params={},
     )
 
@@ -1026,10 +995,10 @@ def test_reader_eval_in_pipeline(reader):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_extractive_qa_eval_document_scope(retriever_with_docs):
+def test_extractive_qa_eval_document_scope(retriever_with_docs, eval_labels):
     pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
+        labels=eval_labels,
         params={"Retriever": {"top_k": 5}},
         context_matching_min_length=20,  # artificially set down min_length to see if context matching is working properly
     )
@@ -1312,10 +1281,10 @@ def test_extractive_qa_eval_document_scope_no_answer(retriever_with_docs, docume
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_eval_answer_scope(reader, retriever_with_docs):
+def test_extractive_qa_eval_answer_scope(reader, retriever_with_docs, eval_labels):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
+        labels=eval_labels,
         params={"Retriever": {"top_k": 5}},
         sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
         context_matching_min_length=20,  # artificially set down min_length to see if context matching is working properly
@@ -1373,10 +1342,10 @@ def test_extractive_qa_eval_answer_scope(reader, retriever_with_docs):
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_eval_answer_document_scope_combinations(reader, retriever_with_docs, caplog):
+def test_extractive_qa_eval_answer_document_scope_combinations(reader, retriever_with_docs, caplog, eval_labels):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
+        labels=eval_labels,
         params={"Retriever": {"top_k": 5}},
         sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
         context_matching_min_length=20,  # artificially set down min_length to see if context matching is working properly
@@ -1384,34 +1353,34 @@ def test_extractive_qa_eval_answer_document_scope_combinations(reader, retriever
 
     # valid values for non default answer_scopes
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer", answer_scope="context")
-        metrics = eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_or_answer", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" not in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_and_context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_and_context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_or_context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_or_context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
+def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs, eval_labels):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
+        labels=eval_labels,
         params={"Retriever": {"top_k": 5}},
         sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
     )
@@ -1456,9 +1425,9 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_docs):
+def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_docs, eval_labels):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
+    eval_result: EvaluationResult = pipeline.eval(labels=eval_labels, params={"Retriever": {"top_k": 5}})
 
     metrics_top_10 = eval_result.calculate_metrics(document_scope="document_id")
 
@@ -1508,9 +1477,9 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriever_with_docs):
+def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriever_with_docs, eval_labels):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 10}})
+    eval_result: EvaluationResult = pipeline.eval(labels=eval_labels, params={"Retriever": {"top_k": 10}})
 
     metrics_top_10 = eval_result.calculate_metrics(simulated_top_k_reader=1, document_scope="document_id")
 
@@ -1567,8 +1536,8 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
-    labels = deepcopy(EVAL_LABELS)
+def test_extractive_qa_eval_isolated(reader, retriever_with_docs, eval_labels):
+    labels = deepcopy(eval_labels)
     # Copy one of the labels and change only the answer have a label with a different answer but same Document
     label_copy = deepcopy(labels[0].labels[0])
     label_copy.answer = Answer(answer="I", offsets_in_context=[Span(21, 22)])
@@ -1702,9 +1671,9 @@ def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_document_search_calculate_metrics(retriever_with_docs):
+def test_document_search_calculate_metrics(retriever_with_docs, eval_labels):
     pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
+    eval_result: EvaluationResult = pipeline.eval(labels=eval_labels, params={"Retriever": {"top_k": 5}})
 
     metrics = eval_result.calculate_metrics(document_scope="document_id")
 
@@ -1732,11 +1701,11 @@ def test_document_search_calculate_metrics(retriever_with_docs):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_document_search_isolated(retriever_with_docs):
+def test_document_search_isolated(retriever_with_docs, eval_labels):
     pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
     # eval run must not fail even though no node supports add_isolated_node_eval
     eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}}, add_isolated_node_eval=True
+        labels=eval_labels, params={"Retriever": {"top_k": 5}}, add_isolated_node_eval=True
     )
 
     metrics = eval_result.calculate_metrics(document_scope="document_id")
@@ -1769,9 +1738,9 @@ def test_document_search_isolated(retriever_with_docs):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_faq_calculate_metrics(retriever_with_docs):
+def test_faq_calculate_metrics(retriever_with_docs, eval_labels):
     pipeline = FAQPipeline(retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
+    eval_result: EvaluationResult = pipeline.eval(labels=eval_labels, params={"Retriever": {"top_k": 5}})
 
     metrics = eval_result.calculate_metrics(document_scope="document_id")
 
@@ -1792,7 +1761,7 @@ def test_faq_calculate_metrics(retriever_with_docs):
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_eval_translation(reader, retriever_with_docs):
+def test_extractive_qa_eval_translation(reader, retriever_with_docs, eval_labels):
     # FIXME it makes no sense to have DE->EN input and DE->EN output, right?
     #  Yet switching direction breaks the test. TO BE FIXED.
     input_translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
@@ -1802,7 +1771,7 @@ def test_extractive_qa_eval_translation(reader, retriever_with_docs):
     pipeline = TranslationWrapperPipeline(
         input_translator=input_translator, output_translator=output_translator, pipeline=pipeline
     )
-    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
+    eval_result: EvaluationResult = pipeline.eval(labels=eval_labels, params={"Retriever": {"top_k": 5}})
 
     metrics = eval_result.calculate_metrics(document_scope="document_id")
 
@@ -1832,10 +1801,10 @@ def test_extractive_qa_eval_translation(reader, retriever_with_docs):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_question_generation_eval(retriever_with_docs, question_generator):
+def test_question_generation_eval(retriever_with_docs, question_generator, eval_labels):
     pipeline = RetrieverQuestionGenerationPipeline(retriever=retriever_with_docs, question_generator=question_generator)
 
-    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
+    eval_result: EvaluationResult = pipeline.eval(labels=eval_labels, params={"Retriever": {"top_k": 5}})
 
     metrics = eval_result.calculate_metrics(document_scope="document_id")
 
@@ -1860,7 +1829,7 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
+def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader, eval_labels):
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
     dpr_retriever = DensePassageRetriever(document_store_with_docs)
     document_store_with_docs.update_embeddings(retriever=dpr_retriever)
@@ -1874,7 +1843,7 @@ def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
 
     # EVAL_QUERIES: 2 go dpr way
     # in Berlin goes es way
-    labels = EVAL_LABELS + [
+    labels = eval_labels + [
         MultiLabel(
             labels=[
                 Label(
@@ -1923,7 +1892,7 @@ def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_multi_retriever_pipeline_eval(document_store_with_docs):
+def test_multi_retriever_pipeline_eval(document_store_with_docs, eval_labels):
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
     dpr_retriever = DensePassageRetriever(document_store_with_docs)
     document_store_with_docs.update_embeddings(retriever=dpr_retriever)
@@ -1936,7 +1905,7 @@ def test_multi_retriever_pipeline_eval(document_store_with_docs):
 
     # EVAL_QUERIES: 2 go dpr way
     # in Berlin goes es way
-    labels = EVAL_LABELS + [
+    labels = eval_labels + [
         MultiLabel(
             labels=[
                 Label(
@@ -1982,7 +1951,7 @@ def test_multi_retriever_pipeline_eval(document_store_with_docs):
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_docs, reader):
+def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_docs, reader, eval_labels):
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
     dpr_retriever = DensePassageRetriever(document_store_with_docs)
     document_store_with_docs.update_embeddings(retriever=dpr_retriever)
@@ -1996,7 +1965,7 @@ def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_do
 
     # EVAL_QUERIES: 2 go dpr way
     # in Berlin goes es way
-    labels = EVAL_LABELS + [
+    labels = eval_labels + [
         MultiLabel(
             labels=[
                 Label(
@@ -2047,8 +2016,8 @@ def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_do
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm", "transformers"], indirect=True)
-def test_empty_documents_dont_fail_pipeline(reader, retriever_with_docs):
-    multilabels = EVAL_LABELS[:2]
+def test_empty_documents_dont_fail_pipeline(reader, retriever_with_docs, eval_labels):
+    multilabels = eval_labels[:2]
     multilabels[0].labels[0].document.content = ""
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result_integrated: EvaluationResult = pipeline.eval(labels=multilabels, add_isolated_node_eval=False)
@@ -2069,6 +2038,7 @@ def test_empty_documents_dont_fail_pipeline(reader, retriever_with_docs):
     )
 
 
+@pytest.mark.unit
 def test_load_legacy_evaluation_result(tmp_path):
     legacy_csv = Path(tmp_path) / "legacy.csv"
     with open(legacy_csv, "w") as legacy_csv:
@@ -2100,7 +2070,8 @@ def test_load_legacy_evaluation_result(tmp_path):
     assert "content" not in eval_result["legacy"]
 
 
-def test_load_evaluation_result_w_none_values(tmp_path):
+@pytest.mark.unit
+def test_load_evaluation_result(tmp_path):
     eval_result_csv = Path(tmp_path) / "Reader.csv"
     with open(eval_result_csv, "w") as eval_result_csv:
         columns = [
@@ -2172,8 +2143,43 @@ def test_load_evaluation_result_w_none_values(tmp_path):
         )
 
     eval_result = EvaluationResult.load(tmp_path)
+    known_result = {
+        "multilabel_id": {0: "ddc1562602f2d6d895b91e53f83e4c16"},
+        "query": {0: "who is written in the book of life"},
+        "filters": {0: b"null"},
+        "gold_answers": {
+            0: [
+                "every person who is destined for Heaven or the World to Come",
+                "all people considered righteous before God",
+            ]
+        },
+        "answer": {0: None},
+        "context": {0: None},
+        "exact_match": {0: 0.0},
+        "f1": {0: 0.0},
+        "exact_match_context_scope": {0: 0.0},
+        "f1_context_scope": {0: 0.0},
+        "exact_match_document_id_scope": {0: 0.0},
+        "f1_document_id_scope": {0: 0.0},
+        "exact_match_document_id_and_context_scope": {0: 0.0},
+        "f1_document_id_and_context_scope": {0: 0.0},
+        "gold_contexts": {0: ["Book of Life - wikipedia Book of Life Jump to: navigation, search..."]},
+        "rank": {0: 1.0},
+        "document_ids": {0: None},
+        "gold_document_ids": {0: ["de2fd2f109e11213af1ea189fd1488a3-0", "de2fd2f109e11213af1ea189fd1488a3-0"]},
+        "offsets_in_document": {0: [{"start": 0, "end": 0}]},
+        "gold_offsets_in_documents": {0: [{"start": 374, "end": 434}, {"start": 1107, "end": 1149}]},
+        "offsets_in_context": {0: [{"start": 0, "end": 0}]},
+        "gold_offsets_in_contexts": {0: [{"start": 374, "end": 434}, {"start": 1107, "end": 1149}]},
+        "gold_answers_exact_match": {0: [0, 0]},
+        "gold_answers_f1": {0: [0, 0]},
+        "gold_documents_id_match": {0: [0.0, 0.0]},
+        "gold_contexts_similarity": {0: [0.0, 0.0]},
+        "type": {0: "answer"},
+        "node": {0: "Reader"},
+        "eval_mode": {0: "integrated"},
+        "index": {0: None},
+    }
     assert "Reader" in eval_result
     assert len(eval_result) == 1
-    assert eval_result["Reader"].iloc[0].answer is None
-    assert eval_result["Reader"].iloc[0].context is None
-    assert eval_result["Reader"].iloc[0].document_ids is None
+    assert eval_result["Reader"].to_dict() == known_result

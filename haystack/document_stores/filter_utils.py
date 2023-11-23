@@ -5,17 +5,13 @@ from collections import defaultdict
 
 from haystack.document_stores.utils import convert_date_to_rfc3339
 from haystack.errors import FilterError
+from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__file__)
 
-try:
+with LazyImport("Run 'pip install farm-haystack[sql]'") as sql_import:
     from sqlalchemy.sql import select
     from sqlalchemy import and_, or_
-except ImportError as exc:
-    logger.debug("sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue.")
-    select = None
-    and_ = None
-    or_ = None
 
 
 def nested_defaultdict() -> defaultdict:
@@ -319,10 +315,7 @@ class NotOperation(LogicalFilterClause):
         return {"bool": {"must_not": conditions}}
 
     def convert_to_sql(self, meta_document_orm):
-        if not select:
-            raise ImportError(
-                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
-            )
+        sql_import.check()
         conditions = [
             meta_document_orm.document_id.in_(condition.convert_to_sql(meta_document_orm))
             for condition in self.conditions
@@ -370,10 +363,7 @@ class AndOperation(LogicalFilterClause):
         return {"bool": {"must": conditions}}
 
     def convert_to_sql(self, meta_document_orm):
-        if not select:
-            raise ImportError(
-                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
-            )
+        sql_import.check()
         conditions = [
             meta_document_orm.document_id.in_(condition.convert_to_sql(meta_document_orm))
             for condition in self.conditions
@@ -406,10 +396,7 @@ class OrOperation(LogicalFilterClause):
         return {"bool": {"should": conditions}}
 
     def convert_to_sql(self, meta_document_orm):
-        if not select:
-            raise ImportError(
-                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
-            )
+        sql_import.check()
         conditions = [
             meta_document_orm.document_id.in_(condition.convert_to_sql(meta_document_orm))
             for condition in self.conditions
@@ -455,10 +442,7 @@ class EqOperation(ComparisonOperation):
         return {"term": {self.field_name: self.comparison_value}}
 
     def convert_to_sql(self, meta_document_orm):
-        if not select:
-            raise ImportError(
-                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
-            )
+        sql_import.check()
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value == self.comparison_value
         )
@@ -482,8 +466,15 @@ class InOperation(ComparisonOperation):
     def evaluate(self, fields) -> bool:
         if self.field_name not in fields:
             return False
-        return fields[self.field_name] in self.comparison_value  # type: ignore
-        # is only initialized with lists, but changing the type annotation would mean duplicating __init__
+
+        if not isinstance(self.comparison_value, list):
+            raise FilterError("'$in' operation requires comparison value to be a list.")
+
+        # If the document field is a list, check if any of its values are in the comparison value
+        if isinstance(fields[self.field_name], list):
+            return any(field in self.comparison_value for field in fields[self.field_name])
+
+        return fields[self.field_name] in self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, List]]:
         if not isinstance(self.comparison_value, list):
@@ -491,10 +482,7 @@ class InOperation(ComparisonOperation):
         return {"terms": {self.field_name: self.comparison_value}}
 
     def convert_to_sql(self, meta_document_orm):
-        if not select:
-            raise ImportError(
-                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
-            )
+        sql_import.check()
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value.in_(self.comparison_value)
         )
@@ -537,10 +525,7 @@ class NeOperation(ComparisonOperation):
         return {"bool": {"must_not": {"term": {self.field_name: self.comparison_value}}}}
 
     def convert_to_sql(self, meta_document_orm):
-        if not select:
-            raise ImportError(
-                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
-            )
+        sql_import.check()
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value != self.comparison_value
         )
@@ -563,9 +548,16 @@ class NinOperation(ComparisonOperation):
 
     def evaluate(self, fields) -> bool:
         if self.field_name not in fields:
-            return False
-        return fields[self.field_name] not in self.comparison_value  # type: ignore
-        # is only initialized with lists, but changing the type annotation would mean duplicating __init__
+            return True
+
+        if not isinstance(self.comparison_value, list):
+            raise FilterError("'$nin' operation requires comparison value to be a list.")
+
+        # If the document field is a list, check if any of its values are in the comparison value
+        if isinstance(fields[self.field_name], list):
+            return not any(field in self.comparison_value for field in fields[self.field_name])
+
+        return fields[self.field_name] not in self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Dict[str, List]]]]:
         if not isinstance(self.comparison_value, list):
@@ -573,10 +565,7 @@ class NinOperation(ComparisonOperation):
         return {"bool": {"must_not": {"terms": {self.field_name: self.comparison_value}}}}
 
     def convert_to_sql(self, meta_document_orm):
-        if not select:
-            raise ImportError(
-                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
-            )
+        sql_import.check()
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value.notin_(self.comparison_value)
         )
@@ -611,6 +600,11 @@ class GtOperation(ComparisonOperation):
     def evaluate(self, fields) -> bool:
         if self.field_name not in fields:
             return False
+
+        # If the document field is a list, check if any of its values are greater than the comparison value
+        if isinstance(fields[self.field_name], list):
+            return any(field > self.comparison_value for field in fields[self.field_name])
+
         return fields[self.field_name] > self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
@@ -619,10 +613,7 @@ class GtOperation(ComparisonOperation):
         return {"range": {self.field_name: {"gt": self.comparison_value}}}
 
     def convert_to_sql(self, meta_document_orm):
-        if not select:
-            raise ImportError(
-                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
-            )
+        sql_import.check()
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value > self.comparison_value
         )
@@ -650,6 +641,11 @@ class GteOperation(ComparisonOperation):
     def evaluate(self, fields) -> bool:
         if self.field_name not in fields:
             return False
+
+        # If the document field is a list, check if any of its values are greater than or equal to the comparison value
+        if isinstance(fields[self.field_name], list):
+            return any(field >= self.comparison_value for field in fields[self.field_name])
+
         return fields[self.field_name] >= self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
@@ -658,10 +654,7 @@ class GteOperation(ComparisonOperation):
         return {"range": {self.field_name: {"gte": self.comparison_value}}}
 
     def convert_to_sql(self, meta_document_orm):
-        if not select:
-            raise ImportError(
-                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
-            )
+        sql_import.check()
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value >= self.comparison_value
         )
@@ -689,6 +682,11 @@ class LtOperation(ComparisonOperation):
     def evaluate(self, fields) -> bool:
         if self.field_name not in fields:
             return False
+
+        # If the document field is a list, check if any of its values are less than the comparison value
+        if isinstance(fields[self.field_name], list):
+            return any(field < self.comparison_value for field in fields[self.field_name])
+
         return fields[self.field_name] < self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
@@ -697,10 +695,7 @@ class LtOperation(ComparisonOperation):
         return {"range": {self.field_name: {"lt": self.comparison_value}}}
 
     def convert_to_sql(self, meta_document_orm):
-        if not select:
-            raise ImportError(
-                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
-            )
+        sql_import.check()
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value < self.comparison_value
         )
@@ -728,6 +723,11 @@ class LteOperation(ComparisonOperation):
     def evaluate(self, fields) -> bool:
         if self.field_name not in fields:
             return False
+
+        # If the document field is a list, check if any of its values are less than or equal to the comparison value
+        if isinstance(fields[self.field_name], list):
+            return any(field <= self.comparison_value for field in fields[self.field_name])
+
         return fields[self.field_name] <= self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
@@ -736,10 +736,7 @@ class LteOperation(ComparisonOperation):
         return {"range": {self.field_name: {"lte": self.comparison_value}}}
 
     def convert_to_sql(self, meta_document_orm):
-        if not select:
-            raise ImportError(
-                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
-            )
+        sql_import.check()
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value <= self.comparison_value
         )

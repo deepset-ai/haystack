@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    This update impacts only those who have created custom invocation layers by subclassing PromptModelInvocationLayer.
+    Previously, the invoke() method in your custom layer received all prompt template parameters (like query,
+    documents, etc.) as keyword arguments. With this change, these parameters will no longer be passed in as keyword
+    arguments. If you've implemented such a custom layer, you'll need to potentially update your code to accommodate
+    this change.
+enhancements:
+  - |
+    Remove template variables from invocation layer kwargs

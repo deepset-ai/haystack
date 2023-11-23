@@ -5,7 +5,6 @@ import logging
 
 import requests
 import sseclient
-from transformers.pipelines import get_task
 
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
 from haystack.errors import (
@@ -19,7 +18,8 @@ from haystack.nodes.prompt.invocation_layer import (
     DefaultTokenStreamingHandler,
 )
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
-from haystack.utils.requests_utils import request_with_retry
+from haystack.nodes.prompt.invocation_layer.utils import get_task
+from haystack.utils import request_with_retry
 
 logger = logging.getLogger(__name__)
 HF_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
@@ -49,6 +49,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         :param api_key: The Hugging Face API token. You’ll need to provide your user token which can
         be found in your Hugging Face account [settings](https://huggingface.co/settings/tokens)
         """
+
         super().__init__(model_name_or_path)
         self.prompt_preprocessors: Dict[str, Callable] = {}
         valid_api_key = isinstance(api_key, str) and api_key
@@ -190,7 +191,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         :param stream_handler: The handler to invoke on each token.
         :param stop_words: The stop words to ignore.
         """
-        client = sseclient.SSEClient(response)
+        client = sseclient.SSEClient(response)  # type: ignore # requests.Response behaves like a generator but the typing does not reflect it
         tokens: List[str] = []
         try:
             for event in client.events():
@@ -245,14 +246,14 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             )
         except requests.HTTPError as err:
             res = err.response
-            if res.status_code == 429:
-                raise HuggingFaceInferenceLimitError(f"API rate limit exceeded: {res.text}")
-            if res.status_code == 401:
-                raise HuggingFaceInferenceUnauthorizedError(f"API key is invalid: {res.text}")
+            if res.status_code == 429:  # type: ignore[union-attr]
+                raise HuggingFaceInferenceLimitError(f"API rate limit exceeded: {res.text}")  # type: ignore[union-attr]
+            if res.status_code == 401:  # type: ignore[union-attr]
+                raise HuggingFaceInferenceUnauthorizedError(f"API key is invalid: {res.text}")  # type: ignore[union-attr]
 
             raise HuggingFaceInferenceError(
-                f"HuggingFace Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
-                status_code=res.status_code,
+                f"HuggingFace Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",  # type: ignore[union-attr]
+                status_code=res.status_code,  # type: ignore[union-attr]
             )
         return response
 
@@ -287,7 +288,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             is_inference_api = False
             try:
                 task_name = get_task(model_name_or_path, use_auth_token=kwargs.get("use_auth_token", None))
-                is_inference_api = "api_key" in kwargs
+                is_inference_api = bool(kwargs.get("api_key", None))
             except RuntimeError:
                 # This will fail for all non-HF models
                 return False

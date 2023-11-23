@@ -1,15 +1,19 @@
 import json
-
 from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal
 
 import requests
-import torch
 from requests import PreparedRequest
 
 from haystack import MultiLabel, Document
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.base import BaseComponent
 from haystack.utils.import_utils import is_whisper_available
+from haystack.lazy_imports import LazyImport
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
+    import torch
+
 
 WhisperModel = Literal["tiny", "small", "medium", "large", "large-v2"]
 
@@ -40,7 +44,7 @@ class WhisperTranscriber(BaseComponent):
         self,
         api_key: Optional[str] = None,
         model_name_or_path: WhisperModel = "medium",
-        device: Optional[Union[str, torch.device]] = None,
+        device: Optional[Union[str, "torch.device"]] = None,
         api_base: str = "https://api.openai.com/v1",
     ) -> None:
         """
@@ -48,7 +52,7 @@ class WhisperTranscriber(BaseComponent):
 
         :param api_key: OpenAI API key. If None, a local installation of Whisper is used.
         :param model_name_or_path: Name of the model to use. If using a local installation of Whisper, set this to one of the following values: "tiny", "small", "medium", "large", "large-v2". If using
-        the API, set thsi value to: "whisper-1" (default).
+        the API, set this value to: "whisper-1" (default).
         :param device: Device to use for inference. Only used if you're using a local
         installation of Whisper. If None, the device is automatically selected.
         :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
@@ -85,6 +89,7 @@ class WhisperTranscriber(BaseComponent):
         :param return_segments: If True, returns the transcription for each segment of the audio file. Supported with
         local installation of whisper only.
         :param translate: If True, translates the transcription to English.
+        :return: A dictionary containing the transcription text and metadata like timings, segments etc.
 
         """
         transcript: Dict[str, Any] = {}
@@ -140,6 +145,8 @@ class WhisperTranscriber(BaseComponent):
     def _invoke_local(
         self, audio_file: Union[str, BinaryIO], translate: Optional[bool] = False, **kwargs
     ) -> Dict[str, Any]:
+        torch_import.check()
+
         if isinstance(audio_file, str):
             with open(audio_file, "rb") as f:
                 return self._invoke_local(f, translate, **kwargs)
@@ -168,6 +175,8 @@ class WhisperTranscriber(BaseComponent):
         :param labels: Ignored
         :param documents: Ignored
         :param meta: Ignored
+        :return: A dictionary containing a list of Document objects, one for each input file.
+
         """
         transcribed_documents: List[Document] = []
         if file_paths:

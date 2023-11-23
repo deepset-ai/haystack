@@ -1,11 +1,15 @@
-from typing import Dict, List, Optional, Tuple, Union, Any, Type, overload
+import inspect
 import logging
-
-import torch
+from typing import Any, Dict, List, Optional, Tuple, Type, Union, overload
 
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
 from haystack.schema import Document, MultiLabel
+from haystack.lazy_imports import LazyImport
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
+    import torch
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +36,10 @@ class PromptModel(BaseComponent):
         model_name_or_path: str = "google/flan-t5-base",
         max_length: Optional[int] = 100,
         api_key: Optional[str] = None,
+        timeout: Optional[float] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         invocation_layer_class: Optional[Type[PromptModelInvocationLayer]] = None,
         model_kwargs: Optional[Dict] = None,
     ):
@@ -59,6 +64,7 @@ class PromptModel(BaseComponent):
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
         self.api_key = api_key
+        self.timeout = timeout
         self.use_auth_token = use_auth_token
         self.use_gpu = use_gpu
         self.devices = devices
@@ -71,6 +77,7 @@ class PromptModel(BaseComponent):
     ) -> PromptModelInvocationLayer:
         kwargs = {
             "api_key": self.api_key,
+            "timeout": self.timeout,
             "use_auth_token": self.use_auth_token,
             "use_gpu": self.use_gpu,
             "devices": self.devices,
@@ -81,9 +88,10 @@ class PromptModel(BaseComponent):
             return invocation_layer_class(
                 model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
             )
-        # search all invocation layer classes and find the first one that supports the model,
-        # then create an instance of that invocation layer
+
         for invocation_layer in PromptModelInvocationLayer.invocation_layer_providers:
+            if inspect.isabstract(invocation_layer):
+                continue
             if invocation_layer.supports(self.model_name_or_path, **all_kwargs):
                 return invocation_layer(
                     model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
@@ -93,6 +101,8 @@ class PromptModel(BaseComponent):
             f" Currently supported invocation layers are: {PromptModelInvocationLayer.invocation_layer_providers}"
             f" You can implement and provide custom invocation layer for {self.model_name_or_path} by subclassing "
             "PromptModelInvocationLayer."
+            f" Also please ensure you are authorised to load the model {self.model_name_or_path} and you are "
+            "logged-in into the huggingface cli."
         )
 
     def invoke(self, prompt: Union[str, List[str], List[Dict[str, str]]], **kwargs) -> List[str]:
@@ -105,6 +115,16 @@ class PromptModel(BaseComponent):
         """
         output = self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
         return output
+
+    async def ainvoke(self, prompt: Union[str, List[str], List[Dict[str, str]]], **kwargs) -> List[str]:
+        """
+        Drop-in replacement asyncio version of the `invoke` method, see there for documentation.
+        """
+        if hasattr(self.model_invocation_layer, "ainvoke"):
+            return await self.model_invocation_layer.ainvoke(prompt=prompt, **kwargs)
+
+        # The underlying invocation layer doesn't support asyncio
+        return self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
 
     @overload
     def _ensure_token_limit(self, prompt: str) -> str:

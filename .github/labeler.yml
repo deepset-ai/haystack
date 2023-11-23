@@ -2,6 +2,11 @@
 proposal:
 - proposals/text/*
 
+# 2.x
+2.x:
+- haystack/preview/**/*
+- test/preview/**/*
+
 # Topics
 topic:tests:
 - test/**/*
@@ -75,7 +80,7 @@ topic:weaviate:
 - test/document_stores/test_weaviate.py
 topic:elasticsearch:
 - haystack/document_stores/search_engine.py
-- haystack/document_stores/elasticsearch.py
+- haystack/document_stores/elasticsearch/*
 - test/document_stores/test_elasticsearch.py
 topic:opensearch:
 - haystack/document_stores/search_engine.py

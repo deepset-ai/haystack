@@ -13,7 +13,7 @@ from haystack.nodes.prompt.invocation_layer import (
     DefaultTokenStreamingHandler,
 )
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
-from haystack.utils.requests_utils import request_with_retry
+from haystack.utils import request_with_retry
 
 logger = logging.getLogger(__name__)
 TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
@@ -180,14 +180,14 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
             )
         except requests.HTTPError as err:
             res = err.response
-            if res.status_code == 429:
-                raise CohereInferenceLimitError(f"API rate limit exceeded: {res.text}")
-            if res.status_code == 401:
-                raise CohereUnauthorizedError(f"API key is invalid: {res.text}")
+            if res.status_code == 429:  # type: ignore[union-attr]
+                raise CohereInferenceLimitError(f"API rate limit exceeded: {res.text}")  # type: ignore[union-attr]
+            if res.status_code == 401:  # type: ignore[union-attr]
+                raise CohereUnauthorizedError(f"API key is invalid: {res.text}")  # type: ignore[union-attr]
 
             raise CohereError(
-                f"Cohere model returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
-                status_code=res.status_code,
+                f"Cohere model returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",  # type: ignore[union-attr]
+                status_code=res.status_code,  # type: ignore[union-attr]
             )
         return response
 

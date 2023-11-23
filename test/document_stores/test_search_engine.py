@@ -1,8 +1,10 @@
+from typing import Optional
 from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-from haystack.document_stores.search_engine import SearchEngineDocumentStore, prepare_hosts
+from haystack.document_stores.search_engine import SearchEngineDocumentStore
+from haystack.schema import FilterType
 
 
 @pytest.mark.unit
@@ -180,6 +182,77 @@ class SearchEngineDocumentStoreTestAbstract:
         mocked_document_store.batch_size = 2
         mocked_document_store.query_by_embedding_batch([np.array([1, 2, 3])] * 3)
         assert mocked_document_store.client.msearch.call_count == 2
+
+    @pytest.mark.integration
+    def test_document_with_version_metadata(self, ds: SearchEngineDocumentStore):
+        ds.write_documents([{"content": "test", "meta": {"version": "2023.1"}}])
+        documents = ds.get_all_documents()
+        assert documents[0].meta["version"] == "2023.1"
+
+    @pytest.mark.integration
+    def test_label_with_version_metadata(self, ds: SearchEngineDocumentStore):
+        ds.write_labels(
+            [
+                {
+                    "query": "test",
+                    "document": {"content": "test"},
+                    "is_correct_answer": True,
+                    "is_correct_document": True,
+                    "origin": "gold-label",
+                    "meta": {"version": "2023.1"},
+                    "answer": None,
+                }
+            ]
+        )
+        labels = ds.get_all_labels()
+        assert labels[0].meta["version"] == "2023.1"
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize(
+        "query,filters,result_count",
+        [
+            # test happy path
+            ("tost", {"year": ["2020", "2021", "1990"]}, 4),
+            # test empty filters
+            ("test", None, 5),
+            # test linefeeds in query
+            ("test\n", {"year": "2021"}, 3),
+            # test double quote in query
+            ('test"', {"year": "2021"}, 3),
+            # test non-matching query
+            ("toast", None, 0),
+        ],
+    )
+    def test_custom_query(
+        self, query: str, filters: Optional[FilterType], result_count: int, ds: SearchEngineDocumentStore
+    ):
+        documents = [
+            {"id": "1", "content": "test", "meta": {"year": "2019"}},
+            {"id": "2", "content": "test", "meta": {"year": "2020"}},
+            {"id": "3", "content": "test", "meta": {"year": "2021"}},
+            {"id": "4", "content": "test", "meta": {"year": "2021"}},
+            {"id": "5", "content": "test", "meta": {"year": "2021"}},
+        ]
+        ds.write_documents(documents)
+        custom_query = """
+            {
+                "query": {
+                    "bool": {
+                        "must": [{
+                            "multi_match": {
+                                "query": ${query},
+                                "fields": ["content"],
+                                "fuzziness": "AUTO"
+                            }
+                        }],
+                        "filter": ${filters}
+                    }
+                }
+            }
+        """
+
+        results = ds.query(query=query, filters=filters, custom_query=custom_query)
+        assert len(results) == result_count
 
 
 @pytest.mark.document_store

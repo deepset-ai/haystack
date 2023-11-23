@@ -26,6 +26,7 @@ class WebSearch(BaseComponent):
         self,
         api_key: str,
         top_k: Optional[int] = 10,
+        allowed_domains: Optional[List[str]] = None,
         search_engine_provider: Union[str, SearchEngine] = "SerperDev",
         search_engine_kwargs: Optional[Dict[str, Any]] = None,
     ):
@@ -48,7 +49,7 @@ class WebSearch(BaseComponent):
                 )
             if not issubclass(klass, SearchEngine):
                 raise ValueError(f"Class {search_engine_provider} is not a subclass of SearchEngine.")
-            self.search_engine = klass(api_key=api_key, top_k=top_k, search_engine_kwargs=search_engine_kwargs)  # type: ignore
+            self.search_engine = klass(api_key=api_key, top_k=top_k, allowed_domains=allowed_domains, search_engine_kwargs=search_engine_kwargs)  # type: ignore
         elif isinstance(search_engine_provider, SearchEngine):
             self.search_engine = search_engine_provider
         else:
@@ -81,7 +82,10 @@ class WebSearch(BaseComponent):
         # query is a required parameter for search, we need to keep the signature of run() the same as in other nodes
         if not query:
             raise ValueError("WebSearch run requires the `query` parameter")
-        return {"documents": self.search_engine.search(query, top_k=top_k)}, "output_1"
+        search_kwargs = {}
+        if top_k is not None:
+            search_kwargs["top_k"] = top_k
+        return {"documents": self.search_engine.search(query, **search_kwargs)}, "output_1"
 
     def run_batch(
         self,

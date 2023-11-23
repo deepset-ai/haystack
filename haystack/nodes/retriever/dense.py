@@ -1,3 +1,4 @@
+# pylint: disable=ungrouped-imports
 from abc import abstractmethod
 from typing import List, Dict, Union, Optional, Any, Literal
 
@@ -7,35 +8,39 @@ from copy import deepcopy
 from requests.exceptions import HTTPError
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
-import torch
-from torch.nn import DataParallel
-from torch.utils.data.sampler import SequentialSampler
 import pandas as pd
 from huggingface_hub import hf_hub_download
-from transformers import AutoConfig, AutoTokenizer
 
 from haystack.errors import HaystackError
 from haystack.schema import Document, FilterType
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
-from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
+from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS, COHERE_EMBEDDING_MODELS
 from haystack.utils.early_stopping import EarlyStopping
-from haystack.modeling.model.language_model import get_language_model, DPREncoder
-from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
-from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
-from haystack.modeling.model.prediction_head import TextSimilarityHead
-from haystack.modeling.data_handler.processor import TextSimilarityProcessor, TableTextSimilarityProcessor
-from haystack.modeling.data_handler.data_silo import DataSilo
-from haystack.modeling.data_handler.dataloader import NamedDataLoader
-from haystack.modeling.model.optimization import initialize_optimizer
-from haystack.modeling.training.base import Trainer
-from haystack.modeling.utils import initialize_device_settings
 from haystack.telemetry import send_event
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from torch.nn import DataParallel
+    from torch.utils.data.sampler import SequentialSampler
+    from transformers import AutoConfig, AutoTokenizer
+    from haystack.modeling.model.language_model import get_language_model, DPREncoder
+    from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
+    from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
+    from haystack.modeling.model.prediction_head import TextSimilarityHead
+    from haystack.modeling.data_handler.processor import TextSimilarityProcessor, TableTextSimilarityProcessor
+    from haystack.modeling.data_handler.data_silo import DataSilo
+    from haystack.modeling.data_handler.dataloader import NamedDataLoader
+    from haystack.modeling.model.optimization import initialize_optimizer
+    from haystack.modeling.training.base import Trainer
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class DenseRetriever(BaseRetriever):
@@ -95,7 +100,7 @@ class DensePassageRetriever(DenseRetriever):
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
     ):
@@ -157,6 +162,7 @@ class DensePassageRetriever(DenseRetriever):
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
+        torch_and_transformers_import.check()
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
@@ -245,7 +251,7 @@ class DensePassageRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the query.
 
         :param query: The query
@@ -316,6 +322,7 @@ class DensePassageRetriever(DenseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -350,7 +357,7 @@ class DensePassageRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the supplied queries.
 
         Returns a list of lists of Documents (one per query).
@@ -425,6 +432,7 @@ class DensePassageRetriever(DenseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param batch_size: Number of queries to embed at a time.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
@@ -476,7 +484,7 @@ class DensePassageRetriever(DenseRetriever):
         :return: dictionary of embeddings for "passages" and "query"
         """
         dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
-            dicts, indices=[i for i in range(len(dicts))], return_baskets=True
+            dicts, indices=list(range(len(dicts))), return_baskets=True
         )
 
         data_loader = NamedDataLoader(
@@ -613,7 +621,7 @@ class DensePassageRetriever(DenseRetriever):
         :param multiprocessing_strategy: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system depending on your OS.
                                          If your system has low limits for the number of open file descriptors, and you can’t raise them,
                                          you should use the file_system strategy.
-        :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None
+        :param dev_split: The proportion of the train set that will be sliced. Only works if dev_filename is set to None
         :param batch_size: total number of samples in 1 batch of data
         :param embed_title: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
         :param num_hard_negatives: number of hard negative passages(passages which are very similar(high score by BM25) to query but do not contain the answer
@@ -795,7 +803,7 @@ class TableTextRetriever(DenseRetriever):
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
         use_fast: bool = True,
@@ -809,7 +817,7 @@ class TableTextRetriever(DenseRetriever):
                                       one used by hugging-face transformers' modelhub models.
         :param passage_embedding_model: Local path or remote name of passage encoder checkpoint. The format equals the
                                         one used by hugging-face transformers' modelhub models.
-        :param table_embedding_model: Local path or remote name of table encoder checkpoint. The format equala the
+        :param table_embedding_model: Local path or remote name of table encoder checkpoint. The format equals the
                                       one used by hugging-face transformers' modelhub models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param max_seq_len_query: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
@@ -846,6 +854,8 @@ class TableTextRetriever(DenseRetriever):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param use_fast: Whether to use the fast version of DPR tokenizers or fallback to the standard version. Defaults to True.
         """
+        torch_and_transformers_import.check()
+
         if embed_meta_fields is None:
             embed_meta_fields = ["name", "section_title", "caption"]
         super().__init__()
@@ -968,7 +978,7 @@ class TableTextRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the supplied queries.
 
         Returns a list of lists of Documents (one per query).
@@ -1043,6 +1053,7 @@ class TableTextRetriever(DenseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param batch_size: Number of queries to embed at a time.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
@@ -1102,7 +1113,7 @@ class TableTextRetriever(DenseRetriever):
         """
 
         dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
-            dicts, indices=[i for i in range(len(dicts))], return_baskets=True
+            dicts, indices=list(range(len(dicts))), return_baskets=True
         )
 
         data_loader = NamedDataLoader(
@@ -1259,7 +1270,7 @@ class TableTextRetriever(DenseRetriever):
         :param max_samples: Maximum number of input samples to convert. Can be used for debugging a smaller dataset.
         :param max_processes: The maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
-        :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None.
+        :param dev_split: The proportion of the train set that will be sliced. Only works if dev_filename is set to None.
         :param batch_size: Total number of samples in 1 batch of data.
         :param embed_meta_fields: Concatenate meta fields with each passage and table.
                                   If no value is provided, a default will be created. That default embeds page title,
@@ -1444,10 +1455,12 @@ class EmbeddingRetriever(DenseRetriever):
             Literal["farm", "transformers", "sentence_transformers", "retribert", "openai", "cohere"]
         ] = None,
         pooling_strategy: str = "reduce_mean",
+        query_prompt: Optional[str] = None,
+        passage_prompt: Optional[str] = None,
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
         embed_meta_fields: Optional[List[str]] = None,
@@ -1456,13 +1469,14 @@ class EmbeddingRetriever(DenseRetriever):
         azure_base_url: Optional[str] = None,
         azure_deployment_name: Optional[str] = None,
         api_base: str = "https://api.openai.com/v1",
+        openai_organization: Optional[str] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param embedding_model: Local path or name of model in Hugging Face's model hub such
                                 as ``'sentence-transformers/all-MiniLM-L6-v2'``. The embedding model could also
                                 potentially be an OpenAI model ["ada", "babbage", "davinci", "curie"] or
-                                a Cohere model ["small", "medium", "large"].
+                                a Cohere model ["embed-english-v2.0", "embed-english-light-v2.0", "embed-multilingual-v2.0"].
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to encode at once.
@@ -1471,19 +1485,22 @@ class EmbeddingRetriever(DenseRetriever):
                              provided, it will be inferred automatically from the model configuration files.
                              Options:
 
-                             - ``'farm'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
-                             - ``'transformers'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
-                             - ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
-                             - ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
-                             - ``'openai'``: (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
-                             - ``'cohere'``: (will use `_CohereEmbeddingEncoder` as embedding encoder)
+        1. `farm` : (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+        2. `transformers` : (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+        3. `sentence_transformers` : (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
+        4. `retribert` : (will use `_RetribertEmbeddingEncoder` as embedding encoder)
+        5. `openai` : (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
+        6. `cohere` : (will use `_CohereEmbeddingEncoder` as embedding encoder)
+
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options:
 
-                                 - ``'cls_token'`` (sentence vector)
-                                 - ``'reduce_mean'`` (sentence vector)
-                                 - ``'reduce_max'`` (sentence vector)
-                                 - ``'per_token'`` (individual token vectors)
+        1. `cls_token` (sentence vector)
+        2. `reduce_mean` (sentence vector)
+        3. `reduce_max` (sentence vector)
+        4. `per_token` (individual token vectors)
+        :param query_prompt: Model instruction for embedding texts to be used as queries.
+        :param passage_prompt: Model instruction for embedding texts to be retrieved.
         :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
@@ -1510,13 +1527,17 @@ class EmbeddingRetriever(DenseRetriever):
                                   If no value is provided, a default empty list will be created.
         :param api_key: The OpenAI API key or the Cohere API key. Required if one wants to use OpenAI/Cohere embeddings.
                         For more details see https://beta.openai.com/account/api-keys and https://dashboard.cohere.ai/api-keys
-        :param api_version: The version of the Azure OpenAI API to use. The default is `2022-12-01` version.
+        :param azure_api_version: The version of the Azure OpenAI API to use. The default is `2022-12-01` version.
         :param azure_base_url: The base URL for the Azure OpenAI API. If not supplied, Azure OpenAI API will not be used.
                                This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com'
         :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
                                      will not be used.
-        :param api_base: The OpenAI API base URL, defaults to `"https://api.openai.com/v1"`
+        :param api_base: The OpenAI API base URL, defaults to `"https://api.openai.com/v1"`.
+        :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see OpenAI
+        [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         """
+        torch_and_transformers_import.check()
+
         if embed_meta_fields is None:
             embed_meta_fields = []
         super().__init__()
@@ -1534,6 +1555,8 @@ class EmbeddingRetriever(DenseRetriever):
         self.max_seq_len = max_seq_len
         self.pooling_strategy = pooling_strategy
         self.emb_extraction_layer = emb_extraction_layer
+        self.query_prompt = query_prompt
+        self.passage_prompt = passage_prompt
         self.top_k = top_k
         self.progress_bar = progress_bar
         self.use_auth_token = use_auth_token
@@ -1543,6 +1566,7 @@ class EmbeddingRetriever(DenseRetriever):
         self.api_version = azure_api_version
         self.azure_base_url = azure_base_url
         self.azure_deployment_name = azure_deployment_name
+        self.openai_organization = openai_organization
         self.model_format = (
             self._infer_model_format(model_name_or_path=embedding_model, use_auth_token=use_auth_token)
             if model_format is None
@@ -1581,7 +1605,7 @@ class EmbeddingRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the query.
 
         :param query: The query
@@ -1652,6 +1676,7 @@ class EmbeddingRetriever(DenseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -1686,7 +1711,7 @@ class EmbeddingRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the supplied queries.
 
         Returns a list of lists of Documents (one per query).
@@ -1761,6 +1786,7 @@ class EmbeddingRetriever(DenseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param batch_size: Number of queries to embed at a time.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
@@ -1811,6 +1837,8 @@ class EmbeddingRetriever(DenseRetriever):
         if isinstance(queries, str):
             queries = [queries]
         assert isinstance(queries, list), "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
+        if self.query_prompt:
+            queries = [self.query_prompt + " " + q for q in queries]
         return self.embedding_encoder.embed_queries(queries)
 
     def embed_documents(self, documents: List[Document]) -> np.ndarray:
@@ -1821,6 +1849,9 @@ class EmbeddingRetriever(DenseRetriever):
         :return: Embeddings, one per input document, shape: (docs, embedding_dim)
         """
         documents = self._preprocess_documents(documents)
+        if self.passage_prompt:
+            for doc in documents:
+                doc.content = self.passage_prompt + " " + doc.content
         return self.embedding_encoder.embed_documents(documents)
 
     def _preprocess_documents(self, docs: List[Document]) -> List[Document]:
@@ -1840,16 +1871,28 @@ class EmbeddingRetriever(DenseRetriever):
                     doc.content = doc.content.to_csv(index=False)
                 else:
                     raise HaystackError("Documents of type 'table' need to have a pd.DataFrame as content field")
-            meta_data_fields = [doc.meta[key] for key in self.embed_meta_fields if key in doc.meta and doc.meta[key]]
+            # Gather all relevant metadata fields
+            meta_data_fields = []
+            for key in self.embed_meta_fields:
+                if key in doc.meta and doc.meta[key]:
+                    if isinstance(doc.meta[key], list):
+                        meta_data_fields.extend(list(doc.meta[key]))
+                    else:
+                        meta_data_fields.append(doc.meta[key])
+            # Convert to type string (e.g. for ints or floats)
+            meta_data_fields = [str(field) for field in meta_data_fields]
             doc.content = "\n".join(meta_data_fields + [doc.content])
             linearized_docs.append(doc)
         return linearized_docs
 
     @staticmethod
     def _infer_model_format(model_name_or_path: str, use_auth_token: Optional[Union[str, bool]]) -> str:
-        if any(m in model_name_or_path for m in ["ada", "babbage", "davinci", "curie"]):
+        valid_openai_model_name = model_name_or_path in ["ada", "babbage", "davinci", "curie"] or any(
+            m in model_name_or_path for m in ["-ada-", "-babbage-", "-davinci-", "-curie-"]
+        )
+        if valid_openai_model_name:
             return "openai"
-        if model_name_or_path in ["small", "medium", "large", "multilingual-22-12", "finance-sentiment"]:
+        if model_name_or_path in COHERE_EMBEDDING_MODELS:
             return "cohere"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
@@ -1961,7 +2004,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
         embed_meta_fields: Optional[List[str]] = None,
@@ -2014,6 +2057,8 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                                   (topic, entities etc.).
                                   If no value is provided, a default empty list will be created.
         """
+        torch_and_transformers_import.check()
+
         if embed_meta_fields is None:
             embed_meta_fields = []
         super().__init__(
@@ -2049,7 +2094,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the query.
 
         :param query: The query
@@ -2120,6 +2165,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -2147,7 +2193,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the supplied queries.
 
         If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
@@ -2223,6 +2269,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param batch_size: Number of queries to embed at a time.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different

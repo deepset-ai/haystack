@@ -10,11 +10,7 @@ from tokenizers import Tokenizer, Encoding
 
 from haystack.errors import AnthropicError, AnthropicRateLimitError, AnthropicUnauthorizedError
 from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
-from haystack.nodes.prompt.invocation_layer.handlers import (
-    TokenStreamingHandler,
-    AnthropicTokenStreamingHandler,
-    DefaultTokenStreamingHandler,
-)
+from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler, DefaultTokenStreamingHandler
 from haystack.utils import request_with_retry
 from haystack.environment import HAYSTACK_REMOTE_API_MAX_RETRIES, HAYSTACK_REMOTE_API_TIMEOUT_SEC
 
@@ -26,7 +22,9 @@ logger = logging.getLogger(__name__)
 # Taken from:
 # https://github.com/anthropics/anthropic-sdk-python/blob/main/anthropic/tokenizer.py#L7
 # This is a JSON config to load the tokenizer used for Anthropic Claude.
-CLAUDE_TOKENIZER_REMOTE_FILE = "https://public-json-tokenization-0d8763e8-0d7e-441b-a1e2-1c73b8e79dc3.storage.googleapis.com/claude-v1-tokenization.json"
+CLAUDE_TOKENIZER_REMOTE_FILE = (
+    "https://raw.githubusercontent.com/anthropics/anthropic-sdk-python/main/src/anthropic/tokenizer.json"
+)
 
 
 class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
@@ -35,7 +33,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
     This layer invokes the Claude API provided by Anthropic.
     """
 
-    def __init__(self, api_key: str, model_name_or_path: str = "claude-v1", max_length=200, **kwargs):
+    def __init__(self, api_key: str, model_name_or_path: str = "claude-2", max_length=200, **kwargs):
         """
          Creates an instance of PromptModelInvocation Layer for Claude models by Anthropic.
         :param model_name_or_path: The name or path of the underlying model.
@@ -43,7 +41,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         :param api_key: The Anthropic API key.
         :param kwargs: Additional keyword arguments passed to the underlying model. The list of Anthropic-relevant
         kwargs includes: stop_sequences, temperature, top_p, top_k, and stream. For more details about these kwargs,
-        see Anthropic's [documentation](https://console.anthropic.com/docs/api/reference).
+        see Anthropic's [documentation](https://docs.anthropic.com/claude/reference/complete_post).
         """
         super().__init__(model_name_or_path)
         if not isinstance(api_key, str) or len(api_key) == 0:
@@ -59,9 +57,11 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         supported_kwargs = ["temperature", "top_p", "top_k", "stop_sequences", "stream", "stream_handler"]
         self.model_input_kwargs = {k: v for (k, v) in kwargs.items() if k in supported_kwargs}
 
-        # Number of max tokens is based on the official Anthropic model pricing from:
-        # https://cdn2.assets-servd.host/anthropic-website/production/images/FINAL-PRICING.pdf
-        self.max_tokens_limit = 9000
+        # Number of max tokens is based on the official Anthropic documentation
+        # at https://docs.anthropic.com/claude/docs but it is unclear if older models (i.e. claude-v1)
+        # have a different limit. Allow users to override it with model_max_length
+
+        self.max_tokens_limit = kwargs.get("model_max_length", 100000)
         self.tokenizer: Tokenizer = self._init_tokenizer()
 
     def _init_tokenizer(self) -> Tokenizer:
@@ -80,7 +80,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         """
 
         human_prompt = "\n\nHuman: "
-        assitant_prompt = "\n\nAssistant: "
+        assistant_prompt = "\n\nAssistant: "
 
         prompt = kwargs.get("prompt")
         if not prompt:
@@ -112,7 +112,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         # As specified by Anthropic the prompt must contain both
         # the human and assistant prompt to be valid:
         # https://console.anthropic.com/docs/prompt-design#what-is-a-prompt-
-        prompt = f"{human_prompt}{prompt}{assitant_prompt}"
+        prompt = f"{human_prompt}{prompt}{assistant_prompt}"
 
         data = {
             "model": self.model_name_or_path,
@@ -134,15 +134,13 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         # streamed until that point, so we use a stream handler built ad hoc for this
         # invocation layer.
         handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
-        handler = AnthropicTokenStreamingHandler(handler)
         client = sseclient.SSEClient(res)
         tokens = []
         try:
             for event in client.events():
-                if event.data == TokenStreamingHandler.DONE_MARKER:
-                    continue
                 ed = json.loads(event.data)
-                tokens.append(handler(ed["completion"]))
+                if "completion" in ed:
+                    tokens.append(handler(ed["completion"]))
         finally:
             client.close()
         return ["".join(tokens)]  # return a list of strings just like non-streaming
@@ -206,29 +204,33 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             status_codes_to_retry = [429]
 
         try:
-            res = request_with_retry(
+            response = request_with_retry(
                 attempts=attempts,
                 status_codes_to_retry=status_codes_to_retry,
                 method="POST",
                 url="https://api.anthropic.com/v1/complete",
-                headers={"x-api-key": self.api_key, "Content-Type": "application/json"},
+                headers={
+                    "x-api-key": self.api_key,
+                    "Content-Type": "application/json",
+                    "anthropic-version": "2023-06-01",
+                },
                 data=json.dumps(data),
                 timeout=timeout,
                 **kwargs,
             )
         except requests.HTTPError as err:
             res = err.response
-            if res.status_code == 429:
-                raise AnthropicRateLimitError(f"API rate limit exceeded: {res.text}")
-            if res.status_code == 401:
-                raise AnthropicUnauthorizedError(f"API key is invalid: {res.text}")
+            if res.status_code == 429:  # type: ignore[union-attr]
+                raise AnthropicRateLimitError(f"API rate limit exceeded: {res.text}")  # type: ignore[union-attr]
+            if res.status_code == 401:  # type: ignore[union-attr]
+                raise AnthropicUnauthorizedError(f"API key is invalid: {res.text}")  # type: ignore[union-attr]
 
             raise AnthropicError(
-                f"Anthropic returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
-                status_code=res.status_code,
+                f"Anthropic returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",  # type: ignore[union-attr]
+                status_code=res.status_code,  # type: ignore[union-attr]
             )
 
-        return res
+        return response
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
@@ -236,4 +238,5 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         Ensures Anthropic Claude Invocation Layer is selected only when Claude models are specified in
         the model name.
         """
-        return model_name_or_path.startswith(("claude-v1", "claude-instant-v1"))
+        # see https://docs.anthropic.com/claude/reference/selecting-a-model
+        return model_name_or_path.startswith("claude-")

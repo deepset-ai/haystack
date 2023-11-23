@@ -8,19 +8,30 @@ from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamin
 from haystack.nodes.prompt.invocation_layer import AnthropicClaudeInvocationLayer
 
 
+@pytest.fixture
+def mock_claude_tokenizer():
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer", autospec=True) as mock_tokenizer:
+        yield mock_tokenizer
+
+
+@pytest.fixture
+def mock_claude_request():
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
+        yield mock_request
+
+
 @pytest.mark.unit
-def test_default_costuctor():
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
-        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+def test_default_constructor(mock_claude_tokenizer, mock_claude_request):
+    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     assert layer.api_key == "some_fake_key"
     assert layer.max_length == 200
-    assert layer.max_tokens_limit == 9000
+    assert layer.max_tokens_limit == 100000
     assert layer.model_input_kwargs == {}
 
 
 @pytest.mark.unit
-def test_ignored_kwargs_are_filtered_in_init():
+def test_ignored_kwargs_are_filtered_in_init(mock_claude_tokenizer, mock_claude_request):
     kwargs = {
         "temperature": 1,
         "top_p": 5,
@@ -30,8 +41,8 @@ def test_ignored_kwargs_are_filtered_in_init():
         "stream_handler": DefaultTokenStreamingHandler(),
         "unkwnown_args": "this will be filtered out",
     }
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
-        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", **kwargs)
+
+    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", **kwargs)
 
     # Verify unexpected kwargs are filtered out
     assert len(layer.model_input_kwargs) == 6
@@ -45,9 +56,8 @@ def test_ignored_kwargs_are_filtered_in_init():
 
 
 @pytest.mark.unit
-def test_invoke_with_no_kwargs():
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
-        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+def test_invoke_with_no_kwargs(mock_claude_tokenizer, mock_claude_request):
+    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     with pytest.raises(ValueError) as e:
         layer.invoke()
@@ -55,14 +65,12 @@ def test_invoke_with_no_kwargs():
 
 
 @pytest.mark.unit
-@patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry")
-def test_invoke_with_prompt_only(mock_request):
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
-        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+def test_invoke_with_prompt_only(mock_claude_tokenizer, mock_claude_request):
+    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     # Create a fake response
     mock_response = Mock(**{"status_code": 200, "ok": True, "json.return_value": {"completion": "some_result "}})
-    mock_request.return_value = mock_response
+    mock_claude_request.return_value = mock_response
 
     res = layer.invoke(prompt="Some prompt")
     assert len(res) == 1
@@ -70,20 +78,19 @@ def test_invoke_with_prompt_only(mock_request):
 
 
 @pytest.mark.unit
-def test_invoke_with_kwargs():
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
-        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+def test_invoke_with_kwargs(mock_claude_tokenizer, mock_claude_request):
+    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     # Create a fake response
     mock_response = Mock(**{"status_code": 200, "ok": True, "json.return_value": {"completion": "some_result "}})
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
-        mock_request.return_value = mock_response
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_invocation_request:
+        mock_invocation_request.return_value = mock_response
         res = layer.invoke(prompt="Some prompt", max_length=300, stop_words=["stop", "here"])
     assert len(res) == 1
     assert res[0] == "some_result"
 
     expected_data = {
-        "model": "claude-v1",
+        "model": "claude-2",
         "prompt": "\n\nHuman: Some prompt\n\nAssistant: ",
         "max_tokens_to_sample": 300,
         "temperature": 1,
@@ -92,25 +99,24 @@ def test_invoke_with_kwargs():
         "stream": False,
         "stop_sequences": ["stop", "here", "\n\nHuman: "],
     }
-    mock_request.assert_called_once()
-    assert mock_request.call_args.kwargs["data"] == json.dumps(expected_data)
+    mock_invocation_request.assert_called_once()
+    assert mock_invocation_request.call_args.kwargs["data"] == json.dumps(expected_data)
 
 
 @pytest.mark.unit
-def test_invoke_with_none_stop_words():
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
-        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+def test_invoke_with_none_stop_words(mock_claude_tokenizer, mock_claude_request):
+    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     # Create a fake response
     mock_response = Mock(**{"status_code": 200, "ok": True, "json.return_value": {"completion": "some_result "}})
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
-        mock_request.return_value = mock_response
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_invocation_request:
+        mock_invocation_request.return_value = mock_response
         res = layer.invoke(prompt="Some prompt", max_length=300, stop_words=None)
     assert len(res) == 1
     assert res[0] == "some_result"
 
     expected_data = {
-        "model": "claude-v1",
+        "model": "claude-2",
         "prompt": "\n\nHuman: Some prompt\n\nAssistant: ",
         "max_tokens_to_sample": 300,
         "temperature": 1,
@@ -119,30 +125,30 @@ def test_invoke_with_none_stop_words():
         "stream": False,
         "stop_sequences": ["\n\nHuman: "],
     }
-    mock_request.assert_called_once()
-    assert mock_request.call_args.kwargs["data"] == json.dumps(expected_data)
+    mock_invocation_request.assert_called_once()
+    assert mock_invocation_request.call_args.kwargs["data"] == json.dumps(expected_data)
 
 
 @pytest.mark.unit
-def test_invoke_with_stream():
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
-        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+def test_invoke_with_stream(mock_claude_tokenizer, mock_claude_request):
+    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     # Create a fake streamed response
     def mock_iter(self):
         fake_data = json.dumps({"completion": " The sky appears"})
         yield f"data: {fake_data}\n\n".encode()
-        fake_data = json.dumps({"completion": " The sky appears blue to"})
+        fake_data = json.dumps({"completion": " blue to"})
         yield f"data: {fake_data}\n\n".encode()
-        fake_data = json.dumps({"completion": " The sky appears blue to us due to how"})
+        fake_data = json.dumps({"completion": " us due to how"})
         yield f"data: {fake_data}\n\n".encode()
-        yield "data: [DONE]\n\n".encode()
+        # Done was removed from the stream
+        # https://docs.anthropic.com/claude/reference/versioning
 
     mock_response = Mock(**{"__iter__": mock_iter})
 
     # Verifies expected result is returned
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
-        mock_request.return_value = mock_response
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_invocation_request:
+        mock_invocation_request.return_value = mock_response
         res = layer.invoke(prompt="Some prompt", stream=True)
 
     assert len(res) == 1
@@ -150,29 +156,36 @@ def test_invoke_with_stream():
 
 
 @pytest.mark.unit
-def test_invoke_with_custom_stream_handler():
-    # Create a mock stream handler that always return the same token when called
-    mock_stream_handler = Mock()
-    mock_stream_handler.return_value = "token"
+def test_invoke_with_custom_stream_handler(mock_claude_tokenizer, mock_claude_request):
+    # Create a generator that will yield the expected return values in order
+    def mock_handler_responses():
+        yield " The sky appears"
+        yield " blue to"
+        yield " us due to how"
+
+    handler_responses = mock_handler_responses()
+
+    # Create a mock stream handler that will return the next value from the generator when called
+    mock_stream_handler = Mock(side_effect=lambda x: next(handler_responses))
 
     # Create a layer with a mocked stream handler
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
-        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", stream_handler=mock_stream_handler)
+    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", stream_handler=mock_stream_handler)
 
     # Create a fake streamed response
     def mock_iter(self):
         fake_data = json.dumps({"completion": " The sky appears"})
         yield f"data: {fake_data}\n\n".encode()
-        fake_data = json.dumps({"completion": " The sky appears blue to"})
+        fake_data = json.dumps({"completion": " blue to"})
         yield f"data: {fake_data}\n\n".encode()
-        fake_data = json.dumps({"completion": " The sky appears blue to us due to how"})
+        fake_data = json.dumps({"completion": " us due to how"})
         yield f"data: {fake_data}\n\n".encode()
-        yield "data: [DONE]\n\n".encode()
+        # Done was removed from the stream
+        # https://docs.anthropic.com/claude/reference/versioning
 
     mock_response = Mock(**{"__iter__": mock_iter})
 
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
-        mock_request.return_value = mock_response
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_invocation_request:
+        mock_invocation_request.return_value = mock_response
         res = layer.invoke(prompt="Some prompt")
 
     assert len(res) == 1
@@ -186,7 +199,7 @@ def test_invoke_with_custom_stream_handler():
 
 
 @pytest.mark.unit
-def test_ensure_token_limit_fails_if_called_with_list():
+def test_ensure_token_limit_fails_if_called_with_list(mock_claude_tokenizer, mock_claude_request):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
     with pytest.raises(ValueError):
         layer._ensure_token_limit(prompt=[])
@@ -207,25 +220,25 @@ def test_ensure_token_limit_with_small_max_length(caplog):
 
 @pytest.mark.integration
 def test_ensure_token_limit_with_huge_max_length(caplog):
-    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", max_length=8990)
+    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", max_length=(100000 - 5))
     res = layer._ensure_token_limit(prompt="Short prompt")
 
     assert res == "Short prompt"
     assert not caplog.records
 
     res = layer._ensure_token_limit(prompt="This is a very very very very very much longer prompt")
-    assert res == "This is a very very very very very much longer"
+    assert res == "This is a very very"
     assert len(caplog.records) == 1
     expected_message_log = (
-        "The prompt has been truncated from 11 tokens to 10 tokens so that the prompt length and "
-        "answer length (8990 tokens) fits within the max token limit (9000 tokens). "
+        "The prompt has been truncated from 7 tokens to 5 tokens so that the prompt length and "
+        "answer length (99995 tokens) fits within the max token limit (100000 tokens). "
         "Reduce the length of the prompt to prevent it from being cut off."
     )
     assert caplog.records[0].message == expected_message_log
 
 
 @pytest.mark.unit
-def test_supports():
+def test_supports(mock_claude_tokenizer, mock_claude_request):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     assert not layer.supports("claude")
@@ -234,11 +247,10 @@ def test_supports():
     assert layer.supports("claude-v1.0")
     assert layer.supports("claude-v1.2")
     assert layer.supports("claude-v1.3")
-    assert not layer.supports("claude-v2.0")
+    assert layer.supports("claude-v2.0")
     assert layer.supports("claude-instant-v1")
     assert layer.supports("claude-instant-v1.0")
     assert layer.supports("claude-instant-v1.1")
-    assert not layer.supports("claude-instant-v2.0")
 
 
 @pytest.mark.integration

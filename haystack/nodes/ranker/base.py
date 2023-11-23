@@ -4,6 +4,7 @@ import logging
 from abc import abstractmethod
 from functools import wraps
 from time import perf_counter
+from copy import deepcopy
 
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
@@ -32,7 +33,43 @@ class BaseRanker(BaseComponent):
     ) -> Union[List[Document], List[List[Document]]]:
         pass
 
+    def _add_meta_fields_to_docs(
+        self, documents: List[Document], embed_meta_fields: Optional[List[str]] = None
+    ) -> List[Document]:
+        """
+        Concatenates specified metadata fields with the text representations.
+
+        :param documents: List of documents to add metadata to.
+        :param embed_meta_fields: Concatenate the provided meta fields and into the text passage that is then used in
+            reranking.
+        :return: List of documents with metadata.
+        """
+        if not embed_meta_fields:
+            return documents
+
+        docs_with_meta = []
+        for doc in documents:
+            doc = deepcopy(doc)
+            # Gather all relevant metadata fields
+            meta_data_fields = []
+            for key in embed_meta_fields:
+                if key in doc.meta and doc.meta[key]:
+                    if isinstance(doc.meta[key], list):
+                        meta_data_fields.extend(list(doc.meta[key]))
+                    else:
+                        meta_data_fields.append(doc.meta[key])
+            # Convert to type string (e.g. for ints or floats)
+            meta_data_fields = [str(field) for field in meta_data_fields]
+            doc.content = "\n".join(meta_data_fields + [doc.content])
+            docs_with_meta.append(doc)
+        return docs_with_meta
+
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore
+        """
+        :param query: Query string.
+        :param documents: List of Documents to process.
+        :param top_k: The maximum number of Documents to return.
+        """
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
@@ -53,6 +90,12 @@ class BaseRanker(BaseComponent):
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
     ):
+        """
+        :param queries: List of query strings.
+        :param documents: List of list of Documents to process.
+        :param top_k: The maximum number of answers to return.
+        :param batch_size: Number of Documents to process at a time.
+        """
         self.query_count = +len(queries)
         predict_batch = self.timing(self.predict_batch, "query_time")
         results = predict_batch(queries=queries, documents=documents, top_k=top_k, batch_size=batch_size)

@@ -10,12 +10,12 @@ import time
 from string import Template
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from pydantic.error_wrappers import ValidationError
 
 from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, FilterType, Label
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.utils.batching import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
 from haystack.nodes.retriever import DenseRetriever
@@ -106,6 +106,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             raise DocumentStoreError(
                 f"Invalid value {similarity} for similarity, choose between 'cosine', 'l2' and 'dot_product'"
             )
+        client_info = self.client.info()
+        self.server_version = tuple(int(num) for num in client_info["version"]["number"].split("."))
 
         self._init_indices(
             index=index, label_index=label_index, create_index=create_index, recreate_index=recreate_index
@@ -113,8 +115,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     def _init_indices(self, index: str, label_index: str, create_index: bool, recreate_index: bool) -> None:
         if recreate_index:
-            self._delete_index(index)
-            self._delete_index(label_index)
+            self._index_delete(index)
+            self._index_delete(label_index)
 
         if not self._index_exists(index) and (create_index or recreate_index):
             self._create_document_index(index)
@@ -163,13 +165,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         pass
 
-    def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
-        if logger.isEnabledFor(logging.DEBUG):
-            if self.client.indices.exists_alias(name=index_name):
-                logger.debug("Index name %s is an alias.", index_name)
-
-        return self.client.indices.exists(index=index_name, headers=headers)
-
     @abstractmethod
     def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         pass
@@ -211,7 +206,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         except Exception as e:
             if hasattr(e, "status_code") and e.status_code == 429:  # type: ignore
                 logger.warning(
-                    "Failed to insert a batch of '%s' documents because of a 'Too Many Requeset' response. "
+                    "Failed to insert a batch of '%s' documents because of a 'Too Many Requests' response. "
                     "Splitting the number of documents into two chunks with the same size and retrying in %s seconds.",
                     len(documents),
                     _timeout,
@@ -280,7 +275,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             query = {"size": len(ids_for_batch), "query": {"ids": {"values": ids_for_batch}}}
             if not self.return_embedding and self.embedding_field:
                 query["_source"] = {"excludes": [self.embedding_field]}
-            result = self.client.search(index=index, **query, headers=headers)["hits"]["hits"]
+            result = self._search(index=index, **query, headers=headers)["hits"]["hits"]
             documents.extend([self._convert_es_hit_to_document(hit) for hit in result])
         return documents
 
@@ -343,7 +338,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             if not body.get("query"):
                 body["query"] = {"bool": {}}
             body["query"]["bool"].update({"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()})
-        result = self.client.search(**body, index=index, headers=headers)
+        result = self._search(**body, index=index, headers=headers)
 
         values = []
         current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
@@ -354,7 +349,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         # Only 10 results get returned at a time, so apply pagination
         while after_key:
             body["aggs"]["metadata_agg"]["composite"]["after"] = after_key
-            result = self.client.search(**body, index=index, headers=headers)
+            result = self._search(**body, index=index, headers=headers)
             current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
             after_key = result["aggregations"]["metadata_agg"].get("after_key", False)
             for bucket in current_buckets:
@@ -422,31 +417,14 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         )
         documents_to_index = []
         for doc in document_objects:
-            _doc = {
+            index_message: Dict[str, Any] = {
                 "_op_type": "index" if duplicate_documents == "overwrite" else "create",
                 "_index": index,
-                **doc.to_dict(field_map=self._create_document_field_map()),
-            }  # type: Dict[str, Any]
-
-            # cast embedding type as ES cannot deal with np.array
-            if _doc[self.embedding_field] is not None:
-                if type(_doc[self.embedding_field]) == np.ndarray:
-                    _doc[self.embedding_field] = _doc[self.embedding_field].tolist()
-
-            # rename id for elastic
-            _doc["_id"] = str(_doc.pop("id"))
-
-            # don't index query score and empty fields
-            _ = _doc.pop("score", None)
-            _doc = {k: v for k, v in _doc.items() if v is not None}
-
-            # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
-            # we "unnest" all value within "meta"
-            if "meta" in _doc.keys():
-                for k, v in _doc["meta"].items():
-                    _doc[k] = v
-                _doc.pop("meta")
-            documents_to_index.append(_doc)
+                "_id": str(doc.id),
+                # use _source explicitly to avoid conflicts with automatic field detection by ES/OS clients (e.g. "version")
+                "_source": self._get_source(doc, field_map),
+            }
+            documents_to_index.append(index_message)
 
             # Pass batch_size number of documents to bulk
             if len(documents_to_index) % batch_size == 0:
@@ -455,6 +433,27 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         if documents_to_index:
             self._bulk(documents_to_index, refresh=self.refresh_type, headers=headers)
+
+    def _get_source(self, doc: Document, field_map: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert a Document object to a dictionary that can be used as the "_source" field in an ES/OS index message."""
+
+        _source: Dict[str, Any] = doc.to_dict(field_map=field_map)
+
+        # cast embedding type as ES/OS cannot deal with np.array
+        if isinstance(_source.get(self.embedding_field), np.ndarray):
+            _source[self.embedding_field] = _source[self.embedding_field].tolist()
+
+        # we already have the id in the index message
+        _source.pop("id", None)
+
+        # don't index query score and empty fields
+        _source.pop("score", None)
+        _source = {k: v for k, v in _source.items() if v is not None}
+
+        # In order to have a flat structure in ES/OS + similar behavior to the other DocumentStores,
+        # we "unnest" all value within "meta"
+        _source.update(_source.pop("meta", None) or {})
+        return _source
 
     def write_labels(
         self,
@@ -488,24 +487,27 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         labels_to_index = []
         for label in label_list:
             # create timestamps if not available yet
-            if not label.created_at:  # type: ignore
-                label.created_at = time.strftime("%Y-%m-%d %H:%M:%S")  # type: ignore
-            if not label.updated_at:  # type: ignore
-                label.updated_at = label.created_at  # type: ignore
+            if not label.created_at:
+                label.created_at = time.strftime("%Y-%m-%d %H:%M:%S")
+            if not label.updated_at:
+                label.updated_at = label.created_at
 
-            _label = {
+            index_message: Dict[str, Any] = {
                 "_op_type": "index"
                 if self.duplicate_documents == "overwrite" or label.id in duplicate_ids
-                else "create",  # type: ignore
+                else "create",
                 "_index": index,
-                **label.to_dict(),  # type: ignore
-            }  # type: Dict[str, Any]
+            }
 
-            # rename id for elastic
-            if label.id is not None:  # type: ignore
-                _label["_id"] = str(_label.pop("id"))  # type: ignore
+            _source = label.to_dict()
 
-            labels_to_index.append(_label)
+            # set id for elastic
+            if _source.get("id") is not None:
+                index_message["_id"] = str(_source.pop("id"))
+
+            # use _source explicitly to avoid conflicts with automatic field detection by ES/OS clients (e.g. "version")
+            index_message["_source"] = _source
+            labels_to_index.append(index_message)
 
             # Pass batch_size number of labels to bulk
             if len(labels_to_index) % batch_size == 0:
@@ -524,7 +526,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if not index:
             index = self.index
         body = {"doc": meta}
-        self.client.update(index=index, id=id, **body, refresh=self.refresh_type, headers=headers)
+        self._update(index=index, id=id, **body, refresh=self.refresh_type, headers=headers)
 
     def get_document_count(
         self,
@@ -545,7 +547,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if filters:
             body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
-        result = self.client.count(index=index, body=body, headers=headers)
+        result = self._count(index=index, body=body, headers=headers)
         count = result["count"]
         return count
 
@@ -572,7 +574,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if filters:
             body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
-        result = self.client.count(index=index, body=body, headers=headers)
+        result = self._count(index=index, body=body, headers=headers)
         count = result["count"]
         return count
 
@@ -822,11 +824,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return per query.
-        :param custom_query: query string containing a mandatory `${query}` placeholder.
+        :param custom_query: query string containing a mandatory `${query}` and an optional `${filters}` placeholder.
 
-                             Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
-                             that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
-                             names must match with the filters dict supplied in self.retrieve().
                              ::
 
                                  **An example custom_query:**
@@ -839,11 +838,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                                                 "query": ${query},                 // mandatory query placeholder
                                                 "type": "most_fields",
                                                 "fields": ["content", "title"]}}],
-                                            "filter": [                                 // optional custom filters
-                                                {"terms": {"year": ${years}}},
-                                                {"terms": {"quarter": ${quarters}}},
-                                                {"range": {"date": {"gte": ${date}}}}
-                                                ],
+                                            "filter": ${filters}                 // optional filters placeholder
                                         }
                                     },
                                 }
@@ -911,7 +906,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             all_terms_must_match=all_terms_must_match,
         )
 
-        result = self.client.search(index=index, **body, headers=headers)["hits"]["hits"]
+        result = self._search(index=index, **body, headers=headers)["hits"]["hits"]
 
         documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in result]
         return documents
@@ -1034,7 +1029,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         body = []
         all_documents = []
-        for query, cur_filters in zip(queries, filters):
+        for query, cur_filters in tqdm(zip(queries, filters)):
             cur_query_body = self._construct_query_body(
                 query=query,
                 filters=cur_filters,
@@ -1082,16 +1077,13 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
         # Retrieval via custom query
-        elif custom_query:  # substitute placeholder for query and filters for the custom_query template string
+        elif custom_query:
             template = Template(custom_query)
-            # replace all "${query}" placeholder(s) with query
-            substitutions = {"query": json.dumps(query)}
-            # For each filter we got passed, we'll try to find & replace the corresponding placeholder in the template
-            # Example: filters={"years":[2018]} => replaces {$years} in custom_query with '[2018]'
-            if filters:
-                for key, values in filters.items():
-                    values_str = json.dumps(values)
-                    substitutions[key] = values_str
+            # substitute placeholder for query and filters for the custom_query template string
+            substitutions = {
+                "query": json.dumps(query),
+                "filters": json.dumps(LogicalFilterClause.parse(filters or {}).convert_to_elasticsearch()),
+            }
             custom_query_json = template.substitute(**substitutions)
             body = json.loads(custom_query_json)
             # add top_k
@@ -1392,7 +1384,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         batch_size = batch_size or self.batch_size
 
         if self.refresh_type == "false":
-            self.client.indices.refresh(index=index, headers=headers)
+            self._index_refresh(index, headers)
 
         if not self.embedding_field:
             raise RuntimeError("Please specify the arg `embedding_field` when initializing the Document Store")
@@ -1560,10 +1552,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             query["query"]["ids"] = {"values": ids}
         else:
             query["query"] = {"match_all": {}}
-        self.client.delete_by_query(index=index, body=query, ignore=[404], headers=headers)
+        self._delete_by_query(index=index, body=query, ignore=[404], headers=headers)
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
-            self.client.indices.refresh(index=index)
+            self._index_refresh(index, headers)
 
     def delete_labels(
         self,
@@ -1625,9 +1617,40 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 index,
                 self.__class__.__name__,
             )
-        self._delete_index(index)
+        self._index_delete(index)
 
-    def _delete_index(self, index: str):
+    def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
+        if logger.isEnabledFor(logging.DEBUG) and self.client.indices.exists_alias(name=index_name):
+            logger.debug("Index name %s is an alias.", index_name)
+
+        return self.client.indices.exists(index=index_name, headers=headers)
+
+    def _index_delete(self, index):
         if self._index_exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
             logger.info("Index '%s' deleted.", index)
+
+    def _index_refresh(self, index, headers):
+        if self._index_exists(index):
+            self.client.indices.refresh(index=index, headers=headers)
+
+    def _index_create(self, *args, **kwargs):
+        return self.client.indices.create(*args, **kwargs)
+
+    def _index_get(self, *args, **kwargs):
+        return self.client.indices.get(*args, **kwargs)
+
+    def _index_put_mapping(self, *args, **kwargs):
+        return self.client.indices.put_mapping(*args, **kwargs)
+
+    def _search(self, *args, **kwargs):
+        return self.client.search(*args, **kwargs)
+
+    def _update(self, *args, **kwargs):
+        return self.client.update(*args, **kwargs)
+
+    def _count(self, *args, **kwargs):
+        return self.client.count(*args, **kwargs)
+
+    def _delete_by_query(self, *args, **kwargs):
+        return self.client.delete_by_query(*args, **kwargs)

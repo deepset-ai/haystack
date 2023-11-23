@@ -4,7 +4,7 @@ import json
 import logging
 
 from fastapi import FastAPI, APIRouter
-from haystack.schema import Label
+from haystack.schema import Label, Span
 from haystack.document_stores import BaseDocumentStore
 from rest_api.schema import FilterRequest, CreateLabelSerialized
 from rest_api.utils import get_app, get_pipelines
@@ -18,7 +18,7 @@ document_store: BaseDocumentStore = get_pipelines().get("document_store", None)
 
 
 @router.post("/feedback")
-def post_feedback(feedback: CreateLabelSerialized):
+def post_feedback(feedback: CreateLabelSerialized, index: Optional[str] = None):
     """
     With this endpoint, the API user can submit their feedback on an answer for a particular query. This feedback is then written to the label_index of the DocumentStore.
 
@@ -31,31 +31,31 @@ def post_feedback(feedback: CreateLabelSerialized):
         feedback.origin = "user-feedback"
 
     label = Label(**feedback.dict())
-    document_store.write_labels([label])
+    document_store.write_labels([label], index=index)
 
 
 @router.get("/feedback", response_model=List[Label])
-def get_feedback():
+def get_feedback(index: Optional[str] = None):
     """
     This endpoint allows the API user to retrieve all the feedback that has been submitted through the `POST /feedback` endpoint.
     """
-    labels = document_store.get_all_labels()
+    labels = document_store.get_all_labels(index=index)
     return labels
 
 
 @router.delete("/feedback")
-def delete_feedback():
+def delete_feedback(index: Optional[str] = None):
     """
-    This endpoint allows the API user to delete all the feedback that has been sumbitted through the
+    This endpoint allows the API user to delete all the feedback that has been submitted through the
     `POST /feedback` endpoint.
     """
-    all_labels = document_store.get_all_labels()
+    all_labels = document_store.get_all_labels(index=index)
     user_label_ids = [label.id for label in all_labels if label.origin == "user-feedback"]
-    document_store.delete_labels(ids=user_label_ids)
+    document_store.delete_labels(ids=user_label_ids, index=index)
 
 
 @router.post("/eval-feedback")
-def get_feedback_metrics(filters: Optional[FilterRequest] = None):
+def get_feedback_metrics(filters: Optional[FilterRequest] = None, index: Optional[str] = None):
     """
     This endpoint returns basic accuracy metrics based on user feedback, for example, the ratio of correct answers or correctly identified documents.
     You can filter the output by document or label.
@@ -73,7 +73,7 @@ def get_feedback_metrics(filters: Optional[FilterRequest] = None):
     else:
         filters_content = {"origin": ["user-feedback"]}
 
-    labels = document_store.get_all_labels(filters=filters_content)
+    labels = document_store.get_all_labels(filters=filters_content, index=index)
 
     res: Dict[str, Optional[Union[float, int]]]
     if len(labels) > 0:
@@ -91,7 +91,10 @@ def get_feedback_metrics(filters: Optional[FilterRequest] = None):
 
 @router.get("/export-feedback")
 def export_feedback(
-    context_size: int = 100_000, full_document_context: bool = True, only_positive_labels: bool = False
+    context_size: int = 100_000,
+    full_document_context: bool = True,
+    only_positive_labels: bool = False,
+    index: Optional[str] = None,
 ):
     """
     This endpoint returns JSON output in the SQuAD format for question/answer pairs that were marked as "relevant" by user feedback through the `POST /feedback` endpoint.
@@ -99,9 +102,11 @@ def export_feedback(
     The context_size param can be used to limit response size for large documents.
     """
     if only_positive_labels:
-        labels = document_store.get_all_labels(filters={"is_correct_answer": [True], "origin": ["user-feedback"]})
+        labels = document_store.get_all_labels(
+            filters={"is_correct_answer": [True], "origin": ["user-feedback"]}, index=index
+        )
     else:
-        labels = document_store.get_all_labels(filters={"origin": ["user-feedback"]})
+        labels = document_store.get_all_labels(filters={"origin": ["user-feedback"]}, index=index)
         # Filter out the labels where the passage is correct but answer is wrong (in SQuAD this matches
         # neither a "positive example" nor a negative "is_impossible" one)
         labels = [l for l in labels if not (l.is_correct_document is True and l.is_correct_answer is False)]
@@ -113,7 +118,10 @@ def export_feedback(
 
         offset_start_in_document = 0
         if label.answer and label.answer.offsets_in_document:
-            offset_start_in_document = label.answer.offsets_in_document[0].start
+            if isinstance(label.answer.offsets_in_document[0], Span):
+                offset_start_in_document = label.answer.offsets_in_document[0].start
+            else:
+                offset_start_in_document = label.answer.offsets_in_document[0].row
 
         if full_document_context:
             context = label.document.content
@@ -169,7 +177,7 @@ def export_feedback(
             start = squad_label["paragraphs"][0]["qas"][0]["answers"][0]["answer_start"]
             answer = squad_label["paragraphs"][0]["qas"][0]["answers"][0]["text"]
             context = squad_label["paragraphs"][0]["context"]
-            if not context[start : start + len(answer)] == answer:
+            if context[start : start + len(answer)] != answer:
                 logger.error(
                     "Skipping invalid squad label as string via offsets ('%s') does not match answer string ('%s') ",
                     context[start : start + len(answer)],
@@ -179,6 +187,13 @@ def export_feedback(
 
     export = {"data": export_data}
 
-    with open("feedback_squad_direct.json", "w", encoding="utf8") as f:
-        json.dump(export_data, f, ensure_ascii=False, sort_keys=True, indent=4)
+    feedback_file = "feedback_squad_direct.json"
+    try:
+        with open(feedback_file, "w", encoding="utf8") as f:
+            json.dump(export_data, f, ensure_ascii=False, sort_keys=True, indent=4)
+    except Exception as e:
+        # might fail in some docker container environment.
+        logger.error("Can't write feedback file. filename=%s", feedback_file)
+        logger.exception(e)
+
     return export

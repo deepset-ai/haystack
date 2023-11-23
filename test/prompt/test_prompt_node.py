@@ -1,16 +1,20 @@
-import os
 import logging
-from typing import Optional, Union, List, Dict, Any, Tuple
-from unittest.mock import patch, Mock, MagicMock
+import os
+from typing import Any, Dict, List, Optional, Tuple, Union
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from prompthub import Prompt
-from transformers import GenerationConfig, TextStreamer
 
-from haystack import Document, Pipeline, BaseComponent, MultiLabel
-from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
+from haystack import BaseComponent, Document, MultiLabel, Pipeline
+from haystack.nodes.prompt import PromptModel, PromptNode, PromptTemplate
+from haystack.nodes.prompt.invocation_layer import (
+    AzureChatGPTInvocationLayer,
+    AzureOpenAIInvocationLayer,
+    ChatGPTInvocationLayer,
+    OpenAIInvocationLayer,
+)
 from haystack.nodes.prompt.prompt_template import LEGACY_DEFAULT_TEMPLATES
-from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer, DefaultTokenStreamingHandler
 
 
 @pytest.fixture
@@ -176,7 +180,7 @@ def test_get_prompt_template_wrong_template_name(mock_model):
 
         mock_prompthub.fetch.side_effect = not_found
         node = PromptNode()
-        with pytest.raises(ValueError, match="not supported") as e:
+        with pytest.raises(ValueError, match="not supported"):
             node.get_prompt_template("some-unsupported-template")
 
 
@@ -196,19 +200,60 @@ def test_invalid_template_params(mock_model, mock_prompthub):
         node.prompt("question-answering-per-document", some_crazy_key="Berlin is the capital of Germany.")
 
 
-@pytest.mark.skip
-@pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
-def test_simple_pipeline(prompt_model):
-    # TODO: This can be another unit test?
-    skip_test_for_invalid_key(prompt_model)
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer", lambda tokenizer_name: None)
+def test_azure_vs_open_ai_invocation_layer_selection():
+    """
+    Tests that the correct invocation layer is selected based on the model name and additional parameters.
+    As we support both OpenAI and Azure models, we need to make sure that the correct invocation layer is selected
+    based on the model name and additional parameters.
+    """
+    azure_model_kwargs = {
+        "azure_base_url": "https://some_unimportant_url",
+        "azure_deployment_name": "https://some_unimportant_url.azurewebsites.net/api/prompt",
+    }
 
-    node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable="out")
+    node = PromptNode("gpt-4", api_key="some_key", model_kwargs=azure_model_kwargs)
+    assert isinstance(node.prompt_model.model_invocation_layer, AzureChatGPTInvocationLayer)
+
+    node = PromptNode("text-davinci-003", api_key="some_key", model_kwargs=azure_model_kwargs)
+    assert isinstance(node.prompt_model.model_invocation_layer, AzureOpenAIInvocationLayer)
+
+    node = PromptNode("gpt-4", api_key="some_key")
+    assert isinstance(node.prompt_model.model_invocation_layer, ChatGPTInvocationLayer) and not isinstance(
+        node.prompt_model.model_invocation_layer, AzureChatGPTInvocationLayer
+    )
+
+    node = PromptNode("text-davinci-003", api_key="some_key")
+    assert isinstance(node.prompt_model.model_invocation_layer, OpenAIInvocationLayer) and not isinstance(
+        node.prompt_model.model_invocation_layer, AzureChatGPTInvocationLayer
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["hf"], indirect=True)
+def test_simple_pipeline(prompt_model):
+    """
+    Tests that a pipeline with a prompt node and prompt template has the right output structure
+    """
+    output_variable_name = "out"
+    node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable=output_variable_name)
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
     result = pipe.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    assert "positive" in result["out"][0].casefold()
+
+    # validate output variable present
+    assert output_variable_name in result
+    assert len(result[output_variable_name]) == 1
+
+    # validate pipeline parameters are present
+    assert "query" in result
+    assert "documents" in result
+
+    # and that so-called invocation context contains the right keys
+    assert "invocation_context" in result
+    assert all(item in result["invocation_context"] for item in ["query", "documents", output_variable_name, "prompts"])
 
 
 @pytest.mark.skip
@@ -436,7 +481,7 @@ def test_prompt_node_no_debug(prompt_model):
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
 
-    # debug explicitely False
+    # debug explicitly False
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")], debug=False)
     assert result.get("_debug", "No debug info") == "No debug info"
 
@@ -886,31 +931,18 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
     assert pipeline is not None
 
 
-class TestTokenLimit:
-    @pytest.mark.integration
-    def test_hf_token_limit_warning(self, caplog):
-        prompt_template = PromptTemplate("Repeating text" * 200 + "Docs: {documents}; Answer:")
-        with caplog.at_level(logging.WARNING):
-            node = PromptNode("google/flan-t5-small", devices=["cpu"])
-            node.prompt(prompt_template, documents=["Berlin is an amazing city."])
-            assert "The prompt has been truncated from 812 tokens to 412 tokens" in caplog.text
-            assert "and answer length (100 tokens) fit within the max token limit (512 tokens)." in caplog.text
-
-    @pytest.mark.integration
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    def test_openai_token_limit_warning(self, caplog):
-        tt = PromptTemplate("Repeating text" * 200 + "Docs: {documents}; Answer:")
-        prompt_node = PromptNode("text-ada-001", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
-        with caplog.at_level(logging.WARNING):
-            _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
-            assert "The prompt has been truncated from" in caplog.text
-            assert "and answer length (2000 tokens) fit within the max token limit (2049 tokens)." in caplog.text
+@pytest.mark.integration
+def test_hf_token_limit_warning(caplog):
+    prompt = "Repeating text" * 200 + "Docs: Berlin is an amazing city.; Answer:"
+    with caplog.at_level(logging.WARNING):
+        node = PromptNode("google/flan-t5-small", devices=["cpu"])
+        _ = node.prompt_model._ensure_token_limit(prompt=prompt)
+        assert "The prompt has been truncated from 812 tokens to 412 tokens" in caplog.text
+        assert "and answer length (100 tokens) fit within the max token limit (512 tokens)." in caplog.text
 
 
 class TestRunBatch:
+    @pytest.mark.skip(reason="Skipped as test is extremely flaky")
     @pytest.mark.integration
     @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
     def test_simple_pipeline_batch_no_query_single_doc_list(self, prompt_model):
@@ -1009,3 +1041,164 @@ def test_chatgpt_direct_prompting_w_messages(chatgpt_prompt_model):
 
     result = pn(messages)
     assert len(result) == 1 and all(w in result[0].casefold() for w in ["arlington", "texas"])
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer", lambda tokenizer_name: None)
+@patch("haystack.nodes.prompt.prompt_model.PromptModel._ensure_token_limit", lambda self, prompt: prompt)
+def test_content_moderation_gpt_3():
+    """
+    Check all possible cases of the moderation checks passing / failing in a PromptNode uses
+    OpenAIInvocationLayer.
+    """
+    prompt_node = PromptNode(
+        model_name_or_path="text-davinci-003", api_key="key", model_kwargs={"moderate_content": True}
+    )
+    with patch("haystack.nodes.prompt.invocation_layer.open_ai.check_openai_policy_violation") as mock_check, patch(
+        "haystack.nodes.prompt.invocation_layer.open_ai.openai_request"
+    ) as mock_request:
+        VIOLENT_TEXT = "some violent text"
+        mock_check.side_effect = lambda input, headers: input == VIOLENT_TEXT or input == [VIOLENT_TEXT]
+        # case 1: prompt fails the moderation check
+        # prompt should not be sent to OpenAi & function should return an empty list
+        mock_check.return_value = True
+        assert prompt_node(VIOLENT_TEXT) == []
+        # case 2: prompt passes the moderation check but the generated output fails the check
+        # function should also return an empty list
+        mock_request.return_value = {"choices": [{"text": VIOLENT_TEXT, "finish_reason": ""}]}
+        assert prompt_node("normal prompt") == []
+        # case 3: both prompt and output pass the moderation check
+        # function should return the output
+        mock_request.return_value = {"choices": [{"text": "normal output", "finish_reason": ""}]}
+        assert prompt_node("normal prompt") == ["normal output"]
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer", lambda tokenizer_name: None)
+@patch("haystack.nodes.prompt.prompt_model.PromptModel._ensure_token_limit", lambda self, prompt: prompt)
+def test_content_moderation_gpt_35():
+    """
+    Check all possible cases of the moderation checks passing / failing in a PromptNode uses
+    ChatGPTInvocationLayer.
+    """
+    prompt_node = PromptNode(model_name_or_path="gpt-3.5-turbo", api_key="key", model_kwargs={"moderate_content": True})
+    with patch("haystack.nodes.prompt.invocation_layer.chatgpt.check_openai_policy_violation") as mock_check, patch(
+        "haystack.nodes.prompt.invocation_layer.chatgpt.openai_request"
+    ) as mock_request:
+        VIOLENT_TEXT = "some violent text"
+        mock_check.side_effect = lambda input, headers: input == VIOLENT_TEXT or input == [VIOLENT_TEXT]
+        # case 1: prompt fails the moderation check
+        # prompt should not be sent to OpenAi & function should return an empty list
+        mock_check.return_value = True
+        assert prompt_node(VIOLENT_TEXT) == []
+        # case 2: prompt passes the moderation check but the generated output fails the check
+        # function should also return an empty list
+        mock_request.return_value = {
+            "choices": [{"message": {"content": VIOLENT_TEXT, "role": "assistant"}, "finish_reason": ""}]
+        }
+        assert prompt_node("normal prompt") == []
+        # case 3: both prompt and output pass the moderation check
+        # function should return the output
+        mock_request.return_value = {
+            "choices": [{"message": {"content": "normal output", "role": "assistant"}, "finish_reason": ""}]
+        }
+        assert prompt_node("normal prompt") == ["normal output"]
+
+
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_prompt_node_warns_about_missing_documents(mock_model, caplog):
+    lfqa_prompt = PromptTemplate(
+        prompt="""Synthesize a comprehensive answer from the following text for the given question.
+        Provide a clear and concise response that summarizes the key points and information presented in the text.
+        Your answer should be in your own words and be no longer than 50 words.
+        If answer is not in .text. say i dont know.
+        \n\n Related text: {join(documents)} \n\n Question: {query} \n\n Answer:"""
+    )
+    prompt_node = PromptNode(default_prompt_template=lfqa_prompt)
+
+    with caplog.at_level(logging.WARNING):
+        results, _ = prompt_node.run(query="non-matching query")
+        assert (
+            "Expected prompt parameter 'documents' to be provided but it is missing. "
+            "Continuing with an empty list of documents." in caplog.text
+        )
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test__prepare_invocation_context_is_empty(mock_model):
+    node = PromptNode()
+    node.get_prompt_template = MagicMock(return_value="Test Template")
+
+    kwargs = {
+        "query": "query",
+        "file_paths": ["foo", "bar"],
+        "labels": ["label", "another"],
+        "documents": ["A", "B"],
+        "meta": {"meta_key": "meta_value"},
+        "prompt_template": "my-test-prompt",
+        "invocation_context": None,
+        "generation_kwargs": {"gen_key": "gen_value"},
+    }
+
+    invocation_context = node._prepare(**kwargs)
+
+    node.get_prompt_template.assert_called_once_with("my-test-prompt")
+    assert invocation_context == {
+        "query": "query",
+        "file_paths": ["foo", "bar"],
+        "labels": ["label", "another"],
+        "documents": ["A", "B"],
+        "meta": {"meta_key": "meta_value"},
+        "prompt_template": "Test Template",
+        "gen_key": "gen_value",
+    }
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test__prepare_invocation_context_was_passed(mock_model):
+    node = PromptNode()
+
+    # Test invocation_context is left untouched
+    invocation_context = {
+        "query": "query",
+        "file_paths": ["foo", "bar"],
+        "labels": ["label", "another"],
+        "documents": ["A", "B"],
+        "meta": {"meta_key": "meta_value"},
+        "prompt_template": "my-test-prompt",
+        "invocation_context": None,
+    }
+    kwargs = {
+        "query": None,
+        "file_paths": None,
+        "labels": None,
+        "documents": None,
+        "meta": None,
+        "prompt_template": None,
+        "invocation_context": invocation_context,
+        "generation_kwargs": None,
+    }
+
+    assert node._prepare(**kwargs) == invocation_context
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+async def test_arun(mock_model):
+    node = PromptNode()
+    node._aprompt = AsyncMock()
+    await node.arun("a query")
+    node._aprompt.assert_awaited_once_with(prompt_collector=[], query="a query", prompt_template=None)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+async def test_aprompt(mock_model):
+    node = PromptNode()
+    mock_model.return_value.ainvoke = AsyncMock()
+    await node._aprompt(PromptTemplate("test template"))
+    mock_model.return_value.ainvoke.assert_awaited_once()

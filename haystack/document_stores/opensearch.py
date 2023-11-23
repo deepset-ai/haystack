@@ -3,25 +3,21 @@ from typing import List, Optional, Union, Dict, Any
 import logging
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from tenacity import retry, wait_exponential, retry_if_not_result
 
-try:
-    from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
-    from opensearchpy.helpers import bulk, scan
-except (ImportError, ModuleNotFoundError) as e:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "opensearch", e)
-
-
 from haystack.schema import Document, FilterType
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.utils.batching import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever
-
+from haystack.lazy_imports import LazyImport
 from .search_engine import SearchEngineDocumentStore, prepare_hosts
+
+with LazyImport("Run 'pip install farm-haystack[opensearch]'") as os_import:
+    from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
+    from opensearchpy.helpers import bulk, scan
+
 
 logger = logging.getLogger(__name__)
 
@@ -86,8 +82,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         :param port: port(s) of OpenSearch nodes
         :param username: username (standard authentication via http_auth)
         :param password: password (standard authentication via http_auth)
-        :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
-        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param api_key_id: ID of the API key (alternative authentication mode to the above http_auth)
+        :param api_key: Secret value of the API key (alternative authentication mode to the above http_auth)
         :param aws4auth: Authentication for usage with AWS OpenSearch Service (can be generated with the requests-aws4auth package)
         :param index: Name of index in OpenSearch to use for storing the documents that we want to search. If not existing yet, we will create one.
         :param label_index: Name of index in OpenSearch to use for storing labels. If not existing yet, we will create one.
@@ -169,6 +165,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         :param batch_size: Number of Documents to index at once / Number of queries to execute at once. If you face
                            memory issues, decrease the batch_size.
         """
+        os_import.check()
         # These parameters aren't used by Opensearch at the moment but could be in the future, see
         # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
         # now but send a warning to the user.
@@ -273,7 +270,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         verify_certs: bool,
         timeout: int,
         use_system_proxy: bool,
-    ) -> OpenSearch:
+    ) -> "OpenSearch":
         """
         Create an instance of the Opensearch client
         """
@@ -385,10 +382,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             self.index_type in ["ivf", "ivf_pq"]
             and not index.startswith(".")
             and not self._ivf_model_exists(index=index)
-        ):
-            if self.get_embedding_count(index=index, headers=headers) >= self.ivf_train_size:
-                train_docs = self.get_all_documents(index=index, return_embedding=True, headers=headers)
-                self._train_ivf_index(index=index, documents=train_docs, headers=headers)
+        ) and self.get_embedding_count(index=index, headers=headers) >= self.ivf_train_size:
+            train_docs = self.get_all_documents(index=index, return_embedding=True, headers=headers)
+            self._train_ivf_index(index=index, documents=train_docs, headers=headers)
 
     def _embed_documents(self, documents: List[Document], retriever: DenseRetriever) -> np.ndarray:
         """
@@ -709,11 +705,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return per query.
-        :param custom_query: query string containing a mandatory `${query}` placeholder.
+        :param custom_query: The query string containing a mandatory `${query}` and an optional `${filters}` placeholder.
 
-                             Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
-                             that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
-                             names must match with the filters dict supplied in self.retrieve().
                              ::
 
                                  **An example custom_query:**
@@ -726,17 +719,13 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                                 "query": ${query},                 // mandatory query placeholder
                                                 "type": "most_fields",
                                                 "fields": ["content", "title"]}}],
-                                            "filter": [                                 // optional custom filters
-                                                {"terms": {"year": ${years}}},
-                                                {"terms": {"quarter": ${quarters}}},
-                                                {"range": {"date": {"gte": ${date}}}}
-                                                ],
+                                            "filter": ${filters}                   // optional filters placeholder
                                         }
                                     },
                                 }
                                  ```
 
-                                **For this custom_query, a sample retrieve() could be:**
+                                **For this custom_query, a sample `retrieve()` could be:**
                                 ```python
                                 self.retrieve(query="Why did the revenue increase?",
                                               filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
@@ -1225,11 +1214,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def _ivf_model_exists(self, index: str) -> bool:
         if self._index_exists(".opensearch-knn-models"):
             response = self.client.transport.perform_request("GET", "/_plugins/_knn/models/_search")
-            existing_ivf_models = set(
+            existing_ivf_models = {
                 model["_source"]["model_id"]
                 for model in response["hits"]["hits"]
                 if model["_source"]["state"] != "failed"
-            )
+            }
         else:
             existing_ivf_models = set()
 
@@ -1309,7 +1298,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         # adjust scores according to https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
         # and https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
 
-        # space type is required as criterion as there is no consistent similarity-to-space-type mapping accross knn engines
+        # space type is required as criterion as there is no consistent similarity-to-space-type mapping across knn engines
         if self.space_type == "innerproduct":
             if score > 1:
                 score = score - 1
@@ -1429,7 +1418,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
     def _recommended_ivf_train_size(self) -> int:
         """
-        Calculates the minumum recommended number of training samples for IVF training as suggested in FAISS docs.
+        Calculates the minimum recommended number of training samples for IVF training as suggested in FAISS docs.
         https://github.com/facebookresearch/faiss/wiki/FAQ#can-i-ignore-warning-clustering-xxx-points-to-yyy-centroids
         """
         min_points_per_cluster = 39
@@ -1459,7 +1448,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         ef_search = 20 if "ef_search" not in self.knn_parameters else self.knn_parameters["ef_search"]
         return ef_search
 
-    def _delete_index(self, index: str):
+    def _index_delete(self, index: str):
         if self._index_exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
             self._delete_ivf_model(index)
@@ -1471,7 +1460,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         """
         if self._index_exists(".opensearch-knn-models"):
             response = self.client.transport.perform_request("GET", "/_plugins/_knn/models/_search")
-            existing_ivf_models = set(model["_source"]["model_id"] for model in response["hits"]["hits"])
+            existing_ivf_models = {model["_source"]["model_id"] for model in response["hits"]["hits"]}
             if f"{index}-ivf" in existing_ivf_models:
                 self.client.transport.perform_request("DELETE", f"/_plugins/_knn/models/{index}-ivf")
 

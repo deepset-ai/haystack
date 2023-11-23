@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 import numpy
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import torch
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.nn import MSELoss, Linear, Module, ModuleList, DataParallel
@@ -208,10 +208,9 @@ class Trainer:
                 progress_bar.set_description(f"Train epoch {epoch}/{self.epochs-1} (Cur. train loss: {loss:.4f})")
 
                 # Only for distributed training: we need to ensure that all ranks still have a batch left for training
-                if self.local_rank != -1:
-                    if not self._all_ranks_have_data(has_data=True, step=step):
-                        early_break = True
-                        break
+                if self.local_rank != -1 and not self._all_ranks_have_data(has_data=True, step=step):
+                    early_break = True
+                    break
 
                 # Move batch of samples to device
                 batch = {key: batch[key].to(self.device) for key in batch}
@@ -324,11 +323,10 @@ class Trainer:
         return self.backward_propagate(loss, step)
 
     def backward_propagate(self, loss: torch.Tensor, step: int):
-        if self.global_step % self.log_loss_every == 0 and self.local_rank in [-1, 0]:
-            if self.local_rank in [-1, 0]:
-                tracker.track_metrics({"Train_loss_total": float(loss.detach().cpu().numpy())}, step=self.global_step)
-                if self.log_learning_rate:
-                    tracker.track_metrics({"learning_rate": self.lr_schedule.get_last_lr()[0]}, step=self.global_step)
+        if self.global_step % self.log_loss_every == 0 and self.local_rank in [-1, 0] and self.local_rank in [-1, 0]:
+            tracker.track_metrics({"Train_loss_total": float(loss.detach().cpu().numpy())}, step=self.global_step)
+            if self.log_learning_rate:
+                tracker.track_metrics({"learning_rate": self.lr_schedule.get_last_lr()[0]}, step=self.global_step)
 
         self.scaler.scale(loss).backward()
 
@@ -374,16 +372,15 @@ class Trainer:
                defaults to "latest", using the checkpoint with the highest train steps.
         """
         checkpoint_to_load = None
-        if checkpoint_root_dir:
-            if checkpoint_root_dir.exists():
-                if resume_from_checkpoint == "latest":
-                    saved_checkpoints = cls._get_checkpoints(checkpoint_root_dir)
-                    if saved_checkpoints:
-                        checkpoint_to_load = saved_checkpoints[0]  # latest checkpoint
-                    else:
-                        checkpoint_to_load = None
+        if checkpoint_root_dir and checkpoint_root_dir.exists():
+            if resume_from_checkpoint == "latest":
+                saved_checkpoints = cls._get_checkpoints(checkpoint_root_dir)
+                if saved_checkpoints:
+                    checkpoint_to_load = saved_checkpoints[0]  # latest checkpoint
                 else:
-                    checkpoint_to_load = checkpoint_root_dir / resume_from_checkpoint
+                    checkpoint_to_load = None
+            else:
+                checkpoint_to_load = checkpoint_root_dir / resume_from_checkpoint
 
         if checkpoint_to_load:
             # TODO load empty model class from config instead of passing here?
@@ -667,7 +664,7 @@ class DistillationTrainer(Trainer):
         :param disable_tqdm: Disable tqdm progress bar (helps to reduce verbosity in some environments)
         :param max_grad_norm: Max gradient norm for clipping, default 1.0, set to None to disable
         :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
-        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named paramters student_logits and teacher_logits)
+        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
         """
         super().__init__(
@@ -819,7 +816,7 @@ class TinyBERTDistillationTrainer(Trainer):
         :param disable_tqdm: Disable tqdm progress bar (helps to reduce verbosity in some environments)
         :param max_grad_norm: Max gradient norm for clipping, default 1.0, set to None to disable
         :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
-        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named paramters student_logits and teacher_logits)
+        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
         """
         super().__init__(

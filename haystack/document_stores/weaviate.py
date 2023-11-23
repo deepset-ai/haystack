@@ -1,30 +1,25 @@
-from typing import Any, Dict, Generator, List, Optional, Union
-
+import hashlib
+import json
+import logging
 import re
 import uuid
-import json
-import hashlib
-import logging
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import numpy as np
-from tqdm.auto import tqdm
-
-try:
-    import weaviate
-    from weaviate import client, AuthClientPassword, gql, AuthClientCredentials, AuthBearerToken
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "weaviate", ie)
+from tqdm import tqdm
 
 from haystack.schema import Document, FilterType, Label
 from haystack.document_stores import KeywordDocumentStore
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.utils.batching import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
 from haystack.errors import DocumentStoreError, HaystackError
 from haystack.nodes.retriever import DenseRetriever
+from haystack.lazy_imports import LazyImport
 
+with LazyImport("Run 'pip install farm-haystack[weaviate]'") as weaviate_import:
+    import weaviate
+    from weaviate import AuthApiKey, AuthBearerToken, AuthClientCredentials, AuthClientPassword, client, gql
 
 logger = logging.getLogger(__name__)
 UUID_PATTERN = re.compile(r"^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$", re.IGNORECASE)
@@ -61,11 +56,18 @@ class WeaviateDocumentStore(KeywordDocumentStore):
     4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
 
     Weaviate python client is used to connect to the server, more details are here
-    https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
+    https://weaviate.io/developers/weaviate/client-libraries/python
 
     Usage:
     1. Start a Weaviate server (see https://weaviate.io/developers/weaviate/current/getting-started/installation.html)
     2. Init a WeaviateDocumentStore in Haystack
+
+    Connection Parameters Precedence:
+    The selection and priority of connection parameters are as follows:
+    1. If `use_embedded` is set to True, an embedded Weaviate instance will be used, and all other connection parameters will be ignored.
+    2. If `use_embedded` is False or not provided and an `api_key` is provided, the `api_key` will be used to authenticate through AuthApiKey, assuming a connection to a Weaviate Cloud Service (WCS) instance.
+    3. If neither `use_embedded` nor `api_key` is provided, but a `username` and `password` are provided, they will be used to authenticate through AuthClientPassword, assuming an OIDC Resource Owner Password flow.
+    4. If none of the above conditions are met, no authentication method will be used and a connection will be attempted with the provided `host` and `port` values without any authentication.
 
     Limitations:
     The current implementation is not supporting the storage of labels, so you cannot run any evaluation workflows.
@@ -78,11 +80,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         timeout_config: tuple = (5, 15),
         username: Optional[str] = None,
         password: Optional[str] = None,
-        client_secret: Optional[str] = None,
         scope: Optional[str] = "offline_access",
-        access_token: Optional[str] = None,
-        expires_in: Optional[int] = 60,
-        refresh_token: Optional[str] = None,
+        api_key: Optional[str] = None,
+        use_embedded: bool = False,
+        embedded_options: Optional[dict] = None,
         additional_headers: Optional[Dict[str, Any]] = None,
         index: str = "Document",
         embedding_dim: int = 768,
@@ -106,11 +107,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         :param timeout_config: The Weaviate timeout config as a tuple of (retries, time out seconds).
         :param username: The Weaviate username (standard authentication using http_auth).
         :param password: Weaviate password (standard authentication using http_auth).
-        :param client_secret: The client secret to use when using the OIDC Client Credentials authentication flow.
         :param scope: The scope of the credentials when using the OIDC Resource Owner Password or Client Credentials authentication flow.
-        :param access_token: Access token to use when using OIDC and bearer tokens to authenticate.
-        :param expires_in: The time in seconds after which the access token expires.
-        :param refresh_token: The refresh token to use when using OIDC and bearer tokens to authenticate.
+        :param api_key: The Weaviate Cloud Services (WCS) API key (for WCS authentication).
+        :param use_embedded: Whether to use an embedded Weaviate instance. Default: False.
+        :param embedded_options: Custom options for the embedded Weaviate instance. Default: None.
         :param additional_headers: Additional headers to be included in the requests sent to Weaviate, for example the bearer token.
         :param index: Index name for document text, embedding, and metadata (in Weaviate terminology, this is a "Class" in the Weaviate schema).
         :param embedding_dim: The embedding vector size. Default: 768.
@@ -141,19 +141,26 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                                    See also [Weaviate documentation](https://weaviate.io/developers/weaviate/current/configuration/replication.html).
         :param batch_size: The number of documents to index at once.
         """
+        weaviate_import.check()
         super().__init__()
 
         # Connect to Weaviate server using python binding
-        weaviate_url = f"{host}:{port}"
-        secret = self._get_auth_secret(
-            username, password, client_secret, access_token, expires_in, refresh_token, scope
-        )
+        if not use_embedded:
+            weaviate_url = f"{host}:{port}"
+            auth_client_secret = self._get_auth_secret(username, password, api_key, scope)
+            embedded_options = None
+        else:
+            weaviate_url = None
+            auth_client_secret = None
+            embedded_options = self._get_embedded_options(embedded_options)
+
         # Timeout config can only be defined as a list in YAML, but Weaviate expects a tuple
         if isinstance(timeout_config, list):
             timeout_config = tuple(timeout_config)
         self.weaviate_client = client.Client(
             url=weaviate_url,
-            auth_client_secret=secret,
+            embedded_options=embedded_options,
+            auth_client_secret=auth_client_secret,
             timeout_config=timeout_config,
             additional_headers=additional_headers,
         )
@@ -200,20 +207,19 @@ class WeaviateDocumentStore(KeywordDocumentStore):
     def _get_auth_secret(
         username: Optional[str] = None,
         password: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        access_token: Optional[str] = None,
-        expires_in: Optional[int] = 60,
-        refresh_token: Optional[str] = None,
+        api_key: Optional[str] = None,
         scope: Optional[str] = "offline_access",
     ) -> Optional[Union["AuthClientPassword", "AuthClientCredentials", "AuthBearerToken"]]:
-        if username and password:
+        if api_key:
+            return AuthApiKey(api_key=api_key)
+        elif username and password:
             return AuthClientPassword(username, password, scope=scope)
-        elif client_secret:
-            return AuthClientCredentials(client_secret, scope=scope)
-        elif access_token:
-            return AuthBearerToken(access_token, expires_in=expires_in, refresh_token=refresh_token)
-
         return None
+
+    @staticmethod
+    def _get_embedded_options(embedded_options: Optional[Dict[str, Any]] = None) -> "weaviate.EmbeddedOptions":
+        embedded_options = embedded_options or {}
+        return weaviate.EmbeddedOptions(**embedded_options)
 
     def _sanitize_index_name(self, index: Optional[str]) -> Optional[str]:
         if index is None:
@@ -632,6 +638,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                     )
                     dummy_embed_warning_raised = True
 
+        # get the date properties of the index
+        date_fields = self._get_date_properties(index)
+
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
@@ -652,10 +661,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                             if isinstance(v, dict):
                                 json_fields.append(k)
                                 v = json.dumps(v)
-                            elif isinstance(v, list):
-                                if len(v) > 0 and isinstance(v[0], dict):
-                                    json_fields.append(k)
-                                    v = [json.dumps(item) for item in v]
+                            elif isinstance(v, list) and len(v) > 0 and isinstance(v[0], dict):
+                                json_fields.append(k)
+                                v = [json.dumps(item) for item in v]
                             _doc[k] = v
                         _doc.pop("meta")
 
@@ -678,9 +686,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                                 property_value = doc.meta[property]
                             self._update_schema(property, property_value, index)
                             current_properties.append(property)
+                        # update the date fields as there might be new ones
+                        date_fields = self._get_date_properties(index)
 
                     # Weaviate requires dates to be in RFC3339 format
-                    date_fields = self._get_date_properties(index)
                     for date_field in date_fields:
                         _doc[date_field] = convert_date_to_rfc3339(_doc[date_field])
 
@@ -724,9 +733,8 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         # Weaviate requires dates to be in RFC3339 format
         date_fields = self._get_date_properties(index)
         for date_field in date_fields:
-            if date_field in meta:
-                if isinstance(meta[date_field], str):
-                    meta[date_field] = convert_date_to_rfc3339(str(meta[date_field]))
+            if date_field in meta and isinstance(meta[date_field], str):
+                meta[date_field] = convert_date_to_rfc3339(str(meta[date_field]))
 
         self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
@@ -761,10 +769,8 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         else:
             result = self.weaviate_client.query.aggregate(index).with_meta_count().do()
 
-        if "data" in result:
-            if "Aggregate" in result.get("data"):
-                if result.get("data").get("Aggregate").get(index):
-                    doc_count = result.get("data").get("Aggregate").get(index)[0]["meta"]["count"]
+        if "data" in result and "Aggregate" in result.get("data") and result.get("data").get("Aggregate").get(index):
+            doc_count = result.get("data").get("Aggregate").get(index)[0]["meta"]["count"]
 
         return doc_count
 
@@ -1143,9 +1149,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             query_output = self.weaviate_client.query.raw(gql_query)
 
         results = []
-        if query_output and "data" in query_output and "Get" in query_output.get("data"):
-            if query_output.get("data").get("Get").get(index):
-                results = query_output.get("data").get("Get").get(index)
+        if (
+            query_output
+            and "data" in query_output
+            and "Get" in query_output.get("data")
+            and query_output.get("data").get("Get").get(index)
+        ):
+            results = query_output.get("data").get("Get").get(index)
 
         # We retrieve the JSON properties from the schema and convert them back to the Python dicts
         json_properties = self._get_json_properties(index=index)
@@ -1411,9 +1421,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             )
 
         results = []
-        if query_output and "data" in query_output and "Get" in query_output.get("data"):
-            if query_output.get("data").get("Get").get(index):
-                results = query_output.get("data").get("Get").get(index)
+        if (
+            query_output
+            and "data" in query_output
+            and "Get" in query_output.get("data")
+            and query_output.get("data").get("Get").get(index)
+        ):
+            results = query_output.get("data").get("Get").get(index)
 
         # We retrieve the JSON properties from the schema and convert them back to the Python dicts
         json_properties = self._get_json_properties(index=index)

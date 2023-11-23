@@ -1,7 +1,7 @@
 loaders:
-  - type: python
+  - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/nodes/retriever]
-    modules: ["base", "sparse", "dense", "multimodal/retriever", "web"]
+    modules: ["sparse", "dense", "multimodal/retriever", "web", "link_content"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter

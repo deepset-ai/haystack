@@ -8,8 +8,23 @@ from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamin
 from haystack.nodes.prompt.invocation_layer import HFInferenceEndpointInvocationLayer
 
 
+@pytest.fixture
+def mock_get_task():
+    # mock get_task function
+    with patch("haystack.nodes.prompt.invocation_layer.hugging_face_inference.get_task") as mock_get_task:
+        mock_get_task.return_value = "text2text-generation"
+        yield mock_get_task
+
+
+@pytest.fixture
+def mock_get_task_invalid():
+    with patch("haystack.nodes.prompt.invocation_layer.hugging_face_inference.get_task") as mock_get_task:
+        mock_get_task.return_value = "some-nonexistent-type"
+        yield mock_get_task
+
+
 @pytest.mark.unit
-def test_default_constructor():
+def test_default_constructor(mock_auto_tokenizer):
     """
     Test that the default constructor sets the correct values
     """
@@ -22,7 +37,7 @@ def test_default_constructor():
 
 
 @pytest.mark.unit
-def test_constructor_with_model_kwargs():
+def test_constructor_with_model_kwargs(mock_auto_tokenizer):
     """
     Test that model_kwargs are correctly set in the constructor
     and that model_kwargs_rejected are correctly filtered out
@@ -41,7 +56,7 @@ def test_constructor_with_model_kwargs():
 
 
 @pytest.mark.unit
-def test_set_model_max_length():
+def test_set_model_max_length(mock_auto_tokenizer):
     """
     Test that model max length is set correctly
     """
@@ -52,7 +67,7 @@ def test_set_model_max_length():
 
 
 @pytest.mark.unit
-def test_url():
+def test_url(mock_auto_tokenizer):
     """
     Test that the url is correctly set in the constructor
     """
@@ -67,7 +82,7 @@ def test_url():
 
 
 @pytest.mark.unit
-def test_invoke_with_no_kwargs():
+def test_invoke_with_no_kwargs(mock_auto_tokenizer):
     """
     Test that invoke raises an error if no prompt is provided
     """
@@ -78,7 +93,7 @@ def test_invoke_with_no_kwargs():
 
 
 @pytest.mark.unit
-def test_invoke_with_stop_words():
+def test_invoke_with_stop_words(mock_auto_tokenizer):
     """
     Test stop words are correctly passed to HTTP POST request
     """
@@ -95,14 +110,14 @@ def test_invoke_with_stop_words():
     assert mock_post.called
 
     # Check if stop_words are passed to _post as stop parameter
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
     assert "stop" in called_kwargs["data"]["parameters"]
     assert called_kwargs["data"]["parameters"]["stop"] == stop_words
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize("stream", [True, False])
-def test_streaming_stream_param_in_constructor(stream):
+def test_streaming_stream_param_in_constructor(mock_auto_tokenizer, stream):
     """
     Test stream parameter is correctly passed to HTTP POST request via constructor
     """
@@ -117,7 +132,7 @@ def test_streaming_stream_param_in_constructor(stream):
         layer.invoke(prompt="Tell me hello")
 
     assert mock_post.called
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
 
     # stream is always passed to _post
     assert "stream" in called_kwargs
@@ -127,7 +142,7 @@ def test_streaming_stream_param_in_constructor(stream):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("stream", [True, False])
-def test_streaming_stream_param_in_method(stream):
+def test_streaming_stream_param_in_method(mock_auto_tokenizer, stream):
     """
     Test stream parameter is correctly passed to HTTP POST request via method
     """
@@ -140,13 +155,7 @@ def test_streaming_stream_param_in_method(stream):
         layer.invoke(prompt="Tell me hello", stream=stream)
 
     assert mock_post.called
-    called_args, called_kwargs = mock_post.call_args
-
-    # stream is always passed to _post
-    assert "stream" in called_kwargs
-
-    # Check if stop_words are passed to _post as stop parameter
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
 
     # stream is always passed to _post
     assert "stream" in called_kwargs
@@ -156,7 +165,7 @@ def test_streaming_stream_param_in_method(stream):
 
 
 @pytest.mark.unit
-def test_streaming_stream_handler_param_in_constructor():
+def test_streaming_stream_handler_param_in_constructor(mock_auto_tokenizer):
     """
     Test stream_handler parameter is correctly passed to HTTP POST request via constructor
     """
@@ -175,7 +184,7 @@ def test_streaming_stream_handler_param_in_constructor():
         layer.invoke(prompt="Tell me hello")
 
     assert mock_post.called
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
 
     # stream is always passed to _post
     assert "stream" in called_kwargs
@@ -183,12 +192,12 @@ def test_streaming_stream_handler_param_in_constructor():
     assert called_kwargs["stream"]
 
     # stream_handler is passed as an instance of TokenStreamingHandler
-    called_args, called_kwargs = mock_post_stream.call_args
+    called_args, _ = mock_post_stream.call_args
     assert isinstance(called_args[1], TokenStreamingHandler)
 
 
 @pytest.mark.unit
-def test_streaming_no_stream_handler_param_in_constructor():
+def test_streaming_no_stream_handler_param_in_constructor(mock_auto_tokenizer):
     """
     Test stream_handler parameter is correctly passed to HTTP POST request via constructor
     """
@@ -202,7 +211,7 @@ def test_streaming_no_stream_handler_param_in_constructor():
         layer.invoke(prompt="Tell me hello")
 
     assert mock_post.called
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
 
     # stream is always passed to _post
     assert "stream" in called_kwargs
@@ -212,7 +221,7 @@ def test_streaming_no_stream_handler_param_in_constructor():
 
 
 @pytest.mark.unit
-def test_streaming_stream_handler_param_in_method():
+def test_streaming_stream_handler_param_in_method(mock_auto_tokenizer):
     """
     Test stream_handler parameter is correctly passed to HTTP POST request via method
     """
@@ -241,7 +250,7 @@ def test_streaming_stream_handler_param_in_method():
 
 
 @pytest.mark.unit
-def test_streaming_no_stream_handler_param_in_method():
+def test_streaming_no_stream_handler_param_in_method(mock_auto_tokenizer):
     """
     Test stream_handler parameter is correctly passed to HTTP POST request via method
     """
@@ -257,7 +266,7 @@ def test_streaming_no_stream_handler_param_in_method():
 
     assert mock_post.called
 
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
 
     # stream is always correctly passed to _post
     assert "stream" in called_kwargs
@@ -304,7 +313,7 @@ def test_ensure_token_limit_resize(caplog, model_name_or_path):
 
 
 @pytest.mark.unit
-def test_oasst_prompt_preprocessing():
+def test_oasst_prompt_preprocessing(mock_auto_tokenizer):
     model_name = "OpenAssistant/oasst-sft-1-pythia-12b"
 
     layer = HFInferenceEndpointInvocationLayer("fake_api_key", model_name)
@@ -318,7 +327,7 @@ def test_oasst_prompt_preprocessing():
     assert result == ["Hello"]
     assert mock_post.called
 
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
     # OpenAssistant/oasst-sft-1-pythia-12b prompts are preprocessed and wrapped in tokens below
     assert called_kwargs["data"]["inputs"] == "<|prompter|>Tell me hello<|endoftext|><|assistant|>"
 
@@ -326,30 +335,41 @@ def test_oasst_prompt_preprocessing():
 @pytest.mark.unit
 def test_invalid_key():
     with pytest.raises(ValueError, match="must be a valid Hugging Face token"):
-        layer = HFInferenceEndpointInvocationLayer("", "irrelevant_model_name")
+        HFInferenceEndpointInvocationLayer("", "irrelevant_model_name")
 
 
 @pytest.mark.unit
 def test_invalid_model():
     with pytest.raises(ValueError, match="cannot be None or empty string"):
-        layer = HFInferenceEndpointInvocationLayer("fake_api", "")
+        HFInferenceEndpointInvocationLayer("fake_api", "")
 
 
 @pytest.mark.unit
-def test_supports():
+def test_supports(mock_get_task):
     """
     Test that supports returns True correctly for HFInferenceEndpointInvocationLayer
     """
-    # doesn't support fake model
-    assert not HFInferenceEndpointInvocationLayer.supports("fake_model", api_key="fake_key")
 
     # supports google/flan-t5-xxl with api_key
     assert HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl", api_key="fake_key")
-
-    # doesn't support google/flan-t5-xxl without api_key
-    assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl")
 
     # supports HF Inference Endpoint with api_key
     assert HFInferenceEndpointInvocationLayer.supports(
         "https://<your-unique-deployment-id>.us-east-1.aws.endpoints.huggingface.cloud", api_key="fake_key"
     )
+
+
+@pytest.mark.unit
+def test_supports_not(mock_get_task_invalid):
+    assert not HFInferenceEndpointInvocationLayer.supports("fake_model", api_key="fake_key")
+
+    # doesn't support google/flan-t5-xxl without api_key
+    assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl")
+
+    # doesn't support HF Inference Endpoint without proper api_key
+    assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl", api_key="")
+    assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl", api_key=None)
+
+    # doesn't support model if hf server timeout
+    mock_get_task.side_effect = RuntimeError
+    assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl", api_key="fake_key")

@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Any, List, Optional, Dict, Union
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.errors import HaystackError
 from haystack.schema import Answer, Document, MultiLabel
@@ -24,11 +24,11 @@ class BaseGenerator(BaseComponent):
         """
         Abstract method to generate answers.
 
-        :param query: Query
+        :param query: Query string.
         :param documents: Related documents (for example, coming from a retriever) the answer should be based on.
         :param top_k: Number of returned answers.
-        :param max_tokens: THe maximum number of tokens the generated answer can have.
-        :return: Generated answers plus additional infos in a dict
+        :param max_tokens: The maximum number of tokens the generated answer can have.
+        :return: Generated answers plus additional infos in a dict.
         """
         pass
 
@@ -41,6 +41,14 @@ class BaseGenerator(BaseComponent):
         add_isolated_node_eval: bool = False,
         max_tokens: Optional[int] = None,
     ):  # type: ignore
+        """
+        :param query: Query string.
+        :param documents: List of Documents the answer should be based on.
+        :param top_k: The maximum number of answers to return.
+        :param labels: Labels to be used for evaluation.
+        :param add_isolated_node_eval: If True, the answer generator will be evaluated in isolation.
+        :param max_tokens: The maximum number of tokens the generated answer can have.
+        """
         if documents:
             results = self.predict(query=query, documents=documents, top_k=top_k, max_tokens=max_tokens)
         else:
@@ -61,12 +69,39 @@ class BaseGenerator(BaseComponent):
         queries: List[str],
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
+        labels: Optional[List[MultiLabel]] = None,
         batch_size: Optional[int] = None,
+        add_isolated_node_eval: bool = False,
         max_tokens: Optional[int] = None,
     ):
+        """
+        :param queries: List of query strings.
+        :param documents: List of list of Documents the answer should be based on.
+        :param top_k: The maximum number of answers to return.
+        :param labels: Labels to be used for evaluation.
+        :param add_isolated_node_eval: If True, the answer generator will be evaluated in isolation.
+        :param max_tokens: The maximum number of tokens the generated answer can have.
+        """
         results = self.predict_batch(
             queries=queries, documents=documents, top_k=top_k, batch_size=batch_size, max_tokens=max_tokens
         )
+
+        # run evaluation with "perfect" labels as node inputs to calculate "upper bound" metrics for just this node
+        if add_isolated_node_eval and labels is not None:
+            relevant_documents = []
+            for labelx in labels:
+                # Deduplicate same Documents in a MultiLabel based on their Document ID and filter out empty Documents
+                relevant_docs_labels = list(
+                    {
+                        label.document.id: label.document
+                        for label in labelx.labels
+                        if not isinstance(label.document.content, str) or label.document.content.strip() != ""
+                    }.values()
+                )
+                relevant_documents.append(relevant_docs_labels)
+            results_label_input = self.predict_batch(queries=queries, documents=relevant_documents, top_k=top_k)
+
+            results["answers_isolated"] = results_label_input["answers"]
         return results, "output_1"
 
     def _flatten_docs(self, documents: List[Document]):

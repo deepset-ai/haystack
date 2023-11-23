@@ -1,3 +1,5 @@
+# pylint: disable=ungrouped-imports
+
 import json
 import logging
 import os
@@ -12,7 +14,7 @@ from sentence_transformers import InputExample, SentenceTransformer
 from sentence_transformers.models import Transformer
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SequentialSampler
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from transformers import AutoModel, AutoTokenizer
 
 from haystack.environment import (
@@ -21,13 +23,10 @@ from haystack.environment import (
     HAYSTACK_REMOTE_API_TIMEOUT_SEC,
 )
 from haystack.errors import CohereError, CohereUnauthorizedError
-from haystack.modeling.data_handler.dataloader import NamedDataLoader
-from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
-from haystack.modeling.infer import Inferencer
-from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 from haystack.schema import Document
 from haystack.telemetry import send_event
+from haystack.lazy_imports import LazyImport
 
 from ._base_embedding_encoder import _BaseEmbeddingEncoder
 
@@ -35,12 +34,32 @@ if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
 
 
+logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from sentence_transformers import InputExample, SentenceTransformer
+    from torch.utils.data import DataLoader
+    from torch.utils.data.sampler import SequentialSampler
+    from transformers import AutoModel, AutoTokenizer
+    from haystack.modeling.data_handler.dataloader import NamedDataLoader
+    from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
+    from haystack.modeling.infer import Inferencer
+    from haystack.nodes.retriever._losses import _TRAINING_LOSSES
+
+
 COHERE_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 COHERE_BACKOFF = int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
 COHERE_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
-
-
-logger = logging.getLogger(__name__)
+COHERE_EMBEDDING_MODELS = [
+    "small",
+    "large",
+    "multilingual-22-12",
+    "embed-english-v2.0",
+    "embed-english-light-v2.0",
+    "embed-multilingual-v2.0",
+]
 
 
 class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
@@ -57,6 +76,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
             num_processes=0,
             use_auth_token=retriever.use_auth_token,
         )
+        torch_and_transformers_import.check()
         if retriever.document_store:
             self._check_docstore_similarity_function(
                 document_store=retriever.document_store, model_name=retriever.embedding_model
@@ -114,6 +134,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
+        torch_and_transformers_import.check()
         self.embedding_model = SentenceTransformer(
             retriever.embedding_model, device=str(retriever.devices[0]), use_auth_token=retriever.use_auth_token
         )
@@ -250,6 +271,8 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
+        torch_and_transformers_import.check()
+
         self.progress_bar = retriever.progress_bar
         self.batch_size = retriever.batch_size
         self.max_length = retriever.max_seq_len
@@ -314,7 +337,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         return np.concatenate(embeddings)
 
-    def _create_dataloader(self, text_to_encode: List[dict]) -> NamedDataLoader:
+    def _create_dataloader(self, text_to_encode: List[dict]) -> "NamedDataLoader":
         dataset, tensor_names = self.dataset_from_dicts(text_to_encode)
         dataloader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
@@ -364,7 +387,9 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
-        # See https://docs.cohere.ai/embed-reference/ for more details
+        torch_and_transformers_import.check()
+
+        # See https://docs.cohere.com/reference/embed for more details
         # Cohere has a max seq length of 4096 tokens and a max batch size of 96
         self.max_seq_len = min(4096, retriever.max_seq_len)
         self.url = "https://api.cohere.ai/embed"
@@ -372,12 +397,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.batch_size = min(96, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
         self.model: str = next(
-            (
-                m
-                for m in ["small", "medium", "large", "multilingual-22-12", "finance-sentiment"]
-                if m in retriever.embedding_model
-            ),
-            "multilingual-22-12",
+            (m for m in COHERE_EMBEDDING_MODELS if m in retriever.embedding_model), "multilingual-22-12"
         )
 
     @retry(
@@ -394,7 +414,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
             raise CohereUnauthorizedError(f"Invalid Cohere API key. {response.text}")
         if response.status_code != 200:
             raise CohereError(response.text, status_code=response.status_code)
-        generated_embeddings = [e for e in res["embeddings"]]
+        generated_embeddings = list(res["embeddings"])
         return np.array(generated_embeddings)
 
     def embed_batch(self, text: List[str]) -> np.ndarray:

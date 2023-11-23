@@ -2,13 +2,16 @@ from typing import List, Optional, Union
 import logging
 import itertools
 
-import torch
-from tqdm.auto import tqdm
-from transformers import pipeline
+from tqdm import tqdm
 
 from haystack.schema import Document
 from haystack.nodes.document_classifier.base import BaseDocumentClassifier
-from haystack.modeling.utils import initialize_device_settings
+from haystack.lazy_imports import LazyImport
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from transformers import pipeline
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 logger = logging.getLogger(__name__)
@@ -79,7 +82,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         classification_field: Optional[str] = None,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
         Load a text classification model from Transformers.
@@ -119,6 +122,8 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
+        torch_and_transformers_import.check()
+
         super().__init__()
 
         if labels and task == "text-classification":
@@ -197,7 +202,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                 formatted_prediction = {
                     "label": prediction["labels"][0],
                     "score": prediction["scores"][0],
-                    "details": {label: score for label, score in zip(prediction["labels"], prediction["scores"])},
+                    "details": dict(zip(prediction["labels"], prediction["scores"])),
                 }
             elif self.task == "text-classification":
                 formatted_prediction = {

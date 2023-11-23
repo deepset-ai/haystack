@@ -6,18 +6,21 @@ from haystack.nodes.prompt.prompt_template import PromptNotFoundError, fetch_fro
 @click.command(
     short_help="Downloads and saves prompts from Haystack PromptHub",
     help="""
-    Downloads a prompt from the official Haystack PromptHub and saves it locally
-    to ease use in environments with no network.
+    Downloads a prompt from the official [Haystack PromptHub](https://prompthub.deepset.ai/)
+    and saves it locally for easier use in environments with no network.
 
-    PROMPT_NAME can be specified multiple times.
+    You can specify multiple prompts to fetch at the same time.
 
     PROMPTHUB_CACHE_PATH environment variable can be set to change the default
-    folder in which the prompts will be saved in.
+    folder in which the prompts will be saved in. You can find the default cache path on your machine by running the following code:
 
-    If a custom PROMPTHUB_CACHE_PATH is used, remember to also use it for
-    Haystack invocations.
+    ```
+    from haystack.nodes.prompt.prompt_template import PROMPTHUB_CACHE_PATH
+    print(PROMPTHUB_CACHE_PATH)
+    ```
 
-    The Haystack PromptHub is https://prompthub.deepset.ai/
+    If you set a custom PROMPTHUB_CACHE_PATH environment variable, remember to
+    set it to the same value in your console before running Haystack.
     """,
 )
 @click.argument("prompt_name", nargs=-1)

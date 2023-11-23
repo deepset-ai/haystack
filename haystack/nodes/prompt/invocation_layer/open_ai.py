@@ -5,11 +5,15 @@ import logging
 import sseclient
 
 from haystack.errors import OpenAIError
+from haystack.nodes.prompt.invocation_layer.utils import has_azure_parameters
 from haystack.utils.openai_utils import (
-    openai_request,
     _openai_text_completion_tokenization_details,
     load_openai_tokenizer,
     _check_openai_finish_reason,
+    check_openai_async_policy_violation,
+    check_openai_policy_violation,
+    openai_async_request,
+    openai_request,
 )
 from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler, DefaultTokenStreamingHandler
@@ -32,6 +36,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         model_name_or_path: str = "text-davinci-003",
         max_length: Optional[int] = 100,
         api_base: str = "https://api.openai.com/v1",
+        openai_organization: Optional[str] = None,
+        timeout: Optional[float] = None,
         **kwargs,
     ):
         """
@@ -41,12 +47,17 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         :param max_length: The maximum number of tokens the output text can have.
         :param api_key: The OpenAI API key.
         :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
+        :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see see OpenAI
+        [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         :param kwargs: Additional keyword arguments passed to the underlying model. Due to reflective construction of
         all PromptModelInvocationLayer instances, this instance of OpenAIInvocationLayer might receive some unrelated
         kwargs. Only the kwargs relevant to OpenAIInvocationLayer are considered. The list of OpenAI-relevant
         kwargs includes: suffix, temperature, top_p, presence_penalty, frequency_penalty, best_of, n, max_tokens,
         logit_bias, stop, echo, and logprobs. For more details about these kwargs, see OpenAI
         [documentation](https://platform.openai.com/docs/api-reference/completions/create).
+        Note: additional model argument moderate_content will filter input and generated answers for potentially
+        sensitive content using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation)
+        if set. If the input or answers are flagged, an empty list is returned in place of the answers.
         """
         super().__init__(model_name_or_path)
         if not isinstance(api_key, str) or len(api_key) == 0:
@@ -55,6 +66,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             )
         self.api_key = api_key
         self.api_base = api_base
+        self.openai_organization = openai_organization
+        self.timeout = timeout
 
         # 16 is the default length for answers from OpenAI shown in the docs
         # here, https://platform.openai.com/docs/api-reference/completions/create.
@@ -81,6 +94,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 "logit_bias",
                 "stream",
                 "stream_handler",
+                "moderate_content",
             ]
             if key in kwargs
         }
@@ -97,24 +111,19 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
     @property
     def headers(self) -> Dict[str, str]:
-        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        if self.openai_organization:
+            headers["OpenAI-Organization"] = self.openai_organization
+        return headers
 
-    def invoke(self, *args, **kwargs):
-        """
-        Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
-
-        :return: The responses are being returned.
-
-        Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
-        For more details, see OpenAI [documentation](https://platform.openai.com/docs/api-reference/completions/create).
-        """
+    def _prepare_invoke(self, *args, **kwargs):
         prompt = kwargs.get("prompt")
         if not prompt:
             raise ValueError(
                 f"No prompt provided. Model {self.model_name_or_path} requires prompt."
                 f"Make sure to provide prompt in kwargs."
             )
-
+        # either stream is True (will use default handler) or stream_handler is provided
         kwargs_with_defaults = self.model_input_kwargs
         if kwargs:
             # we use keyword stop_words but OpenAI uses stop
@@ -125,39 +134,99 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 kwargs["n"] = top_k
                 kwargs["best_of"] = top_k
             kwargs_with_defaults.update(kwargs)
-
-        # either stream is True (will use default handler) or stream_handler is provided
         stream = (
             kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
         )
-        payload = {
+        moderation = kwargs_with_defaults.get("moderate_content", False)
+        base_payload = {  # payload common to all OpenAI models
             "model": self.model_name_or_path,
-            "prompt": prompt,
-            "suffix": kwargs_with_defaults.get("suffix", None),
             "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length),
             "temperature": kwargs_with_defaults.get("temperature", 0.7),
             "top_p": kwargs_with_defaults.get("top_p", 1),
             "n": kwargs_with_defaults.get("n", 1),
             "stream": stream,
-            "logprobs": kwargs_with_defaults.get("logprobs", None),
-            "echo": kwargs_with_defaults.get("echo", False),
             "stop": kwargs_with_defaults.get("stop", None),
             "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
             "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
-            "best_of": kwargs_with_defaults.get("best_of", 1),
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
+
+        return (prompt, base_payload, kwargs_with_defaults, stream, moderation)
+
+    def invoke(self, *args, **kwargs):
+        """
+        Invokes a prompt on the model. Based on the model, it takes in a prompt (or either a prompt or a list of messages)
+        and returns a list of responses using a REST invocation.
+
+        :return: The responses are being returned.
+
+        Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
+        For more details, see OpenAI [documentation](https://platform.openai.com/docs/api-reference/completions/create).
+        """
+        prompt, base_payload, kwargs_with_defaults, stream, moderation = self._prepare_invoke(*args, **kwargs)
+
+        if moderation and check_openai_policy_violation(input=prompt, headers=self.headers):
+            logger.info("Prompt '%s' will not be sent to OpenAI due to potential policy violation.", prompt)
+            return []
+
+        extra_payload = {
+            "prompt": prompt,
+            "suffix": kwargs_with_defaults.get("suffix", None),
+            "logprobs": kwargs_with_defaults.get("logprobs", None),
+            "echo": kwargs_with_defaults.get("echo", False),
+            "best_of": kwargs_with_defaults.get("best_of", 1),
+        }
+        payload = {**base_payload, **extra_payload}
         if not stream:
             res = openai_request(url=self.url, headers=self.headers, payload=payload)
             _check_openai_finish_reason(result=res, payload=payload)
             responses = [ans["text"].strip() for ans in res["choices"]]
-            return responses
         else:
             response = openai_request(
                 url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
             )
             handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
-            return self._process_streaming_response(response=response, stream_handler=handler)
+            responses = self._process_streaming_response(response=response, stream_handler=handler)
+
+        if moderation and check_openai_policy_violation(input=responses, headers=self.headers):
+            logger.info("Response '%s' will not be returned due to potential policy violation.", responses)
+            return []
+
+        return responses
+
+    async def ainvoke(self, *args, **kwargs):
+        """
+        asyncio version of the `invoke` method.
+        """
+        prompt, base_payload, kwargs_with_defaults, stream, moderation = self._prepare_invoke(*args, **kwargs)
+        if moderation and await check_openai_async_policy_violation(input=prompt, headers=self.headers):
+            logger.info("Prompt '%s' will not be sent to OpenAI due to potential policy violation.", prompt)
+            return []
+
+        extra_payload = {
+            "prompt": prompt,
+            "suffix": kwargs_with_defaults.get("suffix", None),
+            "logprobs": kwargs_with_defaults.get("logprobs", None),
+            "echo": kwargs_with_defaults.get("echo", False),
+            "best_of": kwargs_with_defaults.get("best_of", 1),
+        }
+        payload = {**base_payload, **extra_payload}
+        if not stream:
+            res = await openai_async_request(url=self.url, headers=self.headers, payload=payload)
+            _check_openai_finish_reason(result=res, payload=payload)
+            responses = [ans["text"].strip() for ans in res["choices"]]
+        else:
+            response = await openai_async_request(
+                url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
+            )
+            handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
+            responses = self._process_streaming_response(response=response, stream_handler=handler)
+
+        if moderation and await check_openai_async_policy_violation(input=responses, headers=self.headers):
+            logger.info("Response '%s' will not be returned due to potential policy violation.", responses)
+            return []
+
+        return responses
 
     def _process_streaming_response(self, response, stream_handler: TokenStreamingHandler):
         client = sseclient.SSEClient(response)
@@ -203,5 +272,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
-        return valid_model and kwargs.get("azure_base_url") is None
+        valid_model = model_name_or_path in ["ada", "babbage", "davinci", "curie", "gpt-3.5-turbo-instruct"] or any(
+            m in model_name_or_path for m in ["-ada-", "-babbage-", "-davinci-", "-curie-"]
+        )
+        return valid_model and not has_azure_parameters(**kwargs)

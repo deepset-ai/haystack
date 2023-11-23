@@ -1,5 +1,4 @@
 import warnings
-from datetime import timedelta
 from typing import Any, List, Optional, Dict, Union
 
 import gc
@@ -8,8 +7,8 @@ from pathlib import Path
 import os
 import re
 from functools import wraps
+from unittest.mock import patch
 
-import requests_cache
 import responses
 import posthog
 
@@ -33,7 +32,6 @@ from haystack.nodes import (
     BaseSummarizer,
     BaseTranslator,
     DenseRetriever,
-    RAGenerator,
     FilterRetriever,
     BM25Retriever,
     TfidfRetriever,
@@ -49,7 +47,7 @@ from haystack.nodes import (
     PromptTemplate,
 )
 from haystack.nodes.prompt import PromptNode
-from haystack.schema import Document, FilterType
+from haystack.schema import Document, FilterType, MultiLabel, Label, Span
 
 from .mocks import pinecone as pinecone_mock
 
@@ -81,10 +79,6 @@ posthog.disabled = True
 # Disable caching from prompthub to avoid polluting the local environment.
 os.environ["PROMPTHUB_CACHE_ENABLED"] = "false"
 
-# Cache requests (e.g. huggingface model) to circumvent load protection
-# See https://requests-cache.readthedocs.io/en/stable/user_guide/filtering.html
-requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
-
 
 def fail_at_version(target_major, target_minor):
     """
@@ -99,7 +93,7 @@ def fail_at_version(target_major, target_minor):
     of target_major and/or target_minor.
     If the current version has `rc0` set the test won't fail but only issue a warning, this
     is done because we use `rc0` to mark the development version in `main`. If we wouldn't
-    do this tests would continuosly fail in main.
+    do this tests would continuously fail in main.
 
     ```python
     from ..conftest import fail_at_version
@@ -446,24 +440,49 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
             "name": "filename2",
             "date_field": "2019-10-01",
             "numeric_field": 5.0,
+            "list_field": ["item0.1", "item0.2"],
         },
         # "dict" format
         {
             "content": "My name is Carla and I live in Berlin",
-            "meta": {"meta_field": "test1", "name": "filename1", "date_field": "2020-03-01", "numeric_field": 5.5},
+            "meta": {
+                "meta_field": "test1",
+                "name": "filename1",
+                "date_field": "2020-03-01",
+                "numeric_field": 5.5,
+                "list_field": ["item1.1", "item1.2"],
+            },
         },
         # Document object
         Document(
             content="My name is Christelle and I live in Paris",
-            meta={"meta_field": "test3", "name": "filename3", "date_field": "2018-10-01", "numeric_field": 4.5},
+            meta={
+                "meta_field": "test3",
+                "name": "filename3",
+                "date_field": "2018-10-01",
+                "numeric_field": 4.5,
+                "list_field": ["item2.1", "item2.2"],
+            },
         ),
         Document(
             content="My name is Camila and I live in Madrid",
-            meta={"meta_field": "test4", "name": "filename4", "date_field": "2021-02-01", "numeric_field": 3.0},
+            meta={
+                "meta_field": "test4",
+                "name": "filename4",
+                "date_field": "2021-02-01",
+                "numeric_field": 3.0,
+                "list_field": ["item3.1", "item3.2"],
+            },
         ),
         Document(
             content="My name is Matteo and I live in Rome",
-            meta={"meta_field": "test5", "name": "filename5", "date_field": "2019-01-01", "numeric_field": 0.0},
+            meta={
+                "meta_field": "test5",
+                "name": "filename5",
+                "date_field": "2019-01-01",
+                "numeric_field": 0.0,
+                "list_field": ["item4.1", "item4.2"],
+            },
         ),
     ]
 
@@ -480,6 +499,43 @@ def gc_cleanup(request):
     """
     yield
     gc.collect()
+
+
+@pytest.fixture
+def eval_labels() -> List[MultiLabel]:
+    EVAL_LABELS = [
+        MultiLabel(
+            labels=[
+                Label(
+                    query="Who lives in Berlin?",
+                    answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]),
+                    document=Document(
+                        id="a0747b83aea0b60c4b114b15476dd32d",
+                        content_type="text",
+                        content="My name is Carla and I live in Berlin",
+                    ),
+                    is_correct_answer=True,
+                    is_correct_document=True,
+                    origin="gold-label",
+                )
+            ]
+        ),
+        MultiLabel(
+            labels=[
+                Label(
+                    query="Who lives in Munich?",
+                    answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]),
+                    document=Document(
+                        id="something_else", content_type="text", content="My name is Carla and I live in Munich"
+                    ),
+                    is_correct_answer=True,
+                    is_correct_document=True,
+                    origin="gold-label",
+                )
+            ]
+        ),
+    ]
+    return EVAL_LABELS
 
 
 @pytest.fixture
@@ -513,11 +569,6 @@ def deepset_cloud_fixture():
 
 
 @pytest.fixture
-def rag_generator():
-    return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
-
-
-@pytest.fixture
 def question_generator():
     return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
@@ -542,17 +593,16 @@ def reader(request):
 @pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
 def table_reader_and_param(request):
     if request.param == "tapas_small":
-        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq", return_table_cell=True), request.param
+        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq"), request.param
     elif request.param == "tapas_base":
-        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq", return_table_cell=True), request.param
+        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq"), request.param
     elif request.param == "tapas_scored":
-        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader", return_table_cell=True), request.param
+        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader"), request.param
     elif request.param == "rci":
         return (
             RCIReader(
                 row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
                 column_model_name_or_path="michaelrglass/albert-base-rci-wikisql-col",
-                return_table_cell=True,
             ),
             request.param,
         )
@@ -595,6 +645,15 @@ def get_retriever(retriever_type, document_store):
             document_store=document_store,
             embedding_model="sentence-transformers/msmarco-distilbert-base-tas-b",
             model_format="sentence_transformers",
+            use_gpu=False,
+        )
+    elif retriever_type == "embedding_sbert_instructions":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="sentence-transformers/msmarco-distilbert-dot-v5",
+            model_format="sentence_transformers",
+            query_prompt="Embed this query for retrieval:",
+            passage_prompt="Embed this passage for retrieval:",
             use_gpu=False,
         )
     elif retriever_type == "retribert":
@@ -833,6 +892,11 @@ def samples_path():
 
 
 @pytest.fixture
+def sample_txt_file_paths_list(samples_path):
+    return list((samples_path / "docs").glob("*.txt"))
+
+
+@pytest.fixture
 def preview_samples_path():
     return Path(__file__).parent / "preview" / "test_files"
 
@@ -847,5 +911,14 @@ def request_blocker(request: pytest.FixtureRequest, monkeypatch):
     marker = request.node.get_closest_marker("unit")
     if marker is None:
         return
-    monkeypatch.delattr("requests.sessions.Session")
-    monkeypatch.delattr("requests_cache.session.CachedSession")
+
+    def urlopen_mock(self, method, url, *args, **kwargs):
+        raise RuntimeError(f"The test was about to {method} {self.scheme}://{self.host}{url}")
+
+    monkeypatch.setattr("urllib3.connectionpool.HTTPConnectionPool.urlopen", urlopen_mock)
+
+
+@pytest.fixture
+def mock_auto_tokenizer():
+    with patch("transformers.AutoTokenizer.from_pretrained", autospec=True) as mock_from_pretrained:
+        yield mock_from_pretrained

@@ -22,6 +22,7 @@ from haystack.nodes.prompt.shapers import (  # pylint: disable=unused-import
     BaseOutputParser,
     AnswerParser,
     to_strings,
+    current_datetime,
     join,  # used as shaping function
     format_document,
     format_answer,
@@ -37,7 +38,10 @@ from haystack.environment import (
 logger = logging.getLogger(__name__)
 
 PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = json.loads(
-    os.environ.get(HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS, '["join", "to_strings", "replace", "enumerate", "str"]')
+    os.environ.get(
+        HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS,
+        '["join", "to_strings", "replace", "enumerate", "str", "current_datetime"]',
+    )
 )
 PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS = {"new_line": "\n", "tab": "\t", "double_quote": '"', "carriage_return": "\r"}
 PROMPT_TEMPLATE_STRIPS = ["'", '"']
@@ -62,7 +66,7 @@ PROMPTHUB_CACHE_PATH = os.environ.get(
 #
 # After some discussion we deemed the change to be too breaking for existing
 # use cases and which steps would have been necessary to migrate to the
-# new API in case someone was using an harcoded template we decided to
+# new API in case someone was using an hardcoded template we decided to
 # bring them back.
 #
 # So for the time being this must live here, no new template must be added
@@ -149,10 +153,28 @@ LEGACY_DEFAULT_TEMPLATES: Dict[str, Dict] = {
         "Thought: Let's think step-by-step, I first need to {transcript}"
     },
     "conversational-agent": {
-        "prompt": "The following is a conversation between a human and an AI.\n{history}\nHuman: {query}\nAI:"
+        "prompt": "In the following conversation, a human user interacts with an AI Agent. The human user poses questions, and the AI Agent goes through several steps to provide well-informed answers.\n"
+        "If the AI Agent knows the answer, the response begins with `Final Answer:` on a new line.\n"
+        "If the AI Agent is uncertain or concerned that the information may be outdated or inaccurate, it must use the available tools to find the most up-to-date information. The AI has access to these tools:\n"
+        "{tool_names_with_descriptions}\n"
+        "The following is the previous conversation between a human and an AI:\n"
+        "{memory}\n"
+        "AI Agent responses must start with one of the following:\n"
+        "Thought: [AI Agent's reasoning process]\n"
+        "Tool: [{tool_names}] (on a new line) Tool Input: [input for the selected tool WITHOUT quotation marks and on a new line] (These must always be provided together and on separate lines.)\n"
+        "Final Answer: [final answer to the human user's question]\n"
+        "When selecting a tool, the AI Agent must provide both the `Tool:` and `Tool Input:` pair in the same response, but on separate lines. `Observation:` marks the beginning of a tool's result, and the AI Agent trusts these results.\n"
+        "The AI Agent should not ask the human user for additional information, clarification, or context.\n"
+        "If the AI Agent cannot find a specific answer after exhausting available tools and approaches, it answers with Final Answer: inconclusive\n"
+        "Question: {query}\n"
+        "Thought:\n"
+        "{transcript}\n"
     },
     "conversational-summary": {
         "prompt": "Condense the following chat transcript by shortening and summarizing the content without losing important information:\n{chat_transcript}\nCondensed Transcript:"
+    },
+    "conversational-agent-without-tools": {
+        "prompt": "The following is a conversation between a human and an AI.\n{memory}\nHuman: {query}\nAI:"
     },
     # DO NOT ADD ANY NEW TEMPLATE IN HERE!
 }
@@ -271,7 +293,8 @@ class _FstringParamsTransformer(ast.NodeTransformer):
     def visit_FormattedValue(self, node: ast.FormattedValue) -> Optional[ast.AST]:
         """
         Replaces the f-string expression with a unique ID and stores the corresponding expression in a dictionary.
-        If the expression is the raw `documents` variable, it is encapsulated into a call to `documents_to_strings` to ensure that the documents get rendered correctly.
+        If the expression is the raw `documents` variable, it is encapsulated into a call to `documents_to_strings`
+        to ensure that the documents get rendered correctly.
         """
         super().generic_visit(node)
 
@@ -306,7 +329,7 @@ def fetch_from_prompthub(name: str) -> prompthub.Prompt:
     try:
         prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
     except HTTPError as http_error:
-        if http_error.response.status_code != 404:
+        if http_error.response.status_code != 404:  # type: ignore[union-attr]
             raise http_error
         raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
     return prompt_data
@@ -437,7 +460,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 cache_prompt(data)
 
         except HTTPError as http_error:
-            if http_error.response.status_code != 404:
+            if http_error.response.status_code != 404:  # type: ignore[union-attr]
                 raise http_error
             raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
         return data.text
@@ -481,6 +504,13 @@ class PromptTemplate(BasePromptTemplate, ABC):
             for param in self.prompt_params:
                 if param in kwargs:
                     params_dict[param] = kwargs[param]
+
+        if "documents" in self.prompt_params and "documents" not in params_dict:
+            params_dict["documents"] = []
+            logger.warning(
+                "Expected prompt parameter 'documents' to be provided but it is missing. "
+                "Continuing with an empty list of documents."
+            )
 
         if not set(self.prompt_params).issubset(params_dict.keys()):
             available_params = {*params_dict.keys(), *kwargs.keys()}
@@ -547,6 +577,20 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 compile(self._ast_expression, filename="<string>", mode="eval"), self.globals, template_input
             )
             yield prompt_prepared
+
+    def remove_template_params(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Removes template parameters from kwargs.
+
+        :param kwargs: Keyword arguments to remove template parameters from.
+        :return: A modified dictionary with the template parameters removed.
+        """
+        if kwargs:
+            for param in self.prompt_params:
+                kwargs.pop(param, None)
+            return kwargs
+        else:
+            return {}
 
     def __repr__(self):
         return f"PromptTemplate(name={self.name}, prompt_text={self.prompt_text}, prompt_params={self.prompt_params})"

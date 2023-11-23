@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from pathlib import Path
+import os
 
 import numpy as np
 import pytest
@@ -707,6 +708,12 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
+    elif (
+        hasattr(torch.backends, "mps")
+        and torch.backends.mps.is_available()
+        and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
+    ):
+        device = torch.device("mps")
     else:
         device = torch.device("cpu")
     model = BiAdaptiveModel(
@@ -753,6 +760,12 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
+    elif (
+        hasattr(torch.backends, "mps")
+        and torch.backends.mps.is_available()
+        and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
+    ):
+        device = torch.device("mps")
     else:
         device = torch.device("cpu")
     loaded_model = BiAdaptiveModel(
@@ -777,7 +790,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
     # generate embeddings with model loaded from model hub
     dataset, tensor_names, _, __ = processor.dataset_from_dicts(
-        dicts=[d], indices=[i for i in range(len([d]))], return_baskets=True
+        dicts=[d], indices=list(range(len([d]))), return_baskets=True
     )
 
     data_loader = NamedDataLoader(
@@ -811,7 +824,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
     # generate embeddings with model loaded from disk
     dataset2, tensor_names2, _, __ = loaded_processor.dataset_from_dicts(
-        dicts=[d], indices=[i for i in range(len([d]))], return_baskets=True
+        dicts=[d], indices=list(range(len([d]))), return_baskets=True
     )
 
     data_loader = NamedDataLoader(
@@ -820,7 +833,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     all_embeddings2: Dict[str, Any] = {"query": [], "passages": []}
     loaded_model.eval()
 
-    for i, batch in enumerate(tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True)):
+    for batch in tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True):
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
@@ -879,6 +892,12 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
+    elif (
+        hasattr(torch.backends, "mps")
+        and torch.backends.mps.is_available()
+        and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
+    ):
+        device = torch.device("mps")
     else:
         device = torch.device("cpu")
     model = BiAdaptiveModel(
@@ -904,7 +923,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
     # generate embeddings with model loaded from disk that originated from a FARM style model that was saved to disk earlier
     dataset3, tensor_names3, _, __ = loaded_processor.dataset_from_dicts(
-        dicts=[d], indices=[i for i in range(len([d]))], return_baskets=True
+        dicts=[d], indices=list(range(len([d]))), return_baskets=True
     )
 
     data_loader = NamedDataLoader(
@@ -913,7 +932,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     all_embeddings3: Dict[str, Any] = {"query": [], "passages": []}
     loaded_model.eval()
 
-    for i, batch in enumerate(tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True)):
+    for batch in tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True):
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits

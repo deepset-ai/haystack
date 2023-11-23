@@ -1,186 +1,254 @@
+import os
+from unittest.mock import patch
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
+import openai
 import pytest
-import requests
+from openai.util import convert_to_openai_object
 
-from haystack.preview.dataclasses import Document
-from haystack.preview.components.audio.whisper_remote import RemoteWhisperTranscriber, OPENAI_TIMEOUT
-
-from test.preview.components.base import BaseTestComponent
+from haystack.preview.components.audio.whisper_remote import RemoteWhisperTranscriber
+from haystack.preview.dataclasses import ByteStream
 
 
-class TestRemoteWhisperTranscriber(BaseTestComponent):
-    """
-    Tests for RemoteWhisperTranscriber.
-    """
+def mock_openai_response(response_format="json", **kwargs) -> openai.openai_object.OpenAIObject:
+    if response_format == "json":
+        dict_response = {"text": "test transcription"}
+    # Currently only "json" is supported.
+    else:
+        dict_response = {}
 
+    return convert_to_openai_object(dict_response)
+
+
+class TestRemoteWhisperTranscriber:
     @pytest.mark.unit
-    def test_save_load(self, tmp_path):
-        self.assert_can_be_saved_and_loaded_in_pipeline(RemoteWhisperTranscriber(api_key="just a test"), tmp_path)
+    def test_init_no_key(self, monkeypatch):
+        openai.api_key = None
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        error_msg = "RemoteWhisperTranscriber expects an OpenAI API key."
+        with pytest.raises(ValueError, match=error_msg):
+            RemoteWhisperTranscriber(api_key=None)
 
-    @pytest.mark.unit
-    def test_init_unknown_model(self):
-        with pytest.raises(ValueError, match="not recognized"):
-            RemoteWhisperTranscriber(model_name="anything", api_key="something")
+    def test_init_key_env_var(self, monkeypatch):
+        openai.api_key = None
+        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
+        RemoteWhisperTranscriber(api_key=None)
+        assert openai.api_key == "test_api_key"
+
+    def test_init_key_module_env_and_global_var(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key_2")
+        openai.api_key = "test_api_key_1"
+        RemoteWhisperTranscriber(api_key=None)
+        # The module global variable takes preference
+        assert openai.api_key == "test_api_key_1"
 
     @pytest.mark.unit
     def test_init_default(self):
-        transcriber = RemoteWhisperTranscriber(api_key="just a test")
+        transcriber = RemoteWhisperTranscriber(api_key="test_api_key")
+
+        assert openai.api_key == "test_api_key"
         assert transcriber.model_name == "whisper-1"
-        assert transcriber.api_key == "just a test"
-        assert transcriber.api_base == "https://api.openai.com/v1"
+        assert transcriber.organization is None
+        assert transcriber.api_base_url == "https://api.openai.com/v1"
+        assert transcriber.whisper_params == {"response_format": "json"}
 
     @pytest.mark.unit
-    def test_init_no_key(self):
-        with pytest.raises(ValueError, match="API key is None"):
-            RemoteWhisperTranscriber(api_key=None)
+    def test_init_custom_parameters(self):
+        transcriber = RemoteWhisperTranscriber(
+            api_key="test_api_key",
+            model_name="whisper-1",
+            organization="test-org",
+            api_base_url="test_api_url",
+            language="en",
+            prompt="test-prompt",
+            response_format="json",
+            temperature="0.5",
+        )
+
+        assert openai.api_key == "test_api_key"
+        assert transcriber.model_name == "whisper-1"
+        assert transcriber.organization == "test-org"
+        assert transcriber.api_base_url == "test_api_url"
+        assert transcriber.whisper_params == {
+            "language": "en",
+            "prompt": "test-prompt",
+            "response_format": "json",
+            "temperature": "0.5",
+        }
 
     @pytest.mark.unit
-    def test_run_with_path(self, preview_samples_path):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
-        comp = RemoteWhisperTranscriber(api_key="whatever")
-
-        with patch("haystack.utils.requests_utils.requests") as mocked_requests:
-            mocked_requests.request.return_value = mock_response
-
-            result = comp.run(
-                RemoteWhisperTranscriber.Input(
-                    audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"]
-                )
-            )
-            expected = Document(
-                content="test transcription",
-                metadata={
-                    "audio_file": preview_samples_path / "audio" / "this is the content of the document.wav",
-                    "other_metadata": ["other", "meta", "data"],
-                },
-            )
-            assert result.documents == [expected]
+    def test_to_dict_default_parameters(self):
+        transcriber = RemoteWhisperTranscriber(api_key="test_api_key")
+        data = transcriber.to_dict()
+        assert data == {
+            "type": "haystack.preview.components.audio.whisper_remote.RemoteWhisperTranscriber",
+            "init_parameters": {
+                "model_name": "whisper-1",
+                "api_base_url": "https://api.openai.com/v1",
+                "organization": None,
+                "response_format": "json",
+            },
+        }
 
     @pytest.mark.unit
-    def test_run_with_str(self, preview_samples_path):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
-        comp = RemoteWhisperTranscriber(api_key="whatever")
+    def test_to_dict_with_custom_init_parameters(self):
+        transcriber = RemoteWhisperTranscriber(
+            api_key="test_api_key",
+            model_name="whisper-1",
+            organization="test-org",
+            api_base_url="test_api_url",
+            language="en",
+            prompt="test-prompt",
+            response_format="json",
+            temperature="0.5",
+        )
+        data = transcriber.to_dict()
+        assert data == {
+            "type": "haystack.preview.components.audio.whisper_remote.RemoteWhisperTranscriber",
+            "init_parameters": {
+                "model_name": "whisper-1",
+                "organization": "test-org",
+                "api_base_url": "test_api_url",
+                "language": "en",
+                "prompt": "test-prompt",
+                "response_format": "json",
+                "temperature": "0.5",
+            },
+        }
 
-        with patch("haystack.utils.requests_utils.requests") as mocked_requests:
-            mocked_requests.request.return_value = mock_response
+    def test_from_dict_with_defualt_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
 
-            result = comp.run(
-                RemoteWhisperTranscriber.Input(
-                    audio_files=[
-                        str((preview_samples_path / "audio" / "this is the content of the document.wav").absolute())
-                    ]
-                )
-            )
-            expected = Document(
-                content="test transcription",
-                metadata={
-                    "audio_file": str(
-                        (preview_samples_path / "audio" / "this is the content of the document.wav").absolute()
-                    ),
-                    "other_metadata": ["other", "meta", "data"],
-                },
-            )
-            assert result.documents == [expected]
+        data = {
+            "type": "haystack.preview.components.audio.whisper_remote.RemoteWhisperTranscriber",
+            "init_parameters": {
+                "model_name": "whisper-1",
+                "api_base_url": "https://api.openai.com/v1",
+                "organization": None,
+                "response_format": "json",
+            },
+        }
 
-    @pytest.mark.unit
-    def test_transcribe_with_stream(self, preview_samples_path):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
-        comp = RemoteWhisperTranscriber(api_key="whatever")
+        transcriber = RemoteWhisperTranscriber.from_dict(data)
 
-        with patch("haystack.utils.requests_utils.requests") as mocked_requests:
-            mocked_requests.request.return_value = mock_response
+        assert openai.api_key == "test_api_key"
+        assert transcriber.model_name == "whisper-1"
+        assert transcriber.organization is None
+        assert transcriber.api_base_url == "https://api.openai.com/v1"
+        assert transcriber.whisper_params == {"response_format": "json"}
 
-            with open(preview_samples_path / "audio" / "this is the content of the document.wav", "rb") as audio_stream:
-                result = comp.transcribe(audio_files=[audio_stream])
-                expected = Document(
-                    content="test transcription",
-                    metadata={"audio_file": "<<binary stream>>", "other_metadata": ["other", "meta", "data"]},
-                )
-                assert result == [expected]
+    def test_from_dict_with_custom_init_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
 
-    @pytest.mark.unit
-    def test_api_transcription(self, preview_samples_path):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
-        comp = RemoteWhisperTranscriber(api_key="whatever")
+        data = {
+            "type": "haystack.preview.components.audio.whisper_remote.RemoteWhisperTranscriber",
+            "init_parameters": {
+                "model_name": "whisper-1",
+                "organization": "test-org",
+                "api_base_url": "test_api_url",
+                "language": "en",
+                "prompt": "test-prompt",
+                "response_format": "json",
+                "temperature": "0.5",
+            },
+        }
+        transcriber = RemoteWhisperTranscriber.from_dict(data)
 
-        with patch("haystack.utils.requests_utils.requests") as mocked_requests:
-            mocked_requests.request.return_value = mock_response
+        assert openai.api_key == "test_api_key"
+        assert transcriber.model_name == "whisper-1"
+        assert transcriber.organization == "test-org"
+        assert transcriber.api_base_url == "test_api_url"
+        assert transcriber.whisper_params == {
+            "language": "en",
+            "prompt": "test-prompt",
+            "response_format": "json",
+            "temperature": "0.5",
+        }
 
-            comp.run(
-                RemoteWhisperTranscriber.Input(
-                    audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"]
-                )
-            )
-            requests_params = mocked_requests.request.call_args.kwargs
-            requests_params.pop("files")
-            assert requests_params == {
-                "method": "post",
-                "url": "https://api.openai.com/v1/audio/transcriptions",
-                "data": {"model": "whisper-1"},
-                "headers": {"Authorization": f"Bearer whatever"},
-                "timeout": OPENAI_TIMEOUT,
-            }
+    def test_from_dict_with_defualt_parameters_no_env_var(self, monkeypatch):
+        openai.api_key = None
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
-    @pytest.mark.unit
-    def test_api_translation(self, preview_samples_path):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
-        comp = RemoteWhisperTranscriber(api_key="whatever")
+        data = {
+            "type": "haystack.preview.components.audio.whisper_remote.RemoteWhisperTranscriber",
+            "init_parameters": {
+                "model_name": "whisper-1",
+                "api_base_url": "https://api.openai.com/v1",
+                "organization": None,
+                "response_format": "json",
+            },
+        }
 
-        with patch("haystack.utils.requests_utils.requests") as mocked_requests:
-            mocked_requests.request.return_value = mock_response
-
-            comp.run(
-                RemoteWhisperTranscriber.Input(
-                    audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"],
-                    whisper_params={"translate": True},
-                )
-            )
-            requests_params = mocked_requests.request.call_args.kwargs
-            requests_params.pop("files")
-            assert requests_params == {
-                "method": "post",
-                "url": "https://api.openai.com/v1/audio/translations",
-                "data": {"model": "whisper-1"},
-                "headers": {"Authorization": f"Bearer whatever"},
-                "timeout": OPENAI_TIMEOUT,
-            }
+        with pytest.raises(ValueError, match="RemoteWhisperTranscriber expects an OpenAI API key."):
+            RemoteWhisperTranscriber.from_dict(data)
 
     @pytest.mark.unit
-    @patch("haystack.preview.components.audio.whisper_remote.request_with_retry")
-    def test_default_api_base(self, mock_request, preview_samples_path):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
-        mock_request.return_value = mock_response
+    def test_run_str(self, preview_samples_path):
+        with patch("haystack.preview.components.audio.whisper_remote.openai.Audio") as openai_audio_patch:
+            model = "whisper-1"
+            file_path = str(preview_samples_path / "audio" / "this is the content of the document.wav")
+            openai_audio_patch.transcribe.side_effect = mock_openai_response
 
-        transcriber = RemoteWhisperTranscriber(api_key="just a test")
-        assert transcriber.api_base == "https://api.openai.com/v1"
+            transcriber = RemoteWhisperTranscriber(api_key="test_api_key", model_name=model, response_format="json")
+            result = transcriber.run(sources=[file_path])
 
-        transcriber.transcribe(audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"])
-        assert mock_request.call_args.kwargs["url"] == "https://api.openai.com/v1/audio/transcriptions"
+            assert result["documents"][0].content == "test transcription"
+            assert result["documents"][0].meta["file_path"] == file_path
 
     @pytest.mark.unit
-    @patch("haystack.preview.components.audio.whisper_remote.request_with_retry")
-    def test_custom_api_base(self, mock_request, preview_samples_path):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
-        mock_request.return_value = mock_response
+    def test_run_path(self, preview_samples_path):
+        with patch("haystack.preview.components.audio.whisper_remote.openai.Audio") as openai_audio_patch:
+            model = "whisper-1"
+            file_path = preview_samples_path / "audio" / "this is the content of the document.wav"
+            openai_audio_patch.transcribe.side_effect = mock_openai_response
 
-        transcriber = RemoteWhisperTranscriber(api_key="just a test", api_base="https://fake_api_base.com")
-        assert transcriber.api_base == "https://fake_api_base.com"
+            transcriber = RemoteWhisperTranscriber(api_key="test_api_key", model_name=model, response_format="json")
+            result = transcriber.run(sources=[file_path])
 
-        transcriber.transcribe(audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"])
-        assert mock_request.call_args.kwargs["url"] == "https://fake_api_base.com/audio/transcriptions"
+            assert result["documents"][0].content == "test transcription"
+            assert result["documents"][0].meta["file_path"] == file_path
+
+    @pytest.mark.unit
+    def test_run_bytestream(self, preview_samples_path):
+        with patch("haystack.preview.components.audio.whisper_remote.openai.Audio") as openai_audio_patch:
+            model = "whisper-1"
+            file_path = preview_samples_path / "audio" / "this is the content of the document.wav"
+            openai_audio_patch.transcribe.side_effect = mock_openai_response
+
+            transcriber = RemoteWhisperTranscriber(api_key="test_api_key", model_name=model, response_format="json")
+            with open(file_path, "rb") as audio_stream:
+                byte_stream = audio_stream.read()
+                audio_file = ByteStream(byte_stream, metadata={"file_path": str(file_path.absolute())})
+
+                result = transcriber.run(sources=[audio_file])
+
+                assert result["documents"][0].content == "test transcription"
+                assert result["documents"][0].meta["file_path"] == str(file_path.absolute())
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_whisper_remote_transcriber(self, preview_samples_path):
+        transcriber = RemoteWhisperTranscriber(api_key=os.environ.get("OPENAI_API_KEY"))
+
+        paths = [
+            preview_samples_path / "audio" / "this is the content of the document.wav",
+            str(preview_samples_path / "audio" / "the context for this answer is here.wav"),
+            ByteStream.from_file_path(preview_samples_path / "audio" / "answer.wav"),
+        ]
+
+        output = transcriber.run(sources=paths)
+
+        docs = output["documents"]
+        assert len(docs) == 3
+        assert docs[0].content.strip().lower() == "this is the content of the document."
+        assert preview_samples_path / "audio" / "this is the content of the document.wav" == docs[0].meta["file_path"]
+
+        assert docs[1].content.strip().lower() == "the context for this answer is here."
+        assert (
+            str(preview_samples_path / "audio" / "the context for this answer is here.wav") == docs[1].meta["file_path"]
+        )
+
+        assert docs[2].content.strip().lower() == "answer."

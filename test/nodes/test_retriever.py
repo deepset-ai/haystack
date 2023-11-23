@@ -21,7 +21,7 @@ except (ImportError, ModuleNotFoundError) as ie:
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
 
-from haystack.document_stores.base import BaseDocumentStore, FilterType
+from haystack.document_stores.base import BaseDocumentStore, FilterType, KeywordDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
@@ -33,6 +33,7 @@ from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from haystack.nodes.retriever.multimodal import MultiModalRetriever
+from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 
 from ..conftest import MockBaseRetriever, fail_at_version
 
@@ -120,21 +121,24 @@ def test_retrieval_with_filters(retriever_with_docs: BaseRetriever, document_sto
     assert len(result) == 0
 
 
-def test_tfidf_retriever_multiple_indexes():
+@pytest.mark.unit
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+def test_tfidf_retriever_multiple_indexes(document_store: BaseDocumentStore):
     docs_index_0 = [Document(content="test_1"), Document(content="test_2"), Document(content="test_3")]
     docs_index_1 = [Document(content="test_4"), Document(content="test_5")]
-    ds = InMemoryDocumentStore(index="index_0")
-    tfidf_retriever = TfidfRetriever(document_store=ds)
+    tfidf_retriever = TfidfRetriever(document_store=document_store)
 
-    ds.write_documents(docs_index_0)
-    tfidf_retriever.fit(ds, index="index_0")
-    ds.write_documents(docs_index_1, index="index_1")
-    tfidf_retriever.fit(ds, index="index_1")
+    document_store.write_documents(docs_index_0, index="index_0")
+    tfidf_retriever.fit(document_store, index="index_0")
+    document_store.write_documents(docs_index_1, index="index_1")
+    tfidf_retriever.fit(document_store, index="index_1")
 
-    assert tfidf_retriever.document_counts["index_0"] == ds.get_document_count(index="index_0")
-    assert tfidf_retriever.document_counts["index_1"] == ds.get_document_count(index="index_1")
+    assert tfidf_retriever.document_counts["index_0"] == document_store.get_document_count(index="index_0")
+    assert tfidf_retriever.document_counts["index_1"] == document_store.get_document_count(index="index_1")
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 def test_retrieval_empty_query(document_store: BaseDocumentStore):
     # test with empty query using the run() method
     mock_document = Document(id="0", content="test")
@@ -216,59 +220,73 @@ def test_batch_retrieval_multiple_queries_with_filters(retriever_with_docs, docu
     assert res[1][0].meta["name"] == "filename2"
 
 
-@pytest.mark.elasticsearch
-def test_elasticsearch_custom_query():
-    client = Elasticsearch()
-    client.indices.delete(index="haystack_test_custom", ignore=[404])
-    document_store = ElasticsearchDocumentStore(
-        index="haystack_test_custom", content_field="custom_text_field", embedding_field="custom_embedding_field"
-    )
-    documents = [
-        {"content": "test_1", "meta": {"year": "2019"}},
-        {"content": "test_2", "meta": {"year": "2020"}},
-        {"content": "test_3", "meta": {"year": "2021"}},
-        {"content": "test_4", "meta": {"year": "2021"}},
-        {"content": "test_5", "meta": {"year": "2021"}},
-    ]
-    document_store.write_documents(documents)
+@pytest.mark.unit
+def test_embed_meta_fields(docs_with_ids):
+    with patch(
+        "haystack.nodes.retriever._embedding_encoder._SentenceTransformersEmbeddingEncoder.__init__"
+    ) as mock_init:
+        mock_init.return_value = None
+        retriever = EmbeddingRetriever(
+            embedding_model="sentence-transformers/all-mpnet-base-v2",
+            model_format="sentence_transformers",
+            embed_meta_fields=["date_field", "numeric_field", "list_field"],
+        )
+    docs_with_embedded_meta = retriever._preprocess_documents(docs=docs_with_ids[:2])
+    assert docs_with_embedded_meta[0].content.startswith("2019-10-01\n5.0\nitem0.1\nitem0.2")
+    assert docs_with_embedded_meta[1].content.startswith("2020-03-01\n5.5\nitem1.1\nitem1.2")
 
-    # test custom "terms" query
-    retriever = BM25Retriever(
-        document_store=document_store,
-        custom_query="""
+
+@pytest.mark.unit
+def test_embed_meta_fields_empty():
+    doc = Document(content="My name is Matteo and I live in Rome", meta={"meta_field": "", "list_field": []})
+    with patch(
+        "haystack.nodes.retriever._embedding_encoder._SentenceTransformersEmbeddingEncoder.__init__"
+    ) as mock_init:
+        mock_init.return_value = None
+        retriever = EmbeddingRetriever(
+            embedding_model="sentence-transformers/all-mpnet-base-v2",
+            model_format="sentence_transformers",
+            embed_meta_fields=["meta_field", "list_field"],
+        )
+    docs_with_embedded_meta = retriever._preprocess_documents(docs=[doc])
+    assert docs_with_embedded_meta[0].content == "My name is Matteo and I live in Rome"
+
+
+@pytest.mark.unit
+def test_embed_meta_fields_list_with_one_item():
+    doc = Document(content="My name is Matteo and I live in Rome", meta={"list_field": ["one_item"]})
+    with patch(
+        "haystack.nodes.retriever._embedding_encoder._SentenceTransformersEmbeddingEncoder.__init__"
+    ) as mock_init:
+        mock_init.return_value = None
+        retriever = EmbeddingRetriever(
+            embedding_model="sentence-transformers/all-mpnet-base-v2",
+            model_format="sentence_transformers",
+            embed_meta_fields=["list_field"],
+        )
+    docs_with_embedded_meta = retriever._preprocess_documents(docs=[doc])
+    assert docs_with_embedded_meta[0].content == "one_item\nMy name is Matteo and I live in Rome"
+
+
+@pytest.mark.unit
+def test_custom_query():
+    mock_document_store = Mock(spec=KeywordDocumentStore)
+    mock_document_store.index = "test"
+
+    custom_query = """
             {
                 "size": 10,
                 "query": {
                     "bool": {
                         "should": [{
-                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
-                            "filter": [{"terms": {"year": ${years}}}]}}}""",
-    )
-    results = retriever.retrieve(query="test", filters={"years": ["2020", "2021"]})
-    assert len(results) == 4
+                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["custom_text_field"]}}],
+                            "filter": ${filters}}}}"""
 
-    # test linefeeds in query
-    results = retriever.retrieve(query="test\n", filters={"years": ["2020", "2021"]})
-    assert len(results) == 3
-
-    # test double quote in query
-    results = retriever.retrieve(query='test"', filters={"years": ["2020", "2021"]})
-    assert len(results) == 3
-
-    # test custom "term" query
-    retriever = BM25Retriever(
-        document_store=document_store,
-        custom_query="""
-                {
-                    "size": 10,
-                    "query": {
-                        "bool": {
-                            "should": [{
-                                "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
-                                "filter": [{"term": {"year": ${years}}}]}}}""",
-    )
-    results = retriever.retrieve(query="test", filters={"years": "2021"})
-    assert len(results) == 3
+    retriever = BM25Retriever(document_store=mock_document_store, custom_query=custom_query)
+    retriever.retrieve(query="test", filters={"year": ["2020", "2021"]})
+    assert mock_document_store.query.call_args.kwargs["custom_query"] == custom_query
+    assert mock_document_store.query.call_args.kwargs["filters"] == {"year": ["2020", "2021"]}
+    assert mock_document_store.query.call_args.kwargs["query"] == "test"
 
 
 @pytest.mark.integration
@@ -285,6 +303,28 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_i
     print([doc.id for doc in docs])
 
     expected_values = [0.00892, 0.00780, 0.00482, -0.00626, 0.010966]
+    for doc, expected_value in zip(docs, expected_values):
+        embedding = doc.embedding
+        # always normalize vector as faiss returns normalized vectors and other document stores do not
+        embedding /= np.linalg.norm(embedding)
+        assert len(embedding) == 768
+        assert isclose(embedding[0], expected_value, rel_tol=0.01)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "weaviate", "pinecone"], indirect=True)
+@pytest.mark.parametrize("retriever", ["embedding_sbert_instructions"], indirect=True)
+def test_embedding_with_instructions(document_store: BaseDocumentStore, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    docs = document_store.get_all_documents()
+    docs.sort(key=lambda d: d.id)
+
+    print([doc.id for doc in docs])
+
+    expected_values = [0.00484978, 0.02258789, 0.03414359, -0.01461711, 0.01784192]
     for doc, expected_value in zip(docs, expected_values):
         embedding = doc.embedding
         # always normalize vector as faiss returns normalized vectors and other document stores do not
@@ -318,34 +358,51 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
         assert isclose(embedding[0], expected_value, rel_tol=0.001)
 
 
-def test_openai_embedding_retriever_selection():
-    # OpenAI released (Dec 2022) a unifying embedding model called text-embedding-ada-002
-    # make sure that we can use it with the retriever selection
-    er = EmbeddingRetriever(embedding_model="text-embedding-ada-002", document_store=None)
-    assert er.model_format == "openai"
-    assert er.embedding_encoder.query_encoder_model == "text-embedding-ada-002"
-    assert er.embedding_encoder.doc_encoder_model == "text-embedding-ada-002"
-    assert er.api_base == "https://api.openai.com/v1"
+@pytest.mark.unit
+def test_openai_embedding_retriever_model_format():
+    # support text-embedding-ada-002
+    assert (
+        EmbeddingRetriever._infer_model_format(model_name_or_path="text-embedding-ada-002", use_auth_token=None)
+        == "openai"
+    )
 
-    # but also support old ada and other text-search-<modelname>-*-001 models
-    er = EmbeddingRetriever(embedding_model="ada", document_store=None)
-    assert er.model_format == "openai"
-    assert er.embedding_encoder.query_encoder_model == "text-search-ada-query-001"
-    assert er.embedding_encoder.doc_encoder_model == "text-search-ada-doc-001"
-    assert er.api_base == "https://api.openai.com/v1"
+    # support old ada and other text-search-<modelname>-*-001 models
+    assert EmbeddingRetriever._infer_model_format(model_name_or_path="ada", use_auth_token=None) == "openai"
 
-    # but also support old babbage and other text-search-<modelname>-*-001 models
-    er = EmbeddingRetriever(embedding_model="babbage", document_store=None)
-    assert er.model_format == "openai"
-    assert er.embedding_encoder.query_encoder_model == "text-search-babbage-query-001"
-    assert er.embedding_encoder.doc_encoder_model == "text-search-babbage-doc-001"
+    # support old babbage and other text-search-<modelname>-*-001 models
+    assert EmbeddingRetriever._infer_model_format(model_name_or_path="babbage", use_auth_token=None) == "openai"
 
     # make sure that we can handle potential unreleased models
-    er = EmbeddingRetriever(embedding_model="text-embedding-babbage-002", document_store=None)
-    assert er.model_format == "openai"
-    assert er.embedding_encoder.query_encoder_model == "text-embedding-babbage-002"
-    assert er.embedding_encoder.doc_encoder_model == "text-embedding-babbage-002"
-    # etc etc.
+    assert (
+        EmbeddingRetriever._infer_model_format(model_name_or_path="text-embedding-babbage-002", use_auth_token=None)
+        == "openai"
+    )
+
+
+@pytest.mark.unit
+def test_openai_encoder_setup_encoding_models():
+    with patch("haystack.nodes.retriever._openai_encoder._OpenAIEmbeddingEncoder.__init__") as mock_encoder_init:
+        mock_encoder_init.return_value = None
+        encoder = _OpenAIEmbeddingEncoder(retriever=None)  # type: ignore
+
+    encoder._setup_encoding_models(model_class="ada", model_name="text-embedding-ada-002", max_seq_len=512)
+    assert encoder.query_encoder_model == "text-embedding-ada-002"
+    assert encoder.doc_encoder_model == "text-embedding-ada-002"
+
+    # support old ada and other text-search-<modelname>-*-001 models
+    encoder._setup_encoding_models(model_class="ada", model_name="ada", max_seq_len=512)
+    assert encoder.query_encoder_model == "text-search-ada-query-001"
+    assert encoder.doc_encoder_model == "text-search-ada-doc-001"
+
+    # support old babbage and other text-search-<modelname>-*-001 models
+    encoder._setup_encoding_models(model_class="babbage", model_name="babbage", max_seq_len=512)
+    assert encoder.query_encoder_model == "text-search-babbage-query-001"
+    assert encoder.doc_encoder_model == "text-search-babbage-doc-001"
+
+    # make sure that we can handle potential unreleased models
+    encoder._setup_encoding_models(model_class="babbage", model_name="text-embedding-babbage-002", max_seq_len=512)
+    assert encoder.query_encoder_model == "text-embedding-babbage-002"
+    assert encoder.doc_encoder_model == "text-embedding-babbage-002"
 
 
 @pytest.mark.integration
@@ -1186,3 +1243,27 @@ def test_openai_custom_api_base(mock_request):
 
     retriever.embed_documents(documents=[Document(content="test document")])
     assert mock_request.call_args.kwargs["url"] == "https://fake_api_base.com/embeddings"
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.retriever._openai_encoder.openai_request")
+def test_openai_no_openai_organization(mock_request):
+    with patch("haystack.nodes.retriever._openai_encoder.load_openai_tokenizer"):
+        retriever = EmbeddingRetriever(embedding_model="text-embedding-ada-002", api_key="fake_api_key")
+    assert retriever.openai_organization is None
+
+    retriever.embed_queries(queries=["test query"])
+    assert "OpenAI-Organization" not in mock_request.call_args.kwargs["headers"]
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.retriever._openai_encoder.openai_request")
+def test_openai_openai_organization(mock_request):
+    with patch("haystack.nodes.retriever._openai_encoder.load_openai_tokenizer"):
+        retriever = EmbeddingRetriever(
+            embedding_model="text-embedding-ada-002", api_key="fake_api_key", openai_organization="fake_organization"
+        )
+    assert retriever.openai_organization == "fake_organization"
+
+    retriever.embed_queries(queries=["test query"])
+    assert mock_request.call_args.kwargs["headers"]["OpenAI-Organization"] == "fake_organization"

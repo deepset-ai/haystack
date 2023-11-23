@@ -9,21 +9,16 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Set
 from urllib.parse import urlparse
 
-try:
+from haystack.nodes.base import BaseComponent
+from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install farm-haystack[crawler]'") as selenium_import:
     from selenium import webdriver
-    from selenium.common.exceptions import StaleElementReferenceException, WebDriverException
+    from selenium.common.exceptions import StaleElementReferenceException
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.common.by import By
-    from webdriver_manager.chrome import ChromeDriverManager
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "crawler", ie)
-
-from haystack.errors import NodeError
-from haystack.nodes.base import BaseComponent
-from haystack.schema import Document
 
 logger = logging.getLogger(__name__)
 
@@ -63,9 +58,11 @@ class Crawler(BaseComponent):
         Init object with basic params for crawling (can be overwritten later).
 
         :param urls: List of http(s) address(es) (can also be supplied later when calling crawl())
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-            0: Only initial list of urls
-            1: Follow links found on the initial URLs (but no further)
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Can be any integer >= 0.
+                                For example:
+                                0: Only initial list of urls.
+                                1: Follow links found on the initial URLs (but no further).
+                                2: Additionally follow links found on the second-level URLs.
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
             All URLs not matching at least one of the regular expressions will be dropped.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
@@ -98,8 +95,9 @@ class Crawler(BaseComponent):
                  3) ["--remote-debugging-port=9222"]
                     This option enables remote debug over HTTP.
             See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
-            If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
+            If your crawler fails, raising a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
         """
+        selenium_import.check()
         super().__init__()
 
         IN_COLAB = "google.colab" in sys.modules
@@ -110,8 +108,10 @@ class Crawler(BaseComponent):
         if webdriver_options is None:
             webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
         webdriver_options.append("--headless")
+        if IS_ROOT or IN_WINDOWS or IN_COLAB:
+            webdriver_options.append("--no-sandbox")
         if IS_ROOT or IN_WINDOWS:
-            webdriver_options.extend(["--no-sandbox", "--remote-debugging-port=9222"])
+            webdriver_options.append("--remote-debugging-port=9222")
         if IN_COLAB or IN_AZUREML:
             webdriver_options.append("--disable-dev-shm-usage")
 
@@ -119,50 +119,7 @@ class Crawler(BaseComponent):
         for option in set(webdriver_options):
             options.add_argument(option)
 
-        if IN_COLAB:
-            try:
-                self.driver = webdriver.Chrome(service=Service("chromedriver"), options=options)
-            except WebDriverException as exc:
-                raise NodeError(
-                    """
-        \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
-                        %%shell
-                        cat > /etc/apt/sources.list.d/debian.list <<'EOF'
-                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster.gpg] http://deb.debian.org/debian buster main
-                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster-updates.gpg] http://deb.debian.org/debian buster-updates main
-                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-security-buster.gpg] http://deb.debian.org/debian-security buster/updates main
-                        EOF
-
-                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys DCC9EFBF77E11517
-                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648ACFD622F3D138
-                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 112695A0E562B32A
-                        apt-key export 77E11517 | gpg --dearmour -o /usr/share/keyrings/debian-buster.gpg
-                        apt-key export 22F3D138 | gpg --dearmour -o /usr/share/keyrings/debian-buster-updates.gpg
-                        apt-key export E562B32A | gpg --dearmour -o /usr/share/keyrings/debian-security-buster.gpg
-
-                        cat > /etc/apt/preferences.d/chromium.pref << 'EOF'
-                        Package: *
-                        Pin: release a=eoan
-                        Pin-Priority: 500
-
-
-                        Package: *
-                        Pin: origin "deb.debian.org"
-                        Pin-Priority: 300
-
-
-                        Package: chromium*
-                        Pin: origin "deb.debian.org"
-                        Pin-Priority: 700
-                        EOF
-
-                        apt-get update
-                        apt-get install chromium chromium-driver
-        If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
-                ) from exc
-        else:
-            logger.info("'chrome-driver' will be automatically installed.")
-            self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        self.driver = webdriver.Chrome(service=Service(), options=options)
         self.urls = urls
         self.crawler_depth = crawler_depth
         self.filter_urls = filter_urls
@@ -198,9 +155,11 @@ class Crawler(BaseComponent):
         If no parameters are provided to this method, the instance attributes that were passed during __init__ will be used.
 
         :param urls: List of http addresses or single http address
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-                              0: Only initial list of urls
-                              1: Follow links found on the initial URLs (but no further)
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Can be any integer >= 0.
+                                For example:
+                                0: Only initial list of urls.
+                                1: Follow links found on the initial URLs (but no further).
+                                2: Additionally follow links found on the second-level URLs.
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
                            All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
@@ -383,7 +342,7 @@ class Crawler(BaseComponent):
             else:
                 text = el.text
 
-            document = self._create_document(url=link, text=text, base_url=base_url, id_hash_keys=id_hash_keys)
+            document = self._create_document(url=link, text=text or "", base_url=base_url, id_hash_keys=id_hash_keys)
 
             if output_dir:
                 file_path = self._write_file(
@@ -419,9 +378,11 @@ class Crawler(BaseComponent):
 
         :param output_dir: Path for the directory to store files
         :param urls: List of http addresses or single http address
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-                              0: Only initial list of urls
-                              1: Follow links found on the initial URLs (but no further)
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Can be any integer >= 0.
+                                For example:
+                                0: Only initial list of urls.
+                                1: Follow links found on the initial URLs (but no further).
+                                2: Additionally follow links found on the second-level URLs.
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
                            All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
@@ -524,14 +485,16 @@ class Crawler(BaseComponent):
                 )
                 continue
 
-            if not (already_found_links and sub_link in already_found_links):
-                if self._is_internal_url(base_url=base_url, sub_link=sub_link) and (
-                    not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
-                ):
-                    if filter_pattern is not None:
-                        if filter_pattern.search(sub_link):
-                            sub_links.add(sub_link)
-                    else:
+            if (
+                sub_link
+                and not (already_found_links and sub_link in already_found_links)
+                and self._is_internal_url(base_url=base_url, sub_link=sub_link)
+                and (not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link))
+            ):
+                if filter_pattern is not None:
+                    if filter_pattern.search(sub_link):
                         sub_links.add(sub_link)
+                else:
+                    sub_links.add(sub_link)
 
         return sub_links

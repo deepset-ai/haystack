@@ -5,7 +5,7 @@ from abc import abstractmethod
 from time import perf_counter
 from functools import wraps
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.schema import Document, MultiLabel
 from haystack.errors import HaystackError, PipelineError
@@ -248,6 +248,18 @@ class BaseRetriever(BaseComponent):
         headers: Optional[Dict[str, str]] = None,
         scale_score: Optional[bool] = None,
     ):
+        """
+        :param root_node: The root node of the pipeline's graph.
+        :param query: Query string.
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field.
+        :param top_k: How many documents to return per query.
+        :param documents: List of Documents to Retrieve.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication).
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default), similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise, raw similarity scores (e.g. cosine or dot_product) will be used.
+        """
         if root_node == "Query":
             if query is None:
                 raise HaystackError(
@@ -281,6 +293,15 @@ class BaseRetriever(BaseComponent):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
+        """
+        :param root_node: The root node of the pipeline's graph.
+        :param queries: The list of query strings.
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field.
+        :param top_k: How many documents to return per query.
+        :param documents: List of Documents of Retrieve.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication).
+        """
         if root_node == "Query":
             if queries is None:
                 raise HaystackError(

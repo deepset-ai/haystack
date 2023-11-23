@@ -4,6 +4,7 @@ from haystack.schema import Answer, Document
 
 from haystack.nodes.other.shaper import (  # pylint: disable=unused-import
     Shaper,
+    current_datetime,  # used as shaping function
     join_documents_to_string as join,  # used as shaping function
     format_document,
     format_answer,

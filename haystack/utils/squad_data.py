@@ -4,11 +4,14 @@ import logging
 import json
 import random
 import pandas as pd
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.mmh3 import hash128
 from haystack.schema import Document, Label, Answer
-from haystack.modeling.data_handler.processor import _read_squad_file
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("{}") as haystack_modeling:
+    from haystack.modeling.data_handler.processor import _read_squad_file
 
 logger = logging.getLogger(__name__)
 
@@ -224,7 +227,7 @@ class SquadData:
     def _aggregate_answers(x):
         x = x[["answer_text", "answer_start"]]
         x = x.rename(columns={"answer_text": "text"})
-        # Span anwser
+        # Span answer
         try:
             x["answer_start"] = x["answer_start"].astype(int)
             ret = x.to_dict("records")
@@ -269,6 +272,8 @@ class SquadData:
 
 
 if __name__ == "__main__":
+    haystack_modeling.check()
+
     # Download the SQuAD dataset if it isn't at target directory
     _read_squad_file("../data/squad20/train-v2.0.json")
 

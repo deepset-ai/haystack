@@ -7,7 +7,7 @@ from numpy import loadtxt
 import pytest
 
 from haystack.schema import Document
-from haystack.nodes import Seq2SeqGenerator, SentenceTransformersRanker, TopPSampler, TransformersDocumentClassifier
+from haystack.nodes import SentenceTransformersRanker, TopPSampler, TransformersDocumentClassifier
 
 
 @pytest.fixture
@@ -38,11 +38,6 @@ def docs_with_ids(docs) -> List[Document]:
     for doc, uuid in zip(docs, uuids):
         doc.id = str(uuid)
     return docs
-
-
-@pytest.fixture
-def lfqa_generator(request):
-    return Seq2SeqGenerator(model_name_or_path=request.param, min_length=100, max_length=200)
 
 
 @pytest.fixture

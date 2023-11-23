@@ -1,15 +1,40 @@
-from typing import Optional, List, Union
-
 import logging
+from typing import Any, Dict, List, Optional, Union
 
 from haystack.schema import FilterType
-
 
 logger = logging.getLogger(__name__)
 
 
 # Mock Pinecone instance
 CONFIG: dict = {"api_key": None, "environment": None, "indexes": {}}
+
+
+# Mock Pinecone Index Description instance
+class IndexDescription:
+    def __init__(
+        self,
+        name: str,
+        metric: Optional[str] = None,
+        replicas: Optional[int] = None,
+        dimension: Optional[int] = None,
+        shards: Optional[int] = None,
+        pods: Optional[int] = None,
+        pod_type: Optional[str] = None,
+        status: Dict[str, Any] = None,
+        metadata_config: Optional[dict] = None,
+        source_collection: Optional[str] = None,
+    ) -> None:
+        self.name = name
+        self.metric = metric
+        self.replicas = replicas
+        self.dimension = dimension
+        self.shards = shards
+        self.pods = pods
+        self.pod_type = pod_type
+        self.status = status
+        self.metadata_config = metadata_config
+        self.source_collection = source_collection
 
 
 # Mock Pinecone Index instance
@@ -148,7 +173,7 @@ class Index:
                 }
         return response
 
-    def _filter(
+    def _filter(  # noqa: C901,PLR0912
         self,
         metadata: dict,
         filters: Optional[Union[FilterType, List[Optional[FilterType]]]],
@@ -158,6 +183,8 @@ class Index:
         """
         Mock filtering function
         """
+        # This function has a very high McCabe cyclomatic complexity score of 38
+        # (recommended is 10) and contains 55 branches (recommended is 12).
         bools = []
         if type(filters) is list:
             list_bools = []
@@ -329,3 +356,18 @@ def create_index(
 
 def delete_index(index: str):
     del CONFIG["indexes"][index]
+
+
+def describe_index(index: str):
+    return IndexDescription(
+        name=index,
+        metric="dotproduct",
+        replicas=1,
+        dimension=768.0,
+        shards=1,
+        pods=1,
+        pod_type="p1.x1",
+        status={"ready": True, "state": "Ready"},
+        metadata_config=None,
+        source_collection="",
+    )

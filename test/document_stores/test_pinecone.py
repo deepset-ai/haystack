@@ -1,23 +1,27 @@
-from typing import List, Union, Dict, Any
-
 import os
-import numpy as np
 from inspect import getmembers, isclass, isfunction
-from unittest.mock import MagicMock, ANY
+from typing import Any, Dict, List, Union
+from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
-from haystack.document_stores.pinecone import pinecone
-from haystack.document_stores.pinecone import PineconeDocumentStore
-from haystack.schema import Document
+from haystack.document_stores.pinecone import (
+    DOCUMENT_WITH_EMBEDDING,
+    DOCUMENT_WITHOUT_EMBEDDING,
+    TYPE_METADATA_FIELD,
+    PineconeDocumentStore,
+    pinecone,
+)
 from haystack.errors import FilterError, PineconeDocumentStoreError
+from haystack.schema import Document
 from haystack.testing import DocumentStoreBaseTestAbstract
 
-from ..mocks import pinecone as pinecone_mock
 from ..conftest import MockBaseRetriever
+from ..mocks import pinecone as pinecone_mock
 
 # Set metadata fields used during testing for PineconeDocumentStore meta_config
-META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document"]
+META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document", "doc_type"]
 
 
 class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
@@ -59,6 +63,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             pass
 
         pinecone.init = MagicMock()
+        pinecone.describe_index = MagicMock()
         DSMock._create_index = MagicMock()
         mocked_ds = DSMock(api_key="MOCK")
 
@@ -150,6 +155,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     #
     #  Tests
     #
+
     @pytest.mark.integration
     def test_doc_store_wrong_init(self):
         """
@@ -196,12 +202,12 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
 
     @pytest.mark.skip
     @pytest.mark.integration
-    def test_ne_filters(self, ds, documents):
+    def test_ne_filters(self, ds, documents):  # noqa: F811
         pass
 
     @pytest.mark.skip
     @pytest.mark.integration
-    def test_nin_filters(self, ds, documents):
+    def test_nin_filters(self, ds, documents):  # noqa: F811
         pass
 
     @pytest.mark.skip
@@ -285,7 +291,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.integration
     def test_get_all_documents_extended_filter_ne(self, doc_store_with_docs: PineconeDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$ne": "test-1"}})
-        assert all("test-1" != d.meta.get("meta_field", None) for d in retrieved_docs)
+        assert all(d.meta.get("meta_field", None) != "test-1" for d in retrieved_docs)
 
     @pytest.mark.integration
     def test_get_all_documents_extended_filter_nin(self, doc_store_with_docs: PineconeDocumentStore):
@@ -332,7 +338,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             }
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -344,7 +350,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             "name": ["file_5.txt", "file_3.txt"],
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters_simplified)
 
     @pytest.mark.integration
@@ -358,7 +364,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             }
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -370,7 +376,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             "$or": {"name": ["file_5.txt", "file_3.txt"], "numeric_field": {"$lte": 5.0}},
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters_simplified)
 
     @pytest.mark.integration
@@ -386,7 +392,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                 },
             }
         }
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -400,7 +406,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                 "$and": {"numeric_field": {"$lte": 5.0}, "$not": {"meta_field": "test-2"}},
             },
         }
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters_simplified)
 
     @pytest.mark.integration
@@ -414,7 +420,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                 }
             }
         }
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]t' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]t' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -429,7 +435,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             ]
         }
 
-        with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
+        with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
     @pytest.mark.integration
@@ -440,7 +446,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             "meta_field": "multilayer-test",
         }
         doc = Document(
-            content=f"Multilayered dict", meta=multilayer_meta, embedding=np.random.rand(768).astype(np.float32)
+            content="Multilayered dict", meta=multilayer_meta, embedding=np.random.rand(768).astype(np.float32)
         )
 
         doc_store_with_docs.write_documents([doc])
@@ -467,9 +473,177 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         We expect 1 doc with an embeddings because all documents in already written in doc_store_with_docs contain no
         embeddings.
         """
-        doc = Document(content=f"Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc = Document(
+            content="Doc with embedding",
+            embedding=np.random.rand(768).astype(np.float32),
+            meta={"meta_field": "test-1"},
+        )
         doc_store_with_docs.write_documents([doc])
         assert doc_store_with_docs.get_embedding_count() == 1
+
+    @pytest.mark.integration
+    def test_get_embedding_count_with_filters(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        We expect 1 doc with an embedding and given filters, because there are only two documents with embedding
+        written in doc_store_with_docs, while only one of them satisfies given filters.
+        """
+        doc_1 = Document(
+            content="Doc with embedding 1",
+            embedding=np.random.rand(768).astype(np.float32),
+            meta={"meta_field": "test-1"},
+        )
+        doc_2 = Document(
+            content="Doc with embedding 2",
+            embedding=np.random.rand(768).astype(np.float32),
+            meta={"meta_field": "test-2"},
+        )
+        doc_store_with_docs.write_documents([doc_1, doc_2])
+        assert doc_store_with_docs.get_embedding_count(filters={"meta_field": "test-1"}) == 1
+
+    @pytest.mark.integration
+    def test_get_embedding_count_with_doc_type_filters(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        We expect 2 docs with an embedding and given filters, because there are only two documents with embedding
+        written in doc_store_with_docs and both of them satisfy given filters (`meta_field` filter).
+        Even though the filters include `doc_type` with value related to documents without embedding (`no-vector`),
+        we expect this particular filter to be ignored (irrelevant, since documents with embedding have `doc_type`
+        set to `vector`).
+        """
+        doc_1 = Document(
+            content="Doc with embedding 1",
+            embedding=np.random.rand(768).astype(np.float32),
+            meta={"meta_field": "test-2"},
+        )
+        doc_2 = Document(
+            content="Doc with embedding 2",
+            embedding=np.random.rand(768).astype(np.float32),
+            meta={"meta_field": "test-2"},
+        )
+        doc_store_with_docs.write_documents([doc_1, doc_2])
+        assert (
+            doc_store_with_docs.get_embedding_count(
+                filters={TYPE_METADATA_FIELD: DOCUMENT_WITHOUT_EMBEDDING, "meta_field": "test-2"}
+            )
+            == 2
+        )
+
+    @pytest.mark.integration
+    def test_get_document_count_after_write_doc_with_embedding(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        Tests that get_document_count() returns the correct number of documents in the document store after a document
+        with an embedding is written to the document store.
+        """
+        # there are 9 docs in doc_store_with_docs (all without embeddings)
+        initial_document_count = 9
+
+        # we expect initial_document_count documents without embeddings in doc_store_with_docs
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
+        # and also initial_document_count documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count
+
+        # document with embedding is written to doc_store_with_docs
+        doc = Document(content="Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc_store_with_docs.write_documents([doc])
+
+        # so we expect initial_document_count + 1 documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count + 1
+
+        # but we expect initial_document_count documents without embeddings to be unchanged
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
+
+    @pytest.mark.integration
+    def test_get_document_count_after_write_doc_without_embedding(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        Tests that get_document_count() returns the correct number of documents in the document store after a document
+        without an embedding is written to the document store.
+        """
+        # there are 9 docs in doc_store_with_docs (all without embeddings)
+        initial_document_count = 9
+
+        # we expect initial_document_count documents without embeddings in doc_store_with_docs
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
+        # and we also expect initial_document_count documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count
+
+        # document without embedding is written to doc_store_with_docs
+        doc = Document(content="Doc without embedding")
+        doc_store_with_docs.write_documents([doc])
+
+        # we now expect initial_document_count + 1 documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count + 1
+
+        # And we also expect initial_document_count + 1 documents without embeddings, because the document we just
+        # wrote has no embeddings
+        assert (
+            doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count + 1
+        )
+
+    @pytest.mark.integration
+    def test_get_document_count_after_delete_doc_with_embedding(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        Tests that get_document_count() returns the correct number of documents in the document store after a document
+        with an embedding is deleted from the document store.
+        """
+        # there are 9 docs in doc_store_with_docs (all without embeddings)
+        initial_document_count = 9
+
+        # we expect initial_document_count documents without embeddings in doc_store_with_docs
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
+        # and also initial_document_count documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count
+
+        # two documents with embedding are written to doc_store_with_docs
+        doc_1 = Document(content="Doc with embedding 1", embedding=np.random.rand(768).astype(np.float32))
+        doc_2 = Document(content="Doc with embedding 2", embedding=np.random.rand(768).astype(np.float32))
+        doc_store_with_docs.write_documents([doc_1, doc_2])
+
+        # total number is initial_document_count + 2
+        assert doc_store_with_docs.get_document_count() == initial_document_count + 2
+
+        # remove one of the documents with embedding
+        all_embedding_docs = doc_store_with_docs.get_all_documents(type_metadata=DOCUMENT_WITH_EMBEDDING)
+
+        doc_store_with_docs.delete_documents(ids=[all_embedding_docs[0].id])
+
+        # since we deleted one doc, we expect initial_document_count + 1 documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count + 1
+
+        # and we expect initial_document_count documents without embeddings
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
+
+    @pytest.mark.integration
+    def test_get_document_count_after_delete_doc_without_embedding(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        Tests that get_document_count() returns the correct number of documents in the document store after a document
+        without embedding is deleted from the document store.
+        """
+        # there are 9 docs in doc_store_with_docs (all without embeddings)
+        initial_document_count = 9
+
+        # therefore we expect initial_document_count documents without embeddings in doc_store_with_docs
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
+        # and also initial_document_count documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count
+
+        # two documents without embedding are written to doc_store_with_docs
+        doc_1 = Document(content="Doc with embedding 1", embedding=None)
+        doc_2 = Document(content="Doc with embedding 2", embedding=None)
+        doc_store_with_docs.write_documents([doc_1, doc_2])
+
+        # total number is initial_document_count + 2
+        assert doc_store_with_docs.get_document_count() == initial_document_count + 2
+
+        # remove one of the documents without embedding
+        all_non_embedding_docs = doc_store_with_docs.get_all_documents(type_metadata="no-vector")
+        doc_store_with_docs.delete_documents(ids=[all_non_embedding_docs[0].id])
+
+        # since we deleted one doc, we expect initial_document_count + 1 documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count + 1
+
+        # and we expect initial_document_count +1 documents without embeddings as well
+        assert (
+            doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count + 1
+        )
 
     @pytest.mark.unit
     def test_get_all_labels_legacy_document_id(self, ds, monkeypatch):
@@ -539,6 +713,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         mocked_ds.write_documents([doc])
         call_args = mocked_ds.pinecone_indexes["document"].upsert.call_args.kwargs
         assert list(call_args["vectors"])[0][2] == {
+            "doc_type": "no-vector",
             "content": "test",
             "content_type": "text",
             "_split_overlap": '[{"doc_id": "test_id", "range": [0, 10]}]',

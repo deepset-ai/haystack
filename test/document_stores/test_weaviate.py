@@ -1,9 +1,9 @@
-import uuid
 import json
+import uuid
 from unittest import mock
 
-import pytest
 import numpy as np
+import pytest
 import weaviate
 
 from haystack.document_stores.weaviate import WeaviateDocumentStore
@@ -235,14 +235,14 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
     def test_similarity_existing_index(self, similarity):
         """Testing non-matching similarity"""
         # create the document_store
-        document_store = WeaviateDocumentStore(
+        WeaviateDocumentStore(
             similarity=similarity, index=f"test_similarity_existing_index_{similarity}", recreate_index=True
         )
 
         # try to connect to the same document store but using the wrong similarity
         non_matching_similarity = "l2" if similarity == "cosine" else "cosine"
         with pytest.raises(ValueError, match=r"This index already exists in Weaviate with similarity .*"):
-            document_store2 = WeaviateDocumentStore(
+            WeaviateDocumentStore(
                 similarity=non_matching_similarity,
                 index=f"test_similarity_existing_index_{similarity}",
                 recreate_index=False,
@@ -273,19 +273,28 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         secret = WeaviateDocumentStore._get_auth_secret("user", "pass", scope="some_scope")
         assert isinstance(secret, weaviate.AuthClientPassword)
 
-        # Test with client_secret
-        secret = WeaviateDocumentStore._get_auth_secret(client_secret="client_secret_value", scope="some_scope")
-        assert isinstance(secret, weaviate.AuthClientCredentials)
-
-        # Test with access_token
-        secret = WeaviateDocumentStore._get_auth_secret(
-            access_token="access_token_value", expires_in=3600, refresh_token="refresh_token_value"
-        )
-        assert isinstance(secret, weaviate.AuthBearerToken)
+        # Test with api key
+        secret = WeaviateDocumentStore._get_auth_secret(api_key="wcs_api_key")
+        assert isinstance(secret, weaviate.AuthApiKey)
 
         # Test with no authentication method
         secret = WeaviateDocumentStore._get_auth_secret()
         assert secret is None
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "embedded_options, expected_options",
+        [
+            (None, weaviate.EmbeddedOptions()),
+            (
+                {"hostname": "http://localhost", "port": "8080"},
+                weaviate.EmbeddedOptions(hostname="http://localhost", port="8080"),
+            ),
+        ],
+    )
+    def test__get_embedded_options(self, embedded_options, expected_options):
+        options = WeaviateDocumentStore._get_embedded_options(embedded_options)
+        assert options == expected_options
 
     @pytest.mark.unit
     def test__get_current_properties(self, mocked_ds):

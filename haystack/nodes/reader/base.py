@@ -91,6 +91,13 @@ class BaseReader(BaseComponent):
         return answer
 
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, add_isolated_node_eval: bool = False):  # type: ignore
+        """
+        :param query: Query string.
+        :param documents: List of Documents in which Reader looks for answers.
+        :param top_k: The maximum number of answers to return.
+        :param labels: Labels to be used for evaluation.
+        :param add_isolated_node_eval: If True, the reader will be evaluated in isolation (i.e. without a retriever).
+        """
         self.query_count += 1
         predict = self.timing(self.predict, "query_time")
         # Remove empty text documents before making predictions
@@ -150,6 +157,13 @@ class BaseReader(BaseComponent):
         labels: Optional[List[MultiLabel]] = None,
         add_isolated_node_eval: bool = False,
     ):
+        """
+        :param queries: List of query strings.
+        :param documents: List of lists of Document in which Reader looks for answers.
+        :param top_k: The maximum number of answers to return.
+        :param labels: Labels to be used for evaluation.
+        :param add_isolated_node_eval: If True, the reader will be evaluated in isolation (i.e. without a retriever).
+        """
         self.query_count += len(queries)
 
         # Remove empty documents before making predictions
@@ -198,11 +212,10 @@ class BaseReader(BaseComponent):
 
             # Add corresponding document_name and more meta data, if an answer contains the document_id
             answer_iterator = itertools.chain.from_iterable(results_label_input["answers"])
-            if isinstance(documents[0], Document):
-                if isinstance(queries, list):
-                    answer_iterator = itertools.chain.from_iterable(
-                        itertools.chain.from_iterable(results_label_input["answers"])
-                    )
+            if isinstance(documents[0], Document) and isinstance(queries, list):
+                answer_iterator = itertools.chain.from_iterable(
+                    itertools.chain.from_iterable(results_label_input["answers"])
+                )
             flattened_documents = []
             for doc_list in documents:
                 if isinstance(doc_list, list):

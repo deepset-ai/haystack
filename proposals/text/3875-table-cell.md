@@ -193,7 +193,7 @@ for 2 additional versions of Haystack.
 
 ## What's the impact of not adding this feature?
 Requiring users to figure out how to interpret the linearized answer cell coordinates to reconstruct the row and column indices
-to be able to access the answer cell in the returned tabel.
+to be able to access the answer cell in the returned table.
 
 ## Other designs
 1. Expand `Span` dataclass to have optional `col` and `row` fields. This would require a similar check as `TableCell`, but instead

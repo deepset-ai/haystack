@@ -1,83 +1,99 @@
-from typing import List, Dict, Any, Optional, Callable
-
+from typing import Any, Dict, Optional, Union, TextIO
 from pathlib import Path
+import datetime
+import logging
+import canals
 
-from canals.component import ComponentInput
-from canals.pipeline import (
-    Pipeline as CanalsPipeline,
-    PipelineError,
-    load_pipelines as load_canals_pipelines,
-    save_pipelines as save_canals_pipelines,
-)
-from canals.pipeline.sockets import find_input_sockets
+from haystack.preview.telemetry import pipeline_running
+from haystack.preview.marshal import Marshaller, YamlMarshaller
 
 
-class NoSuchStoreError(PipelineError):
-    pass
+DEFAULT_MARSHALLER = YamlMarshaller()
+logger = logging.getLogger(__name__)
 
 
-class Pipeline(CanalsPipeline):
-    """
-    Haystack Pipeline is a thin wrapper over Canals' Pipelines to add support for Stores.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.stores = {}
-
-    def add_store(self, name: str, store: object) -> None:
+class Pipeline(canals.Pipeline):
+    def __init__(
+        self,
+        metadata: Optional[Dict[str, Any]] = None,
+        max_loops_allowed: int = 100,
+        debug_path: Union[Path, str] = Path(".haystack_debug/"),
+    ):
         """
-        Make a store available to all nodes of this pipeline.
+        Creates the Pipeline.
 
-        :param name: the name of the store.
-        :param store: the store object.
-        :returns: None
+        Args:
+            metadata: arbitrary dictionary to store metadata about this pipeline. Make sure all the values contained in
+                this dictionary can be serialized and deserialized if you wish to save this pipeline to file with
+                `save_pipelines()/load_pipelines()`.
+            max_loops_allowed: how many times the pipeline can run the same node before throwing an exception.
+            debug_path: when debug is enabled in `run()`, where to save the debug data.
         """
-        self.stores[name] = store
+        self._telemetry_runs = 0
+        self._last_telemetry_sent: Optional[datetime.datetime] = None
+        super().__init__(metadata=metadata, max_loops_allowed=max_loops_allowed, debug_path=debug_path)
 
-    def list_stores(self) -> List[str]:
+    def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
         """
-        Returns a dictionary with all the stores that are attached to this Pipeline.
+        Runs the pipeline.
 
-        :returns: a dictionary with all the stores attached to this Pipeline.
+        :params data: the inputs to give to the input components of the Pipeline.
+        :params debug: whether to collect and return debug information.
+
+        :returns: A dictionary with the outputs of the output components of the Pipeline.
+
+        :raises PipelineRuntimeError: if the any of the components fail or return unexpected output.
         """
-        return list(self.stores.keys())
+        pipeline_running(self)
+        return super().run(data=data, debug=debug)
 
-    def get_store(self, name: str) -> object:
+    def dumps(self, marshaller: Marshaller = DEFAULT_MARSHALLER) -> str:
         """
-        Returns the store associated with the given name.
+        Returns the string representation of this pipeline according to the
+        format dictated by the `Marshaller` in use.
 
-        :param name: the name of the store
-        :returns: the store
+        :params marshaller: The Marshaller used to create the string representation. Defaults to
+                            `YamlMarshaller`
+
+        :returns: A string representing the pipeline.
         """
-        try:
-            return self.stores[name]
-        except KeyError as e:
-            raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
+        return marshaller.marshal(self.to_dict())
 
-    def run(self, data: Dict[str, ComponentInput], debug: bool = False):
+    def dump(self, fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER):
         """
-        Wrapper on top of Canals Pipeline.run(). Adds the `stores` parameter to all nodes.
+        Writes the string representation of this pipeline to the file-like object
+        passed in the `fp` argument.
+
+        :params fp: A file-like object ready to be written to.
+        :params marshaller: The Marshaller used to create the string representation. Defaults to
+                            `YamlMarshaller`.
         """
-        # Get all nodes in this pipelines instance
-        for node_name in self.graph.nodes:
-            # Get node inputs
-            node = self.graph.nodes[node_name]["instance"]
-            input_params = find_input_sockets(node)
+        fp.write(marshaller.marshal(self.to_dict()))
 
-            # If the node needs a store, adds the list of stores to its default inputs
-            if "stores" in input_params:
-                if not hasattr(node, "defaults"):
-                    setattr(node, "defaults", {})
-                node.defaults["stores"] = self.stores
+    @classmethod
+    def loads(cls, data: Union[str, bytes, bytearray], marshaller: Marshaller = DEFAULT_MARSHALLER) -> "Pipeline":
+        """
+        Creates a `Pipeline` object from the string representation passed in the `data` argument.
 
-        # Run the pipeline
-        super().run(data=data, debug=debug)
+        :params data: The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
+        :params marshaller: the Marshaller used to create the string representation. Defaults to
+                            `YamlMarshaller`
 
+        :returns: A `Pipeline` object.
+        """
+        return cls.from_dict(marshaller.unmarshal(data))
 
-def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):
-    return load_canals_pipelines(path=path, _reader=_reader)
+    @classmethod
+    def load(cls, fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER) -> "Pipeline":
+        """
+        Creates a `Pipeline` object from the string representation read from the file-like
+        object passed in the `fp` argument.
 
+        :params data: The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
+        :params fp: A file-like object ready to be read from.
+        :params marshaller: the Marshaller used to create the string representation. Defaults to
+                            `YamlMarshaller`
 
-def save_pipelines(pipelines: Dict[str, Pipeline], path: Path, _writer: Optional[Callable[..., Any]] = None):
-    save_canals_pipelines(pipelines=pipelines, path=path, _writer=_writer)
+        :returns: A `Pipeline` object.
+        """
+        return cls.from_dict(marshaller.unmarshal(fp.read()))

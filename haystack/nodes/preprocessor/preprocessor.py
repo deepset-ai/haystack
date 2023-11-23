@@ -9,25 +9,20 @@ import warnings
 from pathlib import Path
 from pickle import UnpicklingError
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from more_itertools import windowed
 
 from haystack.nodes.preprocessor.base import BasePreProcessor
 from haystack.errors import HaystackError
 from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
 
 
-try:
+with LazyImport("Run 'pip install farm-haystack[preprocessing]' or 'pip install nltk'") as nltk_import:
     import nltk
-except ImportError as exc:
-    logger.debug(
-        "nltk could not be imported. "
-        "Run 'pip install farm-haystack[preprocessing]' or 'pip install nltk' to fix this issue."
-    )
-    nltk = None
 
 
 iso639_to_nltk = {
@@ -103,19 +98,21 @@ class PreProcessor(BasePreProcessor):
                                 field `"page"`. Page boundaries are determined by `"\f"` character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
                                 `AzureConverter`.
-        :param max_chars_check: the maximum length a document is expected to have. Each document that is longer than max_chars_check in characters after pre-processing will raise a warning.
+        :param max_chars_check: the maximum length a document is expected to have. Each document that is longer than
+            max_chars_check in characters after pre-processing will raise a warning and is going to be split at the
+            `max_char_check`-th char, regardless of any other constraint. If the resulting documents are still too long,
+            they'll be cut again until all fragments are below the maximum allowed length.
         """
+        nltk_import.check()
         if remove_substrings is None:
             remove_substrings = []
         super().__init__()
 
         try:
-            if nltk:
-                nltk.data.find("tokenizers/punkt")
+            nltk.data.find("tokenizers/punkt")
         except LookupError:
             try:
-                if nltk:
-                    nltk.download("punkt")
+                nltk.download("punkt")
             except FileExistsError as error:
                 logger.debug("NLTK punkt tokenizer seems to be already downloaded. Error message: %s", error)
                 pass
@@ -186,7 +183,9 @@ class PreProcessor(BasePreProcessor):
 
     def _long_documents(self, documents: List[Document], max_chars_check=10_000):
         """
-        Function that tries to detect unusually long documents.
+        Function that tries to detect unusually long documents. When detected, such documents are going to be
+        split at the `max_char_check`-th char, regardless of any other constraint. If the resulting documents
+        are still too long, they'll be cut again until all fragments are below the maximum allowed length.
 
         NOTE: this function is a heuristic that is in place only because a proper fix that prevents such documents from forming
         would imply a complete revamp of this class, including better definitions of what the various units (word, sentence, passage) mean exactly.
@@ -195,11 +194,23 @@ class PreProcessor(BasePreProcessor):
             if len(document.content) > max_chars_check:
                 logger.warning(
                     "Document %s is %s characters long after preprocessing, where the maximum length should be %s. "
-                    "Something might be wrong with the splitting, check the document affected to prevent issues at query time.",
+                    "Something might be wrong with the splitting, check the document affected to prevent issues at "
+                    "query time. This document will be now hard-split at %s chars recursively.",
                     document.id,
                     len(document.content),
                     max_chars_check,
+                    max_chars_check,
                 )
+                fields = document.to_dict()
+                document.content = document.content[:max_chars_check]
+                fields.pop("id")
+                fields["content"] = fields["content"][max_chars_check:]
+                # recursively check if tail_document is still too long
+                tail_documents = self._long_documents(
+                    documents=[Document.from_dict(fields)], max_chars_check=max_chars_check
+                )
+                documents += tail_documents
+        return documents
 
     def _process_single(
         self,
@@ -250,7 +261,7 @@ class PreProcessor(BasePreProcessor):
             id_hash_keys=id_hash_keys,
         )
 
-        self._long_documents(split_documents, max_chars_check=self.max_chars_check)
+        split_documents = self._long_documents(split_documents, max_chars_check=self.max_chars_check)
 
         return split_documents
 
@@ -813,11 +824,6 @@ class PreProcessor(BasePreProcessor):
         return sentences
 
     def _load_sentence_tokenizer(self, language_name: Optional[str]) -> "nltk.tokenize.punkt.PunktSentenceTokenizer":
-        if not nltk:
-            raise ImportError(
-                "nltk could not be imported. "
-                "Run 'pip install farm-haystack[preprocessing]' or 'pip install nltk' to fix this issue."
-            )
         # Try to load a custom model from 'tokenizer_model_path'
         if self.tokenizer_model_folder is not None:
             tokenizer_model_path = Path(self.tokenizer_model_folder).absolute() / f"{self.language}.pickle"

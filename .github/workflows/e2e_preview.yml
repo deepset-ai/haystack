@@ -1,0 +1,42 @@
+# If you change this name also do it in ci_metrics.yml
+name: end-to-end (Preview)
+
+on:
+  workflow_dispatch: # Activate this workflow manually
+  schedule:
+    - cron: "0 0 * * *"
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths:
+      - "e2e/preview/**/*.py"
+      - ".github/workflows/e2e_preview.yml"
+
+env:
+  PYTHON_VERSION: "3.8"
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+jobs:
+  run:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt install ffmpeg  # for local Whisper tests
+
+    - name: Install Haystack
+      run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2'
+
+    - name: Run tests
+      run: pytest e2e/preview

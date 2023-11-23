@@ -3,17 +3,14 @@ import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
-try:
+from haystack.nodes.file_converter.base import BaseConverter
+from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install farm-haystack[file-conversion]'") as conversion_imports:
     import frontmatter
     from bs4 import BeautifulSoup, NavigableString
     from markdown import markdown
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "file-conversion", ie)
-
-from haystack.nodes.file_converter.base import BaseConverter
-from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)
@@ -42,6 +39,7 @@ class MarkdownConverter(BaseConverter):
         :param extract_headlines: Whether to extract headings from the markdown file.
         :param add_frontmatter_to_meta: Whether to add the contents of the frontmatter to `meta`.
         """
+        conversion_imports.check()
         super().__init__(
             remove_numeric_tables=remove_numeric_tables,
             valid_languages=valid_languages,
@@ -119,7 +117,7 @@ class MarkdownConverter(BaseConverter):
         return [document]
 
     @staticmethod
-    def _extract_text_and_headlines(soup: BeautifulSoup) -> Tuple[str, List[Dict]]:
+    def _extract_text_and_headlines(soup: "BeautifulSoup") -> Tuple[str, List[Dict]]:
         """
         Extracts text and headings from a soup object.
         """

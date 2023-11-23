@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import List, Optional, Tuple, Union
+import warnings
 
 from haystack import Document
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
@@ -11,6 +12,7 @@ from haystack.utils.openai_utils import (
     openai_request,
     _openai_text_completion_tokenization_details,
     _check_openai_finish_reason,
+    check_openai_policy_violation,
 )
 
 logger = logging.getLogger(__name__)
@@ -20,6 +22,10 @@ OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 
 class OpenAIAnswerGenerator(BaseGenerator):
     """
+    This component is now deprecated and will be removed in future versions.
+    Use `PromptNode` instead of `OpenAIAnswerGenerator`,
+    as explained in https://haystack.deepset.ai/tutorials/22_pipeline_with_promptnode.
+
     Uses the GPT-3 models from the OpenAI API to generate Answers based on the Documents it receives.
     The Documents can come from a Retriever or you can supply them manually.
 
@@ -45,15 +51,15 @@ class OpenAIAnswerGenerator(BaseGenerator):
         progress_bar: bool = True,
         prompt_template: Optional[PromptTemplate] = None,
         context_join_str: str = " ",
+        moderate_content: bool = False,
         api_base: str = "https://api.openai.com/v1",
+        openai_organization: Optional[str] = None,
     ):
         """
         :param api_key: Your API key from OpenAI. It is required for this node to work.
         :param azure_base_url: The base URL for the Azure OpenAI API. If not supplied, Azure OpenAI API will not be used.
-                               This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com'
-
-        :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
-                                     will not be used.
+                               This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com`.
+        :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API will not be used.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
@@ -80,27 +86,37 @@ class OpenAIAnswerGenerator(BaseGenerator):
                          format you'd like. We recommend adding 2 to 3 examples.
                          If not supplied, the default from OpenAI API docs is used:
                          `[["Q: What is human life expectancy in the United States?", "A: 78 years."]]`
-        :param stop_words: Up to four sequences where the API stops generating further tokens. The returned text does
-                           not contain the stop sequence.
-                           If you don't provide any stop words, the default value from OpenAI API docs is used: `["\n", "<|endoftext|>"]`.
+        :param stop_words: Up to four sequences where the API stops generating further tokens. The returned text does not contain the stop sequence.
+                           If you don't provide any stop words, the default value from OpenAI API docs is used: `["\\n", "<|endoftext|>"]`.
         :param prompt_template: A PromptTemplate that tells the model how to generate answers given a
              `context` and `query` supplied at runtime. The `context` is automatically constructed at runtime from a
-            list of provided documents. Use `example_context` and a list of `examples` to provide
-            the model with examples to steer it towards the tone and answer format you would like.
+            list of provided documents. Use `example_context` and a list of `examples` to provide the model with examples to steer it towards the tone and answer format you would like.
             If not supplied, the default prompt template is:
             ```python
                 PromptTemplate(
                     "Please answer the question according to the above context."
-                    "\n===\nContext: {examples_context}\n===\n{examples}\n\n"
-                    "===\nContext: {context}\n===\n{query}",
+                    "\\n===\\nContext: {examples_context}\\n===\\n{examples}\\n\\n"
+                    "===\\nContext: {context}\\n===\\n{query}",
                 )
             ```
-            To learn how variables, such as'{context}', are substituted in the prompt text, see
+            To learn how variables, such as '{context}', are substituted in the prompt text, see
             [PromptTemplate](https://docs.haystack.deepset.ai/docs/prompt_node#template-structure).
         :param context_join_str: The separation string used to join the input documents to create the context
             used by the PromptTemplate.
+        :param moderate_content: Whether to filter input and generated answers for potentially sensitive content
+            using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation). If the input or
+            answers are flagged, an empty list is returned in place of the answers.
         :param api_base: The base URL for the OpenAI API, defaults to `"https://api.openai.com/v1"`.
+        :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see see OpenAI
+        [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         """
+
+        warnings.warn(
+            "`OpenAIAnswerGenerator component is deprecated and will be removed in future versions. Use `PromptNode` "
+            "instead of `OpenAIAnswerGenerator`.",
+            category=DeprecationWarning,
+        )
+
         super().__init__(progress_bar=progress_bar)
         if (examples is None and examples_context is not None) or (examples is not None and examples_context is None):
             logger.warning(
@@ -159,6 +175,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.prompt_template = prompt_template
         self.context_join_str = context_join_str
         self.using_azure = self.azure_deployment_name is not None and self.azure_base_url is not None
+        self.moderate_content = moderate_content
+        self.openai_organization = openai_organization
 
         tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name=self.model)
 
@@ -227,10 +245,22 @@ class OpenAIAnswerGenerator(BaseGenerator):
             headers["api-key"] = self.api_key
         else:
             headers["Authorization"] = f"Bearer {self.api_key}"
+            if self.openai_organization:
+                headers["OpenAI-Organization"] = self.openai_organization
 
+        if self.moderate_content and check_openai_policy_violation(input=prompt, headers=headers):
+            logger.info("Prompt '%s' will not be sent to OpenAI due to potential policy violation.", prompt)
+            return {"query": query, "answers": []}
+
+        logger.debug("Prompt being sent to OpenAI API with prompt %s.", prompt)
         res = openai_request(url=url, headers=headers, payload=payload, timeout=timeout)
         _check_openai_finish_reason(result=res, payload=payload)
         generated_answers = [ans["text"] for ans in res["choices"]]
+        if self.moderate_content and check_openai_policy_violation(input=generated_answers, headers=headers):
+            logger.info(
+                "Generated answers '%s' will not be returned due to potential policy violation.", generated_answers
+            )
+            return {"query": query, "answers": []}
         answers = self._create_answers(generated_answers, input_docs, prompt=prompt)
         result = {"query": query, "answers": answers}
         return result

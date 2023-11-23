@@ -2,23 +2,29 @@ from typing import List, Optional, Union, Tuple, Iterator, Any
 import logging
 from pathlib import Path
 
-import torch
-from torch.nn import DataParallel
-from tqdm.auto import tqdm
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from tqdm import tqdm
 
 from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.ranker.base import BaseRanker
-from haystack.modeling.utils import initialize_device_settings
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from torch.nn import DataParallel
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class SentenceTransformersRanker(BaseRanker):
     """
     Sentence Transformer based pre-trained Cross-Encoder model for Document Re-ranking (https://huggingface.co/cross-encoder).
-    Re-Ranking can be used on top of a retriever to boost the performance for document search. This is particularly useful if the retriever has a high recall but is bad in sorting the documents by relevance.
+    Re-Ranking can be used on top of a retriever to boost the performance for document search.
+    This is particularly useful if the retriever has a high recall but is bad in sorting the documents by relevance.
 
     SentenceTransformerRanker handles Cross-Encoder models
         - use a single logit as similarity score e.g.  cross-encoder/ms-marco-MiniLM-L-12-v2
@@ -45,11 +51,12 @@ class SentenceTransformersRanker(BaseRanker):
         model_version: Optional[str] = None,
         top_k: int = 10,
         use_gpu: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         batch_size: int = 16,
         scale_score: bool = True,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
+        embed_meta_fields: Optional[List[str]] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
@@ -72,7 +79,10 @@ class SentenceTransformersRanker(BaseRanker):
                         A list containing torch device objects and/or strings is supported (For example
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
+        :param embed_meta_fields: Concatenate the provided meta fields and into the text passage that is then used in
+            reranking. The original documents are returned so the concatenated metadata is not included in the returned documents.
         """
+        torch_and_transformers_import.check()
         super().__init__()
 
         self.top_k = top_k
@@ -102,6 +112,7 @@ class SentenceTransformersRanker(BaseRanker):
             self.model = DataParallel(self.transformer_model, device_ids=self.devices)
 
         self.batch_size = batch_size
+        self.embed_meta_fields = embed_meta_fields
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
         """
@@ -117,12 +128,12 @@ class SentenceTransformersRanker(BaseRanker):
         if top_k is None:
             top_k = self.top_k
 
+        docs_with_meta_fields = self._add_meta_fields_to_docs(
+            documents=documents, embed_meta_fields=self.embed_meta_fields
+        )
+        docs = [doc.content for doc in docs_with_meta_fields]
         features = self.transformer_tokenizer(
-            [query for doc in documents],
-            [doc.content for doc in documents],
-            padding=True,
-            truncation=True,
-            return_tensors="pt",
+            [query for _ in documents], docs, padding=True, truncation=True, return_tensors="pt"
         ).to(self.devices[0])
 
         # SentenceTransformerRanker uses:
@@ -207,9 +218,12 @@ class SentenceTransformersRanker(BaseRanker):
         number_of_docs, all_queries, all_docs, single_list_of_docs = self._preprocess_batch_queries_and_docs(
             queries=queries, documents=documents
         )
+        all_docs_with_meta_fields = self._add_meta_fields_to_docs(
+            documents=all_docs, embed_meta_fields=self.embed_meta_fields
+        )
 
-        batches = self._get_batches(all_queries=all_queries, all_docs=all_docs, batch_size=batch_size)
-        pb = tqdm(total=len(all_docs), disable=not self.progress_bar, desc="Ranking")
+        batches = self._get_batches(all_queries=all_queries, all_docs=all_docs_with_meta_fields, batch_size=batch_size)
+        pb = tqdm(total=len(all_docs_with_meta_fields), disable=not self.progress_bar, desc="Ranking")
         preds = []
         for cur_queries, cur_docs in batches:
             features = self.transformer_tokenizer(
@@ -241,7 +255,6 @@ class SentenceTransformersRanker(BaseRanker):
             # Group predictions together
             grouped_predictions = []
             left_idx = 0
-            right_idx = 0
             for number in number_of_docs:
                 right_idx = left_idx + number
                 grouped_predictions.append(preds[left_idx:right_idx])

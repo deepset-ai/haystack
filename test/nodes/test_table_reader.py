@@ -6,7 +6,7 @@ import pytest
 from haystack.schema import Document, Answer, Span, TableCell
 from haystack.pipelines.base import Pipeline
 
-from haystack.nodes.reader.table import _calculate_answer_offsets_span, _calculate_answer_offsets
+from haystack.nodes.reader.table import _calculate_answer_offsets
 
 
 @pytest.fixture
@@ -38,12 +38,6 @@ def table_doc3():
         "Height": ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"],
     }
     return Document(content=pd.DataFrame(data), content_type="table", id="doc3")
-
-
-@pytest.mark.unit
-def test_calculate_answer_offsets_span(table_doc1):
-    offsets_span = _calculate_answer_offsets_span(answer_coordinates=[(0, 1), (1, 3)], table=table_doc1.content)
-    assert offsets_span == [Span(start=1, end=2), Span(start=7, end=8)]
 
 
 @pytest.mark.unit

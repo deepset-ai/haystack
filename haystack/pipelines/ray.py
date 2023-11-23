@@ -356,9 +356,8 @@ class RayPipeline(Pipeline):
             # Apply debug attributes to the node input params
             # NOTE: global debug attributes will override the value specified
             # in each node's params dictionary.
-            if debug is None and node_input:
-                if node_input.get("params", {}):
-                    debug = params.get("debug", None)  # type: ignore
+            if debug is None and node_input and node_input.get("params", {}):
+                debug = params.get("debug", None)  # type: ignore
             if debug is not None:
                 if not node_input.get("params", None):
                     node_input["params"] = {}

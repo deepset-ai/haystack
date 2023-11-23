@@ -38,7 +38,7 @@ from torch.nn import functional as F
 from transformers import AutoModelForMaskedLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
 import requests
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 
 logger = logging.getLogger(__name__)
@@ -157,7 +157,7 @@ def get_replacements(
     for i, word in enumerate(words):
         if i in word_subword_mapping:  # word was not split into subwords so we can use MLM output
             subword_index = word_subword_mapping[i]
-            ranking = predictions[batch_index]
+            ranking = predictions[batch_index]  # type: ignore [assignment]
             possible_words_ = [word]
             for token in ranking:
                 word = tokenizer.convert_ids_to_tokens([token])[0]
@@ -172,8 +172,8 @@ def get_replacements(
             glove_vector = glove_vectors[word_id]
             with torch.inference_mode():
                 word_similarities = torch.mm(glove_vectors, glove_vector.unsqueeze(1)).squeeze(1)  # type: ignore [arg-type]
-                ranking = torch.argsort(word_similarities, descending=True)[: word_possibilities + 1]
-                possible_words.append([glove_id_word_mapping[int(id_)] for id_ in ranking.cpu()])
+                ranking = torch.argsort(word_similarities, descending=True)[: word_possibilities + 1]  # type: ignore [assignment]
+                possible_words.append([glove_id_word_mapping[int(id_)] for id_ in ranking.cpu()])  # type: ignore [attr-defined]
         else:  # word was not in glove either so we can't find any replacements
             possible_words.append([word])
 

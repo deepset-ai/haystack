@@ -1,11 +1,10 @@
-from collections import defaultdict
 import logging
+from collections import defaultdict
 from math import inf
+from typing import List, Optional
 
-from typing import Optional, List
-
-from haystack.schema import Document
 from haystack.nodes.other.join import JoinNode
+from haystack.schema import Document
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +14,8 @@ class JoinDocuments(JoinNode):
     A node to join documents outputted by multiple retriever nodes.
 
     The node allows multiple join modes:
-    * concatenate: combine the documents from multiple nodes. Any duplicate documents are discarded.
-                   The score is only determined by the last node that outputs the document.
+    * concatenate: combine the documents from multiple nodes.
+                   In case of duplicate documents, the one with the highest score is kept.
     * merge: merge scores of documents from multiple nodes. Optionally, each input score can be given a different
              `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
     * reciprocal_rank_fusion: combines the documents based on their rank in multiple nodes.
@@ -64,7 +63,7 @@ class JoinDocuments(JoinNode):
         document_map = {doc.id: doc for result in results for doc in result}
 
         if self.join_mode == "concatenate":
-            scores_map = self._concatenate_results(results)
+            scores_map = self._concatenate_results(results, document_map)
         elif self.join_mode == "merge":
             scores_map = self._calculate_comb_sum(results)
         elif self.join_mode == "reciprocal_rank_fusion":
@@ -82,7 +81,7 @@ class JoinDocuments(JoinNode):
                     "score would be `-infinity`."
                 )
         else:
-            sorted_docs = [(k, v) for k, v in scores_map.items()]
+            sorted_docs = list(scores_map.items())
 
         if not top_k_join:
             top_k_join = self.top_k_join
@@ -118,11 +117,22 @@ class JoinDocuments(JoinNode):
 
             return output, "output_1"
 
-    def _concatenate_results(self, results):
+    def _concatenate_results(self, results, document_map):
         """
         Concatenates multiple document result lists.
+        Return the documents with the higher score.
         """
-        return {doc.id: doc.score for result in results for doc in result}
+        list_id = list(document_map.keys())
+        scores_map = {}
+        for idx in list_id:
+            tmp = []
+            for result in results:
+                for doc in result:
+                    if doc.id == idx:
+                        tmp.append(doc)
+            item_best_score = max(tmp, key=lambda x: x.score if x.score is not None else -inf)
+            scores_map.update({idx: item_best_score.score})
+        return scores_map
 
     def _calculate_comb_sum(self, results):
         """

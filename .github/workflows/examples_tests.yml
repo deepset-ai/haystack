@@ -7,7 +7,8 @@ on:
       - main
   pull_request:
     paths:
-      - examples/**
+      - "examples/**"
+      - "!examples/preview/**"
     types:
       - opened
       - reopened
@@ -15,8 +16,10 @@ on:
       - ready_for_review
 
 env:
-  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-  SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.8"
 
 jobs:
@@ -33,17 +36,19 @@ jobs:
           - 9200:9200
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[all,dev]
+        run: |
+          pip install --upgrade pip
+          pip install .[inference,dev,elasticsearch,preprocessing,file-conversion]
 
       - name: Run
-        run: pytest examples/
+        run: pytest examples/  --ignore examples/preview/
 
       - name: Calculate alert data
         id: calculator
