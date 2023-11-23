@@ -22,29 +22,29 @@ class MetadataRouter:
                         "edge_1": {
                             "operator": "AND",
                             "conditions": [
-                                {"field": "created_at", "operator": ">=", "value": "2023-01-01"},
-                                {"field": "created_at", "operator": "<", "value": "2023-04-01"},
+                                {"field": "meta.created_at", "operator": ">=", "value": "2023-01-01"},
+                                {"field": "meta.created_at", "operator": "<", "value": "2023-04-01"},
                             ],
                         },
                         "edge_2": {
                             "operator": "AND",
                             "conditions": [
-                                {"field": "created_at", "operator": ">=", "value": "2023-04-01"},
-                                {"field": "created_at", "operator": "<", "value": "2023-07-01"},
+                                {"field": "meta.created_at", "operator": ">=", "value": "2023-04-01"},
+                                {"field": "meta.created_at", "operator": "<", "value": "2023-07-01"},
                             ],
                         },
                         "edge_3": {
                             "operator": "AND",
                             "conditions": [
-                                {"field": "created_at", "operator": ">=", "value": "2023-07-01"},
-                                {"field": "created_at", "operator": "<", "value": "2023-10-01"},
+                                {"field": "meta.created_at", "operator": ">=", "value": "2023-07-01"},
+                                {"field": "meta.created_at", "operator": "<", "value": "2023-10-01"},
                             ],
                         },
                         "edge_4": {
                             "operator": "AND",
                             "conditions": [
-                                {"field": "created_at", "operator": ">=", "value": "2023-10-01"},
-                                {"field": "created_at", "operator": "<", "value": "2024-01-01"},
+                                {"field": "meta.created_at", "operator": ">=", "value": "2023-10-01"},
+                                {"field": "meta.created_at", "operator": "<", "value": "2024-01-01"},
                             ],
                         },
                     }

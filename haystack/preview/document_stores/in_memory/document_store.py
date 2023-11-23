@@ -128,26 +128,29 @@ class InMemoryDocumentStore:
         - `AND`
 
 
-        Example:
+        A simple filter:
+        ```python
+        filters = {"field": "meta.type", "operator": "==", "value": "article"}
+        ```
 
+        A more complex filter:
         ```python
         filters = {
             "operator": "AND",
             "conditions": [
-                {"field": "type", "operator": "==", "value": "article"},
-                {"field": "date", "operator": ">=", "value": 1420066800},
-                {"field": "date", "operator": "<", "value": 1609455600},
-                {"field": "rating", "operator": ">=", "value": 3},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+                {"field": "meta.date", "operator": ">=", "value": 1420066800},
+                {"field": "meta.date", "operator": "<", "value": 1609455600},
+                {"field": "meta.rating", "operator": ">=", "value": 3},
                 {
                     "operator": "OR",
                     "conditions": [
-                        {"field": "genre", "operator": "in", "value": ["economy", "politics"]},
-                        {"field": "publisher", "operator": "==", "value": "nytimes"},
+                        {"field": "meta.genre", "operator": "in", "value": ["economy", "politics"]},
+                        {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
                     ],
                 },
             ],
         }
-        ```
 
         :param filters: The filters to apply to the document list.
         :return: A list of Documents that match the given filters.
