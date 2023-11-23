@@ -93,7 +93,7 @@ class Pipeline(canals.Pipeline):
             pipeline_inputs, unresolved_inputs = self._prepare_pipeline_component_input_data(data)
             if unresolved_inputs:
                 logger.warning(
-                    "Inputs %s were not matched to any component inputs, please check your " "pipeline run parameters.",
+                    "Inputs %s were not matched to any component inputs, please check your run parameters.",
                     list(unresolved_inputs.keys()),
                 )
 
