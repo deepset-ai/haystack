@@ -3,7 +3,7 @@ import os
 import pytest
 import cohere
 
-from haystack.preview.components.generators.cohere.cohere import CohereGenerator
+from haystack.preview.components.generators import CohereGenerator
 
 
 def default_streaming_callback(chunk):
