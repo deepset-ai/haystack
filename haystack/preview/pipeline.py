@@ -36,16 +36,16 @@ class Pipeline(canals.Pipeline):
 
     def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
         """
-        Runs the pipeline
+        Runs the pipeline with given input data.
 
-        :param data: the inputs to give to the input components of the Pipeline. data is a dictionary
-        where each key is a component name and each value is a dictionary of input parameter of that component.
-        :param debug: whether to collect and return debug information.
-        :return: A dictionary with the outputs of the Pipeline.
-        :raises PipelineRuntimeError: if any of the components fail or return unexpected output.
+        :param data: A dictionary of inputs for the pipeline's components. Each key is a component name
+        and its value is a dictionary of that component's input parameters.
+        :param debug: Set to True to collect and return debug information.
+        :return: A dictionary containing the pipeline's output.
+        :raises PipelineRuntimeError: If a component fails or returns unexpected output.
 
-        Here is an example using a simple Hello component having an input 'word', a string, and output
-        named 'output', also a string. The component just returns the input string with a greeting, i.e:
+        Example a - Using named components:
+        Consider a 'Hello' component that takes a 'word' input and outputs a greeting.
 
         ```python
         @component
@@ -55,31 +55,28 @@ class Pipeline(canals.Pipeline):
                 return {"output": f"Hello, {word}!"}
         ```
 
-        We can create a pipeline connecting two instances of this component together, and run it like so:
+        Create a pipeline with two 'Hello' components connected together:
 
         ```python
         pipeline = Pipeline()
         pipeline.add_component("hello", Hello())
         pipeline.add_component("hello2", Hello())
-
         pipeline.connect("hello.output", "hello2.word")
         result = pipeline.run(data={"hello": {"word": "world"}})
-        assert result == {'hello2': {'output': 'Hello, Hello, world!!'}}
         ```
 
-        Notice how run method takes a data dictionary with the inputs for each component. The keys of the
-        dictionary are the component names and the values are dictionaries with the input parameters of
-        that component.
+        This runs the pipeline with the specified input for 'hello', yielding
+        {'hello2': {'output': 'Hello, Hello, world!!'}}.
 
-        We can also run the pipeline by passing the inputs directly to the run method, omitting component names,
-        as in the following example:
+        Example b - Using flat inputs:
+        You can also pass inputs directly without specifying component names:
 
         ```python
         result = pipeline.run(data={"word": "world"})
-        assert result == {"hello2": {"output": "Hello, Hello, world!!"}}
         ```
-        In this case, the pipeline will try to resolve the input parameters to the appropriate components and
-        if successful, it will run the pipeline and return the outputs.
+
+        The pipeline resolves inputs to the correct components, returning
+        {'hello2': {'output': 'Hello, Hello, world!!'}}.
         """
         # check whether the data is a nested dictionary of component inputs where each key is a component name
         # and each value is a dictionary of input parameters for that component
