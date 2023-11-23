@@ -3,7 +3,7 @@ from pathlib import Path
 
 from haystack.preview import Pipeline
 from haystack.preview.components.embedders import SentenceTransformersDocumentEmbedder
-from haystack.preview.components.file_converters import PyPDFToDocument, TextFileToDocument
+from haystack.preview.components.converters import PyPDFToDocument, TextFileToDocument
 from haystack.preview.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.preview.components.routers import FileTypeRouter, DocumentJoiner
 from haystack.preview.components.writers import DocumentWriter
@@ -54,7 +54,7 @@ def test_dense_doc_search_pipeline(tmp_path):
     query_pipeline = Pipeline()
     query_pipeline.add_component(
         instance=InMemoryEmbeddingRetriever(
-            document_store=indexing_pipeline.get_component("retriever").document_store, top_k=20
+            document_store=indexing_pipeline.get_component("writer").document_store, top_k=20
         ),
         name="retriever",
     )
@@ -74,7 +74,7 @@ def test_dense_doc_search_pipeline(tmp_path):
     # TODO Ensure there is a directory with a txt file and a pdf file
     result = indexing_pipeline.run({"file_type_router": {"sources": Path(tmp_path).iterdir()}})
 
-    filled_document_store = indexing_pipeline.get_component("retriever").document_store
+    filled_document_store = indexing_pipeline.get_component("writer").document_store
     assert result["writer"]["documents_written"] == 3
     assert filled_document_store.count_documents() == 3
 
