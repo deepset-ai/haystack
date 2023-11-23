@@ -88,7 +88,7 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
         """
         super().__init__(model_name_or_path, max_length=max_length, **kwargs)
         try:
-            session = SageMakerHFTextGenerationInvocationLayer.create_session(
+            session = self.get_aws_session(
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
                 aws_session_token=aws_session_token,

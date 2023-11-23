@@ -1453,6 +1453,8 @@ class EmbeddingRetriever(DenseRetriever):
         max_seq_len: int = 512,
         model_format: Optional[str] = None,
         pooling_strategy: str = "reduce_mean",
+        query_prompt: Optional[str] = None,
+        passage_prompt: Optional[str] = None,
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
@@ -1481,19 +1483,22 @@ class EmbeddingRetriever(DenseRetriever):
                              provided, it will be inferred automatically from the model configuration files.
                              Options:
 
-                             - ``'farm'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
-                             - ``'transformers'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
-                             - ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
-                             - ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
-                             - ``'openai'``: (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
-                             - ``'cohere'``: (will use `_CohereEmbeddingEncoder` as embedding encoder)
+        1. `farm` : (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+        2. `transformers` : (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+        3. `sentence_transformers` : (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
+        4. `retribert` : (will use `_RetribertEmbeddingEncoder` as embedding encoder)
+        5. `openai` : (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
+        6. `cohere` : (will use `_CohereEmbeddingEncoder` as embedding encoder)
+
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options:
 
-                                 - ``'cls_token'`` (sentence vector)
-                                 - ``'reduce_mean'`` (sentence vector)
-                                 - ``'reduce_max'`` (sentence vector)
-                                 - ``'per_token'`` (individual token vectors)
+        1. `cls_token` (sentence vector)
+        2. `reduce_mean` (sentence vector)
+        3. `reduce_max` (sentence vector)
+        4. `per_token` (individual token vectors)
+        :param query_prompt: Model instruction for embedding texts to be used as queries.
+        :param passage_prompt: Model instruction for embedding texts to be retrieved.
         :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
@@ -1548,6 +1553,8 @@ class EmbeddingRetriever(DenseRetriever):
         self.max_seq_len = max_seq_len
         self.pooling_strategy = pooling_strategy
         self.emb_extraction_layer = emb_extraction_layer
+        self.query_prompt = query_prompt
+        self.passage_prompt = passage_prompt
         self.top_k = top_k
         self.progress_bar = progress_bar
         self.use_auth_token = use_auth_token
@@ -1828,6 +1835,8 @@ class EmbeddingRetriever(DenseRetriever):
         if isinstance(queries, str):
             queries = [queries]
         assert isinstance(queries, list), "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
+        if self.query_prompt:
+            queries = [self.query_prompt + " " + q for q in queries]
         return self.embedding_encoder.embed_queries(queries)
 
     def embed_documents(self, documents: List[Document]) -> np.ndarray:
@@ -1838,6 +1847,9 @@ class EmbeddingRetriever(DenseRetriever):
         :return: Embeddings, one per input document, shape: (docs, embedding_dim)
         """
         documents = self._preprocess_documents(documents)
+        if self.passage_prompt:
+            for doc in documents:
+                doc.content = self.passage_prompt + " " + doc.content
         return self.embedding_encoder.embed_documents(documents)
 
     def _preprocess_documents(self, docs: List[Document]) -> List[Document]:

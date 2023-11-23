@@ -25,7 +25,7 @@ jobs:
 
       - name: Get changed files
         id: files
-        uses: tj-actions/changed-files@v39
+        uses: tj-actions/changed-files@v40
         with:
           files: |
             **/*.py
@@ -38,7 +38,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2' cohere
+        run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2' cohere
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
@@ -58,13 +58,10 @@ jobs:
 
       - name: Get changed files
         id: files
-        uses: tj-actions/changed-files@v39
+        uses: tj-actions/changed-files@v40
         with:
           files: |
-            **/*.py
-          files_ignore: |
-            test/**
-            rest_api/test/**
+            haystack/preview/**/*.py
 
       - uses: actions/setup-python@v4
         with:
@@ -72,7 +69,7 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install .[dev,preview] langdetect transformers[torch,sentencepiece]==4.32.1 'sentence-transformers>=2.2.0' pypdf openai-whisper tika 'azure-ai-formrecognizer>=3.2.0b2' cohere
+          pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2' cohere
           pip install ./haystack-linter
 
       - name: Pylint

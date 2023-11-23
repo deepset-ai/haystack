@@ -2,6 +2,11 @@
 proposal:
 - proposals/text/*
 
+# 2.x
+2.x:
+- haystack/preview/**/*
+- test/preview/**/*
+
 # Topics
 topic:tests:
 - test/**/*

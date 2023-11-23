@@ -8,38 +8,20 @@ from haystack.preview.components.samplers.top_p import TopPSampler
 
 class TestTopPSampler:
     @pytest.mark.unit
-    def test_to_dict(self):
-        component = TopPSampler()
-        data = component.to_dict()
-        assert data == {"type": "TopPSampler", "init_parameters": {"top_p": 1.0, "score_field": None}}
-
-    @pytest.mark.unit
-    def test_to_dict_with_custom_init_parameters(self):
-        component = TopPSampler(top_p=0.92)
-        data = component.to_dict()
-        assert data == {"type": "TopPSampler", "init_parameters": {"top_p": 0.92, "score_field": None}}
-
-    @pytest.mark.unit
-    def test_from_dict(self):
-        data = {"type": "TopPSampler", "init_parameters": {"top_p": 0.9, "score_field": None}}
-        component = TopPSampler.from_dict(data)
-        assert component.top_p == 0.9
-
-    @pytest.mark.unit
     def test_run_scores_from_metadata(self):
         """
         Test if the component runs correctly with scores already in the metadata.
         """
         sampler = TopPSampler(top_p=0.95, score_field="similarity_score")
         docs = [
-            Document(text="Berlin", metadata={"similarity_score": -10.6}),
-            Document(text="Belgrade", metadata={"similarity_score": -8.9}),
-            Document(text="Sarajevo", metadata={"similarity_score": -4.6}),
+            Document(content="Berlin", meta={"similarity_score": -10.6}),
+            Document(content="Belgrade", meta={"similarity_score": -8.9}),
+            Document(content="Sarajevo", meta={"similarity_score": -4.6}),
         ]
         output = sampler.run(documents=docs)
         docs = output["documents"]
         assert len(docs) == 1
-        assert docs[0].text == "Sarajevo"
+        assert docs[0].content == "Sarajevo"
 
     @pytest.mark.unit
     def test_run_scores(self):
@@ -48,9 +30,9 @@ class TestTopPSampler:
         """
         sampler = TopPSampler(top_p=0.99)
         docs = [
-            Document(text="Berlin", score=-10.6),
-            Document(text="Belgrade", score=-8.9),
-            Document(text="Sarajevo", score=-4.6),
+            Document(content="Berlin", score=-10.6),
+            Document(content="Belgrade", score=-8.9),
+            Document(content="Sarajevo", score=-4.6),
         ]
 
         random.shuffle(docs)
@@ -60,7 +42,7 @@ class TestTopPSampler:
         output = sampler.run(documents=docs)
         docs_filtered = output["documents"]
         assert len(docs_filtered) == 1
-        assert docs_filtered[0].text == "Sarajevo"
+        assert docs_filtered[0].content == "Sarajevo"
 
         assert [doc.score for doc in docs_filtered] == sorted_scores[:1]
 
@@ -71,16 +53,16 @@ class TestTopPSampler:
         """
         sampler = TopPSampler(top_p=1.0)
         docs = [
-            Document(text="Berlin", score=-10.6),
-            Document(text="Belgrade", score=-8.9),
-            Document(text="Sarajevo", score=-4.6),
+            Document(content="Berlin", score=-10.6),
+            Document(content="Belgrade", score=-8.9),
+            Document(content="Sarajevo", score=-4.6),
         ]
 
         random.shuffle(docs)
         output = sampler.run(documents=docs)
         docs_filtered = output["documents"]
         assert len(docs_filtered) == len(docs)
-        assert docs_filtered[0].text == "Sarajevo"
+        assert docs_filtered[0].content == "Sarajevo"
 
         assert [doc.score for doc in docs_filtered] == sorted([doc.score for doc in docs], reverse=True)
 
@@ -99,9 +81,9 @@ class TestTopPSampler:
         """
         sampler = TopPSampler(top_p=0.95, score_field="similarity_score")
         docs = [
-            Document(text="Berlin", score=-10.6),
-            Document(text="Belgrade", score=-8.9),
-            Document(text="Sarajevo", score=-4.6),
+            Document(content="Berlin", score=-10.6),
+            Document(content="Belgrade", score=-8.9),
+            Document(content="Sarajevo", score=-4.6),
         ]
         with pytest.raises(ComponentError, match="Score field 'similarity_score' not found"):
             sampler.run(documents=docs)

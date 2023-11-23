@@ -1,3 +1,4 @@
-from haystack.preview.components.rankers.similarity import SimilarityRanker
+from haystack.preview.components.rankers.meta_field import MetaFieldRanker
+from haystack.preview.components.rankers.transformers_similarity import TransformersSimilarityRanker
 
-__all__ = ["SimilarityRanker"]
+__all__ = ["MetaFieldRanker", "TransformersSimilarityRanker"]

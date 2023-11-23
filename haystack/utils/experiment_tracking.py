@@ -17,7 +17,7 @@ with LazyImport("Run 'pip install transformers[torch]'") as transformers_import:
     import transformers
 
 with LazyImport("Run Run 'pip install farm-haystack[metrics]'") as mlflow_import:
-    import mlflow
+    import mlflow  # pylint: disable=import-error
 
 
 logger = logging.getLogger(__name__)
@@ -236,6 +236,11 @@ def get_or_create_env_meta_data() -> Dict[str, Any]:
     from haystack.telemetry import HAYSTACK_EXECUTION_CONTEXT
 
     global env_meta_data  # pylint: disable=global-statement
+    has_mps = (
+        hasattr(torch.backends, "mps")
+        and torch.backends.mps.is_available()
+        and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
+    )
     if not env_meta_data:
         env_meta_data = {
             "os_version": platform.release(),
@@ -246,7 +251,7 @@ def get_or_create_env_meta_data() -> Dict[str, Any]:
             "transformers_version": transformers.__version__,
             "torch_version": torch.__version__,
             "torch_cuda_version": torch.version.cuda if torch.cuda.is_available() else 0,
-            "n_gpu": torch.cuda.device_count() if torch.cuda.is_available() else 0,
+            "n_gpu": torch.cuda.device_count() if torch.cuda.is_available() else 1 if has_mps else 0,
             "n_cpu": os.cpu_count(),
             "context": os.environ.get(HAYSTACK_EXECUTION_CONTEXT),
             "execution_env": _get_execution_environment(),

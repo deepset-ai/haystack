@@ -1,13 +1,13 @@
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 
-from haystack.preview import ComponentError, Document, component, default_from_dict, default_to_dict
+from haystack.preview import ComponentError, Document, component
 from haystack.preview.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
 
-with LazyImport(message="Run 'pip install torch>=1.13'") as torch_import:
+with LazyImport(message="Run 'pip install \"torch>=1.13\"'") as torch_import:
     import torch
 
 
@@ -31,7 +31,7 @@ class TopPSampler:
     output = sampler.run(documents=docs)
     docs = output["documents"]
     assert len(docs) == 1
-    assert docs[0].text == "Sarajevo"
+    assert docs[0].content == "Sarajevo"
     ```
     """
 
@@ -47,19 +47,6 @@ class TopPSampler:
 
         self.top_p = top_p
         self.score_field = score_field
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-        """
-        return default_to_dict(self, top_p=self.top_p, score_field=self.score_field)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TopPSampler":
-        """
-        Deserialize this component from a dictionary.
-        """
-        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document], top_p: Optional[float] = None):
@@ -121,7 +108,7 @@ class TopPSampler:
         :return: List of scores.
         """
         if self.score_field:
-            missing_scores_docs = [d for d in documents if self.score_field not in d.metadata]
+            missing_scores_docs = [d for d in documents if self.score_field not in d.meta]
             if missing_scores_docs:
                 missing_scores_docs_ids = [d.id for d in missing_scores_docs if d.id]
                 raise ComponentError(
@@ -129,7 +116,7 @@ class TopPSampler:
                     f"with IDs: {missing_scores_docs_ids}."
                     f"Make sure that all documents have a score field '{self.score_field}' in their metadata."
                 )
-            return [d.metadata[self.score_field] for d in documents]
+            return [d.meta[self.score_field] for d in documents]
         else:
             missing_scores_docs = [d for d in documents if d.score is None]
             if missing_scores_docs:

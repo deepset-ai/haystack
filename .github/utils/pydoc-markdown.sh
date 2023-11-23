@@ -9,3 +9,11 @@ for file in ../config/* ; do
     echo "Converting $file..."
     pydoc-markdown "$file"
 done
+# render preview markdown docs
+cd ..
+rm -rf temp-preview && mkdir temp-preview
+cd temp-preview
+for file in ../config-preview/* ; do
+    echo "Converting $file..."
+    pydoc-markdown "$file"
+done

@@ -1,15 +1,15 @@
 import json
 
 from haystack.preview import Pipeline, Document
-from haystack.preview.document_stores import MemoryDocumentStore
-from haystack.preview.components.retrievers import MemoryBM25Retriever
+from haystack.preview.document_stores import InMemoryDocumentStore
+from haystack.preview.components.retrievers import InMemoryBM25Retriever
 from haystack.preview.components.readers import ExtractiveReader
 
 
 def test_extractive_qa_pipeline(tmp_path):
     # Create the pipeline
     qa_pipeline = Pipeline()
-    qa_pipeline.add_component(instance=MemoryBM25Retriever(document_store=MemoryDocumentStore()), name="retriever")
+    qa_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
     qa_pipeline.add_component(instance=ExtractiveReader(model_name_or_path="deepset/tinyroberta-squad2"), name="reader")
     qa_pipeline.connect("retriever", "reader")
 
@@ -27,9 +27,9 @@ def test_extractive_qa_pipeline(tmp_path):
 
     # Populate the document store
     documents = [
-        Document(text="My name is Jean and I live in Paris."),
-        Document(text="My name is Mark and I live in Berlin."),
-        Document(text="My name is Giorgio and I live in Rome."),
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
     ]
     qa_pipeline.get_component("retriever").document_store.write_documents(documents)
 
@@ -64,4 +64,4 @@ def test_extractive_qa_pipeline(tmp_path):
             assert hasattr(answer, "document")
             # the answer is extracted from the correct document
             if answer.document is not None:
-                assert answer.document == doc
+                assert answer.document.id == doc.id
