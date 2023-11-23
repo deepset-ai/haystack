@@ -45,7 +45,6 @@ class TestGPTGenerator:
         assert data == {
             "type": "haystack.preview.components.generators.cohere.CohereGenerator",
             "init_parameters": {
-                "api_key": "test-api-key",
                 "model": "command",
                 "streaming_callback": None,
                 "api_base_url": cohere.COHERE_API_URL,
@@ -65,7 +64,6 @@ class TestGPTGenerator:
         assert data == {
             "type": "haystack.preview.components.generators.cohere.CohereGenerator",
             "init_parameters": {
-                "api_key": "test-api-key",
                 "model": "command-light",
                 "max_tokens": 10,
                 "some_test_param": "test-params",
@@ -95,7 +93,8 @@ class TestGPTGenerator:
             },
         }
 
-    def test_from_dict(self):
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("COHERE_API_KEY", "test-key")
         data = {
             "type": "haystack.preview.components.generators.cohere.CohereGenerator",
             "init_parameters": {
@@ -107,6 +106,7 @@ class TestGPTGenerator:
             },
         }
         component = CohereGenerator.from_dict(data)
+        assert component.api_key = "test-key"
         assert component.model == "command"
         assert component.streaming_callback == default_streaming_callback
         assert component.api_base_url == "test-base-url"

@@ -29,7 +29,7 @@ class CohereGenerator:
 
     def __init__(
         self,
-        api_key: str,
+        api_key: Optional[str] = None,
         model: str = "command",
         streaming_callback: Optional[Callable] = None,
         api_base_url: str = COHERE_API_URL,
@@ -37,7 +37,7 @@ class CohereGenerator:
     ):
         """
          Instantiates a `CohereGenerator` component.
-        :param api_key: The API key for the Cohere API.
+        :param api_key: The API key for the Cohere API. If not set, it will be read from the COHERE_API_KEY env var.
         :param model_name: The name of the model to use. Available models are: [command, command-light, command-nightly, command-nightly-light]. Defaults to "command".
         :param streaming_callback: A callback function to be called with the streaming response. Defaults to None.
         :param api_base_url: The base URL of the Cohere API. Defaults to "https://api.cohere.ai".
@@ -60,6 +60,11 @@ class CohereGenerator:
                           The format is {token_id: bias} where bias is a float between -10 and 10.
 
         """
+        if not api_key:
+            api_key = os.environ.get("COHERE_API_KEY")
+        if not api_key:
+            raise ValueError("CohereGenerator needs an API key to run. Either provide it as init parameter or set the env var COHERE_API_KEY.")
+
         self.api_key = api_key
         self.model = model
         self.streaming_callback = streaming_callback
