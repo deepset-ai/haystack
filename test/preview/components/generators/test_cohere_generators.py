@@ -87,7 +87,6 @@ class TestGPTGenerator:
         assert data == {
             "type": "haystack.preview.components.generators.cohere.CohereGenerator",
             "init_parameters": {
-                "api_key": "test-api-key",
                 "model": "command",
                 "streaming_callback": "test_cohere_generators.<lambda>",
                 "api_base_url": "test-base-url",
@@ -100,7 +99,6 @@ class TestGPTGenerator:
         data = {
             "type": "haystack.preview.components.generators.cohere.CohereGenerator",
             "init_parameters": {
-                "api_key": "test-api-key",
                 "model": "command",
                 "max_tokens": 10,
                 "some_test_param": "test-params",
@@ -109,7 +107,6 @@ class TestGPTGenerator:
             },
         }
         component = CohereGenerator.from_dict(data)
-        assert component.api_key == "test-api-key"
         assert component.model == "command"
         assert component.streaming_callback == default_streaming_callback
         assert component.api_base_url == "test-base-url"
