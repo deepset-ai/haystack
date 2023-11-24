@@ -1895,7 +1895,7 @@ class EmbeddingRetriever(DenseRetriever):
             return "openai"
         if model_name_or_path in COHERE_EMBEDDING_MODELS:
             return "cohere"
-        if model_name_or_path == "bedrock":
+        elif model_name_or_path == "bedrock":
             return "bedrock"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
