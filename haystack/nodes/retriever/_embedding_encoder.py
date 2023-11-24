@@ -508,4 +508,5 @@ _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "retribert": _RetribertEmbeddingEncoder,
     "openai": _OpenAIEmbeddingEncoder,
     "cohere": _CohereEmbeddingEncoder,
+    "bedrock": _BedrockEmbeddingEncoder,
 }
