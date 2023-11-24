@@ -451,11 +451,8 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
         input_body["inputText"] = text
         body = json.dumps(input_body)
         response = self.client.invoke_model(
-                body=body,
-                modelId=self.model,
-                accept="application/json",
-                contentType="application/json",
-            )
+            body=body, modelId=self.model, accept="application/json", contentType="application/json"
+        )
 
         response_body = json.loads(response.get("body").read())
         return np.array(response_body.get("embedding"))
@@ -486,6 +483,7 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
 
     def save(self, save_dir: Union[Path, str]):
         raise NotImplementedError(f"Saving is not implemented for {self.__class__}")
+
 
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "farm": _DefaultEmbeddingEncoder,
