@@ -343,7 +343,7 @@ def create_index(
     metric: str = "cosine",
     replicas: int = 1,
     pods: int = 1,
-    pod_type: str = "p1",
+    pod_type: str = "p1.x1",
     shards: int = 1,
     metadata_config: Optional[dict] = None,
 ):

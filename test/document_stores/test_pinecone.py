@@ -38,11 +38,15 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                 monkeypatch.setattr(f"pinecone.{fname}", function, raising=False)
             for cname, class_ in getmembers(pinecone_mock, isclass):
                 monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
+        pods = request.param.get("pods", None)
+        pod_type = request.param.get("pod_type", None)
 
         return PineconeDocumentStore(
             api_key=os.environ.get("PINECONE_API_KEY") or "fake-pinecone-test-key",
             embedding_dim=768,
             embedding_field="embedding",
+            pods=pods,
+            pod_type=pod_type,
             index="haystack_tests",
             similarity="cosine",
             recreate_index=True,
@@ -733,3 +737,23 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         }
         retrieved_docs = mocked_ds.get_all_documents()
         assert retrieved_docs[0].meta["_split_overlap"] == [{"doc_id": "test_id", "range": [0, 10]}]
+
+    @pytest.mark.parametrize("ds", [{"pods": 1, "pod_type": "p1.x1"}, {"pods": 2, "pod_type": "p2.x2"}], indirect=True)
+    @pytest.mark.integration
+    def test_document_store_properties(self, monkeypatch, ds):
+        mock_description = pinecone_mock.IndexDescription(
+            name=ds.index,
+            metric="dotproduct",
+            replicas=1,
+            dimension=768.0,
+            shards=1,
+            pods=ds.pods,
+            pod_type=ds.pod_type,
+            status={"ready": True, "state": "Ready"},
+            metadata_config=None,
+            source_collection="",
+        )
+        monkeypatch.setattr(pinecone, "describe_index", MagicMock(return_value=mock_description))
+        index_description = pinecone.describe_index(ds.index)
+        assert index_description.pods == ds.pods
+        assert index_description.pod_type == ds.pod_type
