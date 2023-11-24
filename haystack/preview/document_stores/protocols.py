@@ -55,7 +55,6 @@ class DocumentStore(Protocol):
         - Comparison
         - Logic
 
-        The outer dictionary must be of type Comparison or Logic.
         Comparison dictionaries must contain the keys:
 
         - `field`
