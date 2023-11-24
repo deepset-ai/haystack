@@ -1,5 +1,5 @@
 # If you change this name also do it in ci_metrics.yml
-name: end-to-end (Preview)
+name: end-to-end
 
 on:
   workflow_dispatch: # Activate this workflow manually
@@ -12,8 +12,8 @@ on:
       - synchronize
       - ready_for_review
     paths:
-      - "e2e/preview/**/*.py"
-      - ".github/workflows/e2e_preview.yml"
+      - "e2e/**/*.py"
+      - ".github/workflows/e2e.yml"
 
 env:
   PYTHON_VERSION: "3.8"
@@ -36,7 +36,7 @@ jobs:
         sudo apt install ffmpeg  # for local Whisper tests
 
     - name: Install Haystack
-      run: pip install .[dev,preview,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2'
+      run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2'
 
     - name: Run tests
-      run: pytest e2e/preview
+      run: pytest e2e

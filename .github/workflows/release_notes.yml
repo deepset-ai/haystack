@@ -13,7 +13,6 @@ on:
       - "**.py"
       - "pyproject.toml"
       - "!.github/**/*.py"
-      - "!rest_api/**/*.py"
 
 jobs:
   reno:
