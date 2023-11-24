@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 import math
 import warnings
+import logging
 import os
 
 from haystack.preview import component, default_to_dict, ComponentError, Document, ExtractedAnswer
@@ -11,6 +12,9 @@ with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
     from tokenizers import Encoding
     import torch
+
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -214,14 +218,38 @@ class ExtractiveReader:
         start_candidates = start_candidates.cpu()
         end_candidates = end_candidates.cpu()
 
-        start_candidates_char_indices = [
-            [encoding.token_to_chars(start)[0] for start in candidates]
+        start_candidates_tokens_to_chars = [
+            [encoding.token_to_chars(start) for start in candidates]
             for candidates, encoding in zip(start_candidates, encodings)
         ]
-        end_candidates_char_indices = [
-            [encoding.token_to_chars(end)[1] for end in candidates]
+        if missing_start_tokens := [
+            (batch, index)
+            for batch, token_to_chars in enumerate(start_candidates_tokens_to_chars)
+            for index, pair in enumerate(token_to_chars)
+            if pair is None
+        ]:
+            logger.warning("Some start tokens could not be found in the context: %s", missing_start_tokens)
+        start_candidates_char_indices = [
+            [token_to_chars[0] if token_to_chars else None for token_to_chars in candidates]
+            for candidates in start_candidates_tokens_to_chars
+        ]
+
+        end_candidates_tokens_to_chars = [
+            [encoding.token_to_chars(end) for end in candidates]
             for candidates, encoding in zip(end_candidates, encodings)
         ]
+        if missing_end_tokens := [
+            (batch, index)
+            for batch, token_to_chars in enumerate(end_candidates_tokens_to_chars)
+            for index, pair in enumerate(token_to_chars)
+            if pair is None
+        ]:
+            logger.warning("Some end tokens could not be found in the context: %s", missing_end_tokens)
+        end_candidates_char_indices = [
+            [token_to_chars[1] if token_to_chars else None for token_to_chars in candidates]
+            for candidates in end_candidates_tokens_to_chars
+        ]
+
         probabilities = candidates.values.cpu()
 
         return start_candidates_char_indices, end_candidates_char_indices, probabilities
