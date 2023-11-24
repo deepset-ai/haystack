@@ -164,7 +164,7 @@ def test_pipeline_resolution_duplicate_input_names_across_components():
     result = pipe.run(data={"what": "Haystack", "who": "world"})
     assert result == {"hello2": {"output": "Hello Hello world Haystack! Haystack!"}}
 
-    resolved, _ = pipe._prepare_pipeline_component_input_data(data={"what": "Haystack", "who": "world"})
+    resolved, _ = pipe._prepare_component_input_data(data={"what": "Haystack", "who": "world"})
 
     # why does hello2 have only one input? Because who of hello2 is inserted from hello.output
     assert resolved == {"hello": {"what": "Haystack", "who": "world"}, "hello2": {"what": "Haystack"}}

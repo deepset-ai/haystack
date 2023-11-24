@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Dict, Optional, Union, TextIO
+from typing import Any, Dict, Optional, Union, TextIO, Tuple
 from pathlib import Path
 import datetime
 import logging
@@ -87,7 +87,7 @@ class Pipeline(canals.Pipeline):
             # flat input, a dict where keys are input names and values are the corresponding values
             # we need to convert it to a nested dictionary of component inputs and then run the pipeline
             # just like in the previous case
-            pipeline_inputs, unresolved_inputs = self._prepare_pipeline_component_input_data(data)
+            pipeline_inputs, unresolved_inputs = self._prepare_component_input_data(data)
             if unresolved_inputs:
                 logger.warning(
                     "Inputs %s were not matched to any component inputs, please check your run parameters.",
@@ -161,17 +161,21 @@ class Pipeline(canals.Pipeline):
         """
         return cls.from_dict(marshaller.unmarshal(fp.read()))
 
-    def _prepare_pipeline_component_input_data(self, data: Dict[str, Any]):
+    def _prepare_component_input_data(self, data: Dict[str, Any]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:
         """
-        Prepares the input data for the pipeline components and identifies any unresolved parameters.
+        Organizes input data for pipeline components and identifies any inputs that are not matched to any
+        component's input slots.
 
-        This method organizes the inputs for each component in the pipeline based on the provided
-        data arguments. It also keeps track of any inputs that do not correspond to input slots of
-        any component.
+        This method processes a flat dictionary of input data, where each key-value pair represents an input name
+        and its corresponding value. It distributes these inputs to the appropriate pipeline components based on
+        their input requirements. Inputs that don't match any component's input slots are classified as unresolved.
 
-        :param data: flat dict of inputs where the keys are the input names and the values are the input values.
-        :return: A tuple containing the organized input data for the pipeline components (as a dictionary) and
-                 a dictionary of any unresolved keyword arguments.
+        :param data: A dictionary with input names as keys and input values as values.
+        :type data: Dict[str, Any]
+        :return: A tuple containing two elements:
+             1. A dictionary mapping component names to their respective matched inputs.
+             2. A dictionary of inputs that were not matched to any component, termed as unresolved keyword arguments.
+        :rtype: Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]
         """
         pipeline_input_data: Dict[str, Dict[str, Any]] = defaultdict(dict)
         unresolved_kwargs = {}
