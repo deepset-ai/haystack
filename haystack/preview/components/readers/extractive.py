@@ -16,8 +16,10 @@ with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_
 @component
 class ExtractiveReader:
     """
-    A component that locates and extract answers to a given query from Documents. It's used for performing extractive QA.
-    The Reader assigns a probability score to every possible answer span independently of other answer spans. This fixes a common issue of other implementations which make comparisons across documents harder by normalizing each document's answers independently.
+    A component that locates and extract answers to a given query from Documents. It's used for performing extractive
+    QA. The Reader assigns a probability score to every possible answer span independently of other answer spans.
+    This fixes a common issue of other implementations which make comparisons across documents harder by normalizing
+    each document's answers independently.
 
     Example usage:
     ```python
@@ -69,7 +71,8 @@ class ExtractiveReader:
         :param no_answer: Whether to return no answer scores.
         :param calibration_factor: Factor used for calibrating probability scores.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
-            when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass, see the model's documentation.
+            when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
+            see the model's documentation.
         """
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model_name_or_path)
@@ -113,6 +116,9 @@ class ExtractiveReader:
         )
 
     def warm_up(self):
+        """
+        Loads model and tokenizer
+        """
         if self.model is None:
             if torch.cuda.is_available():
                 self.device = self.device or "cuda:0"
@@ -152,7 +158,8 @@ class ExtractiveReader:
         for i, doc in enumerate(documents):
             if doc.content is None:
                 warnings.warn(
-                    f"Document with id {doc.id} was passed to ExtractiveReader. The Document doesn't contain any text and it will be ignored."
+                    f"Document with id {doc.id} was passed to ExtractiveReader. The Document doesn't "
+                    f"contain any text and it will be ignored."
                 )
                 continue
             texts.append(doc.content)
@@ -191,7 +198,9 @@ class ExtractiveReader:
         encodings: List[Encoding],
     ) -> Tuple[List[List[int]], List[List[int]], torch.Tensor]:
         """
-        Turn start and end logits into probability scores for each answer span. Unlike most other implementations, it doesn't normalize the scores to make them easier to compare across different splits. Returns the top k answer spans.
+        Turn start and end logits into probability scores for each answer span. Unlike most other
+        implementations, it doesn't normalize the scores to make them easier to compare across different
+        splits. Returns the top k answer spans.
         """
         mask = sequence_ids == 1
         mask = torch.logical_and(mask, attention_mask == 1)
@@ -241,7 +250,10 @@ class ExtractiveReader:
         no_answer: bool,
     ) -> List[List[ExtractedAnswer]]:
         """
-        Reconstructs the nested structure that existed before flattening. Also computes a no answer probability. This probability is different from most other implementations because it does not consider the no answer logit introduced with SQuAD 2. Instead, it just computes the probability that the answer does not exist in the top k or top p.
+        Reconstructs the nested structure that existed before flattening. Also computes a no answer probability.
+        This probability is different from most other implementations because it does not consider the no answer
+        logit introduced with SQuAD 2. Instead, it just computes the probability that the answer does not exist
+        in the top k or top p.
         """
         flat_answers_without_queries = []
         for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
@@ -249,7 +261,18 @@ class ExtractiveReader:
         ):
             for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_):
                 doc = flattened_documents[document_id]
-                flat_answers_without_queries.append({"data": doc.content[start_:end_], "document": doc, "probability": probability.item(), "start": start_, "end": end_, "metadata": {}})  # type: ignore # doc.content cannot be None, because those documents are filtered when preprocessing. However, mypy doesn't know that.
+                # doc.content cannot be None, because those documents are filtered when preprocessing.
+                # However, mypy doesn't know that.
+                flat_answers_without_queries.append(
+                    {
+                        "data": doc.content[start_:end_],  # type: ignore
+                        "document": doc,
+                        "probability": probability.item(),
+                        "start": start_,
+                        "end": end_,
+                        "metadata": {},
+                    }
+                )
         i = 0
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):
