@@ -153,7 +153,7 @@ document_matches_filter_data = [
     pytest.param(
         {"field": "meta.page", "operator": ">", "value": None},
         Document(meta={"page": 10}),
-        True,
+        False,
         id="> operator with None filter value",
     ),
     pytest.param(
@@ -214,13 +214,13 @@ document_matches_filter_data = [
     pytest.param(
         {"field": "meta.page", "operator": ">=", "value": None},
         Document(meta={"page": 10}),
-        True,
+        False,
         id=">= operator with None filter value",
     ),
     pytest.param(
         {"field": "meta.page", "operator": ">=", "value": None},
         Document(meta={"page": None}),
-        True,
+        False,
         id=">= operator with None Document and filter value",
     ),
     # < operator params
@@ -263,13 +263,13 @@ document_matches_filter_data = [
     pytest.param(
         {"field": "meta.page", "operator": "<", "value": 10},
         Document(),
-        True,
+        False,
         id="< operator with missing Document value",
     ),
     pytest.param(
         {"field": "meta.page", "operator": "<", "value": 10},
         Document(meta={"page": None}),
-        True,
+        False,
         id="< operator with None Document value",
     ),
     pytest.param(
@@ -324,13 +324,13 @@ document_matches_filter_data = [
     pytest.param(
         {"field": "meta.page", "operator": "<=", "value": 10},
         Document(),
-        True,
+        False,
         id="<= operator with missing Document value",
     ),
     pytest.param(
         {"field": "meta.page", "operator": "<=", "value": 10},
         Document(meta={"page": None}),
-        True,
+        False,
         id="<= operator with None Document value",
     ),
     pytest.param(
@@ -342,7 +342,7 @@ document_matches_filter_data = [
     pytest.param(
         {"field": "meta.page", "operator": "<=", "value": None},
         Document(meta={"page": None}),
-        True,
+        False,
         id="<= operator with None Document and filter value",
     ),
     # in operator params
@@ -521,9 +521,17 @@ document_matches_filter_raises_error_data = [
     ),
     # in operator params
     pytest.param({"field": "meta.page", "operator": "in", "value": 1}, id="in operator with non list filter value"),
+    # at some point we might want to support any iterable and this test should fail
+    pytest.param(
+        {"field": "meta.page", "operator": "in", "value": (10, 11)}, id="in operator with non list filter value"
+    ),
     # not in operator params
     pytest.param(
         {"field": "meta.page", "operator": "not in", "value": 1}, id="not in operator with non list filter value"
+    ),
+    # at some point we might want to support any iterable and this test should fail
+    pytest.param(
+        {"field": "meta.page", "operator": "not in", "value": (10, 11)}, id="not in operator with non list filter value"
     ),
     # Malformed filters
     pytest.param(

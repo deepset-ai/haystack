@@ -48,12 +48,10 @@ def _not_equal(document_value: Any, filter_value: Any) -> bool:
 
 
 def _greater_than(document_value: Any, filter_value: Any) -> bool:
-    if document_value is None and filter_value is not None:
+    if document_value is None or filter_value is None:
+        # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
-    if document_value is not None and filter_value is None:
-        return True
-    if document_value is None and filter_value is None:
-        return False
+
     if isinstance(document_value, str) or isinstance(filter_value, str):
         try:
             document_value = datetime.fromisoformat(document_value)
@@ -71,16 +69,28 @@ def _greater_than(document_value: Any, filter_value: Any) -> bool:
 
 
 def _greater_than_equal(document_value: Any, filter_value: Any) -> bool:
+    if document_value is None or filter_value is None:
+        # We can't compare None values reliably using operators '>', '>=', '<', '<='
+        return False
+
     return _equal(document_value=document_value, filter_value=filter_value) or _greater_than(
         document_value=document_value, filter_value=filter_value
     )
 
 
 def _less_than(document_value: Any, filter_value: Any) -> bool:
+    if document_value is None or filter_value is None:
+        # We can't compare None values reliably using operators '>', '>=', '<', '<='
+        return False
+
     return not _greater_than_equal(document_value=document_value, filter_value=filter_value)
 
 
 def _less_than_equal(document_value: Any, filter_value: Any) -> bool:
+    if document_value is None or filter_value is None:
+        # We can't compare None values reliably using operators '>', '>=', '<', '<='
+        return False
+
     return not _greater_than(document_value=document_value, filter_value=filter_value)
 
 
