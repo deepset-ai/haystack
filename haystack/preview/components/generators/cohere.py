@@ -7,9 +7,12 @@ from haystack.preview.lazy_imports import LazyImport
 from haystack.preview import DeserializationError, component, default_from_dict, default_to_dict
 
 with LazyImport(message="Run 'pip install cohere'") as cohere_import:
-    from cohere import Client, COHERE_API_URL
+    from cohere import Client
 
 logger = logging.getLogger(__name__)
+
+
+COHERE_API_URL = "https://api.cohere.ai"
 
 
 @component
