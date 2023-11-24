@@ -462,7 +462,7 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
             except Exception as e:
                 raise ValueError(f"AWS client error {e}")
         else:
-            raise ValueError(f"Please pass boto3.client(bedrock-runtime) credentials configuration")
+            raise ValueError("Please pass boto3.client(bedrock-runtime) credentials configuration")
 
     def embed(self, text: str) -> np.ndarray:
         input_body = {}
