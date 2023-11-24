@@ -4,7 +4,6 @@ on:
   pull_request_target:
     paths:
       - "haystack/**/*.py"
-      - "rest_api/**/*.py"
 
 jobs:
   label:

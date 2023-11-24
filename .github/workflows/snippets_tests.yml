@@ -7,7 +7,7 @@ on:
       - main
   pull_request:
     paths:
-      - examples/preview/**
+      - examples/**
     types:
       - opened
       - reopened
@@ -33,14 +33,14 @@ jobs:
       - name: Install snippets dependencies
         run: |
           pip install --upgrade pip
-          pip install ".[preview]" torch
+          pip install "." torch
 
       - name: Get changed files
         id: files
         uses: tj-actions/changed-files@v40
         with:
           files: |
-            examples/preview/**.py
+            examples/**.py
 
       - name: Run each snippet
         run: |
