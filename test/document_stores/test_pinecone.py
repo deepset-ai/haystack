@@ -38,8 +38,9 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                 monkeypatch.setattr(f"pinecone.{fname}", function, raising=False)
             for cname, class_ in getmembers(pinecone_mock, isclass):
                 monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
-        pods = request.param.get("pods", None)
-        pod_type = request.param.get("pod_type", None)
+        params = getattr(request, "param", {})
+        pods = params.get("pods", None)
+        pod_type = params.get("pod_type", None)
 
         return PineconeDocumentStore(
             api_key=os.environ.get("PINECONE_API_KEY") or "fake-pinecone-test-key",
