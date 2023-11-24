@@ -5,7 +5,7 @@ requires = [
 build-backend = "hatchling.build"
 
 [project]
-name = "farm-haystack"
+name = "haystack-ai"
 dynamic = [
   "version",
 ]
