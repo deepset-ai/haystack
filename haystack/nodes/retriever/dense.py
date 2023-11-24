@@ -1468,7 +1468,7 @@ class EmbeddingRetriever(DenseRetriever):
         azure_deployment_name: Optional[str] = None,
         api_base: str = "https://api.openai.com/v1",
         openai_organization: Optional[str] = None,
-        aws_config: Optional[Dict[str, Any]]= None,
+        aws_config: Optional[Dict[str, Any]] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
