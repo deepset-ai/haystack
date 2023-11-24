@@ -22,7 +22,7 @@ jobs:
       - name: Publish on PyPi
         env:
           HATCH_INDEX_USER: __token__
-          HATCH_INDEX_AUTH: ${{ secrets.PYPI_API_TOKEN }}
+          HATCH_INDEX_AUTH: ${{ secrets.HAYSTACK_AI_PYPI_TOKEN }}
         run: hatch publish -y
 
       - name: Notify Slack
