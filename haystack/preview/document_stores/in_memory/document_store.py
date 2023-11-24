@@ -11,7 +11,7 @@ from haystack.preview import default_from_dict, default_to_dict
 from haystack.preview.document_stores.decorator import document_store
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.protocols import DuplicatePolicy
-from haystack.preview.utils.filters import document_matches_filter
+from haystack.preview.utils.filters import document_matches_filter, convert
 from haystack.preview.document_stores.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.preview.utils import expit
 
@@ -92,75 +92,15 @@ class InMemoryDocumentStore:
         """
         Returns the documents that match the filters provided.
 
-        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical operator (`"$and"`,
-        `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `$ne`, `"$in"`, `$nin`, `"$gt"`, `"$gte"`, `"$lt"`,
-        `"$lte"`) or a metadata field name.
-
-        Logical operator keys take a dictionary of metadata field names and/or logical operators as value. Metadata
-        field names take a dictionary of comparison operators as value. Comparison operator keys take a single value or
-        (in case of `"$in"`) a list of values as value. If no logical operator is provided, `"$and"` is used as default
-        operation. If no comparison operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used
-        as default operation.
-
-        Example:
-
-        ```python
-        filters = {
-            "$and": {
-                "type": {"$eq": "article"},
-                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                "rating": {"$gte": 3},
-                "$or": {
-                    "genre": {"$in": ["economy", "politics"]},
-                    "publisher": {"$eq": "nytimes"}
-                }
-            }
-        }
-        # or simpler using default operators
-        filters = {
-            "type": "article",
-            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-            "rating": {"$gte": 3},
-            "$or": {
-                "genre": ["economy", "politics"],
-                "publisher": "nytimes"
-            }
-        }
-        ```
-
-        To use the same logical operator multiple times on the same level, logical operators can take a list of
-        dictionaries as value.
-
-        Example:
-
-        ```python
-        filters = {
-            "$or": [
-                {
-                    "$and": {
-                        "Type": "News Paper",
-                        "Date": {
-                            "$lt": "2019-01-01"
-                        }
-                    }
-                },
-                {
-                    "$and": {
-                        "Type": "Blog Post",
-                        "Date": {
-                            "$gte": "2019-01-01"
-                        }
-                    }
-                }
-            ]
-        }
-        ```
+        For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol documentation.
 
         :param filters: The filters to apply to the document list.
         :return: A list of Documents that match the given filters.
         """
         if filters:
-            return [doc for doc in self.storage.values() if document_matches_filter(conditions=filters, document=doc)]
+            if "operator" not in filters:
+                filters = convert(filters)
+            return [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
         return list(self.storage.values())
 
     def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int:
@@ -220,9 +160,17 @@ class InMemoryDocumentStore:
         if not query:
             raise ValueError("Query should be a non-empty string")
 
-        content_type_filter = {"$or": {"content": {"$not": None}, "dataframe": {"$not": None}}}
+        content_type_filter = {
+            "operator": "OR",
+            "conditions": [
+                {"field": "content", "operator": "!=", "value": None},
+                {"field": "dataframe", "operator": "!=", "value": None},
+            ],
+        }
         if filters:
-            filters = {"$and": [content_type_filter, filters]}
+            if "operator" not in filters:
+                filters = convert(filters)
+            filters = {"operator": "AND", "conditions": [content_type_filter, filters]}
         else:
             filters = content_type_filter
         all_documents = self.filter_documents(filters=filters)

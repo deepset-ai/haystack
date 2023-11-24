@@ -51,69 +51,64 @@ class DocumentStore(Protocol):
         """
         Returns the documents that match the filters provided.
 
-        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical operator (`"$and"`,
-        `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `$ne`, `"$in"`, `$nin`, `"$gt"`, `"$gte"`, `"$lt"`,
-        `"$lte"`) or a metadata field name.
+        Filters are defined as nested dictionaries that can be of two types:
+        - Comparison
+        - Logic
 
-        Logical operator keys take a dictionary of metadata field names and/or logical operators as value. Metadata
-        field names take a dictionary of comparison operators as value. Comparison operator keys take a single value or
-        (in case of `"$in"`) a list of values as value. If no logical operator is provided, `"$and"` is used as default
-        operation. If no comparison operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used
-        as default operation.
+        Comparison dictionaries must contain the keys:
 
-        Example:
+        - `field`
+        - `operator`
+        - `value`
 
+        Logic dictionaries must contain the keys:
+
+        - `operator`
+        - `conditions`
+
+        The `conditions` key must be a list of dictionaries, either of type Comparison or Logic.
+
+        The `operator` value in Comparison dictionaries must be one of:
+
+        - `==`
+        - `!=`
+        - `>`
+        - `>=`
+        - `<`
+        - `<=`
+        - `in`
+        - `not in`
+
+        The `operator` values in Logic dictionaries must be one of:
+
+        - `NOT`
+        - `OR`
+        - `AND`
+
+
+        A simple filter:
         ```python
-        filters = {
-            "$and": {
-                "type": {"$eq": "article"},
-                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                "rating": {"$gte": 3},
-                "$or": {
-                    "genre": {"$in": ["economy", "politics"]},
-                    "publisher": {"$eq": "nytimes"}
-                }
-            }
-        }
-        # or simpler using default operators
-        filters = {
-            "type": "article",
-            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-            "rating": {"$gte": 3},
-            "$or": {
-                "genre": ["economy", "politics"],
-                "publisher": "nytimes"
-            }
-        }
+        filters = {"field": "meta.type", "operator": "==", "value": "article"}
         ```
 
-        To use the same logical operator multiple times on the same level, logical operators can take a list of
-        dictionaries as value.
-
-        Example:
-
+        A more complex filter:
         ```python
         filters = {
-            "$or": [
+            "operator": "AND",
+            "conditions": [
+                {"field": "meta.type", "operator": "==", "value": "article"},
+                {"field": "meta.date", "operator": ">=", "value": 1420066800},
+                {"field": "meta.date", "operator": "<", "value": 1609455600},
+                {"field": "meta.rating", "operator": ">=", "value": 3},
                 {
-                    "$and": {
-                        "Type": "News Paper",
-                        "Date": {
-                            "$lt": "2019-01-01"
-                        }
-                    }
+                    "operator": "OR",
+                    "conditions": [
+                        {"field": "meta.genre", "operator": "in", "value": ["economy", "politics"]},
+                        {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
+                    ],
                 },
-                {
-                    "$and": {
-                        "Type": "Blog Post",
-                        "Date": {
-                            "$gte": "2019-01-01"
-                        }
-                    }
-                }
-            ]
+            ],
         }
-        ```
 
         :param filters: the filters to apply to the document list.
         :return: a list of Documents that match the given filters.

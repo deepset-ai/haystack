@@ -1,7 +1,7 @@
 from typing import Dict, List
 
 from haystack.preview import component, Document
-from haystack.preview.utils.filters import document_matches_filter
+from haystack.preview.utils.filters import document_matches_filter, convert
 
 
 @component
@@ -19,12 +19,36 @@ class MetadataRouter:
                       follow the format of filtering expressions in Haystack. For example:
                       ```python
                       {
-                            "edge_1": {"created_at": {"$gte": "2023-01-01", "$lt": "2023-04-01"}},
-                            "edge_2": {"created_at": {"$gte": "2023-04-01", "$lt": "2023-07-01"}},
-                            "edge_3": {"created_at": {"$gte": "2023-07-01", "$lt": "2023-10-01"}},
-                            "edge_4": {"created_at": {"$gte": "2023-10-01", "$lt": "2024-01-01"}},
-                      }
-                      ```
+                        "edge_1": {
+                            "operator": "AND",
+                            "conditions": [
+                                {"field": "meta.created_at", "operator": ">=", "value": "2023-01-01"},
+                                {"field": "meta.created_at", "operator": "<", "value": "2023-04-01"},
+                            ],
+                        },
+                        "edge_2": {
+                            "operator": "AND",
+                            "conditions": [
+                                {"field": "meta.created_at", "operator": ">=", "value": "2023-04-01"},
+                                {"field": "meta.created_at", "operator": "<", "value": "2023-07-01"},
+                            ],
+                        },
+                        "edge_3": {
+                            "operator": "AND",
+                            "conditions": [
+                                {"field": "meta.created_at", "operator": ">=", "value": "2023-07-01"},
+                                {"field": "meta.created_at", "operator": "<", "value": "2023-10-01"},
+                            ],
+                        },
+                        "edge_4": {
+                            "operator": "AND",
+                            "conditions": [
+                                {"field": "meta.created_at", "operator": ">=", "value": "2023-10-01"},
+                                {"field": "meta.created_at", "operator": "<", "value": "2024-01-01"},
+                            ],
+                        },
+                    }
+                    ```
         """
         self.rules = rules
         component.set_output_types(self, unmatched=List[Document], **{edge: List[Document] for edge in rules})
@@ -43,6 +67,9 @@ class MetadataRouter:
         for document in documents:
             cur_document_matched = False
             for edge, rule in self.rules.items():
+                if "operator" not in rule:
+                    # Must be a legacy filter, convert it
+                    rule = convert(rule)
                 if document_matches_filter(rule, document):
                     output[edge].append(document)
                     cur_document_matched = True

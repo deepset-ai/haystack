@@ -18,7 +18,7 @@ def test_preprocessing_pipeline(tmp_path):
     preprocessing_pipeline.add_component(instance=TextFileToDocument(), name="text_file_converter")
     preprocessing_pipeline.add_component(instance=DocumentLanguageClassifier(), name="language_classifier")
     preprocessing_pipeline.add_component(
-        instance=MetadataRouter(rules={"en": {"language": {"$eq": "en"}}}), name="router"
+        instance=MetadataRouter(rules={"en": {"field": "language", "operator": "==", "value": "en"}}), name="router"
     )
     preprocessing_pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
     preprocessing_pipeline.add_component(
