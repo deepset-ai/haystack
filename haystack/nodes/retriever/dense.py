@@ -1468,6 +1468,7 @@ class EmbeddingRetriever(DenseRetriever):
         azure_deployment_name: Optional[str] = None,
         api_base: str = "https://api.openai.com/v1",
         openai_organization: Optional[str] = None,
+        aws_config: Optional[Dict[str, Any]]= None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1532,6 +1533,7 @@ class EmbeddingRetriever(DenseRetriever):
                                      will not be used.
         :param api_base: The OpenAI API base URL, defaults to `"https://api.openai.com/v1"`.
         :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see OpenAI
+        :param aws_config: The aws_config contains {aws_access_key, aws_secret_key, aws_region } to use with the boto3 client for an AWS Bedrock retriever. Defaults to 'None'.
         [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         """
         torch_and_transformers_import.check()
@@ -1565,6 +1567,7 @@ class EmbeddingRetriever(DenseRetriever):
         self.azure_base_url = azure_base_url
         self.azure_deployment_name = azure_deployment_name
         self.openai_organization = openai_organization
+        self.aws_config = aws_config
         self.model_format = (
             self._infer_model_format(model_name_or_path=embedding_model, use_auth_token=use_auth_token)
             if model_format is None

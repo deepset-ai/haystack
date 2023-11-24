@@ -444,7 +444,23 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
         # The maximum input text is 8K tokens and the maximum output vector length is 1536
         # Bedrock embeddings do not support batch operations
         self.model: str = "amazon.titan-embed-text-v1"
-        self.client = retriever.client
+        self.aws_config = retriever.aws_config
+        self.client = self.initialize_boto3_client()
+
+    def initialize_boto3_client(self):
+        if self.aws_config:
+            access_key_id = self.aws_config.get("aws_access_key_id")
+            secret_access_key = self.aws_config.get("aws_secret_access_key")
+            region = self.aws_config.get("region")
+            try:
+                return boto3.client(
+                    'bedrock-runtime',
+                    aws_access_key_id=access_key_id,
+                    aws_secret_access_key=secret_access_key,
+                    region_name=region
+                )
+            except Exception as e:
+                raise ValueError(f"AWS client error {e}")
 
     def embed(self, text: str) -> np.ndarray:
         input_body = {}
