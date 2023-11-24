@@ -2,8 +2,8 @@ import logging
 
 import pytest
 
-from haystack.preview import GeneratedAnswer, Document
-from haystack.preview.components.builders.answer_builder import AnswerBuilder
+from haystack import GeneratedAnswer, Document
+from haystack.components.builders.answer_builder import AnswerBuilder
 
 
 class TestAnswerBuilder:

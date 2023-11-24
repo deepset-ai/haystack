@@ -1,8 +1,8 @@
 import logging
 from typing import List, Dict, Optional
 
-from haystack.preview import component
-from haystack.preview.lazy_imports import LazyImport
+from haystack import component
+from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 

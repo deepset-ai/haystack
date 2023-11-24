@@ -2,12 +2,12 @@ import datetime
 from unittest.mock import Mock, patch
 import pytest
 
-from haystack.preview import Pipeline, component
-from haystack.preview.telemetry._telemetry import pipeline_running
+from haystack import Pipeline, component
+from haystack.telemetry._telemetry import pipeline_running
 
 
 @pytest.mark.unit
-@patch("haystack.preview.telemetry._telemetry.telemetry")
+@patch("haystack.telemetry._telemetry.telemetry")
 def test_pipeline_running(telemetry):
     telemetry.send_event = Mock()
 
@@ -30,7 +30,7 @@ def test_pipeline_running(telemetry):
         {
             "pipeline_id": str(id(pipe)),
             "runs": 1,
-            "components": {"test_telemetry.Component": [{"name": "component", "key": "values"}]},
+            "components": {"test.test_telemetry.Component": [{"name": "component", "key": "values"}]},
         },
     )
 
@@ -49,6 +49,6 @@ def test_pipeline_running(telemetry):
         {
             "pipeline_id": str(id(pipe)),
             "runs": 3,
-            "components": {"test_telemetry.Component": [{"name": "component", "key": "values"}]},
+            "components": {"test.test_telemetry.Component": [{"name": "component", "key": "values"}]},
         },
     )

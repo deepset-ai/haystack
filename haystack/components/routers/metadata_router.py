@@ -1,7 +1,7 @@
 from typing import Dict, List
 
-from haystack.preview import component, Document
-from haystack.preview.utils.filters import document_matches_filter, convert
+from haystack import component, Document
+from haystack.utils.filters import document_matches_filter, convert
 
 
 @component

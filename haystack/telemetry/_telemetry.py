@@ -8,10 +8,10 @@ import uuid
 import yaml
 import posthog
 
-from haystack.preview.telemetry._environment import collect_system_specs
+from haystack.telemetry._environment import collect_system_specs
 
 if TYPE_CHECKING:
-    from haystack.preview.pipeline import Pipeline
+    from haystack.pipeline import Pipeline
 
 
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"

@@ -4,9 +4,9 @@ from typing import Any, Dict, List, Optional, Union
 
 from tqdm import tqdm
 
-from haystack.preview import Document, component
-from haystack.preview.dataclasses import ByteStream
-from haystack.preview.lazy_imports import LazyImport
+from haystack import Document, component
+from haystack.dataclasses import ByteStream
+from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install markdown-it-py mdit_plain'") as markdown_conversion_imports:
     from markdown_it import MarkdownIt
@@ -23,7 +23,7 @@ class MarkdownToDocument:
 
     Usage example:
     ```python
-    from haystack.preview.components.converters.markdown import MarkdownToDocument
+    from haystack.components.converters.markdown import MarkdownToDocument
 
     converter = MarkdownToDocument()
     results = converter.run(sources=["sample.md"])

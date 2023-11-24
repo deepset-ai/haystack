@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.preview.dataclasses import ChatMessage
+from haystack.dataclasses import ChatMessage
 
 
 @pytest.fixture

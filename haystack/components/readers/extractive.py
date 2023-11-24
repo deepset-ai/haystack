@@ -5,8 +5,8 @@ import warnings
 import logging
 import os
 
-from haystack.preview import component, default_to_dict, ComponentError, Document, ExtractedAnswer
-from haystack.preview.lazy_imports import LazyImport
+from haystack import component, default_to_dict, ComponentError, Document, ExtractedAnswer
+from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer

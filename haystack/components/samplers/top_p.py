@@ -1,8 +1,8 @@
 import logging
 from typing import List, Optional
 
-from haystack.preview import ComponentError, Document, component
-from haystack.preview.lazy_imports import LazyImport
+from haystack import ComponentError, Document, component
+from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +19,8 @@ class TopPSampler:
     Usage example:
 
     ```python
-    from haystack.preview import Document
-    from haystack.preview.components.samplers import TopPSampler
+    from haystack import Document
+    from haystack.components.samplers import TopPSampler
 
     sampler = TopPSampler(top_p=0.95)
     docs = [

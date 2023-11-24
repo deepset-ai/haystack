@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
 
-from haystack.preview import ComponentError, Document, component, default_to_dict
-from haystack.preview.lazy_imports import LazyImport
+from haystack import ComponentError, Document, component, default_to_dict
+from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,8 @@ class TransformersSimilarityRanker:
 
     Usage example:
     ```
-    from haystack.preview import Document
-    from haystack.preview.components.rankers import TransformersSimilarityRanker
+    from haystack import Document
+    from haystack.components.rankers import TransformersSimilarityRanker
 
     ranker = TransformersSimilarityRanker()
     docs = [Document(content="Paris"), Document(content="Berlin")]

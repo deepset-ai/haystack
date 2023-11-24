@@ -1,8 +1,8 @@
 from typing import Any, Dict, Optional, Tuple, Type, List, Union
 
-from haystack.preview import default_to_dict, default_from_dict
-from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores import document_store, DocumentStore, DuplicatePolicy
+from haystack import default_to_dict, default_from_dict
+from haystack.dataclasses import Document
+from haystack.document_stores import document_store, DocumentStore, DuplicatePolicy
 
 
 def document_store_class(

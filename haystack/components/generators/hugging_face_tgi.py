@@ -3,11 +3,11 @@ from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Iterable, Callable
 from urllib.parse import urlparse
 
-from haystack.preview import component, default_to_dict, default_from_dict
-from haystack.preview.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
-from haystack.preview.dataclasses import StreamingChunk
-from haystack.preview.components.generators.hf_utils import check_generation_params, check_valid_model
-from haystack.preview.lazy_imports import LazyImport
+from haystack import component, default_to_dict, default_from_dict
+from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
+from haystack.dataclasses import StreamingChunk
+from haystack.components.generators.hf_utils import check_generation_params, check_valid_model
+from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
@@ -28,7 +28,7 @@ class HuggingFaceTGIGenerator:
     Inference API tier:
 
     ```python
-    from haystack.preview.components.generators import HuggingFaceTGIGenerator
+    from haystack.components.generators import HuggingFaceTGIGenerator
     client = HuggingFaceTGIGenerator(model="mistralai/Mistral-7B-v0.1", token="<your-token>")
     client.warm_up()
     response = client.run("What's Natural Language Processing?", max_new_tokens=120)
@@ -39,7 +39,7 @@ class HuggingFaceTGIGenerator:
     In these two cases, you'll need to provide the URL of the endpoint as well as a valid token:
 
     ```python
-    from haystack.preview.components.generators import HuggingFaceTGIGenerator
+    from haystack.components.generators import HuggingFaceTGIGenerator
     client = HuggingFaceTGIGenerator(model="mistralai/Mistral-7B-v0.1",
                                      url="<your-tgi-endpoint-url>",
                                      token="<your-token>")

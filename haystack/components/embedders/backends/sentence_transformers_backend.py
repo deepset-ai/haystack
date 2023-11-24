@@ -1,6 +1,6 @@
 from typing import List, Optional, Union, Dict
 
-from haystack.preview.lazy_imports import LazyImport
+from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=2.2.0\"'") as sentence_transformers_import:
     from sentence_transformers import SentenceTransformer

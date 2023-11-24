@@ -2,9 +2,9 @@ import logging
 import pytest
 from pypdf import PdfReader
 
-from haystack.preview import Document
-from haystack.preview.components.converters.pypdf import PyPDFToDocument, CONVERTERS_REGISTRY
-from haystack.preview.dataclasses import ByteStream
+from haystack import Document
+from haystack.components.converters.pypdf import PyPDFToDocument, CONVERTERS_REGISTRY
+from haystack.dataclasses import ByteStream
 
 
 class TestPyPDFToDocument:
@@ -18,11 +18,11 @@ class TestPyPDFToDocument:
             PyPDFToDocument(converter_name="non_existing_converter")
 
     @pytest.mark.unit
-    def test_run(self, preview_samples_path):
+    def test_run(self, test_files_path):
         """
         Test if the component runs correctly.
         """
-        paths = [preview_samples_path / "pdf" / "react_paper.pdf"]
+        paths = [test_files_path / "pdf" / "react_paper.pdf"]
         converter = PyPDFToDocument()
         output = converter.run(sources=paths)
         docs = output["documents"]
@@ -30,7 +30,7 @@ class TestPyPDFToDocument:
         assert "ReAct" in docs[0].content
 
     @pytest.mark.unit
-    def test_run_error_handling(self, preview_samples_path, caplog):
+    def test_run_error_handling(self, test_files_path, caplog):
         """
         Test if the component correctly handles errors.
         """
@@ -41,12 +41,12 @@ class TestPyPDFToDocument:
             assert "Could not read non_existing_file.pdf" in caplog.text
 
     @pytest.mark.unit
-    def test_mixed_sources_run(self, preview_samples_path):
+    def test_mixed_sources_run(self, test_files_path):
         """
         Test if the component runs correctly when mixed sources are provided.
         """
-        paths = [preview_samples_path / "pdf" / "react_paper.pdf"]
-        with open(preview_samples_path / "pdf" / "react_paper.pdf", "rb") as f:
+        paths = [test_files_path / "pdf" / "react_paper.pdf"]
+        with open(test_files_path / "pdf" / "react_paper.pdf", "rb") as f:
             paths.append(ByteStream(f.read()))
 
         converter = PyPDFToDocument()
@@ -57,11 +57,11 @@ class TestPyPDFToDocument:
         assert "ReAct" in docs[1].content
 
     @pytest.mark.unit
-    def test_custom_converter(self, preview_samples_path):
+    def test_custom_converter(self, test_files_path):
         """
         Test if the component correctly handles custom converters.
         """
-        paths = [preview_samples_path / "pdf" / "react_paper.pdf"]
+        paths = [test_files_path / "pdf" / "react_paper.pdf"]
 
         class MyCustomConverter:
             def convert(self, reader: PdfReader) -> Document:

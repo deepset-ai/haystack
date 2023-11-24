@@ -1,9 +1,9 @@
-from haystack.preview.components.converters.txt import TextFileToDocument
-from haystack.preview.components.converters.tika import TikaDocumentConverter
-from haystack.preview.components.converters.azure import AzureOCRDocumentConverter
-from haystack.preview.components.converters.pypdf import PyPDFToDocument
-from haystack.preview.components.converters.html import HTMLToDocument
-from haystack.preview.components.converters.markdown import MarkdownToDocument
+from haystack.components.converters.txt import TextFileToDocument
+from haystack.components.converters.tika import TikaDocumentConverter
+from haystack.components.converters.azure import AzureOCRDocumentConverter
+from haystack.components.converters.pypdf import PyPDFToDocument
+from haystack.components.converters.html import HTMLToDocument
+from haystack.components.converters.markdown import MarkdownToDocument
 
 __all__ = [
     "TextFileToDocument",

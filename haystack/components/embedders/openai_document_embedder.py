@@ -5,7 +5,7 @@ import openai
 from tqdm import tqdm
 
 
-from haystack.preview import component, Document, default_to_dict
+from haystack import component, Document, default_to_dict
 
 
 @component
@@ -16,8 +16,8 @@ class OpenAIDocumentEmbedder:
 
     Usage example:
     ```python
-    from haystack.preview import Document
-    from haystack.preview.components.embedders import OpenAIDocumentEmbedder
+    from haystack import Document
+    from haystack.components.embedders import OpenAIDocumentEmbedder
 
     doc = Document(text="I love pizza!")
 

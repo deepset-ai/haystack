@@ -4,14 +4,14 @@ import pytest
 from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, Token, StreamDetails, FinishReason
 from huggingface_hub.utils import RepositoryNotFoundError
 
-from haystack.preview.components.generators import HuggingFaceTGIGenerator
-from haystack.preview.dataclasses import StreamingChunk
+from haystack.components.generators import HuggingFaceTGIGenerator
+from haystack.dataclasses import StreamingChunk
 
 
 @pytest.fixture
 def mock_check_valid_model():
     with patch(
-        "haystack.preview.components.generators.hugging_face_tgi.check_valid_model", MagicMock(return_value=None)
+        "haystack.components.generators.hugging_face_tgi.check_valid_model", MagicMock(return_value=None)
     ) as mock:
         yield mock
 

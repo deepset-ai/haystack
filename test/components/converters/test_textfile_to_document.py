@@ -4,24 +4,20 @@ from pathlib import Path
 
 import pytest
 
-from haystack.preview.dataclasses import ByteStream
-from haystack.preview.components.converters.txt import TextFileToDocument
+from haystack.dataclasses import ByteStream
+from haystack.components.converters.txt import TextFileToDocument
 
 
 class TestTextfileToDocument:
     @pytest.mark.unit
-    def test_run(self, preview_samples_path):
+    def test_run(self, test_files_path):
         """
         Test if the component runs correctly.
         """
-        bytestream = ByteStream.from_file_path(preview_samples_path / "txt" / "doc_3.txt")
-        bytestream.metadata["file_path"] = str(preview_samples_path / "txt" / "doc_3.txt")
+        bytestream = ByteStream.from_file_path(test_files_path / "txt" / "doc_3.txt")
+        bytestream.metadata["file_path"] = str(test_files_path / "txt" / "doc_3.txt")
         bytestream.metadata["key"] = "value"
-        files = [
-            str(preview_samples_path / "txt" / "doc_1.txt"),
-            preview_samples_path / "txt" / "doc_2.txt",
-            bytestream,
-        ]
+        files = [str(test_files_path / "txt" / "doc_1.txt"), test_files_path / "txt" / "doc_2.txt", bytestream]
         converter = TextFileToDocument()
         output = converter.run(sources=files)
         docs = output["documents"]
@@ -34,15 +30,11 @@ class TestTextfileToDocument:
         assert docs[2].meta == bytestream.metadata
 
     @pytest.mark.unit
-    def test_run_error_handling(self, preview_samples_path, caplog):
+    def test_run_error_handling(self, test_files_path, caplog):
         """
         Test if the component correctly handles errors.
         """
-        paths = [
-            preview_samples_path / "txt" / "doc_1.txt",
-            "non_existing_file.txt",
-            preview_samples_path / "txt" / "doc_3.txt",
-        ]
+        paths = [test_files_path / "txt" / "doc_1.txt", "non_existing_file.txt", test_files_path / "txt" / "doc_3.txt"]
         converter = TextFileToDocument()
         with caplog.at_level(logging.WARNING):
             output = converter.run(sources=paths)
@@ -53,11 +45,11 @@ class TestTextfileToDocument:
         assert docs[1].meta["file_path"] == str(paths[2])
 
     @pytest.mark.unit
-    def test_encoding_override(self, preview_samples_path):
+    def test_encoding_override(self, test_files_path):
         """
         Test if the encoding metadata field is used properly
         """
-        bytestream = ByteStream.from_file_path(preview_samples_path / "txt" / "doc_1.txt")
+        bytestream = ByteStream.from_file_path(test_files_path / "txt" / "doc_1.txt")
         bytestream.metadata["key"] = "value"
 
         converter = TextFileToDocument(encoding="utf-16")

@@ -6,8 +6,8 @@ import pytest
 import torch
 from transformers import pipeline
 
-from haystack.preview.components.readers import ExtractiveReader
-from haystack.preview import Document
+from haystack.components.readers import ExtractiveReader
+from haystack import Document
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def mock_tokenizer():
         tokens.attention_mask = attention_mask
         return tokens
 
-    with patch("haystack.preview.components.readers.extractive.AutoTokenizer.from_pretrained") as tokenizer:
+    with patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained") as tokenizer:
         tokenizer.return_value = mock_tokenize
         yield tokenizer
 
@@ -70,7 +70,7 @@ def mock_reader(mock_tokenizer):
             prediction.end_logits = end
             return prediction
 
-    with patch("haystack.preview.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained") as model:
+    with patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained") as model:
         model.return_value = MockModel()
         reader = ExtractiveReader(model_name_or_path="mock-model", device="cpu:0")
         reader.warm_up()
@@ -93,7 +93,7 @@ def test_to_dict():
     data = component.to_dict()
 
     assert data == {
-        "type": "haystack.preview.components.readers.extractive.ExtractiveReader",
+        "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
             "model_name_or_path": "my-model",
             "device": None,
@@ -117,7 +117,7 @@ def test_to_dict_empty_model_kwargs():
     data = component.to_dict()
 
     assert data == {
-        "type": "haystack.preview.components.readers.extractive.ExtractiveReader",
+        "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
             "model_name_or_path": "my-model",
             "device": None,
@@ -259,8 +259,8 @@ def test_nest_answers(mock_reader: ExtractiveReader):
 
 
 @pytest.mark.unit
-@patch("haystack.preview.components.readers.extractive.AutoTokenizer.from_pretrained")
-@patch("haystack.preview.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+@patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
+@patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
 def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
     reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token")
     reader.warm_up()
@@ -324,8 +324,8 @@ def test_missing_token_to_chars_values():
             prediction.end_logits = end
             return prediction
 
-    with patch("haystack.preview.components.readers.extractive.AutoTokenizer.from_pretrained") as tokenizer, patch(
-        "haystack.preview.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained"
+    with patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained") as tokenizer, patch(
+        "haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained"
     ) as model:
         tokenizer.return_value = mock_tokenize
         model.return_value = MockModel()

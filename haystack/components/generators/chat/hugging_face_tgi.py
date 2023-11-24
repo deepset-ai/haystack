@@ -3,11 +3,11 @@ from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Iterable, Callable
 from urllib.parse import urlparse
 
-from haystack.preview import component, default_to_dict, default_from_dict
-from haystack.preview.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
-from haystack.preview.dataclasses import ChatMessage, StreamingChunk
-from haystack.preview.components.generators.hf_utils import check_valid_model, check_generation_params
-from haystack.preview.lazy_imports import LazyImport
+from haystack import component, default_to_dict, default_from_dict
+from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
+from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.components.generators.hf_utils import check_valid_model, check_generation_params
+from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
@@ -26,8 +26,8 @@ class HuggingFaceTGIChatGenerator:
     Inference API tier:
 
     ```python
-    from haystack.preview.components.generators.chat import HuggingFaceTGIChatGenerator
-    from haystack.preview.dataclasses import ChatMessage
+    from haystack.components.generators.chat import HuggingFaceTGIChatGenerator
+    from haystack.dataclasses import ChatMessage
 
     messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
                 ChatMessage.from_user("What's Natural Language Processing?")]
@@ -43,8 +43,8 @@ class HuggingFaceTGIChatGenerator:
     endpoint, you'll need to provide the URL of the endpoint as well as a valid token:
 
     ```python
-    from haystack.preview.components.generators.chat import HuggingFaceTGIChatGenerator
-    from haystack.preview.dataclasses import ChatMessage
+    from haystack.components.generators.chat import HuggingFaceTGIChatGenerator
+    from haystack.dataclasses import ChatMessage
 
     messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
                 ChatMessage.from_user("What's Natural Language Processing?")]

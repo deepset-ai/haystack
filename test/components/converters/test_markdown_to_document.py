@@ -2,8 +2,8 @@ import logging
 
 import pytest
 
-from haystack.preview.components.converters.markdown import MarkdownToDocument
-from haystack.preview.dataclasses import ByteStream
+from haystack.components.converters.markdown import MarkdownToDocument
+from haystack.dataclasses import ByteStream
 
 
 class TestMarkdownToDocument:
@@ -20,9 +20,9 @@ class TestMarkdownToDocument:
         assert converter.progress_bar is False
 
     @pytest.mark.integration
-    def test_run(self, preview_samples_path):
+    def test_run(self, test_files_path):
         converter = MarkdownToDocument()
-        sources = [preview_samples_path / "markdown" / "sample.md"]
+        sources = [test_files_path / "markdown" / "sample.md"]
         results = converter.run(sources=sources)
         docs = results["documents"]
 
@@ -32,9 +32,9 @@ class TestMarkdownToDocument:
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
 
     @pytest.mark.integration
-    def test_run_metadata(self, preview_samples_path):
+    def test_run_metadata(self, test_files_path):
         converter = MarkdownToDocument()
-        sources = [preview_samples_path / "markdown" / "sample.md"]
+        sources = [test_files_path / "markdown" / "sample.md"]
         metadata = [{"file_name": "sample.md"}]
         results = converter.run(sources=sources, meta=metadata)
         docs = results["documents"]
@@ -46,11 +46,11 @@ class TestMarkdownToDocument:
             assert doc.meta == {"file_name": "sample.md"}
 
     @pytest.mark.integration
-    def test_run_wrong_file_type(self, preview_samples_path, caplog):
+    def test_run_wrong_file_type(self, test_files_path, caplog):
         """
         Test if the component runs correctly when an input file is not of the expected type.
         """
-        sources = [preview_samples_path / "audio" / "answer.wav"]
+        sources = [test_files_path / "audio" / "answer.wav"]
         converter = MarkdownToDocument()
         with caplog.at_level(logging.WARNING):
             output = converter.run(sources=sources)
@@ -72,15 +72,15 @@ class TestMarkdownToDocument:
             assert not result["documents"]
 
     @pytest.mark.unit
-    def test_mixed_sources_run(self, preview_samples_path):
+    def test_mixed_sources_run(self, test_files_path):
         """
         Test if the component runs correctly if the input is a mix of strings, paths and ByteStreams.
         """
         sources = [
-            preview_samples_path / "markdown" / "sample.md",
-            str((preview_samples_path / "markdown" / "sample.md").absolute()),
+            test_files_path / "markdown" / "sample.md",
+            str((test_files_path / "markdown" / "sample.md").absolute()),
         ]
-        with open(preview_samples_path / "markdown" / "sample.md", "rb") as f:
+        with open(test_files_path / "markdown" / "sample.md", "rb") as f:
             byte_stream = f.read()
             sources.append(ByteStream(byte_stream))
 

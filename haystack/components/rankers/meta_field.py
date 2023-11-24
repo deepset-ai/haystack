@@ -3,7 +3,7 @@ import warnings
 from collections import defaultdict
 from typing import List, Dict, Any, Optional, Literal
 
-from haystack.preview import ComponentError, Document, component, default_to_dict
+from haystack import ComponentError, Document, component, default_to_dict
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +15,8 @@ class MetaFieldRanker:
 
     Usage example:
     ```
-    from haystack.preview import Document
-    from haystack.preview.components.rankers import MetaFieldRanker
+    from haystack import Document
+    from haystack.components.rankers import MetaFieldRanker
 
     ranker = MetaFieldRanker(metadata_field="rating")
     docs = [

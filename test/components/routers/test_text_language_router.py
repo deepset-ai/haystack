@@ -1,8 +1,8 @@
 import logging
 import pytest
 
-from haystack.preview import Document
-from haystack.preview.components.routers import TextLanguageRouter
+from haystack import Document
+from haystack.components.routers import TextLanguageRouter
 
 
 class TestTextLanguageRouter:

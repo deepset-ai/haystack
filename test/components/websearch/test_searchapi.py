@@ -4,8 +4,8 @@ from unittest.mock import Mock, patch
 import pytest
 from requests import Timeout, RequestException, HTTPError
 
-from haystack.preview import Document
-from haystack.preview.components.websearch.searchapi import SearchApiError, SearchApiWebSearch
+from haystack import Document
+from haystack.components.websearch.searchapi import SearchApiError, SearchApiWebSearch
 
 
 EXAMPLE_SEARCHAPI_RESPONSE = {
@@ -361,7 +361,7 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
 
 @pytest.fixture
 def mock_searchapi_search_result():
-    with patch("haystack.preview.components.websearch.searchapi.requests.get") as mock_get:
+    with patch("haystack.components.websearch.searchapi.requests.get") as mock_get:
         mock_get.return_value = Mock(status_code=200, json=lambda: EXAMPLE_SEARCHAPI_RESPONSE)
         yield mock_get
 
@@ -380,7 +380,7 @@ class TestSearchApiSearchAPI:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.websearch.searchapi.SearchApiWebSearch",
+            "type": "haystack.components.websearch.searchapi.SearchApiWebSearch",
             "init_parameters": {
                 "top_k": 10,
                 "allowed_domains": ["testdomain.com"],

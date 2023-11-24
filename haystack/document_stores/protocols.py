@@ -2,7 +2,7 @@ from typing import Protocol, Optional, Dict, Any, List
 import logging
 from enum import Enum
 
-from haystack.preview.dataclasses import Document
+from haystack.dataclasses import Document
 
 
 # Ellipsis are needed for the type checker, it's safe to disable module-wide

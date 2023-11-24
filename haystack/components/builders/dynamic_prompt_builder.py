@@ -3,9 +3,9 @@ from typing import Dict, Any, Optional, List, Union, Set
 
 from jinja2 import Template, meta
 
-from haystack.preview import component
-from haystack.preview import default_to_dict
-from haystack.preview.dataclasses.chat_message import ChatMessage, ChatRole
+from haystack import component
+from haystack import default_to_dict
+from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +29,10 @@ class DynamicPromptBuilder:
     The following example demonstrates how to use DynamicPromptBuilder to generate a chat prompt:
 
     ```python
-    from haystack.preview.components.builders import DynamicPromptBuilder
-    from haystack.preview.components.generators.chat import GPTChatGenerator
-    from haystack.preview.dataclasses import ChatMessage
-    from haystack.preview import Pipeline
+    from haystack.components.builders import DynamicPromptBuilder
+    from haystack.components.generators.chat import GPTChatGenerator
+    from haystack.dataclasses import ChatMessage
+    from haystack import Pipeline
 
     # no parameter init, we don't use any runtime template variables
     prompt_builder = DynamicPromptBuilder()
@@ -64,10 +64,10 @@ class DynamicPromptBuilder:
     of pipeline runtime variables (such as documents):
 
     ```python
-    from haystack.preview.components.builders import DynamicPromptBuilder
-    from haystack.preview.components.generators.chat import GPTChatGenerator
-    from haystack.preview.dataclasses import ChatMessage, Document
-    from haystack.preview import Pipeline, component
+    from haystack.components.builders import DynamicPromptBuilder
+    from haystack.components.generators.chat import GPTChatGenerator
+    from haystack.dataclasses import ChatMessage, Document
+    from haystack import Pipeline, component
     from typing import List
 
     # we'll use documents runtime variable in our template, so we need to specify it in the init

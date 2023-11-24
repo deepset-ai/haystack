@@ -2,8 +2,8 @@ import inspect
 import sys
 from typing import Optional, Callable
 
-from haystack.preview import DeserializationError
-from haystack.preview.dataclasses import StreamingChunk
+from haystack import DeserializationError
+from haystack.dataclasses import StreamingChunk
 
 
 def default_streaming_callback(chunk: StreamingChunk) -> None:

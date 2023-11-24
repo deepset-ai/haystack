@@ -3,9 +3,9 @@ import logging
 from typing import List, Union, Protocol, Dict
 from pathlib import Path
 
-from haystack.preview.dataclasses import ByteStream
-from haystack.preview.lazy_imports import LazyImport
-from haystack.preview import Document, component, default_to_dict
+from haystack.dataclasses import ByteStream
+from haystack.lazy_imports import LazyImport
+from haystack import Document, component, default_to_dict
 
 with LazyImport("Run 'pip install pypdf'") as pypdf_import:
     from pypdf import PdfReader

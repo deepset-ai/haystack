@@ -6,8 +6,8 @@ from pathlib import Path
 
 import openai
 
-from haystack.preview import Document, component, default_from_dict, default_to_dict
-from haystack.preview.dataclasses import ByteStream
+from haystack import Document, component, default_from_dict, default_to_dict
+from haystack.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
 

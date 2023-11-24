@@ -3,7 +3,7 @@ from unittest.mock import patch, Mock
 import pytest
 import requests
 
-from haystack.preview.components.fetchers.link_content import (
+from haystack.components.fetchers.link_content import (
     LinkContentFetcher,
     text_content_handler,
     binary_content_handler,
@@ -17,7 +17,7 @@ PDF_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/b5987a6d8d0714e
 
 @pytest.fixture
 def mock_get_link_text_content():
-    with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
+    with patch("haystack.components.fetchers.link_content.requests") as mock_run:
         mock_run.get.return_value = Mock(
             status_code=200, text="Example test response", headers={"Content-Type": "text/plain"}
         )
@@ -26,7 +26,7 @@ def mock_get_link_text_content():
 
 @pytest.fixture
 def mock_get_link_content(test_files_path):
-    with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
+    with patch("haystack.components.fetchers.link_content.requests") as mock_run:
         mock_run.get.return_value = Mock(
             status_code=200,
             content=open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb").read(),
@@ -62,7 +62,7 @@ class TestLinkContentFetcher:
     @pytest.mark.unit
     def test_run_text(self):
         correct_response = b"Example test response"
-        with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
+        with patch("haystack.components.fetchers.link_content.requests") as mock_run:
             mock_run.get.return_value = Mock(
                 status_code=200, text="Example test response", headers={"Content-Type": "text/plain"}
             )
@@ -75,7 +75,7 @@ class TestLinkContentFetcher:
     @pytest.mark.unit
     def test_run_html(self):
         correct_response = b"<h1>Example test response</h1>"
-        with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
+        with patch("haystack.components.fetchers.link_content.requests") as mock_run:
             mock_run.get.return_value = Mock(
                 status_code=200, text="<h1>Example test response</h1>", headers={"Content-Type": "text/html"}
             )
@@ -88,7 +88,7 @@ class TestLinkContentFetcher:
     @pytest.mark.unit
     def test_run_binary(self, test_files_path):
         file_bytes = open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb").read()
-        with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
+        with patch("haystack.components.fetchers.link_content.requests") as mock_run:
             mock_run.get.return_value = Mock(
                 status_code=200, content=file_bytes, headers={"Content-Type": "application/pdf"}
             )
@@ -103,7 +103,7 @@ class TestLinkContentFetcher:
         empty_byte_stream = b""
         fetcher = LinkContentFetcher(raise_on_failure=False)
         mock_response = Mock(status_code=403)
-        with patch("haystack.preview.components.fetchers.link_content.requests") as mock_run:
+        with patch("haystack.components.fetchers.link_content.requests") as mock_run:
             mock_run.get.return_value = mock_response
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
 

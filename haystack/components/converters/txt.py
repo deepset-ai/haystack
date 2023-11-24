@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import List, Union
 
-from haystack.preview import Document, component
-from haystack.preview.dataclasses import ByteStream
+from haystack import Document, component
+from haystack.dataclasses import ByteStream
 
 
 logger = logging.getLogger(__name__)

@@ -3,7 +3,7 @@ import os
 
 import openai
 
-from haystack.preview import component, default_to_dict
+from haystack import component, default_to_dict
 
 
 @component
@@ -13,7 +13,7 @@ class OpenAITextEmbedder:
 
     Usage example:
     ```python
-    from haystack.preview.components.embedders import OpenAITextEmbedder
+    from haystack.components.embedders import OpenAITextEmbedder
 
     text_to_embed = "I love pizza!"
 

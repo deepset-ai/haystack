@@ -3,7 +3,7 @@ import pytest
 
 import numpy as np
 
-from haystack.preview.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
+from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
 
 
 class TestSentenceTransformersTextEmbedder:
@@ -45,7 +45,7 @@ class TestSentenceTransformersTextEmbedder:
         component = SentenceTransformersTextEmbedder(model_name_or_path="model")
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
+            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
                 "device": "cpu",
@@ -72,7 +72,7 @@ class TestSentenceTransformersTextEmbedder:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
+            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
                 "device": "cuda",
@@ -90,7 +90,7 @@ class TestSentenceTransformersTextEmbedder:
         component = SentenceTransformersTextEmbedder(model_name_or_path="model", token="awesome-token")
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
+            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
                 "device": "cpu",
@@ -105,7 +105,7 @@ class TestSentenceTransformersTextEmbedder:
 
     @pytest.mark.unit
     @patch(
-        "haystack.preview.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
+        "haystack.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup(self, mocked_factory):
         embedder = SentenceTransformersTextEmbedder(model_name_or_path="model")
@@ -117,7 +117,7 @@ class TestSentenceTransformersTextEmbedder:
 
     @pytest.mark.unit
     @patch(
-        "haystack.preview.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
+        "haystack.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup_doesnt_reload(self, mocked_factory):
         embedder = SentenceTransformersTextEmbedder(model_name_or_path="model")

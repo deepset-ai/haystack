@@ -5,7 +5,7 @@ import platform
 import sys
 from typing import Optional, Dict, Any
 
-from haystack.preview.version import __version__
+from haystack.version import __version__
 
 logger = logging.getLogger(__name__)
 

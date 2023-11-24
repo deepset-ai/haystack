@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.preview.components.generators.hf_utils import check_generation_params
+from haystack.components.generators.hf_utils import check_generation_params
 
 
 @pytest.mark.unit

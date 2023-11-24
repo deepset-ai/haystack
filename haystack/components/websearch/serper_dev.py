@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Any
 
 import requests
 
-from haystack.preview import Document, component, default_to_dict, ComponentError
+from haystack import Document, component, default_to_dict, ComponentError
 
 logger = logging.getLogger(__name__)
 

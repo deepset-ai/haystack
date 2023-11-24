@@ -5,7 +5,7 @@ from math import inf
 from typing import List, Optional
 from canals.component.types import Variadic
 
-from haystack.preview import component, Document
+from haystack import component, Document
 
 
 logger = logging.getLogger(__name__)

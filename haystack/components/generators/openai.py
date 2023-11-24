@@ -6,9 +6,9 @@ from typing import Optional, List, Callable, Dict, Any
 import openai
 from openai.openai_object import OpenAIObject
 
-from haystack.preview import component, default_from_dict, default_to_dict
-from haystack.preview.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
-from haystack.preview.dataclasses import StreamingChunk, ChatMessage
+from haystack import component, default_from_dict, default_to_dict
+from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
+from haystack.dataclasses import StreamingChunk, ChatMessage
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class GPTGenerator:
     [documentation](https://platform.openai.com/docs/api-reference/chat).
 
     ```python
-    from haystack.preview.components.generators import GPTGenerator
+    from haystack.components.generators import GPTGenerator
     client = GPTGenerator()
     response = client.run("What's Natural Language Processing? Be brief.")
     print(response)
