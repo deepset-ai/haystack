@@ -7,12 +7,9 @@ from haystack.preview.lazy_imports import LazyImport
 from haystack.preview import DeserializationError, component, default_from_dict, default_to_dict
 
 with LazyImport(message="Run 'pip install cohere'") as cohere_import:
-    from cohere import Client
+    from cohere import Client, COHERE_API_URL
 
 logger = logging.getLogger(__name__)
-
-
-COHERE_API_URL = "https://api.cohere.ai"
 
 
 @component
@@ -36,7 +33,7 @@ class CohereGenerator:
         api_key: Optional[str] = None,
         model_name: str = "command",
         streaming_callback: Optional[Callable] = None,
-        api_base_url: str = COHERE_API_URL,
+        api_base_url: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -64,12 +61,17 @@ class CohereGenerator:
                           The format is {token_id: bias} where bias is a float between -10 and 10.
 
         """
+        cohere_import.check()
+
         if not api_key:
             api_key = os.environ.get("COHERE_API_KEY")
         if not api_key:
             raise ValueError(
                 "CohereGenerator needs an API key to run. Either provide it as init parameter or set the env var COHERE_API_KEY."
             )
+
+        if not api_base_url:
+            api_base_url = COHERE_API_URL
 
         self.api_key = api_key
         self.model_name = model_name
