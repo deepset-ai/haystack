@@ -575,7 +575,7 @@ class LegacyFilterDocumentsLessThanTest(FilterableDocsFixtureMixin):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"number": {"$lt": 0.0}})
         assert result == [
-            doc for doc in filterable_docs if doc.meta.get("number", None) is None or doc.meta["number"] < 0
+            doc for doc in filterable_docs if doc.meta.get("number") is not None and doc.meta["number"] < 0
         ]
 
     @pytest.mark.unit
@@ -617,7 +617,7 @@ class LegacyFilterDocumentsLessThanEqualTest(FilterableDocsFixtureMixin):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"number": {"$lte": 2.0}})
         assert result == [
-            doc for doc in filterable_docs if doc.meta.get("number", None) is None or doc.meta["number"] <= 2.0
+            doc for doc in filterable_docs if doc.meta.get("number") is not None and doc.meta["number"] <= 2.0
         ]
 
     @pytest.mark.unit
@@ -662,7 +662,7 @@ class LegacyFilterDocumentsSimpleLogicalTest(FilterableDocsFixtureMixin):
         assert result == [
             doc
             for doc in filterable_docs
-            if (doc.meta.get("number", None) is None or doc.meta["number"] < 1)
+            if (doc.meta.get("number") is not None and doc.meta["number"] < 1)
             or doc.meta.get("name") in ["name_0", "name_1"]
         ]
 
@@ -740,7 +740,7 @@ class LegacyFilterDocumentsNestedLogicalTest(FilterableDocsFixtureMixin):
             for doc in filterable_docs
             if (
                 doc.meta.get("name") in ["name_0", "name_1"]
-                or (doc.meta.get("number", None) is None or doc.meta["number"] < 1)
+                or (doc.meta.get("number") is not None and doc.meta["number"] < 1)
             )
         ]
 
@@ -791,11 +791,8 @@ class LegacyFilterDocumentsNestedLogicalTest(FilterableDocsFixtureMixin):
             doc
             for doc in filterable_docs
             if (
-                (doc.meta.get("number", None) is None or doc.meta["number"] < 1)
-                or (
-                    doc.meta.get("name") in ["name_0", "name_1"]
-                    and (doc.meta.get("chapter", None) is None or doc.meta["chapter"] != "intro")
-                )
+                (doc.meta.get("number") is not None and doc.meta["number"] < 1)
+                or (doc.meta.get("name") in ["name_0", "name_1"] and (doc.meta.get("chapter") != "intro"))
             )
         ]
 
