@@ -4,8 +4,8 @@ import datetime
 import logging
 import canals
 
-from haystack.preview.telemetry import pipeline_running
-from haystack.preview.marshal import Marshaller, YamlMarshaller
+from haystack.telemetry import pipeline_running
+from haystack.marshal import Marshaller, YamlMarshaller
 
 
 DEFAULT_MARSHALLER = YamlMarshaller()

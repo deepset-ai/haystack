@@ -1,7 +1,7 @@
-from haystack.preview import Document
-from haystack.preview.components.retrievers import InMemoryBM25Retriever
-from haystack.preview.document_stores import InMemoryDocumentStore
-from haystack.preview.pipeline import Pipeline
+from haystack import Document
+from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.document_stores import InMemoryDocumentStore
+from haystack.pipeline import Pipeline
 
 # Create components and a query pipeline
 document_store = InMemoryDocumentStore()

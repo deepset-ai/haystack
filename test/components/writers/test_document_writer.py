@@ -1,10 +1,10 @@
 import pytest
 
-from haystack.preview import Document, DeserializationError
-from haystack.preview.testing.factory import document_store_class
-from haystack.preview.components.writers.document_writer import DocumentWriter
-from haystack.preview.document_stores import DuplicatePolicy
-from haystack.preview.document_stores.in_memory import InMemoryDocumentStore
+from haystack import Document, DeserializationError
+from haystack.testing.factory import document_store_class
+from haystack.components.writers.document_writer import DocumentWriter
+from haystack.document_stores import DuplicatePolicy
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestDocumentWriter:
@@ -14,12 +14,9 @@ class TestDocumentWriter:
         component = DocumentWriter(document_store=mocked_docstore_class())
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.writers.document_writer.DocumentWriter",
+            "type": "haystack.components.writers.document_writer.DocumentWriter",
             "init_parameters": {
-                "document_store": {
-                    "type": "haystack.preview.testing.factory.MockedDocumentStore",
-                    "init_parameters": {},
-                },
+                "document_store": {"type": "haystack.testing.factory.MockedDocumentStore", "init_parameters": {}},
                 "policy": "FAIL",
             },
         }
@@ -30,12 +27,9 @@ class TestDocumentWriter:
         component = DocumentWriter(document_store=mocked_docstore_class(), policy=DuplicatePolicy.SKIP)
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.writers.document_writer.DocumentWriter",
+            "type": "haystack.components.writers.document_writer.DocumentWriter",
             "init_parameters": {
-                "document_store": {
-                    "type": "haystack.preview.testing.factory.MockedDocumentStore",
-                    "init_parameters": {},
-                },
+                "document_store": {"type": "haystack.testing.factory.MockedDocumentStore", "init_parameters": {}},
                 "policy": "SKIP",
             },
         }
@@ -44,12 +38,9 @@ class TestDocumentWriter:
     def test_from_dict(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
         data = {
-            "type": "haystack.preview.components.writers.document_writer.DocumentWriter",
+            "type": "haystack.components.writers.document_writer.DocumentWriter",
             "init_parameters": {
-                "document_store": {
-                    "type": "haystack.preview.testing.factory.MockedDocumentStore",
-                    "init_parameters": {},
-                },
+                "document_store": {"type": "haystack.testing.factory.MockedDocumentStore", "init_parameters": {}},
                 "policy": "SKIP",
             },
         }

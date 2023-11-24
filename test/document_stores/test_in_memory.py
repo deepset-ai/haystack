@@ -4,11 +4,11 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from haystack.preview import Document
-from haystack.preview.document_stores import InMemoryDocumentStore, DocumentStoreError, DuplicatePolicy
+from haystack import Document
+from haystack.document_stores import InMemoryDocumentStore, DocumentStoreError, DuplicatePolicy
 
 
-from haystack.preview.testing.document_store import DocumentStoreBaseTests
+from haystack.testing.document_store import DocumentStoreBaseTests
 
 
 class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
@@ -25,7 +25,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         store = InMemoryDocumentStore()
         data = store.to_dict()
         assert data == {
-            "type": "haystack.preview.document_stores.in_memory.document_store.InMemoryDocumentStore",
+            "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": r"(?u)\b\w\w+\b",
                 "bm25_algorithm": "BM25Okapi",
@@ -44,7 +44,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         )
         data = store.to_dict()
         assert data == {
-            "type": "haystack.preview.document_stores.in_memory.document_store.InMemoryDocumentStore",
+            "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": "custom_regex",
                 "bm25_algorithm": "BM25Plus",
@@ -54,10 +54,10 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         }
 
     @pytest.mark.unit
-    @patch("haystack.preview.document_stores.in_memory.document_store.re")
+    @patch("haystack.document_stores.in_memory.document_store.re")
     def test_from_dict(self, mock_regex):
         data = {
-            "type": "haystack.preview.document_stores.in_memory.document_store.InMemoryDocumentStore",
+            "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": "custom_regex",
                 "bm25_algorithm": "BM25Plus",

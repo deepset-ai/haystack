@@ -2,8 +2,8 @@ import logging
 from typing import Any, Dict, List, Literal, Optional, Union
 from copy import deepcopy
 
-from haystack.preview import component, default_to_dict
-from haystack.preview.lazy_imports import LazyImport
+from haystack import component, default_to_dict
+from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class HuggingFaceLocalGenerator:
 
     Usage example:
     ```python
-    from haystack.preview.components.generators import HuggingFaceLocalGenerator
+    from haystack.components.generators import HuggingFaceLocalGenerator
 
     generator = HuggingFaceLocalGenerator(model="google/flan-t5-large",
                                           task="text2text-generation",

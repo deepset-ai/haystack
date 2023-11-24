@@ -3,7 +3,7 @@ from unittest.mock import patch, Mock
 
 import pytest
 
-from haystack.preview.components.converters.azure import AzureOCRDocumentConverter
+from haystack.components.converters.azure import AzureOCRDocumentConverter
 
 
 class TestAzureOCRDocumentConverter:
@@ -18,13 +18,13 @@ class TestAzureOCRDocumentConverter:
         component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.converters.azure.AzureOCRDocumentConverter",
+            "type": "haystack.components.converters.azure.AzureOCRDocumentConverter",
             "init_parameters": {"endpoint": "test_endpoint", "model_id": "prebuilt-read"},
         }
 
     @pytest.mark.unit
-    def test_run(self, preview_samples_path):
-        with patch("haystack.preview.components.converters.azure.DocumentAnalysisClient") as mock_azure_client:
+    def test_run(self, test_files_path):
+        with patch("haystack.components.converters.azure.DocumentAnalysisClient") as mock_azure_client:
             mock_result = Mock(pages=[Mock(lines=[Mock(content="mocked line 1"), Mock(content="mocked line 2")])])
             mock_result.to_dict.return_value = {
                 "api_version": "2023-02-28-preview",
@@ -35,7 +35,7 @@ class TestAzureOCRDocumentConverter:
             mock_azure_client.return_value.begin_analyze_document.return_value.result.return_value = mock_result
 
             component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
-            output = component.run(paths=[preview_samples_path / "pdf" / "sample_pdf_1.pdf"])
+            output = component.run(paths=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
             document = output["documents"][0]
             assert document.content == "mocked line 1\nmocked line 2\n\f"
             assert "raw_azure_response" in output
@@ -49,11 +49,11 @@ class TestAzureOCRDocumentConverter:
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
-    def test_run_with_pdf_file(self, preview_samples_path):
+    def test_run_with_pdf_file(self, test_files_path):
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=os.environ["CORE_AZURE_CS_API_KEY"]
         )
-        output = component.run(paths=[preview_samples_path / "pdf" / "sample_pdf_1.pdf"])
+        output = component.run(paths=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
         documents = output["documents"]
         assert len(documents) == 1
         assert "A sample PDF file" in documents[0].content
@@ -63,11 +63,11 @@ class TestAzureOCRDocumentConverter:
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
-    def test_with_image_file(self, preview_samples_path):
+    def test_with_image_file(self, test_files_path):
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=os.environ["CORE_AZURE_CS_API_KEY"]
         )
-        output = component.run(paths=[preview_samples_path / "images" / "haystack-logo.png"])
+        output = component.run(paths=[test_files_path / "images" / "haystack-logo.png"])
         documents = output["documents"]
         assert len(documents) == 1
         assert "haystack" in documents[0].content
@@ -76,11 +76,11 @@ class TestAzureOCRDocumentConverter:
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
-    def test_run_with_docx_file(self, preview_samples_path):
+    def test_run_with_docx_file(self, test_files_path):
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=os.environ["CORE_AZURE_CS_API_KEY"]
         )
-        output = component.run(paths=[preview_samples_path / "docx" / "sample_docx.docx"])
+        output = component.run(paths=[test_files_path / "docx" / "sample_docx.docx"])
         documents = output["documents"]
         assert len(documents) == 1
         assert "Sample Docx File" in documents[0].content

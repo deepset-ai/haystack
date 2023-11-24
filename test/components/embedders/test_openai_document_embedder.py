@@ -7,8 +7,8 @@ import openai
 from openai.util import convert_to_openai_object
 from openai.openai_object import OpenAIObject
 
-from haystack.preview import Document
-from haystack.preview.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
+from haystack import Document
+from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
 
 
 def mock_openai_response(input: List[str], model: str = "text-embedding-ada-002", **kwargs) -> OpenAIObject:
@@ -79,7 +79,7 @@ class TestOpenAIDocumentEmbedder:
         component = OpenAIDocumentEmbedder(api_key="fake-api-key")
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
+            "type": "haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
             "init_parameters": {
                 "model_name": "text-embedding-ada-002",
                 "organization": None,
@@ -107,7 +107,7 @@ class TestOpenAIDocumentEmbedder:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
+            "type": "haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
             "init_parameters": {
                 "model_name": "model",
                 "organization": "my-org",
@@ -161,9 +161,7 @@ class TestOpenAIDocumentEmbedder:
     def test_embed_batch(self):
         texts = ["text 1", "text 2", "text 3", "text 4", "text 5"]
 
-        with patch(
-            "haystack.preview.components.embedders.openai_document_embedder.openai.Embedding"
-        ) as openai_embedding_patch:
+        with patch("haystack.components.embedders.openai_document_embedder.openai.Embedding") as openai_embedding_patch:
             openai_embedding_patch.create.side_effect = mock_openai_response
             embedder = OpenAIDocumentEmbedder(api_key="fake-api-key", model_name="model")
 
@@ -189,9 +187,7 @@ class TestOpenAIDocumentEmbedder:
         ]
 
         model = "text-similarity-ada-001"
-        with patch(
-            "haystack.preview.components.embedders.openai_document_embedder.openai.Embedding"
-        ) as openai_embedding_patch:
+        with patch("haystack.components.embedders.openai_document_embedder.openai.Embedding") as openai_embedding_patch:
             openai_embedding_patch.create.side_effect = mock_openai_response
             embedder = OpenAIDocumentEmbedder(
                 api_key="fake-api-key",
@@ -231,9 +227,7 @@ class TestOpenAIDocumentEmbedder:
         ]
 
         model = "text-similarity-ada-001"
-        with patch(
-            "haystack.preview.components.embedders.openai_document_embedder.openai.Embedding"
-        ) as openai_embedding_patch:
+        with patch("haystack.components.embedders.openai_document_embedder.openai.Embedding") as openai_embedding_patch:
             openai_embedding_patch.create.side_effect = mock_openai_response
             embedder = OpenAIDocumentEmbedder(
                 api_key="fake-api-key",

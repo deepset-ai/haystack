@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.preview.dataclasses import StreamingChunk
+from haystack.dataclasses import StreamingChunk
 
 
 @pytest.mark.unit

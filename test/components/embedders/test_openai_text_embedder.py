@@ -4,7 +4,7 @@ import openai
 from openai.util import convert_to_openai_object
 import numpy as np
 
-from haystack.preview.components.embedders.openai_text_embedder import OpenAITextEmbedder
+from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
 
 
 def mock_openai_response(model: str = "text-embedding-ada-002", **kwargs) -> openai.openai_object.OpenAIObject:
@@ -59,7 +59,7 @@ class TestOpenAITextEmbedder:
         component = OpenAITextEmbedder(api_key="fake-api-key")
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.embedders.openai_text_embedder.OpenAITextEmbedder",
+            "type": "haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder",
             "init_parameters": {
                 "model_name": "text-embedding-ada-002",
                 "organization": None,
@@ -79,7 +79,7 @@ class TestOpenAITextEmbedder:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.embedders.openai_text_embedder.OpenAITextEmbedder",
+            "type": "haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder",
             "init_parameters": {
                 "model_name": "model",
                 "organization": "fake-organization",
@@ -92,9 +92,7 @@ class TestOpenAITextEmbedder:
     def test_run(self):
         model = "text-similarity-ada-001"
 
-        with patch(
-            "haystack.preview.components.embedders.openai_text_embedder.openai.Embedding"
-        ) as openai_embedding_patch:
+        with patch("haystack.components.embedders.openai_text_embedder.openai.Embedding") as openai_embedding_patch:
             openai_embedding_patch.create.side_effect = mock_openai_response
 
             embedder = OpenAITextEmbedder(api_key="fake-api-key", model_name=model, prefix="prefix ", suffix=" suffix")

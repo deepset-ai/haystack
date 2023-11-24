@@ -2,8 +2,8 @@ import sys
 
 import pytest
 
-from haystack.preview.components.routers.file_type_router import FileTypeRouter
-from haystack.preview.dataclasses import ByteStream
+from haystack.components.routers.file_type_router import FileTypeRouter
+from haystack.dataclasses import ByteStream
 
 
 @pytest.mark.skipif(
@@ -12,15 +12,15 @@ from haystack.preview.dataclasses import ByteStream
 )
 class TestFileTypeRouter:
     @pytest.mark.unit
-    def test_run(self, preview_samples_path):
+    def test_run(self, test_files_path):
         """
         Test if the component runs correctly in the simplest happy path.
         """
         file_paths = [
-            preview_samples_path / "txt" / "doc_1.txt",
-            preview_samples_path / "txt" / "doc_2.txt",
-            preview_samples_path / "audio" / "the context for this answer is here.wav",
-            preview_samples_path / "images" / "apple.jpg",
+            test_files_path / "txt" / "doc_1.txt",
+            test_files_path / "txt" / "doc_2.txt",
+            test_files_path / "audio" / "the context for this answer is here.wav",
+            test_files_path / "images" / "apple.jpg",
         ]
 
         router = FileTypeRouter(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
@@ -32,15 +32,15 @@ class TestFileTypeRouter:
         assert not output["unclassified"]
 
     @pytest.mark.unit
-    def test_run_with_bytestreams(self, preview_samples_path):
+    def test_run_with_bytestreams(self, test_files_path):
         """
         Test if the component runs correctly with ByteStream inputs.
         """
         file_paths = [
-            preview_samples_path / "txt" / "doc_1.txt",
-            preview_samples_path / "txt" / "doc_2.txt",
-            preview_samples_path / "audio" / "the context for this answer is here.wav",
-            preview_samples_path / "images" / "apple.jpg",
+            test_files_path / "txt" / "doc_1.txt",
+            test_files_path / "txt" / "doc_2.txt",
+            test_files_path / "audio" / "the context for this answer is here.wav",
+            test_files_path / "images" / "apple.jpg",
         ]
         mime_types = ["text/plain", "text/plain", "audio/x-wav", "image/jpeg"]
         # Convert file paths to ByteStream objects and set metadata
@@ -66,12 +66,12 @@ class TestFileTypeRouter:
         assert len(output.get("unclassified")) == 1
 
     @pytest.mark.unit
-    def test_run_with_bytestreams_and_file_paths(self, preview_samples_path):
+    def test_run_with_bytestreams_and_file_paths(self, test_files_path):
         file_paths = [
-            preview_samples_path / "txt" / "doc_1.txt",
-            preview_samples_path / "audio" / "the context for this answer is here.wav",
-            preview_samples_path / "txt" / "doc_2.txt",
-            preview_samples_path / "images" / "apple.jpg",
+            test_files_path / "txt" / "doc_1.txt",
+            test_files_path / "audio" / "the context for this answer is here.wav",
+            test_files_path / "txt" / "doc_2.txt",
+            test_files_path / "images" / "apple.jpg",
         ]
         mime_types = ["text/plain", "audio/x-wav", "text/plain", "image/jpeg"]
         byte_stream_sources = []
@@ -98,14 +98,14 @@ class TestFileTypeRouter:
         assert not output
 
     @pytest.mark.unit
-    def test_unlisted_extensions(self, preview_samples_path):
+    def test_unlisted_extensions(self, test_files_path):
         """
         Test that the component correctly handles files with non specified mime types.
         """
         file_paths = [
-            preview_samples_path / "txt" / "doc_1.txt",
-            preview_samples_path / "audio" / "ignored.mp3",
-            preview_samples_path / "audio" / "this is the content of the document.wav",
+            test_files_path / "txt" / "doc_1.txt",
+            test_files_path / "audio" / "ignored.mp3",
+            test_files_path / "audio" / "this is the content of the document.wav",
         ]
         router = FileTypeRouter(mime_types=["text/plain"])
         output = router.run(sources=file_paths)
@@ -116,14 +116,14 @@ class TestFileTypeRouter:
         assert str(output["unclassified"][1]).endswith("this is the content of the document.wav")
 
     @pytest.mark.unit
-    def test_no_extension(self, preview_samples_path):
+    def test_no_extension(self, test_files_path):
         """
         Test that the component ignores files with no extension.
         """
         file_paths = [
-            preview_samples_path / "txt" / "doc_1.txt",
-            preview_samples_path / "txt" / "doc_2",
-            preview_samples_path / "txt" / "doc_2.txt",
+            test_files_path / "txt" / "doc_1.txt",
+            test_files_path / "txt" / "doc_2",
+            test_files_path / "txt" / "doc_2.txt",
         ]
         router = FileTypeRouter(mime_types=["text/plain"])
         output = router.run(sources=file_paths)

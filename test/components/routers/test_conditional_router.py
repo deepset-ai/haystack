@@ -5,13 +5,9 @@ from unittest import mock
 
 import pytest
 
-from haystack.preview.components.routers import ConditionalRouter
-from haystack.preview.components.routers.conditional_router import (
-    NoRouteSelectedException,
-    serialize_type,
-    deserialize_type,
-)
-from haystack.preview.dataclasses import ChatMessage
+from haystack.components.routers import ConditionalRouter
+from haystack.components.routers.conditional_router import NoRouteSelectedException, serialize_type, deserialize_type
+from haystack.dataclasses import ChatMessage
 
 
 class TestRouter:
@@ -198,15 +194,15 @@ class TestRouter:
         assert serialize_type(str) == "str"
         assert serialize_type(List[int]) == "typing.List[int]"
         assert serialize_type(List[Dict[str, int]]) == "typing.List[typing.Dict[str, int]]"
-        assert serialize_type(ChatMessage) == "haystack.preview.dataclasses.chat_message.ChatMessage"
+        assert serialize_type(ChatMessage) == "haystack.dataclasses.chat_message.ChatMessage"
         assert serialize_type(typing.List[Dict[str, int]]) == "typing.List[typing.Dict[str, int]]"
-        assert serialize_type(List[ChatMessage]) == "typing.List[haystack.preview.dataclasses.chat_message.ChatMessage]"
+        assert serialize_type(List[ChatMessage]) == "typing.List[haystack.dataclasses.chat_message.ChatMessage]"
         assert (
             serialize_type(typing.Dict[int, ChatMessage])
-            == "typing.Dict[int, haystack.preview.dataclasses.chat_message.ChatMessage]"
+            == "typing.Dict[int, haystack.dataclasses.chat_message.ChatMessage]"
         )
         assert serialize_type(int) == "int"
-        assert serialize_type(ChatMessage.from_user("ciao")) == "haystack.preview.dataclasses.chat_message.ChatMessage"
+        assert serialize_type(ChatMessage.from_user("ciao")) == "haystack.dataclasses.chat_message.ChatMessage"
 
     def test_output_type_deserialization(self):
         assert deserialize_type("str") == str
@@ -216,14 +212,13 @@ class TestRouter:
         assert deserialize_type("typing.Dict[str, typing.List[int]]") == Dict[str, List[int]]
         assert deserialize_type("typing.List[typing.Dict[str, typing.List[int]]]") == List[Dict[str, List[int]]]
         assert (
-            deserialize_type("typing.List[haystack.preview.dataclasses.chat_message.ChatMessage]")
-            == typing.List[ChatMessage]
+            deserialize_type("typing.List[haystack.dataclasses.chat_message.ChatMessage]") == typing.List[ChatMessage]
         )
         assert (
-            deserialize_type("typing.Dict[int, haystack.preview.dataclasses.chat_message.ChatMessage]")
+            deserialize_type("typing.Dict[int, haystack.dataclasses.chat_message.ChatMessage]")
             == typing.Dict[int, ChatMessage]
         )
-        assert deserialize_type("haystack.preview.dataclasses.chat_message.ChatMessage") == ChatMessage
+        assert deserialize_type("haystack.dataclasses.chat_message.ChatMessage") == ChatMessage
         assert deserialize_type("int") == int
 
     def test_router_de_serialization(self):
@@ -283,7 +278,7 @@ class TestRouter:
         # check that the output_type is a string and a proper class name
         assert (
             router_dict["init_parameters"]["routes"][0]["output_type"]
-            == "haystack.preview.dataclasses.chat_message.ChatMessage"
+            == "haystack.dataclasses.chat_message.ChatMessage"
         )
 
         # deserialize the router

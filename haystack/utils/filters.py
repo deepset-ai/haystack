@@ -4,8 +4,8 @@ from datetime import datetime
 
 import pandas as pd
 
-from haystack.preview.dataclasses import Document
-from haystack.preview.errors import FilterError
+from haystack.dataclasses import Document
+from haystack.errors import FilterError
 
 
 def document_matches_filter(filters: Dict[str, Any], document: Document) -> bool:

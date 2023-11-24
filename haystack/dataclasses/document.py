@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 import numpy
 import pandas
 
-from haystack.preview.dataclasses.byte_stream import ByteStream
+from haystack.dataclasses.byte_stream import ByteStream
 
 logger = logging.getLogger(__name__)
 

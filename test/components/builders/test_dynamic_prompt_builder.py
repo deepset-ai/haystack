@@ -3,8 +3,8 @@ from typing import List, Union
 import pytest
 from jinja2 import TemplateSyntaxError
 
-from haystack.preview.components.builders.dynamic_prompt_builder import DynamicPromptBuilder
-from haystack.preview.dataclasses import ChatMessage
+from haystack.components.builders.dynamic_prompt_builder import DynamicPromptBuilder
+from haystack.dataclasses import ChatMessage
 
 
 class TestDynamicPromptBuilder:
@@ -53,7 +53,7 @@ class TestDynamicPromptBuilder:
         chat_mode = True
         builder = DynamicPromptBuilder(runtime_variables, chat_mode)
         expected_dict = {
-            "type": "haystack.preview.components.builders.dynamic_prompt_builder.DynamicPromptBuilder",
+            "type": "haystack.components.builders.dynamic_prompt_builder.DynamicPromptBuilder",
             "init_parameters": {"runtime_variables": runtime_variables, "chat_mode": chat_mode},
         }
         assert builder.to_dict() == expected_dict

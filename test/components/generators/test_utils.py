@@ -1,7 +1,7 @@
 import pytest
 
-from haystack.preview.components.generators.utils import default_streaming_callback
-from haystack.preview.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
+from haystack.components.generators.utils import default_streaming_callback
+from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 
 
 # streaming callback needs to be on module level
@@ -18,7 +18,7 @@ def test_callback_handler_serialization():
 @pytest.mark.unit
 def test_callback_handler_serialization_non_local():
     result = serialize_callback_handler(default_streaming_callback)
-    assert result == "haystack.preview.components.generators.utils.default_streaming_callback"
+    assert result == "haystack.components.generators.utils.default_streaming_callback"
 
 
 @pytest.mark.unit

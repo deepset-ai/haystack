@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.preview.components.builders.prompt_builder import PromptBuilder
+from haystack.components.builders.prompt_builder import PromptBuilder
 
 
 @pytest.mark.unit
@@ -14,7 +14,7 @@ def test_to_dict():
     builder = PromptBuilder(template="This is a {{ variable }}")
     res = builder.to_dict()
     assert res == {
-        "type": "haystack.preview.components.builders.prompt_builder.PromptBuilder",
+        "type": "haystack.components.builders.prompt_builder.PromptBuilder",
         "init_parameters": {"template": "This is a {{ variable }}"},
     }
 

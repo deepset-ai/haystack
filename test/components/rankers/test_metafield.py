@@ -1,7 +1,7 @@
 import pytest
 
-from haystack.preview import Document, ComponentError
-from haystack.preview.components.rankers.meta_field import MetaFieldRanker
+from haystack import Document, ComponentError
+from haystack.components.rankers.meta_field import MetaFieldRanker
 
 
 class TestMetaFieldRanker:
@@ -10,7 +10,7 @@ class TestMetaFieldRanker:
         component = MetaFieldRanker(metadata_field="rating")
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.rankers.meta_field.MetaFieldRanker",
+            "type": "haystack.components.rankers.meta_field.MetaFieldRanker",
             "init_parameters": {
                 "metadata_field": "rating",
                 "weight": 1.0,
@@ -24,7 +24,7 @@ class TestMetaFieldRanker:
         component = MetaFieldRanker(metadata_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score")
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.rankers.meta_field.MetaFieldRanker",
+            "type": "haystack.components.rankers.meta_field.MetaFieldRanker",
             "init_parameters": {"metadata_field": "rating", "weight": 0.5, "top_k": 5, "ranking_mode": "linear_score"},
         }
 

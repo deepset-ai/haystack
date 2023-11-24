@@ -4,9 +4,9 @@ from unittest.mock import patch, Mock
 import openai
 import pytest
 
-from haystack.preview.components.generators.chat import GPTChatGenerator
-from haystack.preview.components.generators.utils import default_streaming_callback
-from haystack.preview.dataclasses import ChatMessage, StreamingChunk
+from haystack.components.generators.chat import GPTChatGenerator
+from haystack.components.generators.utils import default_streaming_callback
+from haystack.dataclasses import ChatMessage, StreamingChunk
 
 
 @pytest.fixture
@@ -104,7 +104,7 @@ class TestGPTChatGenerator:
         component = GPTChatGenerator(api_key="test-api-key")
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.generators.chat.openai.GPTChatGenerator",
+            "type": "haystack.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-3.5-turbo",
                 "streaming_callback": None,
@@ -124,11 +124,11 @@ class TestGPTChatGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.generators.chat.openai.GPTChatGenerator",
+            "type": "haystack.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.preview.components.generators.utils.default_streaming_callback",
+                "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
@@ -144,7 +144,7 @@ class TestGPTChatGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.generators.chat.openai.GPTChatGenerator",
+            "type": "haystack.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "api_base_url": "test-base-url",
@@ -157,11 +157,11 @@ class TestGPTChatGenerator:
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
-            "type": "haystack.preview.components.generators.chat.openai.GPTChatGenerator",
+            "type": "haystack.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.preview.components.generators.utils.default_streaming_callback",
+                "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
@@ -176,11 +176,11 @@ class TestGPTChatGenerator:
         openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         data = {
-            "type": "haystack.preview.components.generators.chat.openai.GPTChatGenerator",
+            "type": "haystack.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.preview.components.generators.utils.default_streaming_callback",
+                "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }

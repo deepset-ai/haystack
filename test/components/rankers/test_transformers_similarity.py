@@ -1,7 +1,7 @@
 import pytest
 
-from haystack.preview import Document, ComponentError
-from haystack.preview.components.rankers.transformers_similarity import TransformersSimilarityRanker
+from haystack import Document, ComponentError
+from haystack.components.rankers.transformers_similarity import TransformersSimilarityRanker
 
 
 class TestSimilarityRanker:
@@ -10,7 +10,7 @@ class TestSimilarityRanker:
         component = TransformersSimilarityRanker()
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.rankers.transformers_similarity.TransformersSimilarityRanker",
+            "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
                 "device": "cpu",
                 "top_k": 10,
@@ -26,7 +26,7 @@ class TestSimilarityRanker:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.rankers.transformers_similarity.TransformersSimilarityRanker",
+            "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
                 "device": "cuda",
                 "model_name_or_path": "my_model",

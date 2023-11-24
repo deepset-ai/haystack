@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Set, get_origin
 from jinja2 import meta, Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 
-from haystack.preview import component, default_from_dict, default_to_dict, DeserializationError
+from haystack import component, default_from_dict, default_to_dict, DeserializationError
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +148,7 @@ class ConditionalRouter:
     Here's an example:
 
     ```python
-    from haystack.preview.components.routers import ConditionalRouter
+    from haystack.components.routers import ConditionalRouter
 
     routes = [
         {
@@ -185,8 +185,8 @@ class ConditionalRouter:
     ```
     from typing import List
     from haystack import Pipeline
-    from haystack.preview.dataclasses import ByteStream
-    from haystack.preview.components.routers import ConditionalRouter
+    from haystack.dataclasses import ByteStream
+    from haystack.components.routers import ConditionalRouter
 
     routes = [
         {

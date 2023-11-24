@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
 import os
 
-from haystack.preview.lazy_imports import LazyImport
-from haystack.preview import component, Document, default_to_dict
+from haystack.lazy_imports import LazyImport
+from haystack import component, Document, default_to_dict
 
 
 with LazyImport(message="Run 'pip install \"azure-ai-formrecognizer>=3.2.0b2\"'") as azure_import:

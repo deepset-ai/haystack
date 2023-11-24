@@ -2,10 +2,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 import numpy as np
 
-from haystack.preview import Document
-from haystack.preview.components.embedders.sentence_transformers_document_embedder import (
-    SentenceTransformersDocumentEmbedder,
-)
+from haystack import Document
+from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
 
 
 class TestSentenceTransformersDocumentEmbedder:
@@ -53,7 +51,7 @@ class TestSentenceTransformersDocumentEmbedder:
         component = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
+            "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
                 "device": "cpu",
@@ -85,7 +83,7 @@ class TestSentenceTransformersDocumentEmbedder:
         data = component.to_dict()
 
         assert data == {
-            "type": "haystack.preview.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
+            "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
             "init_parameters": {
                 "model_name_or_path": "model",
                 "device": "cuda",
@@ -102,7 +100,7 @@ class TestSentenceTransformersDocumentEmbedder:
 
     @pytest.mark.unit
     @patch(
-        "haystack.preview.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
+        "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup(self, mocked_factory):
         embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
@@ -114,7 +112,7 @@ class TestSentenceTransformersDocumentEmbedder:
 
     @pytest.mark.unit
     @patch(
-        "haystack.preview.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
+        "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup_doesnt_reload(self, mocked_factory):
         embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")

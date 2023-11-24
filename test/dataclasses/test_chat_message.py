@@ -1,7 +1,7 @@
 import pytest
 from transformers import AutoTokenizer
 
-from haystack.preview.dataclasses import ChatMessage, ChatRole
+from haystack.dataclasses import ChatMessage, ChatRole
 
 
 @pytest.mark.unit

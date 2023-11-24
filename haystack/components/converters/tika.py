@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import List, Union
 
-from haystack.preview.lazy_imports import LazyImport
-from haystack.preview import component, Document
+from haystack.lazy_imports import LazyImport
+from haystack import component, Document
 
 
 with LazyImport("Run 'pip install tika'") as tika_import:

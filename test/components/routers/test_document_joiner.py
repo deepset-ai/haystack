@@ -2,8 +2,8 @@ import logging
 
 import pytest
 
-from haystack.preview import Document
-from haystack.preview.components.routers.document_joiner import DocumentJoiner
+from haystack import Document
+from haystack.components.routers.document_joiner import DocumentJoiner
 
 
 class TestDocumentJoiner:

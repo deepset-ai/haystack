@@ -2,7 +2,7 @@ import logging
 import re
 from typing import List, Dict, Any, Optional
 
-from haystack.preview import component, GeneratedAnswer, Document
+from haystack import component, GeneratedAnswer, Document
 
 
 logger = logging.getLogger(__name__)

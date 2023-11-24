@@ -3,8 +3,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from haystack.preview import Document
-from haystack.preview.dataclasses.byte_stream import ByteStream
+from haystack import Document
+from haystack.dataclasses.byte_stream import ByteStream
 
 
 @pytest.mark.unit

@@ -1,7 +1,7 @@
 import pytest
 
-from haystack.preview import Document
-from haystack.preview.components.preprocessors import DocumentSplitter
+from haystack import Document
+from haystack.components.preprocessors import DocumentSplitter
 
 
 class TestDocumentSplitter:

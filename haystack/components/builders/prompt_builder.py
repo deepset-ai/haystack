@@ -2,8 +2,8 @@ from typing import Dict, Any
 
 from jinja2 import Template, meta
 
-from haystack.preview import component
-from haystack.preview import default_to_dict
+from haystack import component
+from haystack import default_to_dict
 
 
 @component

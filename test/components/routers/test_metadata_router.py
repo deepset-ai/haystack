@@ -1,7 +1,7 @@
 import pytest
 
-from haystack.preview import Document
-from haystack.preview.components.routers.metadata_router import MetadataRouter
+from haystack import Document
+from haystack.components.routers.metadata_router import MetadataRouter
 
 
 class TestMetadataRouter:

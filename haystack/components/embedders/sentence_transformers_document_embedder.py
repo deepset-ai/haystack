@@ -1,7 +1,7 @@
 from typing import List, Optional, Union, Dict, Any
 
-from haystack.preview import component, Document, default_to_dict
-from haystack.preview.components.embedders.backends.sentence_transformers_backend import (
+from haystack import component, Document, default_to_dict
+from haystack.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
 
@@ -14,8 +14,8 @@ class SentenceTransformersDocumentEmbedder:
 
     Usage example:
     ```python
-    from haystack.preview import Document
-    from haystack.preview.components.embedders import SentenceTransformersDocumentEmbedder
+    from haystack import Document
+    from haystack.components.embedders import SentenceTransformersDocumentEmbedder
     doc = Document(text="I love pizza!")
     doc_embedder = SentenceTransformersDocumentEmbedder()
     doc_embedder.warm_up()

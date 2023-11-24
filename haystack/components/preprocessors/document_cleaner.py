@@ -5,7 +5,7 @@ from functools import partial, reduce
 from itertools import chain
 from typing import Generator, List, Optional, Set
 
-from haystack.preview import Document, component
+from haystack import Document, component
 
 logger = logging.getLogger(__name__)
 

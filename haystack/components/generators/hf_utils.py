@@ -1,7 +1,7 @@
 import inspect
 from typing import Any, Dict, List, Optional
 
-from haystack.preview.lazy_imports import LazyImport
+from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient, HfApi

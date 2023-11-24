@@ -2,8 +2,8 @@ import random
 
 import pytest
 
-from haystack.preview import Document, ComponentError
-from haystack.preview.components.samplers.top_p import TopPSampler
+from haystack import Document, ComponentError
+from haystack.components.samplers.top_p import TopPSampler
 
 
 class TestTopPSampler:

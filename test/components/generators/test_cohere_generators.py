@@ -3,7 +3,7 @@ import os
 import pytest
 import cohere
 
-from haystack.preview.components.generators import CohereGenerator
+from haystack.components.generators import CohereGenerator
 
 
 def default_streaming_callback(chunk):
@@ -43,7 +43,7 @@ class TestGPTGenerator:
         component = CohereGenerator(api_key="test-api-key")
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.generators.cohere.CohereGenerator",
+            "type": "haystack.components.generators.cohere.CohereGenerator",
             "init_parameters": {
                 "model_name": "command",
                 "streaming_callback": None,
@@ -62,7 +62,7 @@ class TestGPTGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.generators.cohere.CohereGenerator",
+            "type": "haystack.components.generators.cohere.CohereGenerator",
             "init_parameters": {
                 "model_name": "command-light",
                 "max_tokens": 10,
@@ -83,7 +83,7 @@ class TestGPTGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.generators.cohere.CohereGenerator",
+            "type": "haystack.components.generators.cohere.CohereGenerator",
             "init_parameters": {
                 "model_name": "command",
                 "streaming_callback": "test_cohere_generators.<lambda>",
@@ -96,7 +96,7 @@ class TestGPTGenerator:
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("COHERE_API_KEY", "test-key")
         data = {
-            "type": "haystack.preview.components.generators.cohere.CohereGenerator",
+            "type": "haystack.components.generators.cohere.CohereGenerator",
             "init_parameters": {
                 "model_name": "command",
                 "max_tokens": 10,

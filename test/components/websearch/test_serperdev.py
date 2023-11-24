@@ -4,8 +4,8 @@ from unittest.mock import Mock, patch
 import pytest
 from requests import Timeout, RequestException, HTTPError
 
-from haystack.preview import Document
-from haystack.preview.components.websearch.serper_dev import SerperDevWebSearch, SerperDevError
+from haystack import Document
+from haystack.components.websearch.serper_dev import SerperDevWebSearch, SerperDevError
 
 
 EXAMPLE_SERPERDEV_RESPONSE = {
@@ -102,7 +102,7 @@ EXAMPLE_SERPERDEV_RESPONSE = {
 
 @pytest.fixture
 def mock_serper_dev_search_result():
-    with patch("haystack.preview.components.websearch.serper_dev.requests") as mock_run:
+    with patch("haystack.components.websearch.serper_dev.requests") as mock_run:
         mock_run.post.return_value = Mock(status_code=200, json=lambda: EXAMPLE_SERPERDEV_RESPONSE)
         yield mock_run
 
@@ -121,7 +121,7 @@ class TestSerperDevSearchAPI:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.preview.components.websearch.serper_dev.SerperDevWebSearch",
+            "type": "haystack.components.websearch.serper_dev.SerperDevWebSearch",
             "init_parameters": {"top_k": 10, "allowed_domains": ["test.com"], "search_params": {"param": "test"}},
         }
 

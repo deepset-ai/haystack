@@ -1,6 +1,6 @@
 import io
 
-from haystack.preview.dataclasses import ByteStream
+from haystack.dataclasses import ByteStream
 
 import pytest
 

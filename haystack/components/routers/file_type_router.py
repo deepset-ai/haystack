@@ -4,8 +4,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import List, Union, Optional, Dict
 
-from haystack.preview import component
-from haystack.preview.dataclasses import ByteStream
+from haystack import component
+from haystack.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
 

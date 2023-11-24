@@ -1,7 +1,7 @@
 from typing import List, Optional, Union, Dict, Any
 
-from haystack.preview import component, default_to_dict
-from haystack.preview.components.embedders.backends.sentence_transformers_backend import (
+from haystack import component, default_to_dict
+from haystack.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
 
@@ -13,7 +13,7 @@ class SentenceTransformersTextEmbedder:
 
     Usage example:
     ```python
-    from haystack.preview.components.embedders import SentenceTransformersTextEmbedder
+    from haystack.components.embedders import SentenceTransformersTextEmbedder
 
     text_to_embed = "I love pizza!"
 

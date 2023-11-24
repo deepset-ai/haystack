@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
-from haystack.preview.dataclasses.document import Document
+from haystack.dataclasses.document import Document
 
 
 @dataclass(frozen=True)

@@ -3,8 +3,8 @@ import os
 import sys
 from typing import Any, Callable, Dict, List, Optional
 
-from haystack.preview.lazy_imports import LazyImport
-from haystack.preview import DeserializationError, component, default_from_dict, default_to_dict
+from haystack.lazy_imports import LazyImport
+from haystack import DeserializationError, component, default_from_dict, default_to_dict
 
 with LazyImport(message="Run 'pip install cohere'") as cohere_import:
     from cohere import Client, COHERE_API_URL
@@ -22,7 +22,7 @@ class CohereGenerator:
     Example usage:
 
     ```python
-    from haystack.preview.generators import CohereGenerator
+    from haystack.generators import CohereGenerator
     generator = CohereGenerator(api_key="test-api-key")
     generator.run(prompt="What's the capital of France?")
     ```

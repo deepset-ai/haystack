@@ -1,9 +1,9 @@
 import pytest
 import pandas as pd
 
-from haystack.preview import Document
-from haystack.preview.errors import FilterError
-from haystack.preview.utils.filters import convert, document_matches_filter
+from haystack import Document
+from haystack.errors import FilterError
+from haystack.utils.filters import convert, document_matches_filter
 
 document_matches_filter_data = [
     # == operator params

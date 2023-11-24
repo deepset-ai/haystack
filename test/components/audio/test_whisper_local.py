@@ -5,8 +5,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 import torch
 
-from haystack.preview.dataclasses import Document
-from haystack.preview.components.audio import LocalWhisperTranscriber
+from haystack.dataclasses import Document
+from haystack.components.audio import LocalWhisperTranscriber
 
 
 SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
@@ -32,7 +32,7 @@ class TestLocalWhisperTranscriber:
         transcriber = LocalWhisperTranscriber()
         data = transcriber.to_dict()
         assert data == {
-            "type": "haystack.preview.components.audio.whisper_local.LocalWhisperTranscriber",
+            "type": "haystack.components.audio.whisper_local.LocalWhisperTranscriber",
             "init_parameters": {"model_name_or_path": "large", "device": "cpu", "whisper_params": {}},
         }
 
@@ -45,7 +45,7 @@ class TestLocalWhisperTranscriber:
         )
         data = transcriber.to_dict()
         assert data == {
-            "type": "haystack.preview.components.audio.whisper_local.LocalWhisperTranscriber",
+            "type": "haystack.components.audio.whisper_local.LocalWhisperTranscriber",
             "init_parameters": {
                 "model_name_or_path": "tiny",
                 "device": "cuda",
@@ -55,7 +55,7 @@ class TestLocalWhisperTranscriber:
 
     @pytest.mark.unit
     def test_warmup(self):
-        with patch("haystack.preview.components.audio.whisper_local.whisper") as mocked_whisper:
+        with patch("haystack.components.audio.whisper_local.whisper") as mocked_whisper:
             transcriber = LocalWhisperTranscriber(model_name_or_path="large-v2")
             mocked_whisper.load_model.assert_not_called()
             transcriber.warm_up()
@@ -63,7 +63,7 @@ class TestLocalWhisperTranscriber:
 
     @pytest.mark.unit
     def test_warmup_doesnt_reload(self):
-        with patch("haystack.preview.components.audio.whisper_local.whisper") as mocked_whisper:
+        with patch("haystack.components.audio.whisper_local.whisper") as mocked_whisper:
             transcriber = LocalWhisperTranscriber(model_name_or_path="large-v2")
             transcriber.warm_up()
             transcriber.warm_up()
@@ -144,25 +144,25 @@ class TestLocalWhisperTranscriber:
 
     @pytest.mark.integration
     @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
-    def test_whisper_local_transcriber(self, preview_samples_path):
+    def test_whisper_local_transcriber(self, test_files_path):
         comp = LocalWhisperTranscriber(model_name_or_path="medium", whisper_params={"language": "english"})
         comp.warm_up()
         output = comp.run(
             audio_files=[
-                preview_samples_path / "audio" / "this is the content of the document.wav",
-                str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute()),
-                open(preview_samples_path / "audio" / "answer.wav", "rb"),
+                test_files_path / "audio" / "this is the content of the document.wav",
+                str((test_files_path / "audio" / "the context for this answer is here.wav").absolute()),
+                open(test_files_path / "audio" / "answer.wav", "rb"),
             ]
         )
         docs = output["documents"]
         assert len(docs) == 3
 
         assert docs[0].content.strip().lower() == "this is the content of the document."
-        assert preview_samples_path / "audio" / "this is the content of the document.wav" == docs[0].meta["audio_file"]
+        assert test_files_path / "audio" / "this is the content of the document.wav" == docs[0].meta["audio_file"]
 
         assert docs[1].content.strip().lower() == "the context for this answer is here."
         assert (
-            str((preview_samples_path / "audio" / "the context for this answer is here.wav").absolute())
+            str((test_files_path / "audio" / "the context for this answer is here.wav").absolute())
             == docs[1].meta["audio_file"]
         )
 

@@ -2,7 +2,7 @@ from typing import Optional
 
 import pytest
 
-from haystack.preview import Pipeline, component
+from haystack import Pipeline, component
 
 
 @component
