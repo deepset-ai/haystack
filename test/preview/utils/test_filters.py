@@ -1,508 +1,554 @@
 import pytest
 import pandas as pd
-import numpy as np
 
 from haystack.preview import Document
 from haystack.preview.errors import FilterError
 from haystack.preview.utils.filters import convert, document_matches_filter
 
-
-class TestFilterUtils:  # pylint: disable=R0904
-    @pytest.mark.unit
-    def test_eq_match(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": "test"}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_eq_no_match(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": "test1"}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_eq_no_match_missing_key(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name1": "test"}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_explicit_eq(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$eq": "test"}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_eq_different_types(self):
-        document = Document(meta={"name": 1})
-        filter = {"name": "1"}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_eq_dataframes(self):
-        document = Document(meta={"name": pd.DataFrame({"a": [1, 2, 3]})})
-        filter = {"name": pd.DataFrame({"a": [1, 2, 3]})}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_eq_dataframes_no_match(self):
-        document = Document(meta={"name": pd.DataFrame({"a": [1, 2, 3]})})
-        filter = {"name": pd.DataFrame({"a": [1, 2, 4]})}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_eq_np_arrays(self):
-        document = Document(meta={"name": np.array([1, 2, 3])})
-        filter = {"name": np.array([1, 2, 3])}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_eq_np_arrays_no_match(self):
-        document = Document(meta={"name": np.array([1, 2, 3])})
-        filter = {"name": np.array([1, 2, 4])}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_ne_match(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$ne": "test1"}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_ne_no_match(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$ne": "test"}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_ne_no_match_missing_key(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name1": {"$ne": "test"}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_ne_different_types(self):
-        document = Document(meta={"name": 1})
-        filter = {"name": {"$ne": "1"}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_ne_dataframes(self):
-        document = Document(meta={"name": pd.DataFrame({"a": [1, 2, 3]})})
-        filter = {"name": {"$ne": pd.DataFrame({"a": [1, 2, 4]})}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_ne_dataframes_no_match(self):
-        document = Document(meta={"name": pd.DataFrame({"a": [1, 2, 3]})})
-        filter = {"name": {"$ne": pd.DataFrame({"a": [1, 2, 3]})}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_ne_np_arrays(self):
-        document = Document(meta={"name": np.array([1, 2, 3])})
-        filter = {"name": {"$ne": np.array([1, 2, 4])}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_ne_np_arrays_no_match(self):
-        document = Document(meta={"name": np.array([1, 2, 3])})
-        filter = {"name": {"$ne": np.array([1, 2, 3])}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_in_match_list(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$in": ["test", "test1"]}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_in_no_match_list(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$in": ["test2", "test3"]}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_in_implicit(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": ["test", "test1"]}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_in_match_set(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$in": {"test", "test1"}}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_in_no_match_set(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$in": {"test2", "test3"}}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_in_match_tuple(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$in": ("test", "test1")}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_in_no_match_tuple(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$in": ("test2", "test3")}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_in_no_match_missing_key(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name1": {"$in": ["test", "test1"]}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_in_unsupported_type(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$in": "unsupported"}}
-        with pytest.raises(FilterError, match=r"\$in accepts only iterable values like lists, sets and tuples"):
-            document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_nin_match_list(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$nin": ["test1", "test2"]}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_nin_no_match_list(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$nin": ["test", "test1"]}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_nin_match_set(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$nin": {"test1", "test2"}}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_nin_no_match_set(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$nin": {"test", "test1"}}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_nin_match_tuple(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$nin": ("test1", "test2")}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_nin_no_match_tuple(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$nin": ("test", "test1")}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_nin_no_match_missing_key(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name1": {"$nin": ["test", "test1"]}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_nin_unsupported_type(self):
-        document = Document(meta={"name": "test"})
-        filter = {"name": {"$nin": "unsupported"}}
-        with pytest.raises(FilterError, match=r"\$in accepts only iterable values like lists, sets and tuples"):
-            document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gt_match_int(self):
-        document = Document(meta={"age": 21})
-        filter = {"age": {"$gt": 20}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gt_no_match_int(self):
-        document = Document(meta={"age": 19})
-        filter = {"age": {"$gt": 20}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gt_match_float(self):
-        document = Document(meta={"number": 90.5})
-        filter = {"number": {"$gt": 90.0}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gt_no_match_float(self):
-        document = Document(meta={"number": 89.5})
-        filter = {"number": {"$gt": 90.0}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gt_match_np_number(self):
-        document = Document(meta={"value": np.float64(7.5)})
-        filter = {"value": {"$gt": np.float64(7.0)}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gt_no_match_np_number(self):
-        document = Document(meta={"value": np.float64(6.5)})
-        filter = {"value": {"$gt": np.float64(7.0)}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gt_match_date_string(self):
-        document = Document(meta={"date": "2022-01-02"})
-        filter = {"date": {"$gt": "2022-01-01"}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gt_no_match_date_string(self):
-        document = Document(meta={"date": "2022-01-01"})
-        filter = {"date": {"$gt": "2022-01-01"}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gt_no_match_missing_key(self):
-        document = Document(meta={"age": 21})
-        filter = {"age1": {"$gt": 20}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gt_unsupported_type(self):
-        document = Document(meta={"age": 21})
-        filter = {"age": {"$gt": "unsupported"}}
-        with pytest.raises(
-            FilterError,
-            match=(
-                r"Convert these values into one of the following types: \['int', 'float', 'number'\] or a datetime string "
-                "in ISO 8601 format"
-            ),
-        ):
-            document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gte_match_int(self):
-        document = Document(meta={"age": 21})
-        filter_1 = {"age": {"$gte": 21}}
-        filter_2 = {"age": {"$gte": 20}}
-        assert document_matches_filter(filter_1, document)
-        assert document_matches_filter(filter_2, document)
-
-    @pytest.mark.unit
-    def test_gte_no_match_int(self):
-        document = Document(meta={"age": 20})
-        filter = {"age": {"$gte": 21}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gte_match_float(self):
-        document = Document(meta={"number": 90.5})
-        filter_1 = {"number": {"$gte": 90.5}}
-        filter_2 = {"number": {"$gte": 90.4}}
-        assert document_matches_filter(filter_1, document)
-        assert document_matches_filter(filter_2, document)
-
-    @pytest.mark.unit
-    def test_gte_no_match_float(self):
-        document = Document(meta={"number": 90.4})
-        filter = {"number": {"$gte": 90.5}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gte_match_np_number(self):
-        document = Document(meta={"value": np.float64(7.5)})
-        filter_1 = {"value": {"$gte": np.float64(7.5)}}
-        filter_2 = {"value": {"$gte": np.float64(7.4)}}
-        assert document_matches_filter(filter_1, document)
-        assert document_matches_filter(filter_2, document)
-
-    @pytest.mark.unit
-    def test_gte_no_match_np_number(self):
-        document = Document(meta={"value": np.float64(7.4)})
-        filter = {"value": {"$gte": np.float64(7.5)}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gte_match_date_string(self):
-        document = Document(meta={"date": "2022-01-02"})
-        filter_1 = {"date": {"$gte": "2022-01-02"}}
-        filter_2 = {"date": {"$gte": "2022-01-01"}}
-        assert document_matches_filter(filter_1, document)
-        assert document_matches_filter(filter_2, document)
-
-    @pytest.mark.unit
-    def test_gte_no_match_date_string(self):
-        document = Document(meta={"date": "2022-01-01"})
-        filter = {"date": {"$gte": "2022-01-02"}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_gte_unsupported_type(self):
-        document = Document(meta={"age": 21})
-        filter = {"age": {"$gte": "unsupported"}}
-        with pytest.raises(
-            FilterError,
-            match=(
-                r"Convert these values into one of the following types: \['int', 'float', 'number'\] or a datetime string "
-                "in ISO 8601 format"
-            ),
-        ):
-            document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lt_match_int(self):
-        document = Document(meta={"age": 19})
-        filter = {"age": {"$lt": 20}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lt_no_match_int(self):
-        document = Document(meta={"age": 20})
-        filter = {"age": {"$lt": 20}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lt_match_float(self):
-        document = Document(meta={"number": 89.9})
-        filter = {"number": {"$lt": 90.0}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lt_no_match_float(self):
-        document = Document(meta={"number": 90.0})
-        filter = {"number": {"$lt": 90.0}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lt_match_np_number(self):
-        document = Document(meta={"value": np.float64(6.9)})
-        filter = {"value": {"$lt": np.float64(7.0)}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lt_no_match_np_number(self):
-        document = Document(meta={"value": np.float64(7.0)})
-        filter = {"value": {"$lt": np.float64(7.0)}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lt_match_date_string(self):
-        document = Document(meta={"date": "2022-01-01"})
-        filter = {"date": {"$lt": "2022-01-02"}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lt_no_match_date_string(self):
-        document = Document(meta={"date": "2022-01-02"})
-        filter = {"date": {"$lt": "2022-01-02"}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lt_unsupported_type(self):
-        document = Document(meta={"age": 21})
-        filter = {"age": {"$lt": "unsupported"}}
-        with pytest.raises(
-            FilterError,
-            match=(
-                r"Convert these values into one of the following types: \['int', 'float', 'number'\] or a datetime string "
-                "in ISO 8601 format"
-            ),
-        ):
-            document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lte_match_int(self):
-        document = Document(meta={"age": 21})
-        filter_1 = {"age": {"$lte": 21}}
-        filter_2 = {"age": {"$lte": 20}}
-        assert not document_matches_filter(filter_2, document)
-        assert document_matches_filter(filter_1, document)
-
-    @pytest.mark.unit
-    def test_lte_no_match_int(self):
-        document = Document(meta={"age": 22})
-        filter = {"age": {"$lte": 21}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lte_match_float(self):
-        document = Document(meta={"number": 90.5})
-        filter_1 = {"number": {"$lte": 90.5}}
-        filter_2 = {"number": {"$lte": 90.4}}
-        assert not document_matches_filter(filter_2, document)
-        assert document_matches_filter(filter_1, document)
-
-    @pytest.mark.unit
-    def test_lte_no_match_float(self):
-        document = Document(meta={"number": 90.6})
-        filter = {"number": {"$lte": 90.5}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lte_match_np_number(self):
-        document = Document(meta={"value": np.float64(7.5)})
-        filter_1 = {"value": {"$lte": np.float64(7.5)}}
-        filter_2 = {"value": {"$lte": np.float64(7.4)}}
-        assert not document_matches_filter(filter_2, document)
-        assert document_matches_filter(filter_1, document)
-
-    @pytest.mark.unit
-    def test_lte_no_match_np_number(self):
-        document = Document(meta={"value": np.float64(7.6)})
-        filter = {"value": {"$lte": np.float64(7.5)}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lte_match_date_string(self):
-        document = Document(meta={"date": "2022-01-02"})
-        filter_1 = {"date": {"$lte": "2022-01-02"}}
-        filter_2 = {"date": {"$lte": "2022-01-01"}}
-        assert not document_matches_filter(filter_2, document)
-        assert document_matches_filter(filter_1, document)
-
-    @pytest.mark.unit
-    def test_lte_no_match_date_string(self):
-        document = Document(meta={"date": "2022-01-03"})
-        filter = {"date": {"$lte": "2022-01-02"}}
-        assert not document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_lte_unsupported_type(self):
-        document = Document(meta={"age": 21})
-        filter = {"age": {"$lte": "unsupported"}}
-        with pytest.raises(
-            FilterError,
-            match=(
-                r"Convert these values into one of the following types: \['int', 'float', 'number'\] or a datetime string "
-                "in ISO 8601 format"
-            ),
-        ):
-            document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_implicit_and(self):
-        document = Document(meta={"age": 21, "name": "John"})
-        filter = {"age": {"$gt": 18}, "name": "John"}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_explicit_and(self):
-        document = Document(meta={"age": 21})
-        filter = {"age": {"$and": {"$gt": 18}, "$lt": 25}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_or(self):
-        document = Document(meta={"age": 26})
-        filter = {"age": {"$or": [{"$gt": 18}, {"$lt": 25}]}}
-        assert document_matches_filter(filter, document)
-
-    @pytest.mark.unit
-    def test_not(self):
-        document = Document(meta={"age": 17})
-        filter = {"age": {"$not": {"$gt": 18}}}
-        assert document_matches_filter(filter, document)
+document_matches_filter_data = [
+    # == operator params
+    pytest.param(
+        {"field": "meta.name", "operator": "==", "value": "test"},
+        Document(meta={"name": "test"}),
+        True,
+        id="== operator with equal values",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "==", "value": "test"},
+        Document(meta={"name": "different value"}),
+        False,
+        id="== operator with different values",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "==", "value": "test"},
+        Document(meta={"name": ["test"]}),
+        False,
+        id="== operator with different types values",
+    ),
+    pytest.param(
+        {"field": "dataframe", "operator": "==", "value": pd.DataFrame([1])},
+        Document(dataframe=pd.DataFrame([1])),
+        True,
+        id="== operator with equal pandas.DataFrame values",
+    ),
+    pytest.param(
+        {"field": "dataframe", "operator": "==", "value": pd.DataFrame([1])},
+        Document(dataframe=pd.DataFrame([10])),
+        False,
+        id="== operator with different pandas.DataFrame values",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "==", "value": "test"},
+        Document(),
+        False,
+        id="== operator with missing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "==", "value": "test"},
+        Document(meta={"name": None}),
+        False,
+        id="== operator with None Document value",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "==", "value": None},
+        Document(meta={"name": "test"}),
+        False,
+        id="== operator with None filter value",
+    ),
+    # != operator params
+    pytest.param(
+        {"field": "meta.name", "operator": "!=", "value": "test"},
+        Document(meta={"name": "test"}),
+        False,
+        id="!= operator with equal values",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "!=", "value": "test"},
+        Document(meta={"name": "different value"}),
+        True,
+        id="!= operator with different values",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "!=", "value": "test"},
+        Document(meta={"name": ["test"]}),
+        True,
+        id="!= operator with different types values",
+    ),
+    pytest.param(
+        {"field": "dataframe", "operator": "!=", "value": pd.DataFrame([1])},
+        Document(dataframe=pd.DataFrame([1])),
+        False,
+        id="!= operator with equal pandas.DataFrame values",
+    ),
+    pytest.param(
+        {"field": "dataframe", "operator": "!=", "value": pd.DataFrame([1])},
+        Document(dataframe=pd.DataFrame([10])),
+        True,
+        id="!= operator with different pandas.DataFrame values",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "!=", "value": "test"}, Document(), True, id="!= operator with missing value"
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "!=", "value": "test"},
+        Document(meta={"name": None}),
+        True,
+        id="!= operator with None Document value",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "!=", "value": None},
+        Document(meta={"name": "test"}),
+        True,
+        id="!= operator with None filter value",
+    ),
+    # > operator params
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": 10},
+        Document(meta={"page": 10}),
+        False,
+        id="> operator with equal Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": 10},
+        Document(meta={"page": 11}),
+        True,
+        id="> operator with greater Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": 10},
+        Document(meta={"page": 9}),
+        False,
+        id="> operator with smaller Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        False,
+        id="> operator with equal ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1972-12-11T19:54:58"}),
+        True,
+        id="> operator with greater ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">", "value": "1972-12-11T19:54:58"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        False,
+        id="> operator with smaller ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": 10},
+        Document(),
+        False,
+        id="> operator with missing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": 10},
+        Document(meta={"page": None}),
+        False,
+        id="> operator with None Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": None},
+        Document(meta={"page": 10}),
+        False,
+        id="> operator with None filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": None},
+        Document(meta={"page": None}),
+        False,
+        id="> operator with None Document and filter value",
+    ),
+    # >= operator params
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": 10},
+        Document(meta={"page": 10}),
+        True,
+        id=">= operator with equal Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": 10},
+        Document(meta={"page": 11}),
+        True,
+        id=">= operator with greater Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": 10},
+        Document(meta={"page": 9}),
+        False,
+        id=">= operator with smaller Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        True,
+        id=">= operator with equal ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1972-12-11T19:54:58"}),
+        True,
+        id=">= operator with greater ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1972-12-11T19:54:58"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        False,
+        id=">= operator with smaller ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": 10},
+        Document(),
+        False,
+        id=">= operator with missing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": 10},
+        Document(meta={"page": None}),
+        False,
+        id=">= operator with None Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": None},
+        Document(meta={"page": 10}),
+        False,
+        id=">= operator with None filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": None},
+        Document(meta={"page": None}),
+        False,
+        id=">= operator with None Document and filter value",
+    ),
+    # < operator params
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": 10},
+        Document(meta={"page": 10}),
+        False,
+        id="< operator with equal Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": 10},
+        Document(meta={"page": 11}),
+        False,
+        id="< operator with greater Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": 10},
+        Document(meta={"page": 9}),
+        True,
+        id="< operator with smaller Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        False,
+        id="< operator with equal ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1972-12-11T19:54:58"}),
+        False,
+        id="< operator with greater ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<", "value": "1972-12-11T19:54:58"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        True,
+        id="< operator with smaller ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": 10},
+        Document(),
+        False,
+        id="< operator with missing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": 10},
+        Document(meta={"page": None}),
+        False,
+        id="< operator with None Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": None},
+        Document(meta={"page": 10}),
+        False,
+        id="< operator with None filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": None},
+        Document(meta={"page": None}),
+        False,
+        id="< operator with None Document and filter value",
+    ),
+    # <= operator params
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": 10},
+        Document(meta={"page": 10}),
+        True,
+        id="<= operator with equal Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": 10},
+        Document(meta={"page": 11}),
+        False,
+        id="<= operator with greater Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": 10},
+        Document(meta={"page": 9}),
+        True,
+        id="<= operator with smaller Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<=", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        True,
+        id="<= operator with equal ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<=", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1972-12-11T19:54:58"}),
+        False,
+        id="<= operator with greater ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<=", "value": "1972-12-11T19:54:58"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        True,
+        id="<= operator with smaller ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": 10},
+        Document(),
+        False,
+        id="<= operator with missing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": 10},
+        Document(meta={"page": None}),
+        False,
+        id="<= operator with None Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": None},
+        Document(meta={"page": 10}),
+        False,
+        id="<= operator with None filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": None},
+        Document(meta={"page": None}),
+        False,
+        id="<= operator with None Document and filter value",
+    ),
+    # in operator params
+    pytest.param(
+        {"field": "meta.page", "operator": "in", "value": [9, 10]},
+        Document(meta={"page": 1}),
+        False,
+        id="in operator with filter value not containing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "in", "value": [9, 10]},
+        Document(meta={"page": 10}),
+        True,
+        id="in operator with filter value containing Document value",
+    ),
+    # not in operator params
+    pytest.param(
+        {"field": "meta.page", "operator": "not in", "value": [9, 10]},
+        Document(meta={"page": 1}),
+        True,
+        id="not in operator with filter value not containing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "not in", "value": [9, 10]},
+        Document(meta={"page": 10}),
+        False,
+        id="not in operator with filter value containing Document value",
+    ),
+    # AND operator params
+    pytest.param(
+        {
+            "operator": "AND",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 10, "type": "article"}),
+        True,
+        id="AND operator with Document matching all conditions",
+    ),
+    pytest.param(
+        {
+            "operator": "AND",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 20, "type": "article"}),
+        False,
+        id="AND operator with Document matching a single condition",
+    ),
+    pytest.param(
+        {
+            "operator": "AND",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 11, "value": "blog post"}),
+        False,
+        id="AND operator with Document matching no condition",
+    ),
+    # OR operator params
+    pytest.param(
+        {
+            "operator": "OR",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 10, "type": "article"}),
+        True,
+        id="OR operator with Document matching all conditions",
+    ),
+    pytest.param(
+        {
+            "operator": "OR",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 20, "type": "article"}),
+        True,
+        id="OR operator with Document matching a single condition",
+    ),
+    pytest.param(
+        {
+            "operator": "OR",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 11, "value": "blog post"}),
+        False,
+        id="OR operator with Document matching no condition",
+    ),
+    # NOT operator params
+    pytest.param(
+        {
+            "operator": "NOT",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 10, "type": "article"}),
+        False,
+        id="NOT operator with Document matching all conditions",
+    ),
+    pytest.param(
+        {
+            "operator": "NOT",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 20, "type": "article"}),
+        True,
+        id="NOT operator with Document matching a single condition",
+    ),
+    pytest.param(
+        {
+            "operator": "NOT",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 11, "value": "blog post"}),
+        True,
+        id="NOT operator with Document matching no condition",
+    ),
+]
+
+
+@pytest.mark.parametrize("filter, document, expected_result", document_matches_filter_data)
+def test_document_matches_filter(filter, document, expected_result):
+    assert document_matches_filter(filter, document) == expected_result
+
+
+document_matches_filter_raises_error_data = [
+    # > operator params
+    pytest.param({"field": "meta.page", "operator": ">", "value": "10"}, id="> operator with string filter value"),
+    pytest.param({"field": "meta.page", "operator": ">", "value": [10]}, id="> operator with list filter value"),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": pd.DataFrame([10])},
+        id="> operator with pandas.DataFrame filter value",
+    ),
+    # >= operator params
+    pytest.param({"field": "meta.page", "operator": ">=", "value": "10"}, id=">= operator with string filter value"),
+    pytest.param({"field": "meta.page", "operator": ">=", "value": [10]}, id=">= operator with list filter value"),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": pd.DataFrame([10])},
+        id=">= operator with pandas.DataFrame filter value",
+    ),
+    # < operator params
+    pytest.param({"field": "meta.page", "operator": "<", "value": "10"}, id="< operator with string filter value"),
+    pytest.param({"field": "meta.page", "operator": "<", "value": [10]}, id="< operator with list filter value"),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": pd.DataFrame([10])},
+        id="< operator with pandas.DataFrame filter value",
+    ),
+    # <= operator params
+    pytest.param({"field": "meta.page", "operator": "<=", "value": "10"}, id="<= operator with string filter value"),
+    pytest.param({"field": "meta.page", "operator": "<=", "value": [10]}, id="<= operator with list filter value"),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": pd.DataFrame([10])},
+        id="<= operator with pandas.DataFrame filter value",
+    ),
+    # in operator params
+    pytest.param({"field": "meta.page", "operator": "in", "value": 1}, id="in operator with non list filter value"),
+    # at some point we might want to support any iterable and this test should fail
+    pytest.param(
+        {"field": "meta.page", "operator": "in", "value": (10, 11)}, id="in operator with non list filter value"
+    ),
+    # not in operator params
+    pytest.param(
+        {"field": "meta.page", "operator": "not in", "value": 1}, id="not in operator with non list filter value"
+    ),
+    # at some point we might want to support any iterable and this test should fail
+    pytest.param(
+        {"field": "meta.page", "operator": "not in", "value": (10, 11)}, id="not in operator with non list filter value"
+    ),
+    # Malformed filters
+    pytest.param(
+        {"conditions": [{"field": "meta.name", "operator": "==", "value": "test"}]}, id="Missing root operator key"
+    ),
+    pytest.param({"operator": "AND"}, id="Missing root conditions key"),
+    pytest.param({"operator": "==", "value": "test"}, id="Missing condition field key"),
+    pytest.param({"field": "meta.name", "value": "test"}, id="Missing condition operator key"),
+    pytest.param({"field": "meta.name", "operator": "=="}, id="Missing condition value key"),
+]
+
+
+@pytest.mark.parametrize("filter", document_matches_filter_raises_error_data)
+def test_document_matches_filter_raises_error(filter):
+    with pytest.raises(FilterError):
+        document = Document(meta={"page": 10})
+        document_matches_filter(filter, document)
 
 
 filters_data = [

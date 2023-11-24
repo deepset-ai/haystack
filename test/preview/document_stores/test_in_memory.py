@@ -146,10 +146,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         results = document_store.bm25_retrieval(query="Python", top_k=1)
         assert results[0].content == "Python is a popular programming language"
 
-    @pytest.mark.skip(reason="Filter is not working properly, see https://github.com/deepset-ai/haystack/issues/6153")
-    def test_eq_filter_embedding(self, document_store: InMemoryDocumentStore, filterable_docs):
-        pass
-
     # Test a query, add a new document and make sure results are appropriately updated
     @pytest.mark.unit
     def test_bm25_retrieval_with_updated_docs(self, document_store: InMemoryDocumentStore):
