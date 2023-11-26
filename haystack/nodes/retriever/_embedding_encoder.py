@@ -57,10 +57,7 @@ COHERE_EMBEDDING_MODELS = [
     "embed-multilingual-v2.0",
 ]
 
-BEDROCK_EMBEDDING_MODELS = [
-    "amazon.titan-embed-text-v1", 
-    "cohere.embed-english-v3", 
-    "cohere.embed-multilingual-v3"]
+BEDROCK_EMBEDDING_MODELS = ["amazon.titan-embed-text-v1", "cohere.embed-english-v3", "cohere.embed-multilingual-v3"]
 
 
 class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
@@ -454,12 +451,12 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
             (m for m in BEDROCK_EMBEDDING_MODELS if m in retriever.embedding_model), "amazon.titan-embed-text-v1"
         )
 
-    def initialize_boto3_session(self) -> boto3.Session:
+    def initialize_boto3_session(self):
         if self.aws_config:
-            profile_name = self.aws_config.get('profile_name', None)
-            access_key = self.aws_config.get('aws_access_key_id', None)
-            secret_key = self.aws_config.get('aws_secret_access_key', None)
-            region = self.aws_config.get('region_name', None)
+            profile_name = self.aws_config.get("profile_name", None)
+            access_key = self.aws_config.get("aws_access_key_id", None)
+            secret_key = self.aws_config.get("aws_secret_access_key", None)
+            region = self.aws_config.get("region_name", None)
             if profile_name:
                 try:
                     return boto3.Session(profile_name=profile_name, region_name=region)
@@ -485,21 +482,14 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
             response_body = json.loads(response.get("body").read())
             return np.array(response_body.get("embedding"))
         else:
-            coherePayload = json.dumps({
-                'texts': [text],
-                'input_type': 'search_document',
-                'truncate': 'END'
-            })
+            coherePayload = json.dumps({"texts": [text], "input_type": "search_document", "truncate": "END"})
             response = self.client.invoke_model(
-                body=coherePayload, 
-                modelId=self.model, 
-                accept='application/json', 
-                contentType='application/json'
+                body=coherePayload, modelId=self.model, accept="application/json", contentType="application/json"
             )
 
-            body = response.get('body').read().decode('utf-8')
+            body = response.get("body").read().decode("utf-8")
             response_body = json.loads(body)
-            return np.array(response_body['embeddings'])
+            return np.array(response_body["embeddings"])
 
     def embed_queries(self, queries: List[str]) -> np.ndarray:
         all_embeddings = []
@@ -536,5 +526,5 @@ _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "retribert": _RetribertEmbeddingEncoder,
     "openai": _OpenAIEmbeddingEncoder,
     "cohere": _CohereEmbeddingEncoder,
-    "bedrock": _BedrockEmbeddingEncoder
+    "bedrock": _BedrockEmbeddingEncoder,
 }
