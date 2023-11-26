@@ -456,7 +456,7 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
                     aws_secret_access_key=self.aws_config.get("aws_secret_access_key"),
                     region_name=self.aws_config.get("region"),
                 )
-            except Exception as e:
+            except Exception:
                 raise ValueError("Please pass boto3.client(bedrock-runtime) credentials configuration")
         else:
             try:
