@@ -449,20 +449,20 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
 
     def initialize_boto3_client(self):
         if self.aws_config:
-            access_key_id = self.aws_config.get("aws_access_key_id")
-            secret_access_key = self.aws_config.get("aws_secret_access_key")
-            region = self.aws_config.get("region")
             try:
                 return boto3.client(
                     "bedrock-runtime",
-                    aws_access_key_id=access_key_id,
-                    aws_secret_access_key=secret_access_key,
-                    region_name=region,
+                    aws_access_key_id=self.aws_config.get("aws_access_key_id"),
+                    aws_secret_access_key=self.aws_config.get("aws_secret_access_key"),
+                    region_name=self.aws_config.get("region"),
                 )
             except Exception as e:
-                raise ValueError(f"AWS client error {e}")
+                raise ValueError("Please pass boto3.client(bedrock-runtime) credentials configuration")
         else:
-            raise ValueError("Please pass boto3.client(bedrock-runtime) credentials configuration")
+            try:
+                return boto3.client("bedrock-runtime")
+            except Exception as e:
+                raise ValueError(f"AWS client error {e}")
 
     def embed(self, text: str) -> np.ndarray:
         input_body = {}
