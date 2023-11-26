@@ -57,6 +57,11 @@ COHERE_EMBEDDING_MODELS = [
     "embed-multilingual-v2.0",
 ]
 
+BEDROCK_EMBEDDING_MODELS = [
+    "amazon.titan-embed-text-v1", 
+    "cohere.embed-english-v3", 
+    "cohere.embed-multilingual-v3"]
+
 
 class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
@@ -442,38 +447,59 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         # See https://docs.aws.amazon.com/bedrock/latest/userguide/embeddings.html for more details
         # The maximum input text is 8K tokens and the maximum output vector length is 1536
-        # Bedrock embeddings do not support batch operations
-        self.model: str = "amazon.titan-embed-text-v1"
+        # Bedrock Titan embeddings do not support batch operations
         self.aws_config = retriever.aws_config
-        self.client = self.initialize_boto3_client()
+        self.client = self.initialize_boto3_session().client("bedrock-runtime")
+        self.model: str = next(
+            (m for m in BEDROCK_EMBEDDING_MODELS if m in retriever.embedding_model), "amazon.titan-embed-text-v1"
+        )
 
-    def initialize_boto3_client(self):
+    def initialize_boto3_session(self) -> boto3.Session:
         if self.aws_config:
-            try:
-                return boto3.client(
-                    "bedrock-runtime",
-                    aws_access_key_id=self.aws_config.get("aws_access_key_id"),
-                    aws_secret_access_key=self.aws_config.get("aws_secret_access_key"),
-                    region_name=self.aws_config.get("region"),
-                )
-            except Exception:
-                raise ValueError("Please pass boto3.client(bedrock-runtime) credentials configuration")
+            profile_name = self.aws_config.get('profile_name', None)
+            access_key = self.aws_config.get('aws_access_key_id', None)
+            secret_key = self.aws_config.get('aws_secret_access_key', None)
+            region = self.aws_config.get('region_name', None)
+            if profile_name:
+                try:
+                    return boto3.Session(profile_name=profile_name, region_name=region)
+                except Exception as e:
+                    raise ValueError(f"AWS client error {e}")
+            elif access_key and secret_key:
+                return boto3.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region)
         else:
             try:
-                return boto3.client("bedrock-runtime")
+                return boto3.Session()
             except Exception as e:
                 raise ValueError(f"AWS client error {e}")
 
     def embed(self, text: str) -> np.ndarray:
-        input_body = {}
-        input_body["inputText"] = text
-        body = json.dumps(input_body)
-        response = self.client.invoke_model(
-            body=body, modelId=self.model, accept="application/json", contentType="application/json"
-        )
+        if self.model == "amazon.titan-embed-text-v1":
+            input_body = {}
+            input_body["inputText"] = text
+            body = json.dumps(input_body)
+            response = self.client.invoke_model(
+                body=body, modelId=self.model, accept="application/json", contentType="application/json"
+            )
 
-        response_body = json.loads(response.get("body").read())
-        return np.array(response_body.get("embedding"))
+            response_body = json.loads(response.get("body").read())
+            return np.array(response_body.get("embedding"))
+        else:
+            coherePayload = json.dumps({
+                'texts': [text],
+                'input_type': 'search_document',
+                'truncate': 'END'
+            })
+            response = self.client.invoke_model(
+                body=coherePayload, 
+                modelId=self.model, 
+                accept='application/json', 
+                contentType='application/json'
+            )
+
+            body = response.get('body').read().decode('utf-8')
+            response_body = json.loads(body)
+            return np.array(response_body['embeddings'])
 
     def embed_queries(self, queries: List[str]) -> np.ndarray:
         all_embeddings = []
@@ -510,5 +536,5 @@ _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "retribert": _RetribertEmbeddingEncoder,
     "openai": _OpenAIEmbeddingEncoder,
     "cohere": _CohereEmbeddingEncoder,
-    "bedrock": _BedrockEmbeddingEncoder,
+    "bedrock": _BedrockEmbeddingEncoder
 }

@@ -17,7 +17,7 @@ from haystack.errors import HaystackError
 from haystack.schema import Document, FilterType
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
-from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS, COHERE_EMBEDDING_MODELS
+from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS, COHERE_EMBEDDING_MODELS, BEDROCK_EMBEDDING_MODELS
 from haystack.utils.early_stopping import EarlyStopping
 from haystack.telemetry import send_event
 from haystack.lazy_imports import LazyImport
@@ -1475,7 +1475,8 @@ class EmbeddingRetriever(DenseRetriever):
         :param embedding_model: Local path or name of model in Hugging Face's model hub such
                                 as ``'sentence-transformers/all-MiniLM-L6-v2'``. The embedding model could also
                                 potentially be an OpenAI model ["ada", "babbage", "davinci", "curie"] or
-                                a Cohere model ["embed-english-v2.0", "embed-english-light-v2.0", "embed-multilingual-v2.0"].
+                                a Cohere model ["embed-english-v2.0", "embed-english-light-v2.0", "embed-multilingual-v2.0"] or
+                                an AWS Bedrock model ["amazon.titan-embed-text-v1", "cohere.embed-english-v3", "cohere.embed-multilingual-v3"].
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to encode at once.
@@ -1490,6 +1491,7 @@ class EmbeddingRetriever(DenseRetriever):
         4. `retribert` : (will use `_RetribertEmbeddingEncoder` as embedding encoder)
         5. `openai` : (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
         6. `cohere` : (will use `_CohereEmbeddingEncoder` as embedding encoder)
+        7. `bedrock` : (will use `_BedrockEmbeddingEncoder` as embedding encoder)
 
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options:
@@ -1533,8 +1535,8 @@ class EmbeddingRetriever(DenseRetriever):
                                      will not be used.
         :param api_base: The OpenAI API base URL, defaults to `"https://api.openai.com/v1"`.
         :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see OpenAI
-        :param aws_config: The aws_config contains {aws_access_key, aws_secret_key, aws_region } to use with the boto3 client for an AWS Bedrock retriever. Defaults to 'None'.
         [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
+        :param aws_config: The aws_config contains {aws_access_key, aws_secret_key, aws_region, profile_name} to use with the boto3 Session for an AWS Bedrock retriever. Defaults to 'None'.
         """
         torch_and_transformers_import.check()
 
@@ -1895,7 +1897,7 @@ class EmbeddingRetriever(DenseRetriever):
             return "openai"
         if model_name_or_path in COHERE_EMBEDDING_MODELS:
             return "cohere"
-        if model_name_or_path == "bedrock":
+        if model_name_or_path in BEDROCK_EMBEDDING_MODELS:
             return "bedrock"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
