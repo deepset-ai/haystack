@@ -44,25 +44,6 @@ jobs:
         run: |
           if ! black . --check; then
             git status
-            echo "###################################################################################################"
-            echo "# "
-            echo "# CHECK FAILED! Black found issues with your code formatting."
-            echo "# "
-            echo "# Either:"
-            echo "# 1. Run Black locally before committing:"
-            echo "# "
-            echo "#     pip install .[formatting]"
-            echo "#     black ."
-            echo "# "
-            echo "# 2. Install the pre-commit hook:"
-            echo "# "
-            echo "#     pre-commit install"
-            echo "# "
-            echo "# 3. See https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md for help."
-            echo "# "
-            echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
-            echo "# "
-            echo "##################################################################################################"
             exit 1
           fi
 
