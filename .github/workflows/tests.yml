@@ -1,3 +1,4 @@
+# If you change this name also do it in tests_skipper.yml and ci_metrics.yml
 name: Tests
 
 on:
@@ -315,3 +316,18 @@ jobs:
                 - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  catch-all:
+    name: Catch-all check
+    runs-on: ubuntu-latest
+    # This job will be executed only after all the other tests
+    # are successful.
+    # This way we'll be able to mark only this test as required
+    # and skip it accordingly.
+    needs:
+      - integration-tests-linux
+      - integration-tests-macos
+      - integration-tests-windows
+    steps:
+      - name: Finisher
+        run: echo "Finish him!"
