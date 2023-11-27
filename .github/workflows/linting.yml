@@ -42,7 +42,7 @@ jobs:
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
         run: |
-          mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }}
+          mypy --install-types --non-interactive --cache-dir=.mypy_cache/ ${{ steps.files.outputs.all_changed_files }}
 
   pylint:
     runs-on: ubuntu-latest
