@@ -2,6 +2,9 @@
 name: Linting
 
 on:
+  push:
+    branches:
+      - fix-mypy-ci
   pull_request:
     paths:
       - "haystack/**/*.py"
