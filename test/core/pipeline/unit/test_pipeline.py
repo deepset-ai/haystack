@@ -56,9 +56,15 @@ def test_to_dict():
         "metadata": {"test": "test"},
         "max_loops_allowed": 42,
         "components": {
-            "add_two": {"type": "sample_components.add_value.AddFixedValue", "init_parameters": {"add": 2}},
-            "add_default": {"type": "sample_components.add_value.AddFixedValue", "init_parameters": {"add": 1}},
-            "double": {"type": "sample_components.double.Double", "init_parameters": {}},
+            "add_two": {
+                "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                "init_parameters": {"add": 2},
+            },
+            "add_default": {
+                "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                "init_parameters": {"add": 1},
+            },
+            "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
         },
         "connections": [
             {"sender": "add_two.result", "receiver": "double.value"},
@@ -73,9 +79,15 @@ def test_from_dict():
         "metadata": {"test": "test"},
         "max_loops_allowed": 101,
         "components": {
-            "add_two": {"type": "sample_components.add_value.AddFixedValue", "init_parameters": {"add": 2}},
-            "add_default": {"type": "sample_components.add_value.AddFixedValue", "init_parameters": {"add": 1}},
-            "double": {"type": "sample_components.double.Double", "init_parameters": {}},
+            "add_two": {
+                "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                "init_parameters": {"add": 2},
+            },
+            "add_default": {
+                "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                "init_parameters": {"add": 1},
+            },
+            "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
         },
         "connections": [
             {"sender": "add_two.result", "receiver": "double.value"},
@@ -153,7 +165,7 @@ def test_from_dict_with_components_instances():
         "components": {
             "add_two": {},
             "add_default": {},
-            "double": {"type": "sample_components.double.Double", "init_parameters": {}},
+            "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
         },
         "connections": [
             {"sender": "add_two.result", "receiver": "double.value"},

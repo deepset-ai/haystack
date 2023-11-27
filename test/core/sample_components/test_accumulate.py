@@ -12,8 +12,8 @@ def test_to_dict():
     accumulate = Accumulate()
     res = accumulate.to_dict()
     assert res == {
-        "type": "sample_components.accumulate.Accumulate",
-        "init_parameters": {"function": "sample_components.accumulate._default_function"},
+        "type": "haystack.testing.sample_components.accumulate.Accumulate",
+        "init_parameters": {"function": "haystack.testing.sample_components.accumulate._default_function"},
     }
 
 
@@ -21,21 +21,21 @@ def test_to_dict_with_custom_function():
     accumulate = Accumulate(function=my_subtract)
     res = accumulate.to_dict()
     assert res == {
-        "type": "sample_components.accumulate.Accumulate",
-        "init_parameters": {"function": "test.sample_components.test_accumulate.my_subtract"},
+        "type": "haystack.testing.sample_components.accumulate.Accumulate",
+        "init_parameters": {"function": "test_accumulate.my_subtract"},
     }
 
 
 def test_from_dict():
-    data = {"type": "sample_components.accumulate.Accumulate", "init_parameters": {}}
+    data = {"type": "haystack.testing.sample_components.accumulate.Accumulate", "init_parameters": {}}
     accumulate = Accumulate.from_dict(data)
     assert accumulate.function == _default_function
 
 
 def test_from_dict_with_default_function():
     data = {
-        "type": "sample_components.accumulate.Accumulate",
-        "init_parameters": {"function": "sample_components.accumulate._default_function"},
+        "type": "haystack.testing.sample_components.accumulate.Accumulate",
+        "init_parameters": {"function": "haystack.testing.sample_components.accumulate._default_function"},
     }
     accumulate = Accumulate.from_dict(data)
     assert accumulate.function == _default_function
@@ -43,8 +43,8 @@ def test_from_dict_with_default_function():
 
 def test_from_dict_with_custom_function():
     data = {
-        "type": "sample_components.accumulate.Accumulate",
-        "init_parameters": {"function": "test.sample_components.test_accumulate.my_subtract"},
+        "type": "haystack.testing.sample_components.accumulate.Accumulate",
+        "init_parameters": {"function": "test_accumulate.my_subtract"},
     }
     accumulate = Accumulate.from_dict(data)
     assert accumulate.function == my_subtract

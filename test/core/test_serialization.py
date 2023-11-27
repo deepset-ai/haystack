@@ -14,14 +14,14 @@ def test_default_component_to_dict():
     MyComponent = factory.component_class("MyComponent")
     comp = MyComponent()
     res = default_to_dict(comp)
-    assert res == {"type": "canals.testing.factory.MyComponent", "init_parameters": {}}
+    assert res == {"type": "haystack.testing.factory.MyComponent", "init_parameters": {}}
 
 
 def test_default_component_to_dict_with_init_parameters():
     MyComponent = factory.component_class("MyComponent")
     comp = MyComponent()
     res = default_to_dict(comp, some_key="some_value")
-    assert res == {"type": "canals.testing.factory.MyComponent", "init_parameters": {"some_key": "some_value"}}
+    assert res == {"type": "haystack.testing.factory.MyComponent", "init_parameters": {"some_key": "some_value"}}
 
 
 def test_default_component_from_dict():
@@ -31,7 +31,7 @@ def test_default_component_from_dict():
     extra_fields = {"__init__": custom_init}
     MyComponent = factory.component_class("MyComponent", extra_fields=extra_fields)
     comp = default_from_dict(
-        MyComponent, {"type": "canals.testing.factory.MyComponent", "init_parameters": {"some_param": 10}}
+        MyComponent, {"type": "haystack.testing.factory.MyComponent", "init_parameters": {"some_param": 10}}
     )
     assert isinstance(comp, MyComponent)
     assert comp.some_param == 10
@@ -57,7 +57,7 @@ def test_from_dict_import_type():
         "max_loops_allowed": 100,
         "components": {
             "greeter": {
-                "type": "sample_components.greet.Greet",
+                "type": "haystack.testing.sample_components.greet.Greet",
                 "init_parameters": {
                     "message": "\nGreeting component says: Hi! The value is {value}\n",
                     "log_level": "INFO",
@@ -68,9 +68,9 @@ def test_from_dict_import_type():
     }
 
     # remove the target component from the registry if already there
-    component.registry.pop("sample_components.greet.Greet", None)
+    component.registry.pop("haystack.testing.sample_components.greet.Greet", None)
     # remove the module from sys.modules if already there
-    sys.modules.pop("sample_components.greet", None)
+    sys.modules.pop("haystack.testing.sample_components.greet", None)
 
     p = Pipeline.from_dict(pipeline_dict)
 

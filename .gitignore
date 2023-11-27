@@ -156,3 +156,6 @@ haystack/json-schemas
 
 # http cache (requests-cache)
 **/http_cache.sqlite
+
+# ruff
+.ruff_cache
