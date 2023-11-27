@@ -1,0 +1,21 @@
+# If you change this name also do it in tests.yml and ci_metrics.yml
+name: Tests
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths-ignore:
+      - "haystack/**/*.py"
+      - "test/**/*.py"
+
+jobs:
+  catch-all:
+    name: Catch-all check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip tests
+        run: echo "Skipped!"
