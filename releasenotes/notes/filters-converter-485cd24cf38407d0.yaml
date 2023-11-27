@@ -1,0 +1,42 @@
+---
+prelude: >
+  Following the proposal to introduce a new way of declaring filters
+  in Haystack 2.x for Document Stores and all Components that use them,
+  we introduce a utility function to convert the legacy style to the new style.
+
+  This will make life easier for developers when implementing new Document Stores
+  as it will only be necessary for filtering logic for the new style filters, as
+  conversion will be completely handled by the utility function.
+
+  An example usage would be something similar to this:
+  ```python
+  legacy_filter = {
+      "$and": {
+          "type": {"$eq": "article"},
+          "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+          "rating": {"$gte": 3},
+          "$or": {"genre": {"$in": ["economy", "politics"]}, "publisher": {"$eq": "nytimes"}},
+      }
+  }
+  assert convert(legacy_filter) == {
+      "operator": "AND",
+      "conditions": [
+          {"field": "type", "operator": "==", "value": "article"},
+          {"field": "date", "operator": ">=", "value": "2015-01-01"},
+          {"field": "date", "operator": "<", "value": "2021-01-01"},
+          {"field": "rating", "operator": ">=", "value": 3},
+          {
+              "operator": "OR",
+              "conditions": [
+                  {"field": "genre", "operator": "in", "value": ["economy", "politics"]},
+                  {"field": "publisher", "operator": "==", "value": "nytimes"},
+              ],
+          },
+      ],
+  }
+  ```
+
+  For more information on the new filters technical specification see [proposal #6001](https://github.com/deepset-ai/haystack/blob/main/proposals/text/6001-document-store-filter-rework.md)
+preview:
+  - |
+    Introduce a function to convert legacy filters to the new style

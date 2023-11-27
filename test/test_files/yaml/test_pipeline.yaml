@@ -1,0 +1,14 @@
+components:
+  Comp1:
+    init_parameters:
+      an_init_param: null
+    type: test.test_pipeline.TestComponent
+  Comp2:
+    init_parameters:
+      an_init_param: null
+    type: test.test_pipeline.TestComponent
+connections:
+- receiver: Comp2.input_
+  sender: Comp1.value
+max_loops_allowed: 99
+metadata: {}

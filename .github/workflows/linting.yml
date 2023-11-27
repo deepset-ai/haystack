@@ -4,11 +4,10 @@ name: Linting
 on:
   pull_request:
     paths:
-      - "**.py"
-      - "**/pyproject.toml"
-      - "!haystack/preview/**/*.py"
-      - "!test/preview/**/*.py"
-      - "!e2e/preview/**/*.py"
+      - "haystack/**/*.py"
+      - "test/**/*.py"
+      - "e2e/**/*.py"
+      - "pyproject.toml"
 
 env:
   PYTHON_VERSION: "3.8"
@@ -32,22 +31,18 @@ jobs:
             **/*.py
           files_ignore: |
             test/**
-            rest_api/test/**
 
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: |
-          pip install ".[all,dev]"
-          pip install --no-deps llvmlite numba "openai-whisper>=20230918"
+        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2' cohere
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
         run: |
-          mkdir .mypy_cache/
-          mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
+          mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }}
 
   pylint:
     runs-on: ubuntu-latest
@@ -64,10 +59,7 @@ jobs:
         uses: tj-actions/changed-files@v40
         with:
           files: |
-            **/*.py
-          files_ignore: |
-            test/**
-            rest_api/test/**
+            haystack/**/*.py
 
       - uses: actions/setup-python@v4
         with:
@@ -75,9 +67,7 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install ".[all,dev]"
-          pip install --no-deps llvmlite numba "openai-whisper>=20230918"
-          pip install ./haystack-linter
+          pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2' cohere
 
       - name: Pylint
         if: steps.files.outputs.any_changed == 'true'

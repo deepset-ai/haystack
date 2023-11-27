@@ -1,4 +1,3 @@
-# If you change this name also do it in tests_skipper.yml and ci_metrics.yml
 name: Tests
 
 on:
@@ -15,18 +14,14 @@ on:
       - synchronize
       - ready_for_review
     paths:
-      - "**.py"
-      - "pyproject.toml"
-      - "!haystack/preview/**/*.py"  # See tests_preview.yml
-      - "!test/preview/**/*.py"  # See tests_preview.yml
-      - "!e2e/preview/**/*.py"  # See e2e_preview.yml
-      - "!.github/**/*.py"
-      - "!rest_api/**/*.py"
-      - "!docs/**/*.py"
+      - "haystack/**/*.py"
+      - "test/**/*.py"
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+  CORE_AZURE_CS_ENDPOINT: ${{ secrets.CORE_AZURE_CS_ENDPOINT }}
+  CORE_AZURE_CS_API_KEY: ${{ secrets.CORE_AZURE_CS_API_KEY }}
   PYTHON_VERSION: "3.8"
 
 jobs:
@@ -42,7 +37,7 @@ jobs:
       - name: Install Black
         run: |
           pip install --upgrade pip
-          pip install .[formatting]
+          pip install .[dev]
 
       - name: Check status
         run: |
@@ -60,7 +55,7 @@ jobs:
             echo "# "
             echo "# 2. Install the pre-commit hook:"
             echo "# "
-            echo "#     pre-commit install --hook-type pre-push"
+            echo "#     pre-commit install"
             echo "# "
             echo "# 3. See https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md for help."
             echo "# "
@@ -102,7 +97,7 @@ jobs:
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   unit-tests:
-    name: Unit / ${{ matrix.topic }} / ${{ matrix.os }} / ${{ matrix.dependencies }}
+    name: Unit / ${{ matrix.os }}
     needs: black
     strategy:
       fail-fast: false
@@ -110,25 +105,7 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
-        topic:
-          - document_stores
-          - nodes
-          - agents
-          - cli
-          - prompt
-          - pipelines
-          - utils
-          - others
-          - modeling
-        dependencies:
-          - all,dev
-        include:
-          - topic: document_stores
-            os: ubuntu-latest
-            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,crawler,preprocessing,file-conversion,pdf,ocr,metrics,dev
-          - topic: document_stores
-            os: windows-latest
-            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,crawler,preprocessing,file-conversion,pdf,ocr,metrics,dev
+          - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -138,20 +115,10 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[${{ matrix.dependencies }}]
+        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2' cohere boilerpy3
 
       - name: Run
-        run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/${{ matrix.topic }}
-
-      - name: Coveralls Parallel
-        # We upload only coverage for ubuntu as handling both os
-        # complicates the workflow too much for little to no gain
-        if: matrix.os == 'ubuntu-latest'
-        uses: coverallsapp/github-action@v2
-        with:
-          path-to-lcov: coverage.xml
-          flag-name: ${{ matrix.topic }}
-          parallel: true
+        run: pytest -m "not integration" test
 
       - name: Calculate alert data
         id: calculator
@@ -184,32 +151,15 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  upload-coverage:
+  integration-tests-linux:
+    name: Integration / ubuntu-latest
     needs: unit-tests
     runs-on: ubuntu-latest
-    steps:
-      - name: Coveralls Finished
-        uses: coverallsapp/github-action@v2
-        with:
-          parallel-finished: true
-
-  integration-tests-elasticsearch7:
-    name: Integration / Elasticsearch7 / ${{ matrix.os }}
-    needs:
-      - unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
     services:
-      elasticsearch:
-        image: elasticsearch:7.17.6
-        env:
-          discovery.type: "single-node"
-          ES_JAVA_OPTS: "-Xms128m -Xmx256m"
+      tika:
+        image: apache/tika:2.9.0.0
         ports:
-          - 9200:9200
+          - 9998:9998
     steps:
       - uses: actions/checkout@v4
 
@@ -217,12 +167,16 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Haystack
-        run: pip install .[elasticsearch,dev,preprocessing,inference]
-
-      - name: Run tests
+      - name: Install dependencies
         run: |
-          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_elasticsearch.py
+          sudo apt update
+          sudo apt install ffmpeg  # for local Whisper tests
+
+      - name: Install Haystack
+        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2' cohere boilerpy3
+
+      - name: Run
+        run: pytest --maxfail=5 -m "integration" test
 
       - name: Calculate alert data
         id: calculator
@@ -255,24 +209,12 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  integration-tests-elasticsearch8:
-    name: Integration / Elasticsearch8 / ${{ matrix.os }}
-    needs:
-      - unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    services:
-      elasticsearch:
-        image: elasticsearch:8.10.2
-        env:
-          discovery.type: "single-node"
-          xpack.security.enabled: "false"
-          ES_JAVA_OPTS: "-Xms128m -Xmx256m"
-        ports:
-          - 9200:9200
+  integration-tests-macos:
+    name: Integration / macos-latest
+    needs: unit-tests
+    runs-on: macos-latest-xl
+    env:
+      HAYSTACK_MPS_ENABLED: false
     steps:
       - uses: actions/checkout@v4
 
@@ -280,39 +222,20 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Install dependencies
+        run: |
+          brew install ffmpeg  # for local Whisper tests
+          brew install docker
+          colima start
+
       - name: Install Haystack
-        run: pip install .[elasticsearch8,dev,preprocessing,inference]
+        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2' cohere boilerpy3
 
-      - name: Make elasticsearch comfortable with a disk almost full
-        run: |
-          curl -X PUT "localhost:9200/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
-          {
-            "persistent": {
-              "cluster.routing.allocation.disk.watermark.low": "90%",
-              "cluster.routing.allocation.disk.watermark.low.max_headroom": "100GB",
-              "cluster.routing.allocation.disk.watermark.high": "95%",
-              "cluster.routing.allocation.disk.watermark.high.max_headroom": "20GB",
-              "cluster.routing.allocation.disk.watermark.flood_stage": "97%",
-              "cluster.routing.allocation.disk.watermark.flood_stage.max_headroom": "5GB",
-              "cluster.routing.allocation.disk.watermark.flood_stage.frozen": "97%",
-              "cluster.routing.allocation.disk.watermark.flood_stage.frozen.max_headroom": "5GB"
-            }
-          }
-          '
-          curl -X PUT "localhost:9200/*/_settings?expand_wildcards=all&pretty" -H 'Content-Type: application/json' -d'
-          {
-            "index.blocks.read_only_allow_delete": null
-          }
-          '
+      - name: Run Tika
+        run: docker run -d -p 9998:9998 apache/tika:2.9.0.0
 
-      - name: Run tests
-        run: |
-          pytest -x -m"document_store and integration" test/document_stores/test_elasticsearch.py
-
-      - name: logs
-        if: failure()
-        run: |
-          docker logs "${{ job.services.elasticsearch.id }}"
+      - name: Run
+        run: pytest --maxfail=5 -m "integration" test
 
       - name: Calculate alert data
         id: calculator
@@ -345,15 +268,10 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  integration-tests-sql:
-    name: Integration / SQL / ${{ matrix.os }}
-    needs:
-      - unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+  integration-tests-windows:
+    name: Integration / windows-latest
+    needs: unit-tests
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -362,11 +280,10 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,sql,preprocessing]
+        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2' cohere boilerpy3
 
-      - name: Run tests
-        run: |
-          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_sql.py
+      - name: Run
+        run: pytest --maxfail=5 -m "integration" test -k 'not tika'
 
       - name: Calculate alert data
         id: calculator
@@ -398,479 +315,3 @@ jobs:
                 - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  integration-tests-opensearch:
-    name: Integration / Opensearch / ${{ matrix.os }}
-    needs:
-      - unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    services:
-      opensearch:
-        image: opensearchproject/opensearch:1.3.5
-        env:
-          discovery.type: "single-node"
-          ES_JAVA_OPTS: "-Xms128m -Xmx256m"
-        ports:
-          - 9200:9200
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Haystack
-        run: pip install .[dev,opensearch,preprocessing]
-
-      - name: Run tests
-        run: |
-          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_opensearch.py
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  integration-tests-dc:
-    name: Integration / dC / ${{ matrix.os }}
-    needs:
-      - unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Haystack
-        run: pip install .[dev,preprocessing]
-
-      - name: Run tests
-        run: |
-          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_deepsetcloud.py
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  integration-tests-faiss:
-    name: Integration / faiss / ${{ matrix.os }}
-    needs:
-      - unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Haystack
-        run: pip install .[faiss,dev,preprocessing]
-
-      - name: Run tests
-        run: |
-          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_faiss.py
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  integration-tests-weaviate:
-    name: Integration / Weaviate / ${{ matrix.os }}
-    needs:
-      - unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    services:
-      weaviate:
-        image: semitechnologies/weaviate:1.17.2
-        env:
-          AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
-          PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
-          ENABLE_EXPERIMENTAL_BM25: "true"
-          DISK_USE_READONLY_PERCENTAGE: 95
-        ports:
-          - 8080:8080
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Haystack
-        run: pip install .[dev,weaviate,preprocessing]
-
-      - name: Run tests
-        run: |
-          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_weaviate.py
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  integration-tests-pinecone:
-    name: Integration / pinecone / ${{ matrix.os }}
-    needs:
-      - unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Haystack
-        run: pip install .[dev,pinecone,preprocessing]
-
-      - name: Run tests
-        env:
-          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-        run: |
-          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_pinecone.py
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  integration-tests-memory:
-    name: Integration / memory / ${{ matrix.os }}
-    needs:
-      - unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Haystack
-        run: pip install .[dev,preprocessing,inference]
-
-      - name: Run tests
-        run: |
-          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_memory.py
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  integration-tests-promptnode:
-    name: Integration / PromptNode / ${{ matrix.os }}
-    needs:
-      - unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Haystack
-        run: pip install .[dev,preprocessing,inference]
-
-      - name: Run tests
-        run: |
-          pytest --maxfail=5 -m "integration" test/prompt
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  integration-tests-agents:
-    name: Integration / Agents / ${{ matrix.os }}
-    needs:
-      - unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Haystack
-        run: pip install .[dev,preprocessing,inference]
-
-      - name: Run tests
-        run: |
-          pytest --maxfail=5 -m "integration" test/agents
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  catch-all:
-    name: Catch-all check
-    runs-on: ubuntu-latest
-    # This job will be executed only after all the other tests
-    # are successful.
-    # This way we'll be able to mark only this test as required
-    # and skip it accordingly.
-    needs:
-      - integration-tests-elasticsearch7
-      - integration-tests-elasticsearch8
-      - integration-tests-sql
-      - integration-tests-opensearch
-      - integration-tests-dc
-      - integration-tests-faiss
-      - integration-tests-weaviate
-      - integration-tests-pinecone
-      - integration-tests-memory
-      - integration-tests-promptnode
-      - integration-tests-agents
-
-    steps:
-      - name: Finisher
-        run: echo "Finish him!"
