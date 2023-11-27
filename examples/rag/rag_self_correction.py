@@ -1,8 +1,7 @@
 from typing import List, Any, Optional, Dict, Type
 
-import json
 import logging
-from pathlib import Path
+from pprint import pprint
 
 from canals.component.types import Variadic
 from haystack import Pipeline, Document, component, default_to_dict, default_from_dict, DeserializationError
@@ -18,6 +17,11 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 @component
 class Switch:
+    """
+    This component is used to distribute a single value to many components that may need it.
+    It can take such value from different sources (the user's input, or another component).
+    """
+
     def __init__(self, type_: Type):
         self.type_ = type_
         component.set_input_types(self, value=Variadic[self.type_])
@@ -37,6 +41,13 @@ class Switch:
 
 @component
 class CheckForMissingAnswer:
+    """
+    This component checks whether the LLM replies with a "missing answer" token,
+    which defaults to "UNKNOWN". If this token is spotted in the reply, the question is considered
+    unanswered. Note that the LLM must be instructed to output this token when the answer is missing
+    (see the prompt template below).
+    """
+
     def __init__(self, missing_answer_token: str = "UNKNOWN"):
         self.missing_answer_token = missing_answer_token
 
@@ -53,6 +64,15 @@ class CheckForMissingAnswer:
 
 @component
 class PaginatedRetriever:
+    """
+    This component is used to paginate the results of a retriever.
+    It is useful when the retriever returns a large number of documents, and we want to pass them to the LLM
+    in batches.
+
+    It is useful in cases where the LLM's context length is limited, and we want to avoid passing too many
+    documents to it at once.
+    """
+
     def __init__(self, retriever: Any, page_size: int = 1, top_k: int = 100):
         self.retriever = retriever
         self.page_size = page_size
@@ -134,14 +154,6 @@ rag_pipeline.connect("answer_checker.unanswered_query", "query")
 # Draw the pipeline
 rag_pipeline.draw("test_bm25_rag_pipeline.png")
 
-# Serialize the pipeline to JSON
-with open("test_bm25_rag_pipeline.json", "w") as f:
-    json.dump(rag_pipeline.to_dict(), f)
-
-# Load the pipeline back
-with open("test_bm25_rag_pipeline.json", "r") as f:
-    rag_pipeline = Pipeline.from_dict(json.load(f))
-
 # Populate the document store
 documents = [
     Document(content="My name is Jean and I live in Paris."),
@@ -156,8 +168,4 @@ question = "Who lives in Germany?"
 
 result = rag_pipeline.run({"query": {"value": question}})
 
-from pprint import pprint
-
-print()
 pprint(result)
-print()
