@@ -48,7 +48,7 @@ class OutputParser():
 
         self.iteration_counter += 1
 
-        # let's simulate a corrupt JSON with 40% probability by adding extra brackets (for demo purposes)
+        # let's simulate a corrupt JSON with 30% probability by adding extra brackets (for demo purposes)
         if random.randint(0, 100) < 30:
             replies[0] = "{{" + replies[0]
 
