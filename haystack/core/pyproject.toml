@@ -1,0 +1,89 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "canals"
+description = 'A component orchestration engine for Haystack'
+readme = "README.md"
+requires-python = ">=3.8"
+license = "Apache-2.0"
+keywords = []
+authors = [{ name = "ZanSara", email = "sara.zanzottera@deepset.ai" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: Freely Distributable",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dynamic = ["version"]
+dependencies = [
+  "networkx", # Pipeline graphs
+  "requests", # Mermaid diagrams
+  "typing_extensions",
+]
+
+[project.optional-dependencies]
+dev = [
+  "hatch",
+  "pre-commit",
+  "mypy",
+  "pylint==2.15.10",
+  "black[jupyter]==22.6.0",
+  "pytest",
+  "pytest-cov",
+  "requests",
+  "coverage",
+]
+docs = ["mkdocs-material", "mkdocstrings[python]", "mkdocs-mermaid2-plugin"]
+
+[project.urls]
+Documentation = "https://github.com/deepset-ai/canals#readme"
+Issues = "https://github.com/deepset-ai/canals/issues"
+Source = "https://github.com/deepset-ai/canals"
+
+[tool.hatch.version]
+path = "canals/__about__.py"
+
+[tool.hatch.build]
+include = ["/canals/**/*.py"]
+
+[tool.hatch.envs.default]
+dependencies = ["pytest", "pytest-cov", "requests"]
+
+[tool.hatch.envs.default.scripts]
+cov = "pytest --cov-report xml:coverage.xml --cov-config=pyproject.toml --cov=canals --cov=tests {args}"
+no-cov = "cov --no-cov {args}"
+
+[[tool.hatch.envs.test.matrix]]
+python = ["38", "39", "310", "311"]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+omit = ["canals/__about__.py"]
+
+[tool.coverage.report]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+
+[tool.black]
+line-length = 120
+
+[tool.pylint.'MESSAGES CONTROL']
+max-line-length = 120
+good-names = "e"
+max-args = 10
+max-locals = 15
+disable = [
+  "fixme",
+  "line-too-long",
+  "missing-class-docstring",
+  "missing-module-docstring",
+  "too-few-public-methods",
+]

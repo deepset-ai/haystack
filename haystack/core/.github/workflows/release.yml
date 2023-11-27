@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9].[0-9]+.[0-9]+*"
+
+jobs:
+  release-on-pypi:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Hatch
+        run: pip install hatch
+
+      - name: Build
+        run: hatch build
+
+      - name: Publish on PyPi
+        env:
+          HATCH_INDEX_USER: __token__
+          HATCH_INDEX_AUTH: ${{ secrets.PYPI_API_TOKEN }}
+        run: hatch publish -y

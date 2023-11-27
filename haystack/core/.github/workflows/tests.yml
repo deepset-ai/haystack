@@ -1,0 +1,130 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - "**.py"
+      - "**/pyproject.toml"
+
+env:
+  COVERALLS_NOISY: true
+
+jobs:
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Install Canals
+        run: |
+          sudo apt install graphviz libgraphviz-dev
+          pip install .[dev] pygraphviz
+
+      - name: Mypy
+        run: |
+          mkdir .mypy_cache/
+          mypy --install-types --non-interactive --ignore-missing-imports canals/ sample_components/
+
+  pylint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Install Canals
+        run: |
+          sudo apt install graphviz libgraphviz-dev
+          pip install .[dev] pygraphviz
+
+      - name: Pylint
+        run: pylint -ry -j 0 canals/ sample_components/
+
+  black:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Install Canals
+        run: pip install .[dev]
+
+      - name: Check status
+        run: black canals/ --check
+
+  tests:
+    name: Unit / Python ${{ matrix.version }} / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.version }}
+
+      - name: Install Canals (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt install graphviz libgraphviz-dev
+          pip install .[dev] pygraphviz
+
+      - name: Install Canals (MacOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          # brew only offers graphviz 8, which seems to be incompatible with pygraphviz :(
+          # brew install graphviz@2.49.0
+          pip install .[dev]
+
+      - name: Install Canals (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          # Doesn't seem to work in CI :(
+          # choco install graphviz
+          # python -m pip install --global-option=build_ext `
+          #       --global-option="-IC:\Program Files\Graphviz\include" `
+          #       --global-option="-LC:\Program Files\Graphviz\lib" `
+          #       pygraphviz
+          pip install .[dev]
+
+      - name: Run
+        run: pytest --cov-report xml:coverage.xml --cov="canals" test/
+
+      - name: Coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.version == 3.11
+        uses: coverallsapp/github-action@v2
+        with:
+          path-to-lcov: coverage.xml
+          parallel: false
+          debug: true

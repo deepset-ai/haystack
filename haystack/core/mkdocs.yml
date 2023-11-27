@@ -1,0 +1,43 @@
+site_name: Canals
+site_url: https://deepset-ai.github.io/canals/
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+
+plugins:
+  - search
+  - mermaid2
+  - mkdocstrings
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      preserve_tabs: true
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra_javascript:
+  - optionalConfig.js
+  - https://unpkg.com/mermaid@9.4.0/dist/mermaid.min.js
+  - extra-loader.js
+
+nav:
+    - Get Started: index.md
+    - Concepts:
+      - Core Concepts: concepts/concepts.md
+      - Components: concepts/components.md
+      - Pipelines: concepts/pipelines.md
+    - API Docs:
+      - Canals: api-docs/canals.md
+      - Component: api-docs/component.md
+      - Pipeline: api-docs/pipeline.md
+      - Testing: api-docs/testing.md
