@@ -1,6 +1,7 @@
 # pylint: disable=too-many-public-methods
 from typing import List
 import random
+from datetime import datetime
 
 import pytest
 import pandas as pd
@@ -184,21 +185,39 @@ class FilterableDocsFixtureMixin:
             documents.append(
                 Document(
                     content=f"A Foo Document {i}",
-                    meta={"name": f"name_{i}", "page": "100", "chapter": "intro", "number": 2},
+                    meta={
+                        "name": f"name_{i}",
+                        "page": "100",
+                        "chapter": "intro",
+                        "number": 2,
+                        "date": "1969-07-21T20:17:40",
+                    },
                     embedding=_random_embeddings(768),
                 )
             )
             documents.append(
                 Document(
                     content=f"A Bar Document {i}",
-                    meta={"name": f"name_{i}", "page": "123", "chapter": "abstract", "number": -2},
+                    meta={
+                        "name": f"name_{i}",
+                        "page": "123",
+                        "chapter": "abstract",
+                        "number": -2,
+                        "date": "1972-12-11T19:54:58",
+                    },
                     embedding=_random_embeddings(768),
                 )
             )
             documents.append(
                 Document(
                     content=f"A Foobar Document {i}",
-                    meta={"name": f"name_{i}", "page": "90", "chapter": "conclusion", "number": -10},
+                    meta={
+                        "name": f"name_{i}",
+                        "page": "90",
+                        "chapter": "conclusion",
+                        "number": -10,
+                        "date": "1989-11-09T17:53:00",
+                    },
                     embedding=_random_embeddings(768),
                 )
             )
@@ -858,9 +877,337 @@ class LegacyFilterDocumentsTest(  # pylint: disable=too-many-ancestors
         assert document_store.filter_documents(filters={}) == docs
 
 
-class DocumentStoreBaseTests(
-    CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, LegacyFilterDocumentsTest
-):  # pylint: disable=too-many-ancestors
+class FilterDocumentsTest(FilterableDocsFixtureMixin):
+    """
+    Utility class to test a Document Store `filter_documents` method using different types of  filters.
+
+    To use it create a custom test class and override the `document_store` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(FilterDocumentsTest):
+        @pytest.fixture
+        def document_store(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    def test_no_filters(self, document_store):
+        assert document_store.filter_documents() == []
+        assert document_store.filter_documents(filters={}) == []
+        docs = [Document(content="test doc")]
+        document_store.write_documents(docs)
+        assert document_store.filter_documents() == docs
+        assert document_store.filter_documents(filters={}) == docs
+
+    # == comparator
+    def test_comparison_equal(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(filters={"field": "meta.number", "operator": "==", "value": 100})
+        assert result == [d for d in filterable_docs if d.meta.get("number") == 100]
+
+    def test_comparison_equal_with_dataframe(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(
+            filters={"field": "dataframe", "operator": "==", "value": pd.DataFrame([1])}
+        )
+        assert result == [
+            d for d in filterable_docs if d.dataframe is not None and d.dataframe.equals(pd.DataFrame([1]))
+        ]
+
+    def test_comparison_equal_with_none(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(filters={"field": "meta.number", "operator": "==", "value": None})
+        assert result == [d for d in filterable_docs if d.meta.get("number") is None]
+
+    # != comparator
+    def test_comparison_not_equal(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents({"field": "meta.number", "operator": "!=", "value": 100})
+        assert result == [d for d in filterable_docs if d.meta.get("number") != 100]
+
+    def test_comparison_not_equal_with_dataframe(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(
+            filters={"field": "dataframe", "operator": "!=", "value": pd.DataFrame([1])}
+        )
+        assert result == [
+            d for d in filterable_docs if d.dataframe is None or not d.dataframe.equals(pd.DataFrame([1]))
+        ]
+
+    def test_comparison_not_equal_with_none(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(filters={"field": "meta.number", "operator": "!=", "value": None})
+        assert result == [d for d in filterable_docs if d.meta.get("number") is not None]
+
+    # > comparator
+    def test_comparison_greater_than(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents({"field": "meta.number", "operator": ">", "value": 0})
+        assert result == [d for d in filterable_docs if d.meta.get("number") is not None and d.meta["number"] > 0]
+
+    def test_comparison_greater_than_with_iso_date(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(
+            {"field": "meta.date", "operator": ">", "value": "1972-12-11T19:54:58"}
+        )
+        assert result == [
+            d
+            for d in filterable_docs
+            if d.meta.get("date") is not None
+            and datetime.fromisoformat(d.meta["date"]) > datetime.fromisoformat("1972-12-11T19:54:58")
+        ]
+
+    def test_comparison_greater_than_with_string(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"field": "meta.number", "operator": ">", "value": "1"})
+
+    def test_comparison_greater_than_with_dataframe(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"field": "dataframe", "operator": ">", "value": pd.DataFrame([1])})
+
+    def test_comparison_greater_than_with_list(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"field": "meta.number", "operator": ">", "value": [1]})
+
+    def test_comparison_greater_than_with_none(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(filters={"field": "meta.number", "operator": ">", "value": None})
+        assert result == []
+
+    # >= comparator
+    def test_comparison_greater_than_equal(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents({"field": "meta.number", "operator": ">=", "value": 0})
+        assert result == [d for d in filterable_docs if d.meta.get("number") is not None and d.meta["number"] >= 0]
+
+    def test_comparison_greater_than_equal_with_iso_date(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(
+            {"field": "meta.date", "operator": ">=", "value": "1969-07-21T20:17:40"}
+        )
+        assert result == [
+            d
+            for d in filterable_docs
+            if d.meta.get("date") is not None
+            and datetime.fromisoformat(d.meta["date"]) >= datetime.fromisoformat("1969-07-21T20:17:40")
+        ]
+
+    def test_comparison_greater_than_equal_with_string(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"field": "meta.number", "operator": ">=", "value": "1"})
+
+    def test_comparison_greater_than_equal_with_dataframe(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(
+                filters={"field": "dataframe", "operator": ">=", "value": pd.DataFrame([1])}
+            )
+
+    def test_comparison_greater_than_equal_with_list(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"field": "meta.number", "operator": ">=", "value": [1]})
+
+    def test_comparison_greater_than_equal_with_none(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(filters={"field": "meta.number", "operator": ">=", "value": None})
+        assert result == []
+
+    # < comparator
+    def test_comparison_less_than(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents({"field": "meta.number", "operator": "<", "value": 0})
+        assert result == [d for d in filterable_docs if d.meta.get("number") is not None and d.meta["number"] < 0]
+
+    def test_comparison_less_than_with_iso_date(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(
+            {"field": "meta.date", "operator": "<", "value": "1969-07-21T20:17:40"}
+        )
+        assert result == [
+            d
+            for d in filterable_docs
+            if d.meta.get("date") is not None
+            and datetime.fromisoformat(d.meta["date"]) < datetime.fromisoformat("1969-07-21T20:17:40")
+        ]
+
+    def test_comparison_less_than_with_string(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"field": "meta.number", "operator": "<", "value": "1"})
+
+    def test_comparison_less_than_with_dataframe(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"field": "dataframe", "operator": "<", "value": pd.DataFrame([1])})
+
+    def test_comparison_less_than_with_list(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"field": "meta.number", "operator": "<", "value": [1]})
+
+    def test_comparison_less_than_with_none(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(filters={"field": "meta.number", "operator": "<", "value": None})
+        assert result == []
+
+    # <= comparator
+    def test_comparison_less_than_equal(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents({"field": "meta.number", "operator": "<=", "value": 0})
+        assert result == [d for d in filterable_docs if d.meta.get("number") is not None and d.meta["number"] <= 0]
+
+    def test_comparison_less_than_equal_with_iso_date(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(
+            {"field": "meta.date", "operator": "<=", "value": "1969-07-21T20:17:40"}
+        )
+        assert result == [
+            d
+            for d in filterable_docs
+            if d.meta.get("date") is not None
+            and datetime.fromisoformat(d.meta["date"]) <= datetime.fromisoformat("1969-07-21T20:17:40")
+        ]
+
+    def test_comparison_less_than_equal_with_string(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"field": "meta.number", "operator": "<=", "value": "1"})
+
+    def test_comparison_less_than_equal_with_dataframe(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(
+                filters={"field": "dataframe", "operator": "<=", "value": pd.DataFrame([1])}
+            )
+
+    def test_comparison_less_than_equal_with_list(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"field": "meta.number", "operator": "<=", "value": [1]})
+
+    def test_comparison_less_than_equal_with_none(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(filters={"field": "meta.number", "operator": "<=", "value": None})
+        assert result == []
+
+    # in comparator
+    def test_comparison_in(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents({"field": "meta.number", "operator": "in", "value": [9, 10]})
+        assert result == [
+            d for d in filterable_docs if d.meta.get("number") is not None and d.meta["number"] in [9, 10]
+        ]
+
+    def test_comparison_in_with_with_non_list(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents({"field": "meta.number", "operator": "in", "value": 9})
+
+    def test_comparison_in_with_with_non_list_iterable(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents({"field": "meta.number", "operator": "in", "value": (10, 11)})
+
+    # not in comparator
+    def test_comparison_not_in(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents({"field": "meta.number", "operator": "not in", "value": [9, 10]})
+        assert result == [d for d in filterable_docs if d.meta.get("number") not in [9, 10]]
+
+    def test_comparison_not_in_with_with_non_list(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents({"field": "meta.number", "operator": "not in", "value": 9})
+
+    def test_comparison_not_in_with_with_non_list_iterable(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents({"field": "meta.number", "operator": "not in", "value": (10, 11)})
+
+    # Logical operator
+    def test_and_operator(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(
+            filters={
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.number", "operator": "==", "value": 100},
+                    {"field": "meta.name", "operator": "==", "value": "name_0"},
+                ],
+            }
+        )
+        assert result == [d for d in filterable_docs if d.meta.get("number") == 100 and d.meta.get("name") == "name_0"]
+
+    def test_or_operator(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(
+            filters={
+                "operator": "OR",
+                "conditions": [
+                    {"field": "meta.number", "operator": "==", "value": 100},
+                    {"field": "meta.name", "operator": "==", "value": "name_0"},
+                ],
+            }
+        )
+        assert result == [d for d in filterable_docs if d.meta.get("number") == 100 or d.meta.get("name") == "name_0"]
+
+    def test_not_operator(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        result = document_store.filter_documents(
+            filters={
+                "operator": "NOT",
+                "conditions": [
+                    {"field": "meta.number", "operator": "==", "value": 100},
+                    {"field": "meta.name", "operator": "==", "value": "name_0"},
+                ],
+            }
+        )
+        assert result == [
+            d for d in filterable_docs if not (d.meta.get("number") == 100 and d.meta.get("name") == "name_0")
+        ]
+
+    # Malformed filters
+    def test_missing_top_level_operator_key(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(
+                filters={"conditions": [{"field": "meta.name", "operator": "==", "value": "test"}]}
+            )
+
+    def test_missing_top_level_conditions_key(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"operator": "AND"})
+
+    def test_missing_condition_field_key(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(
+                filters={"operator": "AND", "conditions": [{"operator": "==", "value": "test"}]}
+            )
+
+    def test_missing_condition_operator_key(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(
+                filters={"operator": "AND", "conditions": [{"field": "meta.name", "value": "test"}]}
+            )
+
+    def test_missing_condition_value_key(self, document_store, filterable_docs):
+        document_store.write_documents(filterable_docs)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(
+                filters={"operator": "AND", "conditions": [{"field": "meta.name", "operator": "=="}]}
+            )
+
+
+class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, FilterDocumentsTest):
     @pytest.fixture
     def document_store(self) -> DocumentStore:
         raise NotImplementedError()
