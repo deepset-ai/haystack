@@ -24,8 +24,10 @@ class City(BaseModel):
     country: str
     population: int
 
+
 class CitiesData(BaseModel):
     cities: List[City]
+
 
 schema = CitiesData.schema_json(indent=2)
 
@@ -34,18 +36,13 @@ schema = CitiesData.schema_json(indent=2)
 # and validates if this is compliant with our schema.
 # If not, it returns also the error message so that we have a better chance of correcting it in the next loop
 @component
-class OutputParser():
-    def __init__(self, pydantic_model:pydantic.BaseModel):
+class OutputParser:
+    def __init__(self, pydantic_model: pydantic.BaseModel):
         self.pydantic_model = pydantic_model
         self.iteration_counter = 0
 
-    @component.output_types(valid=List[str],
-                            invalid=Optional[List[str]],
-                            error_message=Optional[str])
-    def run(
-            self,
-            replies: List[str]):
-
+    @component.output_types(valid=List[str], invalid=Optional[List[str]], error_message=Optional[str])
+    def run(self, replies: List[str]):
         self.iteration_counter += 1
 
         # let's simulate a corrupt JSON with 30% probability by adding extra brackets (for demo purposes)
@@ -55,13 +52,17 @@ class OutputParser():
         try:
             output_dict = json.loads(replies[0])
             self.pydantic_model.parse_obj(output_dict)
-            print(f"OutputParser at Iteration {self.iteration_counter}: Valid JSON from LLM - No need for looping: {replies[0]}")
+            print(
+                f"OutputParser at Iteration {self.iteration_counter}: Valid JSON from LLM - No need for looping: {replies[0]}"
+            )
             return {"valid": replies}
 
         except (ValueError, ValidationError) as e:
-            print(f"OutputParser at Iteration {self.iteration_counter}: Invalid JSON from LLM - Let's try again.\n"
-                         f"Output from LLM:\n {replies[0]} \n"
-                         f"Error from OutputParser: {e}")
+            print(
+                f"OutputParser at Iteration {self.iteration_counter}: Invalid JSON from LLM - Let's try again.\n"
+                f"Output from LLM:\n {replies[0]} \n"
+                f"Error from OutputParser: {e}"
+            )
             return {"invalid": replies, "error_message": str(e)}
 
 
@@ -92,9 +93,6 @@ pipeline.connect("output_parser.error_message", "prompt_builder.error_message")
 
 # Now, let's run our pipeline with an example passage that we want to convert into our JSON format
 passage = "Berlin is the capital of Germany. It has a population of 3,850,809"
-result = pipeline.run({
-    "prompt_builder": {"passage": passage,
-                       "schema": schema}
-})
+result = pipeline.run({"prompt_builder": {"passage": passage, "schema": schema}})
 
 print(result)
