@@ -34,6 +34,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install "." torch
+          pip install pydantic
 
       - name: Get changed files
         id: files
