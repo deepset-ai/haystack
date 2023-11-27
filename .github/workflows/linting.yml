@@ -8,6 +8,7 @@ on:
       - "test/**/*.py"
       - "e2e/**/*.py"
       - "pyproject.toml"
+      - "!haystack/core/**/*.py"
 
 env:
   PYTHON_VERSION: "3.8"
