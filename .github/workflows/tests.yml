@@ -129,7 +129,7 @@ jobs:
         run: echo "dir=$(pip cache dir)" >> "$GITHUB_OUTPUT"
 
       - name: Restore pip cache
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v3
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -194,7 +194,7 @@ jobs:
         run: echo "dir=$(pip cache dir)" >> "$GITHUB_OUTPUT"
 
       - name: Restore pip cache
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v3
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -257,7 +257,7 @@ jobs:
         run: echo "dir=$(pip cache dir)" >> "$GITHUB_OUTPUT"
 
       - name: Restore pip cache
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v3
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -315,7 +315,7 @@ jobs:
         run: echo "dir=$(pip cache dir)" >> "$GITHUB_OUTPUT"
 
       - name: Restore pip cache
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v3
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
