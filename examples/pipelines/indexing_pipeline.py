@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from haystack import Pipeline
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 from haystack.components.converters import PyPDFToDocument, TextFileToDocument
@@ -32,4 +34,4 @@ p.connect("splitter.documents", "embedder.documents")
 p.connect("embedder.documents", "writer.documents")
 
 # Take the current directory as input and run the pipeline
-result = p.run({"file_type_router": {"sources": list(".".iterdir())}})
+result = p.run({"file_type_router": {"sources": list(Path(".").iterdir())}})
