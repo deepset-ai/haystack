@@ -3,7 +3,7 @@ import logging
 from collections import defaultdict
 from math import inf
 from typing import List, Optional
-from canals.component.types import Variadic
+from haystack.core.component.types import Variadic
 
 from haystack import component, Document
 

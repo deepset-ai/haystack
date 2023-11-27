@@ -2,8 +2,8 @@ from typing import Any, Dict, Optional, Union, TextIO
 from pathlib import Path
 import datetime
 import logging
-import canals
 
+from haystack.core.pipeline import Pipeline as _pipeline
 from haystack.telemetry import pipeline_running
 from haystack.marshal import Marshaller, YamlMarshaller
 
@@ -12,7 +12,7 @@ DEFAULT_MARSHALLER = YamlMarshaller()
 logger = logging.getLogger(__name__)
 
 
-class Pipeline(canals.Pipeline):
+class Pipeline(_pipeline):
     def __init__(
         self,
         metadata: Optional[Dict[str, Any]] = None,

@@ -46,8 +46,6 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-  "canals==0.11.0",
-  "requests",  # needed by canals
   "pandas",
   "rank_bm25",
   "tqdm",
@@ -58,6 +56,8 @@ dependencies = [
   "posthog",  # telemetry
   "pyyaml",
   "more-itertools",  # TextDocumentSplitter
+  "networkx", # Pipeline graphs
+  "typing_extensions", # typing support for Python 3.8
 ]
 
 [project.optional-dependencies]
