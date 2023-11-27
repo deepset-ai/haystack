@@ -126,6 +126,7 @@ jobs:
 
       - name: Get pip cache dir
         id: pip-cache
+        shell: bash
         run: echo "dir=$(pip cache dir)" >> "$GITHUB_OUTPUT"
 
       - name: Restore pip cache
@@ -312,7 +313,8 @@ jobs:
 
       - name: Get pip cache dir
         id: pip-cache
-        run: echo "dir=$(pip cache dir)" >> "$GITHUB_OUTPUT"
+        shell: bash
+        run: Write-Output "dir=$(pip cache dir)" >> "$Env:GITHUB_OUTPUT"
 
       - name: Restore pip cache
         uses: actions/cache/restore@v3
