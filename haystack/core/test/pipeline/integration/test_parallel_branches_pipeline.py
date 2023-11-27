@@ -32,11 +32,7 @@ def test_pipeline(tmp_path):
     results = pipeline.run({"add_one": {"value": 1}})
     pprint(results)
 
-    assert results == {
-        "add_one_again": {"result": 6},
-        "add_ten": {"result": 12},
-        "double": {"value": 4},
-    }
+    assert results == {"add_one_again": {"result": 6}, "add_ten": {"result": 12}, "double": {"value": 4}}
 
 
 if __name__ == "__main__":

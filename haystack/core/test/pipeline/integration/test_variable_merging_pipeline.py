@@ -28,12 +28,7 @@ def test_pipeline(tmp_path):
 
     pipeline.draw(tmp_path / "variable_merging_pipeline.png")
 
-    results = pipeline.run(
-        {
-            "first_addition": {"value": 1},
-            "third_addition": {"value": 1},
-        }
-    )
+    results = pipeline.run({"first_addition": {"value": 1}, "third_addition": {"value": 1}})
     pprint(results)
 
     assert results == {"fourth_addition": {"result": 12}}

@@ -134,16 +134,8 @@ class Enum1(Enum):
             Dict[str, Mapping[Any, Dict[Any, Any]]],
             id="nested-mapping-of-classes-to-nested-mapping-of-any-keys-and-values",
         ),
-        pytest.param(
-            Literal["a", "b", "c"],
-            Literal["a", "b", "c"],
-            id="same-primitive-literal",
-        ),
-        pytest.param(
-            Literal[Enum1.TEST1],
-            Literal[Enum1.TEST1],
-            id="same-enum-literal",
-        ),
+        pytest.param(Literal["a", "b", "c"], Literal["a", "b", "c"], id="same-primitive-literal"),
+        pytest.param(Literal[Enum1.TEST1], Literal[Enum1.TEST1], id="same-enum-literal"),
         pytest.param(
             Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, Class1]]],
             Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, Class1]]],
@@ -194,24 +186,16 @@ def test_connect_compatible_types(from_type, to_type):
             List[Set[Sequence[Class1]]], List[Set[Sequence[Class2]]], id="nested-sequences-of-different-classes"
         ),
         pytest.param(
-            List[Set[Sequence[Class1]]],
-            List[Set[Sequence[Class3]]],
-            id="nested-sequences-of-classes-to-subclasses",
+            List[Set[Sequence[Class1]]], List[Set[Sequence[Class3]]], id="nested-sequences-of-classes-to-subclasses"
         ),
         pytest.param(
-            List[Set[Sequence[Class1]]],
-            Set[List[Sequence[Class1]]],
-            id="different-nested-sequences-of-same-class",
+            List[Set[Sequence[Class1]]], Set[List[Sequence[Class1]]], id="different-nested-sequences-of-same-class"
         ),
         pytest.param(
-            List[Set[Sequence[Any]]],
-            List[Set[Sequence[bool]]],
-            id="nested-list-of-Any-to-nested-list-of-primitives",
+            List[Set[Sequence[Any]]], List[Set[Sequence[bool]]], id="nested-list-of-Any-to-nested-list-of-primitives"
         ),
         pytest.param(
-            List[Set[Sequence[Any]]],
-            List[Set[Sequence[Class2]]],
-            id="nested-list-of-Any-to-nested-list-of-classes",
+            List[Set[Sequence[Any]]], List[Set[Sequence[Class2]]], id="nested-list-of-Any-to-nested-list-of-classes"
         ),
         pytest.param(Dict[str, int], Dict[int, int], id="different-dict-of-primitive-keys"),
         pytest.param(Dict[str, int], Dict[str, bool], id="different-dict-of-primitive-values"),
@@ -282,21 +266,9 @@ def test_connect_compatible_types(from_type, to_type):
             Dict[str, Mapping[str, Dict[str, Class1]]],
             id="nested-mapping-of-Any-keys-and-values-to-nested-mapping-of-classes",
         ),
-        pytest.param(
-            Literal["a", "b", "c"],
-            Literal["x", "y"],
-            id="different-literal-of-same-primitive",
-        ),
-        pytest.param(
-            Literal["a", "b", "c"],
-            Literal["a", "b"],
-            id="subset-literal",
-        ),
-        pytest.param(
-            Literal[Enum1.TEST1],
-            Literal[Enum1.TEST2],
-            id="different-literal-of-same-enum",
-        ),
+        pytest.param(Literal["a", "b", "c"], Literal["x", "y"], id="different-literal-of-same-primitive"),
+        pytest.param(Literal["a", "b", "c"], Literal["a", "b"], id="subset-literal"),
+        pytest.param(Literal[Enum1.TEST1], Literal[Enum1.TEST2], id="different-literal-of-same-enum"),
         pytest.param(
             Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, Class1]]],
             Tuple[Literal["a", "b", "c"], Union[Path, Dict[int, Class1]]],
@@ -372,7 +344,7 @@ def test_connect_many_outputs_to_the_same_input():
     pipe.add_component("second", add_2)
     pipe.add_component("third", add_2)
     pipe.connect("first.result", "second.value")
-    with pytest.raises(PipelineConnectError, match="second.value is already connected to \['first'\]"):
+    with pytest.raises(PipelineConnectError, match=r"second.value is already connected to \['first'\]"):
         pipe.connect("third.result", "second.value")
 
 

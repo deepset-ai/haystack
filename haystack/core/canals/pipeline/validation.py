@@ -70,7 +70,7 @@ def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, in
             if not socket_name in graph.nodes[node]["input_sockets"].keys():
                 all_inputs = describe_pipeline_inputs_as_string(graph)
                 raise ValueError(
-                    f"Component {node} is not expecting any input value called {socket_name}.\n\n{all_inputs}",
+                    f"Component {node} is not expecting any input value called {socket_name}.\n\n{all_inputs}"
                 )
 
             input_socket: InputSocket = graph.nodes[node]["input_sockets"][socket_name]

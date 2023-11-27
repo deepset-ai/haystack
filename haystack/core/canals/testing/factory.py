@@ -105,12 +105,7 @@ def component_class(
     def from_dict(cls, data: Dict[str, Any]):
         return default_from_dict(cls, data)
 
-    fields = {
-        "__init__": init,
-        "run": run,
-        "to_dict": to_dict,
-        "from_dict": classmethod(from_dict),
-    }
+    fields = {"__init__": init, "run": run, "to_dict": to_dict, "from_dict": classmethod(from_dict)}
     if extra_fields is not None:
         fields = {**fields, **extra_fields}
 

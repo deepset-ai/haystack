@@ -569,7 +569,7 @@ class Pipeline:
         """
         Returns True if a component is ready to run, False otherwise.
         """
-        connections_with_value = set(conn for conn in mandatory_values_buffer.keys() if conn.receiver == component_name)
+        connections_with_value = {conn for conn in mandatory_values_buffer.keys() if conn.receiver == component_name}
         expected_connections = set(self._mandatory_connections[component_name])
         if expected_connections.issubset(connections_with_value):
             logger.debug("Component '%s' is ready to run. All mandatory values were received.", component_name)
@@ -595,9 +595,7 @@ class Pipeline:
 
         # Component can't run, waiting for the values needed by `connections_to_wait`
         logger.debug(
-            "Component '%s' is not ready to run, some values are still missing: %s",
-            component_name,
-            connections_to_wait,
+            "Component '%s' is not ready to run, some values are still missing: %s", component_name, connections_to_wait
         )
         # Put the component back in the queue
         components_queue.append(component_name)

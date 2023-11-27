@@ -27,10 +27,7 @@ def test_to_dict_with_custom_function():
 
 
 def test_from_dict():
-    data = {
-        "type": "sample_components.accumulate.Accumulate",
-        "init_parameters": {},
-    }
+    data = {"type": "sample_components.accumulate.Accumulate", "init_parameters": {}}
     accumulate = Accumulate.from_dict(data)
     assert accumulate.function == _default_function
 

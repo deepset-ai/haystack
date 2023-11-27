@@ -27,10 +27,7 @@ def test_find_pipeline_input_one_input():
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
 
-    assert find_pipeline_inputs(pipe.graph) == {
-        "comp1": [InputSocket(name="value", type=int)],
-        "comp2": [],
-    }
+    assert find_pipeline_inputs(pipe.graph) == {"comp1": [InputSocket(name="value", type=int)], "comp2": []}
 
 
 def test_find_pipeline_input_two_inputs_same_component():
@@ -40,10 +37,7 @@ def test_find_pipeline_input_two_inputs_same_component():
     pipe.connect("comp1", "comp2")
 
     assert find_pipeline_inputs(pipe.graph) == {
-        "comp1": [
-            InputSocket(name="value", type=int),
-            InputSocket(name="add", type=Optional[int], is_mandatory=False),
-        ],
+        "comp1": [InputSocket(name="value", type=int), InputSocket(name="add", type=Optional[int], is_mandatory=False)],
         "comp2": [],
     }
 
@@ -57,10 +51,7 @@ def test_find_pipeline_input_some_inputs_different_components():
     pipe.connect("comp2.value", "comp3.add")
 
     assert find_pipeline_inputs(pipe.graph) == {
-        "comp1": [
-            InputSocket(name="value", type=int),
-            InputSocket(name="add", type=Optional[int], is_mandatory=False),
-        ],
+        "comp1": [InputSocket(name="value", type=int), InputSocket(name="add", type=Optional[int], is_mandatory=False)],
         "comp2": [InputSocket(name="value", type=int)],
         "comp3": [],
     }
@@ -73,14 +64,9 @@ def test_find_pipeline_variable_input_nodes_in_the_pipeline():
     pipe.add_component("comp3", Sum())
 
     assert find_pipeline_inputs(pipe.graph) == {
-        "comp1": [
-            InputSocket(name="value", type=int),
-            InputSocket(name="add", type=Optional[int], is_mandatory=False),
-        ],
+        "comp1": [InputSocket(name="value", type=int), InputSocket(name="add", type=Optional[int], is_mandatory=False)],
         "comp2": [InputSocket(name="value", type=int)],
-        "comp3": [
-            InputSocket(name="values", type=Variadic[int]),
-        ],
+        "comp3": [InputSocket(name="values", type=Variadic[int])],
     }
 
 
@@ -126,9 +112,7 @@ def test_find_pipeline_some_outputs_different_components():
     assert find_pipeline_outputs(pipe.graph) == {
         "comp1": [],
         "comp2": [OutputSocket(name="even", type=int), OutputSocket(name="odd", type=int)],
-        "comp3": [
-            OutputSocket(name="value", type=int),
-        ],
+        "comp3": [OutputSocket(name="value", type=int)],
     }
 
 
@@ -147,7 +131,7 @@ def test_validate_pipeline_input_unknown_component():
     pipe.add_component("comp1", Double())
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
-    with pytest.raises(ValueError, match="Pipeline received data for unknown component\(s\): test_component"):
+    with pytest.raises(ValueError, match=r"Pipeline received data for unknown component\(s\): test_component"):
         pipe.run({"test_component": {"value": 1}})
 
 
@@ -176,7 +160,7 @@ def test_validate_pipeline_input_only_expected_input_is_present():
     pipe.add_component("comp1", Double())
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
-    with pytest.raises(ValueError, match="The input value of comp2 is already sent by: \['comp1'\]"):
+    with pytest.raises(ValueError, match=r"The input value of comp2 is already sent by: \['comp1'\]"):
         pipe.run({"comp1": {"value": 1}, "comp2": {"value": 2}})
 
 
@@ -185,7 +169,7 @@ def test_validate_pipeline_input_only_expected_input_is_present_falsy():
     pipe.add_component("comp1", Double())
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
-    with pytest.raises(ValueError, match="The input value of comp2 is already sent by: \['comp1'\]"):
+    with pytest.raises(ValueError, match=r"The input value of comp2 is already sent by: \['comp1'\]"):
         pipe.run({"comp1": {"value": 1}, "comp2": {"value": 0}})
 
 

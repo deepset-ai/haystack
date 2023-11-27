@@ -24,10 +24,7 @@ def test_to_dict_with_typing_class():
     res = component.to_dict()
     assert res == {
         "type": "sample_components.merge_loop.MergeLoop",
-        "init_parameters": {
-            "expected_type": "typing.Dict",
-            "inputs": ["first", "second"],
-        },
+        "init_parameters": {"expected_type": "typing.Dict", "inputs": ["first", "second"]},
     }
 
 
@@ -36,10 +33,7 @@ def test_to_dict_with_custom_class():
     res = component.to_dict()
     assert res == {
         "type": "sample_components.merge_loop.MergeLoop",
-        "init_parameters": {
-            "expected_type": "sample_components.merge_loop.MergeLoop",
-            "inputs": ["first", "second"],
-        },
+        "init_parameters": {"expected_type": "sample_components.merge_loop.MergeLoop", "inputs": ["first", "second"]},
     }
 
 
@@ -56,10 +50,7 @@ def test_from_dict():
 def test_from_dict_with_typing_class():
     data = {
         "type": "sample_components.merge_loop.MergeLoop",
-        "init_parameters": {
-            "expected_type": "typing.Dict",
-            "inputs": ["first", "second"],
-        },
+        "init_parameters": {"expected_type": "typing.Dict", "inputs": ["first", "second"]},
     }
     component = MergeLoop.from_dict(data)
     assert component.expected_type == "typing.Dict"
@@ -69,10 +60,7 @@ def test_from_dict_with_typing_class():
 def test_from_dict_with_custom_class():
     data = {
         "type": "sample_components.merge_loop.MergeLoop",
-        "init_parameters": {
-            "expected_type": "sample_components.merge_loop.MergeLoop",
-            "inputs": ["first", "second"],
-        },
+        "init_parameters": {"expected_type": "sample_components.merge_loop.MergeLoop", "inputs": ["first", "second"]},
     }
     component = MergeLoop.from_dict(data)
     assert component.expected_type == "sample_components.merge_loop.MergeLoop"
@@ -80,12 +68,7 @@ def test_from_dict_with_custom_class():
 
 
 def test_from_dict_without_expected_type():
-    data = {
-        "type": "sample_components.merge_loop.MergeLoop",
-        "init_parameters": {
-            "inputs": ["first", "second"],
-        },
-    }
+    data = {"type": "sample_components.merge_loop.MergeLoop", "init_parameters": {"inputs": ["first", "second"]}}
     with pytest.raises(DeserializationError) as exc:
         MergeLoop.from_dict(data)
 
@@ -95,9 +78,7 @@ def test_from_dict_without_expected_type():
 def test_from_dict_without_inputs():
     data = {
         "type": "sample_components.merge_loop.MergeLoop",
-        "init_parameters": {
-            "expected_type": "sample_components.merge_loop.MergeLoop",
-        },
+        "init_parameters": {"expected_type": "sample_components.merge_loop.MergeLoop"},
     }
     with pytest.raises(DeserializationError) as exc:
         MergeLoop.from_dict(data)

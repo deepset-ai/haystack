@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import *
 from pathlib import Path
 from pprint import pprint
 
@@ -34,9 +33,7 @@ def test_pipeline_fixed(tmp_path):
 
     pipeline.draw(tmp_path / "looping_and_fixed_merge_pipeline.png")
 
-    results = pipeline.run(
-        {"add_zero": {"value": 8}, "sum": {"values": 2}},
-    )
+    results = pipeline.run({"add_zero": {"value": 8}, "sum": {"values": 2}})
     pprint(results)
     print("accumulate: ", accumulator.state)
 
@@ -65,9 +62,7 @@ def test_pipeline_variadic(tmp_path):
 
     pipeline.draw(tmp_path / "looping_and_variadic_merge_pipeline.png")
 
-    results = pipeline.run(
-        {"add_zero": {"value": 8}, "sum": {"values": 2}},
-    )
+    results = pipeline.run({"add_zero": {"value": 8}, "sum": {"values": 2}})
     pprint(results)
     print("accumulate: ", accumulator.state)
 

@@ -56,18 +56,9 @@ def test_to_dict():
         "metadata": {"test": "test"},
         "max_loops_allowed": 42,
         "components": {
-            "add_two": {
-                "type": "sample_components.add_value.AddFixedValue",
-                "init_parameters": {"add": 2},
-            },
-            "add_default": {
-                "type": "sample_components.add_value.AddFixedValue",
-                "init_parameters": {"add": 1},
-            },
-            "double": {
-                "type": "sample_components.double.Double",
-                "init_parameters": {},
-            },
+            "add_two": {"type": "sample_components.add_value.AddFixedValue", "init_parameters": {"add": 2}},
+            "add_default": {"type": "sample_components.add_value.AddFixedValue", "init_parameters": {"add": 1}},
+            "double": {"type": "sample_components.double.Double", "init_parameters": {}},
         },
         "connections": [
             {"sender": "add_two.result", "receiver": "double.value"},
@@ -82,18 +73,9 @@ def test_from_dict():
         "metadata": {"test": "test"},
         "max_loops_allowed": 101,
         "components": {
-            "add_two": {
-                "type": "sample_components.add_value.AddFixedValue",
-                "init_parameters": {"add": 2},
-            },
-            "add_default": {
-                "type": "sample_components.add_value.AddFixedValue",
-                "init_parameters": {"add": 1},
-            },
-            "double": {
-                "type": "sample_components.double.Double",
-                "init_parameters": {},
-            },
+            "add_two": {"type": "sample_components.add_value.AddFixedValue", "init_parameters": {"add": 2}},
+            "add_default": {"type": "sample_components.add_value.AddFixedValue", "init_parameters": {"add": 1}},
+            "double": {"type": "sample_components.double.Double", "init_parameters": {}},
         },
         "connections": [
             {"sender": "add_two.result", "receiver": "double.value"},
@@ -114,9 +96,7 @@ def test_from_dict():
         "value": InputSocket(name="value", type=int),
         "add": InputSocket(name="add", type=Optional[int], is_mandatory=False),
     }
-    assert add_two["output_sockets"] == {
-        "result": OutputSocket(name="result", type=int, receivers=["double"]),
-    }
+    assert add_two["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
     assert add_two["visits"] == 0
 
     ## add_default
@@ -126,20 +106,14 @@ def test_from_dict():
         "value": InputSocket(name="value", type=int, senders=["double"]),
         "add": InputSocket(name="add", type=Optional[int], is_mandatory=False),
     }
-    assert add_default["output_sockets"] == {
-        "result": OutputSocket(name="result", type=int),
-    }
+    assert add_default["output_sockets"] == {"result": OutputSocket(name="result", type=int)}
     assert add_default["visits"] == 0
 
     ## double
     double = pipe.graph.nodes["double"]
     assert double["instance"]
-    assert double["input_sockets"] == {
-        "value": InputSocket(name="value", type=int, senders=["add_two"]),
-    }
-    assert double["output_sockets"] == {
-        "value": OutputSocket(name="value", type=int, receivers=["add_default"]),
-    }
+    assert double["input_sockets"] == {"value": InputSocket(name="value", type=int, senders=["add_two"])}
+    assert double["output_sockets"] == {"value": OutputSocket(name="value", type=int, receivers=["add_default"])}
     assert double["visits"] == 0
 
     # Connections
@@ -172,20 +146,14 @@ def test_from_dict_with_empty_dict():
 def test_from_dict_with_components_instances():
     add_two = AddFixedValue(add=2)
     add_default = AddFixedValue()
-    components = {
-        "add_two": add_two,
-        "add_default": add_default,
-    }
+    components = {"add_two": add_two, "add_default": add_default}
     data = {
         "metadata": {"test": "test"},
         "max_loops_allowed": 100,
         "components": {
             "add_two": {},
             "add_default": {},
-            "double": {
-                "type": "sample_components.double.Double",
-                "init_parameters": {},
-            },
+            "double": {"type": "sample_components.double.Double", "init_parameters": {}},
         },
         "connections": [
             {"sender": "add_two.result", "receiver": "double.value"},
@@ -206,9 +174,7 @@ def test_from_dict_with_components_instances():
         "value": InputSocket(name="value", type=int),
         "add": InputSocket(name="add", type=Optional[int], is_mandatory=False),
     }
-    assert add_two_data["output_sockets"] == {
-        "result": OutputSocket(name="result", type=int, receivers=["double"]),
-    }
+    assert add_two_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
     assert add_two_data["visits"] == 0
 
     ## add_default
@@ -219,20 +185,14 @@ def test_from_dict_with_components_instances():
         "value": InputSocket(name="value", type=int, senders=["double"]),
         "add": InputSocket(name="add", type=Optional[int], is_mandatory=False),
     }
-    assert add_default_data["output_sockets"] == {
-        "result": OutputSocket(name="result", type=int, receivers=[]),
-    }
+    assert add_default_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=[])}
     assert add_default_data["visits"] == 0
 
     ## double
     double = pipe.graph.nodes["double"]
     assert double["instance"]
-    assert double["input_sockets"] == {
-        "value": InputSocket(name="value", type=int, senders=["add_two"]),
-    }
-    assert double["output_sockets"] == {
-        "value": OutputSocket(name="value", type=int, receivers=["add_default"]),
-    }
+    assert double["input_sockets"] == {"value": InputSocket(name="value", type=int, senders=["add_two"])}
+    assert double["output_sockets"] == {"value": OutputSocket(name="value", type=int, receivers=["add_default"])}
     assert double["visits"] == 0
 
     # Connections
@@ -262,11 +222,7 @@ def test_from_dict_without_component_type():
     data = {
         "metadata": {"test": "test"},
         "max_loops_allowed": 100,
-        "components": {
-            "add_two": {
-                "init_parameters": {"add": 2},
-            },
-        },
+        "components": {"add_two": {"init_parameters": {"add": 2}}},
         "connections": [],
     }
     with pytest.raises(PipelineError) as err:
@@ -279,18 +235,13 @@ def test_from_dict_without_registered_component_type(request):
     data = {
         "metadata": {"test": "test"},
         "max_loops_allowed": 100,
-        "components": {
-            "add_two": {
-                "type": "foo.bar.baz",
-                "init_parameters": {"add": 2},
-            },
-        },
+        "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
         "connections": [],
     }
     with pytest.raises(PipelineError) as err:
         Pipeline.from_dict(data)
 
-    err.match(f"Component .+ not imported.")
+    err.match(r"Component .+ not imported.")
 
 
 def test_from_dict_without_connection_sender():
@@ -298,9 +249,7 @@ def test_from_dict_without_connection_sender():
         "metadata": {"test": "test"},
         "max_loops_allowed": 100,
         "components": {},
-        "connections": [
-            {"receiver": "some.receiver"},
-        ],
+        "connections": [{"receiver": "some.receiver"}],
     }
     with pytest.raises(PipelineError) as err:
         Pipeline.from_dict(data)
@@ -313,9 +262,7 @@ def test_from_dict_without_connection_receiver():
         "metadata": {"test": "test"},
         "max_loops_allowed": 100,
         "components": {},
-        "connections": [
-            {"sender": "some.sender"},
-        ],
+        "connections": [{"sender": "some.sender"}],
     }
     with pytest.raises(PipelineError) as err:
         Pipeline.from_dict(data)

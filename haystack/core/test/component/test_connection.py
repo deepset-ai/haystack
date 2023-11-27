@@ -36,57 +36,36 @@ def test_is_mandatory():
 
 
 def test_from_list_of_sockets():
-    sender_sockets = [
-        OutputSocket("out_int", int),
-        OutputSocket("out_str", str),
-    ]
+    sender_sockets = [OutputSocket("out_int", int), OutputSocket("out_str", str)]
 
-    receiver_sockets = [
-        InputSocket("in_str", str),
-    ]
+    receiver_sockets = [InputSocket("in_str", str)]
 
     c = Connection.from_list_of_sockets("from_node", sender_sockets, "to_node", receiver_sockets)
     assert c.sender_socket.name == "out_str"  # type:ignore
 
 
 def test_from_list_of_sockets_not_possible():
-    sender_sockets = [
-        OutputSocket("out_int", int),
-        OutputSocket("out_str", str),
-    ]
+    sender_sockets = [OutputSocket("out_int", int), OutputSocket("out_str", str)]
 
-    receiver_sockets = [
-        InputSocket("in_list", list),
-        InputSocket("in_tuple", tuple),
-    ]
+    receiver_sockets = [InputSocket("in_list", list), InputSocket("in_tuple", tuple)]
 
     with pytest.raises(PipelineConnectError, match="no matching connections available"):
         Connection.from_list_of_sockets("from_node", sender_sockets, "to_node", receiver_sockets)
 
 
 def test_from_list_of_sockets_too_many():
-    sender_sockets = [
-        OutputSocket("out_int", int),
-        OutputSocket("out_str", str),
-    ]
+    sender_sockets = [OutputSocket("out_int", int), OutputSocket("out_str", str)]
 
-    receiver_sockets = [
-        InputSocket("in_int", int),
-        InputSocket("in_str", str),
-    ]
+    receiver_sockets = [InputSocket("in_int", int), InputSocket("in_str", str)]
 
     with pytest.raises(PipelineConnectError, match="more than one connection is possible"):
         Connection.from_list_of_sockets("from_node", sender_sockets, "to_node", receiver_sockets)
 
 
 def test_from_list_of_sockets_only_one():
-    sender_sockets = [
-        OutputSocket("out_int", int),
-    ]
+    sender_sockets = [OutputSocket("out_int", int)]
 
-    receiver_sockets = [
-        InputSocket("in_str", str),
-    ]
+    receiver_sockets = [InputSocket("in_str", str)]
 
     with pytest.raises(PipelineConnectError, match="their declared input and output types do not match"):
         Connection.from_list_of_sockets("from_node", sender_sockets, "to_node", receiver_sockets)

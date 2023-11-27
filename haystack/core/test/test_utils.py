@@ -65,21 +65,9 @@ class Enum1(Enum):
             "Dict[str, Mapping[str, Dict[str, Class1]]]",
             id="nested-mapping-of-classes",
         ),
-        pytest.param(
-            Literal["a", "b", "c"],
-            "Literal['a', 'b', 'c']",
-            id="string-literal",
-        ),
-        pytest.param(
-            Literal[1, 2, 3],
-            "Literal[1, 2, 3]",
-            id="primitive-literal",
-        ),
-        pytest.param(
-            Literal[Enum1.TEST1],
-            "Literal[Enum1.TEST1]",
-            id="enum-literal",
-        ),
+        pytest.param(Literal["a", "b", "c"], "Literal['a', 'b', 'c']", id="string-literal"),
+        pytest.param(Literal[1, 2, 3], "Literal[1, 2, 3]", id="primitive-literal"),
+        pytest.param(Literal[Enum1.TEST1], "Literal[Enum1.TEST1]", id="enum-literal"),
         pytest.param(
             Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, Class1]]],
             "Tuple[Optional[Literal['a', 'b', 'c']], Union[Path, Dict[int, Class1]]]",

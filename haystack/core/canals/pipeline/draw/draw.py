@@ -45,9 +45,7 @@ def _draw(
     logger.debug("Pipeline diagram saved at %s", path)
 
 
-def _convert_for_debug(
-    graph: networkx.MultiDiGraph,
-) -> Any:
+def _convert_for_debug(graph: networkx.MultiDiGraph) -> Any:
     """
     Renders the pipeline graph with additional debug information into a text file that Mermaid can later render.
     """
@@ -56,9 +54,7 @@ def _convert_for_debug(
 
 
 def _convert(
-    graph: networkx.MultiDiGraph,
-    engine: RenderingEngines = "mermaid-image",
-    style_map: Optional[Dict[str, str]] = None,
+    graph: networkx.MultiDiGraph, engine: RenderingEngines = "mermaid-image", style_map: Optional[Dict[str, str]] = None
 ) -> Any:
     """
     Renders the pipeline graph with the correct render and returns it.

@@ -13,20 +13,14 @@ def test_default_component_to_dict():
     MyComponent = factory.component_class("MyComponent")
     comp = MyComponent()
     res = default_to_dict(comp)
-    assert res == {
-        "type": "canals.testing.factory.MyComponent",
-        "init_parameters": {},
-    }
+    assert res == {"type": "canals.testing.factory.MyComponent", "init_parameters": {}}
 
 
 def test_default_component_to_dict_with_init_parameters():
     MyComponent = factory.component_class("MyComponent")
     comp = MyComponent()
     res = default_to_dict(comp, some_key="some_value")
-    assert res == {
-        "type": "canals.testing.factory.MyComponent",
-        "init_parameters": {"some_key": "some_value"},
-    }
+    assert res == {"type": "canals.testing.factory.MyComponent", "init_parameters": {"some_key": "some_value"}}
 
 
 def test_default_component_from_dict():
@@ -36,13 +30,7 @@ def test_default_component_from_dict():
     extra_fields = {"__init__": custom_init}
     MyComponent = factory.component_class("MyComponent", extra_fields=extra_fields)
     comp = default_from_dict(
-        MyComponent,
-        {
-            "type": "canals.testing.factory.MyComponent",
-            "init_parameters": {
-                "some_param": 10,
-            },
-        },
+        MyComponent, {"type": "canals.testing.factory.MyComponent", "init_parameters": {"some_param": 10}}
     )
     assert isinstance(comp, MyComponent)
     assert comp.some_param == 10

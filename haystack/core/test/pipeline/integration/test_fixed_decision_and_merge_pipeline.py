@@ -33,31 +33,15 @@ def test_pipeline(tmp_path):
 
     pipeline.draw(tmp_path / "fixed_decision_and_merge_pipeline.png")
 
-    results = pipeline.run(
-        {
-            "add_one": {"value": 1},
-            "add_two": {"add": 2},
-            "add_two_as_well": {"add": 2},
-        }
-    )
+    results = pipeline.run({"add_one": {"value": 1}, "add_two": {"add": 2}, "add_two_as_well": {"add": 2}})
     pprint(results)
 
-    results == {
-        "add_two": {"result": 8},
-    }
+    results == {"add_two": {"result": 8}}
 
-    results = pipeline.run(
-        {
-            "add_one": {"value": 2},
-            "add_two": {"add": 2},
-            "add_two_as_well": {"add": 2},
-        }
-    )
+    results = pipeline.run({"add_one": {"value": 2}, "add_two": {"add": 2}, "add_two_as_well": {"add": 2}})
     pprint(results)
 
-    results == {
-        "diff": {"difference": 7},
-    }
+    results == {"diff": {"difference": 7}}
 
 
 if __name__ == "__main__":

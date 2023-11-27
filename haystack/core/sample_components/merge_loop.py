@@ -25,11 +25,7 @@ class MergeLoop:
         self.inputs = inputs
 
     def to_dict(self) -> Dict[str, Any]:  # pylint: disable=missing-function-docstring
-        return default_to_dict(
-            self,
-            expected_type=self.expected_type,
-            inputs=self.inputs,
-        )
+        return default_to_dict(self, expected_type=self.expected_type, inputs=self.inputs)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MergeLoop":  # pylint: disable=missing-function-docstring

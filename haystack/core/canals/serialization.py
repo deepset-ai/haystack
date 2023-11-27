@@ -81,10 +81,7 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
     }
     ```
     """
-    return {
-        "type": f"{obj.__class__.__module__}.{obj.__class__.__name__}",
-        "init_parameters": init_parameters,
-    }
+    return {"type": f"{obj.__class__.__module__}.{obj.__class__.__name__}", "init_parameters": init_parameters}
 
 
 def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
