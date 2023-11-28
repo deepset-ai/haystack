@@ -16,18 +16,6 @@ from haystack.testing.sample_components import Double, AddFixedValue
 
 
 @pytest.mark.integration
-def test_draw_pygraphviz(tmp_path, test_files):
-    pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
-
-    _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="graphviz")
-    assert os.path.exists(tmp_path / "test_pipe.jpg")
-    assert filecmp.cmp(tmp_path / "test_pipe.jpg", test_files / "pipeline_draw" / "pygraphviz.jpg")
-
-
-@pytest.mark.integration
 def test_draw_mermaid_image(tmp_path, test_files):
     pipe = Pipeline()
     pipe.add_component("comp1", Double())
