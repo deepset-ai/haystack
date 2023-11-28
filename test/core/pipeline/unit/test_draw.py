@@ -15,8 +15,7 @@ from haystack.core.errors import PipelineDrawingError
 from haystack.testing.sample_components import Double, AddFixedValue
 
 
-@pytest.mark.skipif(sys.platform.lower().startswith("darwin"), reason="the available graphviz version is too recent")
-@pytest.mark.skipif(sys.platform.lower().startswith("win"), reason="pygraphviz is not really available in Windows")
+@pytest.mark.integration
 def test_draw_pygraphviz(tmp_path, test_files):
     pipe = Pipeline()
     pipe.add_component("comp1", Double())
@@ -28,6 +27,7 @@ def test_draw_pygraphviz(tmp_path, test_files):
     assert filecmp.cmp(tmp_path / "test_pipe.jpg", test_files / "pipeline_draw" / "pygraphviz.jpg")
 
 
+@pytest.mark.integration
 def test_draw_mermaid_image(tmp_path, test_files):
     pipe = Pipeline()
     pipe.add_component("comp1", Double())
@@ -40,6 +40,7 @@ def test_draw_mermaid_image(tmp_path, test_files):
     assert filecmp.cmp(tmp_path / "test_pipe.jpg", test_files / "mermaid_mock" / "test_response.png")
 
 
+@pytest.mark.integration
 def test_draw_mermaid_img_failing_request(tmp_path):
     pipe = Pipeline()
     pipe.add_component("comp1", Double())
@@ -62,6 +63,7 @@ def test_draw_mermaid_img_failing_request(tmp_path):
             _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="mermaid-image")
 
 
+@pytest.mark.integration
 def test_draw_mermaid_text(tmp_path):
     pipe = Pipeline()
     pipe.add_component("comp1", AddFixedValue(add=3))
