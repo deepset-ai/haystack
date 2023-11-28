@@ -3,14 +3,14 @@ import json
 import pytest
 
 from haystack.preview import Pipeline, Document
-from haystack.preview.components.embedders.gradient_document_embedder import GradientDocumentEmbedder
-from haystack.preview.components.embedders.gradient_text_embedder import GradientTextEmbedder
+from haystack.components.embedders.gradient_document_embedder import GradientDocumentEmbedder
+from haystack.components.embedders.gradient_text_embedder import GradientTextEmbedder
 from haystack.preview.document_stores import InMemoryDocumentStore
 from haystack.preview.components.writers import DocumentWriter
 from haystack.preview.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.preview.components.generators.gradient.base import GradientGenerator
-from haystack.preview.components.builders.answer_builder import AnswerBuilder
-from haystack.preview.components.builders.prompt_builder import PromptBuilder
+from haystack.components.builders.answer_builder import AnswerBuilder
+from haystack.components.builders.prompt_builder import PromptBuilder
 
 
 @pytest.mark.skipif(

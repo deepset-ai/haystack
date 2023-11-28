@@ -1,6 +1,6 @@
 import pytest
 from gradientai.openapi.client.models.generate_embedding_success import GenerateEmbeddingSuccess
-from haystack.preview.components.embedders.gradient_document_embedder import GradientDocumentEmbedder
+from haystack.components.embedders.gradient_document_embedder import GradientDocumentEmbedder
 from unittest.mock import MagicMock, NonCallableMagicMock
 import numpy as np
 
@@ -59,7 +59,7 @@ class TestGradientDocumentEmbedder:
         component = GradientDocumentEmbedder(access_token=access_token, workspace_id=workspace_id)
         data = component.to_dict()
         assert data == {
-            "type": "GradientDocumentEmbedder",
+            "type": "haystack.component.embedders.gradient_document_embedder.GradientDocumentEmbedder",
             "init_parameters": {"workspace_id": workspace_id, "model_name": "bge-large"},
         }
 

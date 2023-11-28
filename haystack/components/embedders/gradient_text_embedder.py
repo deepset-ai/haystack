@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional
 
 from haystack.preview import component, default_to_dict
-from haystack.preview.lazy_imports import LazyImport
+from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install gradientai'") as gradientai_import:
     from gradientai import Gradient

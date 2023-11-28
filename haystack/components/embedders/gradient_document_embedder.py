@@ -2,7 +2,7 @@ import logging
 from typing import List, Optional, Dict, Any
 
 from haystack.preview import component, Document, default_to_dict
-from haystack.preview.lazy_imports import LazyImport
+from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install gradientai'") as gradientai_import:
     from gradientai import Gradient
