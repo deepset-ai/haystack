@@ -4,7 +4,7 @@ from haystack.components.embedders.gradient_document_embedder import GradientDoc
 from unittest.mock import MagicMock, NonCallableMagicMock
 import numpy as np
 
-from haystack.preview import Document
+from haystack import Document
 
 
 access_token = "access_token"
@@ -25,14 +25,14 @@ class TestGradientDocumentEmbedder:
 
     @pytest.mark.unit
     def test_init_without_access_token(self, monkeypatch):
-        monkeypatch.delenv("GRADIENT_ACCESS_TOKEN", raising=True)
+        monkeypatch.delenv("GRADIENT_ACCESS_TOKEN", raising=False)
 
         with pytest.raises(ValueError):
             GradientDocumentEmbedder(workspace_id=workspace_id)
 
     @pytest.mark.unit
     def test_init_without_workspace(self, monkeypatch):
-        monkeypatch.delenv("GRADIENT_WORKSPACE_ID", raising=True)
+        monkeypatch.delenv("GRADIENT_WORKSPACE_ID", raising=False)
 
         with pytest.raises(ValueError):
             GradientDocumentEmbedder(access_token=access_token)
@@ -59,7 +59,7 @@ class TestGradientDocumentEmbedder:
         component = GradientDocumentEmbedder(access_token=access_token, workspace_id=workspace_id)
         data = component.to_dict()
         assert data == {
-            "type": "haystack.component.embedders.gradient_document_embedder.GradientDocumentEmbedder",
+            "type": "haystack.components.embedders.gradient_document_embedder.GradientDocumentEmbedder",
             "init_parameters": {"workspace_id": workspace_id, "model_name": "bge-large"},
         }
 
