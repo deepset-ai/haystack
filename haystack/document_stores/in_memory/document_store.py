@@ -98,7 +98,7 @@ class InMemoryDocumentStore:
         :return: A list of Documents that match the given filters.
         """
         if filters:
-            if "operator" not in filters:
+            if "operator" not in filters and "conditions" not in filters:
                 filters = convert(filters)
             return [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
         return list(self.storage.values())
