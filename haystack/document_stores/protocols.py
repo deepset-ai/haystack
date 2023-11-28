@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class DuplicatePolicy(Enum):
+    NONE = "none"
     SKIP = "skip"
     OVERWRITE = "overwrite"
     FAIL = "fail"
@@ -115,20 +116,20 @@ class DocumentStore(Protocol):
         """
         ...
 
-    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int:
+    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
         """
-        Writes (or overwrites) documents into the DocumentStore.
+        Writes Documents into the DocumentStore.
 
-        :param documents: a list of documents.
-        :param policy: documents with the same ID count as duplicates. When duplicates are met,
-            the DocumentStore can:
-             - skip: keep the existing document and ignore the new one.
-             - overwrite: remove the old document and write the new one.
-             - fail: an error is raised
-        :raises DuplicateError: Exception trigger on duplicate document if `policy=DuplicatePolicy.FAIL`
-        :return: The number of documents that was written.
-            If DuplicatePolicy.OVERWRITE is used, this number is always equal to the number of documents in input.
-            If DuplicatePolicy.SKIP is used, this number can be lower than the number of documents in the input list.
+        :param documents: a list of Document objects.
+        :param policy: the policy to apply when a Document with the same id already exists in the DocumentStore.
+            - `DuplicatePolicy.NONE`: Default policy, behaviour depends on the Document Store.
+            - `DuplicatePolicy.SKIP`: If a Document with the same id already exists, it is skipped and not written.
+            - `DuplicatePolicy.OVERWRITE`: If a Document with the same id already exists, it is overwritten.
+            - `DuplicatePolicy.FAIL`: If a Document with the same id already exists, an error is raised.
+        :raises DuplicateError: If `policy` is set to `DuplicatePolicy.FAIL` and a Document with the same id already exists.
+        :return: The number of Documents written.
+            If `DuplicatePolicy.OVERWRITE` is used, this number is always equal to the number of documents in input.
+            If `DuplicatePolicy.SKIP` is used, this number can be lower than the number of documents in the input list.
         """
         ...
 
