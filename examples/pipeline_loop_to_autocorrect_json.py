@@ -14,7 +14,7 @@ from pydantic import BaseModel, ValidationError
 import logging
 
 logging.basicConfig()
-logging.getLogger("canals.pipeline.pipeline").setLevel(logging.DEBUG)
+logging.getLogger("haystack.core.pipeline.pipeline").setLevel(logging.DEBUG)
 
 
 # Let's define a simple schema for the data we want to extract from a passsage via the LLM
