@@ -103,18 +103,11 @@ class InMemoryDocumentStore:
             return [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
         return list(self.storage.values())
 
-    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int:
+    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
         """
-        Writes (or overwrites) documents into the DocumentStore.
+        Refer to the DocumentStore.write_documents() protocol documentation.
 
-        :param documents: A list of documents.
-        :param policy: Documents with the same ID count as duplicates. When duplicates are met,
-            the DocumentStore can:
-             - skip: keep the existing document and ignore the new one.
-             - overwrite: remove the old document and write the new one.
-             - fail: an error is raised.
-        :raises DuplicateError: Exception trigger on duplicate document if `policy=DuplicatePolicy.FAIL`
-        :return: None
+        If `policy` is set to `DuplicatePolicy.NONE` defaults to `DuplicatePolicy.FAIL`.
         """
         if (
             not isinstance(documents, Iterable)
@@ -122,6 +115,9 @@ class InMemoryDocumentStore:
             or any(not isinstance(doc, Document) for doc in documents)
         ):
             raise ValueError("Please provide a list of Documents.")
+
+        if policy == DuplicatePolicy.NONE:
+            policy = DuplicatePolicy.FAIL
 
         written_documents = len(documents)
         for document in documents:

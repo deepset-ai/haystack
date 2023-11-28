@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from haystack import Document
-from haystack.document_stores import InMemoryDocumentStore, DocumentStoreError, DuplicatePolicy
+from haystack.document_stores import InMemoryDocumentStore, DocumentStoreError, DuplicatePolicy, DuplicateDocumentError
 
 
 from haystack.testing.document_store import DocumentStoreBaseTests
@@ -70,17 +70,11 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert store.bm25_algorithm.__name__ == "BM25Plus"
         assert store.bm25_parameters == {"key": "value"}
 
-    @pytest.mark.unit
-    def test_written_documents_count(self, document_store: InMemoryDocumentStore):
-        # FIXME Remove after the document store base tests have been rewritten
-        documents = [Document(content=f"Hello world #{i}") for i in range(10)]
-        docs_written = document_store.write_documents(documents[0:2])
-        assert docs_written == 2
-        assert document_store.filter_documents() == documents[0:2]
-
-        docs_written = document_store.write_documents(documents, DuplicatePolicy.SKIP)
-        assert docs_written == len(documents) - 2
-        assert document_store.filter_documents() == documents
+    def test_write_documents(self, document_store):
+        docs = [Document(id="1")]
+        assert document_store.write_documents(docs) == 1
+        with pytest.raises(DuplicateDocumentError):
+            document_store.write_documents(docs)
 
     @pytest.mark.unit
     def test_bm25_retrieval(self, document_store: InMemoryDocumentStore):
