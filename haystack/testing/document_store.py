@@ -70,11 +70,14 @@ class WriteDocumentsTest:
     @pytest.mark.unit
     def test_write_documents(self, document_store: DocumentStore):
         """
-        Test write_documents() normal behaviour.
+        Test write_documents() default behaviour.
         """
-        doc = Document(content="test doc")
-        assert document_store.write_documents([doc]) == 1
-        assert document_store.filter_documents() == [doc]
+        msg = (
+            "Default write_documents() behaviour depends on the Document Store implementantion, "
+            "as we don't enforce a default behaviour when no policy is set. "
+            "Override this test in your custom test class."
+        )
+        raise NotImplementedError(msg)
 
     @pytest.mark.unit
     def test_write_documents_duplicate_fail(self, document_store: DocumentStore):
@@ -83,7 +86,7 @@ class WriteDocumentsTest:
         using DuplicatePolicy.FAIL.
         """
         doc = Document(content="test doc")
-        assert document_store.write_documents([doc]) == 1
+        assert document_store.write_documents([doc], policy=DuplicatePolicy.FAIL) == 1
         with pytest.raises(DuplicateDocumentError):
             document_store.write_documents(documents=[doc], policy=DuplicatePolicy.FAIL)
         assert document_store.filter_documents() == [doc]
@@ -95,7 +98,7 @@ class WriteDocumentsTest:
         using DuplicatePolicy.SKIP.
         """
         doc = Document(content="test doc")
-        assert document_store.write_documents([doc]) == 1
+        assert document_store.write_documents([doc], policy=DuplicatePolicy.SKIP) == 1
         assert document_store.write_documents(documents=[doc], policy=DuplicatePolicy.SKIP) == 0
 
     @pytest.mark.unit
@@ -107,7 +110,7 @@ class WriteDocumentsTest:
         doc1 = Document(id="1", content="test doc 1")
         doc2 = Document(id="1", content="test doc 2")
 
-        assert document_store.write_documents([doc2]) == 1
+        assert document_store.write_documents([doc2], policy=DuplicatePolicy.OVERWRITE) == 1
         assert document_store.filter_documents() == [doc2]
         assert document_store.write_documents(documents=[doc1], policy=DuplicatePolicy.OVERWRITE) == 1
         assert document_store.filter_documents() == [doc1]
