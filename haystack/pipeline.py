@@ -100,7 +100,7 @@ class Pipeline(_pipeline):
         return cls.from_dict(marshaller.unmarshal(fp.read()))
 
     @classmethod
-    def from_template(cls, template_name: str, **kwargs) -> "Pipeline":
+    def from_template(cls, template_name_or_path: str, **kwargs) -> "Pipeline":
         """
         Creates a `Pipeline` object from a template.
 
@@ -109,9 +109,13 @@ class Pipeline(_pipeline):
 
         :returns: A `Pipeline` object.
         """
-        here = Path(__file__).parent
-        with open(here / "pipelines" / f"{template_name}.yaml", "r") as f:
-            template_file = f.read()
-            template = Template(template_file)
+        if Path(template_name_or_path).is_file():
+            template_file = template_name_or_path
+        else:
+            here = Path(__file__).parent
+            template_file = here / "pipelines" / f"{template_name_or_path}.yaml"
+
+        with open(template_file) as f:
+            template = Template(f.read())
             pipeline_yaml = template.render(kwargs)
             return cls.loads(pipeline_yaml)
