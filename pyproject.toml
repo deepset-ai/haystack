@@ -85,21 +85,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-preview = [
-  "canals==0.10.1",
-  "requests",
-  "pandas",
-  "rank_bm25",
-  "tqdm",
-  "tenacity",
-  "lazy-imports",
-  "posthog",  # telemetry
-
-  "Jinja2",
-  "openai<1.0.0",
-  "pyyaml",
-  "more-itertools",  # DocumentSplitter
-]
 inference = [
   "transformers[torch,sentencepiece]==4.35.2",
   "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
@@ -239,11 +224,11 @@ audio = [
 ]
 
 all = [
-  "farm-haystack[inference,docstores,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview,audio]",
+  "farm-haystack[inference,docstores,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,audio]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[inference,docstores-gpu,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview,audio]",
+  "farm-haystack[inference,docstores-gpu,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,audio]",
 ]
 
 [project.scripts]
@@ -425,7 +410,6 @@ max-complexity = 28
 
 [tool.ruff.per-file-ignores]
 "examples/basic_qa_pipeline.py" = ["C416"]
-"haystack/preview/testing/document_store.py" = ["C416", "F821"]
 "haystack/telemetry.py" = ["F821"]
 
 [tool.ruff.pylint]

@@ -6,9 +6,6 @@ on:
     paths-ignore:
       - "**.py"
       - "**/pyproject.toml"
-      - "!haystack/preview/**/*.py"
-      - "!test/preview/**/*.py"
-      - "!e2e/preview/**/*.py"
 
 jobs:
   mypy:
