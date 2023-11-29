@@ -5,7 +5,6 @@ from haystack.components.rankers.transformers_similarity import TransformersSimi
 
 
 class TestSimilarityRanker:
-    @pytest.mark.unit
     def test_to_dict(self):
         component = TransformersSimilarityRanker()
         data = component.to_dict()
@@ -19,7 +18,6 @@ class TestSimilarityRanker:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
         component = TransformersSimilarityRanker(
             model_name_or_path="my_model", device="cuda", token="my_token", top_k=5

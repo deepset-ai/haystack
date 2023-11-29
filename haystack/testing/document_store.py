@@ -51,11 +51,9 @@ class CountDocumentsTest:
     ```
     """
 
-    @pytest.mark.unit
     def test_count_empty(self, document_store: DocumentStore):
         assert document_store.count_documents() == 0
 
-    @pytest.mark.unit
     def test_count_not_empty(self, document_store: DocumentStore):
         document_store.write_documents(
             [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
@@ -80,7 +78,6 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
     ```
     """
 
-    @pytest.mark.unit
     def test_write_documents(self, document_store: DocumentStore):
         """
         Test write_documents() default behaviour.
@@ -92,7 +89,6 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
         )
         raise NotImplementedError(msg)
 
-    @pytest.mark.unit
     def test_write_documents_duplicate_fail(self, document_store: DocumentStore):
         """
         Test write_documents() fails when trying to write Document with same id
@@ -104,7 +100,6 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
             document_store.write_documents(documents=[doc], policy=DuplicatePolicy.FAIL)
         self.assert_documents_are_equal(document_store.filter_documents(), [doc])
 
-    @pytest.mark.unit
     def test_write_documents_duplicate_skip(self, document_store: DocumentStore):
         """
         Test write_documents() skips Document when trying to write one with same id
@@ -114,7 +109,6 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
         assert document_store.write_documents([doc], policy=DuplicatePolicy.SKIP) == 1
         assert document_store.write_documents(documents=[doc], policy=DuplicatePolicy.SKIP) == 0
 
-    @pytest.mark.unit
     def test_write_documents_duplicate_overwrite(self, document_store: DocumentStore):
         """
         Test write_documents() overwrites stored Document when trying to write one with same id
@@ -128,7 +122,6 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
         assert document_store.write_documents(documents=[doc1], policy=DuplicatePolicy.OVERWRITE) == 1
         self.assert_documents_are_equal(document_store.filter_documents(), [doc1])
 
-    @pytest.mark.unit
     def test_write_documents_invalid_input(self, document_store: DocumentStore):
         """
         Test write_documents() fails when providing unexpected input.
@@ -155,7 +148,6 @@ class DeleteDocumentsTest:
     ```
     """
 
-    @pytest.mark.unit
     def test_delete_documents(self, document_store: DocumentStore):
         """
         Test delete_documents() normal behaviour.
@@ -167,14 +159,12 @@ class DeleteDocumentsTest:
         document_store.delete_documents([doc.id])
         assert document_store.count_documents() == 0
 
-    @pytest.mark.unit
     def test_delete_documents_empty_document_store(self, document_store: DocumentStore):
         """
         Test delete_documents() doesn't fail when called using an empty Document Store.
         """
         document_store.delete_documents(["non_existing_id"])
 
-    @pytest.mark.unit
     def test_delete_documents_non_existing_document(self, document_store: DocumentStore):
         """
         Test delete_documents() doesn't delete any Document when called with non existing id.
@@ -268,19 +258,16 @@ class LegacyFilterDocumentsInvalidFiltersTest(AssertDocumentsEqualMixin, Filtera
     ```
     """
 
-    @pytest.mark.unit
     def test_incorrect_filter_type(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(ValueError):
             document_store.filter_documents(filters="something odd")  # type: ignore
 
-    @pytest.mark.unit
     def test_incorrect_filter_nesting(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"number": {"page": "100"}})
 
-    @pytest.mark.unit
     def test_deeper_incorrect_filter_nesting(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -302,19 +289,16 @@ class LegacyFilterDocumentsEqualTest(AssertDocumentsEqualMixin, FilterableDocsFi
     ```
     """
 
-    @pytest.mark.unit
     def test_filter_document_content(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"content": "A Foo Document 1"})
         self.assert_documents_are_equal(result, [doc for doc in filterable_docs if doc.content == "A Foo Document 1"])
 
-    @pytest.mark.unit
     def test_filter_simple_metadata_value(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"page": "100"})
         self.assert_documents_are_equal(result, [doc for doc in filterable_docs if doc.meta.get("page") == "100"])
 
-    @pytest.mark.unit
     def test_filter_document_dataframe(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"dataframe": pd.DataFrame([1])})
@@ -323,19 +307,16 @@ class LegacyFilterDocumentsEqualTest(AssertDocumentsEqualMixin, FilterableDocsFi
             [doc for doc in filterable_docs if doc.dataframe is not None and doc.dataframe.equals(pd.DataFrame([1]))],
         )
 
-    @pytest.mark.unit
     def test_eq_filter_explicit(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"page": {"$eq": "100"}})
         self.assert_documents_are_equal(result, [doc for doc in filterable_docs if doc.meta.get("page") == "100"])
 
-    @pytest.mark.unit
     def test_eq_filter_implicit(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"page": "100"})
         self.assert_documents_are_equal(result, [doc for doc in filterable_docs if doc.meta.get("page") == "100"])
 
-    @pytest.mark.unit
     def test_eq_filter_table(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"dataframe": pd.DataFrame([1])})
@@ -348,7 +329,6 @@ class LegacyFilterDocumentsEqualTest(AssertDocumentsEqualMixin, FilterableDocsFi
             ],
         )
 
-    @pytest.mark.unit
     def test_eq_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         embedding = [0.0] * 768
@@ -371,13 +351,11 @@ class LegacyFilterDocumentsNotEqualTest(AssertDocumentsEqualMixin, FilterableDoc
     ```
     """
 
-    @pytest.mark.unit
     def test_ne_filter(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"page": {"$ne": "100"}})
         self.assert_documents_are_equal(result, [doc for doc in filterable_docs if doc.meta.get("page") != "100"])
 
-    @pytest.mark.unit
     def test_ne_filter_table(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"dataframe": {"$ne": pd.DataFrame([1])}})
@@ -390,7 +368,6 @@ class LegacyFilterDocumentsNotEqualTest(AssertDocumentsEqualMixin, FilterableDoc
             ],
         )
 
-    @pytest.mark.unit
     def test_ne_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"embedding": {"$ne": TEST_EMBEDDING_1}})
@@ -412,19 +389,16 @@ class LegacyFilterDocumentsInTest(AssertDocumentsEqualMixin, FilterableDocsFixtu
     ```
     """
 
-    @pytest.mark.unit
     def test_filter_simple_list_single_element(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"page": ["100"]})
         self.assert_documents_are_equal(result, [doc for doc in filterable_docs if doc.meta.get("page") == "100"])
 
-    @pytest.mark.unit
     def test_filter_simple_list_one_value(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"page": ["100"]})
         self.assert_documents_are_equal(result, [doc for doc in filterable_docs if doc.meta.get("page") in ["100"]])
 
-    @pytest.mark.unit
     def test_filter_simple_list(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"page": ["100", "123"]})
@@ -432,19 +406,16 @@ class LegacyFilterDocumentsInTest(AssertDocumentsEqualMixin, FilterableDocsFixtu
             result, [doc for doc in filterable_docs if doc.meta.get("page") in ["100", "123"]]
         )
 
-    @pytest.mark.unit
     def test_incorrect_filter_name(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"non_existing_meta_field": ["whatever"]})
         self.assert_documents_are_equal(result, [])
 
-    @pytest.mark.unit
     def test_incorrect_filter_value(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"page": ["nope"]})
         self.assert_documents_are_equal(result, [])
 
-    @pytest.mark.unit
     def test_in_filter_explicit(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"page": {"$in": ["100", "123", "n.a."]}})
@@ -452,7 +423,6 @@ class LegacyFilterDocumentsInTest(AssertDocumentsEqualMixin, FilterableDocsFixtu
             result, [doc for doc in filterable_docs if doc.meta.get("page") in ["100", "123"]]
         )
 
-    @pytest.mark.unit
     def test_in_filter_implicit(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"page": ["100", "123", "n.a."]})
@@ -460,7 +430,6 @@ class LegacyFilterDocumentsInTest(AssertDocumentsEqualMixin, FilterableDocsFixtu
             result, [doc for doc in filterable_docs if doc.meta.get("page") in ["100", "123"]]
         )
 
-    @pytest.mark.unit
     def test_in_filter_table(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"dataframe": {"$in": [pd.DataFrame([1]), pd.DataFrame([2])]}})
@@ -474,7 +443,6 @@ class LegacyFilterDocumentsInTest(AssertDocumentsEqualMixin, FilterableDocsFixtu
             ],
         )
 
-    @pytest.mark.unit
     def test_in_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         embedding_zero = [0.0] * 768
@@ -501,7 +469,6 @@ class LegacyFilterDocumentsNotInTest(AssertDocumentsEqualMixin, FilterableDocsFi
     ```
     """
 
-    @pytest.mark.unit
     def test_nin_filter_table(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(
@@ -517,7 +484,6 @@ class LegacyFilterDocumentsNotInTest(AssertDocumentsEqualMixin, FilterableDocsFi
             ],
         )
 
-    @pytest.mark.unit
     def test_nin_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"embedding": {"$nin": [TEST_EMBEDDING_1, TEST_EMBEDDING_2]}})
@@ -525,7 +491,6 @@ class LegacyFilterDocumentsNotInTest(AssertDocumentsEqualMixin, FilterableDocsFi
             result, [doc for doc in filterable_docs if doc.embedding not in [TEST_EMBEDDING_1, TEST_EMBEDDING_2]]
         )
 
-    @pytest.mark.unit
     def test_nin_filter(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"page": {"$nin": ["100", "123", "n.a."]}})
@@ -549,7 +514,6 @@ class LegacyFilterDocumentsGreaterThanTest(AssertDocumentsEqualMixin, Filterable
     ```
     """
 
-    @pytest.mark.unit
     def test_gt_filter(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"number": {"$gt": 0.0}})
@@ -557,19 +521,16 @@ class LegacyFilterDocumentsGreaterThanTest(AssertDocumentsEqualMixin, Filterable
             result, [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] > 0]
         )
 
-    @pytest.mark.unit
     def test_gt_filter_non_numeric(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"page": {"$gt": "100"}})
 
-    @pytest.mark.unit
     def test_gt_filter_table(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"dataframe": {"$gt": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
 
-    @pytest.mark.unit
     def test_gt_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -591,7 +552,6 @@ class LegacyFilterDocumentsGreaterThanEqualTest(AssertDocumentsEqualMixin, Filte
     ```
     """
 
-    @pytest.mark.unit
     def test_gte_filter(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"number": {"$gte": -2}})
@@ -599,19 +559,16 @@ class LegacyFilterDocumentsGreaterThanEqualTest(AssertDocumentsEqualMixin, Filte
             result, [doc for doc in filterable_docs if "number" in doc.meta and doc.meta["number"] >= -2]
         )
 
-    @pytest.mark.unit
     def test_gte_filter_non_numeric(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"page": {"$gte": "100"}})
 
-    @pytest.mark.unit
     def test_gte_filter_table(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"dataframe": {"$gte": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
 
-    @pytest.mark.unit
     def test_gte_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -633,7 +590,6 @@ class LegacyFilterDocumentsLessThanTest(AssertDocumentsEqualMixin, FilterableDoc
     ```
     """
 
-    @pytest.mark.unit
     def test_lt_filter(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"number": {"$lt": 0.0}})
@@ -641,19 +597,16 @@ class LegacyFilterDocumentsLessThanTest(AssertDocumentsEqualMixin, FilterableDoc
             result, [doc for doc in filterable_docs if doc.meta.get("number") is not None and doc.meta["number"] < 0]
         )
 
-    @pytest.mark.unit
     def test_lt_filter_non_numeric(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"page": {"$lt": "100"}})
 
-    @pytest.mark.unit
     def test_lt_filter_table(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"dataframe": {"$lt": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
 
-    @pytest.mark.unit
     def test_lt_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -675,7 +628,6 @@ class LegacyFilterDocumentsLessThanEqualTest(AssertDocumentsEqualMixin, Filterab
     ```
     """
 
-    @pytest.mark.unit
     def test_lte_filter(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"number": {"$lte": 2.0}})
@@ -683,19 +635,16 @@ class LegacyFilterDocumentsLessThanEqualTest(AssertDocumentsEqualMixin, Filterab
             result, [doc for doc in filterable_docs if doc.meta.get("number") is not None and doc.meta["number"] <= 2.0]
         )
 
-    @pytest.mark.unit
     def test_lte_filter_non_numeric(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"page": {"$lte": "100"}})
 
-    @pytest.mark.unit
     def test_lte_filter_table(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"dataframe": {"$lte": pd.DataFrame([[1, 2, 3], [-1, -2, -3]])}})
 
-    @pytest.mark.unit
     def test_lte_filter_embedding(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -717,7 +666,6 @@ class LegacyFilterDocumentsSimpleLogicalTest(AssertDocumentsEqualMixin, Filterab
     ```
     """
 
-    @pytest.mark.unit
     def test_filter_simple_or(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         filters = {"$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}}}
@@ -732,7 +680,6 @@ class LegacyFilterDocumentsSimpleLogicalTest(AssertDocumentsEqualMixin, Filterab
             ],
         )
 
-    @pytest.mark.unit
     def test_filter_simple_implicit_and_with_multi_key_dict(
         self, document_store: DocumentStore, filterable_docs: List[Document]
     ):
@@ -747,7 +694,6 @@ class LegacyFilterDocumentsSimpleLogicalTest(AssertDocumentsEqualMixin, Filterab
             ],
         )
 
-    @pytest.mark.unit
     def test_filter_simple_explicit_and_with_list(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"number": {"$and": [{"$lte": 2}, {"$gte": 0}]}})
@@ -760,7 +706,6 @@ class LegacyFilterDocumentsSimpleLogicalTest(AssertDocumentsEqualMixin, Filterab
             ],
         )
 
-    @pytest.mark.unit
     def test_filter_simple_implicit_and(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents(filters={"number": {"$lte": 2.0, "$gte": 0}})
@@ -789,7 +734,6 @@ class LegacyFilterDocumentsNestedLogicalTest(AssertDocumentsEqualMixin, Filterab
     ```
     """
 
-    @pytest.mark.unit
     def test_filter_nested_implicit_and(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         filters_simplified = {"number": {"$lte": 2, "$gte": 0}, "name": ["name_0", "name_1"]}
@@ -808,7 +752,6 @@ class LegacyFilterDocumentsNestedLogicalTest(AssertDocumentsEqualMixin, Filterab
             ],
         )
 
-    @pytest.mark.unit
     def test_filter_nested_or(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         filters = {"$or": {"name": {"$or": [{"$eq": "name_0"}, {"$eq": "name_1"}]}, "number": {"$lt": 1.0}}}
@@ -825,7 +768,6 @@ class LegacyFilterDocumentsNestedLogicalTest(AssertDocumentsEqualMixin, Filterab
             ],
         )
 
-    @pytest.mark.unit
     def test_filter_nested_and_or_explicit(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         filters_simplified = {
@@ -847,7 +789,6 @@ class LegacyFilterDocumentsNestedLogicalTest(AssertDocumentsEqualMixin, Filterab
             ],
         )
 
-    @pytest.mark.unit
     def test_filter_nested_and_or_implicit(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         filters_simplified = {
@@ -870,7 +811,6 @@ class LegacyFilterDocumentsNestedLogicalTest(AssertDocumentsEqualMixin, Filterab
             ],
         )
 
-    @pytest.mark.unit
     def test_filter_nested_or_and(self, document_store: DocumentStore, filterable_docs: List[Document]):
         document_store.write_documents(filterable_docs)
         filters_simplified = {
@@ -892,7 +832,6 @@ class LegacyFilterDocumentsNestedLogicalTest(AssertDocumentsEqualMixin, Filterab
             ],
         )
 
-    @pytest.mark.unit
     def test_filter_nested_multiple_identical_operators_same_level(
         self, document_store: DocumentStore, filterable_docs: List[Document]
     ):
@@ -944,12 +883,10 @@ class LegacyFilterDocumentsTest(  # pylint: disable=too-many-ancestors
     ```
     """
 
-    @pytest.mark.unit
     def test_no_filter_empty(self, document_store: DocumentStore):
         assert document_store.filter_documents() == []
         assert document_store.filter_documents(filters={}) == []
 
-    @pytest.mark.unit
     def test_no_filter_not_empty(self, document_store: DocumentStore):
         docs = [Document(content="test doc")]
         document_store.write_documents(docs)

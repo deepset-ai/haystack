@@ -108,13 +108,11 @@ def mock_serper_dev_search_result():
 
 
 class TestSerperDevSearchAPI:
-    @pytest.mark.unit
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("SERPERDEV_API_KEY", raising=False)
         with pytest.raises(ValueError, match="SerperDevWebSearch expects an API key"):
             SerperDevWebSearch()
 
-    @pytest.mark.unit
     def test_to_dict(self):
         component = SerperDevWebSearch(
             api_key="test_key", top_k=10, allowed_domains=["test.com"], search_params={"param": "test"}
@@ -125,7 +123,6 @@ class TestSerperDevSearchAPI:
             "init_parameters": {"top_k": 10, "allowed_domains": ["test.com"], "search_params": {"param": "test"}},
         }
 
-    @pytest.mark.unit
     @pytest.mark.parametrize("top_k", [1, 5, 7])
     def test_web_search_top_k(self, mock_serper_dev_search_result, top_k: int):
         ws = SerperDevWebSearch(api_key="some_invalid_key", top_k=top_k)
@@ -137,7 +134,6 @@ class TestSerperDevSearchAPI:
         assert all(isinstance(link, str) for link in links)
         assert all(link.startswith("http") for link in links)
 
-    @pytest.mark.unit
     @patch("requests.post")
     def test_timeout_error(self, mock_post):
         mock_post.side_effect = Timeout
@@ -146,7 +142,6 @@ class TestSerperDevSearchAPI:
         with pytest.raises(TimeoutError):
             ws.run(query="Who is the boyfriend of Olivia Wilde?")
 
-    @pytest.mark.unit
     @patch("requests.post")
     def test_request_exception(self, mock_post):
         mock_post.side_effect = RequestException
@@ -155,7 +150,6 @@ class TestSerperDevSearchAPI:
         with pytest.raises(SerperDevError):
             ws.run(query="Who is the boyfriend of Olivia Wilde?")
 
-    @pytest.mark.unit
     @patch("requests.post")
     def test_bad_response_code(self, mock_post):
         mock_response = mock_post.return_value

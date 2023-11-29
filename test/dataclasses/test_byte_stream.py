@@ -5,7 +5,6 @@ from haystack.dataclasses import ByteStream
 import pytest
 
 
-@pytest.mark.unit
 def test_from_file_path(tmp_path, request):
     test_bytes = "Hello, world!\n".encode()
     test_path = tmp_path / request.node.name
@@ -21,7 +20,6 @@ def test_from_file_path(tmp_path, request):
     assert b.mime_type == "text/plain"
 
 
-@pytest.mark.unit
 def test_from_string():
     test_string = "Hello, world!"
     b = ByteStream.from_string(test_string)
@@ -33,7 +31,6 @@ def test_from_string():
     assert b.mime_type == "text/plain"
 
 
-@pytest.mark.unit
 def test_to_file(tmp_path, request):
     test_str = "Hello, world!\n"
     test_path = tmp_path / request.node.name

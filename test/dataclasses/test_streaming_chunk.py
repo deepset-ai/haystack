@@ -3,7 +3,6 @@ import pytest
 from haystack.dataclasses import StreamingChunk
 
 
-@pytest.mark.unit
 def test_create_chunk_with_content_and_metadata():
     chunk = StreamingChunk(content="Test content", metadata={"key": "value"})
 
@@ -11,7 +10,6 @@ def test_create_chunk_with_content_and_metadata():
     assert chunk.metadata == {"key": "value"}
 
 
-@pytest.mark.unit
 def test_create_chunk_with_only_content():
     chunk = StreamingChunk(content="Test content")
 
@@ -19,13 +17,11 @@ def test_create_chunk_with_only_content():
     assert chunk.metadata == {}
 
 
-@pytest.mark.unit
 def test_access_content():
     chunk = StreamingChunk(content="Test content", metadata={"key": "value"})
     assert chunk.content == "Test content"
 
 
-@pytest.mark.unit
 def test_create_chunk_with_empty_content():
     chunk = StreamingChunk(content="")
     assert chunk.content == ""
