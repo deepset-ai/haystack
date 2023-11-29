@@ -9,7 +9,6 @@ from haystack.components.converters.txt import TextFileToDocument
 
 
 class TestTextfileToDocument:
-    @pytest.mark.unit
     def test_run(self, test_files_path):
         """
         Test if the component runs correctly.
@@ -29,7 +28,6 @@ class TestTextfileToDocument:
         assert docs[1].meta["file_path"] == str(files[1])
         assert docs[2].meta == bytestream.metadata
 
-    @pytest.mark.unit
     def test_run_error_handling(self, test_files_path, caplog):
         """
         Test if the component correctly handles errors.
@@ -44,7 +42,6 @@ class TestTextfileToDocument:
         assert docs[0].meta["file_path"] == str(paths[0])
         assert docs[1].meta["file_path"] == str(paths[2])
 
-    @pytest.mark.unit
     def test_encoding_override(self, test_files_path):
         """
         Test if the encoding metadata field is used properly

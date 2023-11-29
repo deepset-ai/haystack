@@ -7,13 +7,11 @@ from haystack.components.builders.answer_builder import AnswerBuilder
 
 
 class TestAnswerBuilder:
-    @pytest.mark.unit
     def test_run_unmatching_input_len(self):
         component = AnswerBuilder()
         with pytest.raises(ValueError):
             component.run(query="query", replies=["reply1"], metadata=[{"test": "meta"}, {"test": "meta2"}])
 
-    @pytest.mark.unit
     def test_run_without_meta(self):
         component = AnswerBuilder()
         output = component.run(query="query", replies=["reply1"])
@@ -24,7 +22,6 @@ class TestAnswerBuilder:
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
 
-    @pytest.mark.unit
     def test_run_meta_is_an_empty_list(self):
         component = AnswerBuilder()
         output = component.run(query="query", replies=["reply1"], metadata=[])

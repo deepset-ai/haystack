@@ -21,7 +21,6 @@ def mock_openai_response(response_format="json", **kwargs) -> openai.openai_obje
 
 
 class TestRemoteWhisperTranscriber:
-    @pytest.mark.unit
     def test_init_no_key(self, monkeypatch):
         openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -42,7 +41,6 @@ class TestRemoteWhisperTranscriber:
         # The module global variable takes preference
         assert openai.api_key == "test_api_key_1"
 
-    @pytest.mark.unit
     def test_init_default(self):
         transcriber = RemoteWhisperTranscriber(api_key="test_api_key")
 
@@ -52,7 +50,6 @@ class TestRemoteWhisperTranscriber:
         assert transcriber.api_base_url == "https://api.openai.com/v1"
         assert transcriber.whisper_params == {"response_format": "json"}
 
-    @pytest.mark.unit
     def test_init_custom_parameters(self):
         transcriber = RemoteWhisperTranscriber(
             api_key="test_api_key",
@@ -76,7 +73,6 @@ class TestRemoteWhisperTranscriber:
             "temperature": "0.5",
         }
 
-    @pytest.mark.unit
     def test_to_dict_default_parameters(self):
         transcriber = RemoteWhisperTranscriber(api_key="test_api_key")
         data = transcriber.to_dict()
@@ -90,7 +86,6 @@ class TestRemoteWhisperTranscriber:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
         transcriber = RemoteWhisperTranscriber(
             api_key="test_api_key",
@@ -182,7 +177,6 @@ class TestRemoteWhisperTranscriber:
         with pytest.raises(ValueError, match="RemoteWhisperTranscriber expects an OpenAI API key."):
             RemoteWhisperTranscriber.from_dict(data)
 
-    @pytest.mark.unit
     def test_run_str(self, test_files_path):
         with patch("haystack.components.audio.whisper_remote.openai.Audio") as openai_audio_patch:
             model = "whisper-1"
@@ -195,7 +189,6 @@ class TestRemoteWhisperTranscriber:
             assert result["documents"][0].content == "test transcription"
             assert result["documents"][0].meta["file_path"] == file_path
 
-    @pytest.mark.unit
     def test_run_path(self, test_files_path):
         with patch("haystack.components.audio.whisper_remote.openai.Audio") as openai_audio_patch:
             model = "whisper-1"
@@ -208,7 +201,6 @@ class TestRemoteWhisperTranscriber:
             assert result["documents"][0].content == "test transcription"
             assert result["documents"][0].meta["file_path"] == file_path
 
-    @pytest.mark.unit
     def test_run_bytestream(self, test_files_path):
         with patch("haystack.components.audio.whisper_remote.openai.Audio") as openai_audio_patch:
             model = "whisper-1"

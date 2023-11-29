@@ -7,7 +7,6 @@ from haystack.components.samplers.top_p import TopPSampler
 
 
 class TestTopPSampler:
-    @pytest.mark.unit
     def test_run_scores_from_metadata(self):
         """
         Test if the component runs correctly with scores already in the metadata.
@@ -23,7 +22,6 @@ class TestTopPSampler:
         assert len(docs) == 1
         assert docs[0].content == "Sarajevo"
 
-    @pytest.mark.unit
     def test_run_scores(self):
         """
         Test if the component runs correctly with scores in the Document score field.
@@ -46,7 +44,6 @@ class TestTopPSampler:
 
         assert [doc.score for doc in docs_filtered] == sorted_scores[:1]
 
-    @pytest.mark.unit
     def test_run_scores_top_p_1(self):
         """
         Test if the component runs correctly top_p=1.
@@ -67,13 +64,12 @@ class TestTopPSampler:
         assert [doc.score for doc in docs_filtered] == sorted([doc.score for doc in docs], reverse=True)
 
     #  Returns an empty list if no documents are provided
-    @pytest.mark.unit
+
     def test_returns_empty_list_if_no_documents_are_provided(self):
         sampler = TopPSampler()
         output = sampler.run(documents=[])
         assert output["documents"] == []
 
-    @pytest.mark.unit
     def test_run_scores_no_metadata_present(self):
         """
         Test if the component runs correctly with scores missing from the metadata yet being specified in the

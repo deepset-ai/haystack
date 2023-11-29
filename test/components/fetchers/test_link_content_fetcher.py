@@ -36,7 +36,6 @@ def mock_get_link_content(test_files_path):
 
 
 class TestLinkContentFetcher:
-    @pytest.mark.unit
     def test_init(self):
         fetcher = LinkContentFetcher()
         assert fetcher.raise_on_failure is True
@@ -51,7 +50,6 @@ class TestLinkContentFetcher:
         }
         assert hasattr(fetcher, "_get_response")
 
-    @pytest.mark.unit
     def test_init_with_params(self):
         fetcher = LinkContentFetcher(raise_on_failure=False, user_agents=["test"], retry_attempts=1, timeout=2)
         assert fetcher.raise_on_failure is False
@@ -59,7 +57,6 @@ class TestLinkContentFetcher:
         assert fetcher.retry_attempts == 1
         assert fetcher.timeout == 2
 
-    @pytest.mark.unit
     def test_run_text(self):
         correct_response = b"Example test response"
         with patch("haystack.components.fetchers.link_content.requests") as mock_run:
@@ -72,7 +69,6 @@ class TestLinkContentFetcher:
             assert first_stream.data == correct_response
             assert first_stream.metadata["content_type"] == "text/plain"
 
-    @pytest.mark.unit
     def test_run_html(self):
         correct_response = b"<h1>Example test response</h1>"
         with patch("haystack.components.fetchers.link_content.requests") as mock_run:
@@ -85,7 +81,6 @@ class TestLinkContentFetcher:
             assert first_stream.data == correct_response
             assert first_stream.metadata["content_type"] == "text/html"
 
-    @pytest.mark.unit
     def test_run_binary(self, test_files_path):
         file_bytes = open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb").read()
         with patch("haystack.components.fetchers.link_content.requests") as mock_run:
@@ -98,7 +93,6 @@ class TestLinkContentFetcher:
             assert first_stream.data == file_bytes
             assert first_stream.metadata["content_type"] == "application/pdf"
 
-    @pytest.mark.unit
     def test_run_bad_status_code(self):
         empty_byte_stream = b""
         fetcher = LinkContentFetcher(raise_on_failure=False)
