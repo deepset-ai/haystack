@@ -367,13 +367,11 @@ def mock_searchapi_search_result():
 
 
 class TestSearchApiSearchAPI:
-    @pytest.mark.unit
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("SEARCHAPI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="SearchApiWebSearch expects an API key"):
             SearchApiWebSearch()
 
-    @pytest.mark.unit
     def test_to_dict(self):
         component = SearchApiWebSearch(
             api_key="api_key", top_k=10, allowed_domains=["testdomain.com"], search_params={"param": "test params"}
@@ -388,7 +386,6 @@ class TestSearchApiSearchAPI:
             },
         }
 
-    @pytest.mark.unit
     @pytest.mark.parametrize("top_k", [1, 5, 7])
     def test_web_search_top_k(self, mock_searchapi_search_result, top_k: int):
         ws = SearchApiWebSearch(api_key="api_key", top_k=top_k)
@@ -400,7 +397,6 @@ class TestSearchApiSearchAPI:
         assert all(isinstance(link, str) for link in links)
         assert all(link.startswith("http") for link in links)
 
-    @pytest.mark.unit
     @patch("requests.get")
     def test_timeout_error(self, mock_get):
         mock_get.side_effect = Timeout
@@ -409,7 +405,6 @@ class TestSearchApiSearchAPI:
         with pytest.raises(TimeoutError):
             ws.run(query="Who is CEO of Microsoft?")
 
-    @pytest.mark.unit
     @patch("requests.get")
     def test_request_exception(self, mock_get):
         mock_get.side_effect = RequestException
@@ -418,7 +413,6 @@ class TestSearchApiSearchAPI:
         with pytest.raises(SearchApiError):
             ws.run(query="Who is CEO of Microsoft?")
 
-    @pytest.mark.unit
     @patch("requests.get")
     def test_bad_response_code(self, mock_get):
         mock_response = mock_get.return_value

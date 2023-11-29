@@ -25,7 +25,6 @@ def mock_openai_response(input: List[str], model: str = "text-embedding-ada-002"
 
 
 class TestOpenAIDocumentEmbedder:
-    @pytest.mark.unit
     def test_init_default(self, monkeypatch):
         openai.api_key = None
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
@@ -42,7 +41,6 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.metadata_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
 
-    @pytest.mark.unit
     def test_init_with_parameters(self):
         embedder = OpenAIDocumentEmbedder(
             api_key="fake-api-key",
@@ -67,14 +65,12 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.metadata_fields_to_embed == ["test_field"]
         assert embedder.embedding_separator == " | "
 
-    @pytest.mark.unit
     def test_init_fail_wo_api_key(self, monkeypatch):
         openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="OpenAIDocumentEmbedder expects an OpenAI API key"):
             OpenAIDocumentEmbedder()
 
-    @pytest.mark.unit
     def test_to_dict(self):
         component = OpenAIDocumentEmbedder(api_key="fake-api-key")
         data = component.to_dict()
@@ -92,7 +88,6 @@ class TestOpenAIDocumentEmbedder:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
         component = OpenAIDocumentEmbedder(
             api_key="fake-api-key",
@@ -120,7 +115,6 @@ class TestOpenAIDocumentEmbedder:
             },
         }
 
-    @pytest.mark.unit
     def test_prepare_texts_to_embed_w_metadata(self):
         documents = [
             Document(content=f"document number {i}:\ncontent", meta={"meta_field": f"meta_value {i}"}) for i in range(5)
@@ -141,7 +135,6 @@ class TestOpenAIDocumentEmbedder:
             "meta_value 4 | document number 4: content",
         ]
 
-    @pytest.mark.unit
     def test_prepare_texts_to_embed_w_suffix(self):
         documents = [Document(content=f"document number {i}") for i in range(5)]
 
@@ -157,7 +150,6 @@ class TestOpenAIDocumentEmbedder:
             "my_prefix document number 4 my_suffix",
         ]
 
-    @pytest.mark.unit
     def test_embed_batch(self):
         texts = ["text 1", "text 2", "text 3", "text 4", "text 5"]
 
@@ -179,7 +171,6 @@ class TestOpenAIDocumentEmbedder:
         # openai.Embedding.create is called 3 times
         assert metadata == {"model": "model", "usage": {"prompt_tokens": 3 * 4, "total_tokens": 3 * 4}}
 
-    @pytest.mark.unit
     def test_run(self):
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
@@ -219,7 +210,6 @@ class TestOpenAIDocumentEmbedder:
             assert all(isinstance(x, float) for x in doc.embedding)
         assert metadata == {"model": model, "usage": {"prompt_tokens": 4, "total_tokens": 4}}
 
-    @pytest.mark.unit
     def test_run_custom_batch_size(self):
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
@@ -257,7 +247,6 @@ class TestOpenAIDocumentEmbedder:
         # openai.Embedding.create is called 2 times
         assert metadata == {"model": model, "usage": {"prompt_tokens": 2 * 4, "total_tokens": 2 * 4}}
 
-    @pytest.mark.unit
     def test_run_wrong_input_format(self):
         embedder = OpenAIDocumentEmbedder(api_key="fake-api-key")
 
@@ -271,7 +260,6 @@ class TestOpenAIDocumentEmbedder:
         with pytest.raises(TypeError, match="OpenAIDocumentEmbedder expects a list of Documents as input"):
             embedder.run(documents=list_integers_input)
 
-    @pytest.mark.unit
     def test_run_on_empty_list(self):
         embedder = OpenAIDocumentEmbedder(api_key="fake-api-key")
 

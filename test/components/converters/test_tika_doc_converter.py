@@ -6,7 +6,6 @@ from haystack.components.converters.tika import TikaDocumentConverter
 
 
 class TestTikaDocumentConverter:
-    @pytest.mark.unit
     def test_run(self):
         component = TikaDocumentConverter()
         with patch("haystack.components.converters.tika.tika_parser.from_file") as mock_tika_parser:
@@ -16,7 +15,6 @@ class TestTikaDocumentConverter:
         assert len(documents) == 1
         assert documents[0].content == "Content of mock_file.pdf"
 
-    @pytest.mark.unit
     def test_run_logs_warning_if_content_empty(self, caplog):
         component = TikaDocumentConverter()
         with patch("haystack.components.converters.tika.tika_parser.from_file") as mock_tika_parser:
@@ -25,7 +23,6 @@ class TestTikaDocumentConverter:
                 component.run(paths=["mock_file.pdf"])
                 assert "Skipping file at 'mock_file.pdf' as Tika was not able to extract any content." in caplog.text
 
-    @pytest.mark.unit
     def test_run_logs_error(self, caplog):
         component = TikaDocumentConverter()
         with patch("haystack.components.converters.tika.tika_parser.from_file") as mock_tika_parser:

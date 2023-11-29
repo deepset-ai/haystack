@@ -6,14 +6,13 @@ from haystack.components.converters.markdown import MarkdownToDocument
 from haystack.dataclasses import ByteStream
 
 
+@pytest.mark.integration
 class TestMarkdownToDocument:
-    @pytest.mark.unit
     def test_init_params_default(self):
         converter = MarkdownToDocument()
         assert converter.table_to_single_line is False
         assert converter.progress_bar is True
 
-    @pytest.mark.unit
     def test_init_params_custom(self):
         converter = MarkdownToDocument(table_to_single_line=True, progress_bar=False)
         assert converter.table_to_single_line is True
@@ -71,7 +70,6 @@ class TestMarkdownToDocument:
             assert "Could not read non_existing_file.md" in caplog.text
             assert not result["documents"]
 
-    @pytest.mark.unit
     def test_mixed_sources_run(self, test_files_path):
         """
         Test if the component runs correctly if the input is a mix of strings, paths and ByteStreams.

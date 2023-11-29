@@ -5,7 +5,6 @@ from haystack.components.routers.metadata_router import MetadataRouter
 
 
 class TestMetadataRouter:
-    @pytest.mark.unit
     def test_run(self):
         rules = {
             "edge_1": {

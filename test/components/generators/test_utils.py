@@ -9,19 +9,16 @@ def streaming_callback(chunk):
     pass
 
 
-@pytest.mark.unit
 def test_callback_handler_serialization():
     result = serialize_callback_handler(streaming_callback)
     assert result == "test_utils.streaming_callback"
 
 
-@pytest.mark.unit
 def test_callback_handler_serialization_non_local():
     result = serialize_callback_handler(default_streaming_callback)
     assert result == "haystack.components.generators.utils.default_streaming_callback"
 
 
-@pytest.mark.unit
 def test_callback_handler_deserialization():
     result = serialize_callback_handler(streaming_callback)
     fn = deserialize_callback_handler(result)
@@ -29,7 +26,6 @@ def test_callback_handler_deserialization():
     assert fn is streaming_callback
 
 
-@pytest.mark.unit
 def test_callback_handler_deserialization_non_local():
     result = serialize_callback_handler(default_streaming_callback)
     fn = deserialize_callback_handler(result)

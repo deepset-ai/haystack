@@ -7,7 +7,6 @@ from haystack.components.embedders.sentence_transformers_text_embedder import Se
 
 
 class TestSentenceTransformersTextEmbedder:
-    @pytest.mark.unit
     def test_init_default(self):
         embedder = SentenceTransformersTextEmbedder(model_name_or_path="model")
         assert embedder.model_name_or_path == "model"
@@ -19,7 +18,6 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.progress_bar is True
         assert embedder.normalize_embeddings is False
 
-    @pytest.mark.unit
     def test_init_with_parameters(self):
         embedder = SentenceTransformersTextEmbedder(
             model_name_or_path="model",
@@ -40,7 +38,6 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.progress_bar is False
         assert embedder.normalize_embeddings is True
 
-    @pytest.mark.unit
     def test_to_dict(self):
         component = SentenceTransformersTextEmbedder(model_name_or_path="model")
         data = component.to_dict()
@@ -58,7 +55,6 @@ class TestSentenceTransformersTextEmbedder:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
         component = SentenceTransformersTextEmbedder(
             model_name_or_path="model",
@@ -85,7 +81,6 @@ class TestSentenceTransformersTextEmbedder:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_not_serialize_token(self):
         component = SentenceTransformersTextEmbedder(model_name_or_path="model", token="awesome-token")
         data = component.to_dict()
@@ -103,7 +98,6 @@ class TestSentenceTransformersTextEmbedder:
             },
         }
 
-    @pytest.mark.unit
     @patch(
         "haystack.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
@@ -115,7 +109,6 @@ class TestSentenceTransformersTextEmbedder:
             model_name_or_path="model", device="cpu", use_auth_token=None
         )
 
-    @pytest.mark.unit
     @patch(
         "haystack.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
@@ -126,7 +119,6 @@ class TestSentenceTransformersTextEmbedder:
         embedder.warm_up()
         mocked_factory.get_embedding_backend.assert_called_once()
 
-    @pytest.mark.unit
     def test_run(self):
         embedder = SentenceTransformersTextEmbedder(model_name_or_path="model")
         embedder.embedding_backend = MagicMock()
@@ -140,7 +132,6 @@ class TestSentenceTransformersTextEmbedder:
         assert isinstance(embedding, list)
         assert all(isinstance(el, float) for el in embedding)
 
-    @pytest.mark.unit
     def test_run_wrong_input_format(self):
         embedder = SentenceTransformersTextEmbedder(model_name_or_path="model")
         embedder.embedding_backend = MagicMock()

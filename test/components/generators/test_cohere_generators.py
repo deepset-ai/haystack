@@ -1,7 +1,6 @@
 import os
 
 import pytest
-import cohere
 
 from haystack.components.generators import CohereGenerator
 
@@ -14,8 +13,11 @@ def default_streaming_callback(chunk):
     print(chunk.text, flush=True, end="")
 
 
-class TestGPTGenerator:
+@pytest.mark.integration
+class TestCohereGenerator:
     def test_init_default(self):
+        import cohere
+
         component = CohereGenerator(api_key="test-api-key")
         assert component.api_key == "test-api-key"
         assert component.model_name == "command"
@@ -40,6 +42,8 @@ class TestGPTGenerator:
         assert component.model_parameters == {"max_tokens": 10, "some_test_param": "test-params"}
 
     def test_to_dict_default(self):
+        import cohere
+
         component = CohereGenerator(api_key="test-api-key")
         data = component.to_dict()
         assert data == {
@@ -140,6 +144,8 @@ class TestGPTGenerator:
     )
     @pytest.mark.integration
     def test_cohere_generator_run_wrong_model_name(self):
+        import cohere
+
         component = CohereGenerator(model_name="something-obviously-wrong", api_key=os.environ.get("COHERE_API_KEY"))
         with pytest.raises(
             cohere.CohereAPIError,
