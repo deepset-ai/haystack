@@ -71,7 +71,7 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install ".[all,dev]"
+          pip install ".[all,dev]" pydoc-markdown
           pip install ./haystack-linter
 
       - name: Pylint
