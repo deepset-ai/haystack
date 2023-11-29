@@ -82,6 +82,7 @@ class PyPDFToDocument:
             try:
                 pdf_reader = self._get_pdf_reader(source)
                 document = self._converter.convert(pdf_reader)
+                document.meta = source.metadata
             except Exception as e:
                 logger.warning("Could not read %s and convert it to Document, skipping. %s", source, e)
                 continue
