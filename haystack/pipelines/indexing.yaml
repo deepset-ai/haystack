@@ -1,0 +1,89 @@
+components:
+  cleaner:
+    init_parameters:
+      remove_empty_lines: true
+      remove_extra_whitespaces: true
+      remove_regex: null
+      remove_repeated_substrings: false
+      remove_substrings: null
+    type: haystack.components.preprocessors.document_cleaner.DocumentCleaner
+  embedder:
+    init_parameters:
+      batch_size: {{ batch_size | default(32) }}
+      device: cpu
+      embedding_separator: '\n'
+      metadata_fields_to_embed: []
+      model_name_or_path: sentence-transformers/all-MiniLM-L6-v2
+      normalize_embeddings: false
+      prefix: ''
+      progress_bar: true
+      suffix: ''
+      token: null
+    type: haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder
+  file_type_router:
+    init_parameters:
+      mime_types:
+      - text/plain
+      - application/pdf
+    type: haystack.components.routers.file_type_router.FileTypeRouter
+  joiner:
+    init_parameters:
+      join_mode: concatenate
+      sort_by_score: true
+      top_k: null
+      weights: null
+    type: haystack.components.routers.document_joiner.DocumentJoiner
+  pdf_file_converter:
+    init_parameters:
+      converter_name: default
+    type: haystack.components.converters.pypdf.PyPDFToDocument
+  splitter:
+    init_parameters:
+      split_by: sentence
+      split_length: 250
+      split_overlap: 30
+    type: haystack.components.preprocessors.document_splitter.DocumentSplitter
+  text_file_converter:
+    init_parameters:
+      encoding: utf-8
+    type: haystack.components.converters.txt.TextFileToDocument
+  writer:
+    init_parameters:
+      document_store:
+        init_parameters:
+          bm25_algorithm: BM25Okapi
+          bm25_parameters: {}
+          bm25_tokenization_regex: (?u)\b\w\w+\b
+          embedding_similarity_function: dot_product
+        type: haystack.document_stores.in_memory.document_store.InMemoryDocumentStore
+      policy: FAIL
+    type: haystack.components.writers.document_writer.DocumentWriter
+connections:
+- receiver: text_file_converter.sources
+  sender: file_type_router.text/plain
+- receiver: pdf_file_converter.sources
+  sender: file_type_router.application/pdf
+- receiver: joiner.documents
+  sender: text_file_converter.documents
+- receiver: joiner.documents
+  sender: pdf_file_converter.documents
+- receiver: cleaner.documents
+  sender: joiner.documents
+- receiver: splitter.documents
+  sender: cleaner.documents
+- receiver: embedder.documents
+  sender: splitter.documents
+- receiver: writer.documents
+  sender: embedder.documents
+max_loops_allowed: 100
+metadata: {}
+
+
+
+
+
+
+
+
+
+

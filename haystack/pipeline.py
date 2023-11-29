@@ -1,12 +1,13 @@
-from typing import Any, Dict, Optional, Union, TextIO
-from pathlib import Path
 import datetime
 import logging
+from pathlib import Path
+from typing import Any, Dict, Optional, Union, TextIO
+
+from jinja2 import Template
 
 from haystack.core.pipeline import Pipeline as _pipeline
-from haystack.telemetry import pipeline_running
 from haystack.marshal import Marshaller, YamlMarshaller
-
+from haystack.telemetry import pipeline_running
 
 DEFAULT_MARSHALLER = YamlMarshaller()
 logger = logging.getLogger(__name__)
@@ -97,3 +98,20 @@ class Pipeline(_pipeline):
         :returns: A `Pipeline` object.
         """
         return cls.from_dict(marshaller.unmarshal(fp.read()))
+
+    @classmethod
+    def from_template(cls, template_name: str, **kwargs) -> "Pipeline":
+        """
+        Creates a `Pipeline` object from a template.
+
+        :params template: The template to use to create the pipeline.
+        :params kwargs: The arguments to pass to the template.
+
+        :returns: A `Pipeline` object.
+        """
+        here = Path(__file__).parent
+        with open(here / "pipelines" / f"{template_name}.yaml", "r") as f:
+            template_file = f.read()
+            template = Template(template_file)
+            pipeline_yaml = template.render(kwargs)
+            return cls.loads(pipeline_yaml)
