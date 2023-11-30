@@ -67,36 +67,22 @@ pip install haystack-ai
 
 ## 💾 Installation
 
-For a detailed installation guide see [the official documentation](https://docs.haystack.deepset.ai/docs/installation). There you’ll find instructions for custom installations handling Windows and Apple Silicon.
+For a detailed installation guide see [the official documentation](https://docs.haystack.deepset.ai/v2.0/docs/installation). There you’ll find instructions for custom installations handling Windows and Apple Silicon.
 
 **Basic Installation**
 
 Use [pip](https://github.com/pypa/pip) to install a basic version of Haystack's latest release:
 
 ```sh
-pip install farm-haystack
+pip install haystack-ai
 ```
 
 This command installs everything needed for basic Pipelines that use an in-memory DocumentStore and external LLM provider (e.g. OpenAI).
 
-**Full Installation**
-
-To use more advanced features, like certain DocumentStores, inference with local transformer models, FileConverters, OCR, or Ray,
-you need to install further dependencies. The following command installs the [latest release](https://github.com/deepset-ai/haystack/releases) of Haystack and all its dependencies:
-
-```sh
-pip install 'farm-haystack[all]' ## or 'all-gpu' for the GPU-enabled dependencies
-```
-
-If you want to install only the dependencies needed for model inference on your local hardware (not remote API endpoints), such as torch and sentence-transformers, you can use the following command:
-```sh
-pip install 'farm-haystack[inference]' ## installs torch, sentence-transformers, sentencepiece, and huggingface-hub
-```
-
 If you want to try out the newest features that are not in an official release yet, you can install the unstable version from the main branch with the following command:
 
 ```sh
-pip install git+https://github.com/deepset-ai/haystack.git@main#egg=farm-haystack
+pip install git+https://github.com/deepset-ai/haystack.git@main#egg=haystack-ai
 ```
 
 To be able to make changes to Haystack code, first of all clone this repo:
@@ -112,18 +98,6 @@ cd haystack && pip install -e '.[dev]'
 ```
 
 If you want to contribute to the Haystack repo, check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first.
-
-See the list of [dependencies](https://github.com/deepset-ai/haystack/blob/main/pyproject.toml) to check which ones you want to install (for example, `[all]`, `[dev]`, or other).
-
-**Installing the REST API**
-
-Haystack comes packaged with a REST API so that you can deploy it as a service. Run the following command from the root directory of the Haystack repo to install REST_API:
-
-```
-pip install rest_api/
-```
-
-You can find out more about our PyPi package on our [PyPi page](https://pypi.org/project/farm-haystack/).
 
 ## 🔰Demos
 
