@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Add evaluation for components and Pipelines.
+    Adds a eval function, EvaluationResult, Metric and MetricsResult.
