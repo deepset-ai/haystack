@@ -5,6 +5,7 @@ from typing import List, Union
 import logging
 import tempfile
 import httpx
+import csv
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,18 @@ def get_docs(dataset: str) -> List[str]:
 
     pathlist = Path(f"data/{dataset}/txt").rglob("*.txt")
     return [str(path) for path in pathlist]
+
+
+def get_queries(dataset: str, evalset: str = "msmarco_evalset_25") -> List[str]:
+    # Download data if specified in benchmark config
+    _download(dataset=dataset, target_dir="data/")
+
+    csv_path = Path(f"data/{dataset}/evalsets/{evalset}.csv")
+
+    with open(csv_path) as csvfile:
+        csvreader = csv.reader(csvfile)
+        queries = [row[0] for row in csvreader]
+    return queries[1:]
 
 
 def _download(dataset: str, target_dir: Union[str, Path]) -> None:
@@ -54,4 +67,6 @@ def _file_previously_downloaded(url_path: Path, target_dir: Union[str, Path]) ->
     return Path(target_dir, url_path.name).exists()
 
 
-docs = get_docs("msmarco.1000")
+# docs = get_docs("msmarco.1000")
+
+# print(get_queries("msmarco.1000")[:100])
