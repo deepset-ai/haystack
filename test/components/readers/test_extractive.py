@@ -335,7 +335,7 @@ def test_missing_token_to_chars_values():
 
 @pytest.mark.integration
 def test_t5():
-    reader = ExtractiveReader("TARUNBHATT/flan-t5-small-finetuned-squad")
+    reader = ExtractiveReader("TARUNBHATT/flan-t5-small-finetuned-squad", device="auto")
     reader.warm_up()
     answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
         "answers"
