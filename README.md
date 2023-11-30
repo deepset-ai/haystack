@@ -5,73 +5,28 @@
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | CI/CD   | [![Tests](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml) [![code style - Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![types - Mypy](https://img.shields.io/badge/types-Mypy-blue.svg)](https://github.com/python/mypy) [![Coverage Status](https://coveralls.io/repos/github/deepset-ai/haystack/badge.svg?branch=main)](https://coveralls.io/github/deepset-ai/haystack?branch=main) |
 | Docs    |  [![Website](https://img.shields.io/website?label=documentation&up_message=online&url=https%3A%2F%2Fdocs.haystack.deepset.ai)](https://docs.haystack.deepset.ai)                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| Package | [![PyPI](https://img.shields.io/pypi/v/farm-haystack)](https://pypi.org/project/farm-haystack/) ![PyPI - Downloads](https://img.shields.io/pypi/dm/farm-haystack?color=blue&logo=pypi&logoColor=gold) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/farm-haystack?logo=python&logoColor=gold) [![GitHub](https://img.shields.io/github/license/deepset-ai/haystack?color=blue)](LICENSE) [![License Compliance](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml)                                                                                                                                                                                            |
+| Package | [![PyPI](https://img.shields.io/pypi/v/haystack-ai)](https://pypi.org/project/haystack-ai/) ![PyPI - Downloads](https://img.shields.io/pypi/dm/haystack-ai?color=blue&logo=pypi&logoColor=gold) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/farm-haystack?logo=python&logoColor=gold) [![GitHub](https://img.shields.io/github/license/deepset-ai/haystack?color=blue)](LICENSE) [![License Compliance](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml)                                                                                                                                                                                            |
 | Meta    | [![Discord](https://img.shields.io/discord/993534733298450452?logo=discord)](https://discord.gg/haystack) [![Twitter Follow](https://img.shields.io/twitter/follow/haystack_ai)](https://twitter.com/haystack_ai)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 </div>
 
-[Haystack](https://haystack.deepset.ai/) is an end-to-end NLP framework that enables you to build applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform question answering, answer generation, semantic document search, or build tools that are capable of complex decision-making and query resolution, you can use  state-of-the-art NLP models with Haystack to build end-to-end NLP applications to solve your use case.
+[Haystack](https://haystack.deepset.ai/) is an end-to-end LLM framework that enables you to build applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform retrieval-augmented generation (RAG), documentation search, question answering or answer generation, you can use state-of-the-art embedding models and LLMs with Haystack to build end-to-end NLP applications to solve your use case.
 
 ## Quickstart
 
-Haystack is built around the concept of pipelines. A pipeline is a powerful structure that performs an NLP task. It's made up of components connected together. For example, you can connect a `Retriever` and a `PromptNode` to build a Generative Question Answering pipeline that uses your own data.
-
-Try out how Haystack answers questions about Game of Thrones using the Retrieval Augmented Generation (RAG) approach 👇
+Haystack is built around the concept of pipelines. A pipeline is a powerful structure that performs an NLP task. It's made up of components connected together. For example, you can connect a [retriever](https://docs.haystack.deepset.ai/v2.0/docs/retrievers) and a [generator](https://docs.haystack.deepset.ai/v2.0/docs/generators) to build a Generative Question Answering pipeline that uses your own data.
 
 First, run the minimal Haystack installation:
 
 ```sh
-pip install farm-haystack
+pip install haystack-ai
 ```
-
-Then, index your data to the DocumentStore, build a RAG pipeline, and ask a question on your data:
-
-```python
-from haystack.document_stores import InMemoryDocumentStore
-from haystack.utils import build_pipeline, add_example_data, print_answers
-
-# We are model agnostic :) Here, you can choose from: "anthropic", "cohere", "huggingface", and "openai".
-provider = "openai"
-API_KEY = "sk-..." # ADD YOUR KEY HERE
-
-# We support many different databases. Here, we load a simple and lightweight in-memory database.
-document_store = InMemoryDocumentStore(use_bm25=True)
-
-# Download and add Game of Thrones TXT articles to Haystack DocumentStore.
-# You can also provide a folder with your local documents.
-add_example_data(document_store, "data/GoT_getting_started")
-
-# Build a pipeline with a Retriever to get relevant documents to the query and a PromptNode interacting with LLMs using a custom prompt.
-pipeline = build_pipeline(provider, API_KEY, document_store)
-
-# Ask a question on the data you just added.
-result = pipeline.run(query="Who is the father of Arya Stark?")
-
-# For details, like which documents were used to generate the answer, look into the <result> object
-print_answers(result, details="medium")
-```
-
-The output of the pipeline will reference the documents used to generate the answer:
-
-```
-'Query: Who is the father of Arya Stark?'
-'Answers:'
-[{'answer': 'The father of Arya Stark is Lord Eddard Stark of '
-                'Winterfell. [Document 1, Document 4, Document 5]'}]
-```
-
-Congratulations, you have just built your first Haystack app!
+👉 To build a minimal RAG pipeline that uses GPT-4 on your own data, use the [RAG Pipeline Recipe](https://docs.haystack.deepset.ai/v2.0/recipes/20-rag-pipeline)
 
 ## Core Concepts
 
-🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/docs/pipelines):** This is the standard Haystack structure that builds on top of your data to perform various NLP tasks such as retrieval augmented generation, question answering and more. The data in a Pipeline flows from one Node to the next. You define how Nodes interact with each other and how one Node pushes data to the next.
+⚛️ **[Components](https://docs.haystack.deepset.ai/v2.0/docs/components):** Each Component achieves one thing. Such as preprocessing documents, retrieving documents, using specific language models to answer questions, and so on. Components can `.connect()` to each other to form a complete pipeline.
 
-An example pipeline would consist of one `Retriever` Node and one `PromptNode`. When the pipeline runs with a query, the Retriever first retrieves the relevant context to the query from your data, and then the PromptNode uses an LLM to generate the final answer.
-
-⚛️ **[Nodes](https://docs.haystack.deepset.ai/docs/nodes_overview):** Each Node achieves one thing. Such as preprocessing documents, retrieving documents, using language models to answer questions, and so on.
-
-🕵️ **[Agent](https://docs.haystack.deepset.ai/docs/agent):** (since 1.15) An Agent is a component that is powered by an LLM, such as GPT-3. It can decide on the next best course of action so as to get to the result of a query. It uses the Tools available to it to achieve this. While a pipeline has a clear start and end, an Agent is able to decide whether the query has been resolved or not. It may also make use of a Pipeline as a Tool.
-
-🛠️ **[Tools](https://docs.haystack.deepset.ai/docs/agent#tools):** You can think of a Tool as an expert, that is able to do something really well. Such as a calculator, good at mathematics. Or a [WebRetriever](https://docs.haystack.deepset.ai/docs/agent#web-tools), good at retrieving pages from the internet. A Node or pipeline in Haystack can also be used as a Tool. A Tool is a component that is used by an Agent, to resolve complex queries.
+🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/v2.0/docs/pipelines):** This is the standard Haystack structure that builds on top of your data to perform various NLP tasks such as retrieval augmented generation, question answering and more. Pipelines in Haystack are Directed Multigraphs composed of components. Components can receive inputs from other components and produce outputs that can be forwarded to other components. 
 
 🗂️ **[DocumentStores](https://docs.haystack.deepset.ai/docs/document_store):** A DocumentStore is database where you store your text data for Haystack to access. Haystack DocumentStores are available with ElasticSearch, Opensearch, Weaviate, Pinecone, FAISS and more. For a full list of available DocumentStores, check out our [documentation](https://docs.haystack.deepset.ai/docs/document_store).
 
