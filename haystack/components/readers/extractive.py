@@ -364,6 +364,14 @@ class ExtractiveReader:
         """
         keep = True
         for ans in current_answers:
+            # If the answers have no documents keep both
+            if not candidate_answer.document or not ans.document:
+                continue
+
+            # If answers don't have valid spans then skip
+            if not all(v is not None for v in [ans.start, ans.end, candidate_answer.start, candidate_answer.end]):
+                continue
+
             # If the answers come from different documents then always keep
             if candidate_answer.document.id != ans.document.id:
                 continue
