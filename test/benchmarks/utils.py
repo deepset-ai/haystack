@@ -1,24 +1,23 @@
 import os
 from pathlib import Path
 import tarfile
-from typing import Dict, List, Union
+from typing import List, Union
 import logging
 import tempfile
 import httpx
-from haystack import Document
 
 logger = logging.getLogger(__name__)
 
-def get_docs(dataset: str) -> List[Document]:
+
+def get_docs(dataset: str) -> List[str]:
     """
     Prepare the environment for running a benchmark.
     """
     # Download data if specified in benchmark config
     _download(dataset=dataset, target_dir="data/")
 
-    pathlist = Path(f"data/{dataset}/txt").rglob('*.txt')
-    return pathlist
-
+    pathlist = Path(f"data/{dataset}/txt").rglob("*.txt")
+    return [str(path) for path in pathlist]
 
 
 def _download(dataset: str, target_dir: Union[str, Path]) -> None:
@@ -47,6 +46,7 @@ def _download(dataset: str, target_dir: Union[str, Path]) -> None:
         else:
             with open(Path(target_dir) / url_path.name, "wb") as file:
                 file.write(temp_file.read())
+
 
 def _file_previously_downloaded(url_path: Path, target_dir: Union[str, Path]) -> bool:
     if ".tar" in url_path.suffixes:
