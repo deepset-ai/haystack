@@ -49,6 +49,7 @@ class ExtractiveReader:
         answers_per_seq: Optional[int] = None,
         no_answer: bool = True,
         calibration_factor: float = 0.1,
+        overlap_fraction: float = 0.01,
         model_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
@@ -74,6 +75,11 @@ class ExtractiveReader:
             This is relevant when a Document was split into multiple sequences because of max_seq_length.
         :param no_answer: Whether to return no answer scores.
         :param calibration_factor: Factor used for calibrating probability scores.
+        :param overlap_fraction: The threshold for determining if two answers overlap.
+            For example, for the answers "in the river in Maine" and "the river in Maine" we would remove one of these
+            answers since the second answer has a 100% (1.0) overlap with the first answer.
+            However, for the answers "the river in" and "in Maine" there is only a max overlap percentage of 25% so
+            both of these answers could be kept depending on the value this variable.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
             when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
             see the model's documentation.
@@ -92,6 +98,7 @@ class ExtractiveReader:
         self.no_answer = no_answer
         self.calibration_factor = calibration_factor
         self.model_kwargs = model_kwargs or {}
+        self.overlap_fraction = overlap_fraction
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -310,7 +317,8 @@ class ExtractiveReader:
                 answer["query"] = queries[query_id]
                 current_answers.append(ExtractedAnswer(**answer))
                 i += 1
-            current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
+            current_answers = sorted(current_answers, key=lambda ans: ans.probability, reverse=True)
+            current_answers = self.deduplicate_by_overlap(current_answers)
             current_answers = current_answers[:top_k]
             if no_answer:
                 no_answer_probability = math.prod(1 - answer.probability for answer in current_answers)
@@ -318,12 +326,82 @@ class ExtractiveReader:
                     data=None, query=queries[query_id], metadata={}, document=None, probability=no_answer_probability
                 )
                 current_answers.append(answer_)
-            current_answers = sorted(current_answers, key=lambda answer: answer.probability, reverse=True)
+            current_answers = sorted(current_answers, key=lambda ans: ans.probability, reverse=True)
             if confidence_threshold is not None:
                 current_answers = [answer for answer in current_answers if answer.probability >= confidence_threshold]
             nested_answers.append(current_answers)
 
         return nested_answers
+
+    def _calculate_overlap(self, answer1_start: int, answer1_end: int, answer2_start: int, answer2_end: int) -> int:
+        """
+        Calculates the amount of overlap (in number of characters) between two answer offsets.
+
+        Stack overflow post explaining how to calculate overlap between two ranges:
+            https://stackoverflow.com/questions/325933/determine-whether-two-date-ranges-overlap/325964#325964
+        """
+        start1, end1 = answer1_start, answer1_end
+        start2, end2 = answer2_start, answer2_end
+
+        # Check for overlap: (StartA <= EndB) and (StartB <= EndA)
+        if start1 <= end2 and start2 <= end1:
+            return min(int(end1 - start1), int(end1 - start2), int(end2 - start1), int(end2 - start2))
+        return 0
+
+    def _should_keep(self, candidate_answer: ExtractedAnswer, current_answers: List[ExtractedAnswer]) -> bool:
+        """
+        Determine if the answer should be kept based on how much it overlaps with previous answers.
+
+        NOTE: We might want to avoid throwing away answers that only have a few character (or word) overlap:
+            - E.g. The answers "the river in" and "in Maine" from the context "I want to go to the river in Maine."
+            might both want to be kept.
+
+        :param candidate_answer: Candidate answer that will be checked if it should be kept.
+        :param current_answers: Current list of answers that will be kept.
+        """
+        keep = True
+        for ans in current_answers:
+            # If the answers come from different documents then always keep
+            if candidate_answer.document.id != ans.document.id:
+                continue
+
+            overlap_len = self._calculate_overlap(
+                answer1_start=ans.start,
+                answer1_end=ans.end,
+                answer2_start=candidate_answer.start,
+                answer2_end=candidate_answer.end,
+            )
+
+            # If overlap is 0 then keep
+            if overlap_len == 0:
+                continue
+
+            overlap_frac_answer1 = overlap_len / (ans.end - ans.start)
+            overlap_frac_answer2 = overlap_len / (candidate_answer.end - candidate_answer.start)
+
+            if overlap_frac_answer1 > self.overlap_fraction or overlap_frac_answer2 > self.overlap_fraction:
+                keep = False
+                break
+
+        return keep
+
+    def deduplicate_by_overlap(self, answers: List[ExtractedAnswer]) -> List[ExtractedAnswer]:
+        """
+        This de-duplicates overlapping Extractive Answers from the same document based on how much the spans of the
+        answers overlap.
+
+        :param answers: List of answers to be deduplicated.
+        """
+        # Initialize with the first answer and its offsets_in_document
+        deduplicated_answers = [answers[0]]
+
+        # Loop over remaining answers to check for overlaps
+        for ans in answers[1:]:
+            keep = self._should_keep(candidate_answer=ans, current_answers=deduplicated_answers)
+            if keep:
+                deduplicated_answers.append(ans)
+
+        return deduplicated_answers
 
     @component.output_types(answers=List[ExtractedAnswer])
     def run(
@@ -368,7 +446,7 @@ class ExtractiveReader:
         max_seq_length = max_seq_length or self.max_seq_length
         stride = stride or self.stride
         max_batch_size = max_batch_size or self.max_batch_size
-        answers_per_seq = answers_per_seq or self.answers_per_seq or top_k or 20
+        answers_per_seq = answers_per_seq or self.answers_per_seq or 20
         no_answer = no_answer if no_answer is not None else self.no_answer
 
         flattened_queries, flattened_documents, query_ids = self._flatten_documents(queries, nested_documents)
