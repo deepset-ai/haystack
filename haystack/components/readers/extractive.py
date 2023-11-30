@@ -206,62 +206,50 @@ class ExtractiveReader:
         implementations, it doesn't normalize the scores to make them easier to compare across different
         splits. Returns the top k answer spans.
         """
-        mask = sequence_ids == 1
-        mask = torch.logical_and(mask, attention_mask == 1)
-        start = torch.where(mask, start, -torch.inf)
-        end = torch.where(mask, end, -torch.inf)
+        mask = sequence_ids == 1  # Only keep tokens from the context (should ignore special tokens)
+        mask = torch.logical_and(mask, attention_mask == 1)  # Definitely remove special tokens
+        start = torch.where(mask, start, -torch.inf)  # Apply the mask on the start logits
+        end = torch.where(mask, end, -torch.inf)  # Apply the mask on the end logits
         start = start.unsqueeze(-1)
         end = end.unsqueeze(-2)
 
         logits = start + end  # shape: (batch_size, seq_length (start), seq_length (end))
+
+        # The mask here onwards is the same for all instances in the batch
+        # As such we do away with the batch dimension
         mask = torch.ones(logits.shape[-2:], dtype=torch.bool, device=self.device)
         mask = torch.triu(mask)  # End shouldn't be before start
         masked_logits = torch.where(mask, logits, -torch.inf)
         probabilities = torch.sigmoid(masked_logits * self.calibration_factor)
 
         flat_probabilities = probabilities.flatten(-2, -1)  # necessary for topk
+
+        # topk can return invalid candidates as well if answers_per_seq > num_valid_candidates
+        # We only keep probability > 0 candidates later on
         candidates = torch.topk(flat_probabilities, answers_per_seq)
         seq_length = logits.shape[-1]
         start_candidates = candidates.indices // seq_length  # Recover indices from flattening
         end_candidates = candidates.indices % seq_length
+        candidates_values = candidates.values.cpu()
         start_candidates = start_candidates.cpu()
         end_candidates = end_candidates.cpu()
 
-        start_candidates_tokens_to_chars = [
-            [encoding.token_to_chars(start) for start in candidates]
-            for candidates, encoding in zip(start_candidates, encodings)
-        ]
-        if missing_start_tokens := [
-            (batch, index)
-            for batch, token_to_chars in enumerate(start_candidates_tokens_to_chars)
-            for index, pair in enumerate(token_to_chars)
-            if pair is None
-        ]:
-            logger.warning("Some start tokens could not be found in the context: %s", missing_start_tokens)
-        start_candidates_char_indices = [
-            [token_to_chars[0] if token_to_chars else None for token_to_chars in candidates]
-            for candidates in start_candidates_tokens_to_chars
-        ]
+        start_candidates_tokens_to_chars = []
+        end_candidates_tokens_to_chars = []
+        for i, (s_candidates, e_candidates, encoding) in enumerate(zip(start_candidates, end_candidates, encodings)):
+            # Those with probabilities > 0 are valid
+            valid = candidates_values[i] > 0
+            s_char_spans = []
+            e_char_spans = []
+            for start, end in zip(s_candidates[valid], e_candidates[valid]):
+                # token_to_chars returns `None` for special tokens
+                # But we shouldn't have special tokens in the answers at this point
+                s_char_spans.append(encoding.token_to_chars(start)[0])
+                e_char_spans.append(encoding.token_to_chars(end)[1])
+            start_candidates_tokens_to_chars.append(s_char_spans)
+            end_candidates_tokens_to_chars.append(e_char_spans)
 
-        end_candidates_tokens_to_chars = [
-            [encoding.token_to_chars(end) for end in candidates]
-            for candidates, encoding in zip(end_candidates, encodings)
-        ]
-        if missing_end_tokens := [
-            (batch, index)
-            for batch, token_to_chars in enumerate(end_candidates_tokens_to_chars)
-            for index, pair in enumerate(token_to_chars)
-            if pair is None
-        ]:
-            logger.warning("Some end tokens could not be found in the context: %s", missing_end_tokens)
-        end_candidates_char_indices = [
-            [token_to_chars[1] if token_to_chars else None for token_to_chars in candidates]
-            for candidates in end_candidates_tokens_to_chars
-        ]
-
-        probabilities = candidates.values.cpu()
-
-        return start_candidates_char_indices, end_candidates_char_indices, probabilities
+        return start_candidates_tokens_to_chars, end_candidates_tokens_to_chars, candidates_values
 
     def _nest_answers(
         self,
