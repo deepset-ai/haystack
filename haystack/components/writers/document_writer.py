@@ -1,7 +1,13 @@
+from pydoc import doc
 from typing import List, Optional, Dict, Any
 
 from haystack import component, Document, default_from_dict, default_to_dict, DeserializationError
 from haystack.document_stores import DocumentStore, DuplicatePolicy, document_store
+import importlib
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -41,9 +47,22 @@ class DocumentWriter:
             raise DeserializationError("Missing 'document_store' in serialization data")
         if "type" not in init_params["document_store"]:
             raise DeserializationError("Missing 'type' in document store's serialization data")
-        if init_params["document_store"]["type"] not in document_store.registry:
-            raise DeserializationError(f"DocumentStore of type '{init_params['document_store']['type']}' not found.")
-        docstore_class = document_store.registry[init_params["document_store"]["type"]]
+
+        try:
+            # Import the module first...
+            module, type_ = init_params["document_store"]["type"].rsplit(".", 1)
+            logger.debug("Trying to import %s", module)
+            module = importlib.import_module(module)
+            # ...then try again
+            # if init_params["document_store"]["type"] not in component.registry:
+            #     raise DeserializationError(
+            #         f"Successfully imported module {module} but can't find it in the component registry."
+            #         "This is unexpected and most likely a bug."
+            #     )
+        except (ImportError, DeserializationError) as e:
+            raise DeserializationError(f"Component {module} not imported.") from e
+
+        docstore_class = getattr(module, type_)
         docstore = docstore_class.from_dict(init_params["document_store"])
 
         data["init_parameters"]["document_store"] = docstore
