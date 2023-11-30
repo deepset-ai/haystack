@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Use device_map when loading the model for the ExtractiveReader. This enables more flexible model loading schemes by utilizng the transformers model loading.
