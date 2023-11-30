@@ -9,7 +9,7 @@ from haystack.document_stores import InMemoryDocumentStore
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.generators import GPTGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.routers.conditional_router import serialize_type, deserialize_type
+from haystack.components.routers.conditional_router import ConditionalRouter, serialize_type, deserialize_type
 
 
 logging.getLogger().setLevel(logging.DEBUG)
@@ -37,29 +37,6 @@ class Switch:
 
     def run(self, **kwargs):
         return {"value": kwargs["value"][0]}
-
-
-@component
-class CheckForMissingAnswer:
-    """
-    This component checks whether the LLM replies with a "missing answer" token,
-    which defaults to "UNKNOWN". If this token is spotted in the reply, the question is considered
-    unanswered. Note that the LLM must be instructed to output this token when the answer is missing
-    (see the prompt template below).
-    """
-
-    def __init__(self, missing_answer_token: str = "UNKNOWN"):
-        self.missing_answer_token = missing_answer_token
-
-    def to_dict(self):
-        return default_to_dict(self, missing_answer_token=self.missing_answer_token)
-
-    @component.output_types(replies=List[str], unanswered_query=str)
-    def run(self, query: str, replies: List[str]):
-        meaningful_replies = [reply for reply in replies if reply != self.missing_answer_token]
-        if not meaningful_replies:
-            return {"unanswered_query": query}
-        return {"replies": meaningful_replies}
 
 
 @component
@@ -122,7 +99,14 @@ class PaginatedRetriever:
 
 
 # Create the RAG pipeline
-prompt_template = """
+rag_pipeline = Pipeline(max_loops_allowed=10)
+rag_pipeline.add_component(instance=Switch(type_=str), name="query")
+rag_pipeline.add_component(
+    instance=PaginatedRetriever(InMemoryBM25Retriever(document_store=InMemoryDocumentStore())), name="retriever"
+)
+rag_pipeline.add_component(
+    instance=PromptBuilder(
+        template="""
 Given these documents, answer the question.
 If the documents don't provide enough information to answer the question, answer with the string "UNKNOWN".
 
@@ -134,18 +118,33 @@ Documents:
 Question: {{question}}
 Answer:
 """
-rag_pipeline = Pipeline(max_loops_allowed=10)
-rag_pipeline.add_component(instance=Switch(type_=str), name="query")
-rag_pipeline.add_component(
-    instance=PaginatedRetriever(InMemoryBM25Retriever(document_store=InMemoryDocumentStore())), name="retriever"
+    ),
+    name="prompt_builder",
 )
-rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
 rag_pipeline.add_component(instance=GPTGenerator(), name="llm")
-rag_pipeline.add_component(instance=CheckForMissingAnswer(), name="answer_checker")
+rag_pipeline.add_component(
+    instance=ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{ 'UNKNOWN' in replies|join(' ') }}",
+                "output": "{{ query }}",
+                "output_name": "unanswered_query",
+                "output_type": str,
+            },
+            {
+                "condition": "{{ 'UNKNOWN' not in replies|join(' ') }}",
+                "output": "{{ replies }}",
+                "output_name": "replies",
+                "output_type": List[str],
+            },
+        ]
+    ),
+    name="answer_checker",
+)
 
 rag_pipeline.connect("query", "retriever")
 rag_pipeline.connect("query", "prompt_builder.question")
-rag_pipeline.connect("query", "answer_checker")
+rag_pipeline.connect("query", "answer_checker.query")
 rag_pipeline.connect("retriever", "prompt_builder.documents")
 rag_pipeline.connect("prompt_builder", "llm")
 rag_pipeline.connect("llm.replies", "answer_checker.replies")
