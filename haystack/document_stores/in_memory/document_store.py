@@ -12,7 +12,7 @@ from haystack.dataclasses import Document
 from haystack.document_stores.protocol import DuplicatePolicy
 from haystack.utils.filters import document_matches_filter, convert
 from haystack.document_stores.errors import DuplicateDocumentError, DocumentStoreError
-from haystack.utils.expit import expit
+from haystack.utils import expit
 
 logger = logging.getLogger(__name__)
 
