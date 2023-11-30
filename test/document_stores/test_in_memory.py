@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from haystack import Document
-from haystack.document_stores import InMemoryDocumentStore, DocumentStoreError, DuplicatePolicy
+from haystack.document_stores import InMemoryDocumentStore, DocumentStoreError, DuplicatePolicy, DuplicateDocumentError
 
 
 from haystack.testing.document_store import DocumentStoreBaseTests
@@ -20,7 +20,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
     def document_store(self) -> InMemoryDocumentStore:
         return InMemoryDocumentStore()
 
-    @pytest.mark.unit
     def test_to_dict(self):
         store = InMemoryDocumentStore()
         data = store.to_dict()
@@ -34,7 +33,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
         store = InMemoryDocumentStore(
             bm25_tokenization_regex="custom_regex",
@@ -53,7 +51,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             },
         }
 
-    @pytest.mark.unit
     @patch("haystack.document_stores.in_memory.document_store.re")
     def test_from_dict(self, mock_regex):
         data = {
@@ -70,19 +67,12 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert store.bm25_algorithm.__name__ == "BM25Plus"
         assert store.bm25_parameters == {"key": "value"}
 
-    @pytest.mark.unit
-    def test_written_documents_count(self, document_store: InMemoryDocumentStore):
-        # FIXME Remove after the document store base tests have been rewritten
-        documents = [Document(content=f"Hello world #{i}") for i in range(10)]
-        docs_written = document_store.write_documents(documents[0:2])
-        assert docs_written == 2
-        assert document_store.filter_documents() == documents[0:2]
+    def test_write_documents(self, document_store):
+        docs = [Document(id="1")]
+        assert document_store.write_documents(docs) == 1
+        with pytest.raises(DuplicateDocumentError):
+            document_store.write_documents(docs)
 
-        docs_written = document_store.write_documents(documents, DuplicatePolicy.SKIP)
-        assert docs_written == len(documents) - 2
-        assert document_store.filter_documents() == documents
-
-    @pytest.mark.unit
     def test_bm25_retrieval(self, document_store: InMemoryDocumentStore):
         document_store = InMemoryDocumentStore()
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
@@ -92,7 +82,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
 
-    @pytest.mark.unit
     def test_bm25_retrieval_with_empty_document_store(self, document_store: InMemoryDocumentStore, caplog):
         caplog.set_level(logging.INFO)
         # Tests if the bm25_retrieval method correctly returns an empty list when there are no documents in the DocumentStore.
@@ -100,7 +89,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert len(results) == 0
         assert "No documents found for BM25 retrieval. Returning empty list." in caplog.text
 
-    @pytest.mark.unit
     def test_bm25_retrieval_empty_query(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method returns a document when the query is an empty string.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
@@ -108,7 +96,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         with pytest.raises(ValueError, match="Query should be a non-empty string"):
             document_store.bm25_retrieval(query="", top_k=1)
 
-    @pytest.mark.unit
     def test_bm25_retrieval_with_different_top_k(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method correctly changes the number of returned documents
         # based on the top_k parameter.
@@ -128,7 +115,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert len(results) == 3
 
     # Test two queries and make sure the results are different
-    @pytest.mark.unit
+
     def test_bm25_retrieval_with_two_queries(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method returns different documents for different queries.
         docs = [
@@ -147,7 +134,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert results[0].content == "Python is a popular programming language"
 
     # Test a query, add a new document and make sure results are appropriately updated
-    @pytest.mark.unit
+
     def test_bm25_retrieval_with_updated_docs(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method correctly updates the retrieved documents when new
         # documents are added to the DocumentStore.
@@ -167,7 +154,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert len(results) == 1
         assert results[0].content == "Python is a popular programming language"
 
-    @pytest.mark.unit
     def test_bm25_retrieval_with_scale_score(self, document_store: InMemoryDocumentStore):
         docs = [Document(content="Python programming"), Document(content="Java programming")]
         document_store.write_documents(docs)
@@ -181,7 +167,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         results = document_store.bm25_retrieval(query="Python", top_k=1, scale_score=False)
         assert results[0].score != results1[0].score
 
-    @pytest.mark.unit
     def test_bm25_retrieval_with_table_content(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method correctly returns a dataframe when the content_type is table.
         table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
@@ -194,7 +179,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert isinstance(df, pd.DataFrame)
         assert df.equals(table_content)
 
-    @pytest.mark.unit
     def test_bm25_retrieval_with_text_and_table_content(self, document_store: InMemoryDocumentStore, caplog):
         table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
         document = Document(content="Gardening", dataframe=table_content)
@@ -212,14 +196,12 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         results = document_store.bm25_retrieval(query="Python", top_k=2)
         assert document.id not in [d.id for d in results]
 
-    @pytest.mark.unit
     def test_bm25_retrieval_default_filter_for_text_and_dataframes(self, document_store: InMemoryDocumentStore):
         docs = [Document(), Document(content="Gardening"), Document(content="Bird watching")]
         document_store.write_documents(docs)
         results = document_store.bm25_retrieval(query="doesn't matter, top_k is 10", top_k=10)
         assert len(results) == 2
 
-    @pytest.mark.unit
     def test_bm25_retrieval_with_filters(self, document_store: InMemoryDocumentStore):
         selected_document = Document(content="Gardening", meta={"selected": True})
         docs = [Document(), selected_document, Document(content="Bird watching")]
@@ -228,14 +210,12 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert len(results) == 1
         assert results[0].id == selected_document.id
 
-    @pytest.mark.unit
     def test_bm25_retrieval_with_filters_keeps_default_filters(self, document_store: InMemoryDocumentStore):
         docs = [Document(meta={"selected": True}), Document(content="Gardening"), Document(content="Bird watching")]
         document_store.write_documents(docs)
         results = document_store.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
         assert len(results) == 0
 
-    @pytest.mark.unit
     def test_bm25_retrieval_with_filters_on_text_or_dataframe(self, document_store: InMemoryDocumentStore):
         document = Document(dataframe=pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web"]}))
         docs = [Document(), Document(content="Gardening"), Document(content="Bird watching"), document]
@@ -244,7 +224,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert len(results) == 1
         assert results[0].id == document.id
 
-    @pytest.mark.unit
     def test_bm25_retrieval_with_documents_with_mixed_content(self, document_store: InMemoryDocumentStore):
         double_document = Document(content="Gardening", embedding=[1.0, 2.0, 3.0])
         docs = [Document(embedding=[1.0, 2.0, 3.0]), double_document, Document(content="Bird watching")]
@@ -253,7 +232,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert len(results) == 1
         assert results[0].id == double_document.id
 
-    @pytest.mark.unit
     def test_embedding_retrieval(self):
         docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
         # Tests if the embedding retrieval method returns the correct document based on the input query embedding.
@@ -268,7 +246,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
 
-    @pytest.mark.unit
     def test_embedding_retrieval_invalid_query(self):
         docstore = InMemoryDocumentStore()
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
@@ -276,7 +253,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
             docstore.embedding_retrieval(query_embedding=["invalid", "list", "of", "strings"])  # type: ignore
 
-    @pytest.mark.unit
     def test_embedding_retrieval_no_embeddings(self, caplog):
         caplog.set_level(logging.WARNING)
         docstore = InMemoryDocumentStore()
@@ -286,7 +262,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert len(results) == 0
         assert "No Documents found with embeddings. Returning empty list." in caplog.text
 
-    @pytest.mark.unit
     def test_embedding_retrieval_some_documents_wo_embeddings(self, caplog):
         caplog.set_level(logging.INFO)
         docstore = InMemoryDocumentStore()
@@ -298,7 +273,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         docstore.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1])
         assert "Skipping some Documents that don't have an embedding." in caplog.text
 
-    @pytest.mark.unit
     def test_embedding_retrieval_documents_different_embedding_sizes(self):
         docstore = InMemoryDocumentStore()
         docs = [
@@ -310,7 +284,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         with pytest.raises(DocumentStoreError, match="The embedding size of all Documents should be the same."):
             docstore.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1])
 
-    @pytest.mark.unit
     def test_embedding_retrieval_query_documents_different_embedding_sizes(self):
         docstore = InMemoryDocumentStore()
         docs = [Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4])]
@@ -322,7 +295,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         ):
             docstore.embedding_retrieval(query_embedding=[0.1, 0.1])
 
-    @pytest.mark.unit
     def test_embedding_retrieval_with_different_top_k(self):
         docstore = InMemoryDocumentStore()
         docs = [
@@ -338,7 +310,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         results = docstore.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=3)
         assert len(results) == 3
 
-    @pytest.mark.unit
     def test_embedding_retrieval_with_scale_score(self):
         docstore = InMemoryDocumentStore()
         docs = [
@@ -357,7 +328,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         results = docstore.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=1, scale_score=False)
         assert results[0].score != results1[0].score
 
-    @pytest.mark.unit
     def test_embedding_retrieval_return_embedding(self):
         docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
         docs = [
@@ -372,7 +342,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         results = docstore.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=1, return_embedding=True)
         assert results[0].embedding == [1.0, 1.0, 1.0, 1.0]
 
-    @pytest.mark.unit
     def test_compute_cosine_similarity_scores(self):
         docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
         docs = [
@@ -385,7 +354,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         )
         assert scores == [0.5, 1.0]
 
-    @pytest.mark.unit
     def test_compute_dot_product_similarity_scores(self):
         docstore = InMemoryDocumentStore(embedding_similarity_function="dot_product")
         docs = [

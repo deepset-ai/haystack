@@ -66,7 +66,6 @@ def chat_messages():
 
 
 class TestGPTChatGenerator:
-    @pytest.mark.unit
     def test_init_default(self):
         component = GPTChatGenerator(api_key="test-api-key")
         assert openai.api_key == "test-api-key"
@@ -76,14 +75,12 @@ class TestGPTChatGenerator:
         assert openai.api_base == "https://api.openai.com/v1"
         assert not component.generation_kwargs
 
-    @pytest.mark.unit
     def test_init_fail_wo_api_key(self, monkeypatch):
         openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="GPTChatGenerator expects an OpenAI API key"):
             GPTChatGenerator()
 
-    @pytest.mark.unit
     def test_init_with_parameters(self):
         component = GPTChatGenerator(
             api_key="test-api-key",
@@ -99,7 +96,6 @@ class TestGPTChatGenerator:
         assert openai.api_base == "test-base-url"
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
 
-    @pytest.mark.unit
     def test_to_dict_default(self):
         component = GPTChatGenerator(api_key="test-api-key")
         data = component.to_dict()
@@ -113,7 +109,6 @@ class TestGPTChatGenerator:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_parameters(self):
         component = GPTChatGenerator(
             api_key="test-api-key",
@@ -133,7 +128,6 @@ class TestGPTChatGenerator:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_lambda_streaming_callback(self):
         component = GPTChatGenerator(
             api_key="test-api-key",
@@ -153,7 +147,6 @@ class TestGPTChatGenerator:
             },
         }
 
-    @pytest.mark.unit
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
@@ -171,7 +164,6 @@ class TestGPTChatGenerator:
         assert component.api_base_url == "test-base-url"
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
 
-    @pytest.mark.unit
     def test_from_dict_fail_wo_env_var(self, monkeypatch):
         openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -187,7 +179,6 @@ class TestGPTChatGenerator:
         with pytest.raises(ValueError, match="GPTChatGenerator expects an OpenAI API key"):
             GPTChatGenerator.from_dict(data)
 
-    @pytest.mark.unit
     def test_run(self, chat_messages, mock_chat_completion):
         component = GPTChatGenerator(api_key="test-api-key")
         response = component.run(chat_messages)
@@ -199,7 +190,6 @@ class TestGPTChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
-    @pytest.mark.unit
     def test_run_with_params(self, chat_messages, mock_chat_completion):
         component = GPTChatGenerator(api_key="test-api-key", generation_kwargs={"max_tokens": 10, "temperature": 0.5})
         response = component.run(chat_messages)
@@ -216,7 +206,6 @@ class TestGPTChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
-    @pytest.mark.unit
     def test_run_streaming(self, chat_messages, mock_chat_completion):
         streaming_call_count = 0
 
@@ -248,7 +237,6 @@ class TestGPTChatGenerator:
         assert len(response["replies"]) > 0
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
-    @pytest.mark.unit
     def test_check_abnormal_completions(self, caplog):
         component = GPTChatGenerator(api_key="test-api-key")
         messages = [

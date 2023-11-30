@@ -11,14 +11,12 @@ from haystack.document_stores import InMemoryDocumentStore
 
 
 class TestMemoryEmbeddingRetriever:
-    @pytest.mark.unit
     def test_init_default(self):
         retriever = InMemoryEmbeddingRetriever(InMemoryDocumentStore())
         assert retriever.filters is None
         assert retriever.top_k == 10
         assert retriever.scale_score is False
 
-    @pytest.mark.unit
     def test_init_with_parameters(self):
         retriever = InMemoryEmbeddingRetriever(
             InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=True
@@ -27,12 +25,10 @@ class TestMemoryEmbeddingRetriever:
         assert retriever.top_k == 5
         assert retriever.scale_score
 
-    @pytest.mark.unit
     def test_init_with_invalid_top_k_parameter(self):
         with pytest.raises(ValueError):
             InMemoryEmbeddingRetriever(InMemoryDocumentStore(), top_k=-2)
 
-    @pytest.mark.unit
     def test_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         document_store = MyFakeStore()
@@ -51,7 +47,6 @@ class TestMemoryEmbeddingRetriever:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         document_store = MyFakeStore()
@@ -75,7 +70,6 @@ class TestMemoryEmbeddingRetriever:
             },
         }
 
-    @pytest.mark.unit
     def test_from_dict(self):
         document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         data = {
@@ -92,7 +86,6 @@ class TestMemoryEmbeddingRetriever:
         assert component.top_k == 5
         assert component.scale_score is False
 
-    @pytest.mark.unit
     def test_from_dict_without_docstore(self):
         data = {
             "type": "haystack.components.retrievers.in_memory_embedding_retriever.InMemoryEmbeddingRetriever",
@@ -101,7 +94,6 @@ class TestMemoryEmbeddingRetriever:
         with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
             InMemoryEmbeddingRetriever.from_dict(data)
 
-    @pytest.mark.unit
     def test_from_dict_without_docstore_type(self):
         data = {
             "type": "haystack.components.retrievers.in_memory_embedding_retriever.InMemoryEmbeddingRetriever",
@@ -110,7 +102,6 @@ class TestMemoryEmbeddingRetriever:
         with pytest.raises(DeserializationError, match="Missing 'type' in document store's serialization data"):
             InMemoryEmbeddingRetriever.from_dict(data)
 
-    @pytest.mark.unit
     def test_from_dict_nonexisting_docstore(self):
         data = {
             "type": "haystack.components.retrievers.in_memory_embedding_retriever.InMemoryEmbeddingRetriever",
@@ -119,7 +110,6 @@ class TestMemoryEmbeddingRetriever:
         with pytest.raises(DeserializationError, match="DocumentStore type 'NonexistingDocstore' not found"):
             InMemoryEmbeddingRetriever.from_dict(data)
 
-    @pytest.mark.unit
     def test_valid_run(self):
         top_k = 3
         ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
@@ -137,7 +127,6 @@ class TestMemoryEmbeddingRetriever:
         assert len(result["documents"]) == top_k
         assert np.array_equal(result["documents"][0].embedding, [1.0, 1.0, 1.0, 1.0])
 
-    @pytest.mark.unit
     def test_invalid_run_wrong_store_type(self):
         SomeOtherDocumentStore = document_store_class("SomeOtherDocumentStore")
         with pytest.raises(ValueError, match="document_store must be an instance of InMemoryDocumentStore"):

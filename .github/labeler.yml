@@ -19,3 +19,5 @@ topic:build/distribution:
 - pyproject.toml
 topic:security:
 - SECURITY.md
+topic:core:
+- haystack/core/**/*

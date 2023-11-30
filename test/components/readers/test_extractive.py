@@ -87,7 +87,6 @@ example_documents = [
 ] * 2
 
 
-@pytest.mark.unit
 def test_to_dict():
     component = ExtractiveReader("my-model", token="secret-token", model_kwargs={"torch_dtype": "auto"})
     data = component.to_dict()
@@ -111,7 +110,6 @@ def test_to_dict():
     }
 
 
-@pytest.mark.unit
 def test_to_dict_empty_model_kwargs():
     component = ExtractiveReader("my-model", token="secret-token")
     data = component.to_dict()
@@ -135,7 +133,6 @@ def test_to_dict_empty_model_kwargs():
     }
 
 
-@pytest.mark.unit
 def test_output(mock_reader: ExtractiveReader):
     answers = mock_reader.run(example_queries[0], example_documents[0], top_k=3)[
         "answers"
@@ -154,7 +151,6 @@ def test_output(mock_reader: ExtractiveReader):
     assert answers[-1].probability == pytest.approx(no_answer_prob)
 
 
-@pytest.mark.unit
 def test_flatten_documents(mock_reader: ExtractiveReader):
     queries, docs, query_ids = mock_reader._flatten_documents(example_queries, example_documents)
     i = 0
@@ -167,7 +163,6 @@ def test_flatten_documents(mock_reader: ExtractiveReader):
     assert len(docs) == len(queries) == len(query_ids) == i
 
 
-@pytest.mark.unit
 def test_preprocess(mock_reader: ExtractiveReader):
     _, _, seq_ids, _, query_ids, doc_ids = mock_reader._preprocess(
         example_queries * 3, example_documents[0], 384, [1, 1, 1], 0
@@ -189,7 +184,6 @@ def test_preprocess_splitting(mock_reader: ExtractiveReader):
     assert doc_ids == [0, 1, 2, 3, 3]
 
 
-@pytest.mark.unit
 def test_postprocess(mock_reader: ExtractiveReader):
     start = torch.zeros((2, 8))
     start[0, 3] = 4
@@ -231,7 +225,6 @@ def test_postprocess(mock_reader: ExtractiveReader):
     assert probs[1][0] == pytest.approx(1 / 2)
 
 
-@pytest.mark.unit
 def test_nest_answers(mock_reader: ExtractiveReader):
     start = list(range(5))
     end = [i + 5 for i in start]
@@ -258,7 +251,6 @@ def test_nest_answers(mock_reader: ExtractiveReader):
         assert no_answer.probability == pytest.approx(expected_no_answer)
 
 
-@pytest.mark.unit
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
 def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
@@ -269,7 +261,6 @@ def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
     mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
 
 
-@pytest.mark.unit
 def test_missing_token_to_chars_values():
     # See https://github.com/deepset-ai/haystack/issues/6098
 

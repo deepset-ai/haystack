@@ -27,10 +27,10 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Get direct dependencies, all extras
+      - name: Get direct dependencies
         run: |
           pip install toml
-          python .github/utils/pyproject_to_requirements.py pyproject.toml --extra all > ${{ env.REQUIREMENTS_FILE }}
+          python .github/utils/pyproject_to_requirements.py pyproject.toml > ${{ env.REQUIREMENTS_FILE }}
 
       - name: Check Licenses
         id: license_check_report

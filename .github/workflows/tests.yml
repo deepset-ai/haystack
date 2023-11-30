@@ -1,3 +1,4 @@
+# If you change this name also do it in tests_skipper.yml and ci_metrics.yml
 name: Tests
 
 on:
@@ -7,6 +8,7 @@ on:
       - main
       # release branches have the form v1.9.x
       - "v[0-9].*[0-9].x"
+      - "!haystack/core/**/*.py"
   pull_request:
     types:
       - opened
@@ -16,6 +18,7 @@ on:
     paths:
       - "haystack/**/*.py"
       - "test/**/*.py"
+      - "!haystack/core/**/*.py"
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -43,25 +46,6 @@ jobs:
         run: |
           if ! black . --check; then
             git status
-            echo "###################################################################################################"
-            echo "# "
-            echo "# CHECK FAILED! Black found issues with your code formatting."
-            echo "# "
-            echo "# Either:"
-            echo "# 1. Run Black locally before committing:"
-            echo "# "
-            echo "#     pip install .[formatting]"
-            echo "#     black ."
-            echo "# "
-            echo "# 2. Install the pre-commit hook:"
-            echo "# "
-            echo "#     pre-commit install"
-            echo "# "
-            echo "# 3. See https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md for help."
-            echo "# "
-            echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
-            echo "# "
-            echo "##################################################################################################"
             exit 1
           fi
 
@@ -315,3 +299,18 @@ jobs:
                 - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  catch-all:
+    name: Catch-all check
+    runs-on: ubuntu-latest
+    # This job will be executed only after all the other tests
+    # are successful.
+    # This way we'll be able to mark only this test as required
+    # and skip it accordingly.
+    needs:
+      - integration-tests-linux
+      - integration-tests-macos
+      - integration-tests-windows
+    steps:
+      - name: Finisher
+        run: echo "Finish him!"

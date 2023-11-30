@@ -19,7 +19,6 @@ def mock_openai_response(model: str = "text-embedding-ada-002", **kwargs) -> ope
 
 
 class TestOpenAITextEmbedder:
-    @pytest.mark.unit
     def test_init_default(self, monkeypatch):
         openai.api_key = None
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
@@ -31,7 +30,6 @@ class TestOpenAITextEmbedder:
         assert embedder.prefix == ""
         assert embedder.suffix == ""
 
-    @pytest.mark.unit
     def test_init_with_parameters(self):
         embedder = OpenAITextEmbedder(
             api_key="fake-api-key",
@@ -47,14 +45,12 @@ class TestOpenAITextEmbedder:
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
 
-    @pytest.mark.unit
     def test_init_fail_wo_api_key(self, monkeypatch):
         openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="OpenAITextEmbedder expects an OpenAI API key"):
             OpenAITextEmbedder()
 
-    @pytest.mark.unit
     def test_to_dict(self):
         component = OpenAITextEmbedder(api_key="fake-api-key")
         data = component.to_dict()
@@ -68,7 +64,6 @@ class TestOpenAITextEmbedder:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
         component = OpenAITextEmbedder(
             api_key="fake-api-key",
@@ -88,7 +83,6 @@ class TestOpenAITextEmbedder:
             },
         }
 
-    @pytest.mark.unit
     def test_run(self):
         model = "text-similarity-ada-001"
 
@@ -106,7 +100,6 @@ class TestOpenAITextEmbedder:
         assert all(isinstance(x, float) for x in result["embedding"])
         assert result["metadata"] == {"model": model, "usage": {"prompt_tokens": 4, "total_tokens": 4}}
 
-    @pytest.mark.unit
     def test_run_wrong_input_format(self):
         embedder = OpenAITextEmbedder(api_key="fake-api-key")
 

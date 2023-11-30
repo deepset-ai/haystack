@@ -5,7 +5,6 @@ from haystack.components.rankers.meta_field import MetaFieldRanker
 
 
 class TestMetaFieldRanker:
-    @pytest.mark.unit
     def test_to_dict(self):
         component = MetaFieldRanker(metadata_field="rating")
         data = component.to_dict()
@@ -19,7 +18,6 @@ class TestMetaFieldRanker:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
         component = MetaFieldRanker(metadata_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score")
         data = component.to_dict()

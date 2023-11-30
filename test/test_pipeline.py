@@ -20,7 +20,6 @@ def pipeline():
     return Pipeline()
 
 
-@pytest.mark.unit
 def test_pipeline_dumps(pipeline, test_files_path):
     pipeline.add_component("Comp1", TestComponent("Foo"))
     pipeline.add_component("Comp2", TestComponent())
@@ -31,7 +30,6 @@ def test_pipeline_dumps(pipeline, test_files_path):
         assert f.read() == result
 
 
-@pytest.mark.unit
 def test_pipeline_loads(test_files_path):
     with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
         pipeline = Pipeline.loads(f.read())
@@ -40,7 +38,6 @@ def test_pipeline_loads(test_files_path):
         assert isinstance(pipeline.get_component("Comp2"), TestComponent)
 
 
-@pytest.mark.unit
 def test_pipeline_dump(pipeline, test_files_path, tmp_path):
     pipeline.add_component("Comp1", TestComponent("Foo"))
     pipeline.add_component("Comp2", TestComponent())
@@ -53,7 +50,6 @@ def test_pipeline_dump(pipeline, test_files_path, tmp_path):
         assert f.read() == test_f.read()
 
 
-@pytest.mark.unit
 def test_pipeline_load(test_files_path):
     with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
         pipeline = Pipeline.load(f)
