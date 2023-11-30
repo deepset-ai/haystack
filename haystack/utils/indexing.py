@@ -1,16 +1,16 @@
 import inspect
 import os
 import re
-from typing import Union, Type
 from pathlib import Path
 from typing import Optional, List, Any, Dict
+from typing import Union, Type
 
 from haystack import Pipeline
 from haystack.components.converters import TextFileToDocument
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder, OpenAIDocumentEmbedder
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.routers import FileTypeRouter, DocumentJoiner
 from haystack.components.writers import DocumentWriter
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, OpenAIDocumentEmbedder
 
 
 def build_indexing_pipeline(
@@ -214,7 +214,7 @@ class _IndexingPipeline:
             return [str(path)]
         elif os.path.isdir(path):
             file_list: List[str] = []
-            for root, dirs, files in os.walk(path):
+            for root, _, files in os.walk(path):
                 for file in files:
                     file_list.append(os.path.join(root, file))
             return file_list
