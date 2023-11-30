@@ -1,3 +1,4 @@
+import json
 from os import pipe
 
 from haystack import Pipeline
@@ -82,5 +83,10 @@ def benchmark_retrieval(pipeline: Pipeline, queries: List[str]):
 
 
 if __name__ == "__main__":
-    # print(benchmark_retrieval(retrieval_pipe, queries))
-    pass
+    indexing_results = benchmark_indexing(retrieval_pipe, queries)
+    retrieval_results = benchmark_retrieval(retrieval_pipe, queries)
+    with open("out/indexing_elastic.json", "w") as f:
+        json.dump(indexing_results, f, indent=2)
+
+    with open("out/retrieval_elastic.json", "w") as f:
+        json.dump(retrieval_results, f, indent=2)
