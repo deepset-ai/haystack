@@ -3,7 +3,7 @@ components:
     init_parameters:
       pattern: null
       reference_pattern: null
-    type: haystack.preview.components.builders.answer_builder.AnswerBuilder
+    type: haystack.components.builders.answer_builder.AnswerBuilder
   llm:
     init_parameters:
       api_base_url: https://api.openai.com/v1
