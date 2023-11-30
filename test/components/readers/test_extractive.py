@@ -51,15 +51,9 @@ def mock_tokenizer():
 @pytest.fixture()
 def mock_reader(mock_tokenizer):
     class MockModel(torch.nn.Module):
-        def to(self, device):
-            assert device == "cpu:0"
-            self.device_set = True
-            return self
-
         def forward(self, input_ids, attention_mask, *args, **kwargs):
             assert input_ids.device == torch.device("cpu")
             assert attention_mask.device == torch.device("cpu")
-            assert self.device_set
             start = torch.zeros(input_ids.shape[:2])
             end = torch.zeros(input_ids.shape[:2])
             start[:, 27] = 1
@@ -254,11 +248,23 @@ def test_nest_answers(mock_reader: ExtractiveReader):
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
 def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
-    reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token")
+    reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token", device="cpu")
     reader.warm_up()
 
-    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token", device_map="cpu")
     mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
+
+
+@patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
+@patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+def test_warm_up_token_kwarg(mocked_automodel, mocked_autotokenizer):
+    reader = ExtractiveReader(
+        "deepset/roberta-base-squad2", token=None, device="cpu", model_kwargs={"token": "other-fake-token"}
+    )
+    reader.warm_up()
+
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="other-fake-token", device_map="cpu")
+    mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token=None)
 
 
 def test_missing_token_to_chars_values():
@@ -296,15 +302,9 @@ def test_missing_token_to_chars_values():
         return tokens
 
     class MockModel(torch.nn.Module):
-        def to(self, device):
-            assert device == "cpu:0"
-            self.device_set = True
-            return self
-
         def forward(self, input_ids, attention_mask, *args, **kwargs):
             assert input_ids.device == torch.device("cpu")
             assert attention_mask.device == torch.device("cpu")
-            assert self.device_set
             start = torch.zeros(input_ids.shape[:2])
             end = torch.zeros(input_ids.shape[:2])
             start[:, 27] = 1

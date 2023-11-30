@@ -137,10 +137,9 @@ class ExtractiveReader:
 
             # Override model_kwargs if token and device are provided
             kwargs = self.model_kwargs
+            kwargs["device_map"] = self.device
             if self.token:
                 kwargs["token"] = self.token
-            if self.device:
-                kwargs["device_map"] = self.device
             self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_name_or_path, **kwargs)
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
