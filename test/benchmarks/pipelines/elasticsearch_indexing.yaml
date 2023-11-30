@@ -1,0 +1,20 @@
+components:
+  converter:
+    init_parameters:
+      encoding: utf-8
+    type: haystack.components.converters.txt.TextFileToDocument
+  writer:
+    init_parameters:
+      document_store:
+        init_parameters:
+          embedding_similarity_function: cosine
+          hosts: http://localhost:9200
+          index: default
+        type: elasticsearch_haystack.document_store.ElasticsearchDocumentStore
+      policy: OVERWRITE
+    type: haystack.components.writers.document_writer.DocumentWriter
+connections:
+- receiver: writer.documents
+  sender: converter.documents
+max_loops_allowed: 100
+metadata: {}
