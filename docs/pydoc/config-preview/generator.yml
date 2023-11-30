@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/preview/components/generators]
-    modules: ["hugging_face_local", "hugging_face_tgi", "openai", "chat/hugging_face_tgi", "chat/openai"]
+    modules: ["hugging_face_local", "hugging_face_tgi", "openai", "cohere", "chat/hugging_face_tgi", "chat/openai"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
