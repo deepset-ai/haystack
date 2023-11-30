@@ -1,0 +1,55 @@
+components:
+  answer_builder:
+    init_parameters:
+      pattern: null
+      reference_pattern: null
+    type: haystack.preview.components.builders.answer_builder.AnswerBuilder
+  llm:
+    init_parameters:
+      api_base_url: https://api.openai.com/v1
+      generation_kwargs: {}
+      model_name: gpt-3.5-turbo
+      streaming_callback: null
+      system_prompt: null
+    type: haystack.components.generators.openai.GPTGenerator
+  prompt_builder:
+    init_parameters:
+      template: |
+        Given these documents, answer the question.
+
+        Documents:
+
+        {% for doc in documents %}
+        {{ doc.content}}
+        {% endfor %}
+
+        Question: {{question}}
+
+        Answer:
+    type: haystack.components.builders.prompt_builder.PromptBuilder
+  retriever:
+    init_parameters:
+      document_store:
+        init_parameters:
+          bm25_algorithm: BM25Okapi
+          bm25_parameters: {}
+          bm25_tokenization_regex: (?u)\b\w\w+\b
+          embedding_similarity_function: dot_product
+        type: haystack.document_stores.in_memory.document_store.InMemoryDocumentStore
+      filters: null
+      scale_score: false
+      top_k: 10
+    type: haystack.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever
+connections:
+- receiver: prompt_builder.documents
+  sender: retriever.documents
+- receiver: answer_builder.documents
+  sender: retriever.documents
+- receiver: llm.prompt
+  sender: prompt_builder.prompt
+- receiver: answer_builder.replies
+  sender: llm.replies
+- receiver: answer_builder.metadata
+  sender: llm.metadata
+max_loops_allowed: 100
+metadata: {}
