@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.utils.indexing import build_indexing_pipeline
+from haystack.pipeline_utils.indexing import build_indexing_pipeline
 from haystack.document_stores import InMemoryDocumentStore
 
 
