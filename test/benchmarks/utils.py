@@ -8,44 +8,36 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-def prepare_environment(pipeline_config: Dict, benchmark_config: Dict):
+def get_docs(dataset: str):
     """
     Prepare the environment for running a benchmark.
     """
     # Download data if specified in benchmark config
-    if "data_url" in benchmark_config:
-        download_from_url(url=benchmark_config["data_url"], target_dir="data/")
+    _download(dataset=dataset, target_dir="data/")
     n_docs = 0
-    if "documents_directory" in benchmark_config:
-        documents_dir = Path(benchmark_config["documents_directory"])
-        n_docs = len(
-            [
-                file_path
-                for file_path in documents_dir.iterdir()
-                if file_path.is_file() and not file_path.name.startswith(".")
-            ]
-        )
+
+    documents_dir = Path(documents_dir)
 
 
-def download_from_url(url: str, target_dir: Union[str, Path]) -> None:
+
+def _download(dataset: str, target_dir: Union[str, Path]) -> None:
     """
     Download from a URL to a local file.
 
     :param url: URL
     :param target_dir: Local directory where the URL content will be saved.
     """
+    url = f"https://deepset-test-datasets.s3.eu-central-1.amazonaws.com/{dataset}.tar.bz2"
     url_path = Path(url)
-
-    if file_previously_downloaded(url_path, target_dir):
-        logger.info(f"Skipping download of {url}, as a previous copy exists")
+    if _file_previously_downloaded(url_path, target_dir):
+        logger.info(f"Skipping download of {dataset}-dataset, as a previous copy exists")
         return
-
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
-
     logger.info("Downloading %s to %s", url_path.name, target_dir)
     with tempfile.NamedTemporaryFile() as temp_file:
-        httpx.get(url=url, temp_file=temp_file)
+        response = httpx.get(url=url)
+        temp_file.write(response.content)
         temp_file.flush()
         temp_file.seek(0)
         if tarfile.is_tarfile(temp_file.name):
@@ -55,7 +47,10 @@ def download_from_url(url: str, target_dir: Union[str, Path]) -> None:
             with open(Path(target_dir) / url_path.name, "wb") as file:
                 file.write(temp_file.read())
 
-def file_previously_downloaded(url_path: Path, target_dir: Union[str, Path]) -> bool:
+def _file_previously_downloaded(url_path: Path, target_dir: Union[str, Path]) -> bool:
     if ".tar" in url_path.suffixes:
         return Path(target_dir, url_path.parent).exists()
     return Path(target_dir, url_path.name).exists()
+
+
+get_docs("https://deepset-test-datasets.s3.eu-central-1.amazonaws.com/msmarco.1000.tar.bz2", "/Users/rohan/repos/deepset/haystack/test/benchmarks/msmarco1000")
