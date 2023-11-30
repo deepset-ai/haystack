@@ -1,22 +1,29 @@
 import os
 from pathlib import Path
 import tarfile
-from typing import Dict, Union
+from typing import Dict, List, Union
 import logging
 import tempfile
 import httpx
+from haystack import Document
 
 logger = logging.getLogger(__name__)
 
-def get_docs(dataset: str):
+def get_docs(dataset: str) -> List[Document]:
     """
     Prepare the environment for running a benchmark.
     """
     # Download data if specified in benchmark config
     _download(dataset=dataset, target_dir="data/")
-    n_docs = 0
 
-    documents_dir = Path(documents_dir)
+    pathlist = Path(f"data/{dataset}/txt").rglob('*.txt')
+    documents = []
+    for path in pathlist:
+        path_in_str = str(path)
+        with open(path) as f:
+            documents.append(Document(content = f.read()))
+    return documents
+
 
 
 
@@ -53,4 +60,4 @@ def _file_previously_downloaded(url_path: Path, target_dir: Union[str, Path]) ->
     return Path(target_dir, url_path.name).exists()
 
 
-get_docs("https://deepset-test-datasets.s3.eu-central-1.amazonaws.com/msmarco.1000.tar.bz2", "/Users/rohan/repos/deepset/haystack/test/benchmarks/msmarco1000")
+docs = get_docs("msmarco.1000")
