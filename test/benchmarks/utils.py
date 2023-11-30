@@ -17,13 +17,7 @@ def get_docs(dataset: str) -> List[Document]:
     _download(dataset=dataset, target_dir="data/")
 
     pathlist = Path(f"data/{dataset}/txt").rglob('*.txt')
-    documents = []
-    for path in pathlist:
-        path_in_str = str(path)
-        with open(path) as f:
-            documents.append(Document(content = f.read()))
-    return documents
-
+    return pathlist
 
 
 
