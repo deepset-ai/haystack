@@ -1,10 +1,10 @@
 from typing import List, Optional, Dict, Any
 
+import importlib
+import logging
+
 from haystack import component, Document, default_from_dict, default_to_dict, DeserializationError
 from haystack.document_stores import DocumentStore, DuplicatePolicy
-import importlib
-
-import logging
 
 logger = logging.getLogger(__name__)
 
