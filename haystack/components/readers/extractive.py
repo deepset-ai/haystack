@@ -368,13 +368,18 @@ class ExtractiveReader:
             if not candidate_answer.document or not ans.document:
                 continue
 
-            # If answers don't have valid spans then skip
+            # If any of the spans is None then keep both
             if not all(v is not None for v in [ans.start, ans.end, candidate_answer.start, candidate_answer.end]):
                 continue
 
-            # If the answers come from different documents then always keep
+            # If the answers come from different documents then keep both
             if candidate_answer.document.id != ans.document.id:
                 continue
+
+            assert ans.start is not None
+            assert ans.end is not None
+            assert candidate_answer.start is not None
+            assert candidate_answer.end is not None
 
             overlap_len = self._calculate_overlap(
                 answer1_start=ans.start,
