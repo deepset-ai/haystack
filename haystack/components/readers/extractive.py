@@ -241,11 +241,13 @@ class ExtractiveReader:
             valid = candidates_values[i] > 0
             s_char_spans = []
             e_char_spans = []
-            for start, end in zip(s_candidates[valid], e_candidates[valid]):
+            for start_token, end_token in zip(s_candidates[valid], e_candidates[valid]):
                 # token_to_chars returns `None` for special tokens
                 # But we shouldn't have special tokens in the answers at this point
-                s_char_spans.append(encoding.token_to_chars(start)[0])
-                e_char_spans.append(encoding.token_to_chars(end)[1])
+                # The whole span is given by the start of the start_token (index 0)
+                # and the end of the end token (index 1)
+                s_char_spans.append(encoding.token_to_chars(start_token)[0])
+                e_char_spans.append(encoding.token_to_chars(end_token)[1])
             start_candidates_tokens_to_chars.append(s_char_spans)
             end_candidates_tokens_to_chars.append(e_char_spans)
 
