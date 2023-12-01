@@ -8,7 +8,6 @@ import rank_bm25
 from tqdm.auto import tqdm
 
 from haystack import default_from_dict, default_to_dict
-from haystack.document_stores.decorator import document_store
 from haystack.dataclasses import Document
 from haystack.document_stores.protocol import DuplicatePolicy
 from haystack.utils.filters import document_matches_filter, convert
@@ -27,7 +26,6 @@ BM25_SCALING_FACTOR = 8
 DOT_PRODUCT_SCALING_FACTOR = 100
 
 
-@document_store
 class InMemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
