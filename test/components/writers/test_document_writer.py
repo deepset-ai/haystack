@@ -33,16 +33,15 @@ class TestDocumentWriter:
         }
 
     def test_from_dict(self):
-        mocked_docstore_class = document_store_class("MockedDocumentStore")
         data = {
             "type": "haystack.components.writers.document_writer.DocumentWriter",
             "init_parameters": {
-                "document_store": {"type": "haystack.testing.factory.MockedDocumentStore", "init_parameters": {}},
+                "document_store": {"type": "haystack.document_stores.InMemoryDocumentStore", "init_parameters": {}},
                 "policy": "SKIP",
             },
         }
         component = DocumentWriter.from_dict(data)
-        assert isinstance(component.document_store, mocked_docstore_class)
+        assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.policy == DuplicatePolicy.SKIP
 
     def test_from_dict_without_docstore(self):

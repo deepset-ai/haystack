@@ -74,12 +74,13 @@ class TestMemoryBM25Retriever:
             },
         }
 
+    #
+
     def test_from_dict(self):
-        document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         data = {
             "type": "haystack.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {
-                "document_store": {"type": "haystack.testing.factory.MyFakeStore", "init_parameters": {}},
+                "document_store": {"type": "haystack.document_stores.InMemoryDocumentStore", "init_parameters": {}},
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
             },
