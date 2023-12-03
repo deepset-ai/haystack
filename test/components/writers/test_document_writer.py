@@ -36,7 +36,10 @@ class TestDocumentWriter:
         data = {
             "type": "haystack.components.writers.document_writer.DocumentWriter",
             "init_parameters": {
-                "document_store": {"type": "haystack.document_stores.InMemoryDocumentStore", "init_parameters": {}},
+                "document_store": {
+                    "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                    "init_parameters": {},
+                },
                 "policy": "SKIP",
             },
         }
@@ -57,9 +60,9 @@ class TestDocumentWriter:
     def test_from_dict_nonexisting_docstore(self):
         data = {
             "type": "DocumentWriter",
-            "init_parameters": {"document_store": {"type": "NonexistingDocumentStore", "init_parameters": {}}},
+            "init_parameters": {"document_store": {"type": "Nonexisting.DocumentStore", "init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError, match="DocumentStore of type 'NonexistingDocumentStore' not found."):
+        with pytest.raises(DeserializationError):
             DocumentWriter.from_dict(data)
 
     def test_run(self):

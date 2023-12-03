@@ -1,6 +1,6 @@
 from typing import Dict, List, Any, Optional
 
-from haystack import component, Document, default_to_dict, default_from_dict
+from haystack import component, Document, default_to_dict, default_from_dict, DeserializationError
 from haystack.document_stores import InMemoryDocumentStore
 
 
@@ -62,6 +62,11 @@ class InMemoryBM25Retriever:
         """
         Deserialize this component from a dictionary.
         """
+        init_params = data.get("init_parameters", {})
+        if "document_store" not in init_params:
+            raise DeserializationError("Missing 'document_store' in serialization data")
+        if "type" not in init_params["document_store"]:
+            raise DeserializationError("Missing 'type' in document store's serialization data")
         data["init_parameters"]["document_store"] = InMemoryDocumentStore.from_dict(
             data["init_parameters"]["document_store"]
         )

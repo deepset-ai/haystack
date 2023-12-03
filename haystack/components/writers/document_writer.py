@@ -53,7 +53,7 @@ class DocumentWriter:
             module = importlib.import_module(module_name)
         except (ImportError, DeserializationError) as e:
             raise DeserializationError(
-                f"DocumentStore type '{init_params['document_store']['type']}' not correctly imported"
+                f"DocumentStore of type '{init_params['document_store']['type']}' not correctly imported"
             ) from e
 
         docstore_class = getattr(module, type_)
