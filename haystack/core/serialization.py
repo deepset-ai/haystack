@@ -99,7 +99,5 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     if "type" not in data:
         raise DeserializationError("Missing 'type' in serialization data")
     if data["type"] != f"{cls.__module__}.{cls.__name__}":
-        print(data["type"])
-        print(f"{cls.__module__}.{cls.__name__}")
         raise DeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
     return cls(**init_params)
