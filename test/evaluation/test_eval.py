@@ -24,11 +24,11 @@ def test_rag_pipeline():
     The pipeline is evaluated on a set of input questions and their corresponding expected answers.
     """
     prompt_template = """Given these documents, answer the question.\n
-    Documents: 
-    {% for doc in documents %} 
+    Documents:
+    {% for doc in documents %}
         {{ doc.content }}
-    {% endfor %}  
-    Question: {{question}} 
+    {% endfor %}
+    Question: {{question}}
     Answer:
     """
 
@@ -86,11 +86,11 @@ def test_embedding_retrieval_rag_pipeline():
     The pipeline is evaluated on a set of input questions and their corresponding expected answers.
     """
     prompt_template = """Given these documents, answer the question.\n
-    Documents: 
-    {% for doc in documents %} 
+    Documents:
+    {% for doc in documents %}
         {{ doc.content }}
-    {% endfor %}  
-    Question: {{question}} 
+    {% endfor %}
+    Question: {{question}}
     Answer:
     """
 
@@ -152,7 +152,7 @@ def test_embedding_retrieval_rag_pipeline():
     assert eval_result == deserialized_eval_result
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_hybrid_doc_search():
     """
     Test for evaluating a Hybrid RAG Pipeline.
