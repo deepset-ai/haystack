@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
-    search_path: [../../../haystack/preview/components/converters]
-    modules: ["azure", "html", "markdown", "pypdf", "tika", "txt"]
+    search_path: [../../../haystack]
+    modules: ["pipeline"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmePreviewRenderer
-  excerpt: Extracts text from files in different formats and converts it into the unified Document format.
+  excerpt: Arranges components and integrations in flow.
   category_slug: haystack-classes
-  title: Converter API
-  slug: converter-api
-  order: 50
+  title: Pipelines API
+  slug: pipelines-api
+  order: 90
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: converter_api.md
+    filename: pipelines_api.md

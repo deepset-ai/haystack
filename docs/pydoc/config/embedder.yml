@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
-    search_path: [../../../haystack/preview/document_stores/in_memory]
-    modules: ["document_store"]
+    search_path: [../../../haystack/components/embedders]
+    modules: ["openai_document_embedder", "openai_text_embedder", "sentence_transformers_document_embedder", "sentence_transformers_text_embedder"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmePreviewRenderer
-  excerpt: Stores your texts and meta data and provides them to the Retriever at query time.
+  excerpt: Transforms queries into vectors to look for similar or relevant Documents.
   category_slug: haystack-classes
-  title: DocumentStore API
-  slug: document-store-api
-  order: 20
+  title: Embedder API
+  slug: embedder-api
+  order: 60
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: document_store.md
+    filename: embedder_api.md

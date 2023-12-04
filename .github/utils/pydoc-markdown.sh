@@ -13,7 +13,7 @@ done
 cd ..
 rm -rf temp-preview && mkdir temp-preview
 cd temp-preview
-for file in ../config-preview/* ; do
+for file in ../config/* ; do
     echo "Converting $file..."
     pydoc-markdown "$file"
 done
