@@ -153,7 +153,7 @@ class ExtractiveReader:
 
     def _preprocess(
         self, queries: List[str], documents: List[Document], max_seq_length: int, query_ids: List[int], stride: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, List[Encoding], List[int], List[int]]:
+    ) -> Tuple["torch.Tensor", "torch.Tensor", "torch.Tensor", List["Encoding"], List[int], List[int]]:
         """
         Split and tokenize Documents and preserve structures by returning mappings to query and Document IDs.
         """
@@ -194,13 +194,13 @@ class ExtractiveReader:
 
     def _postprocess(
         self,
-        start: torch.Tensor,
-        end: torch.Tensor,
-        sequence_ids: torch.Tensor,
-        attention_mask: torch.Tensor,
+        start: "torch.Tensor",
+        end: "torch.Tensor",
+        sequence_ids: "torch.Tensor",
+        attention_mask: "torch.Tensor",
         answers_per_seq: int,
-        encodings: List[Encoding],
-    ) -> Tuple[List[List[int]], List[List[int]], torch.Tensor]:
+        encodings: List["Encoding"],
+    ) -> Tuple[List[List[int]], List[List[int]], "torch.Tensor"]:
         """
         Turn start and end logits into probability scores for each answer span. Unlike most other
         implementations, it doesn't normalize the scores to make them easier to compare across different
@@ -267,7 +267,7 @@ class ExtractiveReader:
         self,
         start: List[List[int]],
         end: List[List[int]],
-        probabilities: torch.Tensor,
+        probabilities: "torch.Tensor",
         flattened_documents: List[Document],
         queries: List[str],
         answers_per_seq: int,
