@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Optional, List, Any, Dict
 from typing import Union, Type
 
+from haystack.document_stores.protocol import DocumentStore
+
 from haystack import Pipeline
 from haystack.components.converters import TextFileToDocument
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, OpenAIDocumentEmbedder
@@ -69,7 +71,7 @@ class _IndexingPipeline:
 
     def __init__(
         self,
-        document_store: Any,
+        document_store: DocumentStore,
         embedding_model: Optional[str] = None,
         embedding_model_kwargs: Optional[Dict[str, Any]] = None,
         supported_mime_types: Optional[List[str]] = None,
@@ -80,8 +82,6 @@ class _IndexingPipeline:
         :param supported_mime_types: List of MIME types to support in the pipeline. If not given,
                                      defaults to ["text/plain", "application/pdf", "text/html"].
         """
-        if not self._is_document_store(document_store):
-            raise ValueError("IndexingPipeline only works with document stores. Please provide a document store.")
 
         if supported_mime_types is None:
             supported_mime_types = ["text/plain", "application/pdf", "text/html"]
@@ -156,17 +156,6 @@ class _IndexingPipeline:
         for component_result in pipeline_output.values():
             aggregated_results.update(component_result)
         return aggregated_results
-
-    def _is_document_store(self, document_store: Any) -> bool:
-        """
-        Checks if the given object is a DocumentStore. If it is, it returns True, otherwise False.
-        :param document_store: the object to check
-        :type document_store: Any
-        :return: True if the object is a DocumentStore, otherwise False
-        """
-        document_store_class = type(document_store)
-        is_document_store = getattr(document_store_class, "__haystack_document_store__", False)
-        return is_document_store
 
     def _find_embedder(self, embedding_model: str, init_kwargs: Optional[Dict[str, Any]] = None) -> Any:
         embedder_patterns = {

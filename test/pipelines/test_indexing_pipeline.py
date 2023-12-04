@@ -55,12 +55,6 @@ class TestIndexingPipeline:
         result = pipeline.run(files=[])
         assert result == {"documents_written": 0}
 
-    #  document store is not a DocumentStore instance
-    def test_document_store_not_instance_of_document_store(self):
-        document_store = "hello I am not a DocumentStore instance"
-        with pytest.raises(ValueError):
-            build_indexing_pipeline(document_store=document_store)
-
     #  embedding model is not found
     def test_embedding_model_not_found(self):
         document_store = InMemoryDocumentStore()
