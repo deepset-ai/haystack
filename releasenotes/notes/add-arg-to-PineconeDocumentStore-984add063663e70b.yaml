@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Users can now define the number of pods and pod type directly when creating a PineconeDocumentStore instance.
