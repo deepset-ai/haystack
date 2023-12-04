@@ -3,7 +3,7 @@ from haystack import Document
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.pipeline_utils import build_rag_pipeline
 
-API_KEY = None  # SET YOUR OPENAI API KEY HERE
+API_KEY = "SET YOUR OPENAI API KEY HERE"
 
 # We support many different databases. Here we load a simple and lightweight in-memory document store.
 document_store = InMemoryDocumentStore()
