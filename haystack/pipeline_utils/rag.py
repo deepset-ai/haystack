@@ -47,7 +47,7 @@ class _RAGPipeline:
     """
     A simple ready-made pipeline for RAG. It requires a populated document store.
 
-    If an embedding model is given, it uses embedding retrieval. Otherwise it falls back to BM25 retrieval.
+    If an embedding model is given, it uses embedding retrieval. Otherwise, it falls back to BM25 retrieval.
 
     Example usage:
 
@@ -119,7 +119,7 @@ class _RAGPipeline:
         Performs RAG using the given query.
 
         :param query: The query to ask.
-        :return: A Answer object.
+        :return: An Answer object.
         """
         run_values = {"prompt_builder": {"question": query}, "answer_builder": {"query": query}}
         if self.pipeline.graph.nodes.get("text_embedder"):
