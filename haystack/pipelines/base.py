@@ -210,7 +210,7 @@ class Pipeline:
                     params["api_key"] = api_key
                 component_config["params"] = params
 
-        del pipeline_config["name"]  # Would fail validation otherwise
+        pipeline_config.pop("name", None)  # Would fail validation otherwise
         pipeline = cls.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,

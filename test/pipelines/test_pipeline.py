@@ -1026,8 +1026,9 @@ def test_save_nonexisting_pipeline_to_deepset_cloud():
             matches = False
             reason = "No DeepsetCloudDocumentStore found."
             request_body = request.body or ""
-            json_body = yaml.safe_load(request_body)
-            components = json_body["components"]
+            json_body = json.loads(request_body)
+            config = yaml.safe_load(json_body["config"])
+            components = config["components"]
             for component in components:
                 if component["type"].endswith("DocumentStore"):
                     if component["type"] == "DeepsetCloudDocumentStore":
