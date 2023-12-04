@@ -6,9 +6,6 @@ on:
     paths:
       - "**.py"
       - "**/pyproject.toml"
-      - "!haystack/preview/**/*.py"
-      - "!test/preview/**/*.py"
-      - "!e2e/preview/**/*.py"
 
 env:
   PYTHON_VERSION: "3.8"
@@ -74,7 +71,7 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install ".[all,dev]"
+          pip install ".[all,dev]" pydoc-markdown
           pip install ./haystack-linter
 
       - name: Pylint

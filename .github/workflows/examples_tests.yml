@@ -7,7 +7,7 @@ on:
       - main
   pull_request:
     paths:
-      - examples/**
+      - "examples/**"
     types:
       - opened
       - reopened

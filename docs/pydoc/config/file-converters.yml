@@ -3,16 +3,17 @@ loaders:
     search_path: [../../../haystack/nodes/file_converter]
     modules:
       [
+        "azure",
         "csv",
         "docx",
         "image",
-        "markdown",
-        "pdf",
-        "parsr",
-        "azure",
-        "tika",
-        "txt",
         "json",
+        "markdown",
+        "parsr",
+        "pdf",
+        "pptx",
+        "tika",
+        "txt"
       ]
     ignore_when_discovered: ["__init__"]
 processors:

@@ -85,21 +85,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-preview = [
-  "canals==0.9.0",
-  "requests",
-  "pandas",
-  "rank_bm25",
-  "tqdm",
-  "tenacity",
-  "lazy-imports",
-  "posthog",  # telemetry
-
-  "Jinja2",
-  "openai<1.0.0",
-  "pyyaml",
-  "more-itertools",  # DocumentSplitter
-]
 inference = [
   "transformers[torch,sentencepiece]==4.35.2",
   "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
@@ -165,6 +150,7 @@ preprocessing = [
 file-conversion = [
   "azure-ai-formrecognizer>=3.2.0b2",  # Microsoft Azure's Form Recognizer service (text and table exctrator)
   "python-docx",
+  "python-pptx",
   "tika",  # Apache Tika (text & metadata extractor)
   "beautifulsoup4",
   "markdown",
@@ -219,7 +205,6 @@ dev = [
   "pylint",
   "farm-haystack[formatting]",
   # Documentation
-  "pydoc-markdown",
   "toml",
   "reno",
   # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.
@@ -239,11 +224,11 @@ audio = [
 ]
 
 all = [
-  "farm-haystack[inference,docstores,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview,audio]",
+  "farm-haystack[inference,docstores,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,audio]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[inference,docstores-gpu,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview,audio]",
+  "farm-haystack[inference,docstores-gpu,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,audio]",
 ]
 
 [project.scripts]
@@ -279,7 +264,7 @@ line-length = 120
 skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
 
 [tool.codespell]
-ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge"
+ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist"
 quiet-level = 3
 skip = "test/nodes/*,test/others/*,test/samples/*"
 
@@ -425,7 +410,6 @@ max-complexity = 28
 
 [tool.ruff.per-file-ignores]
 "examples/basic_qa_pipeline.py" = ["C416"]
-"haystack/preview/testing/document_store.py" = ["C416", "F821"]
 "haystack/telemetry.py" = ["F821"]
 
 [tool.ruff.pylint]
