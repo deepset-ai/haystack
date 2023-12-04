@@ -195,7 +195,7 @@ jobs:
   integration-tests-macos:
     name: Integration / macos-latest
     needs: unit-tests
-    runs-on: macos-latest-xl
+    runs-on: macos-latest
     env:
       HAYSTACK_MPS_ENABLED: false
     steps:
