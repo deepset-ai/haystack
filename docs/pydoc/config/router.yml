@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
-    search_path: [../../../haystack/preview/components/samplers]
-    modules: ["top_p"]
+    search_path: [../../../haystack/components/routers]
+    modules: ["document_joiner", "conditional_router", "file_type_router", "metadata_router", "text_language_router"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmePreviewRenderer
-  excerpt: Filters documents based on their similarity scores using top-p sampling.
+  excerpt: Routes data to the right component based on its file type or metadata.
   category_slug: haystack-classes
-  title: TopPSampler API
-  slug: sampler-api
-  order: 150
+  title: Router API
+  slug: router-api
+  order: 140
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: sampler_api.md
+    filename: router_api.md

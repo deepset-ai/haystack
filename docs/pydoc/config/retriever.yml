@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
-    search_path: [../../../haystack/preview/components/embedders]
-    modules: ["openai_document_embedder", "openai_text_embedder", "sentence_transformers_document_embedder", "sentence_transformers_text_embedder"]
+    search_path: [../../../haystack/components/retrievers]
+    modules: ["in_memory_bm25_retriever", "in_memory_embedding_retriever"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmePreviewRenderer
-  excerpt: Transforms queries into vectors to look for similar or relevant Documents.
+  excerpt: Sweeps through a Document Store and returns a set of candidate Documents that are relevant to the query.
   category_slug: haystack-classes
-  title: Embedder API
-  slug: embedder-api
-  order: 40
+  title: Retriever API
+  slug: retriever-api
+  order: 130
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: embedder_api.md
+    filename: retriever_api.md

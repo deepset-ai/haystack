@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
-    search_path: [../../../haystack/preview/components/builders]
-    modules: ["answer_builder", "prompt_builder", "dynamic_prompt_builder"]
+    search_path: [../../../haystack/components/classifiers]
+    modules: ["document_language_classifier"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmePreviewRenderer
-  excerpt: Extract the output of a Generator to an Answer format, and build prompts.
+  excerpt: Detects the language of the Documents and routes them appropriately.
   category_slug: haystack-classes
-  title: Builder API
-  slug: builder-api
-  order: 5
+  title: Language Classifier API
+  slug: language-classifier-api
+  order: 10
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: builder_api.md
+    filename: language_classifier_api.md
