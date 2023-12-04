@@ -22,7 +22,7 @@ First, run the minimal Haystack installation:
 ```sh
 pip install haystack-ai
 ```
-👉 To build a minimal RAG pipeline that uses GPT-4 on your own data, use the [RAG Pipeline Recipe](https://docs.haystack.deepset.ai/v2.0/recipes/20-rag-pipeline)
+👉 To build a minimal RAG pipeline that uses GPT-4 on your own data, use the [RAG Pipeline Recipe](https://docs.haystack.deepset.ai/v2.0/docs/creating-pipelines#example)
 
 ## Core Concepts
 
