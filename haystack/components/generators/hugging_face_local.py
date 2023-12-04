@@ -67,7 +67,7 @@ class HuggingFaceLocalGenerator:
     ```python
     from haystack.components.generators import HuggingFaceLocalGenerator
 
-    generator = HuggingFaceLocalGenerator(model="google/flan-t5-large",
+    generator = HuggingFaceLocalGenerator(model_name_or_path="google/flan-t5-large",
                                           task="text2text-generation",
                                           generation_kwargs={
                                             "max_new_tokens": 100,
