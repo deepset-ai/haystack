@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
-    search_path: [../../../haystack/preview/components/rankers]
-    modules: ["meta_field", "transformers_similarity"]
+    search_path: [../../../haystack/components/readers]
+    modules: ["extractive"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmePreviewRenderer
-  excerpt: Reorders a set of Documents based on their relevance to the query.
+  excerpt: Takes a query and a set of Documents as input and returns ExtractedAnswers by selecting a text span within the Documents.
   category_slug: haystack-classes
-  title: Ranker API
-  slug: ranker-api
-  order: 110
+  title: Reader API
+  slug: reader-api
+  order: 120
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: ranker_api.md
+    filename: reader_api.md

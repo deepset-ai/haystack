@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
-    search_path: [../../../haystack/preview/components/preprocessors]
-    modules: ["document_cleaner", "document_splitter"]
+    search_path: [../../../haystack/components/samplers]
+    modules: ["top_p"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmePreviewRenderer
-  excerpt: Normalizes white spaces, gets rid of headers and footers, cleans empty lines in your Documents, or splits them into smaller pieces.
+  excerpt: Filters documents based on their similarity scores using top-p sampling.
   category_slug: haystack-classes
-  title: PreProcessor API
-  slug: preprocessor-api
-  order: 90
+  title: TopPSampler API
+  slug: sampler-api
+  order: 150
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: preprocessor_api.md
+    filename: sampler_api.md

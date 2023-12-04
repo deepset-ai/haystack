@@ -1,6 +1,6 @@
 loaders:
   - type: loaders.CustomPythonLoader
-    search_path: [../../../haystack/preview/components/caching]
+    search_path: [../../../haystack/components/caching]
     modules: ["url_cache_checker"]
     ignore_when_discovered: ["__init__"]
 processors:
