@@ -97,13 +97,11 @@ class _RAGPipeline:
                 instance=SentenceTransformersTextEmbedder(model_name_or_path=embedding_model), name="text_embedder"
             )
             self.pipeline.add_component(
-                instance=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()), name="retriever"
+                instance=InMemoryEmbeddingRetriever(document_store=document_store), name="retriever"
             )
             self.pipeline.connect("text_embedder", "retriever")
         else:
-            self.pipeline.add_component(
-                instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever"
-            )
+            self.pipeline.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="retriever")
 
         self.pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
         self.pipeline.add_component(instance=GPTGenerator(model_name=generation_model), name="llm")
@@ -123,7 +121,7 @@ class _RAGPipeline:
         """
         run_values = {"prompt_builder": {"question": query}, "answer_builder": {"query": query}}
         if self.pipeline.graph.nodes.get("text_embedder"):
-            run_values["text_embedder"] = {"query": query}
+            run_values["text_embedder"] = {"text": query}
         else:
             run_values["retriever"] = {"query": query}
 
