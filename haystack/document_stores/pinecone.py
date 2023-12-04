@@ -79,8 +79,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         environment: str = "us-west1-gcp",
         pinecone_index: Optional["pinecone.Index"] = None,
         embedding_dim: int = 768,
-        pods: Optional[int] = None,
-        pod_type: Optional[str] = None,
+        pods: int = 1,
+        pod_type: str = "p1.x1",
         return_embedding: bool = False,
         index: str = "document",
         similarity: str = "cosine",
@@ -100,8 +100,8 @@ class PineconeDocumentStore(BaseDocumentStore):
             regions are supported, contact Pinecone [here](https://www.pinecone.io/contact/) if required.
         :param pinecone_index: pinecone-client Index object, an index will be initialized or loaded if not specified.
         :param embedding_dim: The embedding vector size.
-        :param pods: The number of pods for the index to use,including replicas.
-        :param pod_type: The type of pod to use.
+        :param pods: The number of pods for the index to use, including replicas. Defaults to 1.
+        :param pod_type: The type of pod to use. Defaults to `"p1.x1"`.
         :param return_embedding: Whether to return document embeddings.
         :param index: Name of index in document store to use.
         :param similarity: The similarity function used to compare document vectors. `"cosine"` is the default
@@ -207,8 +207,8 @@ class PineconeDocumentStore(BaseDocumentStore):
     def _create_index(
         self,
         embedding_dim: int,
-        pods: Optional[int] = None,
-        pod_type: Optional[str] = None,
+        pods: int = 1,
+        pod_type: str = "p1.x1",
         index: Optional[str] = None,
         metric_type: Optional[str] = "cosine",
         replicas: Optional[int] = 1,
