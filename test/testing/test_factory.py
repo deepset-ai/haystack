@@ -2,7 +2,6 @@ import pytest
 
 from haystack.dataclasses import Document
 from haystack.testing.factory import document_store_class, component_class
-from haystack.document_stores.decorator import document_store
 from haystack.core.component import component
 
 
@@ -21,11 +20,6 @@ def test_document_store_from_dict():
 
     store = MyStore.from_dict({"type": "haystack.testing.factory.MyStore", "init_parameters": {}})
     assert isinstance(store, MyStore)
-
-
-def test_document_store_class_is_registered():
-    MyStore = document_store_class("MyStore")
-    assert document_store.registry["haystack.testing.factory.MyStore"] == MyStore
 
 
 def test_document_store_class_with_documents():
