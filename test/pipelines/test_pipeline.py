@@ -858,15 +858,12 @@ def test_load_from_deepset_cloud_query(samples_path):
     assert prediction["documents"][0].id == "test_doc"
 
 
-@pytest.mark.parametrize("with_name", [True, False])
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_load_from_deepset_cloud_indexing(caplog, samples_path, with_name: bool):
+def test_load_from_deepset_cloud_indexing(caplog, samples_path):
     if MOCK_DC:
         with open(samples_path / "dc" / "pipeline_config.json", "r") as f:
             pipeline_config_yaml_response = json.load(f)
-            if not with_name:
-                del pipeline_config_yaml_response["name"]
 
         responses.add(
             method=responses.GET,
@@ -1029,8 +1026,9 @@ def test_save_nonexisting_pipeline_to_deepset_cloud():
             matches = False
             reason = "No DeepsetCloudDocumentStore found."
             request_body = request.body or ""
-            json_body = yaml.safe_load(request_body)
-            components = json_body["components"]
+            json_body = json.loads(request_body)
+            config = yaml.safe_load(json_body["config"])
+            components = config["components"]
             for component in components:
                 if component["type"].endswith("DocumentStore"):
                     if component["type"] == "DeepsetCloudDocumentStore":
