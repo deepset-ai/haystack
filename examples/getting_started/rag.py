@@ -3,8 +3,8 @@ from haystack import Document
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.pipeline_utils import build_rag_pipeline
 
-# We are model agnostic but for default RAG pipeline we'll use an OpenAI model
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+# Attempt to get the OpenAI API key from environment variables, or use a placeholder
+llm_api_key = os.environ.get("OPENAI_API_KEY", "paste_your_OPENAI_API_KEY_here")
 
 # We support many different databases. Here we load a simple and lightweight in-memory document store.
 document_store = InMemoryDocumentStore()
@@ -18,6 +18,6 @@ documents = [
 document_store.write_documents(documents)
 
 # Let's now build a simple RAG pipeline that uses a generative model to answer questions.
-rag_pipeline = build_rag_pipeline(document_store=document_store)
+rag_pipeline = build_rag_pipeline(llm_api_key=llm_api_key, document_store=document_store)
 answers = rag_pipeline.run(query="Who lives in Rome?")
 print(answers.data)
