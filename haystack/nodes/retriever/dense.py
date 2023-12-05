@@ -1894,6 +1894,7 @@ class EmbeddingRetriever(DenseRetriever):
 
     @staticmethod
     def _infer_model_format(model_name_or_path: str, use_auth_token: Optional[Union[str, bool]]) -> str:
+        # pylint: disable=too-many-return-statements
         valid_openai_model_name = model_name_or_path in ["ada", "babbage", "davinci", "curie"] or any(
             m in model_name_or_path for m in ["-ada-", "-babbage-", "-davinci-", "-curie-"]
         )
