@@ -1,9 +1,6 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from pathlib import Path
-from pprint import pprint
-
 from haystack.core.pipeline import Pipeline
 from haystack.testing.sample_components import AddFixedValue, Double
 
@@ -23,10 +20,4 @@ def test_pipeline(tmp_path):
     pipeline.draw(tmp_path / "linear_pipeline.png")
 
     results = pipeline.run({"first_addition": {"value": 1}})
-    pprint(results)
-
     assert results == {"second_addition": {"result": 7}}
-
-
-if __name__ == "__main__":
-    test_pipeline(Path(__file__).parent)

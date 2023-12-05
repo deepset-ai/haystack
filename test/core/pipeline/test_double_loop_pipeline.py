@@ -1,9 +1,6 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from pathlib import Path
-from pprint import pprint
-
 from haystack.core.pipeline import Pipeline
 from haystack.testing.sample_components import Accumulate, AddFixedValue, Threshold, MergeLoop
 
@@ -36,12 +33,6 @@ def test_pipeline(tmp_path):
     pipeline.draw(tmp_path / "double_loop_pipeline.png")
 
     results = pipeline.run({"add_one": {"value": 3}})
-    pprint(results)
-    print("accumulator: ", accumulator.state)
 
     assert results == {"add_two": {"result": 13}}
     assert accumulator.state == 8
-
-
-if __name__ == "__main__":
-    test_pipeline(Path(__file__).parent)

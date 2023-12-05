@@ -1,8 +1,6 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from pathlib import Path
-from pprint import pprint
 import logging
 
 from haystack.core.pipeline import Pipeline
@@ -22,7 +20,7 @@ from haystack.testing.sample_components import (
 logging.basicConfig(level=logging.DEBUG)
 
 
-def test_complex_pipeline(tmp_path):
+def test_complex_pipeline():
     loop_merger = MergeLoop(expected_type=int, inputs=["in_1", "in_2"])
     summer = Sum()
 
@@ -81,11 +79,5 @@ def test_complex_pipeline(tmp_path):
     pipeline.connect("enumerate.first", "add_three.value")
     pipeline.connect("add_three", "sum.values")
 
-    pipeline.draw(tmp_path / "complex_pipeline.png")
-
     results = pipeline.run({"greet_first": {"value": 1}, "greet_enumerator": {"value": 1}})
     assert results == {"accumulate_3": {"value": -7}, "add_five": {"result": -6}}
-
-
-if __name__ == "__main__":
-    test_complex_pipeline(Path(__file__).parent)
