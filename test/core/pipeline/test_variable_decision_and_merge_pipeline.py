@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
-from pathlib import Path
-from pprint import pprint
 
 from haystack.core.pipeline import Pipeline
 from haystack.testing.sample_components import AddFixedValue, Remainder, Double, Sum
@@ -11,7 +9,7 @@ from haystack.testing.sample_components import AddFixedValue, Remainder, Double,
 logging.basicConfig(level=logging.DEBUG)
 
 
-def test_pipeline(tmp_path):
+def test_pipeline():
     pipeline = Pipeline()
     pipeline.add_component("add_one", AddFixedValue())
     pipeline.add_component("parity", Remainder(divisor=2))
@@ -31,16 +29,8 @@ def test_pipeline(tmp_path):
     pipeline.connect("add_four.result", "add_one_again.value")
     pipeline.connect("add_one_again.result", "sum.values")
 
-    pipeline.draw(tmp_path / "variable_decision_and_merge_pipeline.png")
-
     results = pipeline.run({"add_one": {"value": 1}})
-    pprint(results)
     assert results == {"sum": {"total": 14}}
 
     results = pipeline.run({"add_one": {"value": 2}})
-    pprint(results)
     assert results == {"sum": {"total": 17}}
-
-
-if __name__ == "__main__":
-    test_pipeline(Path(__file__).parent)
