@@ -37,7 +37,7 @@ jobs:
 
       - name: Sync preview docs with 2.0
         # Sync the preview docs to the `2.0` version on Readme
-        id: sync-main-preview
+        id: sync-main
         if: github.ref_name == 'main' && github.event_name == 'push'
         uses: readmeio/rdme@8.3.1
         env:
