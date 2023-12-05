@@ -6,6 +6,11 @@ from haystack import component, default_to_dict
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
+model_name= input("Enter model's name. Else default model chosen")
+if model_name=="":
+    print("default model google/flan-t5-large chosen ")
+    model_name="google/flan-t5-large"
+
 
 SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 
@@ -67,7 +72,7 @@ class HuggingFaceLocalGenerator:
     ```python
     from haystack.components.generators import HuggingFaceLocalGenerator
 
-    generator = HuggingFaceLocalGenerator(model_name_or_path="google/flan-t5-large",
+    generator = HuggingFaceLocalGenerator(model="google/flan-t5-large",
                                           task="text2text-generation",
                                           generation_kwargs={
                                             "max_new_tokens": 100,
@@ -81,7 +86,7 @@ class HuggingFaceLocalGenerator:
 
     def __init__(
         self,
-        model_name_or_path: str = "google/flan-t5-base",
+        model_name_or_path: str = model_name,
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
         device: Optional[str] = None,
         token: Optional[Union[str, bool]] = None,
