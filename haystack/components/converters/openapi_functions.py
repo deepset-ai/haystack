@@ -1,10 +1,12 @@
 import logging
-from typing import List, Dict, Any
+import os
+from pathlib import Path
+from typing import List, Dict, Any, Union
 
-import requests
 from requests import RequestException
 
-from haystack import component
+from haystack import component, Document
+from haystack.dataclasses.byte_stream import ByteStream
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
@@ -31,7 +33,44 @@ class OpenAPIServiceToFunctions:
         """
         openapi_imports.check()
 
-    def openapi_to_functions(self, service_openapi_spec: Dict[str, Any]) -> List[Dict[str, Any]]:
+    @component.output_types(documents=List[Document])
+    def run(self, sources: List[Union[str, Path, ByteStream]]) -> Dict[str, Any]:
+        """
+        Processes an OpenAPI specification URL to extract functions that can be invoked via OpenAI function
+        calling mechanism. It downloads the OpenAPI specification, processes it, and extracts function
+        definitions. The extracted functions format is OpenAI function calling JSON.
+
+        :param sources: A list of OpenAPI specification sources
+        :type sources: List[Union[str, Path, ByteStream]]
+        :return: A dictionary containing the extracted functions and the OpenAPI specification.
+        :rtype: Dict[str, Any]
+        :raises RuntimeError: If the OpenAPI specification cannot be downloaded or processed.
+        :raises ValueError: If no functions are found in the OpenAPI specification.
+        """
+        documents: List[Document] = []
+        for source in sources:
+            try:
+                if isinstance(source, (str, Path)):
+                    if os.path.exists(source):
+                        with open(source, "r") as f:
+                            service_openapi_spec = jsonref.load(f)
+                    else:
+                        # Assume it is a URL
+                        service_openapi_spec = jsonref.jsonloader(uri=source)
+                elif isinstance(source, ByteStream):
+                    service_openapi_spec = jsonref.loads(source.data.decode("utf-8"))
+                else:
+                    raise ValueError(f"Invalid source type {type(source)}")
+                functions: List[Dict[str, Any]] = self._openapi_to_functions(service_openapi_spec)
+                docs = [Document(content=str(function), meta={"spec": service_openapi_spec}) for function in functions]
+                documents.extend(docs)
+            except (RequestException, ValueError) as e:
+                logger.warning(f"Could not download {source}. Skipping it. Error: {e}")
+                continue
+
+        return {"documents": documents}
+
+    def _openapi_to_functions(self, service_openapi_spec: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Extract functions from the OpenAPI specification of the service and convert them to OpenAI function calling
         JSON format.
@@ -64,39 +103,3 @@ class OpenAPIServiceToFunctions:
 
                 functions.append({"name": function_name, "description": desc, "parameters": schema})
         return functions
-
-    @component.output_types(functions=Dict[str, Any], service_openapi_spec=Dict[str, Any])
-    def run(self, service_spec_url: str) -> Dict[str, Any]:
-        """
-        Processes an OpenAPI specification URL to extract functions that can be invoked via OpenAI function
-        calling mechanism. It downloads the OpenAPI specification, processes it, and extracts function
-        definitions. The extracted functions format is OpenAI function calling JSON.
-
-        :param service_spec_url: URL of the OpenAPI specification.
-        :type service_spec_url: str
-        :return: A dictionary containing the extracted functions and the OpenAPI specification.
-        :rtype: Dict[str, Any]
-        :raises RuntimeError: If the OpenAPI specification cannot be downloaded or processed.
-        :raises ValueError: If no functions are found in the OpenAPI specification.
-        """
-        try:
-            response = requests.get(service_spec_url)
-            response.raise_for_status()
-            logger.info(f"Successfully retrieved OpenAPI specification from {service_spec_url}")
-
-        except RequestException as e:
-            logger.error(f"Failed to download OpenAPI specification from {service_spec_url}: {e}")
-            raise RuntimeError(f"Error downloading OpenAPI specification: {e}") from e
-
-        try:
-            service_openapi_spec = jsonref.loads(response.content)
-        except Exception as e:
-            logger.error(f"Failed to parse OpenAPI specification from {service_spec_url}: {e}")
-            raise RuntimeError(f"Error parsing OpenAPI specification: {e}") from e
-
-        openapi_functions = self.openapi_to_functions(service_openapi_spec)
-        if not openapi_functions:
-            logger.warning(f"No functions found in the OpenAPI specification from {service_spec_url}")
-            raise ValueError(f"No functions found in the OpenAPI specification from {service_spec_url}")
-
-        return {"functions": {"functions": openapi_functions}, "service_openapi_spec": service_openapi_spec}
