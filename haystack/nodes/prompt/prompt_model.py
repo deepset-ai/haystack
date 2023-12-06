@@ -1,5 +1,6 @@
 import inspect
 import logging
+import importlib
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, overload
 
 from haystack.nodes.base import BaseComponent
@@ -40,7 +41,7 @@ class PromptModel(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, "torch.device"]]] = None,
-        invocation_layer_class: Optional[Type[PromptModelInvocationLayer]] = None,
+        invocation_layer_class: Optional[Union[Type[PromptModelInvocationLayer], str]] = None,
         model_kwargs: Optional[Dict] = None,
     ):
         """
@@ -73,7 +74,7 @@ class PromptModel(BaseComponent):
         self.model_invocation_layer = self.create_invocation_layer(invocation_layer_class=invocation_layer_class)
 
     def create_invocation_layer(
-        self, invocation_layer_class: Optional[Type[PromptModelInvocationLayer]]
+        self, invocation_layer_class: Optional[Union[Type[PromptModelInvocationLayer], str]]
     ) -> PromptModelInvocationLayer:
         kwargs = {
             "api_key": self.api_key,
@@ -83,6 +84,18 @@ class PromptModel(BaseComponent):
             "devices": self.devices,
         }
         all_kwargs = {**self.model_kwargs, **kwargs}
+
+        if isinstance(invocation_layer_class, str):
+            module_name, class_name = invocation_layer_class.rsplit(".", maxsplit=1)
+            try:
+                module = importlib.import_module(module_name)
+            except ImportError as e:
+                msg = f"Can't find module {module_name}"
+                raise ValueError(msg) from e
+            invocation_layer_class = getattr(module, class_name)
+            if invocation_layer_class is None:
+                msg = f"Can'f find class {class_name} in module {module_name}"
+                ValueError(msg)
 
         if invocation_layer_class:
             return invocation_layer_class(
