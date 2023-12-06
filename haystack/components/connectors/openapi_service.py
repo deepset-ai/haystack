@@ -27,11 +27,13 @@ class OpenAPIServiceConnector:
     This can be done using the OpenAPIServiceToFunctions component.
     """
 
-    def __init__(self):
+    def __init__(self, service_auths: Dict[str, Any] = None):
         """
         Initializes the OpenAPIServiceConnector instance
+        :param service_auths: A dictionary containing the service name and token to be used for authentication.
         """
         openapi_imports.check()
+        self.service_authentications = service_auths
 
     @component.output_types(service_response=Dict[str, Any])
     def run(self, messages: List[ChatMessage], service_openapi_spec: Any):
@@ -52,17 +54,37 @@ class OpenAPIServiceConnector:
         last_message = messages[-1]
         if last_message.is_from(ChatRole.ASSISTANT) and self._is_valid_json(last_message.content):
             method_invocation_descriptor = json.loads(last_message.content)
+            if "arguments" not in method_invocation_descriptor:
+                raise ValueError(
+                    f"Message {last_message} does not contain function calling payload to invoke a method on the service."
+                )
             parameters = json.loads(method_invocation_descriptor["arguments"])
+            parameters = next(iter(parameters.values()))
+            # Remove empty parameters
+            parameters = {k: v for k, v in parameters.items() if v}
             name = method_invocation_descriptor["name"]
 
             openapi_service = OpenAPI(service_openapi_spec)
+            if openapi_service.components.securitySchemes:
+                auth_method = list(openapi_service.components.securitySchemes.keys())[0]  # do first one for now
+                if openapi_service.info.title not in self.service_authentications:
+                    raise ValueError(
+                        f"Service {openapi_service.info.title} not found in service_authentications. "
+                        f"Please add it to {self.__class__.__name__}."
+                    )
+
+                openapi_service.authenticate(auth_method, self.service_authentications[openapi_service.info.title])
 
             method_name = f"call_{name}"
+            request_type = openapi_service._operation_map[name].path[2]
             method_to_call = getattr(openapi_service, method_name, None)
 
             # Check if the method exists and then call it
             if callable(method_to_call):
-                service_response = method_to_call(parameters=parameters["parameters"])
+                if request_type == "get":
+                    service_response = method_to_call(parameters=parameters)
+                else:
+                    service_response = method_to_call(data=parameters)
                 return {"service_response": [ChatMessage.from_user(str(service_response))]}
             else:
                 raise RuntimeError(f"Method {method_name} not found in the OpenAPI specification.")

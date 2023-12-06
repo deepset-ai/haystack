@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 from pathlib import Path
 from typing import List, Dict, Any, Union
 
@@ -34,7 +35,7 @@ class OpenAPIServiceToFunctions:
         openapi_imports.check()
 
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]]) -> Dict[str, Any]:
+    def run(self, sources: List[Union[str, Path, ByteStream]], system_messages: List[str]) -> Dict[str, Any]:
         """
         Processes an OpenAPI specification URL to extract functions that can be invoked via OpenAI function
         calling mechanism. It downloads the OpenAPI specification, processes it, and extracts function
@@ -48,7 +49,7 @@ class OpenAPIServiceToFunctions:
         :raises ValueError: If no functions are found in the OpenAPI specification.
         """
         documents: List[Document] = []
-        for source in sources:
+        for source, system_message in zip(sources, system_messages):
             try:
                 if isinstance(source, (str, Path)):
                     if os.path.exists(source):
@@ -62,7 +63,13 @@ class OpenAPIServiceToFunctions:
                 else:
                     raise ValueError(f"Invalid source type {type(source)}")
                 functions: List[Dict[str, Any]] = self._openapi_to_functions(service_openapi_spec)
-                docs = [Document(content=str(function), meta={"spec": service_openapi_spec}) for function in functions]
+                docs = [
+                    Document(
+                        content=json.dumps(function),
+                        meta={"spec": service_openapi_spec, "system_message": system_message},
+                    )
+                    for function in functions
+                ]
                 documents.extend(docs)
             except (RequestException, ValueError) as e:
                 logger.warning(f"Could not download {source}. Skipping it. Error: {e}")
