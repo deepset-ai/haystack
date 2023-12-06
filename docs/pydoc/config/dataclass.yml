@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/dataclasses]
-    modules: ["answer", "byte_steam", "chat_message", "document", "streaming_chunk"]
+    modules: ["answer", "byte_stream", "chat_message", "document", "streaming_chunk"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -14,7 +14,7 @@ processors:
 renderer:
   type: renderers.ReadmePreviewRenderer
   excerpt: Core classes that carry data through the system.
-  category_slug: data-classes
+  category_slug: haystack-classes
   title: Data Classes API
   slug: data-classes-api
   order: 30
