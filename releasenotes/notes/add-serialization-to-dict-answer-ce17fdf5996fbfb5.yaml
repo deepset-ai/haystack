@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Add to_dict() and from_dict() for serialization to dictionary for Answer, ExtractedAnswer and GeneratedAnswer.
