@@ -447,9 +447,9 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
         # Bedrock Titan embeddings do not support batch operations
         self.aws_config = retriever.aws_config
         self.client = self.initialize_boto3_session().client("bedrock-runtime")
-        self.model: str = next((m for m in BEDROCK_EMBEDDING_MODELS if m in retriever.embedding_model), None)
+        self.model: str = next((m for m in BEDROCK_EMBEDDING_MODELS if m in retriever.embedding_model), "Not Found")
 
-        if self.model is None:
+        if self.model == "Not Found":
             raise ValueError("Model not found in the retriever's embedding models.")
 
     def initialize_boto3_session(self):
