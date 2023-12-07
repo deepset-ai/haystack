@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch, MagicMock
 
 from haystack import Document, ComponentError
 from haystack.components.rankers.transformers_similarity import TransformersSimilarityRanker
@@ -98,3 +99,16 @@ class TestSimilarityRanker:
 
         sorted_scores = sorted([doc.score for doc in docs_after], reverse=True)
         assert [doc.score for doc in docs_after] == sorted_scores
+
+    @pytest.mark.integration
+    def test_run_single_document(self):
+        """
+        Test if the component runs with a single document.
+        """
+        ranker = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
+        ranker.warm_up()
+        docs_before = [Document(content="Berlin")]
+        output = ranker.run(query="City in Germany", documents=docs_before)
+        docs_after = output["documents"]
+
+        assert len(docs_after) == 1
