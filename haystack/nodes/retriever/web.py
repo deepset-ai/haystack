@@ -64,7 +64,7 @@ class WebRetriever(BaseRetriever):
     ):
         """
         :param api_key: API key for the search engine provider.
-        :param search_engine_provider: Name of the search engine provider class. The options are "SerperDev" (default), "SerpAPI", "BingAPI" or "GoogleAPI"
+        :param search_engine_provider: Name of the search engine provider class. The options are "SerperDev" (default), "SearchApi", "SerpAPI", "BingAPI" or "GoogleAPI"
         :param search_engine_kwargs: Additional parameters to pass to the search engine provider.
         :param top_search_results: Number of top search results to be retrieved.
         :param top_k: Top k documents to be returned by the retriever.
