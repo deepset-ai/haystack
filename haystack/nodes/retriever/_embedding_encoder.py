@@ -447,26 +447,26 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
         # Bedrock Titan embeddings do not support batch operations
         self.aws_config = retriever.aws_config
         self.client = self.initialize_boto3_session().client("bedrock-runtime")
-        self.model: str = next(
-            (m for m in BEDROCK_EMBEDDING_MODELS if m in retriever.embedding_model), "amazon.titan-embed-text-v1"
-        )
+        self.model: str = next((m for m in BEDROCK_EMBEDDING_MODELS if m in retriever.embedding_model), None)
+
+        if self.model is None:
+            raise ValueError("Model not found in the retriever's embedding models.")
 
     def initialize_boto3_session(self):
         if self.aws_config:
-            profile_name = self.aws_config.get("profile_name", None)
-            access_key = self.aws_config.get("aws_access_key_id", None)
-            secret_key = self.aws_config.get("aws_secret_access_key", None)
-            region = self.aws_config.get("region_name", None)
-            if profile_name:
-                try:
-                    return boto3.Session(profile_name=profile_name, region_name=region)
-                except Exception as e:
-                    raise ValueError(f"AWS client error {e}")
-            elif access_key and secret_key:
-                return boto3.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region)
-        else:
+            aws_profile_name = self.aws_config.get("profile_name", None)
+            aws_access_key_id = self.aws_config.get("aws_access_key_id", None)
+            aws_secret_access_key = self.aws_config.get("aws_secret_access_key", None)
+            aws_region_name = self.aws_config.get("region_name", None)
+            aws_session_token = self.aws_config.get("session_token", None)
             try:
-                return boto3.Session()
+                return boto3.Session(
+                    aws_access_key_id=aws_access_key_id,
+                    aws_secret_access_key=aws_secret_access_key,
+                    aws_session_token=aws_session_token,
+                    region_name=aws_region_name,
+                    profile_name=aws_profile_name,
+                )
             except Exception as e:
                 raise ValueError(f"AWS client error {e}")
 
@@ -482,7 +482,7 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
             response_body = json.loads(response.get("body").read())
             return np.array(response_body.get("embedding"))
         else:
-            coherePayload = json.dumps({"texts": [text], "input_type": "search_document", "truncate": "END"})
+            coherePayload = json.dumps({"texts": [text], "input_type": "search_query", "truncate": "END"})
             response = self.client.invoke_model(
                 body=coherePayload, modelId=self.model, accept="application/json", contentType="application/json"
             )
