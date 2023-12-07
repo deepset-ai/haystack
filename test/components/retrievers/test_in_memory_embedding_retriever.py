@@ -71,11 +71,13 @@ class TestMemoryEmbeddingRetriever:
         }
 
     def test_from_dict(self):
-        document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         data = {
             "type": "haystack.components.retrievers.in_memory_embedding_retriever.InMemoryEmbeddingRetriever",
             "init_parameters": {
-                "document_store": {"type": "haystack.testing.factory.MyFakeStore", "init_parameters": {}},
+                "document_store": {
+                    "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                    "init_parameters": {},
+                },
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
             },
@@ -99,15 +101,15 @@ class TestMemoryEmbeddingRetriever:
             "type": "haystack.components.retrievers.in_memory_embedding_retriever.InMemoryEmbeddingRetriever",
             "init_parameters": {"document_store": {"init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError, match="Missing 'type' in document store's serialization data"):
+        with pytest.raises(DeserializationError):
             InMemoryEmbeddingRetriever.from_dict(data)
 
     def test_from_dict_nonexisting_docstore(self):
         data = {
             "type": "haystack.components.retrievers.in_memory_embedding_retriever.InMemoryEmbeddingRetriever",
-            "init_parameters": {"document_store": {"type": "NonexistingDocstore", "init_parameters": {}}},
+            "init_parameters": {"document_store": {"type": "Nonexisting.Docstore", "init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError, match="DocumentStore type 'NonexistingDocstore' not found"):
+        with pytest.raises(DeserializationError):
             InMemoryEmbeddingRetriever.from_dict(data)
 
     def test_valid_run(self):

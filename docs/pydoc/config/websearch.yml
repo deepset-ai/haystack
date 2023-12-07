@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
-    search_path: [../../../haystack/preview/components/samplers]
-    modules: ["top_p"]
+    search_path: [../../../haystack/components/websearch]
+    modules: ["serper_dev"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmePreviewRenderer
-  excerpt: Filters documents based on their similarity scores using top-p sampling.
+  excerpt: Web search engine for Haystack.
   category_slug: haystack-classes
-  title: TopPSampler API
-  slug: sampler-api
-  order: 150
+  title: Websearch API
+  slug: websearch-api
+  order: 170
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: sampler_api.md
+    filename: websearch_api.md

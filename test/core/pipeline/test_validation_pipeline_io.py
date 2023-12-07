@@ -1,7 +1,9 @@
+# SPDX-FileCopyrightText: 2023-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
 from typing import Optional
 
 import pytest
-import inspect
 
 from haystack.core.pipeline import Pipeline
 from haystack.core.component.types import Variadic

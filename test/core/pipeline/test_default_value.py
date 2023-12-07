@@ -2,11 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from pathlib import Path
-from pprint import pprint
 
 from haystack.core.component import component
 from haystack.core.pipeline import Pipeline
-from haystack.testing.sample_components import AddFixedValue, Sum
 
 import logging
 
@@ -27,14 +25,8 @@ def test_pipeline(tmp_path):
 
     # Pass all the inputs
     results = pipeline.run({"with_defaults": {"a": 40, "b": 30}})
-    pprint(results)
     assert results == {"with_defaults": {"c": 70}}
 
     # Rely on default value for 'b'
     results = pipeline.run({"with_defaults": {"a": 40}})
-    pprint(results)
     assert results == {"with_defaults": {"c": 42}}
-
-
-if __name__ == "__main__":
-    test_pipeline(Path(__file__).parent)
