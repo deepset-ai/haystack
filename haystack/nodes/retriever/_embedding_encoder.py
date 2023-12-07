@@ -472,7 +472,7 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
             except Exception as e:
                 raise ValueError(f"AWS client error {e}")
 
-    def embed(self, text: str) -> np.ndarray:
+    def embed(self, text: str, embed_type: Optional[str] = None) -> np.ndarray:
         if self.model == "amazon.titan-embed-text-v1":
             input_body = {}
             input_body["inputText"] = text
@@ -484,7 +484,7 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
             response_body = json.loads(response.get("body").read())
             return np.array(response_body.get("embedding"))
         else:
-            coherePayload = json.dumps({"texts": [text], "input_type": "search_query", "truncate": "END"})
+            coherePayload = json.dumps({"texts": [text], "input_type": embed_type, "truncate": "END"})
             response = self.client.invoke_model(
                 body=coherePayload, modelId=self.model, accept="application/json", contentType="application/json"
             )
@@ -496,12 +496,26 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed_queries(self, queries: List[str]) -> np.ndarray:
         all_embeddings = []
         for q in queries:
-            generated_embeddings = self.embed(q)
-            all_embeddings.append(generated_embeddings)
-        return np.concatenate(all_embeddings)
+            if self.model == "amazon.titan-embed-text-v1":
+                generated_embeddings = self.embed(q)
+                all_embeddings.append(generated_embeddings)
+                return np.concatenate(all_embeddings)
+            else:
+                generated_embeddings = self.embed(q, "search_query")
+                all_embeddings.append(generated_embeddings)
+                return np.concatenate(all_embeddings)
 
     def embed_documents(self, docs: List[Document]) -> np.ndarray:
-        return self.embed_queries([d.content for d in docs])
+        all_embeddings = []
+        for d in docs:
+            if self.model == "amazon.titan-embed-text-v1":
+                generated_embeddings = self.embed(d)
+                all_embeddings.append(generated_embeddings)
+                return np.concatenate(all_embeddings)
+            else:
+                generated_embeddings = self.embed(d, "search_document")
+                all_embeddings.append(generated_embeddings)
+                return np.concatenate(all_embeddings)
 
     def train(
         self,
