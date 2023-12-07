@@ -448,8 +448,11 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.aws_config = retriever.aws_config
         self.client = self.initialize_boto3_session().client("bedrock-runtime")
         self.model: str = next(
-            (m for m in BEDROCK_EMBEDDING_MODELS if m in retriever.embedding_model), "amazon.titan-embed-text-v1"
+            (m for m in BEDROCK_EMBEDDING_MODELS if m in retriever.embedding_model), "Model Not Found"
         )
+
+        if self.model == "Model Not Found":
+            raise ValueError("Model not found in Bedrock Embedding Models")
 
     def initialize_boto3_session(self):
         if self.aws_config:
