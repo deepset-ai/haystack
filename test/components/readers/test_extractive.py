@@ -234,7 +234,7 @@ def test_nest_answers(mock_reader: ExtractiveReader):
     query_ids = [0] * 3 + [1] * 3
     document_ids = list(range(3)) * 2
     nested_answers = mock_reader._nest_answers(
-        start, end, probabilities, example_documents[0], example_queries, 5, 3, None, query_ids, document_ids, True  # type: ignore
+        start=start, end=end, probabilities=probabilities, flattened_documents=example_documents[0], queries=example_queries, answers_per_seq=5, top_k=3, confidence_threshold=None, query_ids=query_ids, document_ids=document_ids, no_answer=True, overlap_threshold=None  # type: ignore
     )
     expected_no_answers = [0.2 * 0.16 * 0.12, 0]
     for query, answers, expected_no_answer, probabilities in zip(
@@ -432,6 +432,7 @@ def test_t5():
     assert answers[1].probability == pytest.approx(0.7703777551651001)
     assert answers[2].data is None
     assert answers[2].probability == pytest.approx(0.051331606147570596)
+    assert len(answers) == 3
     # Uncomment assertions below when batching is reintroduced
     # assert answers[0][2].probability == pytest.approx(0.051331606147570596)
     # assert answers[1][0].data == "Jerry"
@@ -455,6 +456,7 @@ def test_roberta():
     assert answers[1].probability == pytest.approx(0.857952892780304)
     assert answers[2].data is None
     assert answers[2].probability == pytest.approx(0.019673851661650588)
+    assert len(answers) == 3
     # uncomment assertions below when there is batching in v2
     # assert answers[0][0].data == "Olaf Scholz"
     # assert answers[0][0].probability == pytest.approx(0.8614975214004517)
