@@ -2,22 +2,44 @@ import inspect
 import os
 import re
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Optional, List, Any, Dict
 from typing import Union, Type
-
-from haystack.document_stores.protocol import DocumentStore
 
 from haystack import Pipeline
 from haystack.components.converters import TextFileToDocument
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, OpenAIDocumentEmbedder
+from haystack.components.fetchers import LinkContentFetcher
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.routers import FileTypeRouter, DocumentJoiner
 from haystack.components.writers import DocumentWriter
+from haystack.document_stores.protocol import DocumentStore
+
+
+def download_files(sources: List[str]) -> List[str]:
+    """
+    Downloads a list of files from the web and returns a list of their paths where they are stored locally.
+    :param sources: A list of URLs to download.
+    :type sources: List[str]
+    :return: A list of paths to the downloaded files.
+    """
+
+    fetcher = LinkContentFetcher(user_agents=["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"])
+    streams = fetcher.run(urls=sources)
+
+    all_files = []
+    for stream in streams["streams"]:
+        file_suffix = ".html" if stream.metadata["content_type"] == "text/html" else ".pdf"
+        f = NamedTemporaryFile(delete=False, suffix=file_suffix)
+        stream.to_file(Path(f.name))
+        all_files.append(f.name)
+
+    return all_files
 
 
 def build_indexing_pipeline(
     document_store: Any,
-    embedding_model: Optional[str] = None,
+    embedding_model: str = "sentence-transformers/all-mpnet-base-v2",
     embedding_model_kwargs: Optional[Dict[str, Any]] = None,
     supported_mime_types: Optional[List[str]] = None,
 ):
@@ -48,10 +70,11 @@ def build_indexing_pipeline(
 
 
     :param document_store: An instance of a DocumentStore to index documents into.
-    :param embedding_model: The name of the model to use for document embeddings.
+    :param embedding_model: The name of the model to use for document embeddings, defaults to
+                            "sentence-transformers/all-mpnet-base-v2".
     :param embedding_model_kwargs: Keyword arguments to pass to the embedding model class.
     :param supported_mime_types: List of MIME types to support in the pipeline. If not given,
-                                     defaults to ["text/plain", "application/pdf", "text/html"].
+                                     defaults to ["text/plain", "text/html"].
 
     """
     return _IndexingPipeline(
@@ -84,7 +107,7 @@ class _IndexingPipeline:
         """
 
         if supported_mime_types is None:
-            supported_mime_types = ["text/plain", "application/pdf", "text/html"]
+            supported_mime_types = ["text/plain", "text/html"]
 
         self.pipeline = Pipeline()
         self.pipeline.add_component("file_type_router", FileTypeRouter(mime_types=supported_mime_types))

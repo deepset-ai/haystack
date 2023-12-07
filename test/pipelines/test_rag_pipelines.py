@@ -49,11 +49,6 @@ def test_rag_pipeline_other_docstore():
         assert build_rag_pipeline(document_store=FakeStore())
 
 
-def test_rag_pipeline_no_embedder_if_no_model():
-    rag_pipe = build_rag_pipeline(document_store=InMemoryDocumentStore())
-    assert "text_embedder" not in rag_pipe.pipeline.graph.nodes
-
-
 def test_rag_pipeline_embedder_exist_if_model_is_given():
     rag_pipe = build_rag_pipeline(
         document_store=InMemoryDocumentStore(), embedding_model="sentence-transformers/all-mpnet-base-v2"
