@@ -1,5 +1,4 @@
 import pytest
-from unittest.mock import patch, MagicMock
 
 from haystack import Document, ComponentError
 from haystack.components.rankers.transformers_similarity import TransformersSimilarityRanker
