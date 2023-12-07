@@ -314,7 +314,7 @@ def test_roberta():
 
 @pytest.mark.integration
 def test_matches_hf_pipeline():
-    reader = ExtractiveReader("deepset/tinyroberta-squad2", device="cpu", overlap_fraction=1.0)
+    reader = ExtractiveReader("deepset/tinyroberta-squad2", device="cpu", overlap_threshold=None)
     reader.warm_up()
     answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
         "answers"

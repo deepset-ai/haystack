@@ -49,7 +49,7 @@ class ExtractiveReader:
         answers_per_seq: Optional[int] = None,
         no_answer: bool = True,
         calibration_factor: float = 0.1,
-        overlap_fraction: float = 0.01,
+        overlap_threshold: Optional[float] = 0.01,
         model_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
@@ -75,11 +75,12 @@ class ExtractiveReader:
             This is relevant when a Document was split into multiple sequences because of max_seq_length.
         :param no_answer: Whether to return no answer scores.
         :param calibration_factor: Factor used for calibrating probability scores.
-        :param overlap_fraction: The threshold for determining if two answers overlap.
-            For example, for the answers "in the river in Maine" and "the river in Maine" we would remove one of these
-            answers since the second answer has a 100% (1.0) overlap with the first answer.
+        :param overlap_threshold: If set this will remove duplicate answers if they have an overlap larger than the
+            supplied threshold. For example, for the answers "in the river in Maine" and "the river" we would remove
+            one of these answers since the second answer has a 100% (1.0) overlap with the first answer.
             However, for the answers "the river in" and "in Maine" there is only a max overlap percentage of 25% so
-            both of these answers could be kept depending on the value this variable.
+            both of these answers could be kept if this variable is set to 0.24 or lower.
+            If None is provided then all answers are kept.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
             when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
             see the model's documentation.
@@ -98,7 +99,7 @@ class ExtractiveReader:
         self.no_answer = no_answer
         self.calibration_factor = calibration_factor
         self.model_kwargs = model_kwargs or {}
-        self.overlap_fraction = overlap_fraction
+        self.overlap_threshold = overlap_threshold
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -308,7 +309,7 @@ class ExtractiveReader:
                 current_answers.append(ExtractedAnswer(**answer))
                 i += 1
             current_answers = sorted(current_answers, key=lambda ans: ans.probability, reverse=True)
-            current_answers = self.deduplicate_by_overlap(current_answers)
+            current_answers = self.deduplicate_by_overlap(current_answers, overlap_threshold=self.overlap_threshold)
             current_answers = current_answers[:top_k]
             if no_answer:
                 no_answer_probability = math.prod(1 - answer.probability for answer in current_answers)
@@ -341,7 +342,9 @@ class ExtractiveReader:
             return min(int(end1 - start1), int(end1 - start2), int(end2 - start1), int(end2 - start2))
         return 0
 
-    def _should_keep(self, candidate_answer: ExtractedAnswer, current_answers: List[ExtractedAnswer]) -> bool:
+    def _should_keep(
+        self, candidate_answer: ExtractedAnswer, current_answers: List[ExtractedAnswer], overlap_threshold: float
+    ) -> bool:
         """
         Determine if the answer should be kept based on how much it overlaps with previous answers.
 
@@ -351,6 +354,7 @@ class ExtractiveReader:
 
         :param candidate_answer: Candidate answer that will be checked if it should be kept.
         :param current_answers: Current list of answers that will be kept.
+        :param overlap_threshold: If the overlap between two answers is greater than this threshold then return False.
         """
         keep = True
         for ans in current_answers:
@@ -385,25 +389,38 @@ class ExtractiveReader:
             overlap_frac_answer1 = overlap_len / (ans.end - ans.start)
             overlap_frac_answer2 = overlap_len / (candidate_answer.end - candidate_answer.start)
 
-            if overlap_frac_answer1 > self.overlap_fraction or overlap_frac_answer2 > self.overlap_fraction:
+            if overlap_frac_answer1 > overlap_threshold or overlap_frac_answer2 > overlap_threshold:
                 keep = False
                 break
 
         return keep
 
-    def deduplicate_by_overlap(self, answers: List[ExtractedAnswer]) -> List[ExtractedAnswer]:
+    def deduplicate_by_overlap(
+        self, answers: List[ExtractedAnswer], overlap_threshold: Optional[float]
+    ) -> List[ExtractedAnswer]:
         """
         This de-duplicates overlapping Extractive Answers from the same document based on how much the spans of the
         answers overlap.
 
         :param answers: List of answers to be deduplicated.
+        :param overlap_threshold: If set this will remove duplicate answers if they have an overlap larger than the
+            supplied threshold. For example, for the answers "in the river in Maine" and "the river" we would remove
+            one of these answers since the second answer has a 100% (1.0) overlap with the first answer.
+            However, for the answers "the river in" and "in Maine" there is only a max overlap percentage of 25% so
+            both of these answers could be kept if this variable is set to 0.24 or lower.
+            If None is provided then all answers are kept.
         """
+        if overlap_threshold is None:
+            return answers
+
         # Initialize with the first answer and its offsets_in_document
         deduplicated_answers = [answers[0]]
 
         # Loop over remaining answers to check for overlaps
         for ans in answers[1:]:
-            keep = self._should_keep(candidate_answer=ans, current_answers=deduplicated_answers)
+            keep = self._should_keep(
+                candidate_answer=ans, current_answers=deduplicated_answers, overlap_threshold=overlap_threshold
+            )
             if keep:
                 deduplicated_answers.append(ans)
 
