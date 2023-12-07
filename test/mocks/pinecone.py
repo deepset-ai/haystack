@@ -45,6 +45,8 @@ class IndexObject:
         api_key: Optional[str] = None,
         environment: Optional[str] = None,
         dimension: Optional[int] = None,
+        pods: Optional[int] = None,
+        pod_type: Optional[str] = None,
         metric: Optional[str] = None,
         replicas: Optional[int] = None,
         shards: Optional[int] = None,
@@ -55,6 +57,8 @@ class IndexObject:
         self.environment = environment
         self.dimension = dimension
         self.metric = metric
+        self.pods = pods
+        self.pod_type = pod_type
         self.replicas = replicas
         self.shards = shards
         self.metadata_config = metadata_config
@@ -338,6 +342,8 @@ def create_index(
     dimension: int,
     metric: str = "cosine",
     replicas: int = 1,
+    pods: int = 1,
+    pod_type: str = "p1.x1",
     shards: int = 1,
     metadata_config: Optional[dict] = None,
 ):
@@ -348,6 +354,8 @@ def create_index(
         dimension=dimension,
         metric=metric,
         replicas=replicas,
+        pods=pods,
+        pod_type=pod_type,
         shards=shards,
         metadata_config=metadata_config,
     )

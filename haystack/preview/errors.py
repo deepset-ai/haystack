@@ -1,2 +1,0 @@
-class FilterError(Exception):
-    pass

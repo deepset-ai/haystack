@@ -896,11 +896,6 @@ def sample_txt_file_paths_list(samples_path):
     return list((samples_path / "docs").glob("*.txt"))
 
 
-@pytest.fixture
-def preview_samples_path():
-    return Path(__file__).parent / "preview" / "test_files"
-
-
 @pytest.fixture(autouse=True)
 def request_blocker(request: pytest.FixtureRequest, monkeypatch):
     """

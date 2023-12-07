@@ -149,7 +149,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                 model=model_name_or_path,
                 tokenizer=tokenizer,
                 revision=model_version,
-                use_auth_token=use_auth_token,
+                token=use_auth_token,
                 device=resolved_devices[0],
             )
         elif task == "text-classification":
@@ -160,7 +160,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                 device=resolved_devices[0],
                 revision=model_version,
                 top_k=top_k,
-                use_auth_token=use_auth_token,
+                token=use_auth_token,
             )
         self.top_k = top_k
         self.labels = labels
