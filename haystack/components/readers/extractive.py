@@ -274,6 +274,7 @@ class ExtractiveReader:
         query_ids: List[int],
         document_ids: List[int],
         no_answer: bool,
+        overlap_threshold: Optional[float],
     ) -> List[List[ExtractedAnswer]]:
         """
         Reconstructs the nested structure that existed before flattening. Also computes a no answer probability.
@@ -309,7 +310,7 @@ class ExtractiveReader:
                 current_answers.append(ExtractedAnswer(**answer))
                 i += 1
             current_answers = sorted(current_answers, key=lambda ans: ans.probability, reverse=True)
-            current_answers = self.deduplicate_by_overlap(current_answers, overlap_threshold=self.overlap_threshold)
+            current_answers = self.deduplicate_by_overlap(current_answers, overlap_threshold=overlap_threshold)
             current_answers = current_answers[:top_k]
             if no_answer:
                 no_answer_probability = math.prod(1 - answer.probability for answer in current_answers)
@@ -436,6 +437,7 @@ class ExtractiveReader:
         max_batch_size: Optional[int] = None,
         answers_per_seq: Optional[int] = None,
         no_answer: Optional[bool] = None,
+        overlap_threshold: Optional[float] = None,
     ):
         """
         Locates and extracts answers from the given Documents using the given query.
@@ -455,7 +457,16 @@ class ExtractiveReader:
         :param max_batch_size: Maximum number of samples that are fed through the model at the same time.
         :param answers_per_seq: Number of answer candidates to consider per sequence.
             This is relevant when a Document was split into multiple sequences because of max_seq_length.
+            Default: 20
         :param no_answer: Whether to return no answer scores.
+            Default: True
+        :param overlap_threshold: If set this will remove duplicate answers if they have an overlap larger than the
+            supplied threshold. For example, for the answers "in the river in Maine" and "the river" we would remove
+            one of these answers since the second answer has a 100% (1.0) overlap with the first answer.
+            However, for the answers "the river in" and "in Maine" there is only a max overlap percentage of 25% so
+            both of these answers could be kept if this variable is set to 0.24 or lower.
+            If None is provided then all answers are kept.
+            Default: 0.01
         """
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2
         nested_documents = [documents]
@@ -469,6 +480,7 @@ class ExtractiveReader:
         max_batch_size = max_batch_size or self.max_batch_size
         answers_per_seq = answers_per_seq or self.answers_per_seq or 20
         no_answer = no_answer if no_answer is not None else self.no_answer
+        overlap_threshold = overlap_threshold or self.overlap_threshold
 
         flattened_queries, flattened_documents, query_ids = self._flatten_documents(queries, nested_documents)
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
@@ -504,17 +516,18 @@ class ExtractiveReader:
         )
 
         answers = self._nest_answers(
-            start,
-            end,
-            probabilities,
-            flattened_documents,
-            queries,
-            answers_per_seq,
-            top_k,
-            confidence_threshold,
-            query_ids,
-            document_ids,
-            no_answer,
+            start=start,
+            end=end,
+            probabilities=probabilities,
+            flattened_documents=flattened_documents,
+            queries=queries,
+            answers_per_seq=answers_per_seq,
+            top_k=top_k,
+            confidence_threshold=confidence_threshold,
+            query_ids=query_ids,
+            document_ids=document_ids,
+            no_answer=no_answer,
+            overlap_threshold=overlap_threshold,
         )
 
         return {"answers": answers[0]}  # same temporary batching fix as above

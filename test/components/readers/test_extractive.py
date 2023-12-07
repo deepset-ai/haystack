@@ -392,8 +392,31 @@ class TestDeduplication:
         )
         assert keep is True
 
-    # def test_deduplicate_by_overlap(self, mock_reader: ExtractiveReader):
-    #     return True
+    def test_deduplicate_by_overlap_none_overlap(
+        self, mock_reader: ExtractiveReader, candidate_answer: ExtractedAnswer
+    ):
+        result = mock_reader.deduplicate_by_overlap(
+            answers=[candidate_answer, candidate_answer], overlap_threshold=None
+        )
+        assert len(result) == 2
+
+    def test_deduplicate_by_overlap(
+        self, mock_reader: ExtractiveReader, candidate_answer: ExtractedAnswer, doc1: Document
+    ):
+        answer2 = "Maine"
+        extracted_answer2 = ExtractedAnswer(
+            query="test",
+            data=answer2,
+            document=doc1,
+            start=doc1.content.find(answer2),
+            end=doc1.content.find(answer2) + len(answer2),
+            probability=0.1,
+            metadata={},
+        )
+        result = mock_reader.deduplicate_by_overlap(
+            answers=[candidate_answer, candidate_answer, extracted_answer2], overlap_threshold=0.01
+        )
+        assert len(result) == 2
 
 
 @pytest.mark.integration
