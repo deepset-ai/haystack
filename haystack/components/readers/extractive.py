@@ -334,9 +334,6 @@ class ExtractiveReader:
         start1, end1 = answer1_start, answer1_end
         start2, end2 = answer2_start, answer2_end
 
-        if None in {start1, end1, start2, end2}:
-            return 0
-
         # Check for overlap: (StartA <= EndB) and (StartB <= EndA)
         if start1 <= end2 and start2 <= end1:
             return min(int(end1 - start1), int(end1 - start2), int(end2 - start1), int(end2 - start2))
@@ -370,6 +367,7 @@ class ExtractiveReader:
             if candidate_answer.document.id != ans.document.id:
                 continue
 
+            # Needed for mypy
             assert ans.start is not None
             assert ans.end is not None
             assert candidate_answer.start is not None

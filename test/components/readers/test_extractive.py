@@ -7,7 +7,7 @@ import torch
 from transformers import pipeline
 
 from haystack.components.readers import ExtractiveReader
-from haystack import Document
+from haystack import Document, ExtractedAnswer
 
 
 @pytest.fixture
@@ -259,6 +259,64 @@ def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
 
     mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
     mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
+
+
+def test_calculate_overlap(mock_reader: ExtractiveReader):
+    original = "I want to go to the river in Maine."
+    answer1 = "the river"
+    answer2 = "river in Maine"
+    overlap_in_characters = mock_reader._calculate_overlap(
+        answer1_start=original.find(answer1),
+        answer1_end=original.find(answer1) + len(answer1),
+        answer2_start=original.find(answer2),
+        answer2_end=original.find(answer2) + len(answer2),
+    )
+    assert overlap_in_characters == 5
+
+
+def test_should_keep_false(mock_reader: ExtractiveReader):
+    doc1 = Document(content="I want to go to the river in Maine.")
+    doc2 = Document(content="I want to go skiing in Colorado.")
+    answer1 = "the river"
+    answer2 = "river in Maine"
+    answer3 = "skiing in Colorado"
+    keep = mock_reader._should_keep(
+        candidate_answer=ExtractedAnswer(
+            query="test",
+            data=answer1,
+            document=doc1,
+            start=doc1.content.find(answer1),
+            end=doc1.content.find(answer1) + len(answer1),
+            probability=0.1,
+            metadata={},
+        ),
+        current_answers=[
+            ExtractedAnswer(
+                query="test",
+                data=answer2,
+                document=doc1,
+                start=doc1.content.find(answer2),
+                end=doc1.content.find(answer2) + len(answer2),
+                probability=0.1,
+                metadata={},
+            ),
+            ExtractedAnswer(
+                query="test",
+                data=answer3,
+                document=doc2,
+                start=doc2.content.find(answer3),
+                end=doc2.content.find(answer3) + len(answer3),
+                probability=0.1,
+                metadata={},
+            ),
+        ],
+        overlap_threshold=0.01,
+    )
+    assert keep is False
+
+
+# def test_deduplicate_by_overlap(mock_reader: ExtractiveReader):
+#     return True
 
 
 @pytest.mark.integration
