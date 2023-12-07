@@ -451,9 +451,6 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
             (m for m in BEDROCK_EMBEDDING_MODELS if m in retriever.embedding_model), "amazon.titan-embed-text-v1"
         )
 
-        if self.model == "Not Found":
-            raise ValueError("Model not found in the retriever's embedding models.")
-
     def initialize_boto3_session(self):
         if self.aws_config:
             aws_profile_name = self.aws_config.get("profile_name", None)
