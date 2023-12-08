@@ -49,7 +49,7 @@ class _RAGPipeline:
     A simple ready-made pipeline for RAG. It requires a populated document store.
     """
 
-    def __init__(self, retriever: Any, embedder: Any, generator: Any, prompt_template: Optional[str] = None):
+    def __init__(self, retriever: Any, embedder: Any, generator: Any, prompt_template: str = None):
         """
         Initializes the pipeline.
         :param retriever: The retriever to use.
@@ -100,7 +100,7 @@ def resolve_embedder(embedding_model: str) -> SentenceTransformersTextEmbedder:
     return embedder
 
 
-def resolve_retriever(document_store: DocumentStore, retriever_class: Optional[str] = None) -> Optional[Any]:
+def resolve_retriever(document_store, retriever_class: Optional[str] = None) -> Optional[Any]:
     """
     Resolves the retriever class to use for the given document store.
     :param document_store: The document store to use.
@@ -121,7 +121,7 @@ def resolve_retriever(document_store: DocumentStore, retriever_class: Optional[s
             f"one of the following document stores: {list(embedding_retriever_map.keys())}"
         )
 
-    retriever = retriever_clazz(document_store=document_store)
+    retriever = retriever_clazz(document_store=document_store)  # type: ignore
     return retriever
 
 
@@ -142,7 +142,7 @@ def resolve_generator(generation_model: str, llm_api_key: Optional[str] = None) 
     return generator
 
 
-def resolve_prompt_template(prompt_template: str) -> str:
+def resolve_prompt_template(prompt_template: Optional[str]) -> str:
     prompt_template = (
         prompt_template
         or """
@@ -162,7 +162,7 @@ def resolve_prompt_template(prompt_template: str) -> str:
 
 
 class _GeneratorResolver(ABC):
-    _resolvers = []  # track of all resolvers
+    _resolvers = []  # type: ignore
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
