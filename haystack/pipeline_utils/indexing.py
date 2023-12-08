@@ -70,8 +70,8 @@ def build_indexing_pipeline(
 
 
     :param document_store: An instance of a DocumentStore to index documents into.
-    :param embedding_model: The name of the model to use for document embeddings, defaults to
-                            "sentence-transformers/all-mpnet-base-v2".
+    :param embedding_model: The name of the model to use for document embeddings.
+                            Needs top be compatible with SentenceTransformers
     :param embedding_model_kwargs: Keyword arguments to pass to the embedding model class.
     :param supported_mime_types: List of MIME types to support in the pipeline. If not given,
                                      defaults to ["text/plain", "text/html"].
@@ -184,6 +184,7 @@ class _IndexingPipeline:
         embedder_patterns = {
             r"^text-embedding.*": OpenAIDocumentEmbedder,
             r"^sentence-transformers.*": SentenceTransformersDocumentEmbedder,
+            r"^intfloat/.*": SentenceTransformersDocumentEmbedder,
             # add more patterns or adjust them here
         }
         embedder_class = next((val for pat, val in embedder_patterns.items() if re.match(pat, embedding_model)), None)
