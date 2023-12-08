@@ -10,7 +10,7 @@ from tqdm import tqdm
 from .mongodb_filters import mongo_filter_converter
 from ..lazy_imports import LazyImport
 
-with LazyImport("Run 'pip install farm-haystack[mongodb]'") as pinecone_import:
+with LazyImport("Run 'pip install farm-haystack[mongodb]'") as mongodb_import:
     import pymongo
     from pymongo import InsertOne, ReplaceOne, UpdateOne
     from pymongo.collection import Collection
@@ -33,6 +33,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
     ):
+        mongodb_import.check()
         self.mongo_connection_string = _validate_mongo_connection_string(mongo_connection_string)
         self.database_name = _validate_database_name(database_name)
         self.collection_name = _validate_collection_name(collection_name)
@@ -93,15 +94,14 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
 
         collection = self._get_collection(index)
 
-        match (ids, filters):
-            case (None, None):
-                mongo_filters = {}
-            case (None, filters):
-                mongo_filters = mongo_filter_converter(filters)
-            case (ids, None):
-                mongo_filters = {"id": {"$in": ids}}
-            case (ids, filters):
-                mongo_filters = {"$and": [mongo_filter_converter(filters), {"id": {"$in": ids}}]}
+        if (ids, filters) == (None, None):
+            mongo_filters = {}
+        elif (ids, filters) == (None, filters):
+            mongo_filters = mongo_filter_converter(filters)
+        elif (ids, filters) == (ids, None):
+            mongo_filters = {"id": {"$in": ids}}
+        elif (ids, filters) == (ids, filters):
+            mongo_filters = {"$and": [mongo_filter_converter(filters), {"id": {"$in": ids}}]}
 
         collection.delete_many(filter=mongo_filters)
 
