@@ -49,7 +49,7 @@ class _RAGPipeline:
     A simple ready-made pipeline for RAG. It requires a populated document store.
     """
 
-    def __init__(self, retriever: Any, embedder: Any, generator: Any, prompt_template: str = None):
+    def __init__(self, retriever: Any, embedder: Any, generator: Any, prompt_template: str):
         """
         Initializes the pipeline.
         :param retriever: The retriever to use.
