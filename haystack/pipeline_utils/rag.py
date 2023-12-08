@@ -16,7 +16,7 @@ from haystack.document_stores import InMemoryDocumentStore, DocumentStore
 
 def build_rag_pipeline(
     document_store: DocumentStore,
-    embedding_model: str = "sentence-transformers/all-mpnet-base-v2",
+    embedding_model: str = "intfloat/e5-base-v2",
     generation_model: str = "gpt-3.5-turbo",
     llm_api_key: Optional[str] = None,
     prompt_template: Optional[str] = None,
@@ -24,7 +24,7 @@ def build_rag_pipeline(
     """
     Returns a prebuilt pipeline to perform retrieval augmented generation
     :param document_store: An instance of a DocumentStore to read from.
-    :param embedding_model: The name of the model to use for embedding. Only Sentence-Transformer models supported in this getting started code.
+    :param embedding_model: The name of the model to use for embedding. Only SentenceTransformer models supported in this getting started code.
     :param prompt_template: The template to use for the prompt. If not given, a default RAG template is used.
     :param generation_model: The name of the model to use for generation.
                              Currently supporting: OpenAI generation models and Huggingface TGI models for text generation

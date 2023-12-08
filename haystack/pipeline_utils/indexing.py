@@ -39,7 +39,7 @@ def download_files(sources: List[str]) -> List[str]:
 
 def build_indexing_pipeline(
     document_store: Any,
-    embedding_model: str = "sentence-transformers/all-mpnet-base-v2",
+    embedding_model: str = "intfloat/e5-base-v2",
     embedding_model_kwargs: Optional[Dict[str, Any]] = None,
     supported_mime_types: Optional[List[str]] = None,
 ):
