@@ -46,7 +46,7 @@ def build_indexing_pipeline(
     """
     Returns a prebuilt pipeline for indexing documents into a DocumentStore. Indexing pipeline automatically detects
     the file type of the input files and converts them into Documents. The supported file types are: .txt,
-    .pdf, and .html
+    .pdf, and .html but by default only .txt and .html are indexed unless the supported_mime_types parameter is set.
 
     Example usage:
 
