@@ -1,12 +1,12 @@
 import re
 from typing import Dict, Generator, List, Optional, Union
 import numpy as np
+from tqdm import tqdm
 from haystack.document_stores import BaseDocumentStore
 from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever
 from haystack.schema import Document, FilterType
 from haystack.utils import get_batches_from_generator
-from tqdm import tqdm
 from .mongodb_filters import mongo_filter_converter
 from ..lazy_imports import LazyImport
 
@@ -37,7 +37,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
         self.mongo_connection_string = _validate_mongo_connection_string(mongo_connection_string)
         self.database_name = _validate_database_name(database_name)
         self.collection_name = _validate_collection_name(collection_name)
-        self.connection = pymongo.MongoClient(self.mongo_connection_string)
+        self.connection: pymongo.MongoClient = pymongo.MongoClient(self.mongo_connection_string)
         self.database = self.connection[self.database_name]
         self.similarity = _validate_similarity(similarity)
         self.duplicate_documents = duplicate_documents
@@ -268,7 +268,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
 
         result = self.get_all_documents_generator(
             index=index,
-            filters=mongo_filters,
+            filters=mongo_filters,  # type: ignore [arg-type]
             return_embedding=return_embedding,
             batch_size=batch_size,
             headers=headers,
@@ -412,13 +412,13 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
         ) as progress_bar:
             batches = get_batches_from_generator(mongo_documents, batch_size)
             for batch in batches:
-                match duplicate_documents:
-                    case "skip":
-                        operations = [UpdateOne({"id": doc["id"]}, {"$setOnInsert": doc}, upsert=True) for doc in batch]
-                    case "fail":
-                        operations = [InsertOne(doc) for doc in batch]
-                    case _:
-                        operations = [ReplaceOne({"id": doc["id"]}, upsert=True, replacement=doc) for doc in batch]
+                operations: list[Union[UpdateOne, InsertOne, ReplaceOne]]
+                if duplicate_documents == "skip":
+                    operations = [UpdateOne({"id": doc["id"]}, {"$setOnInsert": doc}, upsert=True) for doc in batch]
+                elif duplicate_documents == "fail":
+                    operations = [InsertOne(doc) for doc in batch]
+                else:
+                    operations = [ReplaceOne({"id": doc["id"]}, upsert=True, replacement=doc) for doc in batch]
 
                 collection.bulk_write(operations)
                 progress_bar.update(len(batch))
