@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 import os
 
 import requests
@@ -60,7 +60,7 @@ class JinaDocumentEmbedder:
                 api_key = os.environ["JINA_API_KEY"]
             except KeyError as e:
                 raise ValueError(
-                    "JinaDocumentEmbedder expects an Jina API key. "
+                    "JinaDocumentEmbedder expects a Jina API key. "
                     "Set the JINA_API_KEY environment variable (recommended) or pass it explicitly."
                 ) from e
 
@@ -136,7 +136,7 @@ class JinaDocumentEmbedder:
         ):
             batch = texts_to_embed[i : i + batch_size]
             response = self._session.post(  # type: ignore
-                JINA_API_URL, json={"input": batch, "model": self._model_name}
+                JINA_API_URL, json={"input": batch, "model": self.model_name}
             ).json()
             if "data" not in response:
                 raise RuntimeError(response["detail"])
@@ -145,14 +145,13 @@ class JinaDocumentEmbedder:
             sorted_embeddings = sorted(response["data"], key=lambda e: e["index"])  # type: ignore
             embeddings = [result["embedding"] for result in sorted_embeddings]
             all_embeddings.extend(embeddings)
-
             if "model" not in metadata:
                 metadata["model"] = response["model"]
             if "usage" not in metadata:
                 metadata["usage"] = dict(response["usage"].items())
             else:
-                metadata["usage"]["prompt_tokens"] += response.usage.prompt_tokens
-                metadata["usage"]["total_tokens"] += response.usage.total_tokens
+                metadata["usage"]["prompt_tokens"] += response["usage"]["prompt_tokens"]
+                metadata["usage"]["total_tokens"] += response["usage"]["total_tokens"]
 
         return all_embeddings, metadata
 

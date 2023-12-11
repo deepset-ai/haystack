@@ -50,7 +50,7 @@ class JinaTextEmbedder:
                 api_key = os.environ["JINA_API_KEY"]
             except KeyError as e:
                 raise ValueError(
-                    "JinaTextEmbedder expects an Jina API key. "
+                    "JinaTextEmbedder expects a Jina API key. "
                     "Set the JINA_API_KEY environment variable (recommended) or pass it explicitly."
                 ) from e
 
@@ -94,7 +94,7 @@ class JinaTextEmbedder:
         text_to_embed = self.prefix + text + self.suffix
 
         resp = self._session.post(  # type: ignore
-            JINA_API_URL, json={"input": [text_to_embed], "model": self._model_name}
+            JINA_API_URL, json={"input": [text_to_embed], "model": self.model_name}
         ).json()
         if "data" not in resp:
             raise RuntimeError(resp["detail"])
