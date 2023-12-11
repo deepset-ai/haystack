@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add `MongoDBAtlasDocumentStore`, providing support for MongoDB Atlas as a document store.

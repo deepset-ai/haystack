@@ -4,7 +4,6 @@ import re
 import requests
 import pytest
 import numpy
-import roman
 from haystack.document_stores.mongodb_filters import _target_filter_to_metadata, _and_or_to_list, mongo_filter_converter
 from haystack.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore, pymongo
 from haystack.schema import Document
@@ -31,7 +30,19 @@ document_store = MongoDBAtlasDocumentStore(
     embedding_dim=768,
 )
 
-# Test data
+
+def roman_to_int(s: str) -> int:
+    mapping = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+
+    result = 0
+
+    for i in range(len(s)):
+        if i < len(s) - 1 and mapping[s[i]] < mapping[s[i + 1]]:
+            result -= mapping[s[i]]
+        else:
+            result += mapping[s[i]]
+
+    return result
 
 
 # Get the book "Around the World in 80 Days" from Project Gutenberg
@@ -61,7 +72,7 @@ def divide_book_into_chapters(book) -> dict:
         chapter_match = re.match(r"CHAPTER\s+([IVXLCDM]+)\.*", line)
         if chapter_match:
             chapter_roman = chapter_match.group(1)
-            chapter_decimal = roman.fromRoman(chapter_roman)
+            chapter_decimal = roman_to_int(chapter_roman)
             current_chapter = f"CHAPTER {chapter_decimal}".title()
             chapters[current_chapter] = ""
         if current_chapter:
