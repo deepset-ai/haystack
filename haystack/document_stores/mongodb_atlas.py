@@ -7,6 +7,7 @@ from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever
 from haystack.schema import Document, FilterType
 from haystack.utils import get_batches_from_generator
+from haystack import __version__ as haystack_version
 from .mongodb_filters import mongo_filter_converter
 from ..lazy_imports import LazyImport
 
@@ -14,6 +15,7 @@ with LazyImport("Run 'pip install farm-haystack[mongodb]'") as mongodb_import:
     import pymongo
     from pymongo import InsertOne, ReplaceOne, UpdateOne
     from pymongo.collection import Collection
+    from pymongo.driver_info import DriverInfo
 
 METRIC_TYPES = ["euclidean", "cosine", "dotProduct"]
 DEFAULT_BATCH_SIZE = 50
@@ -37,7 +39,9 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
         self.mongo_connection_string = _validate_mongo_connection_string(mongo_connection_string)
         self.database_name = _validate_database_name(database_name)
         self.collection_name = _validate_collection_name(collection_name)
-        self.connection: pymongo.MongoClient = pymongo.MongoClient(self.mongo_connection_string)
+        self.connection: pymongo.MongoClient = pymongo.MongoClient(
+            self.mongo_connection_string, driver=DriverInfo(name="Haystack", version=haystack_version)
+        )
         self.database = self.connection[self.database_name]
         self.similarity = _validate_similarity(similarity)
         self.duplicate_documents = duplicate_documents
