@@ -329,6 +329,6 @@ def test_matches_hf_pipeline():
     )  # We need to disable HF postprocessing features to make the results comparable. This is related to https://github.com/huggingface/transformers/issues/26286
     assert len(answers) == len(answers_hf) == 20
     for answer, answer_hf in zip(answers, answers_hf):
-        assert answer.start == answer_hf["start"]
-        assert answer.end == answer_hf["end"]
+        assert answer.document_offset.start == answer_hf["start"]
+        assert answer.document_offset.end == answer_hf["end"]
         assert answer.data == answer_hf["answer"]
