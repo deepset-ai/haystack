@@ -273,31 +273,30 @@ class ExtractiveReader:
         logit introduced with SQuAD 2. Instead, it just computes the probability that the answer does not exist
         in the top k or top p.
         """
-        flat_answers_without_queries = []
+        answers_without_query = []
         for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
             document_ids, start, end, probabilities
         ):
             for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_):
                 doc = flattened_documents[document_id]
-                # doc.content cannot be None, because those documents are filtered when preprocessing.
-                # However, mypy doesn't know that.
-                flat_answers_without_queries.append(
-                    {
-                        "data": doc.content[start_:end_],  # type: ignore
-                        "document": doc,
-                        "score": probability.item(),
-                        "document_offset": ExtractedAnswer.Span(start_, end_),
-                        "meta": {},
-                    }
+                answers_without_query.append(
+                    ExtractedAnswer(
+                        query="",  # Can't be None but we'll add it later
+                        data=doc.content[start_:end_],  # type: ignore
+                        document=doc,
+                        score=probability.item(),
+                        document_offset=ExtractedAnswer.Span(start_, end_),
+                        meta={},
+                    )
                 )
         i = 0
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):
             current_answers = []
-            while i < len(flat_answers_without_queries) and query_ids[i // answers_per_seq] == query_id:
-                answer = flat_answers_without_queries[i]
-                answer["query"] = queries[query_id]
-                current_answers.append(ExtractedAnswer(**answer))
+            while i < len(answers_without_query) and query_ids[i // answers_per_seq] == query_id:
+                answer = answers_without_query[i]
+                answer.query = queries[query_id]
+                current_answers.append(answer)
                 i += 1
             current_answers = sorted(current_answers, key=lambda answer: answer.score, reverse=True)
             current_answers = current_answers[:top_k]
