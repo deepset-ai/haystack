@@ -140,15 +140,15 @@ def test_output(mock_reader: ExtractiveReader):
     doc_ids = set()
     no_answer_prob = 1
     for doc, answer in zip(example_documents[0], answers[:3]):
-        assert answer.start == 11
-        assert answer.end == 16
+        assert answer.document_offset.start == 11
+        assert answer.document_offset.end == 16
         assert doc.content is not None
         assert answer.data == doc.content[11:16]
-        assert answer.probability == pytest.approx(1 / (1 + exp(-2 * mock_reader.calibration_factor)))
-        no_answer_prob *= 1 - answer.probability
+        assert answer.score == pytest.approx(1 / (1 + exp(-2 * mock_reader.calibration_factor)))
+        no_answer_prob *= 1 - answer.score
         doc_ids.add(doc.id)
     assert len(doc_ids) == 3
-    assert answers[-1].probability == pytest.approx(no_answer_prob)
+    assert answers[-1].score == pytest.approx(no_answer_prob)
 
 
 def test_flatten_documents(mock_reader: ExtractiveReader):
@@ -241,14 +241,14 @@ def test_nest_answers(mock_reader: ExtractiveReader):
         example_queries, nested_answers, expected_no_answers, [probabilities[:3, -1], probabilities[3:, -1]]
     ):
         assert len(answers) == 4
-        for doc, answer, probability in zip(example_documents[0], reversed(answers[:3]), probabilities):
+        for doc, answer, score in zip(example_documents[0], reversed(answers[:3]), probabilities):
             assert answer.query == query
             assert answer.document == doc
-            assert answer.probability == pytest.approx(probability)
+            assert answer.score == pytest.approx(score)
         no_answer = answers[-1]
         assert no_answer.query == query
         assert no_answer.document is None
-        assert no_answer.probability == pytest.approx(expected_no_answer)
+        assert no_answer.score == pytest.approx(expected_no_answer)
 
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
@@ -269,19 +269,19 @@ def test_t5():
         "answers"
     ]  # remove indices when batching support is reintroduced
     assert answers[0].data == "Angela Merkel"
-    assert answers[0].probability == pytest.approx(0.7764519453048706)
+    assert answers[0].score == pytest.approx(0.7764519453048706)
     assert answers[1].data == "Olaf Scholz"
-    assert answers[1].probability == pytest.approx(0.7703777551651001)
+    assert answers[1].score == pytest.approx(0.7703777551651001)
     assert answers[2].data is None
-    assert answers[2].probability == pytest.approx(0.051331606147570596)
+    assert answers[2].score == pytest.approx(0.051331606147570596)
     # Uncomment assertions below when batching is reintroduced
-    # assert answers[0][2].probability == pytest.approx(0.051331606147570596)
+    # assert answers[0][2].score == pytest.approx(0.051331606147570596)
     # assert answers[1][0].data == "Jerry"
-    # assert answers[1][0].probability == pytest.approx(0.7413333654403687)
+    # assert answers[1][0].score == pytest.approx(0.7413333654403687)
     # assert answers[1][1].data == "Olaf Scholz"
-    # assert answers[1][1].probability == pytest.approx(0.7266613841056824)
+    # assert answers[1][1].score == pytest.approx(0.7266613841056824)
     # assert answers[1][2].data is None
-    # assert answers[1][2].probability == pytest.approx(0.0707035798685709)
+    # assert answers[1][2].score == pytest.approx(0.0707035798685709)
 
 
 @pytest.mark.integration
@@ -292,24 +292,24 @@ def test_roberta():
         "answers"
     ]  # remove indices when batching is reintroduced
     assert answers[0].data == "Olaf Scholz"
-    assert answers[0].probability == pytest.approx(0.8614975214004517)
+    assert answers[0].score == pytest.approx(0.8614975214004517)
     assert answers[1].data == "Angela Merkel"
-    assert answers[1].probability == pytest.approx(0.857952892780304)
+    assert answers[1].score == pytest.approx(0.857952892780304)
     assert answers[2].data is None
-    assert answers[2].probability == pytest.approx(0.019673851661650588)
+    assert answers[2].score == pytest.approx(0.019673851661650588)
     # uncomment assertions below when there is batching in v2
     # assert answers[0][0].data == "Olaf Scholz"
-    # assert answers[0][0].probability == pytest.approx(0.8614975214004517)
+    # assert answers[0][0].score == pytest.approx(0.8614975214004517)
     # assert answers[0][1].data == "Angela Merkel"
-    # assert answers[0][1].probability == pytest.approx(0.857952892780304)
+    # assert answers[0][1].score == pytest.approx(0.857952892780304)
     # assert answers[0][2].data is None
-    # assert answers[0][2].probability == pytest.approx(0.0196738764278237)
+    # assert answers[0][2].score == pytest.approx(0.0196738764278237)
     # assert answers[1][0].data == "Jerry"
-    # assert answers[1][0].probability == pytest.approx(0.7048940658569336)
+    # assert answers[1][0].score == pytest.approx(0.7048940658569336)
     # assert answers[1][1].data == "Olaf Scholz"
-    # assert answers[1][1].probability == pytest.approx(0.6604189872741699)
+    # assert answers[1][1].score == pytest.approx(0.6604189872741699)
     # assert answers[1][2].data is None
-    # assert answers[1][2].probability == pytest.approx(0.1002123719777046)
+    # assert answers[1][2].score == pytest.approx(0.1002123719777046)
 
 
 @pytest.mark.integration
@@ -329,6 +329,6 @@ def test_matches_hf_pipeline():
     )  # We need to disable HF postprocessing features to make the results comparable. This is related to https://github.com/huggingface/transformers/issues/26286
     assert len(answers) == len(answers_hf) == 20
     for answer, answer_hf in zip(answers, answers_hf):
-        assert answer.start == answer_hf["start"]
-        assert answer.end == answer_hf["end"]
+        assert answer.document_offset.start == answer_hf["start"]
+        assert answer.document_offset.end == answer_hf["end"]
         assert answer.data == answer_hf["answer"]
