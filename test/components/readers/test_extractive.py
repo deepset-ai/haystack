@@ -98,7 +98,7 @@ def test_to_dict():
             "device": None,
             "token": None,  # don't serialize valid tokens
             "top_k": 20,
-            "confidence_threshold": None,
+            "score_threshold": None,
             "max_seq_length": 384,
             "stride": 128,
             "max_batch_size": None,
@@ -121,7 +121,7 @@ def test_to_dict_empty_model_kwargs():
             "device": None,
             "token": None,  # don't serialize valid tokens
             "top_k": 20,
-            "confidence_threshold": None,
+            "score_threshold": None,
             "max_seq_length": 384,
             "stride": 128,
             "max_batch_size": None,
