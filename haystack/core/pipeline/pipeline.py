@@ -23,7 +23,7 @@ from haystack.core.errors import (
     PipelineValidationError,
 )
 from haystack.core.pipeline.descriptions import find_pipeline_outputs
-from haystack.core.pipeline.draw.draw import _draw, _convert_for_debug, RenderingEngines
+from haystack.core.pipeline.draw.draw import _draw, RenderingEngines
 from haystack.core.pipeline.validation import validate_pipeline_input, find_pipeline_inputs
 from haystack.core.component.connection import Connection, parse_connect_string
 from haystack.core.type_utils import _type_name
@@ -519,14 +519,12 @@ class Pipeline:
         """
         Stores a snapshot of this step into the self.debug dictionary of the pipeline.
         """
-        mermaid_graph = _convert_for_debug(deepcopy(self.graph))
         self._debug[step] = {
             "time": datetime.datetime.now(),
             "components_queue": components_queue,
             "mandatory_values_buffer": mandatory_values_buffer,
             "optional_values_buffer": optional_values_buffer,
             "pipeline_output": pipeline_output,
-            "diagram": mermaid_graph,
         }
 
     def _clear_visits_count(self):
