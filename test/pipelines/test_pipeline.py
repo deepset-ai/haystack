@@ -23,7 +23,6 @@ from haystack.nodes.retriever.sparse import FilterRetriever
 from haystack.pipelines import (
     Pipeline,
     RootNode,
-    GenerativeQAPipeline,
     FAQPipeline,
     ExtractiveQAPipeline,
     SearchSummarizationPipeline,
@@ -694,9 +693,6 @@ def test_generate_code_can_handle_weak_cyclic_pipelines():
 
 @pytest.mark.unit
 def test_pipeline_classify_type(tmp_path):
-    pipe = GenerativeQAPipeline(generator=MockSeq2SegGenerator(), retriever=MockRetriever())
-    assert pipe.get_type().startswith("GenerativeQAPipeline")
-
     pipe = FAQPipeline(retriever=MockRetriever())
     assert pipe.get_type().startswith("FAQPipeline")
 

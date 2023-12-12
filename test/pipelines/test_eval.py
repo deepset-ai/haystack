@@ -15,7 +15,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever
 from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.pipelines.base import Pipeline
-from haystack.pipelines import ExtractiveQAPipeline, GenerativeQAPipeline, SearchSummarizationPipeline
+from haystack.pipelines import ExtractiveQAPipeline, SearchSummarizationPipeline
 from haystack.pipelines.standard_pipelines import (
     DocumentSearchPipeline,
     FAQPipeline,

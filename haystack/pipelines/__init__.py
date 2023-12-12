@@ -9,7 +9,6 @@ from haystack.pipelines.standard_pipelines import (
     MostSimilarDocumentsPipeline,
     QuestionAnswerGenerationPipeline,
     RetrieverQuestionGenerationPipeline,
-    GenerativeQAPipeline,
     ExtractiveQAPipeline,
     FAQPipeline,
     TextIndexingPipeline,
