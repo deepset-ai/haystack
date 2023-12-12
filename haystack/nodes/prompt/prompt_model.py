@@ -95,7 +95,7 @@ class PromptModel(BaseComponent):
             invocation_layer_class = cast(Type[PromptModelInvocationLayer], getattr(module, class_name))
             if invocation_layer_class is None:
                 msg = f"Can'f find class {class_name} in module {module_name}"
-                ValueError(msg)
+                raise ValueError(msg)
 
         if invocation_layer_class:
             return invocation_layer_class(
