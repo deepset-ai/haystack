@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from typing import Dict, Generator, List, Optional, Union
 import numpy as np
