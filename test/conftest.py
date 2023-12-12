@@ -28,7 +28,6 @@ from haystack.document_stores import (
 from haystack.nodes import (
     BaseReader,
     BaseRetriever,
-    BaseGenerator,
     BaseSummarizer,
     BaseTranslator,
     DenseRetriever,
@@ -319,11 +318,6 @@ class MockBaseRetriever(MockRetriever):
 
     def embed_documents(self, documents: List[Document]):
         return np.full((len(documents), 768), 0.5)
-
-
-class MockSeq2SegGenerator(BaseGenerator):
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int], max_tokens: Optional[int]) -> Dict:
-        pass
 
 
 class MockSummarizer(BaseSummarizer):

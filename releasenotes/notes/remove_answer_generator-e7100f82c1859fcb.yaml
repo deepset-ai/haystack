@@ -1,3 +1,3 @@
 ---
 deprecations:
-  - Remove deprecated `OpenAIAnswerGenerator`.
+  - Remove deprecated `OpenAIAnswerGenerator`, `BaseGenerator`, `GenerativeQAPipeline` and related tests.
