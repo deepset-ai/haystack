@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Change `PromptModel` constructor parameter `invocation_layer_class` to accept a `str` too.
+    If a `str` is used the invocation layer class will be imported and used.
+    This should ease serialisation to YAML when using `invocation_layer_class` with `PromptModel`.
