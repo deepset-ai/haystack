@@ -36,6 +36,8 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
         recreate_index: bool = False,
     ):
         mongodb_import.check()
+        super().__init__()
+
         self.mongo_connection_string = _validate_mongo_connection_string(mongo_connection_string)
         self.database_name = _validate_database_name(database_name)
         self.collection_name = _validate_collection_name(collection_name)
@@ -416,7 +418,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
         ) as progress_bar:
             batches = get_batches_from_generator(mongo_documents, batch_size)
             for batch in batches:
-                operations: list[Union[UpdateOne, InsertOne, ReplaceOne]]
+                operations: List[Union[UpdateOne, InsertOne, ReplaceOne]]
                 if duplicate_documents == "skip":
                     operations = [UpdateOne({"id": doc["id"]}, {"$setOnInsert": doc}, upsert=True) for doc in batch]
                 elif duplicate_documents == "fail":
