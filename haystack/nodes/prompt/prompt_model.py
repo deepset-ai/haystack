@@ -1,7 +1,7 @@
 import inspect
 import logging
 import importlib
-from typing import Any, Dict, List, Optional, Tuple, Type, Union, overload
+from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
@@ -92,7 +92,7 @@ class PromptModel(BaseComponent):
             except ImportError as e:
                 msg = f"Can't find module {module_name}"
                 raise ValueError(msg) from e
-            invocation_layer_class = getattr(module, class_name)
+            invocation_layer_class = cast(Type[PromptModelInvocationLayer], getattr(module, class_name))
             if invocation_layer_class is None:
                 msg = f"Can'f find class {class_name} in module {module_name}"
                 ValueError(msg)
