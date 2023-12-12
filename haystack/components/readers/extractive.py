@@ -74,7 +74,7 @@ class ExtractiveReader:
             This is relevant when a Document was split into multiple sequences because of max_seq_length.
         :param no_answer: Whether to return an additional `no answer` with an empty text and a score representing the
             probability that the other top_k answers are incorrect.
-        :param calibration_factor: Factor used for calibrating probabilities
+        :param calibration_factor: Factor used for calibrating probabilities.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
             when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
             see the model's documentation.
