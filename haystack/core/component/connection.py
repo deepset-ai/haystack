@@ -16,6 +16,10 @@ class Connection:
 
     def __post_init__(self):
         if self.sender and self.sender_socket and self.receiver and self.receiver_socket:
+            # If we're trying to connect the same sockets again, this should be a no-op
+            if self.receiver in self.sender_socket.receivers and self.sender in self.receiver_socket.senders:
+                return
+
             # Make sure the receiving socket isn't already connected, unless it's variadic. Sending sockets can be
             # connected as many times as needed, so they don't need this check
             if self.receiver_socket.senders and not self.receiver_socket.is_variadic:
