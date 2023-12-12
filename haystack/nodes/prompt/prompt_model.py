@@ -100,9 +100,7 @@ class PromptModel(BaseComponent):
             class_ = invocation_layer_class
 
         if class_:
-            return class_(
-                model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
-            )
+            return class_(model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs)
 
         for invocation_layer in PromptModelInvocationLayer.invocation_layer_providers:
             if inspect.isabstract(invocation_layer):
