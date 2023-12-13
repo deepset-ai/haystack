@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from haystack import component, Document
 from haystack.dataclasses.answer import Answer
@@ -63,17 +63,19 @@ class MetadataRouter:
 
         :param documents: A list of documents to route to different edges.
         """
-        if documents is None and answers is None:
-            raise ValueError("Either documents or answers must be provided.")
-        elif documents is not None and answers is not None:
+        if documents is not None and answers is not None:
             raise ValueError("Only one of documents or answers can be provided.")
-        elif documents is not None:
-            meta_containers: List[MetaContainer] = documents
-        else:
+
+        meta_containers: Sequence[MetaContainer]
+        if documents is not None:
+            meta_containers = documents
+        elif answers is not None:
             meta_containers = answers
+        else:
+            raise ValueError("Either documents or answers must be provided.")
 
         unmatched = []
-        output: Dict[str, List[MetaContainer]] = {edge: [] for edge in self.rules}
+        output: Dict[str, List[Any]] = {edge: [] for edge in self.rules}
 
         for meta_container in meta_containers:
             cur_container_matched = False

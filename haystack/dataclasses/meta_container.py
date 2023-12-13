@@ -1,8 +1,13 @@
-from typing import Any, Dict, Protocol, runtime_checkable
-from dataclasses import dataclass
+from __future__ import annotations
 
+from typing import TYPE_CHECKING
+from typing import Any, Dict, Protocol
 
-@runtime_checkable
-@dataclass
-class MetaContainer(Protocol):
-    meta: Dict[str, Any]
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
+
+    class MetaContainer(Protocol, DataclassInstance):
+        meta: Dict[str, Any]
+
+else:
+    MetaContainer = Any

@@ -86,12 +86,12 @@ def _less_than(container_value: Any, filter_value: Any) -> bool:
     return not _greater_than_equal(container_value=container_value, filter_value=filter_value)
 
 
-def _less_than_equal(document_value: Any, filter_value: Any) -> bool:
-    if document_value is None or filter_value is None:
+def _less_than_equal(container_value: Any, filter_value: Any) -> bool:
+    if container_value is None or filter_value is None:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return not _greater_than(container_value=document_value, filter_value=filter_value)
+    return not _greater_than(container_value=container_value, filter_value=filter_value)
 
 
 def _in(container_value: Any, filter_value: Any) -> bool:
@@ -103,8 +103,8 @@ def _in(container_value: Any, filter_value: Any) -> bool:
     return any(_equal(e, container_value) for e in filter_value)
 
 
-def _not_in(document_value: Any, filter_value: Any) -> bool:
-    return not _in(container_value=document_value, filter_value=filter_value)
+def _not_in(container_value: Any, filter_value: Any) -> bool:
+    return not _in(container_value=container_value, filter_value=filter_value)
 
 
 COMPARISON_OPERATORS = {
