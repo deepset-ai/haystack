@@ -136,7 +136,7 @@ class AnswerLanguageClassifier:
             else:
                 answer.meta["language"] = "unmatched"
 
-        return {"documents": answers}
+        return {"answers": answers}
 
     def detect_language(self, answer: Answer) -> Optional[str]:
         try:
