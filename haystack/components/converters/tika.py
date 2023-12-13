@@ -9,7 +9,6 @@ from haystack.dataclasses import ByteStream
 from haystack.components.converters.utils import get_bytestream_from_source
 
 
-
 with LazyImport("Run 'pip install tika'") as tika_import:
     from tika import parser as tika_parser
 
@@ -52,8 +51,7 @@ class TikaDocumentConverter:
                 text = tika_parser.from_buffer(io.BytesIO(bytestream.data), serverEndpoint=self.tika_url)["content"]
             except Exception as conversion_e:
                 logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
-                continue            
+                continue
             document = Document(content=text)
             documents.append(document)
         return {"documents": documents}
-

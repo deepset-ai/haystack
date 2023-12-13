@@ -83,4 +83,3 @@ class MarkdownToDocument:
             documents.append(document)
 
         return {"documents": documents}
-

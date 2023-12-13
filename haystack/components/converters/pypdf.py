@@ -94,4 +94,3 @@ class PyPDFToDocument:
             documents.append(document)
 
         return {"documents": documents}
-
