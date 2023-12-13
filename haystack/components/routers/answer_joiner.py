@@ -59,9 +59,11 @@ class AnswerJoiner:
 
         if self.sort_by_score:
             output_answers = sorted(
-                output_answers, key=lambda answer: answer.score if answer.score is not None else -inf, reverse=True
+                output_answers,
+                key=lambda answer: answer.score if hasattr(answer, "score") and answer.score is not None else -inf,
+                reverse=True,
             )
-            if any(answer.score is None for answer in output_answers):
+            if any(not hasattr(answer, "score") or answer.score is None for answer in output_answers):
                 logger.info(
                     "Some of the Answers AnswerJoiner got have score=None. It was configured to sort Answers by "
                     "score, so those with score=None were sorted as if they had a score of -infinity."
@@ -80,6 +82,8 @@ class AnswerJoiner:
         for answer in itertools.chain.from_iterable(answer_lists):
             answers_per_data[answer.data].append(answer)
         for answers in answers_per_data.values():
-            answers_with_best_score = max(answers, key=lambda answer: answer.score if answer.score else -inf)
+            answers_with_best_score = max(
+                answers, key=lambda answer: answer.score if hasattr(answer, "score") and answer.score else -inf
+            )
             output.append(answers_with_best_score)
         return output
