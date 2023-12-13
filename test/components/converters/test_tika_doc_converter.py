@@ -14,9 +14,9 @@ class TestTikaDocumentConverter:
         mock_tika_parser.return_value = {"content": "Content of mock_file.pdf"}
 
         component = TikaDocumentConverter()
-               
+
         documents = component.run(sources=["mock_file.pdf"])["documents"]
-        
+
         assert len(documents) == 1
         assert documents[0].content == "Content of mock_file.pdf"
 
