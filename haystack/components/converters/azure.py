@@ -98,7 +98,7 @@ class AzureOCRDocumentConverter:
         return default_to_dict(self, endpoint=self.endpoint, model_id=self.model_id)
 
     @staticmethod
-    def _convert_azure_result_to_document(result: "AnalyzeResult", file_suffix: Optional[str]) -> Document:
+    def _convert_azure_result_to_document(result: "AnalyzeResult", file_suffix: Optional[str] = None) -> Document:
         """
         Convert the result of Azure OCR to a Haystack text Document.
         """
