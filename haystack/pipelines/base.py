@@ -39,7 +39,7 @@ from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils.deepsetcloud import DeepsetCloud
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError, DocumentStoreError
-from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
+from haystack.nodes import Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
@@ -2528,9 +2528,6 @@ class Pipeline:
         pipeline_types = {
             # QuestionGenerationPipeline has only one component, which is a QuestionGenerator
             "QuestionGenerationPipeline": lambda x: all(isinstance(x, QuestionGenerator) for x in x.values()),
-            # GenerativeQAPipeline has at least BaseGenerator and BaseRetriever components
-            "GenerativeQAPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
-            and any(isinstance(x, BaseGenerator) for x in x.values()),
             # FAQPipeline has at least one Docs2Answers component
             "FAQPipeline": lambda x: any(isinstance(x, Docs2Answers) for x in x.values()),
             # ExtractiveQAPipeline has at least one BaseRetriever component and one BaseReader component
