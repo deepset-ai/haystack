@@ -53,12 +53,3 @@ class TextFileToDocument:
                 logger.warning("Could not convert file %s. Skipping it. Error message: %s", source_str, e)
 
         return {"documents": documents}
-
-    def _get_bytestream_from_source(self, source: Union[str, Path, ByteStream]) -> ByteStream:
-        if isinstance(source, ByteStream):
-            return source
-        if isinstance(source, (str, Path)):
-            bs = ByteStream.from_file_path(Path(source))
-            bs.metadata["file_path"] = str(source)
-            return bs
-        raise ValueError(f"Unsupported source type {type(source)}")
