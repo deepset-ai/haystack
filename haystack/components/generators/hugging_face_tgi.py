@@ -44,7 +44,7 @@ class HuggingFaceTGIGenerator:
                                      url="<your-tgi-endpoint-url>",
                                      token="<your-token>")
     client.warm_up()
-    response = client.run("What's Natural Language Processing?", max_new_tokens=120)
+    response = client.run("What's Natural Language Processing?")
     print(response)
     ```
 
