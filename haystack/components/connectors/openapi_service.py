@@ -17,7 +17,7 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
 class OpenAPIServiceConnector:
     """
     OpenAPIServiceConnector connects to OpenAPI services, allowing for the invocation of methods specified in
-    an OpenAPI specification of that service. It integrates it ChatMessage interface, where messages are used to
+    an OpenAPI specification of that service. It integrates with ChatMessage interface, where messages are used to
     determine the method to be called and the parameters to be passed. The message payload should be a JSON formatted
     string consisting of the method name and the parameters to be passed to the method. The method name and parameters
     are then used to invoke the method on the OpenAPI service. The response from the service is returned as a
@@ -52,46 +52,83 @@ class OpenAPIServiceConnector:
         """
 
         last_message = messages[-1]
-        if last_message.is_from(ChatRole.ASSISTANT) and self._is_valid_json(last_message.content):
-            method_invocation_descriptor = json.loads(last_message.content)
-            if "arguments" not in method_invocation_descriptor:
-                raise ValueError(
-                    f"Message {last_message} does not contain function calling payload to invoke a method on the service."
-                )
-            parameters = json.loads(method_invocation_descriptor["arguments"])
-            parameters = next(iter(parameters.values()))
-            # Remove empty parameters
-            parameters = {k: v for k, v in parameters.items() if v}
-            name = method_invocation_descriptor["name"]
+        if not last_message.is_from(ChatRole.ASSISTANT):
+            raise ValueError(f"{last_message} is not from the assistant.")
 
-            openapi_service = OpenAPI(service_openapi_spec)
-            if openapi_service.components.securitySchemes:
-                auth_method = list(openapi_service.components.securitySchemes.keys())[0]  # do first one for now
-                if openapi_service.info.title not in self.service_authentications:
-                    raise ValueError(
-                        f"Service {openapi_service.info.title} not found in service_authentications. "
-                        f"Please add it to {self.__class__.__name__}."
-                    )
+        method_invocation_descriptor = self._parse_message(last_message.content)
 
-                openapi_service.authenticate(auth_method, self.service_authentications[openapi_service.info.title])
+        # instantiate the OpenAPI service for the given specification
+        openapi_service = OpenAPI(service_openapi_spec)
+        self._authenticate_service(openapi_service)
 
-            method_name = f"call_{name}"
-            request_type = openapi_service._operation_map[name].path[2]
-            method_to_call = getattr(openapi_service, method_name, None)
+        service_response = self._invoke_method(openapi_service, method_invocation_descriptor)
+        return {"service_response": [ChatMessage.from_user(str(service_response))]}
 
-            # Check if the method exists and then call it
-            if callable(method_to_call):
-                if request_type == "get":
-                    service_response = method_to_call(parameters=parameters)
-                else:
-                    service_response = method_to_call(data=parameters)
-                return {"service_response": [ChatMessage.from_user(str(service_response))]}
-            else:
-                raise RuntimeError(f"Method {method_name} not found in the OpenAPI specification.")
-        else:
-            raise ValueError(
-                f"Message {last_message} does not contain function calling payload to invoke a method on the service."
-            )
+    def _parse_message(self, content: str) -> Dict[str, Any]:
+        """
+        Parses the message content to extract the method invocation descriptor.
+
+        :param content: The JSON string content of the message.
+        :type content: str
+        :return: A dictionary with method name and arguments.
+        :rtype: Dict[str, Any]
+        :raises ValueError: If the content is not valid JSON or lacks required fields.
+        """
+        if not self._is_valid_json(content):
+            raise ValueError("Invalid JSON content, cannot parse invocation message.", content)
+
+        descriptor = json.loads(content)
+        if "name" not in descriptor or "arguments" not in descriptor:
+            raise ValueError("Missing required fields in the invocation message content.", content)
+
+        descriptor["arguments"] = json.loads(descriptor["arguments"])
+        return descriptor
+
+    def _authenticate_service(self, openapi_service: OpenAPI):
+        """
+        Authenticates with the OpenAPI service if required.
+
+        :param openapi_service: The OpenAPI service instance.
+        :type openapi_service: OpenAPI
+        :raises ValueError: If authentication fails or is not found.
+        """
+        if openapi_service.components.securitySchemes:
+            auth_method = list(openapi_service.components.securitySchemes.keys())[0]
+            service_title = openapi_service.info.title
+            if service_title not in self.service_authentications:
+                raise ValueError(f"Service {service_title} not found in service_authentications.")
+            openapi_service.authenticate(auth_method, self.service_authentications[service_title])
+
+    def _invoke_method(self, openapi_service: OpenAPI, method_invocation_descriptor: Dict[str, Any]) -> Any:
+        """
+        Invokes the specified method on the OpenAPI service.
+
+        :param openapi_service: The OpenAPI service instance.
+        :type openapi_service: OpenAPI
+        :param method_invocation_descriptor: The method name and arguments.
+        :type method_invocation_descriptor: Dict[str, Any]
+        :return: A service JSON response.
+        :rtype: Any
+        :raises RuntimeError: If the method is not found or invocation fails.
+        """
+        name = method_invocation_descriptor["name"]
+        # a bit convoluted, but we need to pass parameters, data, or both to the method
+        # depending on the openapi operation specification, can't use None as a default value
+        method_call_params = {
+            key: value
+            for key, value in {
+                "parameters": method_invocation_descriptor["arguments"].get("parameters"),
+                "data": method_invocation_descriptor["arguments"].get("requestBody"),
+            }.items()
+            if value is not None
+        }
+
+        method_to_call = getattr(openapi_service, f"call_{name}", None)
+        if not callable(method_to_call):
+            raise RuntimeError(f"Operation {name} not found in OpenAPI specification {openapi_service.info.title}")
+
+        # this will call the underlying service REST API
+        return method_to_call(**method_call_params)
 
     def _is_valid_json(self, content: str):
         """
