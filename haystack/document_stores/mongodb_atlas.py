@@ -548,7 +548,7 @@ def _validate_index_name(index_name):
 
 def mongo_doc_to_haystack_doc(mongo_doc) -> Document:
     embedding = mongo_doc.get("embedding", None)
-    score = mongo_doc.get["score"]
+    score = mongo_doc.get("score")
 
     return Document(
         id=mongo_doc["id"],

@@ -158,7 +158,7 @@ def test_write_documents_fail():
     processed_documents = processor.process([documents[0]])
     document_store.write_documents(processed_documents)
     document_store.write_documents(processed_documents)
-    with pytest.raises(pymongo.BulkWriteError):
+    with pytest.raises(pymongo.errors.BulkWriteError):
         document_store.write_documents(processed_documents, duplicate_documents="fail")
 
 
