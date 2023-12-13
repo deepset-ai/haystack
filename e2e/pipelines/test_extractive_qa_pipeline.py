@@ -51,15 +51,14 @@ def test_extractive_qa_pipeline(tmp_path):
         # no_answer
         assert extracted_answers[-1].data is None
 
-        # since these questions are easily answerable, the best answer should have higher probability than no_answer
-        assert extracted_answers[0].probability >= extracted_answers[-1].probability
+        # since these questions are easily answerable, the best answer should have higher score than no_answer
+        assert extracted_answers[0].score >= extracted_answers[-1].score
 
         for answer in extracted_answers:
             assert answer.query == question
 
-            assert hasattr(answer, "probability")
-            assert hasattr(answer, "start")
-            assert hasattr(answer, "end")
+            assert hasattr(answer, "score")
+            assert hasattr(answer, "document_offset")
 
             assert hasattr(answer, "document")
             # the answer is extracted from the correct document

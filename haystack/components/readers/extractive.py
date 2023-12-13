@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class ExtractiveReader:
     """
     A component that locates and extract answers to a given query from Documents. It's used for performing extractive
-    QA. The Reader assigns a probability score to every possible answer span independently of other answer spans.
+    QA. The Reader assigns a score to every possible answer span independently of other answer spans.
     This fixes a common issue of other implementations which make comparisons across documents harder by normalizing
     each document's answers independently.
 
@@ -42,7 +42,7 @@ class ExtractiveReader:
         device: Optional[str] = None,
         token: Union[bool, str, None] = None,
         top_k: int = 20,
-        confidence_threshold: Optional[float] = None,
+        score_threshold: Optional[float] = None,
         max_seq_length: int = 384,
         stride: int = 128,
         max_batch_size: Optional[int] = None,
@@ -62,9 +62,9 @@ class ExtractiveReader:
             If this parameter is set to `True`, then the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) is used.
         :param top_k: Number of answers to return per query.
-            It is required even if confidence_threshold is set. Defaults to 20.
+            It is required even if score_threshold is set. Defaults to 20.
             An additional answer with no text is returned if no_answer is set to True (default).
-        :param confidence_threshold: Returns only answers with the probability score above this threshold.
+        :param score_threshold: Returns only answers with the probability score above this threshold.
         :param max_seq_length: Maximum number of tokens.
             If a sequence exceeds it, the sequence is split.
             Default: 384
@@ -73,8 +73,9 @@ class ExtractiveReader:
         :param max_batch_size: Maximum number of samples that are fed through the model at the same time.
         :param answers_per_seq: Number of answer candidates to consider per sequence.
             This is relevant when a Document was split into multiple sequences because of max_seq_length.
-        :param no_answer: Whether to return no answer scores.
-        :param calibration_factor: Factor used for calibrating probability scores.
+        :param no_answer: Whether to return an additional `no answer` with an empty text and a score representing the
+            probability that the other top_k answers are incorrect.
+        :param calibration_factor: Factor used for calibrating probabilities.
         :param overlap_threshold: If set this will remove duplicate answers if they have an overlap larger than the
             supplied threshold. For example, for the answers "in the river in Maine" and "the river" we would remove
             one of these answers since the second answer has a 100% (1.0) overlap with the first answer.
@@ -92,7 +93,7 @@ class ExtractiveReader:
         self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
-        self.confidence_threshold = confidence_threshold
+        self.score_threshold = score_threshold
         self.stride = stride
         self.max_batch_size = max_batch_size
         self.answers_per_seq = answers_per_seq
@@ -118,7 +119,7 @@ class ExtractiveReader:
             token=self.token if not isinstance(self.token, str) else None,
             max_seq_length=self.max_seq_length,
             top_k=self.top_k,
-            confidence_threshold=self.confidence_threshold,
+            score_threshold=self.score_threshold,
             stride=self.stride,
             max_batch_size=self.max_batch_size,
             answers_per_seq=self.answers_per_seq,
@@ -210,8 +211,8 @@ class ExtractiveReader:
         encodings: List["Encoding"],
     ) -> Tuple[List[List[int]], List[List[int]], "torch.Tensor"]:
         """
-        Turn start and end logits into probability scores for each answer span. Unlike most other
-        implementations, it doesn't normalize the scores to make them easier to compare across different
+        Turn start and end logits into probabilities for each answer span. Unlike most other
+        implementations, it doesn't normalize the scores in each split to make them easier to compare across different
         splits. Returns the top k answer spans.
         """
         mask = sequence_ids == 1  # Only keep tokens from the context (should ignore special tokens)
@@ -270,57 +271,55 @@ class ExtractiveReader:
         queries: List[str],
         answers_per_seq: int,
         top_k: Optional[int],
-        confidence_threshold: Optional[float],
+        score_threshold: Optional[float],
         query_ids: List[int],
         document_ids: List[int],
         no_answer: bool,
         overlap_threshold: Optional[float],
     ) -> List[List[ExtractedAnswer]]:
         """
-        Reconstructs the nested structure that existed before flattening. Also computes a no answer probability.
-        This probability is different from most other implementations because it does not consider the no answer
+        Reconstructs the nested structure that existed before flattening. Also computes a no answer score.
+        This score is different from most other implementations because it does not consider the no answer
         logit introduced with SQuAD 2. Instead, it just computes the probability that the answer does not exist
         in the top k or top p.
         """
-        flat_answers_without_queries = []
+        answers_without_query = []
         for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
             document_ids, start, end, probabilities
         ):
             for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_):
                 doc = flattened_documents[document_id]
-                # doc.content cannot be None, because those documents are filtered when preprocessing.
-                # However, mypy doesn't know that.
-                flat_answers_without_queries.append(
-                    {
-                        "data": doc.content[start_:end_],  # type: ignore
-                        "document": doc,
-                        "probability": probability.item(),
-                        "start": start_,
-                        "end": end_,
-                        "metadata": {},
-                    }
+                answers_without_query.append(
+                    ExtractedAnswer(
+                        query="",  # Can't be None but we'll add it later
+                        data=doc.content[start_:end_],  # type: ignore
+                        document=doc,
+                        score=probability.item(),
+                        document_offset=ExtractedAnswer.Span(start_, end_),
+                        meta={},
+                    )
                 )
         i = 0
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):
             current_answers = []
-            while i < len(flat_answers_without_queries) and query_ids[i // answers_per_seq] == query_id:
-                answer = flat_answers_without_queries[i]
-                answer["query"] = queries[query_id]
-                current_answers.append(ExtractedAnswer(**answer))
+            while i < len(answers_without_query) and query_ids[i // answers_per_seq] == query_id:
+                answer = answers_without_query[i]
+                answer.query = queries[query_id]
+                current_answers.append(answer)
                 i += 1
-            current_answers = sorted(current_answers, key=lambda ans: ans.probability, reverse=True)
+            current_answers = sorted(current_answers, key=lambda ans: ans.score, reverse=True)
             current_answers = self.deduplicate_by_overlap(current_answers, overlap_threshold=overlap_threshold)
             current_answers = current_answers[:top_k]
             if no_answer:
-                no_answer_probability = math.prod(1 - answer.probability for answer in current_answers)
+                no_answer_score = math.prod(1 - answer.score for answer in current_answers)
                 answer_ = ExtractedAnswer(
-                    data=None, query=queries[query_id], metadata={}, document=None, probability=no_answer_probability
+                    data=None, query=queries[query_id], meta={}, document=None, score=no_answer_score
                 )
                 current_answers.append(answer_)
-            current_answers = sorted(current_answers, key=lambda ans: ans.probability, reverse=True)
-            if confidence_threshold is not None:
-                current_answers = [answer for answer in current_answers if answer.probability >= confidence_threshold]
+            current_answers = sorted(current_answers, key=lambda ans: ans.score, reverse=True)
+            if score_threshold is not None:
+                current_answers = [answer for answer in current_answers if answer.score >= score_threshold]
             nested_answers.append(current_answers)
 
         return nested_answers
@@ -431,7 +430,7 @@ class ExtractiveReader:
         query: str,
         documents: List[Document],
         top_k: Optional[int] = None,
-        confidence_threshold: Optional[float] = None,
+        score_threshold: Optional[float] = None,
         max_seq_length: Optional[int] = None,
         stride: Optional[int] = None,
         max_batch_size: Optional[int] = None,
@@ -446,9 +445,9 @@ class ExtractiveReader:
         :param documents: List of Documents in which you want to search for an answer to the query.
         :param top_k: The maximum number of answers to return.
             An additional answer is returned if no_answer is set to True (default).
-        :param confidence_threshold:
+        :param score_threshold:
         :return: List of ExtractedAnswers sorted by (desc.) answer score.
-        :param confidence_threshold: Returns only answers with the probability score above this threshold.
+        :param score_threshold: Returns only answers with the score above this threshold.
         :param max_seq_length: Maximum number of tokens.
             If a sequence exceeds it, the sequence is split.
             Default: 384
@@ -474,7 +473,7 @@ class ExtractiveReader:
             raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
 
         top_k = top_k or self.top_k
-        confidence_threshold = confidence_threshold or self.confidence_threshold
+        score_threshold = score_threshold or self.score_threshold
         max_seq_length = max_seq_length or self.max_seq_length
         stride = stride or self.stride
         max_batch_size = max_batch_size or self.max_batch_size
@@ -523,7 +522,7 @@ class ExtractiveReader:
             queries=queries,
             answers_per_seq=answers_per_seq,
             top_k=top_k,
-            confidence_threshold=confidence_threshold,
+            score_threshold=score_threshold,
             query_ids=query_ids,
             document_ids=document_ids,
             no_answer=no_answer,

@@ -129,7 +129,6 @@ skip = "test/nodes/*,test/others/*,test/samples/*"
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
-load-plugins = "haystack_linter"
 disable = [
 
   # To keep
