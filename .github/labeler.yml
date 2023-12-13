@@ -1,23 +1,33 @@
 # Proposals
 proposal:
-- proposals/text/*
+- changed-files:
+  - any-glob-to-any-file: proposals/text/*
 
 # Topics
 topic:tests:
-- test/**/*
-- test/*
+- changed-files:
+  - any-glob-to-any-file: ['test/**/*','test/*']
+
 topic:docker:
-- docker/*
+- changed-files:
+  - any-glob-to-any-file: docker/*
+
 topic:CI:
-- .github/*
-- .github/**/*
+- changed-files:
+  - any-glob-to-any-file: ['.github/*','.github/**/*']
+
 topic:DX:
-- CONTRIBUTING.md
-- .pre-commit-config.yaml
-- .gitignore
+- changed-files:
+  - any-glob-to-any-file: ["CONTRIBUTING.md", ".pre-commit-config.yaml",".gitignore"]
+
 topic:build/distribution:
-- pyproject.toml
+- changed-files:
+  - any-glob-to-any-file: pyproject.toml
+
 topic:security:
-- SECURITY.md
+- changed-files:
+  - any-glob-to-any-file: SECURITY.md
+
 topic:core:
-- haystack/core/**/*
+- changed-files:
+  - any-glob-to-any-file: haystack/core/**/*
