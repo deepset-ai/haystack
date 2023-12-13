@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 from haystack import default_from_dict, default_to_dict
 from haystack.dataclasses import Document
 from haystack.document_stores.protocol import DuplicatePolicy
-from haystack.utils.filters import document_matches_filter, convert
+from haystack.utils.filters import container_matches_filter, convert
 from haystack.document_stores.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.utils import expit
 
@@ -98,7 +98,7 @@ class InMemoryDocumentStore:
         if filters:
             if "operator" not in filters and "conditions" not in filters:
                 filters = convert(filters)
-            return [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+            return [doc for doc in self.storage.values() if container_matches_filter(filters=filters, container=doc)]
         return list(self.storage.values())
 
     def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:

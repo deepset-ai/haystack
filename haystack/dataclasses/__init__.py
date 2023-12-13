@@ -4,6 +4,7 @@ from haystack.dataclasses.byte_stream import ByteStream
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.dataclasses.chat_message import ChatRole
 from haystack.dataclasses.streaming_chunk import StreamingChunk
+from haystack.dataclasses.meta_container import MetaContainer
 
 __all__ = [
     "Document",
@@ -14,4 +15,5 @@ __all__ = [
     "ChatMessage",
     "ChatRole",
     "StreamingChunk",
+    "MetaContainer",
 ]
