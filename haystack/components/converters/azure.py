@@ -1,10 +1,14 @@
 from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
 import os
+import logging
 
 from haystack.lazy_imports import LazyImport
 from haystack import component, Document, default_to_dict
+from haystack.dataclasses import ByteStream
+from haystack.components.converters.utils import get_bytestream_from_source
 
+logger = logging.getLogger(__name__)
 
 with LazyImport(message="Run 'pip install \"azure-ai-formrecognizer>=3.2.0b2\"'") as azure_import:
     from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
@@ -53,7 +57,7 @@ class AzureOCRDocumentConverter:
         self.model_id = model_id
 
     @component.output_types(documents=List[Document], azure=List[Dict])
-    def run(self, paths: List[Union[str, Path]]):
+    def run(self, sources: List[Union[str, Path, ByteStream]]):
         """
         Convert files to Documents using Azure's Document Intelligence service.
 
@@ -61,18 +65,25 @@ class AzureOCRDocumentConverter:
         a list of Documents that were created from the files. The `raw_azure_response` output contains a list of
         the raw responses from Azure's Document Intelligence service.
 
-        :param paths: Paths to the files to convert.
+        :param sources: List of file paths or ByteStream objects.
         """
         documents = []
         azure_output = []
-        for path in paths:
-            path = Path(path)
-            with open(path, "rb") as file:
-                poller = self.document_analysis_client.begin_analyze_document(model_id=self.model_id, document=file)
-                result = poller.result()
-                azure_output.append(result.to_dict())
+        for source in sources:
+            try:
+                bytestream = get_bytestream_from_source(source=source)
+            except Exception as e:
+                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                continue
+            
+            poller = self.document_analysis_client.begin_analyze_document(model_id=self.model_id, document=bytestream.data)
+            result = poller.result()
+            azure_output.append(result.to_dict())
 
-            file_suffix = path.suffix
+            file_suffix = None
+            if "file_path" in bytestream.metadata:
+                file_suffix = Path(bytestream.metadata["file_path"]).suffix
+            
             document = AzureOCRDocumentConverter._convert_azure_result_to_document(result, file_suffix)
             documents.append(document)
 
@@ -85,7 +96,7 @@ class AzureOCRDocumentConverter:
         return default_to_dict(self, endpoint=self.endpoint, model_id=self.model_id)
 
     @staticmethod
-    def _convert_azure_result_to_document(result: "AnalyzeResult", file_suffix: str) -> Document:
+    def _convert_azure_result_to_document(result: "AnalyzeResult", file_suffix: Optional[str]) -> Document:
         """
         Convert the result of Azure OCR to a Haystack text Document.
         """

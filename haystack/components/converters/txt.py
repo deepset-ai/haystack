@@ -4,6 +4,7 @@ from typing import List, Union
 
 from haystack import Document, component
 from haystack.dataclasses import ByteStream
+from haystack.components.converters.utils import get_bytestream_from_source
 
 
 logger = logging.getLogger(__name__)
@@ -37,20 +38,27 @@ class TextFileToDocument:
         """
         documents = []
         for source in sources:
-            if isinstance(source, (Path, str)):
-                try:
-                    path = source
-                    source = ByteStream.from_file_path(Path(source))
-                    source.metadata["file_path"] = str(path)
-                except Exception as e:
-                    logger.warning("Could not convert file %s. Skipping it. Error message: %s", source, e)
-                    continue
             try:
-                encoding = source.metadata.get("encoding", self.encoding)
-                document = Document(content=source.data.decode(encoding))
-                document.meta = source.metadata
+                bytestream = get_bytestream_from_source(source)
+            except Exception as e:
+                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                continue
+            try:
+                encoding = bytestream.metadata.get("encoding", self.encoding)
+                document = Document(content=bytestream.data.decode(encoding))
+                document.meta = bytestream.metadata
                 documents.append(document)
             except Exception as e:
-                logger.warning("Could not convert file %s. Skipping it. Error message: %s", source, e)
+                source_str = str(source) if len(str(source)) < 100 else str(source)[:100] + "..."
+                logger.warning("Could not convert file %s. Skipping it. Error message: %s", source_str, e)
 
         return {"documents": documents}
+    
+    def _get_bytestream_from_source(self, source: Union[str, Path, ByteStream]) -> ByteStream:
+        if isinstance(source, ByteStream):
+            return source
+        if isinstance(source, (str, Path)):
+            bs = ByteStream.from_file_path(Path(source))
+            bs.metadata["file_path"] = str(source)
+            return bs
+        raise ValueError(f"Unsupported source type {type(source)}")

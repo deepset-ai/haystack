@@ -6,6 +6,7 @@ from pathlib import Path
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 from haystack import Document, component, default_to_dict
+from haystack.components.converters.utils import get_bytestream_from_source
 
 with LazyImport("Run 'pip install pypdf'") as pypdf_import:
     from pypdf import PdfReader
@@ -80,7 +81,12 @@ class PyPDFToDocument:
         documents = []
         for source in sources:
             try:
-                pdf_reader = self._get_pdf_reader(source)
+                bytestream = get_bytestream_from_source(source)
+            except Exception as e:
+                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                continue
+            try:
+                pdf_reader = PdfReader(io.BytesIO(bytestream.data))
                 document = self._converter.convert(pdf_reader)
             except Exception as e:
                 logger.warning("Could not read %s and convert it to Document, skipping. %s", source, e)
@@ -89,17 +95,3 @@ class PyPDFToDocument:
 
         return {"documents": documents}
 
-    def _get_pdf_reader(self, source: Union[str, Path, ByteStream]) -> "PdfReader":
-        """
-        Creates a PdfReader object from a given source, which can be a file path or a ByteStream object.
-
-        :param source: The source of the PDF data.
-        :return: A PdfReader instance initialized with the PDF data from the source.
-        :raises ValueError: If the source type is not supported.
-        """
-        if isinstance(source, (str, Path)):
-            return PdfReader(str(source))
-        elif isinstance(source, ByteStream):
-            return PdfReader(io.BytesIO(source.data))
-        else:
-            raise ValueError(f"Unsupported source type: {type(source)}")

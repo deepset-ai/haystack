@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Union
 from haystack import Document, component
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
+from haystack.components.converters.utils import get_bytestream_from_source
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +61,15 @@ class HTMLToDocument:
 
         for source, metadata in zip(sources, meta):
             try:
-                file_content, extracted_meta = self._extract_content(source)
+                bytestream = get_bytestream_from_source(source=source)
+                extracted_meta = bytestream.metadata
             except Exception as e:
                 logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
                 continue
             try:
+                file_content = bytestream.data.decode("utf-8")
                 text = extractor.get_content(file_content)
-            except Exception as conversion_e:  # Consider specifying the expected exception type(s) here
+            except Exception as conversion_e:
                 logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
                 continue
 
@@ -78,17 +81,3 @@ class HTMLToDocument:
             documents.append(document)
 
         return {"documents": documents}
-
-    def _extract_content(self, source: Union[str, Path, ByteStream]) -> tuple:
-        """
-        Extracts content from the given data source
-        :param source: The data source to extract content from.
-        :return: The extracted content and metadata.
-        """
-        if isinstance(source, (str, Path)):
-            with open(source) as text_file:
-                return (text_file.read(), None)
-        if isinstance(source, ByteStream):
-            return (source.data.decode("utf-8"), source.metadata)
-
-        raise ValueError(f"Unsupported source type: {type(source)}")

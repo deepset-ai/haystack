@@ -32,7 +32,7 @@ class TestAzureOCRDocumentConverter:
             mock_azure_client.return_value.begin_analyze_document.return_value.result.return_value = mock_result
 
             component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
-            output = component.run(paths=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
+            output = component.run(sources=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
             document = output["documents"][0]
             assert document.content == "mocked line 1\nmocked line 2\n\f"
             assert "raw_azure_response" in output
@@ -50,7 +50,7 @@ class TestAzureOCRDocumentConverter:
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=os.environ["CORE_AZURE_CS_API_KEY"]
         )
-        output = component.run(paths=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
+        output = component.run(sources=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
         documents = output["documents"]
         assert len(documents) == 1
         assert "A sample PDF file" in documents[0].content
@@ -64,7 +64,7 @@ class TestAzureOCRDocumentConverter:
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=os.environ["CORE_AZURE_CS_API_KEY"]
         )
-        output = component.run(paths=[test_files_path / "images" / "haystack-logo.png"])
+        output = component.run(sources=[test_files_path / "images" / "haystack-logo.png"])
         documents = output["documents"]
         assert len(documents) == 1
         assert "haystack" in documents[0].content
@@ -77,7 +77,7 @@ class TestAzureOCRDocumentConverter:
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=os.environ["CORE_AZURE_CS_API_KEY"]
         )
-        output = component.run(paths=[test_files_path / "docx" / "sample_docx.docx"])
+        output = component.run(sources=[test_files_path / "docx" / "sample_docx.docx"])
         documents = output["documents"]
         assert len(documents) == 1
         assert "Sample Docx File" in documents[0].content
