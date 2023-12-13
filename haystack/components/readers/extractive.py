@@ -360,7 +360,7 @@ class ExtractiveReader:
                 continue
 
             # If any of the spans is None then keep both
-            if not all(v is not None for v in [ans.start, ans.end, candidate_answer.start, candidate_answer.end]):
+            if not all(v is not None for v in [ans.document_offset, candidate_answer.document_offset]):
                 continue
 
             # If the answers come from different documents then keep both
@@ -368,24 +368,24 @@ class ExtractiveReader:
                 continue
 
             # Needed for mypy
-            assert ans.start is not None
-            assert ans.end is not None
-            assert candidate_answer.start is not None
-            assert candidate_answer.end is not None
+            assert ans.document_offset is not None
+            assert candidate_answer.document_offset is not None
 
             overlap_len = self._calculate_overlap(
-                answer1_start=ans.start,
-                answer1_end=ans.end,
-                answer2_start=candidate_answer.start,
-                answer2_end=candidate_answer.end,
+                answer1_start=ans.document_offset.start,
+                answer1_end=ans.document_offset.end,
+                answer2_start=candidate_answer.document_offset.start,
+                answer2_end=candidate_answer.document_offset.end,
             )
 
             # If overlap is 0 then keep
             if overlap_len == 0:
                 continue
 
-            overlap_frac_answer1 = overlap_len / (ans.end - ans.start)
-            overlap_frac_answer2 = overlap_len / (candidate_answer.end - candidate_answer.start)
+            overlap_frac_answer1 = overlap_len / (ans.document_offset.end - ans.document_offset.start)
+            overlap_frac_answer2 = overlap_len / (
+                candidate_answer.document_offset.end - candidate_answer.document_offset.start
+            )
 
             if overlap_frac_answer1 > overlap_threshold or overlap_frac_answer2 > overlap_threshold:
                 keep = False
@@ -445,8 +445,6 @@ class ExtractiveReader:
         :param documents: List of Documents in which you want to search for an answer to the query.
         :param top_k: The maximum number of answers to return.
             An additional answer is returned if no_answer is set to True (default).
-        :param score_threshold:
-        :return: List of ExtractedAnswers sorted by (desc.) answer score.
         :param score_threshold: Returns only answers with the score above this threshold.
         :param max_seq_length: Maximum number of tokens.
             If a sequence exceeds it, the sequence is split.
@@ -466,6 +464,7 @@ class ExtractiveReader:
             both of these answers could be kept if this variable is set to 0.24 or lower.
             If None is provided then all answers are kept.
             Default: 0.01
+        :return: List of ExtractedAnswers sorted by (desc.) answer score.
         """
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2
         nested_documents = [documents]

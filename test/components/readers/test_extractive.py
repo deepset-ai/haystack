@@ -233,8 +233,19 @@ def test_nest_answers(mock_reader: ExtractiveReader):
     probabilities = torch.arange(5).unsqueeze(0) / 5 + torch.arange(6).unsqueeze(-1) / 25
     query_ids = [0] * 3 + [1] * 3
     document_ids = list(range(3)) * 2
-    nested_answers = mock_reader._nest_answers(
-        start=start, end=end, probabilities=probabilities, flattened_documents=example_documents[0], queries=example_queries, answers_per_seq=5, top_k=3, confidence_threshold=None, query_ids=query_ids, document_ids=document_ids, no_answer=True, overlap_threshold=None  # type: ignore
+    nested_answers = mock_reader._nest_answers(  # type: ignore
+        start=start,
+        end=end,
+        probabilities=probabilities,
+        flattened_documents=example_documents[0],
+        queries=example_queries,
+        answers_per_seq=5,
+        top_k=3,
+        score_threshold=None,
+        query_ids=query_ids,
+        document_ids=document_ids,
+        no_answer=True,
+        overlap_threshold=None,
     )
     expected_no_answers = [0.2 * 0.16 * 0.12, 0]
     for query, answers, expected_no_answer, probabilities in zip(
@@ -277,10 +288,9 @@ class TestDeduplication:
             query="test",
             data=answer1,
             document=doc1,
-            start=doc1.content.find(answer1),
-            end=doc1.content.find(answer1) + len(answer1),
-            probability=0.1,
-            metadata={},
+            document_offset=ExtractedAnswer.Span(doc1.content.find(answer1), doc1.content.find(answer1) + len(answer1)),
+            score=0.1,
+            meta={},
         )
 
     def test_calculate_overlap(self, mock_reader: ExtractiveReader, doc1: Document):
@@ -306,19 +316,21 @@ class TestDeduplication:
                     query="test",
                     data=answer2,
                     document=doc1,
-                    start=doc1.content.find(answer2),
-                    end=doc1.content.find(answer2) + len(answer2),
-                    probability=0.1,
-                    metadata={},
+                    document_offset=ExtractedAnswer.Span(
+                        doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                    ),
+                    score=0.1,
+                    meta={},
                 ),
                 ExtractedAnswer(
                     query="test",
                     data=answer3,
                     document=doc2,
-                    start=doc2.content.find(answer3),
-                    end=doc2.content.find(answer3) + len(answer3),
-                    probability=0.1,
-                    metadata={},
+                    document_offset=ExtractedAnswer.Span(
+                        doc2.content.find(answer3), doc2.content.find(answer3) + len(answer3)
+                    ),
+                    score=0.1,
+                    meta={},
                 ),
             ],
             overlap_threshold=0.01,
@@ -337,19 +349,21 @@ class TestDeduplication:
                     query="test",
                     data=answer2,
                     document=doc1,
-                    start=doc1.content.find(answer2),
-                    end=doc1.content.find(answer2) + len(answer2),
-                    probability=0.1,
-                    metadata={},
+                    document_offset=ExtractedAnswer.Span(
+                        doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                    ),
+                    score=0.1,
+                    meta={},
                 ),
                 ExtractedAnswer(
                     query="test",
                     data=answer3,
                     document=doc2,
-                    start=doc2.content.find(answer3),
-                    end=doc2.content.find(answer3) + len(answer3),
-                    probability=0.1,
-                    metadata={},
+                    document_offset=ExtractedAnswer.Span(
+                        doc2.content.find(answer3), doc2.content.find(answer3) + len(answer3)
+                    ),
+                    score=0.1,
+                    meta={},
                 ),
             ],
             overlap_threshold=0.01,
@@ -367,10 +381,11 @@ class TestDeduplication:
                     query="test",
                     data=answer2,
                     document=None,
-                    start=doc1.content.find(answer2),
-                    end=doc1.content.find(answer2) + len(answer2),
-                    probability=0.1,
-                    metadata={},
+                    document_offset=ExtractedAnswer.Span(
+                        doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                    ),
+                    score=0.1,
+                    meta={},
                 )
             ],
             overlap_threshold=0.01,
@@ -384,9 +399,7 @@ class TestDeduplication:
         keep = mock_reader._should_keep(
             candidate_answer=candidate_answer,
             current_answers=[
-                ExtractedAnswer(
-                    query="test", data=answer2, document=doc1, start=None, end=None, probability=0.1, metadata={}
-                )
+                ExtractedAnswer(query="test", data=answer2, document=doc1, document_offset=None, score=0.1, meta={})
             ],
             overlap_threshold=0.01,
         )
@@ -408,10 +421,9 @@ class TestDeduplication:
             query="test",
             data=answer2,
             document=doc1,
-            start=doc1.content.find(answer2),
-            end=doc1.content.find(answer2) + len(answer2),
-            probability=0.1,
-            metadata={},
+            document_offset=ExtractedAnswer.Span(doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)),
+            score=0.1,
+            meta={},
         )
         result = mock_reader.deduplicate_by_overlap(
             answers=[candidate_answer, candidate_answer, extracted_answer2], overlap_threshold=0.01
