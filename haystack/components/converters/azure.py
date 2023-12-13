@@ -75,15 +75,17 @@ class AzureOCRDocumentConverter:
             except Exception as e:
                 logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
                 continue
-            
-            poller = self.document_analysis_client.begin_analyze_document(model_id=self.model_id, document=bytestream.data)
+
+            poller = self.document_analysis_client.begin_analyze_document(
+                model_id=self.model_id, document=bytestream.data
+            )
             result = poller.result()
             azure_output.append(result.to_dict())
 
             file_suffix = None
             if "file_path" in bytestream.metadata:
                 file_suffix = Path(bytestream.metadata["file_path"]).suffix
-            
+
             document = AzureOCRDocumentConverter._convert_azure_result_to_document(result, file_suffix)
             documents.append(document)
 
