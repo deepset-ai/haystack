@@ -46,7 +46,6 @@ from ..conftest import (
     DC_API_KEY,
     DC_TEST_INDEX,
     MockDocumentStore,
-    MockSeq2SegGenerator,
     MockRetriever,
     MockNode,
     deepset_cloud_fixture,
