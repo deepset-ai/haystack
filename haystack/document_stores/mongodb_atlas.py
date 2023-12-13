@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import re
 from typing import Dict, Generator, List, Optional, Union
 import numpy as np
@@ -16,7 +14,6 @@ from ..lazy_imports import LazyImport
 with LazyImport("Run 'pip install farm-haystack[mongodb]'") as mongodb_import:
     import pymongo
     from pymongo import InsertOne, ReplaceOne, UpdateOne
-    from pymongo.collection import Collection
     from pymongo.driver_info import DriverInfo
 
 METRIC_TYPES = ["euclidean", "cosine", "dotProduct"]
@@ -67,7 +64,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
     def _create_document_field_map(self) -> Dict:
         return {self.embedding_field: "embedding"}
 
-    def _get_collection(self, index=None) -> Collection:
+    def _get_collection(self, index=None) -> "pymongo.collection.Collection":
         """
         Returns the collection named by index or returns the collection specified when the
         driver was initialized.
