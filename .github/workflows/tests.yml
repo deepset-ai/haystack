@@ -109,7 +109,8 @@ jobs:
             mdit_plain \
             tika \
             'azure-ai-formrecognizer>=3.2.0b2' \
-            boilerpy3
+            boilerpy3 \
+            google-cloud-aiplatform
 
       - name: Run
         run: pytest -m "not integration" test
@@ -178,7 +179,8 @@ jobs:
             mdit_plain \
             tika \
             'azure-ai-formrecognizer>=3.2.0b2' \
-            boilerpy3
+            boilerpy3 \
+            google-cloud-aiplatform
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test
@@ -245,7 +247,8 @@ jobs:
             mdit_plain \
             tika \
             'azure-ai-formrecognizer>=3.2.0b2' \
-            boilerpy3
+            boilerpy3 \
+            google-cloud-aiplatform
 
       - name: Run Tika
         run: docker run -d -p 9998:9998 apache/tika:2.9.0.0
@@ -307,7 +310,8 @@ jobs:
             mdit_plain \
             tika \
             'azure-ai-formrecognizer>=3.2.0b2' \
-            boilerpy3
+            boilerpy3 \
+            google-cloud-aiplatform
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test -k 'not tika'
