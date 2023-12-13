@@ -98,6 +98,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
+        shell: bash
         run: |
           pip install \
             .[dev,audio] \
@@ -299,6 +300,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
+        shell: bash
         run: |
           pip install \
             .[dev,audio] \
