@@ -1,0 +1,17 @@
+---
+features:
+  - |
+    Add new generator `VertexAIImageCaptioner` to generate image captions using Google Vertex AI.
+    Sample usage:
+    ```python
+    from pathlib import Path
+
+    from haystack.dataclasses.byte_stream import ByteStream
+    from haystack.components.generators.google_vertex.captioner import VertexAIImageCaptioner
+
+    captioner = VertexAIImageCaptioner(project_id="myproject-123456", number_of_results=3, language="fr")
+    image = ByteStream.from_file_path(Path("path", "to", "my", "image.png"))
+    res = captioner.run(image=image)
+    for caption in res["captions"]:
+      print(caption)
+    ```
