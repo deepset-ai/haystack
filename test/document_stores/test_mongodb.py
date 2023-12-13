@@ -60,7 +60,7 @@ def get_book_local():
     return text
 
 
-get_book = get_book_local
+get_book = get_book_online
 
 
 # Divide the book into chapters
@@ -429,7 +429,7 @@ def test_query_by_embedding_default_topk():
     )
     embedding = retriever.embed_queries(["How much money was stolen from the bank?"])[0]
     results = document_store.query_by_embedding(query_emb=embedding)
-    assert results[0].embedding == None
+    assert results[0].embedding is None
     assert len(results) == 10
 
 
