@@ -1,13 +1,10 @@
 from __future__ import annotations
+from dataclasses import Field
 
-from typing import TYPE_CHECKING
-from typing import Any, Dict, Protocol
+from typing import Any, Dict, Protocol, runtime_checkable, ClassVar
 
-if TYPE_CHECKING:
-    from _typeshed import DataclassInstance
 
-    class MetaContainer(Protocol, DataclassInstance):
-        meta: Dict[str, Any]
-
-else:
-    MetaContainer = Any
+@runtime_checkable
+class MetaContainer(Protocol):
+    __dataclass_fields__: ClassVar[dict[str, Field[Any]]]  # marks it as dataclass
+    meta: Dict[str, Any]
