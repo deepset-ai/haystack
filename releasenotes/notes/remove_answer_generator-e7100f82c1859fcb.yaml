@@ -1,3 +1,5 @@
 ---
-deprecations:
-  - Remove deprecated `OpenAIAnswerGenerator`, `BaseGenerator`, `GenerativeQAPipeline` and related tests.
+upgrade:
+  - |
+    Remove deprecated `OpenAIAnswerGenerator`, `BaseGenerator`, `GenerativeQAPipeline` and related tests.
+    GenerativeQA Pipelines should use PromptNode instead. See https://haystack.deepset.ai/tutorials/22_pipeline_with_promptnode
