@@ -45,7 +45,7 @@ jobs:
           git commit -m "Update unstable version to $NEW_VERSION"
           VERSION_TAG="v$NEW_VERSION"
           git tag $VERSION_TAG -m"$VERSION_TAG"
-          git push --atomic origin main $VERSION_TAG
+          git push --atomic origin v1.x $VERSION_TAG
 
       - uses: actions/setup-python@v5
         with:
@@ -58,5 +58,5 @@ jobs:
         env:
           RDME_API_KEY: ${{ secrets.README_API_KEY }}
         run: |
-          git checkout main
+          git checkout v1.x
           python ./.github/utils/release_docs.py --new-version ${{ steps.versions.outputs.current_release_minor }}
