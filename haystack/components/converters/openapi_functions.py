@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any, Union
 
+import requests
+import yaml
 from requests import RequestException
 
 from haystack import component, Document
@@ -39,7 +41,8 @@ class OpenAPIServiceToFunctions:
     def run(self, sources: List[Union[str, Path, ByteStream]], system_messages: List[str]) -> Dict[str, Any]:
         """
         Processes OpenAPI specification URLs or files to extract functions that can be invoked via OpenAI function
-        calling mechanism. Each source is paired with a system message.
+        calling mechanism. Each source is paired with a system message in one-to-one correspondence. The system message
+        is used to assist LLM in the response generation.
 
         :param sources: A list of OpenAPI specification sources, which can be URLs, file paths, or ByteStream objects.
         :type sources: List[Union[str, Path, ByteStream]]
@@ -57,14 +60,22 @@ class OpenAPIServiceToFunctions:
                 if isinstance(source, (str, Path)):
                     if os.path.exists(source):
                         with open(source, "r") as f:
-                            service_openapi_spec = jsonref.load(f)
+                            openapi_spec_content = f.read()
                     else:
-                        # Assume it is a URL
-                        service_openapi_spec = jsonref.jsonloader(uri=source)
+                        # assume it's a URL
+                        response = requests.get(str(source), timeout=10)
+                        response.raise_for_status()
+                        openapi_spec_content = response.text
                 elif isinstance(source, ByteStream):
-                    service_openapi_spec = jsonref.loads(source.data.decode("utf-8"))
+                    openapi_spec_content = source.data.decode("utf-8")
                 else:
-                    raise ValueError(f"Invalid source type {type(source)}")
+                    raise ValueError(
+                        f"Invalid source type {type(source)}. Only str, Path, and ByteStream are supported."
+                    )
+
+                # now parse the content of the OpenAPI specification
+                service_openapi_spec = self._parse_openapi_spec(openapi_spec_content)
+                # and extract functions in a format suitable for OpenAI function calling
                 functions: List[Dict[str, Any]] = self._openapi_to_functions(service_openapi_spec)
                 docs = [
                     Document(
@@ -75,7 +86,7 @@ class OpenAPIServiceToFunctions:
                 ]
                 documents.extend(docs)
             except (RequestException, ValueError) as e:
-                logger.warning(f"Could not download {source}. Skipping it. Error: {e}")
+                logger.warning("Could not download %s. Skipping it. Error: %s", source, e)
                 continue
 
         return {"documents": documents}
@@ -95,21 +106,51 @@ class OpenAPIServiceToFunctions:
         for path_methods in service_openapi_spec["paths"].values():
             for method_specification in path_methods.values():
                 resolved_spec = jsonref.replace_refs(method_specification)
-                function_name = resolved_spec.get("operationId")
-                desc = resolved_spec.get("description") or resolved_spec.get("summary", "")
+                if isinstance(resolved_spec, dict):
+                    function_name = resolved_spec.get("operationId")
+                    desc = resolved_spec.get("description") or resolved_spec.get("summary", "")
 
-                schema = {"type": "object", "properties": {}}
+                    schema = {"type": "object", "properties": {}}
 
-                req_body = (
-                    resolved_spec.get("requestBody", {}).get("content", {}).get("application/json", {}).get("schema")
-                )
-                if req_body:
-                    schema["properties"]["requestBody"] = req_body
+                    req_body = (
+                        resolved_spec.get("requestBody", {})
+                        .get("content", {})
+                        .get("application/json", {})
+                        .get("schema")
+                    )
+                    if req_body:
+                        schema["properties"]["requestBody"] = req_body  # type: ignore
 
-                params = resolved_spec.get("parameters", [])
-                if params:
-                    param_properties = {param["name"]: param["schema"] for param in params if "schema" in param}
-                    schema["properties"]["parameters"] = {"type": "object", "properties": param_properties}
+                    params = resolved_spec.get("parameters", [])
+                    if params:
+                        param_properties = {param["name"]: param["schema"] for param in params if "schema" in param}
+                        schema["properties"]["parameters"] = {"type": "object", "properties": param_properties}  # type: ignore
 
-                functions.append({"name": function_name, "description": desc, "parameters": schema})
+                    # these three fields are minimal requirement for OpenAI function calling
+                    if function_name and desc and schema:
+                        functions.append({"name": function_name, "description": desc, "parameters": schema})
+                    else:
+                        logger.warning(
+                            "Invalid OpenAPI spec format provided. Could not extract function from %s", resolved_spec
+                        )
+
+                else:
+                    logger.warning(
+                        "Invalid OpenAPI spec format provided. Could not extract function from %s", resolved_spec
+                    )
+
         return functions
+
+    def _parse_openapi_spec(self, content: str) -> Dict[str, Any]:
+        """
+        Parses OpenAPI specification content, supporting both JSON and YAML formats.
+
+        :param content: The content of the OpenAPI specification.
+        :type content: str
+        :return: The parsed OpenAPI specification.
+        :rtype: Dict[str, Any]
+        """
+        try:
+            return jsonref.loads(content)
+        except json.JSONDecodeError:
+            return yaml.safe_load(content)

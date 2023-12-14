@@ -1,7 +1,6 @@
 import json
 import logging
-from typing import List, Dict, Any
-
+from typing import List, Dict, Any, Optional
 
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack import component
@@ -27,13 +26,13 @@ class OpenAPIServiceConnector:
     This can be done using the OpenAPIServiceToFunctions component.
     """
 
-    def __init__(self, service_auths: Dict[str, Any] = None):
+    def __init__(self, service_auths: Optional[Dict[str, Any]] = None):
         """
         Initializes the OpenAPIServiceConnector instance
         :param service_auths: A dictionary containing the service name and token to be used for authentication.
         """
         openapi_imports.check()
-        self.service_authentications = service_auths
+        self.service_authentications = service_auths or {}
 
     @component.output_types(service_response=Dict[str, Any])
     def run(self, messages: List[ChatMessage], service_openapi_spec: Any):
