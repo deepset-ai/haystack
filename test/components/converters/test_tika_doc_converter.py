@@ -7,6 +7,8 @@ from haystack.components.converters.tika import TikaDocumentConverter
 
 
 class TestTikaDocumentConverter:
+    @patch("haystack.components.converters.tika.tika_parser.from_buffer")
+    @patch("haystack.components.converters.tika.get_bytestream_from_source")
     def test_run(self, mock_get_bytestream_from_source, mock_tika_parser):
         mock_get_bytestream_from_source.return_value = ByteStream(data=b"mock_data")
         mock_tika_parser.return_value = {"content": "Content of mock_file.pdf"}
