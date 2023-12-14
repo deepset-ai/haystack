@@ -1,12 +1,10 @@
 import logging
+from boilerpy3 import extractors
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import Document, component
 from haystack.dataclasses import ByteStream
-from haystack.lazy_imports import LazyImport
-
-from boilerpy3 import extractors
 
 logger = logging.getLogger(__name__)
 
