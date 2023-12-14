@@ -34,6 +34,21 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
     ):
+        """
+        Document Store using MongoDB Atlas as a backend (https://www.mongodb.com/docs/atlas/getting-started/).
+        It is compatible with EmbeddingRetrievers and filters.
+
+        :param mongo_connection_string: MongoDB Atlas connection string in the format: "mongodb+srv://{mongo_atlas_username}:{mongo_atlas_password}@{mongo_atlas_host}/?{mongo_atlas_params_string}".
+        :param database_name: Name of the database to use.
+        :param collection_name: Name of the collection to use.
+        :param embedding_dim: Dimensionality of embeddings, 768 by default.
+        :param return_embedding: Whether to return document embeddings when returning documents.
+        :param similarity: The similarity function to use for the embeddings. One of "euclidean", "cosine" or "dotProduct". "cosine" is the default.
+        :param embedding_field: The name of the field in the document that contains the embedding.
+        :param progress_bar: Whether to show a progress bar when writing documents.
+        :param duplicate_documents: How to handle duplicate documents. One of "overwrite", "skip" or "fail". "overwrite" is the default.
+        :param recreate_index: Whether to recreate the index when initializing the document store.
+        """
         mongodb_import.check()
         super().__init__()
 
