@@ -1,6 +1,6 @@
 import io
 import logging
-from typing import List, Union, Protocol, Dict
+from typing import List, Union, Protocol, Dict, Any, Optional
 from pathlib import Path
 
 from haystack.dataclasses import ByteStream
@@ -71,15 +71,23 @@ class PyPDFToDocument:
         return default_to_dict(self, converter_name=self.converter_name)
 
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]]):
+    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
         """
         Converts a list of PDF sources into Document objects using the configured converter.
 
         :param sources: A list of PDF data sources, which can be file paths or ByteStream objects.
+        :param meta: Optional list of metadata to attach to the Documents.
+          The length of the list must match the number of sources. Defaults to `None`.
         :return: A dictionary containing a list of Document objects under the 'documents' key.
         """
         documents = []
-        for source in sources:
+
+        if meta is None:
+            meta = [{}] * len(sources)
+        elif len(sources) != len(meta):
+            raise ValueError("The length of the metadata list must match the number of sources.")
+
+        for source, metadata in zip(sources, meta):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
@@ -91,6 +99,9 @@ class PyPDFToDocument:
             except Exception as e:
                 logger.warning("Could not read %s and convert it to Document, skipping. %s", source, e)
                 continue
+
+            merged_metadata = {**bytestream.metadata, **metadata}
+            document.meta = merged_metadata
             documents.append(document)
 
         return {"documents": documents}

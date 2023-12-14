@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Union
+from typing import List, Union, Dict, Any, Optional
 import io
 
 from haystack.lazy_imports import LazyImport
@@ -37,15 +37,24 @@ class TikaDocumentConverter:
         self.tika_url = tika_url
 
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]]):
+    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
         """
         Convert files to Documents.
 
         :param sources: List of file paths or ByteStream objects.
+        :param meta: Optional list of metadata to attach to the Documents.
+          The length of the list must match the number of sources. Defaults to `None`.
+        :return: A dictionary containing a list of Document objects under the 'documents' key.
         """
 
         documents = []
-        for source in sources:
+
+        if meta is None:
+            meta = [{}] * len(sources)
+        elif len(sources) != len(meta):
+            raise ValueError("The length of the metadata list must match the number of sources.")
+
+        for source, metadata in zip(sources, meta):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
@@ -56,6 +65,8 @@ class TikaDocumentConverter:
             except Exception as conversion_e:
                 logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
                 continue
-            document = Document(content=text)
+
+            merged_metadata = {**bytestream.metadata, **metadata}
+            document = Document(content=text, meta=merged_metadata)
             documents.append(document)
         return {"documents": documents}
