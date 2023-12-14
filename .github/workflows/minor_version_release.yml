@@ -1,4 +1,4 @@
-name: Minor Version Release
+name: Minor Version Release (1.x)
 
 on:
   workflow_dispatch:
@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
+        with:
+          ref: "v1.x"
 
       - name: Define all versions
         id: versions
@@ -30,12 +32,12 @@ jobs:
           git checkout -b v${{ steps.versions.outputs.current_release_minor }}.x
           git push -u origin v${{ steps.versions.outputs.current_release_minor }}.x --tags
 
-      - name: Bump version on main
+      - name: Bump version on v1.x
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git checkout main
+          git checkout v1.x
           NEW_VERSION=$(awk -F. '/[0-9]+\./{$2++;print}' OFS=. < VERSION.txt)
           echo "$NEW_VERSION" > VERSION.txt
           cat VERSION.txt
