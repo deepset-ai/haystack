@@ -4,6 +4,7 @@ from unittest.mock import patch, Mock
 import pytest
 
 from haystack.components.converters.azure import AzureOCRDocumentConverter
+from haystack.dataclasses import ByteStream
 
 
 class TestAzureOCRDocumentConverter:
@@ -42,6 +43,18 @@ class TestAzureOCRDocumentConverter:
                 "content": "mocked line 1\nmocked line 2\n\f",
                 "pages": [{"lines": [{"content": "mocked line 1"}, {"content": "mocked line 2"}]}],
             }
+
+    def test_run_with_meta(self):
+        bytestream = ByteStream(data=b"test", metadata={"author": "test_author", "language": "en"})
+
+        with patch("haystack.components.converters.azure.DocumentAnalysisClient"):
+            component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
+
+        output = component.run(sources=[bytestream], meta=[{"language": "it"}])
+        document = output["documents"][0]
+
+        # check that the metadata from the bytestream is merged with that from the meta parameter
+        assert document.meta == {"author": "test_author", "language": "it"}
 
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
