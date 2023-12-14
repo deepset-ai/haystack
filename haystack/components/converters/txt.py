@@ -49,7 +49,6 @@ class TextFileToDocument:
                 document.meta = bytestream.metadata
                 documents.append(document)
             except Exception as e:
-                source_str = str(source) if len(str(source)) < 100 else str(source)[:100] + "..."
-                logger.warning("Could not convert file %s. Skipping it. Error message: %s", source_str, e)
+                logger.warning("Could not convert file %s. Skipping it. Error message: %s", source, e)
 
         return {"documents": documents}
