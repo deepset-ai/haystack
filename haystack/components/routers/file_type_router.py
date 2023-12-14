@@ -76,7 +76,10 @@ class FileTypeRouter:
         :param path: The file path to get the MIME type for.
         :return: The MIME type of the provided file path, or None if the MIME type cannot be determined.
         """
-        return mimetypes.guess_type(path.as_posix())[0]
+        extension = path.suffix.lower()
+        mime_type = mimetypes.guess_type(path.as_posix())[0]
+        # lookup custom mappings if the mime type is not found
+        return self.get_custom_mime_mappings().get(extension, mime_type)
 
     def is_valid_mime_type_format(self, mime_type: str) -> bool:
         """
@@ -84,4 +87,13 @@ class FileTypeRouter:
         :param mime_type: The MIME type to check.
         :return: True if the provided MIME type is a valid MIME type format, False otherwise.
         """
-        return mime_type in mimetypes.types_map.values()
+        return mime_type in mimetypes.types_map.values() or mime_type in self.get_custom_mime_mappings().values()
+
+    @staticmethod
+    def get_custom_mime_mappings() -> Dict[str, str]:
+        """
+        Returns a dictionary of custom file extension to MIME type mappings.
+        """
+        # we add markdown because it is not added by the mimetypes module
+        # see https://github.com/python/cpython/pull/17995
+        return {".md": "text/markdown", ".markdown": "text/markdown"}
