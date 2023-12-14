@@ -19,7 +19,7 @@ class OpenAIDocumentEmbedder:
     from haystack import Document
     from haystack.components.embedders import OpenAIDocumentEmbedder
 
-    doc = Document(text="I love pizza!")
+    doc = Document(content="I love pizza!")
 
     document_embedder = OpenAIDocumentEmbedder()
 

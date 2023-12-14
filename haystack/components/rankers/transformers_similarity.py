@@ -123,7 +123,7 @@ class TransformersSimilarityRanker:
             self.device
         )
         with torch.inference_mode():
-            similarity_scores = self.model(**features).logits.squeeze()  # type: ignore
+            similarity_scores = self.model(**features).logits.squeeze(dim=1)  # type: ignore
 
         _, sorted_indices = torch.sort(similarity_scores, descending=True)
         ranked_docs = []

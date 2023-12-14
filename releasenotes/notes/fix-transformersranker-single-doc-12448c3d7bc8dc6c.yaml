@@ -1,0 +1,3 @@
+---
+fixes:
+  - Make `TransformersSimilarityRanker` run with a list containing a single document as input.

@@ -38,7 +38,9 @@ class TestIndexingPipeline:
     #  indexing multiple files
     def test_indexing_multiple_file_types(self, test_files_path):
         document_store = InMemoryDocumentStore()
-        pipeline = build_indexing_pipeline(document_store=document_store)
+        pipeline = build_indexing_pipeline(
+            document_store=document_store, supported_mime_types=["text/plain", "application/pdf"]
+        )
         file_paths = [
             test_files_path / "txt" / "doc_1.txt",
             test_files_path / "txt" / "doc_2.txt",
