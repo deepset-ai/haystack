@@ -1,7 +1,7 @@
 import logging
-from boilerpy3 import extractors
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+from boilerpy3 import extractors
 
 from haystack import Document, component
 from haystack.dataclasses import ByteStream
