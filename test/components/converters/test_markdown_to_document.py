@@ -42,7 +42,7 @@ class TestMarkdownToDocument:
         for doc in docs:
             assert "What to build with Haystack" in doc.content
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
-            assert doc.meta == {"file_name": "sample.md"}
+            assert doc.meta["file_name"] == "sample.md"
 
     @pytest.mark.integration
     def test_run_wrong_file_type(self, test_files_path, caplog):

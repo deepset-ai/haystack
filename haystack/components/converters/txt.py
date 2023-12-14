@@ -53,7 +53,7 @@ class TextFileToDocument:
                 continue
             try:
                 encoding = bytestream.metadata.get("encoding", self.encoding)
-                text = Document(content=bytestream.data.decode(encoding))
+                text = bytestream.data.decode(encoding)
             except Exception as e:
                 logger.warning("Could not convert file %s. Skipping it. Error message: %s", source, e)
                 continue
