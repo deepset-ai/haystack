@@ -64,8 +64,8 @@ def test_rag_pipeline():
     ]
 
     eval_result = eval(rag_pipeline, inputs=inputs, expected_outputs=expected_outputs)
-    serialized_eval_result = eval_result.serialize()
-    deserialized_eval_result = EvaluationResult.deserialize(serialized_eval_result)
+    serialized_eval_result = eval_result.to_dict()
+    deserialized_eval_result = EvaluationResult.from_dict(serialized_eval_result)
 
     assert eval_result.runnable == deserialized_eval_result.runnable
     assert eval_result.inputs == deserialized_eval_result.inputs
@@ -138,8 +138,8 @@ def test_embedding_retrieval_rag_pipeline():
     ]
 
     eval_result = eval(rag_pipeline, inputs=inputs, expected_outputs=expected_outputs)
-    serialized_eval_result = eval_result.serialize()
-    deserialized_eval_result = EvaluationResult.deserialize(serialized_eval_result)
+    serialized_eval_result = eval_result.to_dict()
+    deserialized_eval_result = EvaluationResult.from_dict(serialized_eval_result)
 
     assert eval_result.runnable == deserialized_eval_result.runnable
     assert eval_result.inputs == deserialized_eval_result.inputs
@@ -302,8 +302,8 @@ def test_hybrid_doc_search():
     ]
 
     eval_result = eval(hybrid_pipeline, inputs=inputs, expected_outputs=expected_outputs)
-    serialized_eval_result = eval_result.serialize()
-    deserialized_eval_result = EvaluationResult.deserialize(serialized_eval_result)
+    serialized_eval_result = eval_result.to_dict()
+    deserialized_eval_result = EvaluationResult.from_dict(serialized_eval_result)
 
     assert eval_result.runnable == deserialized_eval_result.runnable
     assert eval_result.inputs == deserialized_eval_result.inputs

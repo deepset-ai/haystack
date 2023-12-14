@@ -1,24 +1,6 @@
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 
-from haystack import Answer, Document, ExtractedAnswer, GeneratedAnswer
-from haystack.dataclasses.byte_stream import ByteStream
-from haystack.dataclasses.chat_message import ChatMessage
-
-
-def serialize_dataclass(
-    obj: Union[Document, Answer, ExtractedAnswer, GeneratedAnswer, ChatMessage, ByteStream]
-) -> Union[str, Dict[str, Any]]:
-    """
-    Serialize a dataclass to dictionary using the to_dict() method.
-
-    :param: obj: Dataclass to serialize
-    :return: Serialized Dictionary
-    """
-    try:
-        return obj.to_dict()
-    except AttributeError as e:
-        # Handle cases where to_dict() method is not available
-        return f"Error: {str(e)}"
+from haystack.dataclasses import Answer, Document, ExtractedAnswer, GeneratedAnswer, ByteStream, ChatMessage
 
 
 def deserialize_dataclass(data_type: str, data_value: Any) -> Any:
@@ -39,11 +21,8 @@ def deserialize_dataclass(data_type: str, data_value: Any) -> Any:
     }
 
     if data_type in type_mapping:
-        try:
-            dataclass = type_mapping[data_type]
-            return dataclass.from_dict(data_value)  # type: ignore[attr-defined]
-        except AttributeError as e:
-            return f"Error: {str(e)}"
+        dataclass = type_mapping[data_type]
+        return dataclass.from_dict(data_value)  # type: ignore[attr-defined]
     else:
         return data_value  # Fallback if the type isn't found
 
@@ -66,16 +45,11 @@ def convert_component_output_to_dict(component_output: Dict[str, Any]) -> Dict[s
     }
 
     for key, value in list(component_output.items()):
-        if isinstance(value, list) and any(
-            isinstance(item, (Document, Answer, ExtractedAnswer, GeneratedAnswer, ChatMessage, ByteStream))
-            for item in value
-        ):
+        if isinstance(value, list) and any(isinstance(item, tuple(type_mapping.keys())) for item in value):
             serialized_values = []
             for file in value:
-                file_type = next(
-                    (type_str for cls, type_str in type_mapping.items() if issubclass(type(file), cls)), None
-                )
-                serialized_values.append((file_type, serialize_dataclass(file)))
+                file_type = next((type_str for cls, type_str in type_mapping.items() if isinstance(file, cls)), None)
+                serialized_values.append((file_type, file.to_dict()))
             component_output[key] = serialized_values
 
     return component_output

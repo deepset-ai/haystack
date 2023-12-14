@@ -2,7 +2,8 @@ from typing import Any, Dict, List, Union
 
 import orjson
 
-from haystack import Pipeline, component
+from haystack import Pipeline
+from haystack.core.component import Component
 from haystack.evaluation.eval_utils import (
     convert_component_outputs_from_dict,
     convert_component_outputs_to_dict,
@@ -24,7 +25,7 @@ class EvaluationResult:
 
     def __init__(
         self,
-        runnable: Union[Pipeline, component],
+        runnable: Union[Pipeline, Component],
         inputs: List[Dict[str, Any]],
         outputs: List[Dict[str, Any]],
         expected_outputs: List[Dict[str, Any]],
@@ -34,7 +35,7 @@ class EvaluationResult:
         self.outputs = outputs
         self.expected_outputs = expected_outputs
 
-    def serialize(self) -> bytes:
+    def to_dict(self) -> bytes:
         """
         Serializes the contents of EvaluationResult, to bytes using orjson:
         - runnable
@@ -46,14 +47,13 @@ class EvaluationResult:
 
         :return bytes: The seriaized data in JSON.
         """
-        type_runnable = "Pipeline" if isinstance(self.runnable, Pipeline) else "component"
-        if type_runnable == "Pipeline":
+        if isinstance(self.runnable, Pipeline):
             runnable_type_dict = ("Pipeline", self.runnable.dumps())
             outputs_dict = convert_pipeline_outputs_to_dict(self.outputs)
             expected_outputs_dict = convert_pipeline_outputs_to_dict(self.expected_outputs)
 
         else:
-            runnable_type_dict = ("Component", self.runnable.to_dict())
+            runnable_type_dict = ("Component", self.runnable.to_dict())  # type: ignore[union-attr, assignment]
             outputs_dict = convert_component_outputs_to_dict(self.outputs)
             expected_outputs_dict = convert_component_outputs_to_dict(self.expected_outputs)
 
@@ -69,7 +69,7 @@ class EvaluationResult:
         return serialized_data
 
     @classmethod
-    def deserialize(cls, data: bytes) -> "EvaluationResult":
+    def from_dict(cls, data: bytes) -> "EvaluationResult":
         """
         Deserializes the contents of EvaluationResult from JSON using orjson.
 
@@ -86,7 +86,7 @@ class EvaluationResult:
             outputs = convert_pipeline_outputs_from_dict(data=deserialized_data["outputs"])
             expected_outputs = convert_pipeline_outputs_from_dict(data=deserialized_data["expected_outputs"])
         else:
-            runnable = runnable_type.from_dict()
+            runnable = runnable_type.from_dict(runnable_dict)
             outputs = convert_component_outputs_from_dict(data=deserialized_data["outputs"])
             expected_outputs = convert_component_outputs_from_dict(data=deserialized_data["expected_outputs"])
         inputs = deserialized_data["inputs"]
@@ -95,7 +95,7 @@ class EvaluationResult:
 
 
 def eval(
-    runnable: Union[Pipeline, component], inputs: List[Dict[str, Any]], expected_outputs: List[Dict[str, Any]]
+    runnable: Union[Pipeline, Component], inputs: List[Dict[str, Any]], expected_outputs: List[Dict[str, Any]]
 ) -> EvaluationResult:
     """
     Evaluates the provided Pipeline or component based on the given inputs and expected outputs.
@@ -114,7 +114,10 @@ def eval(
 
     # Check that expected outputs has the correct shape
     if len(inputs) != len(expected_outputs):
-        raise ValueError("Length of expected_outputs does not match length of inputs.")
+        raise ValueError(
+            f"The number of inputs ({len(inputs)}) does not match the number of expected outputs ({len(expected_outputs)}). "
+            " Please ensure that each input has a corresponding expected output."
+        )
 
     for input_ in inputs:
         output = runnable.run(input_)
