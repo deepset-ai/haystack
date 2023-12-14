@@ -44,21 +44,44 @@ class DynamicPromptBuilder:
     pipe.connect("prompt_builder.prompt", "llm.messages")
 
     location = "Berlin"
-    messages = [ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
-                ChatMessage.from_user("Tell me about {{location}}")]
+    system_message = ChatMessage.from_system("You are a helpful assistant giving out valuable information to tourists.")
+    messages = [system_message, ChatMessage.from_user("Tell me about {{location}}")]
 
 
-    pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "prompt_source": messages}})
+    res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location}, "prompt_source": messages}})
+    print(res)
 
-    >> {'llm': {'replies': [ChatMessage(content='Berlin ist die Hauptstadt Deutschlands und die größte Stadt des Landes.
-    >> Es ist eine lebhafte Metropole, die für ihre Geschichte, Kultur und einzigartigen Sehenswürdigkeiten bekannt ist.
-    >> Berlin bietet eine vielfältige Kulturszene, beeindruckende architektonische Meisterwerke wie den Berliner Dom
-    >> und das Brandenburger Tor, sowie weltberühmte Museen wie das Pergamonmuseum. Die Stadt hat auch eine pulsierende
-    >> Clubszene und ist für ihr aufregendes Nachtleben berühmt. Berlin ist ein Schmelztiegel verschiedener Kulturen und
-    >> zieht jedes Jahr Millionen von Touristen an.', role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
-    >> metadata={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 32,
-    >> 'completion_tokens': 153, 'total_tokens': 185}})]}}
+    >> {'llm': {'replies': [ChatMessage(content="Berlin is the capital city of Germany and one of the most vibrant
+    and diverse cities in Europe. Here are some key things to know...Enjoy your time exploring the vibrant and dynamic
+    capital of Germany!", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, metadata={'model': 'gpt-3.5-turbo-0613',
+    'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 27, 'completion_tokens': 681, 'total_tokens': 708}})]}}
+
+
+    messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next {{day_count}} days?")]
+
+    res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "day_count": "5"},
+                                        "prompt_source": messages}})
+
+    print(res)
+    >> {'llm': {'replies': [ChatMessage(content="Here is the weather forecast for Berlin in the next 5
+    days:\n\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
+    closer to your visit.", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, metadata={'model': 'gpt-3.5-turbo-0613',
+    'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201, 'total_tokens': 238}})]}}
+
     ```
+
+    The primary advantage of using DynamicPromptBuilder is showcased in the above provided examples. DynamicPromptBuilder
+    allows dynamic customization of prompt messages without the need to reload/recreate the pipeline for each invocation.
+
+    In the example, the first query asks for general information about Berlin, and the second query requests the weather
+    forecast for Berlin in the next few days. DynamicPromptBuilder efficiently handles these distinct prompt structures
+    through adjustments in the pipeline run parameters invocations. This is in stark contrast to a regular PromptBuilder,
+    which would require recreating/reloading the pipeline for each distinct type of query, leading to inefficiency and
+    potential service disruptions, especially in server environments where continuous service is vital.
+
+    Note of course that weather forecast in the example above is fictional, but it can be easily connected to a weather
+    API to provide real weather forecasts.
+
 
     The following example demonstrates how to use DynamicPromptBuilder to generate a chat prompt with resolution
     of pipeline runtime variables (such as documents):
@@ -162,10 +185,6 @@ class DynamicPromptBuilder:
         """
         runtime_variables = runtime_variables or []
 
-        if not runtime_variables:
-            logger.warning(
-                "template_variables were not provided, DynamicPromptBuilder will not resolve any pipeline variables."
-            )
         # setup inputs
         if chat_mode:
             run_input_slots = {"prompt_source": List[ChatMessage], "template_variables": Optional[Dict[str, Any]]}
