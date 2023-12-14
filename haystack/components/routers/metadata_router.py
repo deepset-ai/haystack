@@ -2,8 +2,8 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from haystack import component, Document
 from haystack.dataclasses.answer import Answer
-from haystack.dataclasses.meta_container import MetaContainer
-from haystack.utils.filters import container_matches_filter, convert
+from haystack.dataclasses.meta_dataclass import MetaDataclass
+from haystack.utils.filters import data_object_matches_filter, convert
 
 
 @component
@@ -53,7 +53,7 @@ class MetadataRouter:
                     ```
         """
         self.rules = rules
-        component.set_output_types(self, unmatched=List[MetaContainer], **{edge: List[MetaContainer] for edge in rules})
+        component.set_output_types(self, unmatched=List[MetaDataclass], **{edge: List[MetaDataclass] for edge in rules})
 
     def run(self, documents: Optional[List[Document]] = None, answers: Optional[List[Answer]] = None):
         """
@@ -66,29 +66,29 @@ class MetadataRouter:
         if documents is not None and answers is not None:
             raise ValueError("Only one of documents or answers can be provided.")
 
-        meta_containers: Sequence[MetaContainer]
+        data_objects: Sequence[MetaDataclass]
         if documents is not None:
-            meta_containers = documents
+            data_objects = documents
         elif answers is not None:
-            meta_containers = answers
+            data_objects = answers
         else:
             raise ValueError("Either documents or answers must be provided.")
 
         unmatched = []
         output: Dict[str, List[Any]] = {edge: [] for edge in self.rules}
 
-        for meta_container in meta_containers:
-            cur_container_matched = False
+        for data_object in data_objects:
+            cur_data_object_matched = False
             for edge, rule in self.rules.items():
                 if "operator" not in rule:
                     # Must be a legacy filter, convert it
                     rule = convert(rule)
-                if container_matches_filter(rule, meta_container):
-                    output[edge].append(meta_container)
-                    cur_container_matched = True
+                if data_object_matches_filter(rule, data_object):
+                    output[edge].append(data_object)
+                    cur_data_object_matched = True
 
-            if not cur_container_matched:
-                unmatched.append(meta_container)
+            if not cur_data_object_matched:
+                unmatched.append(data_object)
 
         output["unmatched"] = unmatched
         return output

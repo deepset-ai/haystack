@@ -3,7 +3,7 @@ import pandas as pd
 
 from haystack import Document
 from haystack.errors import FilterError
-from haystack.utils.filters import convert, container_matches_filter
+from haystack.utils.filters import convert, data_object_matches_filter
 
 document_matches_filter_data = [
     # == operator params
@@ -487,7 +487,7 @@ document_matches_filter_data = [
 
 @pytest.mark.parametrize("filter, document, expected_result", document_matches_filter_data)
 def test_document_matches_filter(filter, document, expected_result):
-    assert container_matches_filter(filter, document) == expected_result
+    assert data_object_matches_filter(filter, document) == expected_result
 
 
 document_matches_filter_raises_error_data = [
@@ -548,7 +548,7 @@ document_matches_filter_raises_error_data = [
 def test_document_matches_filter_raises_error(filter):
     with pytest.raises(FilterError):
         document = Document(meta={"page": 10})
-        container_matches_filter(filter, document)
+        data_object_matches_filter(filter, document)
 
 
 filters_data = [

@@ -4,57 +4,57 @@ from datetime import datetime
 
 import pandas as pd
 
-from haystack.dataclasses import MetaContainer
+from haystack.dataclasses import MetaDataclass
 from haystack.errors import FilterError
 
 
-def container_matches_filter(filters: Dict[str, Any], container: MetaContainer) -> bool:
+def data_object_matches_filter(filters: Dict[str, Any], data_object: MetaDataclass) -> bool:
     """
     Return whether `filters` match the MetaContainer.
     For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol documentation.
     """
     if "field" in filters:
-        return _comparison_condition(filters, container)
-    return _logic_condition(filters, container)
+        return _comparison_condition(filters, data_object)
+    return _logic_condition(filters, data_object)
 
 
-def _and(container: MetaContainer, conditions: List[Dict[str, Any]]) -> bool:
-    return all(_comparison_condition(condition, container) for condition in conditions)
+def _and(data_object: MetaDataclass, conditions: List[Dict[str, Any]]) -> bool:
+    return all(_comparison_condition(condition, data_object) for condition in conditions)
 
 
-def _or(container: MetaContainer, conditions: List[Dict[str, Any]]) -> bool:
-    return any(_comparison_condition(condition, container) for condition in conditions)
+def _or(data_object: MetaDataclass, conditions: List[Dict[str, Any]]) -> bool:
+    return any(_comparison_condition(condition, data_object) for condition in conditions)
 
 
-def _not(container: MetaContainer, conditions: List[Dict[str, Any]]) -> bool:
-    return not _and(container, conditions)
+def _not(data_object: MetaDataclass, conditions: List[Dict[str, Any]]) -> bool:
+    return not _and(data_object, conditions)
 
 
 LOGICAL_OPERATORS = {"NOT": _not, "OR": _or, "AND": _and}
 
 
-def _equal(container_value: Any, filter_value: Any) -> bool:
-    if isinstance(container_value, pd.DataFrame):
-        container_value = container_value.to_json()
+def _equal(data_object_value: Any, filter_value: Any) -> bool:
+    if isinstance(data_object_value, pd.DataFrame):
+        data_object_value = data_object_value.to_json()
 
     if isinstance(filter_value, pd.DataFrame):
         filter_value = filter_value.to_json()
 
-    return container_value == filter_value
+    return data_object_value == filter_value
 
 
-def _not_equal(container_value: Any, filter_value: Any) -> bool:
-    return not _equal(container_value=container_value, filter_value=filter_value)
+def _not_equal(data_object_value: Any, filter_value: Any) -> bool:
+    return not _equal(data_object_value=data_object_value, filter_value=filter_value)
 
 
-def _greater_than(container_value: Any, filter_value: Any) -> bool:
-    if container_value is None or filter_value is None:
+def _greater_than(data_object_value: Any, filter_value: Any) -> bool:
+    if data_object_value is None or filter_value is None:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    if isinstance(container_value, str) or isinstance(filter_value, str):
+    if isinstance(data_object_value, str) or isinstance(filter_value, str):
         try:
-            container_value = datetime.fromisoformat(container_value)
+            data_object_value = datetime.fromisoformat(data_object_value)
             filter_value = datetime.fromisoformat(filter_value)
         except (ValueError, TypeError) as exc:
             msg = (
@@ -65,46 +65,46 @@ def _greater_than(container_value: Any, filter_value: Any) -> bool:
     if type(filter_value) in [list, pd.DataFrame]:
         msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
         raise FilterError(msg)
-    return container_value > filter_value
+    return data_object_value > filter_value
 
 
-def _greater_than_equal(container_value: Any, filter_value: Any) -> bool:
-    if container_value is None or filter_value is None:
+def _greater_than_equal(data_object_value: Any, filter_value: Any) -> bool:
+    if data_object_value is None or filter_value is None:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return _equal(container_value=container_value, filter_value=filter_value) or _greater_than(
-        container_value=container_value, filter_value=filter_value
+    return _equal(data_object_value=data_object_value, filter_value=filter_value) or _greater_than(
+        data_object_value=data_object_value, filter_value=filter_value
     )
 
 
-def _less_than(container_value: Any, filter_value: Any) -> bool:
-    if container_value is None or filter_value is None:
+def _less_than(data_object_value: Any, filter_value: Any) -> bool:
+    if data_object_value is None or filter_value is None:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return not _greater_than_equal(container_value=container_value, filter_value=filter_value)
+    return not _greater_than_equal(data_object_value=data_object_value, filter_value=filter_value)
 
 
-def _less_than_equal(container_value: Any, filter_value: Any) -> bool:
-    if container_value is None or filter_value is None:
+def _less_than_equal(data_object_value: Any, filter_value: Any) -> bool:
+    if data_object_value is None or filter_value is None:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return not _greater_than(container_value=container_value, filter_value=filter_value)
+    return not _greater_than(data_object_value=data_object_value, filter_value=filter_value)
 
 
-def _in(container_value: Any, filter_value: Any) -> bool:
+def _in(data_object_value: Any, filter_value: Any) -> bool:
     if not isinstance(filter_value, list):
         msg = (
             f"Filter value must be a `list` when using operator 'in' or 'not in', received type '{type(filter_value)}'"
         )
         raise FilterError(msg)
-    return any(_equal(e, container_value) for e in filter_value)
+    return any(_equal(e, data_object_value) for e in filter_value)
 
 
-def _not_in(container_value: Any, filter_value: Any) -> bool:
-    return not _in(container_value=container_value, filter_value=filter_value)
+def _not_in(data_object_value: Any, filter_value: Any) -> bool:
+    return not _in(data_object_value=data_object_value, filter_value=filter_value)
 
 
 COMPARISON_OPERATORS = {
@@ -119,7 +119,7 @@ COMPARISON_OPERATORS = {
 }
 
 
-def _logic_condition(condition: Dict[str, Any], container: MetaContainer) -> bool:
+def _logic_condition(condition: Dict[str, Any], data_object: MetaDataclass) -> bool:
     if "operator" not in condition:
         msg = f"'operator' key missing in {condition}"
         raise FilterError(msg)
@@ -128,14 +128,14 @@ def _logic_condition(condition: Dict[str, Any], container: MetaContainer) -> boo
         raise FilterError(msg)
     operator: str = condition["operator"]
     conditions: List[Dict[str, Any]] = condition["conditions"]
-    return LOGICAL_OPERATORS[operator](container, conditions)
+    return LOGICAL_OPERATORS[operator](data_object, conditions)
 
 
-def _comparison_condition(condition: Dict[str, Any], container: MetaContainer) -> bool:
+def _comparison_condition(condition: Dict[str, Any], data_object: MetaDataclass) -> bool:
     if "field" not in condition:
         # 'field' key is only found in comparison dictionaries.
         # We assume this is a logic dictionary since it's not present.
-        return _logic_condition(condition, container)
+        return _logic_condition(condition, data_object)
     field: str = condition["field"]
 
     if "operator" not in condition:
@@ -149,26 +149,26 @@ def _comparison_condition(condition: Dict[str, Any], container: MetaContainer) -
         # Handles fields formatted like so:
         # 'meta.person.name'
         parts = field.split(".")
-        document_value = getattr(container, parts[0])
+        document_value = getattr(data_object, parts[0])
         for part in parts[1:]:
             if part not in document_value:
                 # If a field is not found we treat it as None
                 document_value = None
                 break
             document_value = document_value[part]
-    elif field not in [f.name for f in fields(container)]:
+    elif field not in [f.name for f in fields(data_object)]:
         # Converted legacy filters don't add the `meta.` prefix, so we assume
         # that all filter fields that are not actual fields in Document are converted
         # filters.
         #
         # We handle this to avoid breaking compatibility with converted legacy filters.
         # This will be removed as soon as we stop supporting legacy filters.
-        document_value = container.meta.get(field)
+        document_value = data_object.meta.get(field)
     else:
-        document_value = getattr(container, field)
+        document_value = getattr(data_object, field)
     operator: str = condition["operator"]
     filter_value: Any = condition["value"]
-    return COMPARISON_OPERATORS[operator](filter_value=filter_value, container_value=document_value)
+    return COMPARISON_OPERATORS[operator](filter_value=filter_value, data_object_value=document_value)
 
 
 def convert(filters: Dict[str, Any]) -> Dict[str, Any]:
