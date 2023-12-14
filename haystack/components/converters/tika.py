@@ -24,7 +24,7 @@ class TikaDocumentConverter:
 
     The easiest way to run Tika is to use Docker: `docker run -d -p 127.0.0.1:9998:9998 apache/tika:latest`.
     For more options on running Tika on Docker,
-    see the documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
+    see the [documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
     """
 
     def __init__(self, tika_url: str = "http://localhost:9998/tika"):
