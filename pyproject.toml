@@ -130,11 +130,14 @@ pinecone = [
 opensearch = [
   "opensearch-py>=2",
 ]
+mongodb = [
+  "pymongo>=4.6",
+]
 docstores = [
-  "farm-haystack[elasticsearch,faiss,weaviate,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss,weaviate,pinecone,opensearch,mongodb]",
 ]
 docstores-gpu = [
-  "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch,mongodb]",
 ]
 aws = [
   # first version to support Amazon Bedrock
