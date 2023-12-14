@@ -1,15 +1,7 @@
 from typing import Any, Dict, List, Union
 
-import orjson
-
 from haystack import Pipeline
 from haystack.core.component import Component
-from haystack.evaluation.eval_utils import (
-    convert_component_outputs_from_dict,
-    convert_component_outputs_to_dict,
-    convert_pipeline_outputs_from_dict,
-    convert_pipeline_outputs_to_dict,
-)
 
 
 class EvaluationResult:
@@ -34,64 +26,6 @@ class EvaluationResult:
         self.inputs = inputs
         self.outputs = outputs
         self.expected_outputs = expected_outputs
-
-    def to_dict(self) -> bytes:
-        """
-        Serializes the contents of EvaluationResult, to bytes using orjson:
-        - runnable
-        - inputs
-        - outputs
-        - expected outputs
-
-        The method uses theconvert_objects_to_dict() method to convert the outputs and expected_outputs to serialized data from dataclasses.
-
-        :return bytes: The seriaized data in JSON.
-        """
-        if isinstance(self.runnable, Pipeline):
-            runnable_type_dict = ("Pipeline", self.runnable.dumps())
-            outputs_dict = convert_pipeline_outputs_to_dict(self.outputs)
-            expected_outputs_dict = convert_pipeline_outputs_to_dict(self.expected_outputs)
-
-        else:
-            runnable_type_dict = ("Component", self.runnable.to_dict())  # type: ignore[union-attr, assignment]
-            outputs_dict = convert_component_outputs_to_dict(self.outputs)
-            expected_outputs_dict = convert_component_outputs_to_dict(self.expected_outputs)
-
-        final_dict = {
-            "runnable": runnable_type_dict,
-            "inputs": self.inputs,
-            "outputs": outputs_dict,
-            "expected_outputs": expected_outputs_dict,
-        }
-
-        serialized_data = orjson.dumps(final_dict)
-
-        return serialized_data
-
-    @classmethod
-    def from_dict(cls, data: bytes) -> "EvaluationResult":
-        """
-        Deserializes the contents of EvaluationResult from JSON using orjson.
-
-        The method uses the convert_dict_to_objects() method to convert the serialized outputs and expected_outputs to deserialized dataclasses.
-
-        :param data: Data to be deserialized.
-        :return: An instance of EvaluationResult representing the original object.
-        """
-        deserialized_data = orjson.loads(data)
-
-        runnable_type, runnable_dict = deserialized_data["runnable"]
-        if runnable_type == "Pipeline":
-            runnable = Pipeline.loads(runnable_dict)
-            outputs = convert_pipeline_outputs_from_dict(data=deserialized_data["outputs"])
-            expected_outputs = convert_pipeline_outputs_from_dict(data=deserialized_data["expected_outputs"])
-        else:
-            runnable = runnable_type.from_dict(runnable_dict)
-            outputs = convert_component_outputs_from_dict(data=deserialized_data["outputs"])
-            expected_outputs = convert_component_outputs_from_dict(data=deserialized_data["expected_outputs"])
-        inputs = deserialized_data["inputs"]
-
-        return cls(runnable, inputs, outputs, expected_outputs)
 
 
 def eval(

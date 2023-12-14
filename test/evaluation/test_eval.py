@@ -9,7 +9,7 @@ from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbedd
 from haystack.components.routers.document_joiner import DocumentJoiner
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores import InMemoryDocumentStore
-from haystack.evaluation.eval import EvaluationResult, eval
+from haystack.evaluation.eval import eval
 
 
 @pytest.mark.integration
@@ -64,13 +64,11 @@ def test_rag_pipeline():
     ]
 
     eval_result = eval(rag_pipeline, inputs=inputs, expected_outputs=expected_outputs)
-    serialized_eval_result = eval_result.to_dict()
-    deserialized_eval_result = EvaluationResult.from_dict(serialized_eval_result)
 
-    assert eval_result.runnable == deserialized_eval_result.runnable
-    assert eval_result.inputs == deserialized_eval_result.inputs
-    assert eval_result.outputs == deserialized_eval_result.outputs
-    assert eval_result.expected_outputs == deserialized_eval_result.expected_outputs
+    assert eval_result.runnable == rag_pipeline
+    assert eval_result.inputs == inputs
+    assert eval_result.expected_outputs == expected_outputs
+    assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
 
 
 @pytest.mark.integration
@@ -138,13 +136,11 @@ def test_embedding_retrieval_rag_pipeline():
     ]
 
     eval_result = eval(rag_pipeline, inputs=inputs, expected_outputs=expected_outputs)
-    serialized_eval_result = eval_result.to_dict()
-    deserialized_eval_result = EvaluationResult.from_dict(serialized_eval_result)
 
-    assert eval_result.runnable == deserialized_eval_result.runnable
-    assert eval_result.inputs == deserialized_eval_result.inputs
-    assert eval_result.outputs == deserialized_eval_result.outputs
-    assert eval_result.expected_outputs == deserialized_eval_result.expected_outputs
+    assert eval_result.runnable == rag_pipeline
+    assert eval_result.inputs == inputs
+    assert eval_result.expected_outputs == expected_outputs
+    assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
 
 
 @pytest.mark.integration
@@ -302,10 +298,8 @@ def test_hybrid_doc_search():
     ]
 
     eval_result = eval(hybrid_pipeline, inputs=inputs, expected_outputs=expected_outputs)
-    serialized_eval_result = eval_result.to_dict()
-    deserialized_eval_result = EvaluationResult.from_dict(serialized_eval_result)
 
-    assert eval_result.runnable == deserialized_eval_result.runnable
-    assert eval_result.inputs == deserialized_eval_result.inputs
-    assert eval_result.outputs == deserialized_eval_result.outputs
-    assert eval_result.expected_outputs == deserialized_eval_result.expected_outputs
+    assert eval_result.runnable == hybrid_pipeline
+    assert eval_result.inputs == inputs
+    assert eval_result.expected_outputs == expected_outputs
+    assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
