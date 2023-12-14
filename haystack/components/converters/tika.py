@@ -21,6 +21,10 @@ class TikaDocumentConverter:
     A component for converting files of different types (pdf, docx, html, etc.) to Documents.
     This component uses [Apache Tika](https://tika.apache.org/) for parsing the files and, therefore,
     requires a running Tika server.
+
+    The easiest way to run Tika is to use Docker: `docker run -d -p 127.0.0.1:9998:9998 apache/tika:latest`.
+    For more options on running Tika on Docker,
+    see the documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
     """
 
     def __init__(self, tika_url: str = "http://localhost:9998/tika"):
