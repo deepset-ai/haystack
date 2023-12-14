@@ -6,10 +6,9 @@ from haystack import Document, component
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
-logger = logging.getLogger(__name__)
+from boilerpy3 import extractors
 
-with LazyImport("Run 'pip install boilerpy3'") as boilerpy3_import:
-    from boilerpy3 import extractors
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -29,12 +28,6 @@ class HTMLToDocument:
     ```
 
     """
-
-    def __init__(self):
-        """
-        Initializes the HTMLToDocument component.
-        """
-        boilerpy3_import.check()
 
     @component.output_types(documents=List[Document])
     def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
