@@ -20,12 +20,12 @@ class TestTikaDocumentConverter:
         assert len(documents) == 1
         assert documents[0].content == "Content of mock_file.pdf"
 
-    @patch("haystack.components.converters.tika.tika_parser.from_buffer")
     def test_run_with_meta(self):
         bytestream = ByteStream(data=b"test", metadata={"author": "test_author", "language": "en"})
 
         converter = TikaDocumentConverter()
-        output = converter.run(sources=[bytestream], meta=[{"language": "it"}])
+        with patch("haystack.components.converters.tika.tika_parser.from_buffer"):
+            output = converter.run(sources=[bytestream], meta=[{"language": "it"}])
         document = output["documents"][0]
 
         # check that the metadata from the bytestream is merged with that from the meta parameter
