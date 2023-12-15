@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Add metadata_fields_to_embed following the implementation in SentenceTransformersDocumentEmbedder to be able to
+    embed metadata fields along with the content of the document.
