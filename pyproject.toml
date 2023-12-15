@@ -90,10 +90,6 @@ dev = [
   "black[jupyter]~=23.0",
 ]
 
-audio = [
-  "openai-whisper>=20231106"
-]
-
 [project.urls]
 "CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"
 "Docs: RTD" = "https://haystack.deepset.ai/overview/intro"
