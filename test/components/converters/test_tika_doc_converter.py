@@ -8,17 +8,15 @@ from haystack.components.converters.tika import TikaDocumentConverter
 
 class TestTikaDocumentConverter:
     @patch("haystack.components.converters.tika.tika_parser.from_buffer")
-    @patch("haystack.components.converters.tika.get_bytestream_from_source")
-    def test_run(self, mock_get_bytestream_from_source, mock_tika_parser):
-        mock_get_bytestream_from_source.return_value = ByteStream(data=b"mock_data")
-        mock_tika_parser.return_value = {"content": "Content of mock_file.pdf"}
+    def test_run(self, mock_tika_parser):
+        mock_tika_parser.return_value = {"content": "Content of mock source"}
 
         component = TikaDocumentConverter()
-
-        documents = component.run(sources=["mock_file.pdf"])["documents"]
+        source = ByteStream(data=b"placeholder data")
+        documents = component.run(sources=[source])["documents"]
 
         assert len(documents) == 1
-        assert documents[0].content == "Content of mock_file.pdf"
+        assert documents[0].content == "Content of mock source"
 
     def test_run_with_meta(self):
         bytestream = ByteStream(data=b"test", metadata={"author": "test_author", "language": "en"})
