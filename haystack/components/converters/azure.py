@@ -79,8 +79,8 @@ class AzureOCRDocumentConverter:
         :param sources: List of file paths or ByteStream objects.
         :param meta: Optional list of metadata to attach to the Documents.
           The length of the list must match the number of sources. Defaults to `None`.
-        :return: A dictionary containing a list of Document objects under the 'documents' key.
-          It also contains the raw Azure response under the 'raw_azure_response' key.
+        :return: A dictionary containing a list of Document objects under the 'documents' key
+          and the raw Azure response under the 'raw_azure_response' key.
         """
         documents = []
         azure_output = []

@@ -2,7 +2,7 @@
 upgrade:
   - |
     If you are using `AzureOCRDocumentConverter` or `TikaDocumentConverter`,
-    you need to change `paths to `sources` in the `run` method.
+    you need to change `paths` to `sources` in the `run` method.
 
     An example:
     ```python

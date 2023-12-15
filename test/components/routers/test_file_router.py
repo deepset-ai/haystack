@@ -69,8 +69,9 @@ class TestFileTypeRouter:
             test_files_path / "audio" / "the context for this answer is here.wav",
             test_files_path / "txt" / "doc_2.txt",
             test_files_path / "images" / "apple.jpg",
+            test_files_path / "markdown" / "sample.md",
         ]
-        mime_types = ["text/plain", "audio/x-wav", "text/plain", "image/jpeg"]
+        mime_types = ["text/plain", "audio/x-wav", "text/plain", "image/jpeg", "text/markdown"]
         byte_stream_sources = []
         for path, mime_type in zip(file_paths, mime_types):
             stream = ByteStream(path.read_bytes())
@@ -79,11 +80,12 @@ class TestFileTypeRouter:
 
         mixed_sources = file_paths[:2] + byte_stream_sources[2:]
 
-        router = FileTypeRouter(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
+        router = FileTypeRouter(mime_types=["text/plain", "audio/x-wav", "image/jpeg", "text/markdown"])
         output = router.run(sources=mixed_sources)
         assert len(output["text/plain"]) == 2
         assert len(output["audio/x-wav"]) == 1
         assert len(output["image/jpeg"]) == 1
+        assert len(output["text/markdown"]) == 1
 
     def test_no_files(self):
         """
