@@ -113,3 +113,35 @@ def test_joindocuments_concatenate_duplicate_docs_null_score():
     result, _ = join_docs.run(inputs)
     assert len(result["documents"]) == 3
     assert result["documents"] == expected_outputs["documents"]
+
+
+@pytest.mark.unit
+def test_joindocuments_rrf_weights():
+    """
+    Test that the reciprocal rank fusion method correctly handles weights.
+    """
+    inputs = [
+        {
+            "documents": [
+                Document(content="text document 1", content_type="text", score=0.2),
+                Document(content="text document 2", content_type="text", score=0.3),
+            ]
+        },
+        {
+            "documents": [
+                Document(content="text document 3", content_type="text", score=0.7),
+                Document(content="text document 4", content_type="text", score=None),
+            ]
+        },
+    ]
+
+    join_docs_none = JoinDocuments(join_mode="reciprocal_rank_fusion")
+    result_none, _ = join_docs_none.run(inputs)
+    join_docs_even = JoinDocuments(join_mode="reciprocal_rank_fusion", weights=[0.5, 0.5])
+    result_even, _ = join_docs_even.run(inputs)
+    join_docs_uneven = JoinDocuments(join_mode="reciprocal_rank_fusion", weights=[0.7, 0.3])
+    result_uneven, _ = join_docs_uneven.run(inputs)
+
+    assert result_none["documents"] == result_even["documents"]
+    assert result_uneven["documents"] != result_none["documents"]
+    assert result_uneven["documents"][0].score > result_none["documents"][0].score
