@@ -92,15 +92,15 @@ class PromptModel(BaseComponent):
             except ImportError as e:
                 msg = f"Can't find module {module_name}"
                 raise ValueError(msg) from e
-            invocation_layer_class = getattr(module, class_name)
-            if invocation_layer_class is None:
+            class_ = getattr(module, class_name)
+            if class_ is None:
                 msg = f"Can'f find class {class_name} in module {module_name}"
-                ValueError(msg)
+                raise ValueError(msg)
+        else:
+            class_ = invocation_layer_class
 
-        if invocation_layer_class:
-            return invocation_layer_class(
-                model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
-            )
+        if class_:
+            return class_(model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs)
 
         for invocation_layer in PromptModelInvocationLayer.invocation_layer_providers:
             if inspect.isabstract(invocation_layer):
