@@ -4,7 +4,6 @@ from typing import Dict, Any, Optional, List, Set
 from jinja2 import Template, meta
 
 from haystack import component
-from haystack import default_to_dict
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +17,11 @@ class DynamicPromptBuilder:
     The following example demonstrates how to use DynamicPromptBuilder:
 
     ```python
+    from haystack.components.builders import DynamicPromptBuilder
+    from haystack.components.generators.chat import GPTChatGenerator
+    from haystack.dataclasses import ChatMessage
+    from haystack import Pipeline
+
     prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"])
     llm = GPTGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
 
@@ -79,15 +83,6 @@ class DynamicPromptBuilder:
         component.set_output_types(self, prompt=str)
 
         self.runtime_variables = runtime_variables
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-         Converts the `DynamicPromptBuilder` instance to a dictionary format, primarily for serialization purposes.
-
-        :return: A dictionary representation of the `DynamicPromptBuilder` instance, including its template variables.
-        :rtype: Dict[str, Any]
-        """
-        return default_to_dict(self, runtime_variables=self.runtime_variables)
 
     def run(self, prompt_source: str, template_variables: Optional[Dict[str, Any]] = None, **kwargs):
         """

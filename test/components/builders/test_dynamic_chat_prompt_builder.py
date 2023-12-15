@@ -25,15 +25,6 @@ class TestDynamicChatPromptBuilder:
         # output is always prompt, but the type is different depending on the chat mode
         assert builder.__canals_output__["prompt"].type == List[ChatMessage]
 
-    def test_to_dict_method_returns_expected_dictionary(self):
-        runtime_variables = ["var1", "var2", "var3"]
-        builder = DynamicChatPromptBuilder(runtime_variables)
-        expected_dict = {
-            "type": "haystack.components.builders.dynamic_chat_prompt_builder.DynamicChatPromptBuilder",
-            "init_parameters": {"runtime_variables": runtime_variables},
-        }
-        assert builder.to_dict() == expected_dict
-
     def test_non_empty_chat_messages(self):
         prompt_builder = DynamicChatPromptBuilder(runtime_variables=["documents"])
         prompt_source = [ChatMessage.from_system(content="Hello"), ChatMessage.from_user(content="Hello, {{ who }}!")]

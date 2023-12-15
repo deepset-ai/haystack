@@ -4,7 +4,6 @@ from typing import Dict, Any, Optional, List, Set
 from jinja2 import Template, meta
 
 from haystack import component
-from haystack import default_to_dict
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 
 logger = logging.getLogger(__name__)
@@ -83,54 +82,6 @@ class DynamicChatPromptBuilder:
 
     Note of course that weather forecast in the example above is fictional, but it can be easily connected to a weather
     API to provide real weather forecasts.
-
-
-    The following example demonstrates how to use DynamicChatPromptBuilder to generate a chat prompt with resolution
-    of pipeline runtime variables (such as documents):
-
-    ```python
-    from haystack.components.builders import DynamicChatPromptBuilder
-    from haystack.components.generators.chat import GPTChatGenerator
-    from haystack.dataclasses import ChatMessage, Document
-    from haystack import Pipeline, component
-    from typing import List
-
-    # we'll use documents runtime variable in our template, so we need to specify it in the init
-    prompt_builder = DynamicChatPromptBuilder(runtime_variables=["documents"])
-    llm = GPTChatGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
-
-
-    @component
-    class DocumentProducer:
-
-        @component.output_types(documents=List[Document])
-        def run(self, doc_input: str):
-            return {"documents": [Document(content=doc_input)]}
-
-
-
-    pipe = Pipeline()
-    pipe.add_component("doc_producer", DocumentProducer())
-    pipe.add_component("prompt_builder", prompt_builder)
-    pipe.add_component("llm", llm)
-
-    # note here how prompt_builder.documents is received from doc_producer.documents
-    pipe.connect("doc_producer.documents", "prompt_builder.documents")
-    pipe.connect("prompt_builder.prompt", "llm.messages")
-
-    messages = [ChatMessage.from_system("Be helpful assistant, but brief!"),
-                ChatMessage.from_user("Here is the document: {{documents[0].content}} Now, answer the
-                following: {{query}}")]
-
-
-    pipe.run(data={"doc_producer": {"doc_input": "Hello world, I'm Haystack!"},
-                   "prompt_builder": {"prompt_source": messages,
-                                      "template_variables":{"query": "who's making a greeting?"}}})
-
-    >> {'llm': {'replies': [ChatMessage(content='Haystack', role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
-    >> metadata={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage':
-    >> {'prompt_tokens': 51, 'completion_tokens': 2, 'total_tokens': 53}})]}}
-    ```
     """
 
     def __init__(self, runtime_variables: Optional[List[str]] = None):
@@ -139,7 +90,7 @@ class DynamicChatPromptBuilder:
         variables and their values during pipeline runtime execution. For example, if `runtime_variables` contains
         `documents` your instance of DynamicChatPromptBuilder will expect an input called `documents`.
         The values associated with variables from the pipeline runtime are then injected into template placeholders
-        of a ChatMessage that is provided to the `run` method. See `run` method for more details.
+        of a ChatMessage that is provided to the `run` method.
 
         :param runtime_variables: A list of template variable names you can use in chat prompt construction.
         :type runtime_variables: Optional[List[str]]
@@ -154,16 +105,6 @@ class DynamicChatPromptBuilder:
         # setup outputs
         component.set_output_types(self, prompt=List[ChatMessage])
         self.runtime_variables = runtime_variables
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-         Converts the `DynamicChatPromptBuilder` instance to a dictionary format, primarily for serialization purposes.
-
-        :return: A dictionary representation of the `DynamicChatPromptBuilder` instance, including its template
-        variables.
-        :rtype: Dict[str, Any]
-        """
-        return default_to_dict(self, runtime_variables=self.runtime_variables)
 
     def run(self, prompt_source: List[ChatMessage], template_variables: Optional[Dict[str, Any]] = None, **kwargs):
         """
@@ -194,9 +135,9 @@ class DynamicChatPromptBuilder:
         template_variables = template_variables or {}
         template_variables_combined = {**kwargs, **template_variables}
         if not template_variables_combined:
-            raise ValueError(
+            logger.warning(
                 "The DynamicChatPromptBuilder run method requires template variables, but none were provided. "
-                "Please provide an appropriate template variable to enable prompt generation."
+                "Please provide an appropriate template variable to enable correct prompt generation."
             )
         result: List[ChatMessage] = self._process_chat_messages(prompt_source, template_variables_combined)
         return {"prompt": result}
