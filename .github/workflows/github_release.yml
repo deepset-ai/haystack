@@ -30,7 +30,7 @@ jobs:
 
       - name: Generate release notes for beta versions
         run: |
-          reno report --no-show-source --ignore-cache --version v${{ steps.version.outputs.current_pre_release }} -o relnotes.rst
+          reno report --no-show-source --ignore-cache --version v${{ steps.version.outputs.current_release }}-${{ steps.version.outputs.current_pre_release }} -o relnotes.rst
 
       - name: Convert to Markdown
         uses: docker://pandoc/core:3.1
