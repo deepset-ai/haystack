@@ -1,11 +1,12 @@
 import io
 import logging
-from typing import List, Union, Protocol, Dict
+from typing import List, Union, Protocol, Dict, Any, Optional
 from pathlib import Path
 
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 from haystack import Document, component, default_to_dict
+from haystack.components.converters.utils import get_bytestream_from_source
 
 with LazyImport("Run 'pip install pypdf'") as pypdf_import:
     from pypdf import PdfReader
@@ -70,36 +71,37 @@ class PyPDFToDocument:
         return default_to_dict(self, converter_name=self.converter_name)
 
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]]):
+    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
         """
         Converts a list of PDF sources into Document objects using the configured converter.
 
         :param sources: A list of PDF data sources, which can be file paths or ByteStream objects.
+        :param meta: Optional list of metadata to attach to the Documents.
+          The length of the list must match the number of sources. Defaults to `None`.
         :return: A dictionary containing a list of Document objects under the 'documents' key.
         """
         documents = []
-        for source in sources:
+
+        if meta is None:
+            meta = [{}] * len(sources)
+        elif len(sources) != len(meta):
+            raise ValueError("The length of the metadata list must match the number of sources.")
+
+        for source, metadata in zip(sources, meta):
             try:
-                pdf_reader = self._get_pdf_reader(source)
+                bytestream = get_bytestream_from_source(source)
+            except Exception as e:
+                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                continue
+            try:
+                pdf_reader = PdfReader(io.BytesIO(bytestream.data))
                 document = self._converter.convert(pdf_reader)
             except Exception as e:
                 logger.warning("Could not read %s and convert it to Document, skipping. %s", source, e)
                 continue
+
+            merged_metadata = {**bytestream.metadata, **metadata}
+            document.meta = merged_metadata
             documents.append(document)
 
         return {"documents": documents}
-
-    def _get_pdf_reader(self, source: Union[str, Path, ByteStream]) -> "PdfReader":
-        """
-        Creates a PdfReader object from a given source, which can be a file path or a ByteStream object.
-
-        :param source: The source of the PDF data.
-        :return: A PdfReader instance initialized with the PDF data from the source.
-        :raises ValueError: If the source type is not supported.
-        """
-        if isinstance(source, (str, Path)):
-            return PdfReader(str(source))
-        elif isinstance(source, ByteStream):
-            return PdfReader(io.BytesIO(source.data))
-        else:
-            raise ValueError(f"Unsupported source type: {type(source)}")
