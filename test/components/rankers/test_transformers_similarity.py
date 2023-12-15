@@ -15,12 +15,17 @@ class TestSimilarityRanker:
                 "top_k": 10,
                 "token": None,
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+                "model_kwargs": {},
             },
         }
 
     def test_to_dict_with_custom_init_parameters(self):
         component = TransformersSimilarityRanker(
-            model_name_or_path="my_model", device="cuda", token="my_token", top_k=5
+            model_name_or_path="my_model",
+            device="cuda",
+            token="my_token",
+            top_k=5,
+            model_kwargs={"torch_dtype": "auto"},
         )
         data = component.to_dict()
         assert data == {
@@ -30,6 +35,7 @@ class TestSimilarityRanker:
                 "model_name_or_path": "my_model",
                 "token": None,  # we don't serialize valid tokens,
                 "top_k": 5,
+                "model_kwargs": {"torch_dtype": "auto"},
             },
         }
 

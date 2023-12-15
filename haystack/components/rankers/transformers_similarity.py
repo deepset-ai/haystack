@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
 
@@ -37,9 +38,10 @@ class TransformersSimilarityRanker:
     def __init__(
         self,
         model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-        device: str = "cpu",
+        device: Optional[str] = "cpu",
         token: Union[bool, str, None] = None,
         top_k: int = 10,
+        model_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of TransformersSimilarityRanker.
@@ -51,6 +53,9 @@ class TransformersSimilarityRanker:
             If this parameter is set to `True`, the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) is used.
         :param top_k: The maximum number of Documents to return per query.
+        :param model_kwargs: Additional keyword arguments passed to `AutoModelForSequenceClassification.from_pretrained`
+            when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
+            see the model's documentation.
         """
         torch_and_transformers_import.check()
 
@@ -62,6 +67,7 @@ class TransformersSimilarityRanker:
         self.token = token
         self.model = None
         self.tokenizer = None
+        self.model_kwargs = model_kwargs or {}
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -74,8 +80,19 @@ class TransformersSimilarityRanker:
         Warm up the model and tokenizer used for scoring the Documents.
         """
         if self.model_name_or_path and not self.model:
-            self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name_or_path, token=self.token)
-            self.model = self.model.to(self.device)
+            if torch.cuda.is_available():
+                self.device = self.device or "cuda:0"
+            elif (
+                hasattr(torch.backends, "mps")
+                and torch.backends.mps.is_available()
+                and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
+            ):
+                self.device = self.device or "mps:0"
+            else:
+                self.device = self.device or "cpu:0"
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                self.model_name_or_path, token=self.token, **self.model_kwargs
+            ).to(self.device)
             self.model.eval()
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
@@ -89,6 +106,7 @@ class TransformersSimilarityRanker:
             model_name_or_path=self.model_name_or_path,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             top_k=self.top_k,
+            model_kwargs=self.model_kwargs,
         )
 
     @component.output_types(documents=List[Document])
