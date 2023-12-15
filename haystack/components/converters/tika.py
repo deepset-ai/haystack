@@ -25,6 +25,17 @@ class TikaDocumentConverter:
     The easiest way to run Tika is to use Docker: `docker run -d -p 127.0.0.1:9998:9998 apache/tika:latest`.
     For more options on running Tika on Docker,
     see the [documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
+
+    Usage example:
+    ```python
+    from haystack.components.converters.tika import TikaDocumentConverter
+
+    converter = TikaDocumentConverter()
+    results = converter.run(sources=["sample.docx", "my_document.rtf", "archive.zip"])
+    documents = results["documents"]
+    print(documents[0].content)
+    # 'This is a text from the docx file.'
+    ```
     """
 
     def __init__(self, tika_url: str = "http://localhost:9998/tika"):
