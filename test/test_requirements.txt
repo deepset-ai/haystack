@@ -14,3 +14,6 @@ azure-ai-formrecognizer>=3.2.0b2                # AzureOCRDocumentConverter
 langdetect                                      # TextLanguageRouter and DocumentLanguageClassifier
 sentence-transformers>=2.2.0                    # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
 openai-whisper>=20231106                        # LocalWhisperTranscriber
+
+# OpenAPI
+jsonref openapi3                                # OpenAPIServiceConnector, OpenAPIServiceToFunctions
