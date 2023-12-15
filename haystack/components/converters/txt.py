@@ -14,6 +14,17 @@ logger = logging.getLogger(__name__)
 class TextFileToDocument:
     """
     A component for converting a text file to a Document.
+
+    Usage example:
+    ```python
+    from haystack.components.converters.txt import TextFileToDocument
+
+    converter = TextFileToDocument()
+    results = converter.run(sources=["sample.txt"])
+    documents = results["documents"]
+    print(documents[0].content)
+    # 'This is the content from the txt file.'
+    ```
     """
 
     def __init__(self, encoding: str = "utf-8"):

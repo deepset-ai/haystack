@@ -46,6 +46,17 @@ class PyPDFToDocument:
     Converts PDF files to Document objects.
     It uses a converter that follows the PyPDFConverter protocol to perform the conversion.
     A default text extraction converter is used if no custom converter is provided.
+
+    Usage example:
+    ```python
+    from haystack.components.converters.pypdf import PyPDFToDocument
+
+    converter = PyPDFToDocument()
+    results = converter.run(sources=["sample.pdf"])
+    documents = results["documents"]
+    print(documents[0].content)
+    # 'This is a text from the PDF file.'
+    ```
     """
 
     def __init__(self, converter_name: str = "default"):

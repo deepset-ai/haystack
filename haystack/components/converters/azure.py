@@ -25,6 +25,17 @@ class AzureOCRDocumentConverter:
     and a Document Intelligence or Cognitive Services resource. Please follow the steps described in the
     [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api)
     to set up your resource.
+
+    Usage example:
+    ```python
+    from haystack.components.converters.azure import AzureOCRDocumentConverter
+
+    converter = AzureOCRDocumentConverter()
+    results = converter.run(sources=["image-based-document.pdf"])
+    documents = results["documents"]
+    print(documents[0].content)
+    # 'This is a text from the PDF file.'
+    ```
     """
 
     def __init__(self, endpoint: str, api_key: Optional[str] = None, model_id: str = "prebuilt-read"):
