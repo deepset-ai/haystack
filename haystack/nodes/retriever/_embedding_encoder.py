@@ -455,22 +455,24 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
             raise ValueError("Model not found in Bedrock Embedding Models")
 
     def initialize_boto3_session(self):
-        if self.aws_config:
-            aws_profile_name = self.aws_config.get("profile_name", None)
-            aws_access_key_id = self.aws_config.get("aws_access_key_id", None)
-            aws_secret_access_key = self.aws_config.get("aws_secret_access_key", None)
-            aws_region_name = self.aws_config.get("region_name", None)
-            aws_session_token = self.aws_config.get("session_token", None)
-            try:
-                return boto3.Session(
-                    aws_access_key_id=aws_access_key_id,
-                    aws_secret_access_key=aws_secret_access_key,
-                    aws_session_token=aws_session_token,
-                    region_name=aws_region_name,
-                    profile_name=aws_profile_name,
-                )
-            except Exception as e:
-                raise ValueError(f"AWS client error {e}")
+        if self.aws_config is None:
+            raise ValueError("`aws_config` is not set. To use Bedrock models, you should set `aws_config` when initializing the retriever.")
+        
+        aws_profile_name = self.aws_config.get("profile_name", None)
+        aws_access_key_id = self.aws_config.get("aws_access_key_id", None)
+        aws_secret_access_key = self.aws_config.get("aws_secret_access_key", None)
+        aws_region_name = self.aws_config.get("region_name", None)
+        aws_session_token = self.aws_config.get("session_token", None)
+        try:
+            return boto3.Session(
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+                aws_session_token=aws_session_token,
+                region_name=aws_region_name,
+                profile_name=aws_profile_name,
+            )
+        except Exception as e:
+            raise ValueError(f"AWS client error {e}")
 
     def embed(self, text: str, embed_type: Optional[str] = None) -> np.ndarray:
         if self.model == "amazon.titan-embed-text-v1":
@@ -498,25 +500,21 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
         for q in queries:
             if self.model == "amazon.titan-embed-text-v1":
                 generated_embeddings = self.embed(q)
-                all_embeddings.append(generated_embeddings)
-                return np.concatenate(all_embeddings)
             else:
                 generated_embeddings = self.embed(q, "search_query")
-                all_embeddings.append(generated_embeddings)
-                return np.concatenate(all_embeddings)
+        all_embeddings.append(generated_embeddings)
+        return np.concatenate(all_embeddings)
 
     def embed_documents(self, docs: List[Document]) -> np.ndarray:
         all_embeddings = []
         for d in docs:
             if self.model == "amazon.titan-embed-text-v1":
-                generated_embeddings = self.embed(d)
-                all_embeddings.append(generated_embeddings)
-                return np.concatenate(all_embeddings)
+                generated_embeddings = self.embed(d.content)
             else:
-                generated_embeddings = self.embed(d, "search_document")
-                all_embeddings.append(generated_embeddings)
-                return np.concatenate(all_embeddings)
-
+                generated_embeddings = self.embed(d.content, "search_document")
+        all_embeddings.append(generated_embeddings)
+        return np.concatenate(all_embeddings)        
+    
     def train(
         self,
         training_data: List[Dict[str, Any]],
