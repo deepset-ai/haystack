@@ -16,4 +16,5 @@ sentence-transformers>=2.2.0                    # SentenceTransformersTextEmbedd
 openai-whisper>=20231106                        # LocalWhisperTranscriber
 
 # OpenAPI
-jsonref openapi3                                # OpenAPIServiceConnector, OpenAPIServiceToFunctions
+jsonref                                        # OpenAPIServiceConnector, OpenAPIServiceToFunctions
+openapi3
