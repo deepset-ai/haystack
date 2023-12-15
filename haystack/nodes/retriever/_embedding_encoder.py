@@ -456,8 +456,10 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
 
     def initialize_boto3_session(self):
         if self.aws_config is None:
-            raise ValueError("`aws_config` is not set. To use Bedrock models, you should set `aws_config` when initializing the retriever.")
-        
+            raise ValueError(
+                "`aws_config` is not set. To use Bedrock models, you should set `aws_config` when initializing the retriever."
+            )
+
         aws_profile_name = self.aws_config.get("profile_name", None)
         aws_access_key_id = self.aws_config.get("aws_access_key_id", None)
         aws_secret_access_key = self.aws_config.get("aws_secret_access_key", None)
@@ -513,8 +515,8 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
             else:
                 generated_embeddings = self.embed(d.content, "search_document")
         all_embeddings.append(generated_embeddings)
-        return np.concatenate(all_embeddings)        
-    
+        return np.concatenate(all_embeddings)
+
     def train(
         self,
         training_data: List[Dict[str, Any]],
