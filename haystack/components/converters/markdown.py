@@ -51,15 +51,19 @@ class MarkdownToDocument:
 
         :param sources: A list of markdown data sources (file paths or binary objects)
         :param meta: Optional list of metadata to attach to the Documents.
-        The length of the list must match the number of paths. Defaults to `None`.
+          The length of the list must match the number of paths. Defaults to `None`.
+        :return: A dictionary containing a list of Document objects under the 'documents' key.
         """
         parser = MarkdownIt(renderer_cls=RendererPlain)
         if self.table_to_single_line:
             parser.enable("table")
 
         documents = []
+
         if meta is None:
             meta = [{}] * len(sources)
+        elif len(sources) != len(meta):
+            raise ValueError("The length of the metadata list must match the number of sources.")
 
         for source, metadata in tqdm(
             zip(sources, meta),
@@ -79,7 +83,8 @@ class MarkdownToDocument:
                 logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
                 continue
 
-            document = Document(content=text, meta=metadata)
+            merged_metadata = {**bytestream.metadata, **metadata}
+            document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 
         return {"documents": documents}

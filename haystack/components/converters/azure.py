@@ -56,8 +56,8 @@ class AzureOCRDocumentConverter:
         self.endpoint = endpoint
         self.model_id = model_id
 
-    @component.output_types(documents=List[Document], azure=List[Dict])
-    def run(self, sources: List[Union[str, Path, ByteStream]]):
+    @component.output_types(documents=List[Document], raw_azure_response=List[Dict])
+    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
         """
         Convert files to Documents using Azure's Document Intelligence service.
 
@@ -66,10 +66,20 @@ class AzureOCRDocumentConverter:
         the raw responses from Azure's Document Intelligence service.
 
         :param sources: List of file paths or ByteStream objects.
+        :param meta: Optional list of metadata to attach to the Documents.
+          The length of the list must match the number of sources. Defaults to `None`.
+        :return: A dictionary containing a list of Document objects under the 'documents' key
+          and the raw Azure response under the 'raw_azure_response' key.
         """
         documents = []
         azure_output = []
-        for source in sources:
+
+        if meta is None:
+            meta = [{}] * len(sources)
+        elif len(sources) != len(meta):
+            raise ValueError("The length of the metadata list must match the number of sources.")
+
+        for source, metadata in zip(sources, meta):
             try:
                 bytestream = get_bytestream_from_source(source=source)
             except Exception as e:
@@ -87,6 +97,8 @@ class AzureOCRDocumentConverter:
                 file_suffix = Path(bytestream.metadata["file_path"]).suffix
 
             document = AzureOCRDocumentConverter._convert_azure_result_to_document(result, file_suffix)
+            merged_metadata = {**bytestream.metadata, **metadata}
+            document.meta = merged_metadata
             documents.append(document)
 
         return {"documents": documents, "raw_azure_response": azure_output}

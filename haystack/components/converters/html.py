@@ -35,25 +35,22 @@ class HTMLToDocument:
 
         :param sources: List of HTML file paths or ByteStream objects.
         :param meta: Optional list of metadata to attach to the Documents.
-        The length of the list must match the number of sources. Defaults to `None`.
-        :return: List of converted Documents.
+          The length of the list must match the number of sources. Defaults to `None`.
+        :return: A dictionary containing a list of Document objects under the 'documents' key.
         """
 
         documents = []
 
-        # Create metadata placeholders if not provided
-        if meta:
-            if len(sources) != len(meta):
-                raise ValueError("The length of the metadata list must match the number of sources.")
-        else:
+        if meta is None:
             meta = [{}] * len(sources)
+        elif len(sources) != len(meta):
+            raise ValueError("The length of the metadata list must match the number of sources.")
 
         extractor = extractors.ArticleExtractor(raise_on_failure=False)
 
         for source, metadata in zip(sources, meta):
             try:
                 bytestream = get_bytestream_from_source(source=source)
-                extracted_meta = bytestream.metadata
             except Exception as e:
                 logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
                 continue
@@ -64,11 +61,8 @@ class HTMLToDocument:
                 logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
                 continue
 
-            # Merge metadata received from ByteStream with supplied metadata
-            if extracted_meta:
-                # Supplied metadata overwrites metadata from ByteStream for overlapping keys.
-                metadata = {**extracted_meta, **metadata}
-            document = Document(content=text, meta=metadata)
+            merged_metadata = {**bytestream.metadata, **metadata}
+            document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 
         return {"documents": documents}
