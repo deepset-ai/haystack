@@ -40,7 +40,7 @@ jobs:
       - name: Install Haystack
         run: pip install .[dev]
 
-      - name: Install dependencies needed for tests
+      - name: Install the dependencies needed for tests
         run: pip install -r test/test_requirements.txt
 
       - name: Mypy
@@ -70,10 +70,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Haystack
-        run: pip install .[dev]
-
-      - name: Install dependencies needed for tests
+      - name: Install Haystack and the dependencies needed for tests
         run: pip install -r test/test_requirements.txt
 
       - name: Pylint

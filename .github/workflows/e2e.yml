@@ -35,10 +35,7 @@ jobs:
         sudo apt-get update
         sudo apt install ffmpeg  # for local Whisper tests
 
-    - name: Install Haystack
-      run: pip install .[dev]
-
-    - name: Install dependencies needed for tests
+    - name: Install Haystack and the dependencies needed for tests
       run: pip install -r test/test_requirements.txt
 
     - name: Run tests
