@@ -66,7 +66,7 @@ def test_bm25_rag_pipeline():
     assert eval_result.inputs == inputs
     assert eval_result.expected_outputs == expected_outputs
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
-    assert eval_result.runnable == rag_pipeline
+    assert eval_result.runnable.to_dict() == rag_pipeline.to_dict()
 
 
 def test_embedding_retrieval_rag_pipeline():
@@ -142,4 +142,4 @@ def test_embedding_retrieval_rag_pipeline():
     assert eval_result.inputs == inputs
     assert eval_result.expected_outputs == expected_outputs
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
-    assert eval_result.runnable == rag_pipeline
+    assert eval_result.runnable.to_dict() == rag_pipeline.to_dict()

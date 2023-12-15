@@ -122,4 +122,4 @@ def test_extractive_qa_pipeline():
     assert eval_result.inputs == inputs
     assert eval_result.expected_outputs == expected_outputs
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
-    assert eval_result.runnable == qa_pipeline
+    assert eval_result.runnable.to_dict() == qa_pipeline.to_dict()
