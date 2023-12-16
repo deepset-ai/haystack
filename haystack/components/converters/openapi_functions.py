@@ -151,6 +151,6 @@ class OpenAPIServiceToFunctions:
         :rtype: Dict[str, Any]
         """
         try:
-            return jsonref.loads(content)
+            return json.loads(content)
         except json.JSONDecodeError:
             return yaml.safe_load(content)
