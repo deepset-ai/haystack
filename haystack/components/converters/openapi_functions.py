@@ -27,6 +27,14 @@ class OpenAPIServiceToFunctions:
     function calling mechanism. The format of the extracted functions is compatible with OpenAI's function calling
     JSON format.
 
+    Minimal requirements for OpenAPI specification:
+    - OpenAPI version 3.0.0 or higher
+    - Each function must have a unique operationId
+    - Each function must have a description
+    - Each function must have a requestBody or parameters or both
+    - Each function must have a schema for the requestBody and/or parameters
+
+
     See https://github.com/OAI/OpenAPI-Specification for more details on OpenAPI specification.
     See https://platform.openai.com/docs/guides/function-calling for more details on OpenAI function calling.
     """
@@ -102,6 +110,19 @@ class OpenAPIServiceToFunctions:
                  name, description, and a schema of its parameters.
         :rtype: List[Dict[str, Any]]
         """
+
+        # Doesn't enforce rigid spec validation because that would require a lot of dependencies
+        # We check the version and require minimal fields to be present, so we can extract functions
+        spec_version = service_openapi_spec.get("openapi")
+        if not spec_version:
+            raise ValueError("Invalid OpenAPI spec provided. Could not extract version from %s", service_openapi_spec)
+        service_openapi_spec_version = int(spec_version.split(".")[0])
+        min_required_version = 3
+
+        # Compare the versions
+        if service_openapi_spec_version < min_required_version:
+            raise ValueError(f"Invalid OpenAPI spec version {service_openapi_spec_version}. " f"Must be at least 3.0.0")
+
         functions: List[Dict[str, Any]] = []
         for path_methods in service_openapi_spec["paths"].values():
             for method_specification in path_methods.values():
