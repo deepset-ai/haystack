@@ -115,7 +115,7 @@ class OpenAPIServiceToFunctions:
         # We check the version and require minimal fields to be present, so we can extract functions
         spec_version = service_openapi_spec.get("openapi")
         if not spec_version:
-            raise ValueError("Invalid OpenAPI spec provided. Could not extract version from %s", service_openapi_spec)
+            raise ValueError(f"Invalid OpenAPI spec provided. Could not extract version from {service_openapi_spec}")
         service_openapi_spec_version = int(spec_version.split(".")[0])
         min_required_version = 3
 
