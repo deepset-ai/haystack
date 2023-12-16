@@ -121,7 +121,7 @@ class OpenAPIServiceToFunctions:
 
         # Compare the versions
         if service_openapi_spec_version < min_required_version:
-            raise ValueError(f"Invalid OpenAPI spec version {service_openapi_spec_version}. " f"Must be at least 3.0.0")
+            raise ValueError(f"Invalid OpenAPI spec version {service_openapi_spec_version}. Must be at least 3.0.0")
 
         functions: List[Dict[str, Any]] = []
         for path_methods in service_openapi_spec["paths"].values():

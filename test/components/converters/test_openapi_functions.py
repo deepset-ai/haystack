@@ -1,4 +1,5 @@
 import json
+import sys
 import tempfile
 
 import pytest
@@ -193,8 +194,12 @@ class TestOpenAPIServiceToFunctions:
         assert doc.meta["system_message"] == "Some system message we don't care about here"
         assert doc.meta["spec"] == json.loads(json_serperdev_openapi_spec)
 
-    # test we can extract functions from openapi spec given in file
+    @pytest.mark.skipif(
+        sys.platform in ["win32", "cygwin"],
+        reason="Can't run on Windows Github CI, need access temp file but windows does not allow it",
+    )
     def test_run_with_file_source(self, json_serperdev_openapi_spec):
+        # test we can extract functions from openapi spec given in file
         service = OpenAPIServiceToFunctions()
         # write the spec to NamedTemporaryFile and check that it is parsed correctly
         with tempfile.NamedTemporaryFile() as tmp:
