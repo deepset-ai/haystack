@@ -440,38 +440,37 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
+        """Embedding Encoder for Bedrock models
+        See https://docs.aws.amazon.com/bedrock/latest/userguide/embeddings.html for more details.
+        The maximum input text is 8K tokens and the maximum output vector length is 1536.
+        Titan embeddings do not support batch operations.
+
+        :param retriever: EmbeddingRetriever object
+        """
         boto3_import.check()
+        if retriever.embedding_model not in BEDROCK_EMBEDDING_MODELS:
+            raise ValueError("Model not supported by Bedrock Embedding Encoder")
+        self.model = retriever.embedding_model
+        self.client = self.initialize_boto3_session(retriever.aws_config).client("bedrock-runtime")
 
-        # See https://docs.aws.amazon.com/bedrock/latest/userguide/embeddings.html for more details
-        # The maximum input text is 8K tokens and the maximum output vector length is 1536
-        # Bedrock Titan embeddings do not support batch operations
-        self.aws_config = retriever.aws_config
-        self.client = self.initialize_boto3_session().client("bedrock-runtime")
-        self.model: str = next(
-            (m for m in BEDROCK_EMBEDDING_MODELS if m in retriever.embedding_model), "Model Not Found"
-        )
-
-        if self.model == "Model Not Found":
-            raise ValueError("Model not found in Bedrock Embedding Models")
-
-    def initialize_boto3_session(self):
-        if self.aws_config is None:
+    def initialize_boto3_session(self, aws_config: Dict[str, Any]):
+        if aws_config is None:
             raise ValueError(
                 "`aws_config` is not set. To use Bedrock models, you should set `aws_config` when initializing the retriever."
             )
 
-        aws_profile_name = self.aws_config.get("profile_name", None)
-        aws_access_key_id = self.aws_config.get("aws_access_key_id", None)
-        aws_secret_access_key = self.aws_config.get("aws_secret_access_key", None)
-        aws_region_name = self.aws_config.get("region_name", None)
-        aws_session_token = self.aws_config.get("session_token", None)
+        aws_access_key_id = aws_config.get("aws_access_key_id", None)
+        aws_secret_access_key = aws_config.get("aws_secret_access_key", None)
+        aws_session_token = aws_config.get("aws_session_token", None)
+        region_name = aws_config.get("region_name", None)
+        profile_name = aws_config.get("profile_name", None)
         try:
             return boto3.Session(
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
                 aws_session_token=aws_session_token,
-                region_name=aws_region_name,
-                profile_name=aws_profile_name,
+                region_name=region_name,
+                profile_name=profile_name,
             )
         except Exception as e:
             raise ValueError(f"AWS client error {e}")
