@@ -453,7 +453,7 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.model = retriever.embedding_model
         self.client = self.initialize_boto3_session(retriever.aws_config).client("bedrock-runtime")
 
-    def initialize_boto3_session(self, aws_config: Dict[str, Any]):
+    def initialize_boto3_session(self, aws_config: Optional[Dict[str, Any]]):
         if aws_config is None:
             raise ValueError(
                 "`aws_config` is not set. To use Bedrock models, you should set `aws_config` when initializing the retriever."
