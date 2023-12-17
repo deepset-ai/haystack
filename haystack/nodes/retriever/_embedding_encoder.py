@@ -16,7 +16,7 @@ from haystack.environment import (
     HAYSTACK_REMOTE_API_MAX_RETRIES,
     HAYSTACK_REMOTE_API_TIMEOUT_SEC,
 )
-from haystack.errors import CohereError, CohereUnauthorizedError
+from haystack.errors import AWSConfigurationError, CohereError, CohereUnauthorizedError
 from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 from haystack.schema import Document
 from haystack.telemetry import send_event
@@ -44,6 +44,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
 
 with LazyImport(message="Run 'pip install boto3'") as boto3_import:
     import boto3
+    from botocore.exceptions import BotoCoreError
 
 COHERE_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 COHERE_BACKOFF = int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
@@ -451,9 +452,9 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
         if retriever.embedding_model not in BEDROCK_EMBEDDING_MODELS:
             raise ValueError("Model not supported by Bedrock Embedding Encoder")
         self.model = retriever.embedding_model
-        self.client = self.initialize_boto3_session(retriever.aws_config).client("bedrock-runtime")
+        self.client = self._initialize_boto3_session(retriever.aws_config).client("bedrock-runtime")
 
-    def initialize_boto3_session(self, aws_config: Optional[Dict[str, Any]]):
+    def _initialize_boto3_session(self, aws_config: Optional[Dict[str, Any]]):
         if aws_config is None:
             raise ValueError(
                 "`aws_config` is not set. To use Bedrock models, you should set `aws_config` when initializing the retriever."
@@ -472,8 +473,10 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
                 region_name=region_name,
                 profile_name=profile_name,
             )
-        except Exception as e:
-            raise ValueError(f"AWS client error {e}")
+        except BotoCoreError as e:
+            raise AWSConfigurationError(
+                f"Failed to initialize the session with provided AWS credentials {aws_config}"
+            ) from e
 
     def _embed_batch_cohere(
         self, texts: List[str], input_type: Literal["search_query", "search_document"]
