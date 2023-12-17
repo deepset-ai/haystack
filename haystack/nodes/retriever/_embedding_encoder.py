@@ -475,46 +475,49 @@ class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
         except Exception as e:
             raise ValueError(f"AWS client error {e}")
 
-    def embed(self, text: str, embed_type: Optional[str] = None) -> np.ndarray:
-        if self.model == "amazon.titan-embed-text-v1":
-            input_body = {}
-            input_body["inputText"] = text
-            body = json.dumps(input_body)
-            response = self.client.invoke_model(
-                body=body, modelId=self.model, accept="application/json", contentType="application/json"
-            )
+    def _embed_batch_cohere(
+        self, texts: List[str], input_type: Literal["search_query", "search_document"]
+    ) -> np.ndarray:
+        cohere_payload = {"texts": texts, "input_type": input_type, "truncate": "RIGHT"}
+        response = self._invoke_model(cohere_payload)
+        embeddings = np.array(response["embeddings"])
+        return embeddings
 
-            response_body = json.loads(response.get("body").read())
-            return np.array(response_body.get("embedding"))
-        else:
-            coherePayload = json.dumps({"texts": [text], "input_type": embed_type, "truncate": "END"})
-            response = self.client.invoke_model(
-                body=coherePayload, modelId=self.model, accept="application/json", contentType="application/json"
-            )
+    def _embed_titan(self, text: str) -> np.ndarray:
+        titan_payload = {"inputText": text}
+        response = self._invoke_model(titan_payload)
+        embeddings = np.array(response["embedding"])
+        return embeddings
 
-            body = response.get("body").read().decode("utf-8")
-            response_body = json.loads(body)
-            return np.array(response_body["embeddings"])
+    def _invoke_model(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        body = json.dumps(payload)
+        response = self.client.invoke_model(
+            body=body, modelId=self.model, accept="application/json", contentType="application/json"
+        )
+        body = response.get("body").read().decode("utf-8")
+        response_body = json.loads(body)
+        return response_body
 
     def embed_queries(self, queries: List[str]) -> np.ndarray:
-        all_embeddings = []
-        for q in queries:
-            if self.model == "amazon.titan-embed-text-v1":
-                generated_embeddings = self.embed(q)
-            else:
-                generated_embeddings = self.embed(q, "search_query")
-        all_embeddings.append(generated_embeddings)
-        return np.concatenate(all_embeddings)
+        if self.model == "amazon.titan-embed-text-v1":
+            all_embeddings = []
+            for query in queries:
+                generated_embeddings = self._embed_titan(query)
+                all_embeddings.append(generated_embeddings)
+            return np.stack(all_embeddings)
+        else:
+            return self._embed_batch_cohere(queries, input_type="search_query")
 
     def embed_documents(self, docs: List[Document]) -> np.ndarray:
-        all_embeddings = []
-        for d in docs:
-            if self.model == "amazon.titan-embed-text-v1":
-                generated_embeddings = self.embed(d.content)
-            else:
-                generated_embeddings = self.embed(d.content, "search_document")
-        all_embeddings.append(generated_embeddings)
-        return np.concatenate(all_embeddings)
+        if self.model == "amazon.titan-embed-text-v1":
+            all_embeddings = []
+            for doc in docs:
+                generated_embeddings = self._embed_titan(doc.content)
+                all_embeddings.append(generated_embeddings)
+            return np.stack(all_embeddings)
+        else:
+            contents = [d.content for d in docs]
+            return self._embed_batch_cohere(contents, input_type="search_document")
 
     def train(
         self,
