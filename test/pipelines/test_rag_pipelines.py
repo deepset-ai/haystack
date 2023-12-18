@@ -1,35 +1,9 @@
-from unittest.mock import patch, Mock
 import pytest
 
 from haystack.dataclasses import Answer
-from haystack.testing.factory import document_store_class
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.pipeline_utils.rag import build_rag_pipeline
-
-
-@pytest.fixture
-def mock_chat_completion():
-    """
-    Mock the OpenAI API completion response and reuse it for tests
-    """
-    with patch("openai.resources.chat.Completions.create", autospec=True) as mock_chat_completion_create:
-        # mimic the response from the OpenAI API
-        mock_choice = Mock()
-        mock_choice.index = 0
-        mock_choice.finish_reason = "stop"
-
-        mock_message = Mock()
-        mock_message.content = "I'm fine, thanks. How are you?"
-        mock_message.role = "user"
-
-        mock_choice.message = mock_message
-
-        mock_response = Mock()
-        mock_response.model = "gpt-3.5-turbo"
-        mock_response.usage = {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97}
-        mock_response.choices = [mock_choice]
-        mock_chat_completion_create.return_value = mock_response
-        yield mock_chat_completion_create
+from haystack.testing.factory import document_store_class
 
 
 @pytest.mark.integration
