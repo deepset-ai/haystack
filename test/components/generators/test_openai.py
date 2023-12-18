@@ -241,8 +241,8 @@ class TestGPTGenerator:
         messages: List[ChatMessage] = []
         for i, _ in enumerate(range(4)):
             message = ChatMessage.from_assistant("Hello")
-            metadata = {"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
-            message.metadata.update(metadata)
+            meta = {"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
+            message.meta.update(meta)
             messages.append(message)
 
         for m in messages:
@@ -275,14 +275,14 @@ class TestGPTGenerator:
         response: str = results["replies"][0]
         assert "Paris" in response
 
-        metadata = results["metadata"][0]
-        assert "gpt-3.5" in metadata["model"]
-        assert metadata["finish_reason"] == "stop"
+        meta = results["meta"][0]
+        assert "gpt-3.5" in meta["model"]
+        assert meta["finish_reason"] == "stop"
 
-        assert "usage" in metadata
-        assert "prompt_tokens" in metadata["usage"] and metadata["usage"]["prompt_tokens"] > 0
-        assert "completion_tokens" in metadata["usage"] and metadata["usage"]["completion_tokens"] > 0
-        assert "total_tokens" in metadata["usage"] and metadata["usage"]["total_tokens"] > 0
+        assert "usage" in meta
+        assert "prompt_tokens" in meta["usage"] and meta["usage"]["prompt_tokens"] > 0
+        assert "completion_tokens" in meta["usage"] and meta["usage"]["completion_tokens"] > 0
+        assert "total_tokens" in meta["usage"] and meta["usage"]["total_tokens"] > 0
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -318,14 +318,14 @@ class TestGPTGenerator:
         response: str = results["replies"][0]
         assert "Paris" in response
 
-        metadata = results["metadata"][0]
+        meta = results["meta"][0]
 
-        assert "gpt-3.5" in metadata["model"]
-        assert metadata["finish_reason"] == "stop"
+        assert "gpt-3.5" in meta["model"]
+        assert meta["finish_reason"] == "stop"
 
         # unfortunately, the usage is not available for streaming calls
         # we keep the key in the metadata for compatibility
-        assert "usage" in metadata and len(metadata["usage"]) == 0
+        assert "usage" in meta and len(meta["usage"]) == 0
 
         assert callback.counter > 1
         assert "Paris" in callback.responses

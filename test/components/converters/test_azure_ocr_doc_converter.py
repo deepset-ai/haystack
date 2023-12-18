@@ -45,7 +45,7 @@ class TestAzureOCRDocumentConverter:
             }
 
     def test_run_with_meta(self):
-        bytestream = ByteStream(data=b"test", metadata={"author": "test_author", "language": "en"})
+        bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
 
         with patch("haystack.components.converters.azure.DocumentAnalysisClient"):
             component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")

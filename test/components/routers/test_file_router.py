@@ -46,13 +46,13 @@ class TestFileTypeRouter:
         for path, mime_type in zip(file_paths, mime_types):
             stream = ByteStream(path.read_bytes())
 
-            stream.metadata["content_type"] = mime_type
+            stream.meta["content_type"] = mime_type
 
             byte_streams.append(stream)
 
         # add unclassified ByteStream
         bs = ByteStream(b"unclassified content")
-        bs.metadata["content_type"] = "unknown_type"
+        bs.meta["content_type"] = "unknown_type"
         byte_streams.append(bs)
 
         router = FileTypeRouter(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
@@ -75,7 +75,7 @@ class TestFileTypeRouter:
         byte_stream_sources = []
         for path, mime_type in zip(file_paths, mime_types):
             stream = ByteStream(path.read_bytes())
-            stream.metadata["content_type"] = mime_type
+            stream.meta["content_type"] = mime_type
             byte_stream_sources.append(stream)
 
         mixed_sources = file_paths[:2] + byte_stream_sources[2:]

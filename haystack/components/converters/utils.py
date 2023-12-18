@@ -15,6 +15,6 @@ def get_bytestream_from_source(source: Union[str, Path, ByteStream]) -> ByteStre
         return source
     if isinstance(source, (str, Path)):
         bs = ByteStream.from_file_path(Path(source))
-        bs.metadata["file_path"] = str(source)
+        bs.meta["file_path"] = str(source)
         return bs
     raise ValueError(f"Unsupported source type {type(source)}")

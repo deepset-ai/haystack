@@ -10,7 +10,7 @@ class ByteStream:
     """
 
     data: bytes
-    metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
+    meta: Dict[str, Any] = field(default_factory=dict, hash=False)
     mime_type: Optional[str] = field(default=None)
 
     def to_file(self, destination_path: Path):

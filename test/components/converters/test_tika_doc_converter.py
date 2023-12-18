@@ -19,7 +19,7 @@ class TestTikaDocumentConverter:
         assert documents[0].content == "Content of mock source"
 
     def test_run_with_meta(self):
-        bytestream = ByteStream(data=b"test", metadata={"author": "test_author", "language": "en"})
+        bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
 
         converter = TikaDocumentConverter()
         with patch("haystack.components.converters.tika.tika_parser.from_buffer"):

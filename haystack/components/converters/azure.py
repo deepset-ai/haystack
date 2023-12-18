@@ -104,11 +104,11 @@ class AzureOCRDocumentConverter:
             azure_output.append(result.to_dict())
 
             file_suffix = None
-            if "file_path" in bytestream.metadata:
-                file_suffix = Path(bytestream.metadata["file_path"]).suffix
+            if "file_path" in bytestream.meta:
+                file_suffix = Path(bytestream.meta["file_path"]).suffix
 
             document = AzureOCRDocumentConverter._convert_azure_result_to_document(result, file_suffix)
-            merged_metadata = {**bytestream.metadata, **metadata}
+            merged_metadata = {**bytestream.meta, **metadata}
             document.meta = merged_metadata
             documents.append(document)
 

@@ -157,7 +157,7 @@ class HuggingFaceTGIGenerator:
         # Don't send URL as it is sensitive information
         return {"model": self.model}
 
-    @component.output_types(replies=List[str], metadata=List[Dict[str, Any]])
+    @component.output_types(replies=List[str], meta=List[Dict[str, Any]])
     def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
         """
         Invoke the text generation inference for the given prompt and generation parameters.
@@ -203,16 +203,16 @@ class HuggingFaceTGIGenerator:
             stream_chunk = StreamingChunk(token.text, chunk_metadata)
             chunks.append(stream_chunk)
             self.streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
-        metadata = {
-            "finish_reason": chunks[-1].metadata.get("finish_reason", None),
+        meta = {
+            "finish_reason": chunks[-1].meta.get("finish_reason", None),
             "model": self.client.model,
             "usage": {
-                "completion_tokens": chunks[-1].metadata.get("generated_tokens", 0),
+                "completion_tokens": chunks[-1].meta.get("generated_tokens", 0),
                 "prompt_tokens": prompt_token_count,
-                "total_tokens": prompt_token_count + chunks[-1].metadata.get("generated_tokens", 0),
+                "total_tokens": prompt_token_count + chunks[-1].meta.get("generated_tokens", 0),
             },
         }
-        return {"replies": ["".join([chunk.content for chunk in chunks])], "metadata": [metadata]}
+        return {"replies": ["".join([chunk.content for chunk in chunks])], "meta": [meta]}
 
     def _run_non_streaming(
         self, prompt: str, prompt_token_count: int, num_responses: int, generation_kwargs: Dict[str, Any]
@@ -234,4 +234,4 @@ class HuggingFaceTGIGenerator:
                 }
             )
             responses.append(tgr.generated_text)
-        return {"replies": responses, "metadata": all_metadata}
+        return {"replies": responses, "meta": all_metadata}
