@@ -356,9 +356,14 @@ class ExtractiveReader:
         :param overlap_threshold: If the overlap between two answers is greater than this threshold then return False.
         """
         keep = True
+
+        # If the candidate answer doesn't have a document keep it
+        if not candidate_answer.document:
+            return keep
+
         for ans in current_answers:
-            # If the answers have no documents keep both
-            if not candidate_answer.document or not ans.document:
+            # If an answer in current_answers doesn't have a document skip the comparison
+            if not ans.document:
                 continue
 
             # If any of the spans is None then keep both

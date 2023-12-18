@@ -370,7 +370,7 @@ class TestDeduplication:
         )
         assert keep is True
 
-    def test_should_keep_missing_document(
+    def test_should_keep_missing_document_current_answer(
         self, mock_reader: ExtractiveReader, doc1: Document, candidate_answer: ExtractedAnswer
     ):
         answer2 = "river in Maine"
@@ -381,6 +381,37 @@ class TestDeduplication:
                     query="test",
                     data=answer2,
                     document=None,
+                    document_offset=ExtractedAnswer.Span(
+                        doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                    ),
+                    score=0.1,
+                    meta={},
+                )
+            ],
+            overlap_threshold=0.01,
+        )
+        assert keep is True
+
+    def test_should_keep_missing_document_candidate_answer(
+        self, mock_reader: ExtractiveReader, doc1: Document, candidate_answer: ExtractedAnswer
+    ):
+        answer2 = "river in Maine"
+        keep = mock_reader._should_keep(
+            candidate_answer=ExtractedAnswer(
+                query="test",
+                data=answer2,
+                document=None,
+                document_offset=ExtractedAnswer.Span(
+                    doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                ),
+                score=0.1,
+                meta={},
+            ),
+            current_answers=[
+                ExtractedAnswer(
+                    query="test",
+                    data=answer2,
+                    document=doc1,
                     document_offset=ExtractedAnswer.Span(
                         doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
                     ),
