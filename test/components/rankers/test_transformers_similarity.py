@@ -43,7 +43,7 @@ class TestSimilarityRanker:
     def test_embed_metadata(self, mocked_sort):
         mocked_sort.return_value = (None, torch.tensor([0]))
         embedder = TransformersSimilarityRanker(
-            model_name_or_path="model", metadata_fields_to_embed=["meta_field"], embedding_separator="\n"
+            model_name_or_path="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
         embedder.model = MagicMock()
         embedder.tokenizer = MagicMock()

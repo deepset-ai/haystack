@@ -40,7 +40,7 @@ class TransformersSimilarityRanker:
         device: str = "cpu",
         token: Union[bool, str, None] = None,
         top_k: int = 10,
-        metadata_fields_to_embed: Optional[List[str]] = None,
+        meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
     ):
         """
@@ -53,7 +53,7 @@ class TransformersSimilarityRanker:
             If this parameter is set to `True`, the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) is used.
         :param top_k: The maximum number of Documents to return per query.
-        :param metadata_fields_to_embed: List of meta fields that should be embedded along with the Document content.
+        :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document content.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document content.
         """
         torch_and_transformers_import.check()
@@ -66,7 +66,7 @@ class TransformersSimilarityRanker:
         self.token = token
         self.model = None
         self.tokenizer = None
-        self.metadata_fields_to_embed = metadata_fields_to_embed or []
+        self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -95,7 +95,7 @@ class TransformersSimilarityRanker:
             model_name_or_path=self.model_name_or_path,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             top_k=self.top_k,
-            metadata_fields_to_embed=self.metadata_fields_to_embed,
+            metadata_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
         )
 
@@ -127,7 +127,7 @@ class TransformersSimilarityRanker:
         query_doc_pairs = []
         for doc in documents:
             meta_values_to_embed = [
-                str(doc.meta[key]) for key in self.metadata_fields_to_embed if key in doc.meta and doc.meta[key]
+                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
             text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
             query_doc_pairs.append([query, text_to_embed])
