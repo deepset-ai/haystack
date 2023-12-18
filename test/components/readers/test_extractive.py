@@ -7,7 +7,7 @@ import torch
 from transformers import pipeline
 
 from haystack.components.readers import ExtractiveReader
-from haystack import Document
+from haystack import Document, ExtractedAnswer
 
 
 @pytest.fixture
@@ -233,8 +233,19 @@ def test_nest_answers(mock_reader: ExtractiveReader):
     probabilities = torch.arange(5).unsqueeze(0) / 5 + torch.arange(6).unsqueeze(-1) / 25
     query_ids = [0] * 3 + [1] * 3
     document_ids = list(range(3)) * 2
-    nested_answers = mock_reader._nest_answers(
-        start, end, probabilities, example_documents[0], example_queries, 5, 3, None, query_ids, document_ids, True  # type: ignore
+    nested_answers = mock_reader._nest_answers(  # type: ignore
+        start=start,
+        end=end,
+        probabilities=probabilities,
+        flattened_documents=example_documents[0],
+        queries=example_queries,
+        answers_per_seq=5,
+        top_k=3,
+        score_threshold=None,
+        query_ids=query_ids,
+        document_ids=document_ids,
+        no_answer=True,
+        overlap_threshold=None,
     )
     expected_no_answers = [0.2 * 0.16 * 0.12, 0]
     for query, answers, expected_no_answer, probabilities in zip(
@@ -261,6 +272,196 @@ def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
     mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
 
 
+class TestDeduplication:
+    @pytest.fixture
+    def doc1(self):
+        return Document(content="I want to go to the river in Maine.")
+
+    @pytest.fixture
+    def doc2(self):
+        return Document(content="I want to go skiing in Colorado.")
+
+    @pytest.fixture
+    def candidate_answer(self, doc1):
+        answer1 = "the river"
+        return ExtractedAnswer(
+            query="test",
+            data=answer1,
+            document=doc1,
+            document_offset=ExtractedAnswer.Span(doc1.content.find(answer1), doc1.content.find(answer1) + len(answer1)),
+            score=0.1,
+            meta={},
+        )
+
+    def test_calculate_overlap(self, mock_reader: ExtractiveReader, doc1: Document):
+        answer1 = "the river"
+        answer2 = "river in Maine"
+        overlap_in_characters = mock_reader._calculate_overlap(
+            answer1_start=doc1.content.find(answer1),
+            answer1_end=doc1.content.find(answer1) + len(answer1),
+            answer2_start=doc1.content.find(answer2),
+            answer2_end=doc1.content.find(answer2) + len(answer2),
+        )
+        assert overlap_in_characters == 5
+
+    def test_should_keep_false(
+        self, mock_reader: ExtractiveReader, doc1: Document, doc2: Document, candidate_answer: ExtractedAnswer
+    ):
+        answer2 = "river in Maine"
+        answer3 = "skiing in Colorado"
+        keep = mock_reader._should_keep(
+            candidate_answer=candidate_answer,
+            current_answers=[
+                ExtractedAnswer(
+                    query="test",
+                    data=answer2,
+                    document=doc1,
+                    document_offset=ExtractedAnswer.Span(
+                        doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                    ),
+                    score=0.1,
+                    meta={},
+                ),
+                ExtractedAnswer(
+                    query="test",
+                    data=answer3,
+                    document=doc2,
+                    document_offset=ExtractedAnswer.Span(
+                        doc2.content.find(answer3), doc2.content.find(answer3) + len(answer3)
+                    ),
+                    score=0.1,
+                    meta={},
+                ),
+            ],
+            overlap_threshold=0.01,
+        )
+        assert keep is False
+
+    def test_should_keep_true(
+        self, mock_reader: ExtractiveReader, doc1: Document, doc2: Document, candidate_answer: ExtractedAnswer
+    ):
+        answer2 = "Maine"
+        answer3 = "skiing in Colorado"
+        keep = mock_reader._should_keep(
+            candidate_answer=candidate_answer,
+            current_answers=[
+                ExtractedAnswer(
+                    query="test",
+                    data=answer2,
+                    document=doc1,
+                    document_offset=ExtractedAnswer.Span(
+                        doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                    ),
+                    score=0.1,
+                    meta={},
+                ),
+                ExtractedAnswer(
+                    query="test",
+                    data=answer3,
+                    document=doc2,
+                    document_offset=ExtractedAnswer.Span(
+                        doc2.content.find(answer3), doc2.content.find(answer3) + len(answer3)
+                    ),
+                    score=0.1,
+                    meta={},
+                ),
+            ],
+            overlap_threshold=0.01,
+        )
+        assert keep is True
+
+    def test_should_keep_missing_document_current_answer(
+        self, mock_reader: ExtractiveReader, doc1: Document, candidate_answer: ExtractedAnswer
+    ):
+        answer2 = "river in Maine"
+        keep = mock_reader._should_keep(
+            candidate_answer=candidate_answer,
+            current_answers=[
+                ExtractedAnswer(
+                    query="test",
+                    data=answer2,
+                    document=None,
+                    document_offset=ExtractedAnswer.Span(
+                        doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                    ),
+                    score=0.1,
+                    meta={},
+                )
+            ],
+            overlap_threshold=0.01,
+        )
+        assert keep is True
+
+    def test_should_keep_missing_document_candidate_answer(
+        self, mock_reader: ExtractiveReader, doc1: Document, candidate_answer: ExtractedAnswer
+    ):
+        answer2 = "river in Maine"
+        keep = mock_reader._should_keep(
+            candidate_answer=ExtractedAnswer(
+                query="test",
+                data=answer2,
+                document=None,
+                document_offset=ExtractedAnswer.Span(
+                    doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                ),
+                score=0.1,
+                meta={},
+            ),
+            current_answers=[
+                ExtractedAnswer(
+                    query="test",
+                    data=answer2,
+                    document=doc1,
+                    document_offset=ExtractedAnswer.Span(
+                        doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                    ),
+                    score=0.1,
+                    meta={},
+                )
+            ],
+            overlap_threshold=0.01,
+        )
+        assert keep is True
+
+    def test_should_keep_missing_span(
+        self, mock_reader: ExtractiveReader, doc1: Document, candidate_answer: ExtractedAnswer
+    ):
+        answer2 = "river in Maine"
+        keep = mock_reader._should_keep(
+            candidate_answer=candidate_answer,
+            current_answers=[
+                ExtractedAnswer(query="test", data=answer2, document=doc1, document_offset=None, score=0.1, meta={})
+            ],
+            overlap_threshold=0.01,
+        )
+        assert keep is True
+
+    def test_deduplicate_by_overlap_none_overlap(
+        self, mock_reader: ExtractiveReader, candidate_answer: ExtractedAnswer
+    ):
+        result = mock_reader.deduplicate_by_overlap(
+            answers=[candidate_answer, candidate_answer], overlap_threshold=None
+        )
+        assert len(result) == 2
+
+    def test_deduplicate_by_overlap(
+        self, mock_reader: ExtractiveReader, candidate_answer: ExtractedAnswer, doc1: Document
+    ):
+        answer2 = "Maine"
+        extracted_answer2 = ExtractedAnswer(
+            query="test",
+            data=answer2,
+            document=doc1,
+            document_offset=ExtractedAnswer.Span(doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)),
+            score=0.1,
+            meta={},
+        )
+        result = mock_reader.deduplicate_by_overlap(
+            answers=[candidate_answer, candidate_answer, extracted_answer2], overlap_threshold=0.01
+        )
+        assert len(result) == 2
+
+
 @pytest.mark.integration
 def test_t5():
     reader = ExtractiveReader("TARUNBHATT/flan-t5-small-finetuned-squad")
@@ -274,6 +475,7 @@ def test_t5():
     assert answers[1].score == pytest.approx(0.7703777551651001)
     assert answers[2].data is None
     assert answers[2].score == pytest.approx(0.051331606147570596)
+    assert len(answers) == 3
     # Uncomment assertions below when batching is reintroduced
     # assert answers[0][2].score == pytest.approx(0.051331606147570596)
     # assert answers[1][0].data == "Jerry"
@@ -297,6 +499,7 @@ def test_roberta():
     assert answers[1].score == pytest.approx(0.857952892780304)
     assert answers[2].data is None
     assert answers[2].score == pytest.approx(0.019673851661650588)
+    assert len(answers) == 3
     # uncomment assertions below when there is batching in v2
     # assert answers[0][0].data == "Olaf Scholz"
     # assert answers[0][0].score == pytest.approx(0.8614975214004517)
@@ -314,7 +517,7 @@ def test_roberta():
 
 @pytest.mark.integration
 def test_matches_hf_pipeline():
-    reader = ExtractiveReader("deepset/tinyroberta-squad2", device="cpu")
+    reader = ExtractiveReader("deepset/tinyroberta-squad2", device="cpu", overlap_threshold=None)
     reader.warm_up()
     answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
         "answers"
