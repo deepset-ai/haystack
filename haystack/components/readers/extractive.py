@@ -367,7 +367,7 @@ class ExtractiveReader:
                 continue
 
             # If any of the spans is None then keep both
-            if not all(v is not None for v in [ans.document_offset, candidate_answer.document_offset]):
+            if any(v is None for v in [ans.document_offset, candidate_answer.document_offset]):
                 continue
 
             # If the answers come from different documents then keep both
