@@ -1,4 +1,5 @@
 import logging
+from unittest.mock import patch
 import pytest
 
 from haystack import Document
@@ -27,6 +28,18 @@ class TestPyPDFToDocument:
         docs = output["documents"]
         assert len(docs) == 1
         assert "ReAct" in docs[0].content
+
+    def test_run_with_meta(self):
+        bytestream = ByteStream(data=b"test", metadata={"author": "test_author", "language": "en"})
+
+        converter = PyPDFToDocument()
+        with patch("haystack.components.converters.pypdf.PdfReader"):
+            output = converter.run(sources=[bytestream], meta=[{"language": "it"}])
+
+        document = output["documents"][0]
+
+        # check that the metadata from the bytestream is merged with that from the meta parameter
+        assert document.meta == {"author": "test_author", "language": "it"}
 
     def test_run_error_handling(self, test_files_path, caplog):
         """

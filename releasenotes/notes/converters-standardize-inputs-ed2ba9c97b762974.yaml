@@ -1,0 +1,22 @@
+---
+upgrade:
+  - |
+    If you are using `AzureOCRDocumentConverter` or `TikaDocumentConverter`,
+    you need to change `paths` to `sources` in the `run` method.
+
+    An example:
+    ```python
+    from haystack.components.converters import TikaDocumentConverter
+    converter = TikaDocumentConverter()
+    converter.run(paths=["paths/to/file1.pdf", "path/to/file2.pdf"])
+    ```
+
+    The last line should be changed to:
+    ```python
+    converter.run(sources=["paths/to/file1.pdf", "path/to/file2.pdf"])
+    ```
+
+enhancements:
+  - |
+    Make all the Converters accept the `sources` parameter in the `run` method.
+    `sources` is a list that can contain str, Path or ByteStream objects.
