@@ -3,10 +3,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import math
 import warnings
 import logging
-import os
 
 from haystack import component, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.lazy_imports import LazyImport
+from haystack.utils import get_device
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
@@ -125,17 +125,8 @@ class ExtractiveReader:
         Loads model and tokenizer
         """
         if self.model is None:
-            if torch.cuda.is_available():
-                self.device = self.device or "cuda:0"
-            elif (
-                hasattr(torch.backends, "mps")
-                and torch.backends.mps.is_available()
-                and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
-            ):
-                self.device = self.device or "mps:0"
-            else:
-                self.device = self.device or "cpu:0"
-
+            if self.device is None:
+                self.device = get_device()
             self.model = AutoModelForQuestionAnswering.from_pretrained(
                 self.model_name_or_path, token=self.token, **self.model_kwargs
             ).to(self.device)
