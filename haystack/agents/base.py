@@ -214,7 +214,7 @@ class Agent:
         memory: Optional[Memory] = None,
         prompt_parameters_resolver: Optional[Callable] = None,
         max_steps: int = 8,
-        final_answer_pattern: str = r"Final Answer\s*:\s*(.*)",
+        final_answer_pattern: str = r"(?s)Final Answer\s*:\s*(.*)",
         streaming: bool = True,
     ):
         """
