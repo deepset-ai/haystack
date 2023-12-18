@@ -1,19 +1,15 @@
 import dataclasses
 import logging
-import os
-from typing import Optional, List, Callable, Dict, Any
+from typing import Optional, List, Callable, Dict, Any, Union
 
-import openai
-from openai.openai_object import OpenAIObject
+from openai import OpenAI, Stream
+from openai.types.chat import ChatCompletionChunk, ChatCompletion
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import StreamingChunk, ChatMessage
 
 logger = logging.getLogger(__name__)
-
-
-API_BASE_URL = "https://api.openai.com/v1"
 
 
 @component
@@ -64,7 +60,7 @@ class GPTChatGenerator:
         api_key: Optional[str] = None,
         model_name: str = "gpt-3.5-turbo",
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
-        api_base_url: str = API_BASE_URL,
+        api_base_url: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -76,7 +72,7 @@ class GPTChatGenerator:
         :param model_name: The name of the model to use.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function accepts StreamingChunk as an argument.
-        :param api_base_url: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
+        :param api_base_url: An optional base URL.
         :param generation_kwargs: Other parameters to use for the model. These parameters are all sent directly to
             the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
             more details.
@@ -97,24 +93,11 @@ class GPTChatGenerator:
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         """
-        # if the user does not provide the API key, check if it is set in the module client
-        api_key = api_key or openai.api_key
-        if api_key is None:
-            try:
-                api_key = os.environ["OPENAI_API_KEY"]
-            except KeyError as e:
-                raise ValueError(
-                    "GPTChatGenerator expects an OpenAI API key. "
-                    "Set the OPENAI_API_KEY environment variable (recommended) or pass it explicitly."
-                ) from e
-        openai.api_key = api_key
-
         self.model_name = model_name
         self.generation_kwargs = generation_kwargs or {}
         self.streaming_callback = streaming_callback
-
         self.api_base_url = api_base_url
-        openai.api_base = api_base_url
+        self.client = OpenAI(api_key=api_key, base_url=api_base_url)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -168,28 +151,32 @@ class GPTChatGenerator:
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = self._convert_to_openai_format(messages)
 
-        completion = openai.ChatCompletion.create(
+        chat_completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
             model=self.model_name,
-            messages=openai_formatted_messages,
+            messages=openai_formatted_messages,  # type: ignore # openai expects list of specific message types
             stream=self.streaming_callback is not None,
             **generation_kwargs,
         )
 
-        completions: List[ChatMessage]
-        if self.streaming_callback:
+        completions: List[ChatMessage] = []
+        # if streaming is enabled, the completion is a Stream of ChatCompletionChunk
+        if isinstance(chat_completion, Stream):
             num_responses = generation_kwargs.pop("n", 1)
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
             chunks: List[StreamingChunk] = []
             chunk = None
-            for chunk in completion:
-                if chunk.choices:
+
+            # pylint: disable=not-an-iterable
+            for chunk in chat_completion:
+                if chunk.choices and self.streaming_callback:
                     chunk_delta: StreamingChunk = self._build_chunk(chunk, chunk.choices[0])
                     chunks.append(chunk_delta)
                     self.streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
             completions = [self._connect_chunks(chunk, chunks)]
-        else:
-            completions = [self._build_message(completion, choice) for choice in completion.choices]
+        # if streaming is disabled, the completion is a ChatCompletion
+        elif isinstance(chat_completion, ChatCompletion):
+            completions = [self._build_message(chat_completion, choice) for choice in chat_completion.choices]
 
         # before returning, do post-processing of the completions
         for message in completions:
@@ -211,7 +198,7 @@ class GPTChatGenerator:
             openai_formatted_messages.append(filtered_message)
         return openai_formatted_messages
 
-    def _connect_chunks(self, chunk: OpenAIObject, chunks: List[StreamingChunk]) -> ChatMessage:
+    def _connect_chunks(self, chunk: Any, chunks: List[StreamingChunk]) -> ChatMessage:
         """
         Connects the streaming chunks into a single ChatMessage.
         :param chunk: The last chunk returned by the OpenAI API.
@@ -228,14 +215,14 @@ class GPTChatGenerator:
         )
         return complete_response
 
-    def _build_message(self, completion: OpenAIObject, choice: OpenAIObject) -> ChatMessage:
+    def _build_message(self, completion: Any, choice: Any) -> ChatMessage:
         """
         Converts the non-streaming response from the OpenAI API to a ChatMessage.
         :param completion: The completion returned by the OpenAI API.
         :param choice: The choice returned by the OpenAI API.
         :return: The ChatMessage.
         """
-        message: OpenAIObject = choice.message
+        message: Any = choice.message
         # message.content is str but message.function_call is OpenAIObject but JSON in fact, convert to str
         content = str(message.function_call) if choice.finish_reason == "function_call" else message.content
         chat_message = ChatMessage.from_assistant(content)
@@ -244,12 +231,12 @@ class GPTChatGenerator:
                 "model": completion.model,
                 "index": choice.index,
                 "finish_reason": choice.finish_reason,
-                "usage": dict(completion.usage.items()),
+                "usage": dict(completion.usage),
             }
         )
         return chat_message
 
-    def _build_chunk(self, chunk: OpenAIObject, choice: OpenAIObject) -> StreamingChunk:
+    def _build_chunk(self, chunk: Any, choice: Any) -> StreamingChunk:
         """
         Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
         :param chunk: The chunk returned by the OpenAI API.
@@ -257,12 +244,8 @@ class GPTChatGenerator:
         :return: The StreamingChunk.
         """
         has_content = bool(hasattr(choice.delta, "content") and choice.delta.content)
-        if has_content:
-            content = choice.delta.content
-        elif hasattr(choice.delta, "function_call"):
-            content = choice.delta.function_call
-        else:
-            content = ""
+        has_function_call = bool(hasattr(choice.delta, "function_call") and choice.delta.function_call)
+        content = choice.delta.content if has_content else choice.delta.function_call if has_function_call else ""
         chunk_message = StreamingChunk(content)
         chunk_message.meta.update({"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason})
         return chunk_message

@@ -1,9 +1,7 @@
 from typing import List, Optional, Dict, Any, Tuple
-import os
 
-import openai
+from openai import OpenAI
 from tqdm import tqdm
-
 
 from haystack import component, Document, default_to_dict
 
@@ -58,17 +56,6 @@ class OpenAIDocumentEmbedder:
         :param metadata_fields_to_embed: List of meta fields that should be embedded along with the Document text.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
-        # if the user does not provide the API key, check if it is set in the module client
-        api_key = api_key or openai.api_key
-        if api_key is None:
-            try:
-                api_key = os.environ["OPENAI_API_KEY"]
-            except KeyError as e:
-                raise ValueError(
-                    "OpenAIDocumentEmbedder expects an OpenAI API key. "
-                    "Set the OPENAI_API_KEY environment variable (recommended) or pass it explicitly."
-                ) from e
-
         self.model_name = model_name
         self.organization = organization
         self.prefix = prefix
@@ -78,9 +65,7 @@ class OpenAIDocumentEmbedder:
         self.metadata_fields_to_embed = metadata_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
-        openai.api_key = api_key
-        if organization is not None:
-            openai.organization = organization
+        self.client = OpenAI(api_key=api_key, organization=organization)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -133,19 +118,19 @@ class OpenAIDocumentEmbedder:
         """
 
         all_embeddings = []
-        metadata = {}
+        metadata: Dict[str, Any] = {}
         for i in tqdm(
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
             batch = texts_to_embed[i : i + batch_size]
-            response = openai.Embedding.create(model=self.model_name, input=batch)
-            embeddings = [el["embedding"] for el in response.data]
+            response = self.client.embeddings.create(model=self.model_name, input=batch)
+            embeddings = [el.embedding for el in response.data]
             all_embeddings.extend(embeddings)
 
             if "model" not in metadata:
                 metadata["model"] = response.model
             if "usage" not in metadata:
-                metadata["usage"] = dict(response.usage.items())
+                metadata["usage"] = dict(response.usage)
             else:
                 metadata["usage"]["prompt_tokens"] += response.usage.prompt_tokens
                 metadata["usage"]["total_tokens"] += response.usage.total_tokens
