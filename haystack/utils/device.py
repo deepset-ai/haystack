@@ -5,7 +5,7 @@ from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
-with LazyImport(message="Run 'pip install transformers[torch]'") as torch_import:
+with LazyImport(message="Using cpu, to use cuda or mps backends run 'pip install transformers[torch]'") as torch_import:
     import torch
 
 
