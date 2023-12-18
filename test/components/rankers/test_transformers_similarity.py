@@ -19,12 +19,17 @@ class TestSimilarityRanker:
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
+                "model_kwargs": {},
             },
         }
 
     def test_to_dict_with_custom_init_parameters(self):
         component = TransformersSimilarityRanker(
-            model_name_or_path="my_model", device="cuda", token="my_token", top_k=5
+            model_name_or_path="my_model",
+            device="cuda",
+            token="my_token",
+            top_k=5,
+            model_kwargs={"torch_dtype": "auto"},
         )
         data = component.to_dict()
         assert data == {
@@ -36,6 +41,7 @@ class TestSimilarityRanker:
                 "top_k": 5,
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
+                "model_kwargs": {"torch_dtype": "auto"},
             },
         }
 
@@ -136,7 +142,7 @@ class TestSimilarityRanker:
         """
         Test if the component runs with a single document.
         """
-        ranker = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
+        ranker = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", device=None)
         ranker.warm_up()
         docs_before = [Document(content="Berlin")]
         output = ranker.run(query="City in Germany", documents=docs_before)
