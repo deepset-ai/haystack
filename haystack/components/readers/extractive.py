@@ -366,17 +366,17 @@ class ExtractiveReader:
             if not ans.document:
                 continue
 
-            # If any of the spans is None then keep both
-            if any(v is None for v in [ans.document_offset, candidate_answer.document_offset]):
+            # If offset is missing then keep both
+            if ans.document_offset is None:
+                continue
+
+            # If offset is missing then keep both
+            if candidate_answer.document_offset is None:
                 continue
 
             # If the answers come from different documents then keep both
             if candidate_answer.document.id != ans.document.id:
                 continue
-
-            # Needed for mypy
-            assert ans.document_offset is not None
-            assert candidate_answer.document_offset is not None
 
             overlap_len = self._calculate_overlap(
                 answer1_start=ans.document_offset.start,
