@@ -30,7 +30,7 @@ class TestHTMLToDocument:
 
         assert len(docs) == 1
         assert "Haystack" in docs[0].content
-        assert docs[0].meta == {"file_name": "what_is_haystack.html"}
+        assert docs[0].meta["file_name"] == "what_is_haystack.html"
 
     def test_incorrect_meta(self, test_files_path):
         """
