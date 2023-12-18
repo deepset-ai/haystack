@@ -25,10 +25,10 @@ class TestHTMLToDocument:
         sources = [test_files_path / "html" / "what_is_haystack.html"]
 
         converter_article = HTMLToDocument(extractor_type="ArticleExtractor")
-        converter_keep_everython = HTMLToDocument(extractor_type="KeepEverythingExtractor")
+        converter_keep_everything = HTMLToDocument(extractor_type="KeepEverythingExtractor")
 
         doc_article = converter_article.run(sources=sources)["documents"][0]
-        doc_keep_everything = converter_keep_everython.run(sources=sources)["documents"][0]
+        doc_keep_everything = converter_keep_everything.run(sources=sources)["documents"][0]
 
         assert len(doc_keep_everything.content) > len(doc_article.content)
 
