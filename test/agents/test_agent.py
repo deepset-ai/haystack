@@ -160,7 +160,7 @@ def test_extract_final_answer():
         "42",
         "",
         "The answer is 99",
-        "42 should be the answer\n\nBut it's not the only one\n\n\n\n the answer is 1948"
+        "42 should be the answer\n\nBut it's not the only one\n\n\n\n the answer is 1948",
     ]
 
     for example, expected_answer in zip(match_examples, expected_answers):
