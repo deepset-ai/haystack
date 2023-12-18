@@ -331,12 +331,14 @@ class ExtractiveReader:
         Stack overflow post explaining how to calculate overlap between two ranges:
             https://stackoverflow.com/questions/325933/determine-whether-two-date-ranges-overlap/325964#325964
         """
-        start1, end1 = answer1_start, answer1_end
-        start2, end2 = answer2_start, answer2_end
-
         # Check for overlap: (StartA <= EndB) and (StartB <= EndA)
-        if start1 <= end2 and start2 <= end1:
-            return min(int(end1 - start1), int(end1 - start2), int(end2 - start1), int(end2 - start2))
+        if answer1_start <= answer2_end and answer2_start <= answer1_end:
+            return min(
+                answer1_end - answer1_start,
+                answer1_end - answer2_start,
+                answer2_end - answer1_start,
+                answer2_end - answer2_start,
+            )
         return 0
 
     def _should_keep(
