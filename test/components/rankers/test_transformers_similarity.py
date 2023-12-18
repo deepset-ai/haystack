@@ -17,7 +17,7 @@ class TestSimilarityRanker:
                 "top_k": 10,
                 "token": None,
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
-                "metadata_fields_to_embed": [],
+                "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
             },
         }
@@ -34,13 +34,13 @@ class TestSimilarityRanker:
                 "model_name_or_path": "my_model",
                 "token": None,  # we don't serialize valid tokens,
                 "top_k": 5,
-                "metadata_fields_to_embed": [],
+                "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
             },
         }
 
     @patch("torch.sort")
-    def test_embed_metadata(self, mocked_sort):
+    def test_embed_meta(self, mocked_sort):
         mocked_sort.return_value = (None, torch.tensor([0]))
         embedder = TransformersSimilarityRanker(
             model_name_or_path="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"

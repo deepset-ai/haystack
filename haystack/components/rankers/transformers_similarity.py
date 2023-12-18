@@ -95,7 +95,7 @@ class TransformersSimilarityRanker:
             model_name_or_path=self.model_name_or_path,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             top_k=self.top_k,
-            metadata_fields_to_embed=self.meta_fields_to_embed,
+            meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
         )
 
