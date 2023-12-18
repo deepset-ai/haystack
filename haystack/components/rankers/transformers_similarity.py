@@ -5,6 +5,7 @@ from typing import List, Union, Dict, Any, Optional
 
 from haystack import ComponentError, Document, component, default_to_dict
 from haystack.lazy_imports import LazyImport
+from haystack.utils import get_device
 
 logger = logging.getLogger(__name__)
 
@@ -79,17 +80,9 @@ class TransformersSimilarityRanker:
         """
         Warm up the model and tokenizer used for scoring the Documents.
         """
-        if self.model_name_or_path and not self.model:
-            if torch.cuda.is_available():
-                self.device = self.device or "cuda:0"
-            elif (
-                hasattr(torch.backends, "mps")
-                and torch.backends.mps.is_available()
-                and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
-            ):
-                self.device = self.device or "mps:0"
-            else:
-                self.device = self.device or "cpu:0"
+        if self.model is None:
+            if self.device is None:
+                self.device = get_device()
             self.model = AutoModelForSequenceClassification.from_pretrained(
                 self.model_name_or_path, token=self.token, **self.model_kwargs
             ).to(self.device)
