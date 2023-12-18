@@ -125,7 +125,7 @@ class TestLocalWhisperTranscriber:
         }
         path = SAMPLES_PATH / "audio" / "this is the content of the document.wav"
         bs = ByteStream.from_file_path(path)
-        bs.metadata["file_path"] = path
+        bs.meta["file_path"] = path
         results = comp.transcribe(sources=[bs])
         expected = Document(
             content="test transcription", meta={"audio_file": path, "other_metadata": ["other", "meta", "data"]}
