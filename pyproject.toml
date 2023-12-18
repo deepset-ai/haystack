@@ -47,7 +47,7 @@ classifiers = [
 ]
 dependencies = [
   "pandas",
-  "rank_bm25",
+  "haystack_bm25",
   "tqdm",
   "tenacity",
   "lazy-imports",
