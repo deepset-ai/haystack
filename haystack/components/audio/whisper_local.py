@@ -1,9 +1,11 @@
-from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal, get_args, Sequence
+from typing import List, Optional, Dict, Any, Union, Literal, get_args
 
 import logging
+import tempfile
 from pathlib import Path
 
 from haystack import component, Document, default_to_dict, ComponentError
+from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(
@@ -67,7 +69,7 @@ class LocalWhisperTranscriber:
         )
 
     @component.output_types(documents=List[Document])
-    def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None):
+    def run(self, sources: List[Union[str, Path, ByteStream]], whisper_params: Optional[Dict[str, Any]] = None):
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
@@ -87,10 +89,10 @@ class LocalWhisperTranscriber:
         if whisper_params is None:
             whisper_params = self.whisper_params
 
-        documents = self.transcribe(audio_files, **whisper_params)
+        documents = self.transcribe(sources, **whisper_params)
         return {"documents": documents}
 
-    def transcribe(self, audio_files: Sequence[Union[str, Path, BinaryIO]], **kwargs) -> List[Document]:
+    def transcribe(self, sources: List[Union[str, Path, ByteStream]], **kwargs) -> List[Document]:
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
@@ -104,17 +106,15 @@ class LocalWhisperTranscriber:
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
         """
-        transcriptions = self._raw_transcribe(audio_files=audio_files, **kwargs)
+        transcriptions = self._raw_transcribe(sources, **kwargs)
         documents = []
-        for audio, transcript in zip(audio_files, transcriptions):
+        for path, transcript in transcriptions.items():
             content = transcript.pop("text")
-            if not isinstance(audio, (str, Path)):
-                audio = "<<binary stream>>"
-            doc = Document(content=content, meta={"audio_file": audio, **transcript})
+            doc = Document(content=content, meta={"audio_file": path, **transcript})
             documents.append(doc)
         return documents
 
-    def _raw_transcribe(self, audio_files: Sequence[Union[str, Path, BinaryIO]], **kwargs) -> List[Dict[str, Any]]:
+    def _raw_transcribe(self, sources: List[Union[str, Path, ByteStream]], **kwargs) -> Dict[Path, Any]:
         """
         Transcribe the given audio files. Returns the output of the model, a dictionary, for each input file.
 
@@ -123,18 +123,31 @@ class LocalWhisperTranscriber:
         [github repo](https://github.com/openai/whisper).
 
         :param audio_files: A list of paths or binary streams to transcribe.
-        :returns: A list of transcriptions.
+        :returns: A dictionary of  file_path -> transcription.
         """
-        return_segments = kwargs.pop("return_segments", False)
-        transcriptions = []
-        for audio_file in audio_files:
-            if isinstance(audio_file, (str, Path)):
-                audio_file = open(audio_file, "rb")
+        if self._model is None:
+            raise ComponentError("Model is not loaded, please run 'warm_up()' before calling 'run()'")
 
-            # mypy compains that _model is not guaranteed to be not None. It is: check self.warm_up()
-            transcription = self._model.transcribe(audio_file.name, **kwargs)  # type: ignore
+        return_segments = kwargs.pop("return_segments", False)
+        transcriptions: Dict[Path, Any] = {}
+        for source in sources:
+            if not isinstance(source, ByteStream):
+                path = Path(source)
+                source = ByteStream.from_file_path(path)
+                source.metadata["file_path"] = path
+            else:
+                # If we received a ByteStream instance that doesn't have the "file_path" metadata set,
+                # we dump the bytes into a temporary file.
+                path = source.metadata.get("file_path")
+                if path is None:
+                    fp = tempfile.NamedTemporaryFile(delete=False)
+                    path = Path(fp.name)
+                    source.to_file(path)
+                    source.metadata["file_path"] = path
+
+            transcription = self._model.transcribe(str(path), **kwargs)
             if not return_segments:
                 transcription.pop("segments", None)
-            transcriptions.append(transcription)
+            transcriptions[path] = transcription
 
         return transcriptions
