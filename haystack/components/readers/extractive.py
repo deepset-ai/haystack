@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import math
 import warnings
 import logging
-import os
 
 from haystack import component, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.lazy_imports import LazyImport
