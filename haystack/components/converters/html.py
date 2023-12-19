@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Literal
 from boilerpy3 import extractors
 
 from haystack import Document, component
@@ -28,6 +28,27 @@ class HTMLToDocument:
 
     """
 
+    def __init__(
+        self,
+        extractor_type: Literal[
+            "DefaultExtractor",
+            "ArticleExtractor",
+            "ArticleSentencesExtractor",
+            "LargestContentExtractor",
+            "CanolaExtractor",
+            "KeepEverythingExtractor",
+            "NumWordsRulesExtractor",
+        ] = "DefaultExtractor",
+    ):
+        """
+        Create an HTMLToDocument component.
+
+        :param extractor_type: The type of boilerpy3 extractor to use. Defaults to `DefaultExtractor`.
+          For more information on the different types of extractors,
+          see [boilerpy3 documentation](https://github.com/jmriebold/BoilerPy3?tab=readme-ov-file#extractors).
+        """
+        self.extractor_type = extractor_type
+
     @component.output_types(documents=List[Document])
     def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
         """
@@ -46,7 +67,8 @@ class HTMLToDocument:
         elif len(sources) != len(meta):
             raise ValueError("The length of the metadata list must match the number of sources.")
 
-        extractor = extractors.ArticleExtractor(raise_on_failure=False)
+        extractor_class = getattr(extractors, self.extractor_type)
+        extractor = extractor_class(raise_on_failure=False)
 
         for source, metadata in zip(sources, meta):
             try:
