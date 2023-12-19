@@ -229,7 +229,6 @@ class GPTChatGenerator:
         :return: The ChatMessage.
         """
         message: Any = choice.message
-        message: Any = choice.message
         # message.content is str but message.function_call is FunctionCall
         # TODO: update handling for tools, for now enable only for function calls
         content = (
