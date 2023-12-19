@@ -18,6 +18,20 @@ class TestHTMLToDocument:
         assert len(docs) == 1
         assert "Haystack" in docs[0].content
 
+    def test_run_different_extractors(self, test_files_path):
+        """
+        Test if the component runs correctly with different boilrepy3 extractors.
+        """
+        sources = [test_files_path / "html" / "what_is_haystack.html"]
+
+        converter_article = HTMLToDocument(extractor_type="ArticleExtractor")
+        converter_keep_everything = HTMLToDocument(extractor_type="KeepEverythingExtractor")
+
+        doc_article = converter_article.run(sources=sources)["documents"][0]
+        doc_keep_everything = converter_keep_everything.run(sources=sources)["documents"][0]
+
+        assert len(doc_keep_everything.content) > len(doc_article.content)
+
     def test_run_doc_metadata(self, test_files_path):
         """
         Test if the component runs correctly when metadata is supplied by the user.
@@ -30,7 +44,7 @@ class TestHTMLToDocument:
 
         assert len(docs) == 1
         assert "Haystack" in docs[0].content
-        assert docs[0].meta == {"file_name": "what_is_haystack.html"}
+        assert docs[0].meta["file_name"] == "what_is_haystack.html"
 
     def test_incorrect_meta(self, test_files_path):
         """

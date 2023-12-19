@@ -102,7 +102,7 @@ class AnswerBuilder:
                         logger.warning("Document index '%s' referenced in Generator output is out of range. ", idx + 1)
 
             answer_string = AnswerBuilder._extract_answer_string(reply, pattern)
-            answer = GeneratedAnswer(data=answer_string, query=query, documents=referenced_docs, metadata=meta)
+            answer = GeneratedAnswer(data=answer_string, query=query, documents=referenced_docs, meta=meta)
             all_answers.append(answer)
 
         return {"answers": all_answers}
