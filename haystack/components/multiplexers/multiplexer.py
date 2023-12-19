@@ -1,5 +1,11 @@
-from typing import Any, Dict, Type
+import sys
 
+if sys.version_info < (3, 10):
+    from typing_extensions import TypeAlias
+else:
+    from typing import TypeAlias
+
+from typing import Any, Dict
 import logging
 
 from haystack.core.component.types import Variadic
@@ -45,10 +51,10 @@ class Multiplexer:
     ```
     """
 
-    def __init__(self, type_: Type):
+    def __init__(self, type_: TypeAlias):
         self.type_ = type_
-        component.set_input_types(self, value=Variadic[self.type_])
-        component.set_output_types(self, value=self.type_)
+        component.set_input_types(self, value=Variadic[type_])
+        component.set_output_types(self, value=type_)
 
     def to_dict(self):
         return default_to_dict(self, type_=serialize_type(self.type_))
