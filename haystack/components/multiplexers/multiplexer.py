@@ -1,16 +1,15 @@
 import sys
+import logging
+from typing import Any, Dict
+
+from haystack.core.component.types import Variadic
+from haystack import component, default_to_dict, default_from_dict
+from haystack.components.routers.conditional_router import serialize_type, deserialize_type
 
 if sys.version_info < (3, 10):
     from typing_extensions import TypeAlias
 else:
     from typing import TypeAlias
-
-from typing import Any, Dict
-import logging
-
-from haystack.core.component.types import Variadic
-from haystack import component, default_to_dict, default_from_dict
-from haystack.components.routers.conditional_router import serialize_type, deserialize_type
 
 
 logging.getLogger().setLevel(logging.DEBUG)
