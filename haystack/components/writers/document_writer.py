@@ -15,11 +15,15 @@ class DocumentWriter:
     A component for writing documents to a DocumentStore.
     """
 
-    def __init__(self, document_store: DocumentStore, policy: DuplicatePolicy = DuplicatePolicy.FAIL):
+    def __init__(self, document_store: DocumentStore, policy: DuplicatePolicy = DuplicatePolicy.NONE):
         """
         Create a DocumentWriter component.
 
-        :param policy: The policy to use when encountering duplicate documents (default is DuplicatePolicy.FAIL).
+        :param policy: the policy to apply when a Document with the same id already exists in the DocumentStore.
+            - `DuplicatePolicy.NONE`: Default policy, behaviour depends on the Document Store.
+            - `DuplicatePolicy.SKIP`: If a Document with the same id already exists, it is skipped and not written.
+            - `DuplicatePolicy.OVERWRITE`: If a Document with the same id already exists, it is overwritten.
+            - `DuplicatePolicy.FAIL`: If a Document with the same id already exists, an error is raised.
         """
         self.document_store = document_store
         self.policy = policy
