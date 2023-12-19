@@ -29,7 +29,7 @@ class HuggingFaceTGIChatGenerator:
     from haystack.components.generators.chat import HuggingFaceTGIChatGenerator
     from haystack.dataclasses import ChatMessage
 
-    messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
+    messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
                 ChatMessage.from_user("What's Natural Language Processing?")]
 
 
@@ -46,7 +46,7 @@ class HuggingFaceTGIChatGenerator:
     from haystack.components.generators.chat import HuggingFaceTGIChatGenerator
     from haystack.dataclasses import ChatMessage
 
-    messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
+    messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
                 ChatMessage.from_user("What's Natural Language Processing?")]
 
     client = HuggingFaceTGIChatGenerator(model="meta-llama/Llama-2-70b-chat-hf",
