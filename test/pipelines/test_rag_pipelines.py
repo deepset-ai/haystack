@@ -37,6 +37,7 @@ def mock_chat_completion():
         yield mock_chat_completion_create
 
 
+@pytest.mark.integration
 def test_rag_pipeline(mock_chat_completion):
     rag_pipe = build_rag_pipeline(document_store=InMemoryDocumentStore())
     answer = rag_pipe.run(query="question")

@@ -6,6 +6,7 @@ from haystack.document_stores import InMemoryDocumentStore
 
 class TestIndexingPipeline:
     #  indexing files without embeddings
+    @pytest.mark.integration
     def test_indexing_files_without_embeddings(self, test_files_path):
         file_paths = [test_files_path / "txt" / "doc_1.txt", test_files_path / "txt" / "doc_2.txt"]
         document_store = InMemoryDocumentStore()
@@ -36,6 +37,7 @@ class TestIndexingPipeline:
         assert result["documents_written"] >= 3
 
     #  indexing multiple files
+    @pytest.mark.integration
     def test_indexing_multiple_file_types(self, test_files_path):
         document_store = InMemoryDocumentStore()
         pipeline = build_indexing_pipeline(
