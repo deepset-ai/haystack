@@ -30,6 +30,7 @@ class OpenAITextEmbedder:
         self,
         api_key: Optional[str] = None,
         model_name: str = "text-embedding-ada-002",
+        api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         prefix: str = "",
         suffix: str = "",
@@ -41,8 +42,9 @@ class OpenAITextEmbedder:
             environment variable OPENAI_API_KEY (recommended).
         :param model_name: The name of the OpenAI model to use. For more details on the available models,
             see [OpenAI documentation](https://platform.openai.com/docs/guides/embeddings/embedding-models).
-        :param organization: The OpenAI-Organization ID, defaults to `None`. For more details,
-            see [OpenAI documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
+        :param organization: The Organization ID, defaults to `None`. See
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
+        :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI docs
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         """
@@ -51,7 +53,7 @@ class OpenAITextEmbedder:
         self.prefix = prefix
         self.suffix = suffix
 
-        self.client = OpenAI(api_key=api_key, organization=organization)
+        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """

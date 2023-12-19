@@ -26,8 +26,8 @@ class RemoteWhisperTranscriber:
         self,
         api_key: Optional[str] = None,
         model_name: str = "whisper-1",
-        organization: Optional[str] = None,
         api_base_url: Optional[str] = None,
+        organization: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -35,9 +35,9 @@ class RemoteWhisperTranscriber:
 
         :param api_key: OpenAI API key.
         :param model_name: Name of the model to use. It now accepts only `whisper-1`.
-        :param organization: The OpenAI-Organization ID, defaults to `None`. For more details, see OpenAI
-        [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
-        :param api_base: An optional URL to use as the API base. Defaults to `None`.
+        :param organization: The Organization ID, defaults to `None`. See
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
+        :param api_base: An optional URL to use as the API base. Defaults to `None`. See OpenAI docs
         :param kwargs: Other parameters to use for the model. These parameters are all sent directly to the OpenAI
             endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio) for more details.
             Some of the supported parameters:
@@ -71,7 +71,7 @@ class RemoteWhisperTranscriber:
             )
         whisper_params["response_format"] = "json"
         self.whisper_params = whisper_params
-        self.client = OpenAI(api_key=api_key, organization=organization)
+        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
 
     def to_dict(self) -> Dict[str, Any]:
         """

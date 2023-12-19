@@ -32,6 +32,7 @@ class OpenAIDocumentEmbedder:
         self,
         api_key: Optional[str] = None,
         model_name: str = "text-embedding-ada-002",
+        api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         prefix: str = "",
         suffix: str = "",
@@ -45,9 +46,9 @@ class OpenAIDocumentEmbedder:
         :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
                         environment variable OPENAI_API_KEY (recommended).
         :param model_name: The name of the model to use.
-        :param api_base_url: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
-        :param organization: The OpenAI-Organization ID, defaults to `None`. For more details, see OpenAI
-        [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
+        :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI docs
+        :param organization: The Organization ID, defaults to `None`. See
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         :param batch_size: Number of Documents to encode at once.
@@ -57,6 +58,7 @@ class OpenAIDocumentEmbedder:
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
         self.model_name = model_name
+        self.api_base_url = api_base_url
         self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
@@ -65,7 +67,7 @@ class OpenAIDocumentEmbedder:
         self.metadata_fields_to_embed = metadata_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
-        self.client = OpenAI(api_key=api_key, organization=organization)
+        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -82,6 +84,7 @@ class OpenAIDocumentEmbedder:
             self,
             model_name=self.model_name,
             organization=self.organization,
+            api_base_url=self.api_base_url,
             prefix=self.prefix,
             suffix=self.suffix,
             batch_size=self.batch_size,

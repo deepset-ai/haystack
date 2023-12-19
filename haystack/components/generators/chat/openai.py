@@ -61,6 +61,7 @@ class GPTChatGenerator:
         model_name: str = "gpt-3.5-turbo",
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         api_base_url: Optional[str] = None,
+        organization: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -73,6 +74,8 @@ class GPTChatGenerator:
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function accepts StreamingChunk as an argument.
         :param api_base_url: An optional base URL.
+        :param organization: The Organization ID, defaults to `None`. See
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
         :param generation_kwargs: Other parameters to use for the model. These parameters are all sent directly to
             the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
             more details.
@@ -97,7 +100,8 @@ class GPTChatGenerator:
         self.generation_kwargs = generation_kwargs or {}
         self.streaming_callback = streaming_callback
         self.api_base_url = api_base_url
-        self.client = OpenAI(api_key=api_key, base_url=api_base_url)
+        self.organization = organization
+        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -116,6 +120,7 @@ class GPTChatGenerator:
             model_name=self.model_name,
             streaming_callback=callback_name,
             api_base_url=self.api_base_url,
+            organization=self.organization,
             generation_kwargs=self.generation_kwargs,
         )
 

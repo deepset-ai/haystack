@@ -53,6 +53,7 @@ class GPTGenerator:
         model_name: str = "gpt-3.5-turbo",
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         api_base_url: Optional[str] = None,
+        organization: Optional[str] = None,
         system_prompt: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
@@ -66,6 +67,8 @@ class GPTGenerator:
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function accepts StreamingChunk as an argument.
         :param api_base_url: An optional base URL.
+        :param organization: The Organization ID, defaults to `None`. See
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
         :param system_prompt: The system prompt to use for text generation. If not provided, the system prompt is
         omitted, and the default system prompt of the model is used.
         :param generation_kwargs: Other parameters to use for the model. These parameters are all sent directly to
@@ -94,7 +97,8 @@ class GPTGenerator:
         self.streaming_callback = streaming_callback
 
         self.api_base_url = api_base_url
-        self.client = OpenAI(api_key=api_key, base_url=api_base_url)
+        self.organization = organization
+        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
