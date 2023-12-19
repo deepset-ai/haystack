@@ -15,7 +15,7 @@ class DynamicChatPromptBuilder:
     DynamicChatPromptBuilder is designed to construct dynamic prompts from a list of `ChatMessage` instances. It
     integrates with Jinja2 templating for dynamic prompt generation.
 
-    DynamicChatPromptBuilder assumes the last user message in the list contains a template and renders it with resolved
+    DynamicChatPromptBuilder assumes that the last user message in the list contains a template and renders it with resolved
     pipeline variables and any additional template variables provided.
 
     You can provide additional template variables directly to the pipeline `run` method. They are then merged with the
@@ -69,18 +69,18 @@ class DynamicChatPromptBuilder:
 
     ```
 
-    The primary advantage of using DynamicChatPromptBuilder is showcased in the above provided examples.
-    DynamicChatPromptBuilder allows dynamic customization of prompt messages without the need to reload/recreate the
+    The primary advantage of using DynamicChatPromptBuilder is showcased in the examples provided above.
+    DynamicChatPromptBuilder allows dynamic customization of prompt messages without the need to reload or recreate the
     pipeline for each invocation.
 
     In the example above, the first query asks for general information about Berlin, and the second query requests
     the weather forecast for Berlin in the next few days. DynamicChatPromptBuilder efficiently handles these distinct
-    prompt structures through adjustments in the pipeline run parameters invocations. This is in stark contrast to a
-    regular PromptBuilder, which would require recreating/reloading the pipeline for each distinct type of query,
+    prompt structures by adjusting pipeline run parameters invocations, as opposed to a
+    regular PromptBuilder, which would require recreating or reloading the pipeline for each distinct type of query,
     leading to inefficiency and potential service disruptions, especially in server environments where continuous
     service is vital.
 
-    Note of course that weather forecast in the example above is fictional, but it can be easily connected to a weather
+    Note that the weather forecast in the example above is fictional, but it can be easily connected to a weather
     API to provide real weather forecasts.
     """
 
@@ -88,7 +88,7 @@ class DynamicChatPromptBuilder:
         """
         Initializes DynamicChatPromptBuilder with the provided variable names. These variable names are used to resolve
         variables and their values during pipeline runtime execution. For example, if `runtime_variables` contains
-        `documents` your instance of DynamicChatPromptBuilder will expect an input called `documents`.
+        `documents`, your instance of DynamicChatPromptBuilder will expect an input called `documents`.
         The values associated with variables from the pipeline runtime are then injected into template placeholders
         of a ChatMessage that is provided to the `run` method.
 
@@ -112,7 +112,7 @@ class DynamicChatPromptBuilder:
         The last user message is treated as a template and rendered with the resolved pipeline variables and any
         additional template variables provided.
 
-        You can provide additional template variables directly to this method, that are then merged with the variables
+        You can provide additional template variables directly to this method, which are then merged with the variables
         resolved from the pipeline runtime.
 
         :param prompt_source: A list of `ChatMessage` instances. We make an assumption that the last user message has
