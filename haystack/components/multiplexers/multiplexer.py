@@ -12,7 +12,7 @@ else:
     from typing import TypeAlias
 
 
-logging.getLogger().setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 @component
