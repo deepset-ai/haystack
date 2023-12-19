@@ -59,6 +59,6 @@ class Multiplexer:
         return default_from_dict(cls, data)
 
     def run(self, **kwargs):
-        if inputs_count := len(kwargs["value"]) != 1:
+        if (inputs_count := len(kwargs["value"])) != 1:
             raise ValueError(f"Multiplexer expects only one input, but {inputs_count} were received.")
         return {"value": kwargs["value"][0]}
