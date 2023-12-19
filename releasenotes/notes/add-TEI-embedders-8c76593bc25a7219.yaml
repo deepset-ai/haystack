@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add HuggingFace TEI Embedders - `HuggingFaceTEITextEmbedder` and `HuggingFaceTEIDocumentEmbedder`. For an example of its usage, see https://github.com/deepset-ai/haystack/pull/6602.
