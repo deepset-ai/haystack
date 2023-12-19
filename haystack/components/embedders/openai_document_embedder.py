@@ -7,6 +7,8 @@ from tqdm import tqdm
 
 from haystack import component, Document, default_to_dict
 
+API_BASE_URL = "https://api.openai.com/v1"
+
 
 @component
 class OpenAIDocumentEmbedder:
@@ -34,6 +36,7 @@ class OpenAIDocumentEmbedder:
         self,
         api_key: Optional[str] = None,
         model_name: str = "text-embedding-ada-002",
+        api_base_url: str = API_BASE_URL,
         organization: Optional[str] = None,
         prefix: str = "",
         suffix: str = "",
@@ -70,6 +73,7 @@ class OpenAIDocumentEmbedder:
                 ) from e
 
         self.model_name = model_name
+        self.api_base_url = api_base_url
         self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
@@ -79,6 +83,7 @@ class OpenAIDocumentEmbedder:
         self.embedding_separator = embedding_separator
 
         openai.api_key = api_key
+        openai.api_base = api_base_url
         if organization is not None:
             openai.organization = organization
 
@@ -96,6 +101,7 @@ class OpenAIDocumentEmbedder:
         return default_to_dict(
             self,
             model_name=self.model_name,
+            api_base_url=self.api_base_url,
             organization=self.organization,
             prefix=self.prefix,
             suffix=self.suffix,
