@@ -49,6 +49,7 @@ class TestGPTChatGenerator:
             "type": "haystack.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-3.5-turbo",
+                "organization": None,
                 "streaming_callback": None,
                 "api_base_url": None,
                 "generation_kwargs": {},
@@ -68,6 +69,7 @@ class TestGPTChatGenerator:
             "type": "haystack.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
+                "organization": None,
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
@@ -87,6 +89,7 @@ class TestGPTChatGenerator:
             "type": "haystack.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
+                "organization": None,
                 "api_base_url": "test-base-url",
                 "streaming_callback": "chat.test_openai.<lambda>",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
@@ -116,6 +119,7 @@ class TestGPTChatGenerator:
             "type": "haystack.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
+                "organization": None,
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},

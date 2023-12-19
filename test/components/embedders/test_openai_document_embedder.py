@@ -66,6 +66,7 @@ class TestOpenAIDocumentEmbedder:
         assert data == {
             "type": "haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
             "init_parameters": {
+                "api_base_url": None,
                 "model_name": "text-embedding-ada-002",
                 "organization": None,
                 "prefix": "",
@@ -93,6 +94,7 @@ class TestOpenAIDocumentEmbedder:
         assert data == {
             "type": "haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
             "init_parameters": {
+                "api_base_url": None,
                 "model_name": "model",
                 "organization": "my-org",
                 "prefix": "prefix",
