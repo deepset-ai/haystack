@@ -2,8 +2,8 @@ import json
 import logging
 from typing import List, Dict, Any, Optional
 
-from haystack.dataclasses import ChatMessage, ChatRole
 from haystack import component
+from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
@@ -35,17 +35,17 @@ class OpenAPIServiceConnector:
         self.service_authentications = service_auths or {}
 
     @component.output_types(service_response=Dict[str, Any])
-    def run(self, messages: List[ChatMessage], service_openapi_spec: Any):
+    def run(self, messages: List[ChatMessage], service_openapi_spec: Dict[str, Any]) -> Dict[str, List[ChatMessage]]:
         """
         Processes a list of chat messages to invoke a method on an OpenAPI service. It parses the last message in the
         list, expecting it to contain an OpenAI function calling descriptor (name & parameters) in JSON format.
 
-        :param messages: A list of ``ChatMessage`` objects representing the chat history.
+        :param messages: A list of `ChatMessage` objects representing the chat history.
         :type messages: List[ChatMessage]
         :param service_openapi_spec: The OpenAPI JSON specification object of the service.
         :type service_openapi_spec: JSON object
-        :return: A dictionary with a key ``"service_response"``, containing the response from the OpenAPI service.
-        :rtype: Dict[str, Any]
+        :return: A dictionary with a key `"service_response"`, containing the response from the OpenAPI service.
+        :rtype: Dict[str, List[ChatMessage]]
         :raises ValueError: If the last message is not from the assistant or if it does not contain the correct payload
         to invoke a method on the service.
         """
@@ -73,15 +73,16 @@ class OpenAPIServiceConnector:
         :rtype: Dict[str, Any]
         :raises ValueError: If the content is not valid JSON or lacks required fields.
         """
-        if not self._is_valid_json(content):
+        try:
+            method_invocation_descriptor = json.loads(content)
+        except json.JSONDecodeError:
             raise ValueError("Invalid JSON content, cannot parse invocation message.", content)
 
-        descriptor = json.loads(content)
-        if "name" not in descriptor or "arguments" not in descriptor:
+        if "name" not in method_invocation_descriptor or "arguments" not in method_invocation_descriptor:
             raise ValueError("Missing required fields in the invocation message content.", content)
 
-        descriptor["arguments"] = json.loads(descriptor["arguments"])
-        return descriptor
+        method_invocation_descriptor["arguments"] = json.loads(method_invocation_descriptor["arguments"])
+        return method_invocation_descriptor
 
     def _authenticate_service(self, openapi_service: OpenAPI):
         """
@@ -113,14 +114,11 @@ class OpenAPIServiceConnector:
         name = method_invocation_descriptor["name"]
         # a bit convoluted, but we need to pass parameters, data, or both to the method
         # depending on the openapi operation specification, can't use None as a default value
-        method_call_params = {
-            key: value
-            for key, value in {
-                "parameters": method_invocation_descriptor["arguments"].get("parameters"),
-                "data": method_invocation_descriptor["arguments"].get("requestBody"),
-            }.items()
-            if value is not None
-        }
+        method_call_params = {}
+        if (parameters := method_invocation_descriptor["arguments"].get("parameters")) is not None:
+            method_call_params["parameters"] = parameters
+        if (arguments := method_invocation_descriptor["arguments"].get("requestBody")) is not None:
+            method_call_params["data"] = arguments
 
         method_to_call = getattr(openapi_service, f"call_{name}", None)
         if not callable(method_to_call):
@@ -128,18 +126,3 @@ class OpenAPIServiceConnector:
 
         # this will call the underlying service REST API
         return method_to_call(**method_call_params)
-
-    def _is_valid_json(self, content: str):
-        """
-        Validates whether the provided content is a valid JSON string.
-
-        :param content: The string content to be checked.
-        :type content: str
-        :return: ``True`` if the content is a valid JSON string, ``False`` otherwise.
-        :rtype: bool
-        """
-        try:
-            json.loads(content)
-            return True
-        except json.JSONDecodeError:
-            return False
