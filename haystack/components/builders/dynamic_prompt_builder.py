@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 class DynamicPromptBuilder:
     """
     DynamicPromptBuilder is designed to construct dynamic prompts for the pipeline. Users can change the prompt
-    template at runtime by providing a new template for each pipeline run invocation - if needed.
+    template at runtime by providing a new template for each pipeline run invocation if needed.
 
-    The following example demonstrates how to use DynamicPromptBuilder:
+    The following example demonstrates how to use the DynamicPromptBuilder:
 
     ```python
     from haystack.components.builders import DynamicPromptBuilder
@@ -56,7 +56,7 @@ class DynamicPromptBuilder:
 
     Note how in the example above, we can dynamically change the prompt template by providing a new template to the
     run method of the pipeline. This dynamic prompt generation is in stark contrast to the static prompt generation
-    using `PromptBuilder`, where the prompt template is fixed for the lifetime of the pipeline and cannot be changed
+    using `PromptBuilder`, where the prompt template is fixed for the pipeline's lifetime and cannot be changed
     for each pipeline run invocation.
 
     """
@@ -93,7 +93,7 @@ class DynamicPromptBuilder:
         render the final prompt. You can provide additional template variables directly to this method, that are then
         merged with the variables resolved from the pipeline runtime.
 
-        :param prompt_source: A string template
+        :param prompt_source: A string template.
         :type prompt_source: str
 
         :param template_variables: An optional dictionary of template variables. Template variables provided at
