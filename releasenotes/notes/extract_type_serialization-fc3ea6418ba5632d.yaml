@@ -1,0 +1,3 @@
+enhancements:
+  - |
+    Move `serialize_type` and `deserialize_type` in the `utils` module.
