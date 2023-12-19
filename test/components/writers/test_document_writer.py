@@ -16,7 +16,7 @@ class TestDocumentWriter:
             "type": "haystack.components.writers.document_writer.DocumentWriter",
             "init_parameters": {
                 "document_store": {"type": "haystack.testing.factory.MockedDocumentStore", "init_parameters": {}},
-                "policy": "FAIL",
+                "policy": "NONE",
             },
         }
 
