@@ -132,6 +132,26 @@ class TestGPTGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, str) for reply in response["replies"]]
 
+    def test_run_with_params_streaming(self, mock_chat_completion_chunk):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        component = GPTGenerator(streaming_callback=streaming_callback)
+        response = component.run("Come on, stream!")
+
+        # check we called the streaming callback
+        assert streaming_callback_called
+
+        # check that the component still returns the correct response
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert "Hello" in response["replies"][0]  # see mock_chat_completion_chunk
+
     def test_run_with_params(self, mock_chat_completion):
         component = GPTGenerator(api_key="test-api-key", generation_kwargs={"max_tokens": 10, "temperature": 0.5})
         response = component.run("What's Natural Language Processing?")

@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock, patch
+
 import pytest
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice

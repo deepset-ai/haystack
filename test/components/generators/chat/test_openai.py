@@ -96,8 +96,7 @@ class TestGPTChatGenerator:
             },
         }
 
-    def test_from_dict(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+    def test_from_dict(self):
         data = {
             "type": "haystack.components.generators.chat.openai.GPTChatGenerator",
             "init_parameters": {
@@ -154,6 +153,27 @@ class TestGPTChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    def test_run_with_params_streaming(self, chat_messages, mock_chat_completion_chunk):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        component = GPTChatGenerator(streaming_callback=streaming_callback)
+        response = component.run(chat_messages)
+
+        # check we called the streaming callback
+        assert streaming_callback_called
+
+        # check that the component still returns the correct response
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert "Hello" in response["replies"][0].content  # see mock_chat_completion_chunk
 
     def test_check_abnormal_completions(self, caplog):
         component = GPTChatGenerator(api_key="test-api-key")
@@ -222,7 +242,7 @@ class TestGPTChatGenerator:
                 self.responses += chunk.content if chunk.content else ""
 
         callback = Callback()
-        component = GPTChatGenerator(os.environ.get("OPENAI_API_KEY"), streaming_callback=callback)
+        component = GPTChatGenerator(streaming_callback=callback)
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
         assert len(results["replies"]) == 1

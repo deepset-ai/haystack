@@ -1,4 +1,5 @@
 import dataclasses
+import json
 import logging
 from typing import Optional, List, Callable, Dict, Any, Union
 
@@ -230,7 +231,13 @@ class GPTGenerator:
         :return: The ChatMessage.
         """
         message: Any = choice.message
-        content = str(message.function_call) if choice.finish_reason == "function_call" else message.content
+        # message.content is str but message.function_call is FunctionCall
+        # TODO: update handling for tools, for now enable only for function calls
+        content = (
+            json.dumps({"name": message.function_call.name, "arguments": message.function_call.arguments})
+            if choice.finish_reason == "function_call"
+            else message.content
+        )
         chat_message = ChatMessage.from_assistant(content)
         chat_message.meta.update(
             {
