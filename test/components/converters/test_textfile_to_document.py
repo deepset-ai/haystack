@@ -56,3 +56,14 @@ class TestTextfileToDocument:
         bytestream.metadata["encoding"] = "utf-8"
         output = converter.run(sources=[bytestream])
         assert "Some text for testing." in output["documents"][0].content
+
+    def test_run_with_meta(self):
+        bytestream = ByteStream(data=b"test", metadata={"author": "test_author", "language": "en"})
+
+        converter = TextFileToDocument()
+
+        output = converter.run(sources=[bytestream], meta=[{"language": "it"}])
+        document = output["documents"][0]
+
+        # check that the metadata from the bytestream is merged with that from the meta parameter
+        assert document.meta == {"author": "test_author", "language": "it"}

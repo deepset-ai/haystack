@@ -1,0 +1,20 @@
+.[dev]
+
+# Package                                        Components
+
+transformers[torch,sentencepiece]==4.35.2       # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
+
+# Converters
+pypdf                                           # PyPDFConverter
+markdown-it-py                                  # MarkdownToDocument
+mdit_plain                                      # MarkdownToDocument
+tika                                            # TikaDocumentConverter
+azure-ai-formrecognizer>=3.2.0b2                # AzureOCRDocumentConverter
+
+langdetect                                      # TextLanguageRouter and DocumentLanguageClassifier
+sentence-transformers>=2.2.0                    # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
+openai-whisper>=20231106                        # LocalWhisperTranscriber
+
+# OpenAPI
+jsonref                                        # OpenAPIServiceConnector, OpenAPIServiceToFunctions
+openapi3
