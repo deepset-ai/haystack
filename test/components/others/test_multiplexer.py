@@ -1,8 +1,6 @@
-import sys
-
 import pytest
 
-from haystack.components.multiplexers import Multiplexer
+from haystack.components.others import Multiplexer
 
 
 class TestMultiplexer:
