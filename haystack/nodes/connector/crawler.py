@@ -132,7 +132,8 @@ class Crawler(BaseComponent):
         self.file_path_meta_field_name = file_path_meta_field_name
 
     def __del__(self):
-        self.driver.quit()
+        if getattr(self, "driver", None):
+            self.driver.quit()
 
     def crawl(
         self,
