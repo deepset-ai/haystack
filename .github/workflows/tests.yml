@@ -8,7 +8,6 @@ on:
       - main
       # release branches have the form v1.9.x
       - "v[0-9].*[0-9].x"
-      - ci-speed-up
   pull_request:
     types:
       - opened
