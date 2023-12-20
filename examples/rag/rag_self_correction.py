@@ -1,4 +1,4 @@
-from typing import List, Any, Optional, Dict, Type
+from typing import List, Any, Optional, Dict
 
 import logging
 from pprint import pprint
@@ -9,34 +9,11 @@ from haystack.document_stores import InMemoryDocumentStore
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.generators import GPTGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.routers.conditional_router import ConditionalRouter, serialize_type, deserialize_type
+from haystack.components.others import Multiplexer
+from haystack.components.routers.conditional_router import ConditionalRouter
 
 
 logging.getLogger().setLevel(logging.DEBUG)
-
-
-@component
-class Switch:
-    """
-    This component is used to distribute a single value to many components that may need it.
-    It can take such value from different sources (the user's input, or another component).
-    """
-
-    def __init__(self, type_: Type):
-        self.type_ = type_
-        component.set_input_types(self, value=Variadic[self.type_])
-        component.set_output_types(self, value=self.type_)
-
-    def to_dict(self):
-        return default_to_dict(self, type_=serialize_type(self.type_))
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Switch":
-        data["init_parameters"]["type_"] = deserialize_type(data["init_parameters"]["type_"])
-        return default_from_dict(cls, data)
-
-    def run(self, **kwargs):
-        return {"value": kwargs["value"][0]}
 
 
 @component
@@ -98,73 +75,75 @@ class PaginatedRetriever:
         return {"documents": next_page}
 
 
-# Create the RAG pipeline
-rag_pipeline = Pipeline(max_loops_allowed=10)
-rag_pipeline.add_component(instance=Switch(type_=str), name="query")
-rag_pipeline.add_component(
-    instance=PaginatedRetriever(InMemoryBM25Retriever(document_store=InMemoryDocumentStore())), name="retriever"
-)
-rag_pipeline.add_component(
-    instance=PromptBuilder(
-        template="""
-Given these documents, answer the question.
-If the documents don't provide enough information to answer the question, answer with the string "UNKNOWN".
+def self_correcting_pipeline():
+    # Create the RAG pipeline
+    rag_pipeline = Pipeline(max_loops_allowed=10)
+    rag_pipeline.add_component(instance=Multiplexer(str), name="query")
+    rag_pipeline.add_component(
+        instance=PaginatedRetriever(InMemoryBM25Retriever(document_store=InMemoryDocumentStore())), name="retriever"
+    )
+    rag_pipeline.add_component(
+        instance=PromptBuilder(
+            template="""
+    Given these documents, answer the question.
+    If the documents don't provide enough information to answer the question, answer with the string "UNKNOWN".
 
-Documents:
-{% for doc in documents %}
-    {{ doc.content }}
-{% endfor %}
+    Documents:
+    {% for doc in documents %}
+        {{ doc.content }}
+    {% endfor %}
 
-Question: {{question}}
-Answer:
-"""
-    ),
-    name="prompt_builder",
-)
-rag_pipeline.add_component(instance=GPTGenerator(), name="llm")
-rag_pipeline.add_component(
-    instance=ConditionalRouter(
-        routes=[
-            {
-                "condition": "{{ 'UNKNOWN' in replies|join(' ') }}",
-                "output": "{{ query }}",
-                "output_name": "unanswered_query",
-                "output_type": str,
-            },
-            {
-                "condition": "{{ 'UNKNOWN' not in replies|join(' ') }}",
-                "output": "{{ replies }}",
-                "output_name": "replies",
-                "output_type": List[str],
-            },
-        ]
-    ),
-    name="answer_checker",
-)
+    Question: {{question}}
+    Answer:
+    """
+        ),
+        name="prompt_builder",
+    )
+    rag_pipeline.add_component(instance=GPTGenerator(), name="llm")
+    rag_pipeline.add_component(
+        instance=ConditionalRouter(
+            routes=[
+                {
+                    "condition": "{{ 'UNKNOWN' in replies|join(' ') }}",
+                    "output": "{{ query }}",
+                    "output_name": "unanswered_query",
+                    "output_type": str,
+                },
+                {
+                    "condition": "{{ 'UNKNOWN' not in replies|join(' ') }}",
+                    "output": "{{ replies }}",
+                    "output_name": "replies",
+                    "output_type": List[str],
+                },
+            ]
+        ),
+        name="answer_checker",
+    )
 
-rag_pipeline.connect("query", "retriever")
-rag_pipeline.connect("query", "prompt_builder.question")
-rag_pipeline.connect("query", "answer_checker.query")
-rag_pipeline.connect("retriever", "prompt_builder.documents")
-rag_pipeline.connect("prompt_builder", "llm")
-rag_pipeline.connect("llm.replies", "answer_checker.replies")
-rag_pipeline.connect("answer_checker.unanswered_query", "query")
+    rag_pipeline.connect("query", "retriever")
+    rag_pipeline.connect("query", "prompt_builder.question")
+    rag_pipeline.connect("query", "answer_checker.query")
+    rag_pipeline.connect("retriever", "prompt_builder.documents")
+    rag_pipeline.connect("prompt_builder", "llm")
+    rag_pipeline.connect("llm.replies", "answer_checker.replies")
+    rag_pipeline.connect("answer_checker.unanswered_query", "query")
 
-# Draw the pipeline
-rag_pipeline.draw("test_bm25_rag_pipeline.png")
+    # Populate the document store
+    documents = [
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
+        Document(content="My name is Juan and I live in Madrid."),
+    ]
+    rag_pipeline.get_component("retriever").retriever.document_store.write_documents(documents)
 
-# Populate the document store
-documents = [
-    Document(content="My name is Jean and I live in Paris."),
-    Document(content="My name is Mark and I live in Berlin."),
-    Document(content="My name is Giorgio and I live in Rome."),
-    Document(content="My name is Juan and I live in Madrid."),
-]
-rag_pipeline.get_component("retriever").retriever.document_store.write_documents(documents)
+    # Query and assert
+    question = "Who lives in Germany?"
 
-# Query and assert
-question = "Who lives in Germany?"
+    result = rag_pipeline.run({"query": {"value": question}})
 
-result = rag_pipeline.run({"query": {"value": question}})
+    pprint(result)
 
-pprint(result)
+
+if __name__ == "__main__":
+    self_correcting_pipeline()
