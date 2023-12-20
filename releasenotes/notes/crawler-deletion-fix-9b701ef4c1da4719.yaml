@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix Crawler throwing exception when being deleted cause of missing driver
