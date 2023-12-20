@@ -38,25 +38,36 @@ class TextFileToDocument:
         self.encoding = encoding
 
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
+    def run(
+        self,
+        sources: List[Union[str, Path, ByteStream]],
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+    ):
         """
         Convert text files to Documents.
 
         :param sources: A list of paths to text files or ByteStream objects.
           Note that if an encoding is specified in the metadata of a ByteStream,
           it will override the component's default.
-        :param meta: Optional list of metadata to attach to the Documents.
-          The length of the list must match the number of sources. Defaults to `None`.
+        :param meta: Optional metadata to attach to the Documents.
+          This value can be either a list of dictionaries or a single dictionary.
+          If it's a single dictionary, its content is added to the metadata of all produced Documents.
+          If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+          Defaults to `None`.
         :return: A dictionary containing a list of Document objects under the 'documents' key.
         """
         documents = []
 
         if meta is None:
-            meta = [{}] * len(sources)
+            meta_list = [{}] * len(sources)
+        elif isinstance(meta, dict):
+            meta_list = [meta] * len(sources)
         elif len(sources) != len(meta):
             raise ValueError("The length of the metadata list must match the number of sources.")
+        else:
+            meta_list = meta
 
-        for source, metadata in zip(sources, meta):
+        for source, metadata in zip(sources, meta_list):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
