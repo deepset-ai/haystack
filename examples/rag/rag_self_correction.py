@@ -78,7 +78,7 @@ class PaginatedRetriever:
 def self_correcting_pipeline():
     # Create the RAG pipeline
     rag_pipeline = Pipeline(max_loops_allowed=10)
-    rag_pipeline.add_component(instance=Multiplexer(str), name="query")
+    rag_pipeline.add_component(instance=Multiplexer(str), name="query_multiplexer")
     rag_pipeline.add_component(
         instance=PaginatedRetriever(InMemoryBM25Retriever(document_store=InMemoryDocumentStore())), name="retriever"
     )
@@ -120,13 +120,13 @@ def self_correcting_pipeline():
         name="answer_checker",
     )
 
-    rag_pipeline.connect("query", "retriever")
-    rag_pipeline.connect("query", "prompt_builder.question")
-    rag_pipeline.connect("query", "answer_checker.query")
+    rag_pipeline.connect("query_multiplexer", "retriever")
+    rag_pipeline.connect("query_multiplexer", "prompt_builder.question")
+    rag_pipeline.connect("query_multiplexer", "answer_checker.query")
     rag_pipeline.connect("retriever", "prompt_builder.documents")
     rag_pipeline.connect("prompt_builder", "llm")
     rag_pipeline.connect("llm.replies", "answer_checker.replies")
-    rag_pipeline.connect("answer_checker.unanswered_query", "query")
+    rag_pipeline.connect("answer_checker.unanswered_query", "query_multiplexer")
 
     # Draw the pipeline
     rag_pipeline.draw("self_correcting_pipeline.png")
@@ -143,7 +143,7 @@ def self_correcting_pipeline():
     # Query and assert
     question = "Who lives in Germany?"
 
-    result = rag_pipeline.run({"query": {"value": question}})
+    result = rag_pipeline.run({"query_multiplexer": {"value": question}})
 
     pprint(result)
 
