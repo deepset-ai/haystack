@@ -11,7 +11,6 @@ from haystack.dataclasses import ByteStream
     reason="Can't run on Windows Github CI, need access to registry to get mime types",
 )
 class TestFileTypeRouter:
-    @pytest.mark.unit
     def test_run(self, test_files_path):
         """
         Test if the component runs correctly in the simplest happy path.
@@ -31,7 +30,6 @@ class TestFileTypeRouter:
         assert len(output["image/jpeg"]) == 1
         assert not output["unclassified"]
 
-    @pytest.mark.unit
     def test_run_with_bytestreams(self, test_files_path):
         """
         Test if the component runs correctly with ByteStream inputs.
@@ -65,15 +63,15 @@ class TestFileTypeRouter:
         assert len(output["image/jpeg"]) == 1
         assert len(output.get("unclassified")) == 1
 
-    @pytest.mark.unit
     def test_run_with_bytestreams_and_file_paths(self, test_files_path):
         file_paths = [
             test_files_path / "txt" / "doc_1.txt",
             test_files_path / "audio" / "the context for this answer is here.wav",
             test_files_path / "txt" / "doc_2.txt",
             test_files_path / "images" / "apple.jpg",
+            test_files_path / "markdown" / "sample.md",
         ]
-        mime_types = ["text/plain", "audio/x-wav", "text/plain", "image/jpeg"]
+        mime_types = ["text/plain", "audio/x-wav", "text/plain", "image/jpeg", "text/markdown"]
         byte_stream_sources = []
         for path, mime_type in zip(file_paths, mime_types):
             stream = ByteStream(path.read_bytes())
@@ -82,13 +80,13 @@ class TestFileTypeRouter:
 
         mixed_sources = file_paths[:2] + byte_stream_sources[2:]
 
-        router = FileTypeRouter(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
+        router = FileTypeRouter(mime_types=["text/plain", "audio/x-wav", "image/jpeg", "text/markdown"])
         output = router.run(sources=mixed_sources)
         assert len(output["text/plain"]) == 2
         assert len(output["audio/x-wav"]) == 1
         assert len(output["image/jpeg"]) == 1
+        assert len(output["text/markdown"]) == 1
 
-    @pytest.mark.unit
     def test_no_files(self):
         """
         Test that the component runs correctly when no files are provided.
@@ -97,7 +95,6 @@ class TestFileTypeRouter:
         output = router.run(sources=[])
         assert not output
 
-    @pytest.mark.unit
     def test_unlisted_extensions(self, test_files_path):
         """
         Test that the component correctly handles files with non specified mime types.
@@ -115,7 +112,6 @@ class TestFileTypeRouter:
         assert str(output["unclassified"][0]).endswith("ignored.mp3")
         assert str(output["unclassified"][1]).endswith("this is the content of the document.wav")
 
-    @pytest.mark.unit
     def test_no_extension(self, test_files_path):
         """
         Test that the component ignores files with no extension.
@@ -130,7 +126,6 @@ class TestFileTypeRouter:
         assert len(output["text/plain"]) == 2
         assert len(output["unclassified"]) == 1
 
-    @pytest.mark.unit
     def test_unknown_mime_type(self):
         """
         Test that the component handles files with unknown mime types.

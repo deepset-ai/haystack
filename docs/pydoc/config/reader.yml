@@ -1,0 +1,26 @@
+loaders:
+  - type: loaders.CustomPythonLoader
+    search_path: [../../../haystack/components/readers]
+    modules: ["extractive"]
+    ignore_when_discovered: ["__init__"]
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+  type: renderers.ReadmePreviewRenderer
+  excerpt: Takes a query and a set of Documents as input and returns ExtractedAnswers by selecting a text span within the Documents.
+  category_slug: haystack-classes
+  title: Reader API
+  slug: reader-api
+  order: 120
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: reader_api.md

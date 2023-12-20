@@ -1,19 +1,19 @@
 import logging
 
+from unittest.mock import patch
 import pytest
 
 from haystack.components.converters.markdown import MarkdownToDocument
 from haystack.dataclasses import ByteStream
 
 
+@pytest.mark.integration
 class TestMarkdownToDocument:
-    @pytest.mark.unit
     def test_init_params_default(self):
         converter = MarkdownToDocument()
         assert converter.table_to_single_line is False
         assert converter.progress_bar is True
 
-    @pytest.mark.unit
     def test_init_params_custom(self):
         converter = MarkdownToDocument(table_to_single_line=True, progress_bar=False)
         assert converter.table_to_single_line is True
@@ -31,19 +31,17 @@ class TestMarkdownToDocument:
             assert "What to build with Haystack" in doc.content
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
 
-    @pytest.mark.integration
-    def test_run_metadata(self, test_files_path):
-        converter = MarkdownToDocument()
-        sources = [test_files_path / "markdown" / "sample.md"]
-        metadata = [{"file_name": "sample.md"}]
-        results = converter.run(sources=sources, meta=metadata)
-        docs = results["documents"]
+    def test_run_with_meta(self):
+        bytestream = ByteStream(data=b"test", metadata={"author": "test_author", "language": "en"})
 
-        assert len(docs) == 1
-        for doc in docs:
-            assert "What to build with Haystack" in doc.content
-            assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
-            assert doc.meta == {"file_name": "sample.md"}
+        converter = MarkdownToDocument()
+
+        with patch("haystack.components.converters.markdown.MarkdownIt"):
+            output = converter.run(sources=[bytestream], meta=[{"language": "it"}])
+        document = output["documents"][0]
+
+        # check that the metadata from the bytestream is merged with that from the meta parameter
+        assert document.meta == {"author": "test_author", "language": "it"}
 
     @pytest.mark.integration
     def test_run_wrong_file_type(self, test_files_path, caplog):
@@ -71,7 +69,6 @@ class TestMarkdownToDocument:
             assert "Could not read non_existing_file.md" in caplog.text
             assert not result["documents"]
 
-    @pytest.mark.unit
     def test_mixed_sources_run(self, test_files_path):
         """
         Test if the component runs correctly if the input is a mix of strings, paths and ByteStreams.

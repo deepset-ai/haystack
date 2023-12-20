@@ -1,0 +1,44 @@
+name: Sync docs with Readme
+
+on:
+  pull_request:
+    paths:
+      - "docs/pydoc/**"
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r docs/pydoc/requirements.txt
+
+      - name: Generate API docs
+        env:
+          # This is necessary to fetch the documentation categories
+          # from Readme.io as we need them to associate the slug
+          # in config files with their id.
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+        run: ./.github/utils/pydoc-markdown.sh
+
+      - name: Sync preview docs with 2.0
+        # Sync the preview docs to the `2.0` version on Readme
+        id: sync-main
+        if: github.ref_name == 'main' && github.event_name == 'push'
+        uses: readmeio/rdme@8.3.1
+        env:
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+        with:
+          rdme: docs ./docs/pydoc/temp --key="$README_API_KEY" --version=2.0

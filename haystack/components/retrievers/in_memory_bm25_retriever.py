@@ -1,7 +1,7 @@
 from typing import Dict, List, Any, Optional
 
 from haystack import component, Document, default_to_dict, default_from_dict, DeserializationError
-from haystack.document_stores import InMemoryDocumentStore, document_store
+from haystack.document_stores import InMemoryDocumentStore
 
 
 @component
@@ -67,12 +67,9 @@ class InMemoryBM25Retriever:
             raise DeserializationError("Missing 'document_store' in serialization data")
         if "type" not in init_params["document_store"]:
             raise DeserializationError("Missing 'type' in document store's serialization data")
-        if init_params["document_store"]["type"] not in document_store.registry:
-            raise DeserializationError(f"DocumentStore type '{init_params['document_store']['type']}' not found")
-
-        docstore_class = document_store.registry[init_params["document_store"]["type"]]
-        docstore = docstore_class.from_dict(init_params["document_store"])
-        data["init_parameters"]["document_store"] = docstore
+        data["init_parameters"]["document_store"] = InMemoryDocumentStore.from_dict(
+            data["init_parameters"]["document_store"]
+        )
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])

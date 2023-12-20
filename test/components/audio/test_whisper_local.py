@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 import torch
 
-from haystack.dataclasses import Document
+from haystack.dataclasses import Document, ByteStream
 from haystack.components.audio import LocalWhisperTranscriber
 
 
@@ -13,7 +13,6 @@ SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
 
 
 class TestLocalWhisperTranscriber:
-    @pytest.mark.unit
     def test_init(self):
         transcriber = LocalWhisperTranscriber(
             model_name_or_path="large-v2"
@@ -22,12 +21,10 @@ class TestLocalWhisperTranscriber:
         assert transcriber.device == torch.device("cpu")
         assert transcriber._model is None
 
-    @pytest.mark.unit
     def test_init_wrong_model(self):
         with pytest.raises(ValueError, match="Model name 'whisper-1' not recognized"):
             LocalWhisperTranscriber(model_name_or_path="whisper-1")
 
-    @pytest.mark.unit
     def test_to_dict(self):
         transcriber = LocalWhisperTranscriber()
         data = transcriber.to_dict()
@@ -36,7 +33,6 @@ class TestLocalWhisperTranscriber:
             "init_parameters": {"model_name_or_path": "large", "device": "cpu", "whisper_params": {}},
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
         transcriber = LocalWhisperTranscriber(
             model_name_or_path="tiny",
@@ -53,7 +49,6 @@ class TestLocalWhisperTranscriber:
             },
         }
 
-    @pytest.mark.unit
     def test_warmup(self):
         with patch("haystack.components.audio.whisper_local.whisper") as mocked_whisper:
             transcriber = LocalWhisperTranscriber(model_name_or_path="large-v2")
@@ -61,7 +56,6 @@ class TestLocalWhisperTranscriber:
             transcriber.warm_up()
             mocked_whisper.load_model.assert_called_once_with("large-v2", device=torch.device(type="cpu"))
 
-    @pytest.mark.unit
     def test_warmup_doesnt_reload(self):
         with patch("haystack.components.audio.whisper_local.whisper") as mocked_whisper:
             transcriber = LocalWhisperTranscriber(model_name_or_path="large-v2")
@@ -69,7 +63,6 @@ class TestLocalWhisperTranscriber:
             transcriber.warm_up()
             mocked_whisper.load_model.assert_called_once()
 
-    @pytest.mark.unit
     def test_run_with_path(self):
         comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
         comp._model = MagicMock()
@@ -77,7 +70,7 @@ class TestLocalWhisperTranscriber:
             "text": "test transcription",
             "other_metadata": ["other", "meta", "data"],
         }
-        results = comp.run(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
+        results = comp.run(sources=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
         expected = Document(
             content="test transcription",
             meta={
@@ -87,7 +80,6 @@ class TestLocalWhisperTranscriber:
         )
         assert results["documents"] == [expected]
 
-    @pytest.mark.unit
     def test_run_with_str(self):
         comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
         comp._model = MagicMock()
@@ -96,18 +88,17 @@ class TestLocalWhisperTranscriber:
             "other_metadata": ["other", "meta", "data"],
         }
         results = comp.run(
-            audio_files=[str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute())]
+            sources=[str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute())]
         )
         expected = Document(
             content="test transcription",
             meta={
-                "audio_file": str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute()),
+                "audio_file": (SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute(),
                 "other_metadata": ["other", "meta", "data"],
             },
         )
         assert results["documents"] == [expected]
 
-    @pytest.mark.unit
     def test_transcribe(self):
         comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
         comp._model = MagicMock()
@@ -115,7 +106,7 @@ class TestLocalWhisperTranscriber:
             "text": "test transcription",
             "other_metadata": ["other", "meta", "data"],
         }
-        results = comp.transcribe(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
+        results = comp.transcribe(sources=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
         expected = Document(
             content="test transcription",
             meta={
@@ -125,7 +116,6 @@ class TestLocalWhisperTranscriber:
         )
         assert results == [expected]
 
-    @pytest.mark.unit
     def test_transcribe_stream(self):
         comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
         comp._model = MagicMock()
@@ -133,12 +123,12 @@ class TestLocalWhisperTranscriber:
             "text": "test transcription",
             "other_metadata": ["other", "meta", "data"],
         }
-        results = comp.transcribe(
-            audio_files=[open(SAMPLES_PATH / "audio" / "this is the content of the document.wav", "rb")]
-        )
+        path = SAMPLES_PATH / "audio" / "this is the content of the document.wav"
+        bs = ByteStream.from_file_path(path)
+        bs.metadata["file_path"] = path
+        results = comp.transcribe(sources=[bs])
         expected = Document(
-            content="test transcription",
-            meta={"audio_file": "<<binary stream>>", "other_metadata": ["other", "meta", "data"]},
+            content="test transcription", meta={"audio_file": path, "other_metadata": ["other", "meta", "data"]}
         )
         assert results == [expected]
 
@@ -148,10 +138,10 @@ class TestLocalWhisperTranscriber:
         comp = LocalWhisperTranscriber(model_name_or_path="medium", whisper_params={"language": "english"})
         comp.warm_up()
         output = comp.run(
-            audio_files=[
+            sources=[
                 test_files_path / "audio" / "this is the content of the document.wav",
                 str((test_files_path / "audio" / "the context for this answer is here.wav").absolute()),
-                open(test_files_path / "audio" / "answer.wav", "rb"),
+                ByteStream.from_file_path(test_files_path / "audio" / "answer.wav", "rb"),
             ]
         )
         docs = output["documents"]
@@ -161,10 +151,9 @@ class TestLocalWhisperTranscriber:
         assert test_files_path / "audio" / "this is the content of the document.wav" == docs[0].meta["audio_file"]
 
         assert docs[1].content.strip().lower() == "the context for this answer is here."
-        assert (
-            str((test_files_path / "audio" / "the context for this answer is here.wav").absolute())
-            == docs[1].meta["audio_file"]
-        )
+        path = test_files_path / "audio" / "the context for this answer is here.wav"
+        assert path.absolute() == docs[1].meta["audio_file"]
 
         assert docs[2].content.strip().lower() == "answer."
-        assert docs[2].meta["audio_file"] == "<<binary stream>>"
+        # meta.audio_file should contain the temp path where we dumped the audio bytes
+        assert docs[2].meta["audio_file"]

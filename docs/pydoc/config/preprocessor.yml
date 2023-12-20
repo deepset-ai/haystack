@@ -1,0 +1,26 @@
+loaders:
+  - type: loaders.CustomPythonLoader
+    search_path: [../../../haystack/components/preprocessors]
+    modules: ["document_cleaner", "document_splitter"]
+    ignore_when_discovered: ["__init__"]
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+  type: renderers.ReadmePreviewRenderer
+  excerpt: Normalizes white spaces, gets rid of headers and footers, cleans empty lines in your Documents, or splits them into smaller pieces.
+  category_slug: haystack-classes
+  title: PreProcessor API
+  slug: preprocessor-api
+  order: 100
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: preprocessor_api.md

@@ -1,0 +1,26 @@
+loaders:
+  - type: loaders.CustomPythonLoader
+    search_path: [../../../haystack/components/embedders]
+    modules: ["openai_document_embedder", "openai_text_embedder", "sentence_transformers_document_embedder", "sentence_transformers_text_embedder"]
+    ignore_when_discovered: ["__init__"]
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+  type: renderers.ReadmePreviewRenderer
+  excerpt: Transforms queries into vectors to look for similar or relevant Documents.
+  category_slug: haystack-classes
+  title: Embedder API
+  slug: embedder-api
+  order: 60
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: embedder_api.md

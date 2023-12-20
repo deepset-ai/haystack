@@ -21,14 +21,12 @@ def mock_docs():
 
 
 class TestMemoryBM25Retriever:
-    @pytest.mark.unit
     def test_init_default(self):
         retriever = InMemoryBM25Retriever(InMemoryDocumentStore())
         assert retriever.filters is None
         assert retriever.top_k == 10
         assert retriever.scale_score is False
 
-    @pytest.mark.unit
     def test_init_with_parameters(self):
         retriever = InMemoryBM25Retriever(
             InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=True
@@ -37,12 +35,10 @@ class TestMemoryBM25Retriever:
         assert retriever.top_k == 5
         assert retriever.scale_score
 
-    @pytest.mark.unit
     def test_init_with_invalid_top_k_parameter(self):
         with pytest.raises(ValueError):
             InMemoryBM25Retriever(InMemoryDocumentStore(), top_k=-2)
 
-    @pytest.mark.unit
     def test_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         document_store = MyFakeStore()
@@ -60,32 +56,34 @@ class TestMemoryBM25Retriever:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
-        MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
-        document_store = MyFakeStore()
-        document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}
+        ds = InMemoryDocumentStore()
+        serialized_ds = ds.to_dict()
+
         component = InMemoryBM25Retriever(
-            document_store=document_store, filters={"name": "test.txt"}, top_k=5, scale_score=True
+            document_store=InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=True
         )
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {
-                "document_store": {"type": "MyFakeStore", "init_parameters": {}},
+                "document_store": serialized_ds,
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
                 "scale_score": True,
             },
         }
 
-    @pytest.mark.unit
+    #
+
     def test_from_dict(self):
-        document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         data = {
             "type": "haystack.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {
-                "document_store": {"type": "haystack.testing.factory.MyFakeStore", "init_parameters": {}},
+                "document_store": {
+                    "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                    "init_parameters": {},
+                },
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
             },
@@ -96,28 +94,24 @@ class TestMemoryBM25Retriever:
         assert component.top_k == 5
         assert component.scale_score is False
 
-    @pytest.mark.unit
     def test_from_dict_without_docstore(self):
         data = {"type": "InMemoryBM25Retriever", "init_parameters": {}}
         with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
             InMemoryBM25Retriever.from_dict(data)
 
-    @pytest.mark.unit
     def test_from_dict_without_docstore_type(self):
         data = {"type": "InMemoryBM25Retriever", "init_parameters": {"document_store": {"init_parameters": {}}}}
         with pytest.raises(DeserializationError, match="Missing 'type' in document store's serialization data"):
             InMemoryBM25Retriever.from_dict(data)
 
-    @pytest.mark.unit
     def test_from_dict_nonexisting_docstore(self):
         data = {
             "type": "haystack.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
-            "init_parameters": {"document_store": {"type": "NonexistingDocstore", "init_parameters": {}}},
+            "init_parameters": {"document_store": {"type": "Nonexisting.Docstore", "init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError, match="DocumentStore type 'NonexistingDocstore' not found"):
+        with pytest.raises(DeserializationError):
             InMemoryBM25Retriever.from_dict(data)
 
-    @pytest.mark.unit
     def test_retriever_valid_run(self, mock_docs):
         top_k = 5
         ds = InMemoryDocumentStore()
@@ -130,7 +124,6 @@ class TestMemoryBM25Retriever:
         assert len(result["documents"]) == top_k
         assert result["documents"][0].content == "PHP is a popular programming language"
 
-    @pytest.mark.unit
     def test_invalid_run_wrong_store_type(self):
         SomeOtherDocumentStore = document_store_class("SomeOtherDocumentStore")
         with pytest.raises(ValueError, match="document_store must be an instance of InMemoryDocumentStore"):

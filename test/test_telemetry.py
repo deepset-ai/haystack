@@ -6,7 +6,6 @@ from haystack import Pipeline, component
 from haystack.telemetry._telemetry import pipeline_running
 
 
-@pytest.mark.unit
 @patch("haystack.telemetry._telemetry.telemetry")
 def test_pipeline_running(telemetry):
     telemetry.send_event = Mock()

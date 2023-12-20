@@ -1,0 +1,26 @@
+loaders:
+  - type: loaders.CustomPythonLoader
+    search_path: [../../../haystack/components/generators]
+    modules: ["hugging_face_local", "hugging_face_tgi", "openai", "chat/hugging_face_tgi", "chat/openai"]
+    ignore_when_discovered: ["__init__"]
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+  type: renderers.ReadmePreviewRenderer
+  excerpt: Enables text generation using LLMs.
+  category_slug: haystack-classes
+  title: Generator API
+  slug: generator-api
+  order: 70
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: generator_api.md

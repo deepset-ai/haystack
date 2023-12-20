@@ -35,7 +35,6 @@ def streaming_callback_handler(x):
 
 
 class TestHuggingFaceTGIGenerator:
-    @pytest.mark.unit
     def test_initialize_with_valid_model_and_generation_parameters(self, mock_check_valid_model):
         model = "HuggingFaceH4/zephyr-7b-alpha"
         generation_kwargs = {"n": 1}
@@ -57,7 +56,6 @@ class TestHuggingFaceTGIGenerator:
         assert generator.client is not None
         assert generator.streaming_callback == streaming_callback
 
-    @pytest.mark.unit
     def test_to_dict(self, mock_check_valid_model):
         # Initialize the HuggingFaceRemoteGenerator object with valid parameters
         generator = HuggingFaceTGIGenerator(
@@ -73,7 +71,6 @@ class TestHuggingFaceTGIGenerator:
         assert not init_params["token"]
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
 
-    @pytest.mark.unit
     def test_from_dict(self, mock_check_valid_model):
         generator = HuggingFaceTGIGenerator(
             model="mistralai/Mistral-7B-v0.1",
@@ -90,19 +87,16 @@ class TestHuggingFaceTGIGenerator:
         assert generator_2.generation_kwargs == {"n": 5, "stop_sequences": ["stop", "words"]}
         assert generator_2.streaming_callback is streaming_callback_handler
 
-    @pytest.mark.unit
     def test_initialize_with_invalid_url(self, mock_check_valid_model):
         with pytest.raises(ValueError):
             HuggingFaceTGIGenerator(model="mistralai/Mistral-7B-v0.1", url="invalid_url")
 
-    @pytest.mark.unit
     def test_initialize_with_url_but_invalid_model(self, mock_check_valid_model):
         # When custom TGI endpoint is used via URL, model must be provided and valid HuggingFace Hub model id
         mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
         with pytest.raises(RepositoryNotFoundError):
             HuggingFaceTGIGenerator(model="invalid_model_id", url="https://some_chat_model.com")
 
-    @pytest.mark.unit
     def test_generate_text_response_with_valid_prompt_and_generation_parameters(
         self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
     ):
@@ -137,7 +131,6 @@ class TestHuggingFaceTGIGenerator:
         assert len(response["metadata"]) == 1
         assert [isinstance(reply, str) for reply in response["replies"]]
 
-    @pytest.mark.unit
     def test_generate_multiple_text_responses_with_valid_prompt_and_generation_parameters(
         self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
     ):
@@ -173,7 +166,6 @@ class TestHuggingFaceTGIGenerator:
         assert len(response["metadata"]) == 3
         assert [isinstance(reply, dict) for reply in response["metadata"]]
 
-    @pytest.mark.unit
     def test_initialize_with_invalid_model(self, mock_check_valid_model):
         model = "invalid_model"
         generation_kwargs = {"n": 1}
@@ -190,7 +182,6 @@ class TestHuggingFaceTGIGenerator:
                 streaming_callback=streaming_callback,
             )
 
-    @pytest.mark.unit
     def test_generate_text_with_stop_words(self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation):
         generator = HuggingFaceTGIGenerator()
         generator.warm_up()
@@ -214,7 +205,6 @@ class TestHuggingFaceTGIGenerator:
         assert len(response["metadata"]) > 0
         assert [isinstance(reply, dict) for reply in response["replies"]]
 
-    @pytest.mark.unit
     def test_generate_text_with_custom_generation_parameters(
         self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
     ):
@@ -241,7 +231,6 @@ class TestHuggingFaceTGIGenerator:
         assert len(response["metadata"]) > 0
         assert [isinstance(reply, str) for reply in response["replies"]]
 
-    @pytest.mark.unit
     def test_generate_text_with_streaming_callback(
         self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
     ):

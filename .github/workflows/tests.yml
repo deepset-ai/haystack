@@ -8,6 +8,7 @@ on:
       - main
       # release branches have the form v1.9.x
       - "v[0-9].*[0-9].x"
+      - "!haystack/core/**/*.py"
   pull_request:
     types:
       - opened
@@ -17,10 +18,10 @@ on:
     paths:
       - "haystack/**/*.py"
       - "test/**/*.py"
+      - "!haystack/core/**/*.py"
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
   CORE_AZURE_CS_ENDPOINT: ${{ secrets.CORE_AZURE_CS_ENDPOINT }}
   CORE_AZURE_CS_API_KEY: ${{ secrets.CORE_AZURE_CS_API_KEY }}
   PYTHON_VERSION: "3.8"
@@ -31,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -44,25 +45,6 @@ jobs:
         run: |
           if ! black . --check; then
             git status
-            echo "###################################################################################################"
-            echo "# "
-            echo "# CHECK FAILED! Black found issues with your code formatting."
-            echo "# "
-            echo "# Either:"
-            echo "# 1. Run Black locally before committing:"
-            echo "# "
-            echo "#     pip install .[formatting]"
-            echo "#     black ."
-            echo "# "
-            echo "# 2. Install the pre-commit hook:"
-            echo "# "
-            echo "#     pre-commit install"
-            echo "# "
-            echo "# 3. See https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md for help."
-            echo "# "
-            echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
-            echo "# "
-            echo "##################################################################################################"
             exit 1
           fi
 
@@ -111,12 +93,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Haystack
-        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2' cohere boilerpy3
+      - name: Install Haystack and the dependencies needed for tests
+        run: pip install -r test/test_requirements.txt
 
       - name: Run
         run: pytest -m "not integration" test
@@ -164,7 +146,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -173,8 +155,8 @@ jobs:
           sudo apt update
           sudo apt install ffmpeg  # for local Whisper tests
 
-      - name: Install Haystack
-        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2' cohere boilerpy3
+      - name: Install Haystack and the dependencies needed for tests
+        run: pip install -r test/test_requirements.txt
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test
@@ -213,13 +195,13 @@ jobs:
   integration-tests-macos:
     name: Integration / macos-latest
     needs: unit-tests
-    runs-on: macos-latest-xl
+    runs-on: macos-latest
     env:
       HAYSTACK_MPS_ENABLED: false
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -229,8 +211,8 @@ jobs:
           brew install docker
           colima start
 
-      - name: Install Haystack
-        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2' cohere boilerpy3
+      - name: Install Haystack and the dependencies needed for tests
+        run: pip install -r test/test_requirements.txt
 
       - name: Run Tika
         run: docker run -d -p 9998:9998 apache/tika:2.9.0.0
@@ -276,12 +258,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Haystack
-        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2' cohere boilerpy3
+      - name: Install Haystack and the dependencies needed for tests
+        run: pip install -r test/test_requirements.txt
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test -k 'not tika'

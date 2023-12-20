@@ -7,7 +7,6 @@ from haystack.components.caching.url_cache_checker import UrlCacheChecker
 
 
 class TestUrlCacheChecker:
-    @pytest.mark.unit
     def test_to_dict(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
         component = UrlCacheChecker(document_store=mocked_docstore_class())
@@ -20,7 +19,6 @@ class TestUrlCacheChecker:
             },
         }
 
-    @pytest.mark.unit
     def test_to_dict_with_custom_init_parameters(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
         component = UrlCacheChecker(document_store=mocked_docstore_class(), url_field="my_url_field")
@@ -33,27 +31,26 @@ class TestUrlCacheChecker:
             },
         }
 
-    @pytest.mark.unit
     def test_from_dict(self):
-        mocked_docstore_class = document_store_class("MockedDocumentStore")
         data = {
             "type": "haystack.components.caching.url_cache_checker.UrlCacheChecker",
             "init_parameters": {
-                "document_store": {"type": "haystack.testing.factory.MockedDocumentStore", "init_parameters": {}},
+                "document_store": {
+                    "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                    "init_parameters": {},
+                },
                 "url_field": "my_url_field",
             },
         }
         component = UrlCacheChecker.from_dict(data)
-        assert isinstance(component.document_store, mocked_docstore_class)
+        assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.url_field == "my_url_field"
 
-    @pytest.mark.unit
     def test_from_dict_without_docstore(self):
         data = {"type": "haystack.components.caching.url_cache_checker.UrlCacheChecker", "init_parameters": {}}
         with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
             UrlCacheChecker.from_dict(data)
 
-    @pytest.mark.unit
     def test_from_dict_without_docstore_type(self):
         data = {
             "type": "haystack.components.caching.url_cache_checker.UrlCacheChecker",
@@ -62,16 +59,14 @@ class TestUrlCacheChecker:
         with pytest.raises(DeserializationError, match="Missing 'type' in document store's serialization data"):
             UrlCacheChecker.from_dict(data)
 
-    @pytest.mark.unit
     def test_from_dict_nonexisting_docstore(self):
         data = {
             "type": "haystack.components.caching.url_cache_checker.UrlCacheChecker",
-            "init_parameters": {"document_store": {"type": "NonexistingDocumentStore", "init_parameters": {}}},
+            "init_parameters": {"document_store": {"type": "Nonexisting.DocumentStore", "init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError, match="DocumentStore of type 'NonexistingDocumentStore' not found."):
+        with pytest.raises(DeserializationError):
             UrlCacheChecker.from_dict(data)
 
-    @pytest.mark.unit
     def test_run(self):
         docstore = InMemoryDocumentStore()
         documents = [

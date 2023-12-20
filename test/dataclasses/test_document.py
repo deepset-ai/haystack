@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pandas as pd
 import pytest
 
@@ -7,7 +5,6 @@ from haystack import Document
 from haystack.dataclasses.byte_stream import ByteStream
 
 
-@pytest.mark.unit
 @pytest.mark.parametrize(
     "doc,doc_str",
     [
@@ -31,7 +28,6 @@ def test_document_str(doc, doc_str):
     assert f"Document(id={doc.id}, {doc_str})" == str(doc)
 
 
-@pytest.mark.unit
 def test_init():
     doc = Document()
     assert doc.id == "d4675c57fcfe114db0b95f1da46eea3c5d6f5729c17d01fb5251ae19830a3455"
@@ -43,13 +39,11 @@ def test_init():
     assert doc.embedding == None
 
 
-@pytest.mark.unit
 def test_init_with_wrong_parameters():
     with pytest.raises(TypeError):
         Document(text="")
 
 
-@pytest.mark.unit
 def test_init_with_parameters():
     blob_data = b"some bytes"
     doc = Document(
@@ -71,7 +65,6 @@ def test_init_with_parameters():
     assert doc.embedding == [0.1, 0.2, 0.3]
 
 
-@pytest.mark.unit
 def test_init_with_legacy_fields():
     doc = Document(
         content="test text", content_type="text", id_hash_keys=["content"], score=0.812, embedding=[0.1, 0.2, 0.3]  # type: ignore
@@ -85,7 +78,6 @@ def test_init_with_legacy_fields():
     assert doc.embedding == [0.1, 0.2, 0.3]
 
 
-@pytest.mark.unit
 def test_init_with_legacy_field():
     doc = Document(
         content="test text",
@@ -103,13 +95,11 @@ def test_init_with_legacy_field():
     assert doc.embedding == [0.1, 0.2, 0.3]
 
 
-@pytest.mark.unit
 def test_basic_equality_type_mismatch():
     doc = Document(content="test text")
     assert doc != "test text"
 
 
-@pytest.mark.unit
 def test_basic_equality_id():
     doc1 = Document(content="test text")
     doc2 = Document(content="test text")
@@ -122,7 +112,6 @@ def test_basic_equality_id():
     assert doc1 != doc2
 
 
-@pytest.mark.unit
 def test_to_dict():
     doc = Document()
     assert doc.to_dict() == {
@@ -135,7 +124,6 @@ def test_to_dict():
     }
 
 
-@pytest.mark.unit
 def test_to_dict_without_flattening():
     doc = Document()
     assert doc.to_dict(flatten=False) == {
@@ -149,7 +137,6 @@ def test_to_dict_without_flattening():
     }
 
 
-@pytest.mark.unit
 def test_to_dict_with_custom_parameters():
     doc = Document(
         content="test text",
@@ -172,7 +159,6 @@ def test_to_dict_with_custom_parameters():
     }
 
 
-@pytest.mark.unit
 def test_to_dict_with_custom_parameters_without_flattening():
     doc = Document(
         content="test text",
@@ -194,12 +180,10 @@ def test_to_dict_with_custom_parameters_without_flattening():
     }
 
 
-@pytest.mark.unit
 def test_from_dict():
     assert Document.from_dict({}) == Document()
 
 
-@pytest.mark.unit
 def from_from_dict_with_parameters():
     blob_data = b"some bytes"
     assert Document.from_dict(
@@ -221,7 +205,6 @@ def from_from_dict_with_parameters():
     )
 
 
-@pytest.mark.unit
 def test_from_dict_with_legacy_fields():
     assert Document.from_dict(
         {
@@ -257,7 +240,6 @@ def test_from_dict_with_legacy_field_and_flat_meta():
     )
 
 
-@pytest.mark.unit
 def test_from_dict_with_flat_meta():
     blob_data = b"some bytes"
     assert Document.from_dict(
@@ -280,7 +262,6 @@ def test_from_dict_with_flat_meta():
     )
 
 
-@pytest.mark.unit
 def test_from_dict_with_flat_and_non_flat_meta():
     with pytest.raises(ValueError, match="Pass either the 'meta' parameter or flattened metadata keys"):
         Document.from_dict(
@@ -297,7 +278,6 @@ def test_from_dict_with_flat_and_non_flat_meta():
         )
 
 
-@pytest.mark.unit
 def test_content_type():
     assert Document(content="text").content_type == "text"
     assert Document(dataframe=pd.DataFrame([0])).content_type == "table"

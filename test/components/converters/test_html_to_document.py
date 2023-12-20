@@ -7,7 +7,6 @@ from haystack.dataclasses import ByteStream
 
 
 class TestHTMLToDocument:
-    @pytest.mark.unit
     def test_run(self, test_files_path):
         """
         Test if the component runs correctly.
@@ -19,7 +18,20 @@ class TestHTMLToDocument:
         assert len(docs) == 1
         assert "Haystack" in docs[0].content
 
-    @pytest.mark.unit
+    def test_run_different_extractors(self, test_files_path):
+        """
+        Test if the component runs correctly with different boilrepy3 extractors.
+        """
+        sources = [test_files_path / "html" / "what_is_haystack.html"]
+
+        converter_article = HTMLToDocument(extractor_type="ArticleExtractor")
+        converter_keep_everything = HTMLToDocument(extractor_type="KeepEverythingExtractor")
+
+        doc_article = converter_article.run(sources=sources)["documents"][0]
+        doc_keep_everything = converter_keep_everything.run(sources=sources)["documents"][0]
+
+        assert len(doc_keep_everything.content) > len(doc_article.content)
+
     def test_run_doc_metadata(self, test_files_path):
         """
         Test if the component runs correctly when metadata is supplied by the user.
@@ -32,9 +44,8 @@ class TestHTMLToDocument:
 
         assert len(docs) == 1
         assert "Haystack" in docs[0].content
-        assert docs[0].meta == {"file_name": "what_is_haystack.html"}
+        assert docs[0].meta["file_name"] == "what_is_haystack.html"
 
-    @pytest.mark.unit
     def test_incorrect_meta(self, test_files_path):
         """
         Test if the component raises an error when incorrect metadata is supplied by the user.
@@ -45,7 +56,6 @@ class TestHTMLToDocument:
         with pytest.raises(ValueError, match="The length of the metadata list must match the number of sources."):
             converter.run(sources=sources, meta=metadata)
 
-    @pytest.mark.unit
     def test_run_bytestream_metadata(self, test_files_path):
         """
         Test if the component runs correctly when metadata is read from the ByteStream object.
@@ -62,7 +72,6 @@ class TestHTMLToDocument:
         assert "Haystack" in docs[0].content
         assert docs[0].meta == {"content_type": "text/html", "url": "test_url"}
 
-    @pytest.mark.unit
     def test_run_bytestream_and_doc_metadata(self, test_files_path):
         """
         Test if the component runs correctly when metadata is read from the ByteStream object and supplied by the user.
@@ -82,7 +91,6 @@ class TestHTMLToDocument:
         assert "Haystack" in docs[0].content
         assert docs[0].meta == {"file_name": "what_is_haystack.html", "content_type": "text/html", "url": "test_url"}
 
-    @pytest.mark.unit
     def test_run_bytestream_doc_overlapping_metadata(self, test_files_path):
         """
         Test if the component runs correctly when metadata is read from the ByteStream object and supplied by the user.
@@ -110,7 +118,6 @@ class TestHTMLToDocument:
             "url": "test_url_new",
         }
 
-    @pytest.mark.unit
     def test_run_wrong_file_type(self, test_files_path, caplog):
         """
         Test if the component runs correctly when an input file is not of the expected type.
@@ -123,7 +130,6 @@ class TestHTMLToDocument:
 
         assert results["documents"] == []
 
-    @pytest.mark.unit
     def test_run_error_handling(self, caplog):
         """
         Test if the component correctly handles errors.
@@ -135,7 +141,6 @@ class TestHTMLToDocument:
             assert "Could not read non_existing_file.html" in caplog.text
             assert results["documents"] == []
 
-    @pytest.mark.unit
     def test_mixed_sources_run(self, test_files_path):
         """
         Test if the component runs correctly if the input is a mix of paths and ByteStreams.

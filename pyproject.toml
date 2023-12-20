@@ -46,10 +46,8 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-  "canals==0.11.0",
-  "requests",  # needed by canals
   "pandas",
-  "rank_bm25",
+  "haystack-bm25",
   "tqdm",
   "tenacity",
   "lazy-imports",
@@ -58,6 +56,9 @@ dependencies = [
   "posthog",  # telemetry
   "pyyaml",
   "more-itertools",  # TextDocumentSplitter
+  "networkx", # Pipeline graphs
+  "typing_extensions", # typing support for Python 3.8
+  "boilerpy3", # Fulltext extraction from HTML pages
 ]
 
 [project.optional-dependencies]
@@ -87,10 +88,6 @@ dev = [
   # Version specified following Black stability policy:
   # https://black.readthedocs.io/en/stable/the_black_code_style/index.html#stability-policy
   "black[jupyter]~=23.0",
-]
-
-audio = [
-  "openai-whisper>=20231106"
 ]
 
 [project.urls]
@@ -129,7 +126,6 @@ skip = "test/nodes/*,test/others/*,test/samples/*"
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
-load-plugins = "haystack_linter"
 disable = [
 
   # To keep
@@ -217,9 +213,6 @@ log_cli = true
 warn_return_any = false
 warn_unused_configs = true
 ignore_missing_imports = true
-plugins = [
-  "pydantic.mypy",
-]
 
 [tool.ruff]
 select = [

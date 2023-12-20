@@ -1,4 +1,4 @@
-name: Minor Version Release
+name: Minor Version Release (1.x)
 
 on:
   workflow_dispatch:
@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
+        with:
+          ref: "v1.x"
 
       - name: Define all versions
         id: versions
@@ -30,12 +32,12 @@ jobs:
           git checkout -b v${{ steps.versions.outputs.current_release_minor }}.x
           git push -u origin v${{ steps.versions.outputs.current_release_minor }}.x --tags
 
-      - name: Bump version on main
+      - name: Bump version on v1.x
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git checkout main
+          git checkout v1.x
           NEW_VERSION=$(awk -F. '/[0-9]+\./{$2++;print}' OFS=. < VERSION.txt)
           echo "$NEW_VERSION" > VERSION.txt
           cat VERSION.txt
@@ -43,9 +45,9 @@ jobs:
           git commit -m "Update unstable version to $NEW_VERSION"
           VERSION_TAG="v$NEW_VERSION"
           git tag $VERSION_TAG -m"$VERSION_TAG"
-          git push --atomic origin main $VERSION_TAG
+          git push --atomic origin v1.x $VERSION_TAG
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -56,5 +58,5 @@ jobs:
         env:
           RDME_API_KEY: ${{ secrets.README_API_KEY }}
         run: |
-          git checkout main
+          git checkout v1.x
           python ./.github/utils/release_docs.py --new-version ${{ steps.versions.outputs.current_release_minor }}

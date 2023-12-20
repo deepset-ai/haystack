@@ -7,7 +7,7 @@ import torch
 from transformers import pipeline
 
 from haystack.components.readers import ExtractiveReader
-from haystack import Document
+from haystack import Document, ExtractedAnswer
 
 
 @pytest.fixture
@@ -87,7 +87,6 @@ example_documents = [
 ] * 2
 
 
-@pytest.mark.unit
 def test_to_dict():
     component = ExtractiveReader("my-model", token="secret-token", model_kwargs={"torch_dtype": "auto"})
     data = component.to_dict()
@@ -99,7 +98,7 @@ def test_to_dict():
             "device": None,
             "token": None,  # don't serialize valid tokens
             "top_k": 20,
-            "confidence_threshold": None,
+            "score_threshold": None,
             "max_seq_length": 384,
             "stride": 128,
             "max_batch_size": None,
@@ -111,7 +110,6 @@ def test_to_dict():
     }
 
 
-@pytest.mark.unit
 def test_to_dict_empty_model_kwargs():
     component = ExtractiveReader("my-model", token="secret-token")
     data = component.to_dict()
@@ -123,7 +121,7 @@ def test_to_dict_empty_model_kwargs():
             "device": None,
             "token": None,  # don't serialize valid tokens
             "top_k": 20,
-            "confidence_threshold": None,
+            "score_threshold": None,
             "max_seq_length": 384,
             "stride": 128,
             "max_batch_size": None,
@@ -135,7 +133,6 @@ def test_to_dict_empty_model_kwargs():
     }
 
 
-@pytest.mark.unit
 def test_output(mock_reader: ExtractiveReader):
     answers = mock_reader.run(example_queries[0], example_documents[0], top_k=3)[
         "answers"
@@ -143,18 +140,17 @@ def test_output(mock_reader: ExtractiveReader):
     doc_ids = set()
     no_answer_prob = 1
     for doc, answer in zip(example_documents[0], answers[:3]):
-        assert answer.start == 11
-        assert answer.end == 16
+        assert answer.document_offset.start == 11
+        assert answer.document_offset.end == 16
         assert doc.content is not None
         assert answer.data == doc.content[11:16]
-        assert answer.probability == pytest.approx(1 / (1 + exp(-2 * mock_reader.calibration_factor)))
-        no_answer_prob *= 1 - answer.probability
+        assert answer.score == pytest.approx(1 / (1 + exp(-2 * mock_reader.calibration_factor)))
+        no_answer_prob *= 1 - answer.score
         doc_ids.add(doc.id)
     assert len(doc_ids) == 3
-    assert answers[-1].probability == pytest.approx(no_answer_prob)
+    assert answers[-1].score == pytest.approx(no_answer_prob)
 
 
-@pytest.mark.unit
 def test_flatten_documents(mock_reader: ExtractiveReader):
     queries, docs, query_ids = mock_reader._flatten_documents(example_queries, example_documents)
     i = 0
@@ -167,7 +163,6 @@ def test_flatten_documents(mock_reader: ExtractiveReader):
     assert len(docs) == len(queries) == len(query_ids) == i
 
 
-@pytest.mark.unit
 def test_preprocess(mock_reader: ExtractiveReader):
     _, _, seq_ids, _, query_ids, doc_ids = mock_reader._preprocess(
         example_queries * 3, example_documents[0], 384, [1, 1, 1], 0
@@ -189,7 +184,6 @@ def test_preprocess_splitting(mock_reader: ExtractiveReader):
     assert doc_ids == [0, 1, 2, 3, 3]
 
 
-@pytest.mark.unit
 def test_postprocess(mock_reader: ExtractiveReader):
     start = torch.zeros((2, 8))
     start[0, 3] = 4
@@ -231,7 +225,6 @@ def test_postprocess(mock_reader: ExtractiveReader):
     assert probs[1][0] == pytest.approx(1 / 2)
 
 
-@pytest.mark.unit
 def test_nest_answers(mock_reader: ExtractiveReader):
     start = list(range(5))
     end = [i + 5 for i in start]
@@ -240,25 +233,35 @@ def test_nest_answers(mock_reader: ExtractiveReader):
     probabilities = torch.arange(5).unsqueeze(0) / 5 + torch.arange(6).unsqueeze(-1) / 25
     query_ids = [0] * 3 + [1] * 3
     document_ids = list(range(3)) * 2
-    nested_answers = mock_reader._nest_answers(
-        start, end, probabilities, example_documents[0], example_queries, 5, 3, None, query_ids, document_ids, True  # type: ignore
+    nested_answers = mock_reader._nest_answers(  # type: ignore
+        start=start,
+        end=end,
+        probabilities=probabilities,
+        flattened_documents=example_documents[0],
+        queries=example_queries,
+        answers_per_seq=5,
+        top_k=3,
+        score_threshold=None,
+        query_ids=query_ids,
+        document_ids=document_ids,
+        no_answer=True,
+        overlap_threshold=None,
     )
     expected_no_answers = [0.2 * 0.16 * 0.12, 0]
     for query, answers, expected_no_answer, probabilities in zip(
         example_queries, nested_answers, expected_no_answers, [probabilities[:3, -1], probabilities[3:, -1]]
     ):
         assert len(answers) == 4
-        for doc, answer, probability in zip(example_documents[0], reversed(answers[:3]), probabilities):
+        for doc, answer, score in zip(example_documents[0], reversed(answers[:3]), probabilities):
             assert answer.query == query
             assert answer.document == doc
-            assert answer.probability == pytest.approx(probability)
+            assert answer.score == pytest.approx(score)
         no_answer = answers[-1]
         assert no_answer.query == query
         assert no_answer.document is None
-        assert no_answer.probability == pytest.approx(expected_no_answer)
+        assert no_answer.score == pytest.approx(expected_no_answer)
 
 
-@pytest.mark.unit
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
 def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
@@ -269,77 +272,194 @@ def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
     mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
 
 
-@pytest.mark.unit
-def test_missing_token_to_chars_values():
-    # See https://github.com/deepset-ai/haystack/issues/6098
+class TestDeduplication:
+    @pytest.fixture
+    def doc1(self):
+        return Document(content="I want to go to the river in Maine.")
 
-    def mock_tokenize(
-        texts: List[str],
-        text_pairs: List[str],
-        padding: bool,
-        truncation: bool,
-        max_length: int,
-        return_tensors: str,
-        return_overflowing_tokens: bool,
-        stride: int,
+    @pytest.fixture
+    def doc2(self):
+        return Document(content="I want to go skiing in Colorado.")
+
+    @pytest.fixture
+    def candidate_answer(self, doc1):
+        answer1 = "the river"
+        return ExtractedAnswer(
+            query="test",
+            data=answer1,
+            document=doc1,
+            document_offset=ExtractedAnswer.Span(doc1.content.find(answer1), doc1.content.find(answer1) + len(answer1)),
+            score=0.1,
+            meta={},
+        )
+
+    def test_calculate_overlap(self, mock_reader: ExtractiveReader, doc1: Document):
+        answer1 = "the river"
+        answer2 = "river in Maine"
+        overlap_in_characters = mock_reader._calculate_overlap(
+            answer1_start=doc1.content.find(answer1),
+            answer1_end=doc1.content.find(answer1) + len(answer1),
+            answer2_start=doc1.content.find(answer2),
+            answer2_end=doc1.content.find(answer2) + len(answer2),
+        )
+        assert overlap_in_characters == 5
+
+    def test_should_keep_false(
+        self, mock_reader: ExtractiveReader, doc1: Document, doc2: Document, candidate_answer: ExtractedAnswer
     ):
-        assert padding
-        assert truncation
-        assert return_tensors == "pt"
-        assert return_overflowing_tokens
+        answer2 = "river in Maine"
+        answer3 = "skiing in Colorado"
+        keep = mock_reader._should_keep(
+            candidate_answer=candidate_answer,
+            current_answers=[
+                ExtractedAnswer(
+                    query="test",
+                    data=answer2,
+                    document=doc1,
+                    document_offset=ExtractedAnswer.Span(
+                        doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                    ),
+                    score=0.1,
+                    meta={},
+                ),
+                ExtractedAnswer(
+                    query="test",
+                    data=answer3,
+                    document=doc2,
+                    document_offset=ExtractedAnswer.Span(
+                        doc2.content.find(answer3), doc2.content.find(answer3) + len(answer3)
+                    ),
+                    score=0.1,
+                    meta={},
+                ),
+            ],
+            overlap_threshold=0.01,
+        )
+        assert keep is False
 
-        tokens = Mock()
+    def test_should_keep_true(
+        self, mock_reader: ExtractiveReader, doc1: Document, doc2: Document, candidate_answer: ExtractedAnswer
+    ):
+        answer2 = "Maine"
+        answer3 = "skiing in Colorado"
+        keep = mock_reader._should_keep(
+            candidate_answer=candidate_answer,
+            current_answers=[
+                ExtractedAnswer(
+                    query="test",
+                    data=answer2,
+                    document=doc1,
+                    document_offset=ExtractedAnswer.Span(
+                        doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                    ),
+                    score=0.1,
+                    meta={},
+                ),
+                ExtractedAnswer(
+                    query="test",
+                    data=answer3,
+                    document=doc2,
+                    document_offset=ExtractedAnswer.Span(
+                        doc2.content.find(answer3), doc2.content.find(answer3) + len(answer3)
+                    ),
+                    score=0.1,
+                    meta={},
+                ),
+            ],
+            overlap_threshold=0.01,
+        )
+        assert keep is True
 
-        num_splits = [ceil(len(text + pair) / max_length) for text, pair in zip(texts, text_pairs)]
-        tokens.overflow_to_sample_mapping = [i for i, num in enumerate(num_splits) for _ in range(num)]
-        num_samples = sum(num_splits)
-        tokens.encodings = [Mock() for _ in range(num_samples)]
-        sequence_ids = [0] * 16 + [1] * 16 + [None] * (max_length - 32)
-        for encoding in tokens.encodings:
-            encoding.sequence_ids = sequence_ids
-            encoding.token_to_chars = lambda i: None
-        tokens.input_ids = torch.zeros(num_samples, max_length, dtype=torch.int)
-        attention_mask = torch.zeros(num_samples, max_length, dtype=torch.int)
-        attention_mask[:32] = 1
-        tokens.attention_mask = attention_mask
-        return tokens
+    def test_should_keep_missing_document_current_answer(
+        self, mock_reader: ExtractiveReader, doc1: Document, candidate_answer: ExtractedAnswer
+    ):
+        answer2 = "river in Maine"
+        keep = mock_reader._should_keep(
+            candidate_answer=candidate_answer,
+            current_answers=[
+                ExtractedAnswer(
+                    query="test",
+                    data=answer2,
+                    document=None,
+                    document_offset=ExtractedAnswer.Span(
+                        doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                    ),
+                    score=0.1,
+                    meta={},
+                )
+            ],
+            overlap_threshold=0.01,
+        )
+        assert keep is True
 
-    class MockModel(torch.nn.Module):
-        def to(self, device):
-            assert device == "cpu:0"
-            self.device_set = True
-            return self
+    def test_should_keep_missing_document_candidate_answer(
+        self, mock_reader: ExtractiveReader, doc1: Document, candidate_answer: ExtractedAnswer
+    ):
+        answer2 = "river in Maine"
+        keep = mock_reader._should_keep(
+            candidate_answer=ExtractedAnswer(
+                query="test",
+                data=answer2,
+                document=None,
+                document_offset=ExtractedAnswer.Span(
+                    doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                ),
+                score=0.1,
+                meta={},
+            ),
+            current_answers=[
+                ExtractedAnswer(
+                    query="test",
+                    data=answer2,
+                    document=doc1,
+                    document_offset=ExtractedAnswer.Span(
+                        doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)
+                    ),
+                    score=0.1,
+                    meta={},
+                )
+            ],
+            overlap_threshold=0.01,
+        )
+        assert keep is True
 
-        def forward(self, input_ids, attention_mask, *args, **kwargs):
-            assert input_ids.device == torch.device("cpu")
-            assert attention_mask.device == torch.device("cpu")
-            assert self.device_set
-            start = torch.zeros(input_ids.shape[:2])
-            end = torch.zeros(input_ids.shape[:2])
-            start[:, 27] = 1
-            end[:, 31] = 1
-            end[:, 32] = 1
-            prediction = Mock()
-            prediction.start_logits = start
-            prediction.end_logits = end
-            return prediction
+    def test_should_keep_missing_span(
+        self, mock_reader: ExtractiveReader, doc1: Document, candidate_answer: ExtractedAnswer
+    ):
+        answer2 = "river in Maine"
+        keep = mock_reader._should_keep(
+            candidate_answer=candidate_answer,
+            current_answers=[
+                ExtractedAnswer(query="test", data=answer2, document=doc1, document_offset=None, score=0.1, meta={})
+            ],
+            overlap_threshold=0.01,
+        )
+        assert keep is True
 
-    with patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained") as tokenizer, patch(
-        "haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained"
-    ) as model:
-        tokenizer.return_value = mock_tokenize
-        model.return_value = MockModel()
-        reader = ExtractiveReader(model_name_or_path="mock-model", device="cpu:0")
-        reader.warm_up()
+    def test_deduplicate_by_overlap_none_overlap(
+        self, mock_reader: ExtractiveReader, candidate_answer: ExtractedAnswer
+    ):
+        result = mock_reader.deduplicate_by_overlap(
+            answers=[candidate_answer, candidate_answer], overlap_threshold=None
+        )
+        assert len(result) == 2
 
-        answers = reader.run(example_queries[0], example_documents[0], top_k=3)[
-            "answers"
-        ]  # [0] Uncomment and remove first two indices when batching support is reintroduced
-        for doc, answer in zip(example_documents[0], answers[:3]):
-            assert answer.start is None
-            assert answer.end is None
-            assert doc.content is not None
-            assert answer.data == doc.content
+    def test_deduplicate_by_overlap(
+        self, mock_reader: ExtractiveReader, candidate_answer: ExtractedAnswer, doc1: Document
+    ):
+        answer2 = "Maine"
+        extracted_answer2 = ExtractedAnswer(
+            query="test",
+            data=answer2,
+            document=doc1,
+            document_offset=ExtractedAnswer.Span(doc1.content.find(answer2), doc1.content.find(answer2) + len(answer2)),
+            score=0.1,
+            meta={},
+        )
+        result = mock_reader.deduplicate_by_overlap(
+            answers=[candidate_answer, candidate_answer, extracted_answer2], overlap_threshold=0.01
+        )
+        assert len(result) == 2
 
 
 @pytest.mark.integration
@@ -350,19 +470,20 @@ def test_t5():
         "answers"
     ]  # remove indices when batching support is reintroduced
     assert answers[0].data == "Angela Merkel"
-    assert answers[0].probability == pytest.approx(0.7764519453048706)
+    assert answers[0].score == pytest.approx(0.7764519453048706)
     assert answers[1].data == "Olaf Scholz"
-    assert answers[1].probability == pytest.approx(0.7703777551651001)
+    assert answers[1].score == pytest.approx(0.7703777551651001)
     assert answers[2].data is None
-    assert answers[2].probability == pytest.approx(0.051331606147570596)
+    assert answers[2].score == pytest.approx(0.051331606147570596)
+    assert len(answers) == 3
     # Uncomment assertions below when batching is reintroduced
-    # assert answers[0][2].probability == pytest.approx(0.051331606147570596)
+    # assert answers[0][2].score == pytest.approx(0.051331606147570596)
     # assert answers[1][0].data == "Jerry"
-    # assert answers[1][0].probability == pytest.approx(0.7413333654403687)
+    # assert answers[1][0].score == pytest.approx(0.7413333654403687)
     # assert answers[1][1].data == "Olaf Scholz"
-    # assert answers[1][1].probability == pytest.approx(0.7266613841056824)
+    # assert answers[1][1].score == pytest.approx(0.7266613841056824)
     # assert answers[1][2].data is None
-    # assert answers[1][2].probability == pytest.approx(0.0707035798685709)
+    # assert answers[1][2].score == pytest.approx(0.0707035798685709)
 
 
 @pytest.mark.integration
@@ -373,29 +494,30 @@ def test_roberta():
         "answers"
     ]  # remove indices when batching is reintroduced
     assert answers[0].data == "Olaf Scholz"
-    assert answers[0].probability == pytest.approx(0.8614975214004517)
+    assert answers[0].score == pytest.approx(0.8614975214004517)
     assert answers[1].data == "Angela Merkel"
-    assert answers[1].probability == pytest.approx(0.857952892780304)
+    assert answers[1].score == pytest.approx(0.857952892780304)
     assert answers[2].data is None
-    assert answers[2].probability == pytest.approx(0.019673851661650588)
+    assert answers[2].score == pytest.approx(0.019673851661650588)
+    assert len(answers) == 3
     # uncomment assertions below when there is batching in v2
     # assert answers[0][0].data == "Olaf Scholz"
-    # assert answers[0][0].probability == pytest.approx(0.8614975214004517)
+    # assert answers[0][0].score == pytest.approx(0.8614975214004517)
     # assert answers[0][1].data == "Angela Merkel"
-    # assert answers[0][1].probability == pytest.approx(0.857952892780304)
+    # assert answers[0][1].score == pytest.approx(0.857952892780304)
     # assert answers[0][2].data is None
-    # assert answers[0][2].probability == pytest.approx(0.0196738764278237)
+    # assert answers[0][2].score == pytest.approx(0.0196738764278237)
     # assert answers[1][0].data == "Jerry"
-    # assert answers[1][0].probability == pytest.approx(0.7048940658569336)
+    # assert answers[1][0].score == pytest.approx(0.7048940658569336)
     # assert answers[1][1].data == "Olaf Scholz"
-    # assert answers[1][1].probability == pytest.approx(0.6604189872741699)
+    # assert answers[1][1].score == pytest.approx(0.6604189872741699)
     # assert answers[1][2].data is None
-    # assert answers[1][2].probability == pytest.approx(0.1002123719777046)
+    # assert answers[1][2].score == pytest.approx(0.1002123719777046)
 
 
 @pytest.mark.integration
 def test_matches_hf_pipeline():
-    reader = ExtractiveReader("deepset/tinyroberta-squad2", device="cpu")
+    reader = ExtractiveReader("deepset/tinyroberta-squad2", device="cpu", overlap_threshold=None)
     reader.warm_up()
     answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
         "answers"
@@ -410,6 +532,6 @@ def test_matches_hf_pipeline():
     )  # We need to disable HF postprocessing features to make the results comparable. This is related to https://github.com/huggingface/transformers/issues/26286
     assert len(answers) == len(answers_hf) == 20
     for answer, answer_hf in zip(answers, answers_hf):
-        assert answer.start == answer_hf["start"]
-        assert answer.end == answer_hf["end"]
+        assert answer.document_offset.start == answer_hf["start"]
+        assert answer.document_offset.end == answer_hf["end"]
         assert answer.data == answer_hf["answer"]

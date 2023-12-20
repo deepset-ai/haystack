@@ -4,16 +4,15 @@ from unittest.mock import patch, Mock
 import pytest
 
 from haystack.components.converters.azure import AzureOCRDocumentConverter
+from haystack.dataclasses import ByteStream
 
 
 class TestAzureOCRDocumentConverter:
-    @pytest.mark.unit
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("AZURE_AI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="AzureOCRDocumentConverter expects an Azure Credential key"):
             AzureOCRDocumentConverter(endpoint="test_endpoint")
 
-    @pytest.mark.unit
     def test_to_dict(self):
         component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
         data = component.to_dict()
@@ -22,7 +21,6 @@ class TestAzureOCRDocumentConverter:
             "init_parameters": {"endpoint": "test_endpoint", "model_id": "prebuilt-read"},
         }
 
-    @pytest.mark.unit
     def test_run(self, test_files_path):
         with patch("haystack.components.converters.azure.DocumentAnalysisClient") as mock_azure_client:
             mock_result = Mock(pages=[Mock(lines=[Mock(content="mocked line 1"), Mock(content="mocked line 2")])])
@@ -35,7 +33,7 @@ class TestAzureOCRDocumentConverter:
             mock_azure_client.return_value.begin_analyze_document.return_value.result.return_value = mock_result
 
             component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
-            output = component.run(paths=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
+            output = component.run(sources=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
             document = output["documents"][0]
             assert document.content == "mocked line 1\nmocked line 2\n\f"
             assert "raw_azure_response" in output
@@ -46,6 +44,18 @@ class TestAzureOCRDocumentConverter:
                 "pages": [{"lines": [{"content": "mocked line 1"}, {"content": "mocked line 2"}]}],
             }
 
+    def test_run_with_meta(self):
+        bytestream = ByteStream(data=b"test", metadata={"author": "test_author", "language": "en"})
+
+        with patch("haystack.components.converters.azure.DocumentAnalysisClient"):
+            component = AzureOCRDocumentConverter(endpoint="test_endpoint", api_key="test_credential_key")
+
+        output = component.run(sources=[bytestream], meta=[{"language": "it"}])
+        document = output["documents"][0]
+
+        # check that the metadata from the bytestream is merged with that from the meta parameter
+        assert document.meta == {"author": "test_author", "language": "it"}
+
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
@@ -53,7 +63,7 @@ class TestAzureOCRDocumentConverter:
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=os.environ["CORE_AZURE_CS_API_KEY"]
         )
-        output = component.run(paths=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
+        output = component.run(sources=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
         documents = output["documents"]
         assert len(documents) == 1
         assert "A sample PDF file" in documents[0].content
@@ -67,7 +77,7 @@ class TestAzureOCRDocumentConverter:
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=os.environ["CORE_AZURE_CS_API_KEY"]
         )
-        output = component.run(paths=[test_files_path / "images" / "haystack-logo.png"])
+        output = component.run(sources=[test_files_path / "images" / "haystack-logo.png"])
         documents = output["documents"]
         assert len(documents) == 1
         assert "haystack" in documents[0].content
@@ -80,7 +90,7 @@ class TestAzureOCRDocumentConverter:
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=os.environ["CORE_AZURE_CS_API_KEY"]
         )
-        output = component.run(paths=[test_files_path / "docx" / "sample_docx.docx"])
+        output = component.run(sources=[test_files_path / "docx" / "sample_docx.docx"])
         documents = output["documents"]
         assert len(documents) == 1
         assert "Sample Docx File" in documents[0].content

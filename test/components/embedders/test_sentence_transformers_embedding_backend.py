@@ -5,7 +5,6 @@ from haystack.components.embedders.backends.sentence_transformers_backend import
 )
 
 
-@pytest.mark.unit
 @patch("haystack.components.embedders.backends.sentence_transformers_backend.SentenceTransformer")
 def test_factory_behavior(mock_sentence_transformer):
     embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
@@ -20,7 +19,6 @@ def test_factory_behavior(mock_sentence_transformer):
     assert another_embedding_backend is not embedding_backend
 
 
-@pytest.mark.unit
 @patch("haystack.components.embedders.backends.sentence_transformers_backend.SentenceTransformer")
 def test_model_initialization(mock_sentence_transformer):
     _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
@@ -31,7 +29,6 @@ def test_model_initialization(mock_sentence_transformer):
     )
 
 
-@pytest.mark.unit
 @patch("haystack.components.embedders.backends.sentence_transformers_backend.SentenceTransformer")
 def test_embedding_function_with_kwargs(mock_sentence_transformer):
     embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(model_name_or_path="model")

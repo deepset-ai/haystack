@@ -8,6 +8,7 @@ on:
       - "test/**/*.py"
       - "e2e/**/*.py"
       - "pyproject.toml"
+      - "!haystack/core/**/*.py"
 
 env:
   PYTHON_VERSION: "3.8"
@@ -32,17 +33,21 @@ jobs:
           files_ignore: |
             test/**
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf tika 'azure-ai-formrecognizer>=3.2.0b2' cohere
+        run: pip install .[dev]
+
+      - name: Install the dependencies needed for tests
+        run: pip install -r test/test_requirements.txt
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
         run: |
-          mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }}
+          mkdir .mypy_cache
+          mypy --install-types --non-interactive --cache-dir=.mypy_cache/ ${{ steps.files.outputs.all_changed_files }}
 
   pylint:
     runs-on: ubuntu-latest
@@ -61,13 +66,12 @@ jobs:
           files: |
             haystack/**/*.py
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Haystack
-        run: |
-          pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2' cohere
+      - name: Install Haystack and the dependencies needed for tests
+        run: pip install -r test/test_requirements.txt
 
       - name: Pylint
         if: steps.files.outputs.any_changed == 'true'
