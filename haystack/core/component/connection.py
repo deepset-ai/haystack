@@ -116,21 +116,24 @@ class Connection:
             name_matches = [
                 (out_sock, in_sock) for out_sock, in_sock in possible_connections if in_sock.name == out_sock.name
             ]
-            if len(name_matches) != 1:
-                # TODO allow for multiple connections at once if there is no ambiguity?
-                # TODO give priority to sockets that have no default values?
-                connections_status_str = _connections_status(
-                    sender_node=sender_node,
-                    sender_sockets=sender_sockets,
-                    receiver_node=receiver_node,
-                    receiver_sockets=receiver_sockets,
-                )
-                raise PipelineConnectError(
-                    f"Cannot connect '{sender_node}' with '{receiver_node}': more than one connection is possible "
-                    "between these components. Please specify the connection name, like: "
-                    f"pipeline.connect('{sender_node}.{possible_connections[0][0].name}', "
-                    f"'{receiver_node}.{possible_connections[0][1].name}').\n{connections_status_str}"
-                )
+            if len(name_matches) == 1:
+                # Sockets match by type and name, let's use this
+                return Connection(sender_node, name_matches[0][0], receiver_node, name_matches[0][1])
+
+            # TODO allow for multiple connections at once if there is no ambiguity?
+            # TODO give priority to sockets that have no default values?
+            connections_status_str = _connections_status(
+                sender_node=sender_node,
+                sender_sockets=sender_sockets,
+                receiver_node=receiver_node,
+                receiver_sockets=receiver_sockets,
+            )
+            raise PipelineConnectError(
+                f"Cannot connect '{sender_node}' with '{receiver_node}': more than one connection is possible "
+                "between these components. Please specify the connection name, like: "
+                f"pipeline.connect('{sender_node}.{possible_connections[0][0].name}', "
+                f"'{receiver_node}.{possible_connections[0][1].name}').\n{connections_status_str}"
+            )
 
         match = possible_connections[0]
         return Connection(sender_node, match[0], receiver_node, match[1])
