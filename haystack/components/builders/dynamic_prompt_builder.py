@@ -64,7 +64,7 @@ class DynamicPromptBuilder:
 
     print(res)
     >> {'llm': {'replies': [ChatMessage(content="Here is the weather forecast for Berlin in the next 5
-    days:\n\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
+    days:\\n\\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
     closer to your visit.", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, metadata={'model': 'gpt-3.5-turbo-0613',
     'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201, 'total_tokens': 238}})]}}
 
@@ -153,7 +153,7 @@ class DynamicPromptBuilder:
     pipe.connect("doc_producer.documents", "prompt_builder.documents")
     pipe.connect("prompt_builder.prompt", "llm.prompt")
 
-    template = "Here is the document: {{documents[0].content}} \n Answer: {{query}}"
+    template = "Here is the document: {{documents[0].content}} \\n Answer: {{query}}"
     pipe.run(data={"doc_producer": {"doc_input": "Hello world, I live in Berlin"},
                "prompt_builder": {"prompt_source": template,
                                   "template_variables":{"query": "Where does the speaker live?"}}})

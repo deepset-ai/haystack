@@ -21,7 +21,7 @@ class AnswerBuilder:
                         most one capture group. If a capture group is present, the text matched by the capture group
                         is used as the answer. If no capture group is present, the whole match is used as the answer.
                         Examples:
-                            `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\nthis is an answer".
+                            `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
                             `Answer: (.*)` finds "this is an answer" in a string "this is an argument. Answer: this is an answer".
                         Default: `None`.
         :param reference_pattern: The regular expression pattern to use for parsing the document references.
@@ -50,7 +50,7 @@ class AnswerBuilder:
         """
         Parse the output of a Generator to `Answer` objects using regular expressions.
 
-        :param query: The query used in the prompts for the Generator. A strings.
+        :param query: The query used in the prompts for the Generator as a string.
         :param replies: The output of the Generator. A list of strings.
         :param metadata: The metadata returned by the Generator. An optional list of dictionaries. If not specified,
                             the generated answer will contain no metadata.
@@ -64,7 +64,7 @@ class AnswerBuilder:
                         most one capture group. If a capture group is present, the text matched by the capture group
                         is used as the answer. If no capture group is present, the whole match is used as the answer.
                         Examples:
-                            `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\nthis is an answer".
+                            `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
                             `Answer: (.*)` finds "this is an answer" in a string "this is an argument. Answer: this is an answer".
                         Default: `None`.
         :param reference_pattern: The regular expression pattern to use for parsing the document references.
