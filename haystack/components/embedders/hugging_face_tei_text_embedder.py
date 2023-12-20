@@ -44,7 +44,7 @@ class HuggingFaceTEITextEmbedder:
     text_to_embed = "I love pizza!"
 
     text_embedder = HuggingFaceTEITextEmbedder(
-        model="BAAI/bge-small-en-v1.5", url="<your-tgi-endpoint-url>", token="<your-token>"
+        model="BAAI/bge-small-en-v1.5", url="<your-tei-endpoint-url>", token="<your-token>"
     )
 
     print(text_embedder.run(text_to_embed))

@@ -52,7 +52,7 @@ class HuggingFaceTEIDocumentEmbedder:
     doc = Document(content="I love pizza!")
 
     document_embedder = HuggingFaceTEIDocumentEmbedder(
-        model="BAAI/bge-small-en-v1.5", url="<your-tgi-endpoint-url>", token="<your-token>"
+        model="BAAI/bge-small-en-v1.5", url="<your-tei-endpoint-url>", token="<your-token>"
     )
 
     result = document_embedder.run([doc])
