@@ -3,6 +3,7 @@ import pytest
 
 from haystack import Document
 from haystack.nodes.other.join_docs import JoinDocuments
+from copy import deepcopy
 
 
 @pytest.mark.unit
@@ -120,7 +121,7 @@ def test_joindocuments_rrf_weights():
     """
     Test that the reciprocal rank fusion method correctly handles weights.
     """
-    inputs = [
+    inputs_none = [
         {
             "documents": [
                 Document(content="text document 1", content_type="text", score=0.2),
@@ -135,12 +136,15 @@ def test_joindocuments_rrf_weights():
         },
     ]
 
+    inputs_even = deepcopy(inputs_none)
+    inputs_uneven = deepcopy(inputs_none)
+
     join_docs_none = JoinDocuments(join_mode="reciprocal_rank_fusion")
-    result_none, _ = join_docs_none.run(inputs)
+    result_none, _ = join_docs_none.run(inputs_none)
     join_docs_even = JoinDocuments(join_mode="reciprocal_rank_fusion", weights=[0.5, 0.5])
-    result_even, _ = join_docs_even.run(inputs)
+    result_even, _ = join_docs_even.run(inputs_even)
     join_docs_uneven = JoinDocuments(join_mode="reciprocal_rank_fusion", weights=[0.7, 0.3])
-    result_uneven, _ = join_docs_uneven.run(inputs)
+    result_uneven, _ = join_docs_uneven.run(inputs_uneven)
 
     assert result_none["documents"] == result_even["documents"]
     assert result_uneven["documents"] != result_none["documents"]
