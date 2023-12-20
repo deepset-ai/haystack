@@ -118,7 +118,7 @@ class LinkContentFetcher:
         # don't use multithreading if there's only one URL
         if len(urls) == 1:
             stream_metadata, stream = self.fetch(urls[0])
-            stream.metadata.update(stream_metadata)
+            stream.meta.update(stream_metadata)
             streams.append(stream)
         else:
             with ThreadPoolExecutor() as executor:
@@ -126,7 +126,7 @@ class LinkContentFetcher:
 
             for stream_metadata, stream in results:  # type: ignore
                 if stream_metadata is not None and stream is not None:
-                    stream.metadata.update(stream_metadata)
+                    stream.meta.update(stream_metadata)
                     streams.append(stream)
 
         return {"streams": streams}

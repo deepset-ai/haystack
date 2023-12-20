@@ -53,7 +53,7 @@ class DynamicPromptBuilder:
 
     >> {'llm': {'replies': [ChatMessage(content="Berlin is the capital city of Germany and one of the most vibrant
     and diverse cities in Europe. Here are some key things to know...Enjoy your time exploring the vibrant and dynamic
-    capital of Germany!", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, metadata={'model': 'gpt-3.5-turbo-0613',
+    capital of Germany!", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, meta={'model': 'gpt-3.5-turbo-0613',
     'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 27, 'completion_tokens': 681, 'total_tokens': 708}})]}}
 
 
@@ -65,7 +65,7 @@ class DynamicPromptBuilder:
     print(res)
     >> {'llm': {'replies': [ChatMessage(content="Here is the weather forecast for Berlin in the next 5
     days:\\n\\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
-    closer to your visit.", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, metadata={'model': 'gpt-3.5-turbo-0613',
+    closer to your visit.", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, meta={'model': 'gpt-3.5-turbo-0613',
     'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201, 'total_tokens': 238}})]}}
 
     ```
@@ -126,7 +126,7 @@ class DynamicPromptBuilder:
                                       "template_variables":{"query": "who's making a greeting?"}}})
 
     >> {'llm': {'replies': [ChatMessage(content='Haystack', role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
-    >> metadata={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage':
+    >> meta={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage':
     >> {'prompt_tokens': 51, 'completion_tokens': 2, 'total_tokens': 53}})]}}
     ```
 
@@ -159,7 +159,7 @@ class DynamicPromptBuilder:
                                   "template_variables":{"query": "Where does the speaker live?"}}})
 
     >> {'llm': {'replies': ['The speaker lives in Berlin.'],
-    >> 'metadata': [{'model': 'gpt-3.5-turbo-0613',
+    >> 'meta': [{'model': 'gpt-3.5-turbo-0613',
     >> 'index': 0,
     >> 'finish_reason': 'stop',
     >> 'usage': {'prompt_tokens': 28,
