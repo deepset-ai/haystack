@@ -1,0 +1,3 @@
+features:
+  - |
+    Add `Multiplexer`. For an example of its usage, see https://github.com/deepset-ai/haystack/pull/6420.
