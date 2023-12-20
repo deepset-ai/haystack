@@ -128,6 +128,9 @@ def self_correcting_pipeline():
     rag_pipeline.connect("llm.replies", "answer_checker.replies")
     rag_pipeline.connect("answer_checker.unanswered_query", "query")
 
+    # Draw the pipeline
+    rag_pipeline.draw("self_correcting_pipeline.png")
+
     # Populate the document store
     documents = [
         Document(content="My name is Jean and I live in Paris."),
