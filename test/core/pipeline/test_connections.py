@@ -386,3 +386,18 @@ def test_parse_connection():
     assert parse_connect_string("foobar") == ("foobar", None)
     assert parse_connect_string("foo.bar") == ("foo", "bar")
     assert parse_connect_string("foo.bar.baz") == ("foo", "bar.baz")
+
+
+def test_connect_with_same_socket_names():
+    SimpleComponent = factory.component_class("SimpleComponent", output_types={"documents": List})
+    ComponentWithMultipleInputs = factory.component_class(
+        "ComponentWithMultipleInputs", input_types={"question": Any, "documents": Any}
+    )
+
+    pipe = Pipeline()
+    pipe.add_component("simple", SimpleComponent())
+    pipe.add_component("multiple", ComponentWithMultipleInputs())
+
+    pipe.connect("simple", "multiple")
+
+    assert list(pipe.graph.edges) == [("simple", "multiple", "documents/documents")]
