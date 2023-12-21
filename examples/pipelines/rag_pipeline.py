@@ -38,7 +38,7 @@ rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
 rag_pipeline.connect("retriever", "prompt_builder.documents")
 rag_pipeline.connect("prompt_builder", "llm")
 rag_pipeline.connect("llm.replies", "answer_builder.replies")
-rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
+rag_pipeline.connect("llm.meta", "answer_builder.meta")
 rag_pipeline.connect("retriever", "answer_builder.documents")
 
 # Ask a question on the data you just added.
