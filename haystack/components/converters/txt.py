@@ -4,7 +4,7 @@ from typing import List, Union, Dict, Any, Optional
 
 from haystack import Document, component
 from haystack.dataclasses import ByteStream
-from haystack.components.converters.utils import get_bytestream_from_source
+from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 
 
 logger = logging.getLogger(__name__)
@@ -58,16 +58,7 @@ class TextFileToDocument:
         """
         documents = []
 
-        if meta is None:
-            meta_list: List[Dict[str, Any]] = [{}] * len(sources)
-        elif isinstance(meta, dict):
-            meta_list = [meta] * len(sources)
-        elif isinstance(meta, list):
-            if len(sources) != len(meta):
-                raise ValueError("The length of the metadata list must match the number of sources.")
-            meta_list = meta
-        else:
-            raise ValueError("meta must be either a dictionary or a list of dictionaries.")
+        meta_list = normalize_metadata(meta)
 
         for source, metadata in zip(sources, meta_list):
             try:
