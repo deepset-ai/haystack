@@ -20,13 +20,13 @@ class ChatMessage:
     :param content: The text content of the message.
     :param role: The role of the entity sending the message.
     :param name: The name of the function being called (only applicable for role FUNCTION).
-    :param metadata: Additional metadata associated with the message.
+    :param meta: Additional metadata associated with the message.
     """
 
     content: str
     role: ChatRole
     name: Optional[str]
-    metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
+    meta: Dict[str, Any] = field(default_factory=dict, hash=False)
 
     def is_from(self, role: ChatRole) -> bool:
         """
@@ -38,15 +38,15 @@ class ChatMessage:
         return self.role == role
 
     @classmethod
-    def from_assistant(cls, content: str, metadata: Optional[Dict[str, Any]] = None) -> "ChatMessage":
+    def from_assistant(cls, content: str, meta: Optional[Dict[str, Any]] = None) -> "ChatMessage":
         """
         Create a message from the assistant.
 
         :param content: The text content of the message.
-        :param metadata: Additional metadata associated with the message.
+        :param meta: Additional metadata associated with the message.
         :return: A new ChatMessage instance.
         """
-        return cls(content, ChatRole.ASSISTANT, None, metadata or {})
+        return cls(content, ChatRole.ASSISTANT, None, meta or {})
 
     @classmethod
     def from_user(cls, content: str) -> "ChatMessage":

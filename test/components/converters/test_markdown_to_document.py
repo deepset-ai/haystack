@@ -32,7 +32,7 @@ class TestMarkdownToDocument:
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
 
     def test_run_with_meta(self):
-        bytestream = ByteStream(data=b"test", metadata={"author": "test_author", "language": "en"})
+        bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
 
         converter = MarkdownToDocument()
 

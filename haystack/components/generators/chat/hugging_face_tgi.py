@@ -241,7 +241,7 @@ class HuggingFaceTGIChatGenerator:
             self.streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
 
         message = ChatMessage.from_assistant(chunk.generated_text)
-        message.metadata.update(
+        message.meta.update(
             {
                 "finish_reason": chunk.details.finish_reason.value,
                 "index": 0,
@@ -264,7 +264,7 @@ class HuggingFaceTGIChatGenerator:
                 prepared_prompt, details=True, **generation_kwargs
             )
             message = ChatMessage.from_assistant(tgr.generated_text)
-            message.metadata.update(
+            message.meta.update(
                 {
                     "finish_reason": tgr.details.finish_reason.value,
                     "index": _i,

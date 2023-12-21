@@ -241,7 +241,7 @@ class TestGPTChatGenerator:
         component = GPTChatGenerator(api_key="test-api-key")
         messages = [
             ChatMessage.from_assistant(
-                "", metadata={"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
+                "", meta={"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
             )
             for i, _ in enumerate(range(4))
         ]

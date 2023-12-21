@@ -67,7 +67,7 @@ class TestLinkContentFetcher:
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
             first_stream = streams[0]
             assert first_stream.data == correct_response
-            assert first_stream.metadata["content_type"] == "text/plain"
+            assert first_stream.meta["content_type"] == "text/plain"
 
     def test_run_html(self):
         correct_response = b"<h1>Example test response</h1>"
@@ -79,7 +79,7 @@ class TestLinkContentFetcher:
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
             first_stream = streams[0]
             assert first_stream.data == correct_response
-            assert first_stream.metadata["content_type"] == "text/html"
+            assert first_stream.meta["content_type"] == "text/html"
 
     def test_run_binary(self, test_files_path):
         file_bytes = open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb").read()
@@ -91,7 +91,7 @@ class TestLinkContentFetcher:
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
             first_stream = streams[0]
             assert first_stream.data == file_bytes
-            assert first_stream.metadata["content_type"] == "application/pdf"
+            assert first_stream.meta["content_type"] == "application/pdf"
 
     def test_run_bad_status_code(self):
         empty_byte_stream = b""
@@ -105,7 +105,7 @@ class TestLinkContentFetcher:
         assert len(streams) == 1
         first_stream = streams[0]
         assert first_stream.data == empty_byte_stream
-        assert first_stream.metadata["content_type"] == "text/html"
+        assert first_stream.meta["content_type"] == "text/html"
 
     @pytest.mark.integration
     def test_link_content_fetcher_html(self):
@@ -113,8 +113,8 @@ class TestLinkContentFetcher:
         streams = fetcher.run([HTML_URL])["streams"]
         first_stream = streams[0]
         assert "Haystack" in first_stream.data.decode("utf-8")
-        assert first_stream.metadata["content_type"] == "text/html"
-        assert "url" in first_stream.metadata and first_stream.metadata["url"] == HTML_URL
+        assert first_stream.meta["content_type"] == "text/html"
+        assert "url" in first_stream.meta and first_stream.meta["url"] == HTML_URL
 
     @pytest.mark.integration
     def test_link_content_fetcher_text(self):
@@ -122,8 +122,8 @@ class TestLinkContentFetcher:
         streams = fetcher.run([TEXT_URL])["streams"]
         first_stream = streams[0]
         assert "Haystack" in first_stream.data.decode("utf-8")
-        assert first_stream.metadata["content_type"] == "text/plain"
-        assert "url" in first_stream.metadata and first_stream.metadata["url"] == TEXT_URL
+        assert first_stream.meta["content_type"] == "text/plain"
+        assert "url" in first_stream.meta and first_stream.meta["url"] == TEXT_URL
 
     @pytest.mark.integration
     def test_link_content_fetcher_pdf(self):
@@ -131,8 +131,8 @@ class TestLinkContentFetcher:
         streams = fetcher.run([PDF_URL])["streams"]
         assert len(streams) == 1
         first_stream = streams[0]
-        assert first_stream.metadata["content_type"] in ("application/octet-stream", "application/pdf")
-        assert "url" in first_stream.metadata and first_stream.metadata["url"] == PDF_URL
+        assert first_stream.meta["content_type"] in ("application/octet-stream", "application/pdf")
+        assert "url" in first_stream.meta and first_stream.meta["url"] == PDF_URL
 
     @pytest.mark.integration
     def test_link_content_fetcher_multiple_different_content_types(self):
@@ -143,10 +143,10 @@ class TestLinkContentFetcher:
         streams = fetcher.run([PDF_URL, HTML_URL])["streams"]
         assert len(streams) == 2
         for stream in streams:
-            assert stream.metadata["content_type"] in ("text/html", "application/pdf", "application/octet-stream")
-            if stream.metadata["content_type"] == "text/html":
+            assert stream.meta["content_type"] in ("text/html", "application/pdf", "application/octet-stream")
+            if stream.meta["content_type"] == "text/html":
                 assert "Haystack" in stream.data.decode("utf-8")
-            elif stream.metadata["content_type"] == "application/pdf":
+            elif stream.meta["content_type"] == "application/pdf":
                 assert len(stream.data) > 0
 
     @pytest.mark.integration
@@ -160,10 +160,10 @@ class TestLinkContentFetcher:
         streams = fetcher.run([PDF_URL, HTML_URL, "https://google.com"])["streams"]
         assert len(streams) == 3
         for stream in streams:
-            assert stream.metadata["content_type"] in ("text/html", "application/pdf", "application/octet-stream")
-            if stream.metadata["content_type"] == "text/html":
+            assert stream.meta["content_type"] in ("text/html", "application/pdf", "application/octet-stream")
+            if stream.meta["content_type"] == "text/html":
                 assert "Haystack" in stream.data.decode("utf-8") or "Google" in stream.data.decode("utf-8")
-            elif stream.metadata["content_type"] == "application/pdf":
+            elif stream.meta["content_type"] == "application/pdf":
                 assert len(stream.data) > 0
 
     @pytest.mark.integration
@@ -177,7 +177,7 @@ class TestLinkContentFetcher:
         result = fetcher.run(["https://non_existent_website_dot.com/", "https://www.google.com/"])
         assert len(result["streams"]) == 1
         first_stream = result["streams"][0]
-        assert first_stream.metadata["content_type"] == "text/html"
+        assert first_stream.meta["content_type"] == "text/html"
 
     @pytest.mark.integration
     def test_bad_request_exception_raised(self):
