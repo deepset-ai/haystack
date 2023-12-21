@@ -1,17 +1,14 @@
-from unittest.mock import patch
-from typing import List, cast
+from typing import List
 
-import pytest
 import numpy as np
-import openai
-from openai.util import convert_to_openai_object
-from openai.openai_object import OpenAIObject
+import pytest
+from openai import OpenAIError
 
 from haystack import Document
 from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
 
 
-def mock_openai_response(input: List[str], model: str = "text-embedding-ada-002", **kwargs) -> OpenAIObject:
+def mock_openai_response(input: List[str], model: str = "text-embedding-ada-002", **kwargs) -> dict:
     dict_response = {
         "object": "list",
         "data": [
@@ -21,17 +18,13 @@ def mock_openai_response(input: List[str], model: str = "text-embedding-ada-002"
         "usage": {"prompt_tokens": 4, "total_tokens": 4},
     }
 
-    return cast(OpenAIObject, convert_to_openai_object(dict_response))
+    return dict_response
 
 
 class TestOpenAIDocumentEmbedder:
     def test_init_default(self, monkeypatch):
-        openai.api_key = None
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAIDocumentEmbedder()
-
-        assert openai.api_key == "fake-api-key"
-
         assert embedder.model_name == "text-embedding-ada-002"
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -53,9 +46,6 @@ class TestOpenAIDocumentEmbedder:
             metadata_fields_to_embed=["test_field"],
             embedding_separator=" | ",
         )
-        assert openai.api_key == "fake-api-key"
-        assert openai.organization == "my-org"
-
         assert embedder.organization == "my-org"
         assert embedder.model_name == "model"
         assert embedder.prefix == "prefix"
@@ -66,9 +56,8 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.embedding_separator == " | "
 
     def test_init_fail_wo_api_key(self, monkeypatch):
-        openai.api_key = None
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(ValueError, match="OpenAIDocumentEmbedder expects an OpenAI API key"):
+        with pytest.raises(OpenAIError):
             OpenAIDocumentEmbedder()
 
     def test_to_dict(self):
@@ -77,6 +66,7 @@ class TestOpenAIDocumentEmbedder:
         assert data == {
             "type": "haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
             "init_parameters": {
+                "api_base_url": None,
                 "model_name": "text-embedding-ada-002",
                 "organization": None,
                 "prefix": "",
@@ -104,6 +94,7 @@ class TestOpenAIDocumentEmbedder:
         assert data == {
             "type": "haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
             "init_parameters": {
+                "api_base_url": None,
                 "model_name": "model",
                 "organization": "my-org",
                 "prefix": "prefix",
@@ -150,103 +141,6 @@ class TestOpenAIDocumentEmbedder:
             "my_prefix document number 4 my_suffix",
         ]
 
-    def test_embed_batch(self):
-        texts = ["text 1", "text 2", "text 3", "text 4", "text 5"]
-
-        with patch("haystack.components.embedders.openai_document_embedder.openai.Embedding") as openai_embedding_patch:
-            openai_embedding_patch.create.side_effect = mock_openai_response
-            embedder = OpenAIDocumentEmbedder(api_key="fake-api-key", model_name="model")
-
-            embeddings, metadata = embedder._embed_batch(texts_to_embed=texts, batch_size=2)
-
-            assert openai_embedding_patch.create.call_count == 3
-
-        assert isinstance(embeddings, list)
-        assert len(embeddings) == len(texts)
-        for embedding in embeddings:
-            assert isinstance(embedding, list)
-            assert len(embedding) == 1536
-            assert all(isinstance(x, float) for x in embedding)
-
-        # openai.Embedding.create is called 3 times
-        assert metadata == {"model": "model", "usage": {"prompt_tokens": 3 * 4, "total_tokens": 3 * 4}}
-
-    def test_run(self):
-        docs = [
-            Document(content="I love cheese", meta={"topic": "Cuisine"}),
-            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
-        ]
-
-        model = "text-similarity-ada-001"
-        with patch("haystack.components.embedders.openai_document_embedder.openai.Embedding") as openai_embedding_patch:
-            openai_embedding_patch.create.side_effect = mock_openai_response
-            embedder = OpenAIDocumentEmbedder(
-                api_key="fake-api-key",
-                model_name=model,
-                prefix="prefix ",
-                suffix=" suffix",
-                metadata_fields_to_embed=["topic"],
-                embedding_separator=" | ",
-            )
-
-            result = embedder.run(documents=docs)
-
-            openai_embedding_patch.create.assert_called_once_with(
-                model=model,
-                input=[
-                    "prefix Cuisine | I love cheese suffix",
-                    "prefix ML | A transformer is a deep learning architecture suffix",
-                ],
-            )
-        documents_with_embeddings = result["documents"]
-        metadata = result["metadata"]
-
-        assert isinstance(documents_with_embeddings, list)
-        assert len(documents_with_embeddings) == len(docs)
-        for doc in documents_with_embeddings:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 1536
-            assert all(isinstance(x, float) for x in doc.embedding)
-        assert metadata == {"model": model, "usage": {"prompt_tokens": 4, "total_tokens": 4}}
-
-    def test_run_custom_batch_size(self):
-        docs = [
-            Document(content="I love cheese", meta={"topic": "Cuisine"}),
-            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
-        ]
-
-        model = "text-similarity-ada-001"
-        with patch("haystack.components.embedders.openai_document_embedder.openai.Embedding") as openai_embedding_patch:
-            openai_embedding_patch.create.side_effect = mock_openai_response
-            embedder = OpenAIDocumentEmbedder(
-                api_key="fake-api-key",
-                model_name=model,
-                prefix="prefix ",
-                suffix=" suffix",
-                metadata_fields_to_embed=["topic"],
-                embedding_separator=" | ",
-                batch_size=1,
-            )
-
-            result = embedder.run(documents=docs)
-
-            assert openai_embedding_patch.create.call_count == 2
-
-        documents_with_embeddings = result["documents"]
-        metadata = result["metadata"]
-
-        assert isinstance(documents_with_embeddings, list)
-        assert len(documents_with_embeddings) == len(docs)
-        for doc in documents_with_embeddings:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 1536
-            assert all(isinstance(x, float) for x in doc.embedding)
-
-        # openai.Embedding.create is called 2 times
-        assert metadata == {"model": model, "usage": {"prompt_tokens": 2 * 4, "total_tokens": 2 * 4}}
-
     def test_run_wrong_input_format(self):
         embedder = OpenAIDocumentEmbedder(api_key="fake-api-key")
 
@@ -268,3 +162,29 @@ class TestOpenAIDocumentEmbedder:
 
         assert result["documents"] is not None
         assert not result["documents"]  # empty list
+
+    @pytest.mark.integration
+    def test_run(self):
+        docs = [
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
+        ]
+
+        model = "text-similarity-ada-001"
+
+        embedder = OpenAIDocumentEmbedder(
+            model_name=model, metadata_fields_to_embed=["topic"], embedding_separator=" | "
+        )
+
+        result = embedder.run(documents=docs)
+        documents_with_embeddings = result["documents"]
+        metadata = result["metadata"]
+
+        assert isinstance(documents_with_embeddings, list)
+        assert len(documents_with_embeddings) == len(docs)
+        for doc in documents_with_embeddings:
+            assert isinstance(doc, Document)
+            assert isinstance(doc.embedding, list)
+            assert len(doc.embedding) == 1024
+            assert all(isinstance(x, float) for x in doc.embedding)
+        assert metadata == {"model": "text-similarity-ada:001", "usage": {"prompt_tokens": 15, "total_tokens": 15}}

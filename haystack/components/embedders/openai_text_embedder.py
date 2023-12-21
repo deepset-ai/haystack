@@ -1,7 +1,6 @@
 from typing import List, Optional, Dict, Any
-import os
 
-import openai
+from openai import OpenAI
 
 from haystack import component, default_to_dict
 
@@ -31,6 +30,7 @@ class OpenAITextEmbedder:
         self,
         api_key: Optional[str] = None,
         model_name: str = "text-embedding-ada-002",
+        api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         prefix: str = "",
         suffix: str = "",
@@ -42,30 +42,18 @@ class OpenAITextEmbedder:
             environment variable OPENAI_API_KEY (recommended).
         :param model_name: The name of the OpenAI model to use. For more details on the available models,
             see [OpenAI documentation](https://platform.openai.com/docs/guides/embeddings/embedding-models).
-        :param organization: The OpenAI-Organization ID, defaults to `None`. For more details,
-            see [OpenAI documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
+        :param organization: The Organization ID, defaults to `None`. See
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
+        :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         """
-        # if the user does not provide the API key, check if it is set in the module client
-        api_key = api_key or openai.api_key
-        if api_key is None:
-            try:
-                api_key = os.environ["OPENAI_API_KEY"]
-            except KeyError as e:
-                raise ValueError(
-                    "OpenAITextEmbedder expects an OpenAI API key. "
-                    "Set the OPENAI_API_KEY environment variable (recommended) or pass it explicitly."
-                ) from e
-
         self.model_name = model_name
         self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
 
-        openai.api_key = api_key
-        if organization is not None:
-            openai.organization = organization
+        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -98,9 +86,7 @@ class OpenAITextEmbedder:
         # replace newlines, which can negatively affect performance.
         text_to_embed = text_to_embed.replace("\n", " ")
 
-        response = openai.Embedding.create(model=self.model_name, input=text_to_embed)
+        response = self.client.embeddings.create(model=self.model_name, input=text_to_embed)
+        metadata = {"model": response.model, "usage": dict(response.usage)}
 
-        metadata = {"model": response.model, "usage": dict(response.usage.items())}
-        embedding = response.data[0]["embedding"]
-
-        return {"embedding": embedding, "metadata": metadata}
+        return {"embedding": response.data[0].embedding, "metadata": metadata}
