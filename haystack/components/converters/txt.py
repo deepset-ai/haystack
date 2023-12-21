@@ -58,7 +58,7 @@ class TextFileToDocument:
         """
         documents = []
 
-        meta_list = normalize_metadata(meta)
+        meta_list = normalize_metadata(meta, sources_count=len(sources))
 
         for source, metadata in zip(sources, meta_list):
             try:

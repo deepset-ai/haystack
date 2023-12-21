@@ -22,7 +22,7 @@ def get_bytestream_from_source(source: Union[str, Path, ByteStream]) -> ByteStre
 
 def normalize_metadata(
     meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]], sources_count: int
-) -> Dict[str, Any]:
+) -> List[Dict[str, Any]]:
     """
     Given all the possible value of the meta input for a converter (None, dictionary or list of dicts),
     makes sure to return a list of dictionaries of the correct length for the converter to use.
