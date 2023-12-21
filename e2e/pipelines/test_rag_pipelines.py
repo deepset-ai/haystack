@@ -35,7 +35,7 @@ def test_bm25_rag_pipeline(tmp_path):
     rag_pipeline.connect("retriever", "prompt_builder.documents")
     rag_pipeline.connect("prompt_builder", "llm")
     rag_pipeline.connect("llm.replies", "answer_builder.replies")
-    rag_pipeline.connect("llm.meta", "answer_builder.meta")
+    rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
     rag_pipeline.connect("retriever", "answer_builder.documents")
 
     # Draw the pipeline
@@ -108,7 +108,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     rag_pipeline.connect("retriever", "prompt_builder.documents")
     rag_pipeline.connect("prompt_builder", "llm")
     rag_pipeline.connect("llm.replies", "answer_builder.replies")
-    rag_pipeline.connect("llm.meta", "answer_builder.meta")
+    rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
     rag_pipeline.connect("retriever", "answer_builder.documents")
 
     # Draw the pipeline
