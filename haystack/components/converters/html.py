@@ -83,7 +83,7 @@ class HTMLToDocument:
                 logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
                 continue
 
-            merged_metadata = {**bytestream.metadata, **metadata}
+            merged_metadata = {**bytestream.meta, **metadata}
             document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 

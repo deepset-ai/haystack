@@ -210,7 +210,7 @@ class TestRemoteWhisperTranscriber:
             transcriber = RemoteWhisperTranscriber(api_key="test_api_key", model_name=model, response_format="json")
             with open(file_path, "rb") as audio_stream:
                 byte_stream = audio_stream.read()
-                audio_file = ByteStream(byte_stream, metadata={"file_path": str(file_path.absolute())})
+                audio_file = ByteStream(byte_stream, meta={"file_path": str(file_path.absolute())})
 
                 result = transcriber.run(sources=[audio_file])
 

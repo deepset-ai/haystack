@@ -63,7 +63,7 @@ class TestHTMLToDocument:
         converter = HTMLToDocument()
         with open(test_files_path / "html" / "what_is_haystack.html", "rb") as file:
             byte_stream = file.read()
-            stream = ByteStream(byte_stream, metadata={"content_type": "text/html", "url": "test_url"})
+            stream = ByteStream(byte_stream, meta={"content_type": "text/html", "url": "test_url"})
 
         results = converter.run(sources=[stream])
         docs = results["documents"]
@@ -81,7 +81,7 @@ class TestHTMLToDocument:
         converter = HTMLToDocument()
         with open(test_files_path / "html" / "what_is_haystack.html", "rb") as file:
             byte_stream = file.read()
-            stream = ByteStream(byte_stream, metadata={"content_type": "text/html", "url": "test_url"})
+            stream = ByteStream(byte_stream, meta={"content_type": "text/html", "url": "test_url"})
 
         metadata = [{"file_name": "what_is_haystack.html"}]
         results = converter.run(sources=[stream], meta=metadata)
@@ -103,7 +103,7 @@ class TestHTMLToDocument:
         with open(test_files_path / "html" / "what_is_haystack.html", "rb") as file:
             byte_stream = file.read()
             # ByteStream has "url" present in metadata
-            stream = ByteStream(byte_stream, metadata={"content_type": "text/html", "url": "test_url_correct"})
+            stream = ByteStream(byte_stream, meta={"content_type": "text/html", "url": "test_url_correct"})
 
         # "url" supplied by the user overwrites value present in metadata
         metadata = [{"file_name": "what_is_haystack.html", "url": "test_url_new"}]

@@ -242,7 +242,7 @@ class TestGPTGenerator:
         for i, _ in enumerate(range(4)):
             message = ChatMessage.from_assistant("Hello")
             metadata = {"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
-            message.metadata.update(metadata)
+            message.meta.update(metadata)
             messages.append(message)
 
         for m in messages:
@@ -271,11 +271,11 @@ class TestGPTGenerator:
         component = GPTGenerator(api_key=os.environ.get("OPENAI_API_KEY"))
         results = component.run("What's the capital of France?")
         assert len(results["replies"]) == 1
-        assert len(results["metadata"]) == 1
+        assert len(results["meta"]) == 1
         response: str = results["replies"][0]
         assert "Paris" in response
 
-        metadata = results["metadata"][0]
+        metadata = results["meta"][0]
         assert "gpt-3.5" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
 
@@ -314,11 +314,11 @@ class TestGPTGenerator:
         results = component.run("What's the capital of France?")
 
         assert len(results["replies"]) == 1
-        assert len(results["metadata"]) == 1
+        assert len(results["meta"]) == 1
         response: str = results["replies"][0]
         assert "Paris" in response
 
-        metadata = results["metadata"][0]
+        metadata = results["meta"][0]
 
         assert "gpt-3.5" in metadata["model"]
         assert metadata["finish_reason"] == "stop"

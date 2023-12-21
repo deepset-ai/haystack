@@ -63,13 +63,13 @@ class TextFileToDocument:
                 logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
                 continue
             try:
-                encoding = bytestream.metadata.get("encoding", self.encoding)
+                encoding = bytestream.meta.get("encoding", self.encoding)
                 text = bytestream.data.decode(encoding)
             except Exception as e:
                 logger.warning("Could not convert file %s. Skipping it. Error message: %s", source, e)
                 continue
 
-            merged_metadata = {**bytestream.metadata, **metadata}
+            merged_metadata = {**bytestream.meta, **metadata}
             document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 

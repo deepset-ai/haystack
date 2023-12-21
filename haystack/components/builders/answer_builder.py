@@ -42,7 +42,7 @@ class AnswerBuilder:
         self,
         query: str,
         replies: List[str],
-        metadata: Optional[List[Dict[str, Any]]] = None,
+        meta: Optional[List[Dict[str, Any]]] = None,
         documents: Optional[List[Document]] = None,
         pattern: Optional[str] = None,
         reference_pattern: Optional[str] = None,
@@ -52,7 +52,7 @@ class AnswerBuilder:
 
         :param query: The query used in the prompts for the Generator as a string.
         :param replies: The output of the Generator. A list of strings.
-        :param metadata: The metadata returned by the Generator. An optional list of dictionaries. If not specified,
+        :param meta: The metadata returned by the Generator. An optional list of dictionaries. If not specified,
                             the generated answer will contain no metadata.
         :param documents: The documents used as input to the Generator. A list of `Document` objects. If
                           `documents` are specified, they are added to the `Answer` objects.
@@ -74,10 +74,10 @@ class AnswerBuilder:
                                   If not specified, no parsing is done, and all documents are referenced.
                                   Default: `None`.
         """
-        if not metadata:
-            metadata = [{}] * len(replies)
-        elif len(replies) != len(metadata):
-            raise ValueError(f"Number of replies ({len(replies)}), and metadata ({len(metadata)}) must match.")
+        if not meta:
+            meta = [{}] * len(replies)
+        elif len(replies) != len(meta):
+            raise ValueError(f"Number of replies ({len(replies)}), and metadata ({len(meta)}) must match.")
 
         if pattern:
             AnswerBuilder._check_num_groups_in_regex(pattern)
@@ -86,7 +86,7 @@ class AnswerBuilder:
         reference_pattern = reference_pattern or self.reference_pattern
 
         all_answers = []
-        for reply, meta in zip(replies, metadata):
+        for reply, metadata in zip(replies, meta):
             referenced_docs = []
             if documents:
                 reference_idxs = []
@@ -102,7 +102,7 @@ class AnswerBuilder:
                         logger.warning("Document index '%s' referenced in Generator output is out of range. ", idx + 1)
 
             answer_string = AnswerBuilder._extract_answer_string(reply, pattern)
-            answer = GeneratedAnswer(data=answer_string, query=query, documents=referenced_docs, meta=meta)
+            answer = GeneratedAnswer(data=answer_string, query=query, documents=referenced_docs, meta=metadata)
             all_answers.append(answer)
 
         return {"answers": all_answers}

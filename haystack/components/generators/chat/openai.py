@@ -42,7 +42,7 @@ class GPTChatGenerator:
     >>{'replies': [ChatMessage(content='Natural Language Processing (NLP) is a branch of artificial intelligence
     >>that focuses on enabling computers to understand, interpret, and generate human language in a way that is
     >>meaningful and useful.', role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
-    >>metadata={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop',
+    >>meta={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop',
     >>'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
 
     ```
@@ -218,7 +218,7 @@ class GPTChatGenerator:
         :param chunks: The list of all chunks returned by the OpenAI API.
         """
         complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
-        complete_response.metadata.update(
+        complete_response.meta.update(
             {
                 "model": chunk.model,
                 "index": 0,
@@ -239,7 +239,7 @@ class GPTChatGenerator:
         # message.content is str but message.function_call is OpenAIObject but JSON in fact, convert to str
         content = str(message.function_call) if choice.finish_reason == "function_call" else message.content
         chat_message = ChatMessage.from_assistant(content)
-        chat_message.metadata.update(
+        chat_message.meta.update(
             {
                 "model": completion.model,
                 "index": choice.index,
@@ -264,9 +264,7 @@ class GPTChatGenerator:
         else:
             content = ""
         chunk_message = StreamingChunk(content)
-        chunk_message.metadata.update(
-            {"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason}
-        )
+        chunk_message.meta.update({"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason})
         return chunk_message
 
     def _check_finish_reason(self, message: ChatMessage) -> None:
@@ -275,13 +273,13 @@ class GPTChatGenerator:
         If the `finish_reason` is `length` or `content_filter`, log a warning.
         :param message: The message returned by the LLM.
         """
-        if message.metadata["finish_reason"] == "length":
+        if message.meta["finish_reason"] == "length":
             logger.warning(
                 "The completion for index %s has been truncated before reaching a natural stopping point. "
                 "Increase the max_tokens parameter to allow for longer completions.",
-                message.metadata["index"],
+                message.meta["index"],
             )
-        if message.metadata["finish_reason"] == "content_filter":
+        if message.meta["finish_reason"] == "content_filter":
             logger.warning(
-                "The completion for index %s has been truncated due to the content filter.", message.metadata["index"]
+                "The completion for index %s has been truncated due to the content filter.", message.meta["index"]
             )
