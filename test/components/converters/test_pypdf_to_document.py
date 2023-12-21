@@ -30,7 +30,7 @@ class TestPyPDFToDocument:
         assert "ReAct" in docs[0].content
 
     def test_run_with_meta(self):
-        bytestream = ByteStream(data=b"test", metadata={"author": "test_author", "language": "en"})
+        bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
 
         converter = PyPDFToDocument()
         with patch("haystack.components.converters.pypdf.PdfReader"):

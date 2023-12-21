@@ -111,7 +111,7 @@ class PyPDFToDocument:
                 logger.warning("Could not read %s and convert it to Document, skipping. %s", source, e)
                 continue
 
-            merged_metadata = {**bytestream.metadata, **metadata}
+            merged_metadata = {**bytestream.meta, **metadata}
             document.meta = merged_metadata
             documents.append(document)
 

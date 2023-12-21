@@ -37,7 +37,7 @@ class GPTGenerator:
 
     >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
     >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
-    >> and respond to natural human language in a way that is both meaningful and useful.'], 'metadata': [{'model':
+    >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
     >> 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
     >> 'completion_tokens': 49, 'total_tokens': 65}}]}
     ```
@@ -146,7 +146,7 @@ class GPTGenerator:
             data["init_parameters"]["streaming_callback"] = deserialize_callback_handler(serialized_callback_handler)
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[str], metadata=List[Dict[str, Any]])
+    @component.output_types(replies=List[str], meta=List[Dict[str, Any]])
     def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
@@ -200,7 +200,7 @@ class GPTGenerator:
 
         return {
             "replies": [message.content for message in completions],
-            "metadata": [message.metadata for message in completions],
+            "meta": [message.meta for message in completions],
         }
 
     def _convert_to_openai_format(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
@@ -222,7 +222,7 @@ class GPTGenerator:
         Connects the streaming chunks into a single ChatMessage.
         """
         complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
-        complete_response.metadata.update(
+        complete_response.meta.update(
             {
                 "model": chunk.model,
                 "index": 0,
@@ -242,7 +242,7 @@ class GPTGenerator:
         message: OpenAIObject = choice.message
         content = dict(message.function_call) if choice.finish_reason == "function_call" else message.content
         chat_message = ChatMessage.from_assistant(content)
-        chat_message.metadata.update(
+        chat_message.meta.update(
             {
                 "model": completion.model,
                 "index": choice.index,
@@ -267,9 +267,7 @@ class GPTGenerator:
         else:
             content = ""
         chunk_message = StreamingChunk(content)
-        chunk_message.metadata.update(
-            {"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason}
-        )
+        chunk_message.meta.update({"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason})
         return chunk_message
 
     def _check_finish_reason(self, message: ChatMessage) -> None:
@@ -278,13 +276,13 @@ class GPTGenerator:
         If the `finish_reason` is `length`, log a warning to the user.
         :param message: The message returned by the LLM.
         """
-        if message.metadata["finish_reason"] == "length":
+        if message.meta["finish_reason"] == "length":
             logger.warning(
                 "The completion for index %s has been truncated before reaching a natural stopping point. "
                 "Increase the max_tokens parameter to allow for longer completions.",
-                message.metadata["index"],
+                message.meta["index"],
             )
-        if message.metadata["finish_reason"] == "content_filter":
+        if message.meta["finish_reason"] == "content_filter":
             logger.warning(
-                "The completion for index %s has been truncated due to the content filter.", message.metadata["index"]
+                "The completion for index %s has been truncated due to the content filter.", message.meta["index"]
             )

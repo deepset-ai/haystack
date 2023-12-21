@@ -242,7 +242,7 @@ class TestGPTGenerator:
         for i, _ in enumerate(range(4)):
             message = ChatMessage.from_assistant("Hello")
             metadata = {"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
-            message.metadata.update(metadata)
+            message.meta.update(metadata)
             messages.append(message)
 
         for m in messages:

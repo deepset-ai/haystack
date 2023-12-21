@@ -124,11 +124,11 @@ class TestHuggingFaceTGIGenerator:
 
         assert isinstance(response, dict)
         assert "replies" in response
-        assert "metadata" in response
+        assert "meta" in response
         assert isinstance(response["replies"], list)
-        assert isinstance(response["metadata"], list)
+        assert isinstance(response["meta"], list)
         assert len(response["replies"]) == 1
-        assert len(response["metadata"]) == 1
+        assert len(response["meta"]) == 1
         assert [isinstance(reply, str) for reply in response["replies"]]
 
     def test_generate_multiple_text_responses_with_valid_prompt_and_generation_parameters(
@@ -157,14 +157,14 @@ class TestHuggingFaceTGIGenerator:
 
         assert isinstance(response, dict)
         assert "replies" in response
-        assert "metadata" in response
+        assert "meta" in response
         assert isinstance(response["replies"], list)
         assert [isinstance(reply, str) for reply in response["replies"]]
 
-        assert isinstance(response["metadata"], list)
+        assert isinstance(response["meta"], list)
         assert len(response["replies"]) == 3
-        assert len(response["metadata"]) == 3
-        assert [isinstance(reply, dict) for reply in response["metadata"]]
+        assert len(response["meta"]) == 3
+        assert [isinstance(reply, dict) for reply in response["meta"]]
 
     def test_initialize_with_invalid_model(self, mock_check_valid_model):
         model = "invalid_model"
@@ -200,9 +200,9 @@ class TestHuggingFaceTGIGenerator:
         assert [isinstance(reply, str) for reply in response["replies"]]
 
         # Assert that the response contains the metadata
-        assert "metadata" in response
-        assert isinstance(response["metadata"], list)
-        assert len(response["metadata"]) > 0
+        assert "meta" in response
+        assert isinstance(response["meta"], list)
+        assert len(response["meta"]) > 0
         assert [isinstance(reply, dict) for reply in response["replies"]]
 
     def test_generate_text_with_custom_generation_parameters(
@@ -226,9 +226,9 @@ class TestHuggingFaceTGIGenerator:
         assert response["replies"][0] == "I'm fine, thanks."
 
         # Assert that the response contains the metadata
-        assert "metadata" in response
-        assert isinstance(response["metadata"], list)
-        assert len(response["metadata"]) > 0
+        assert "meta" in response
+        assert isinstance(response["meta"], list)
+        assert len(response["meta"]) > 0
         assert [isinstance(reply, str) for reply in response["replies"]]
 
     def test_generate_text_with_streaming_callback(
@@ -278,7 +278,7 @@ class TestHuggingFaceTGIGenerator:
         assert [isinstance(reply, str) for reply in response["replies"]]
 
         # Assert that the response contains the metadata
-        assert "metadata" in response
-        assert isinstance(response["metadata"], list)
-        assert len(response["metadata"]) > 0
+        assert "meta" in response
+        assert isinstance(response["meta"], list)
+        assert len(response["meta"]) > 0
         assert [isinstance(reply, dict) for reply in response["replies"]]
