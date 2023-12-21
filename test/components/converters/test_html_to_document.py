@@ -13,10 +13,11 @@ class TestHTMLToDocument:
         """
         sources = [test_files_path / "html" / "what_is_haystack.html"]
         converter = HTMLToDocument()
-        results = converter.run(sources=sources)
+        results = converter.run(sources=sources, meta={"test": "TEST"})
         docs = results["documents"]
         assert len(docs) == 1
         assert "Haystack" in docs[0].content
+        assert docs[0].meta["test"] == "TEST"
 
     def test_run_different_extractors(self, test_files_path):
         """
