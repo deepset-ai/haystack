@@ -169,6 +169,11 @@ jobs:
         image: apache/tika:2.9.0.0
         ports:
           - 9998:9998
+        options: >-
+          --health-cmd "curl --fail -X GET http://localhost:9998/tika"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
     steps:
       - uses: actions/checkout@v4
 
