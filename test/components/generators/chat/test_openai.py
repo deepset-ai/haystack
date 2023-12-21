@@ -213,8 +213,8 @@ class TestGPTChatGenerator:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.content
-        assert "gpt-3.5" in message.metadata["model"]
-        assert message.metadata["finish_reason"] == "stop"
+        assert "gpt-3.5" in message.meta["model"]
+        assert message.meta["finish_reason"] == "stop"
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -249,8 +249,8 @@ class TestGPTChatGenerator:
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.content
 
-        assert "gpt-3.5" in message.metadata["model"]
-        assert message.metadata["finish_reason"] == "stop"
+        assert "gpt-3.5" in message.meta["model"]
+        assert message.meta["finish_reason"] == "stop"
 
         assert callback.counter > 1
         assert "Paris" in callback.responses
