@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add missing parameter "api_base_url" for OpenAIDocumentEmbedder
