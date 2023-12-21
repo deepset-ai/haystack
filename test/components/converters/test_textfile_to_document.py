@@ -11,7 +11,7 @@ from haystack.components.converters.txt import TextFileToDocument
 class TestTextfileToDocument:
     def test_run(self, test_files_path):
         """
-        Test if the component runs correctly with no metadata provided separately
+        Test if the component runs correctly.
         """
         bytestream = ByteStream.from_file_path(test_files_path / "txt" / "doc_3.txt")
         bytestream.metadata["file_path"] = str(test_files_path / "txt" / "doc_3.txt")
