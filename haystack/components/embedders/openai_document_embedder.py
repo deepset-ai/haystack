@@ -46,9 +46,9 @@ class OpenAIDocumentEmbedder:
         :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
                         environment variable OPENAI_API_KEY (recommended).
         :param model_name: The name of the model to use.
-        :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI docs
+        :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
         :param organization: The Organization ID, defaults to `None`. See
-        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         :param batch_size: Number of Documents to encode at once.

@@ -43,8 +43,8 @@ class OpenAITextEmbedder:
         :param model_name: The name of the OpenAI model to use. For more details on the available models,
             see [OpenAI documentation](https://platform.openai.com/docs/guides/embeddings/embedding-models).
         :param organization: The Organization ID, defaults to `None`. See
-        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
-        :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI docs
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
+        :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         """

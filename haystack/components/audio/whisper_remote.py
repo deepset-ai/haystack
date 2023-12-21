@@ -36,8 +36,8 @@ class RemoteWhisperTranscriber:
         :param api_key: OpenAI API key.
         :param model_name: Name of the model to use. It now accepts only `whisper-1`.
         :param organization: The Organization ID, defaults to `None`. See
-        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
-        :param api_base: An optional URL to use as the API base. Defaults to `None`. See OpenAI docs
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
+        :param api_base: An optional URL to use as the API base. Defaults to `None`. See OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
         :param kwargs: Other parameters to use for the model. These parameters are all sent directly to the OpenAI
             endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio) for more details.
             Some of the supported parameters:
@@ -99,7 +99,7 @@ class RemoteWhisperTranscriber:
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
-        :param sources: a list of file paths or ByteStreams containing the audio files to transcribe.
+        :param sources: A list of file paths or ByteStreams containing the audio files to transcribe.
         :returns: a list of Documents, one for each file. The content of the document is the transcription text.
         """
         documents = []

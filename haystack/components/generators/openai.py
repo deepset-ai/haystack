@@ -69,7 +69,7 @@ class GPTGenerator:
             The callback function accepts StreamingChunk as an argument.
         :param api_base_url: An optional base URL.
         :param organization: The Organization ID, defaults to `None`. See
-        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param system_prompt: The system prompt to use for text generation. If not provided, the system prompt is
         omitted, and the default system prompt of the model is used.
         :param generation_kwargs: Other parameters to use for the model. These parameters are all sent directly to

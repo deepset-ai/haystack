@@ -76,7 +76,7 @@ class GPTChatGenerator:
             The callback function accepts StreamingChunk as an argument.
         :param api_base_url: An optional base URL.
         :param organization: The Organization ID, defaults to `None`. See
-        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param generation_kwargs: Other parameters to use for the model. These parameters are all sent directly to
             the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
             more details.
