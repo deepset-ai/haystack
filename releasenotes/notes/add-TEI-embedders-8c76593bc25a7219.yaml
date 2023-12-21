@@ -1,0 +1,28 @@
+---
+features:
+  - |
+    Add HuggingFace TEI Embedders - `HuggingFaceTEITextEmbedder` and `HuggingFaceTEIDocumentEmbedder`.
+
+    An example using `HuggingFaceTEITextEmbedder` to embed a string:
+    ```python
+    from haystack.components.embedders import HuggingFaceTEITextEmbedder
+    text_to_embed = "I love pizza!"
+    text_embedder = HuggingFaceTEITextEmbedder(
+        model="BAAI/bge-small-en-v1.5", url="<your-tei-endpoint-url>", token="<your-token>"
+    )
+    print(text_embedder.run(text_to_embed))
+    # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
+    ```
+
+    An example using `HuggingFaceTEIDocumentEmbedder` to create Document embeddings:
+    ```python
+    from haystack.dataclasses import Document
+    from haystack.components.embedders import HuggingFaceTEIDocumentEmbedder
+    doc = Document(content="I love pizza!")
+    document_embedder = HuggingFaceTEIDocumentEmbedder(
+        model="BAAI/bge-small-en-v1.5", url="<your-tei-endpoint-url>", token="<your-token>"
+    )
+    result = document_embedder.run([doc])
+    print(result["documents"][0].embedding)
+    # [0.017020374536514282, -0.023255806416273117, ...]
+    ```
