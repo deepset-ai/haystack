@@ -5,7 +5,7 @@ from boilerpy3 import extractors
 
 from haystack import Document, component
 from haystack.dataclasses import ByteStream
-from haystack.components.converters.utils import get_bytestream_from_source
+from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -61,16 +61,12 @@ class HTMLToDocument:
         """
 
         documents = []
-
-        if meta is None:
-            meta = [{}] * len(sources)
-        elif len(sources) != len(meta):
-            raise ValueError("The length of the metadata list must match the number of sources.")
+        meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
         extractor_class = getattr(extractors, self.extractor_type)
         extractor = extractor_class(raise_on_failure=False)
 
-        for source, metadata in zip(sources, meta):
+        for source, metadata in zip(sources, meta_list):
             try:
                 bytestream = get_bytestream_from_source(source=source)
             except Exception as e:
