@@ -17,6 +17,7 @@ on:
     paths:
       - "haystack/**/*.py"
       - "test/**/*.py"
+      - "test/test_requirements.txt"
       - "!haystack/core/**/*.py"
 
 env:
