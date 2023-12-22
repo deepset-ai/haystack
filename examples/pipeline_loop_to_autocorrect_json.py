@@ -84,7 +84,7 @@ prompt_template = """
 pipeline = Pipeline(max_loops_allowed=5)
 pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
 pipeline.add_component(instance=OpenAIGenerator(), name="llm")
-pipeline.add_component(instance=OutputParser(pydantic_model=CitiesData), name="output_parser")
+pipeline.add_component(instance=OutputParser(pydantic_model=CitiesData), name="output_parser")  # type: ignore
 
 pipeline.connect("prompt_builder", "llm")
 pipeline.connect("llm", "output_parser")
