@@ -281,11 +281,26 @@ class OpenAIChatGenerator:
 
 
 class GPTChatGenerator(OpenAIChatGenerator):
-    def __init__(self):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model_name: str = "gpt-3.5-turbo",
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        api_base_url: Optional[str] = None,
+        organization: Optional[str] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+    ):
         warnings.warn(
             "GPTChatGenerator is deprecated and will be removed in the next beta release. "
             "Please use OpenAIChatGenerator instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        super().__init__()
+        super().__init__(
+            api_key=api_key,
+            model_name=model_name,
+            streaming_callback=streaming_callback,
+            api_base_url=api_base_url,
+            organization=organization,
+            generation_kwargs=generation_kwargs,
+        )
