@@ -30,13 +30,13 @@ class DynamicPromptBuilder:
 
     ```python
     from haystack.components.builders import DynamicPromptBuilder
-    from haystack.components.generators.chat import GPTChatGenerator
+    from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack import Pipeline
 
     # no parameter init, we don't use any runtime template variables
     prompt_builder = DynamicPromptBuilder()
-    llm = GPTChatGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
+    llm = OpenAIChatGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)
@@ -88,14 +88,14 @@ class DynamicPromptBuilder:
 
     ```python
     from haystack.components.builders import DynamicPromptBuilder
-    from haystack.components.generators.chat import GPTChatGenerator
+    from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage, Document
     from haystack import Pipeline, component
     from typing import List
 
     # we'll use documents runtime variable in our template, so we need to specify it in the init
     prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"])
-    llm = GPTChatGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
+    llm = OpenAIChatGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
 
 
     @component
@@ -135,7 +135,7 @@ class DynamicPromptBuilder:
 
     ```python
     prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"], chat_mode=False)
-    llm = GPTGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
+    llm = OpenAIGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
 
 
     @component

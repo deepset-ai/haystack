@@ -2,7 +2,7 @@ import os
 from haystack import Pipeline, Document
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.components.retrievers import InMemoryBM25Retriever
-from haystack.components.generators import GPTGenerator
+from haystack.components.generators import OpenAIGenerator
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 
@@ -20,7 +20,7 @@ documents = [
 ]
 document_store.write_documents(documents)
 
-# Build a RAG pipeline with a Retriever to get relevant documents to the query and a GPTGenerator interacting with LLMs using a custom prompt.
+# Build a RAG pipeline with a Retriever to get relevant documents to the query and a OpenAIGenerator interacting with LLMs using a custom prompt.
 prompt_template = """
 Given these documents, answer the question.\nDocuments:
 {% for doc in documents %}
@@ -33,7 +33,7 @@ Given these documents, answer the question.\nDocuments:
 rag_pipeline = Pipeline()
 rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="retriever")
 rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-rag_pipeline.add_component(instance=GPTGenerator(api_key=OPENAI_API_KEY), name="llm")
+rag_pipeline.add_component(instance=OpenAIGenerator(api_key=OPENAI_API_KEY), name="llm")
 rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
 rag_pipeline.connect("retriever", "prompt_builder.documents")
 rag_pipeline.connect("prompt_builder", "llm")
