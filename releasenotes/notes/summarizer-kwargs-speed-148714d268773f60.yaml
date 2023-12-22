@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Use batching in the predict method since multiple documents are usually passed at inference time.
+    Allow the model to be loaded in torch.float16 by adding pipeline_kwargs to the init method
