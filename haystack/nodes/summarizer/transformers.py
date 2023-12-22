@@ -8,7 +8,6 @@ from tqdm import tqdm
 from haystack.schema import Document
 from haystack.nodes.summarizer.base import BaseSummarizer
 from haystack.lazy_imports import LazyImport
-from haystack.utils.torch_utils import extract_torch_dtype
 
 
 logger = logging.getLogger(__name__)
@@ -19,6 +18,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     from transformers import pipeline
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
     from haystack.utils.torch_utils import ListDataset
+    from haystack.utils.torch_utils import extract_torch_dtype
 
 
 class TransformersSummarizer(BaseSummarizer):
