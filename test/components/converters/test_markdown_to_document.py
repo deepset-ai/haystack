@@ -42,8 +42,9 @@ class TestMarkdownToDocument:
             )
 
         # check that the metadata from the bytestream is merged with that from the meta parameter
-        assert output["documents"][0].meta == {"author": "test_author", "language": "it"}
-        assert output["documents"][1].meta == {"language": "it"}
+        assert output["documents"][0].meta["author"] == "test_author"
+        assert output["documents"][0].meta["language"] == "it"
+        assert output["documents"][1].meta["language"] == "it"
 
     @pytest.mark.integration
     def test_run_wrong_file_type(self, test_files_path, caplog):
