@@ -1,10 +1,11 @@
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Literal
 from boilerpy3 import extractors
 
 from haystack import Document, component
 from haystack.dataclasses import ByteStream
+from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -27,59 +28,62 @@ class HTMLToDocument:
 
     """
 
+    def __init__(
+        self,
+        extractor_type: Literal[
+            "DefaultExtractor",
+            "ArticleExtractor",
+            "ArticleSentencesExtractor",
+            "LargestContentExtractor",
+            "CanolaExtractor",
+            "KeepEverythingExtractor",
+            "NumWordsRulesExtractor",
+        ] = "DefaultExtractor",
+    ):
+        """
+        Create an HTMLToDocument component.
+
+        :param extractor_type: The type of boilerpy3 extractor to use. Defaults to `DefaultExtractor`.
+          For more information on the different types of extractors,
+          see [boilerpy3 documentation](https://github.com/jmriebold/BoilerPy3?tab=readme-ov-file#extractors).
+        """
+        self.extractor_type = extractor_type
+
     @component.output_types(documents=List[Document])
     def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
         """
         Converts a list of HTML files to Documents.
 
         :param sources: List of HTML file paths or ByteStream objects.
-        :param meta: Optional list of metadata to attach to the Documents.
-        The length of the list must match the number of sources. Defaults to `None`.
-        :return: List of converted Documents.
+        :param meta: Optional metadata to attach to the Documents.
+          This value can be either a list of dictionaries or a single dictionary.
+          If it's a single dictionary, its content is added to the metadata of all produced Documents.
+          If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+          Defaults to `None`.
+        :return: A dictionary containing a list of Document objects under the 'documents' key.
         """
 
         documents = []
+        meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        # Create metadata placeholders if not provided
-        if meta:
-            if len(sources) != len(meta):
-                raise ValueError("The length of the metadata list must match the number of sources.")
-        else:
-            meta = [{}] * len(sources)
+        extractor_class = getattr(extractors, self.extractor_type)
+        extractor = extractor_class(raise_on_failure=False)
 
-        extractor = extractors.ArticleExtractor(raise_on_failure=False)
-
-        for source, metadata in zip(sources, meta):
+        for source, metadata in zip(sources, meta_list):
             try:
-                file_content, extracted_meta = self._extract_content(source)
+                bytestream = get_bytestream_from_source(source=source)
             except Exception as e:
                 logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
                 continue
             try:
+                file_content = bytestream.data.decode("utf-8")
                 text = extractor.get_content(file_content)
-            except Exception as conversion_e:  # Consider specifying the expected exception type(s) here
+            except Exception as conversion_e:
                 logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
                 continue
 
-            # Merge metadata received from ByteStream with supplied metadata
-            if extracted_meta:
-                # Supplied metadata overwrites metadata from ByteStream for overlapping keys.
-                metadata = {**extracted_meta, **metadata}
-            document = Document(content=text, meta=metadata)
+            merged_metadata = {**bytestream.meta, **metadata}
+            document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 
         return {"documents": documents}
-
-    def _extract_content(self, source: Union[str, Path, ByteStream]) -> tuple:
-        """
-        Extracts content from the given data source
-        :param source: The data source to extract content from.
-        :return: The extracted content and metadata.
-        """
-        if isinstance(source, (str, Path)):
-            with open(source) as text_file:
-                return (text_file.read(), None)
-        if isinstance(source, ByteStream):
-            return (source.data.decode("utf-8"), source.metadata)
-
-        raise ValueError(f"Unsupported source type: {type(source)}")

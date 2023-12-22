@@ -1,4 +1,6 @@
+from unittest.mock import MagicMock, patch
 import pytest
+import torch
 
 from haystack import Document, ComponentError
 from haystack.components.rankers.transformers_similarity import TransformersSimilarityRanker
@@ -15,12 +17,19 @@ class TestSimilarityRanker:
                 "top_k": 10,
                 "token": None,
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+                "meta_fields_to_embed": [],
+                "embedding_separator": "\n",
+                "model_kwargs": {},
             },
         }
 
     def test_to_dict_with_custom_init_parameters(self):
         component = TransformersSimilarityRanker(
-            model_name_or_path="my_model", device="cuda", token="my_token", top_k=5
+            model_name_or_path="my_model",
+            device="cuda",
+            token="my_token",
+            top_k=5,
+            model_kwargs={"torch_dtype": "auto"},
         )
         data = component.to_dict()
         assert data == {
@@ -30,8 +39,37 @@ class TestSimilarityRanker:
                 "model_name_or_path": "my_model",
                 "token": None,  # we don't serialize valid tokens,
                 "top_k": 5,
+                "meta_fields_to_embed": [],
+                "embedding_separator": "\n",
+                "model_kwargs": {"torch_dtype": "auto"},
             },
         }
+
+    @patch("torch.sort")
+    def test_embed_meta(self, mocked_sort):
+        mocked_sort.return_value = (None, torch.tensor([0]))
+        embedder = TransformersSimilarityRanker(
+            model_name_or_path="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
+        )
+        embedder.model = MagicMock()
+        embedder.tokenizer = MagicMock()
+
+        documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
+
+        embedder.run(query="test", documents=documents)
+
+        embedder.tokenizer.assert_called_once_with(
+            [
+                ["test", "meta_value 0\ndocument number 0"],
+                ["test", "meta_value 1\ndocument number 1"],
+                ["test", "meta_value 2\ndocument number 2"],
+                ["test", "meta_value 3\ndocument number 3"],
+                ["test", "meta_value 4\ndocument number 4"],
+            ],
+            padding=True,
+            truncation=True,
+            return_tensors="pt",
+        )
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
@@ -104,7 +142,7 @@ class TestSimilarityRanker:
         """
         Test if the component runs with a single document.
         """
-        ranker = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
+        ranker = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", device=None)
         ranker.warm_up()
         docs_before = [Document(content="Berlin")]
         output = ranker.run(query="City in Germany", documents=docs_before)

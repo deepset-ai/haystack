@@ -2,39 +2,43 @@ from unittest.mock import patch
 
 import pytest
 
+from haystack.dataclasses import ByteStream
 from haystack.components.converters.tika import TikaDocumentConverter
 
 
 class TestTikaDocumentConverter:
-    def test_run(self):
+    @patch("haystack.components.converters.tika.tika_parser.from_buffer")
+    def test_run(self, mock_tika_parser):
+        mock_tika_parser.return_value = {"content": "Content of mock source"}
+
         component = TikaDocumentConverter()
-        with patch("haystack.components.converters.tika.tika_parser.from_file") as mock_tika_parser:
-            mock_tika_parser.return_value = {"content": "Content of mock_file.pdf"}
-            documents = component.run(paths=["mock_file.pdf"])["documents"]
+        source = ByteStream(data=b"placeholder data")
+        documents = component.run(sources=[source])["documents"]
 
         assert len(documents) == 1
-        assert documents[0].content == "Content of mock_file.pdf"
+        assert documents[0].content == "Content of mock source"
 
-    def test_run_logs_warning_if_content_empty(self, caplog):
-        component = TikaDocumentConverter()
-        with patch("haystack.components.converters.tika.tika_parser.from_file") as mock_tika_parser:
-            mock_tika_parser.return_value = {"content": ""}
-            with caplog.at_level("WARNING"):
-                component.run(paths=["mock_file.pdf"])
-                assert "Skipping file at 'mock_file.pdf' as Tika was not able to extract any content." in caplog.text
+    def test_run_with_meta(self):
+        bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
 
-    def test_run_logs_error(self, caplog):
+        converter = TikaDocumentConverter()
+        with patch("haystack.components.converters.tika.tika_parser.from_buffer"):
+            output = converter.run(sources=[bytestream], meta=[{"language": "it"}])
+        document = output["documents"][0]
+
+        # check that the metadata from the bytestream is merged with that from the meta parameter
+        assert document.meta == {"author": "test_author", "language": "it"}
+
+    def test_run_nonexistent_file(self, caplog):
         component = TikaDocumentConverter()
-        with patch("haystack.components.converters.tika.tika_parser.from_file") as mock_tika_parser:
-            mock_tika_parser.side_effect = Exception("Some error")
-            with caplog.at_level("ERROR"):
-                component.run(paths=["mock_file.pdf"])
-                assert "Could not convert file at 'mock_file.pdf' to Document. Error: Some error" in caplog.text
+        with caplog.at_level("WARNING"):
+            component.run(sources=["nonexistent.pdf"])
+            assert "Could not read nonexistent.pdf. Skipping it." in caplog.text
 
     @pytest.mark.integration
     def test_run_with_txt_files(self, test_files_path):
         component = TikaDocumentConverter()
-        output = component.run(paths=[test_files_path / "txt" / "doc_1.txt", test_files_path / "txt" / "doc_2.txt"])
+        output = component.run(sources=[test_files_path / "txt" / "doc_1.txt", test_files_path / "txt" / "doc_2.txt"])
         documents = output["documents"]
         assert len(documents) == 2
         assert "Some text for testing.\nTwo lines in here." in documents[0].content
@@ -44,7 +48,7 @@ class TestTikaDocumentConverter:
     def test_run_with_pdf_file(self, test_files_path):
         component = TikaDocumentConverter()
         output = component.run(
-            paths=[test_files_path / "pdf" / "sample_pdf_1.pdf", test_files_path / "pdf" / "sample_pdf_2.pdf"]
+            sources=[test_files_path / "pdf" / "sample_pdf_1.pdf", test_files_path / "pdf" / "sample_pdf_2.pdf"]
         )
         documents = output["documents"]
         assert len(documents) == 2
@@ -62,7 +66,7 @@ class TestTikaDocumentConverter:
     @pytest.mark.integration
     def test_run_with_docx_file(self, test_files_path):
         component = TikaDocumentConverter()
-        output = component.run(paths=[test_files_path / "docx" / "sample_docx.docx"])
+        output = component.run(sources=[test_files_path / "docx" / "sample_docx.docx"])
         documents = output["documents"]
         assert len(documents) == 1
         assert "Sample Docx File" in documents[0].content

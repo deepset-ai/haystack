@@ -4,7 +4,7 @@ from typing import Literal, Any, Dict, List, Optional, Iterable
 import logging
 
 import numpy as np
-import rank_bm25
+from haystack_bm25 import rank_bm25
 from tqdm.auto import tqdm
 
 from haystack import default_from_dict, default_to_dict

@@ -24,7 +24,7 @@ class PromptBuilder:
         """
         Initialize the component with a template string.
 
-        :param template: Jinja2 template string, e.g. "Summarize this document: {documents}\nSummary:"
+        :param template: Jinja2 template string, e.g. "Summarize this document: {documents}\\nSummary:"
         :type template: str
         """
         self._template_string = template

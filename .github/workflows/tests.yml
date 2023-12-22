@@ -8,7 +8,6 @@ on:
       - main
       # release branches have the form v1.9.x
       - "v[0-9].*[0-9].x"
-      - "!haystack/core/**/*.py"
   pull_request:
     types:
       - opened
@@ -18,6 +17,7 @@ on:
     paths:
       - "haystack/**/*.py"
       - "test/**/*.py"
+      - "test/test_requirements.txt"
       - "!haystack/core/**/*.py"
 
 env:
@@ -79,9 +79,32 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
+  install-dependencies:
+    name: Install and cache ${{ matrix.os }} dependencies
+    needs: black
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Haystack and the dependencies needed for tests
+        run: pip install -r test/test_requirements.txt
+
+      - uses: actions/cache@v3
+        with:
+          path: ${{ env.pythonLocation }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+
   unit-tests:
     name: Unit / ${{ matrix.os }}
-    needs: black
+    needs: install-dependencies
     strategy:
       fail-fast: false
       matrix:
@@ -97,8 +120,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Haystack
-        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+      - name: Restore Python dependencies
+        uses: actions/cache/restore@v3
+        with:
+          path: ${{ env.pythonLocation }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Run
         run: pytest -m "not integration" test
@@ -155,8 +181,11 @@ jobs:
           sudo apt update
           sudo apt install ffmpeg  # for local Whisper tests
 
-      - name: Install Haystack
-        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+      - name: Restore Python dependencies
+        uses: actions/cache/restore@v3
+        with:
+          path: ${{ env.pythonLocation }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test
@@ -211,8 +240,11 @@ jobs:
           brew install docker
           colima start
 
-      - name: Install Haystack
-        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+      - name: Restore Python dependencies
+        uses: actions/cache/restore@v3
+        with:
+          path: ${{ env.pythonLocation }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Run Tika
         run: docker run -d -p 9998:9998 apache/tika:2.9.0.0
@@ -262,8 +294,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Haystack
-        run: pip install .[dev,audio] langdetect transformers[torch,sentencepiece]==4.35.2 'sentence-transformers>=2.2.0' pypdf markdown-it-py mdit_plain tika 'azure-ai-formrecognizer>=3.2.0b2'
+      - name: Restore Python dependencies
+        uses: actions/cache/restore@v3
+        with:
+          path: ${{ env.pythonLocation }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test -k 'not tika'

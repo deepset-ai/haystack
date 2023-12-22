@@ -4,6 +4,7 @@ from typing import List, Union, Dict, Any, Optional
 
 from haystack import ComponentError, Document, component, default_to_dict
 from haystack.lazy_imports import LazyImport
+from haystack.utils import get_device
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +38,12 @@ class TransformersSimilarityRanker:
     def __init__(
         self,
         model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-        device: str = "cpu",
+        device: Optional[str] = "cpu",
         token: Union[bool, str, None] = None,
         top_k: int = 10,
+        meta_fields_to_embed: Optional[List[str]] = None,
+        embedding_separator: str = "\n",
+        model_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of TransformersSimilarityRanker.
@@ -51,6 +55,11 @@ class TransformersSimilarityRanker:
             If this parameter is set to `True`, the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) is used.
         :param top_k: The maximum number of Documents to return per query.
+        :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document content.
+        :param embedding_separator: Separator used to concatenate the meta fields to the Document content.
+        :param model_kwargs: Additional keyword arguments passed to `AutoModelForSequenceClassification.from_pretrained`
+            when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
+            see the model's documentation.
         """
         torch_and_transformers_import.check()
 
@@ -62,6 +71,9 @@ class TransformersSimilarityRanker:
         self.token = token
         self.model = None
         self.tokenizer = None
+        self.meta_fields_to_embed = meta_fields_to_embed or []
+        self.embedding_separator = embedding_separator
+        self.model_kwargs = model_kwargs or {}
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -73,9 +85,12 @@ class TransformersSimilarityRanker:
         """
         Warm up the model and tokenizer used for scoring the Documents.
         """
-        if self.model_name_or_path and not self.model:
-            self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name_or_path, token=self.token)
-            self.model = self.model.to(self.device)
+        if self.model is None:
+            if self.device is None:
+                self.device = get_device()
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                self.model_name_or_path, token=self.token, **self.model_kwargs
+            ).to(self.device)
             self.model.eval()
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
@@ -89,6 +104,9 @@ class TransformersSimilarityRanker:
             model_name_or_path=self.model_name_or_path,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             top_k=self.top_k,
+            meta_fields_to_embed=self.meta_fields_to_embed,
+            embedding_separator=self.embedding_separator,
+            model_kwargs=self.model_kwargs,
         )
 
     @component.output_types(documents=List[Document])
@@ -116,7 +134,14 @@ class TransformersSimilarityRanker:
                 f"The component {self.__class__.__name__} wasn't warmed up. Run 'warm_up()' before calling 'run()'."
             )
 
-        query_doc_pairs = [[query, doc.content] for doc in documents]
+        query_doc_pairs = []
+        for doc in documents:
+            meta_values_to_embed = [
+                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
+            ]
+            text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
+            query_doc_pairs.append([query, text_to_embed])
+
         features = self.tokenizer(
             query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
         ).to(  # type: ignore

@@ -22,6 +22,7 @@ class DynamicPromptBuilder:
     from haystack.dataclasses import ChatMessage
     from haystack import Pipeline
 
+
     prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"])
     llm = GPTGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
 
@@ -41,13 +42,13 @@ class DynamicPromptBuilder:
     pipe.connect("doc_producer.documents", "prompt_builder.documents")
     pipe.connect("prompt_builder.prompt", "llm.prompt")
 
-    template = "Here is the document: {{documents[0].content}} \n Answer: {{query}}"
+    template = "Here is the document: {{documents[0].content}} \\n Answer: {{query}}"
     pipe.run(data={"doc_producer": {"doc_input": "Hello world, I live in Berlin"},
                "prompt_builder": {"prompt_source": template,
                                   "template_variables":{"query": "Where does the speaker live?"}}})
 
     >> {'llm': {'replies': ['The speaker lives in Berlin.'],
-    >> 'metadata': [{'model': 'gpt-3.5-turbo-0613',
+    >> 'meta': [{'model': 'gpt-3.5-turbo-0613',
     >> 'index': 0,
     >> 'finish_reason': 'stop',
     >> 'usage': {'prompt_tokens': 28,

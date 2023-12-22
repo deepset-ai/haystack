@@ -3,10 +3,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import math
 import warnings
 import logging
-import os
 
 from haystack import component, default_to_dict, ComponentError, Document, ExtractedAnswer
 from haystack.lazy_imports import LazyImport
+from haystack.utils import get_device
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
@@ -49,6 +49,7 @@ class ExtractiveReader:
         answers_per_seq: Optional[int] = None,
         no_answer: bool = True,
         calibration_factor: float = 0.1,
+        overlap_threshold: Optional[float] = 0.01,
         model_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
@@ -75,6 +76,12 @@ class ExtractiveReader:
         :param no_answer: Whether to return an additional `no answer` with an empty text and a score representing the
             probability that the other top_k answers are incorrect.
         :param calibration_factor: Factor used for calibrating probabilities.
+        :param overlap_threshold: If set this will remove duplicate answers if they have an overlap larger than the
+            supplied threshold. For example, for the answers "in the river in Maine" and "the river" we would remove
+            one of these answers since the second answer has a 100% (1.0) overlap with the first answer.
+            However, for the answers "the river in" and "in Maine" there is only a max overlap percentage of 25% so
+            both of these answers could be kept if this variable is set to 0.24 or lower.
+            If None is provided then all answers are kept.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
             when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
             see the model's documentation.
@@ -93,6 +100,7 @@ class ExtractiveReader:
         self.no_answer = no_answer
         self.calibration_factor = calibration_factor
         self.model_kwargs = model_kwargs or {}
+        self.overlap_threshold = overlap_threshold
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -125,17 +133,8 @@ class ExtractiveReader:
         Loads model and tokenizer
         """
         if self.model is None:
-            if torch.cuda.is_available():
-                self.device = self.device or "cuda:0"
-            elif (
-                hasattr(torch.backends, "mps")
-                and torch.backends.mps.is_available()
-                and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
-            ):
-                self.device = self.device or "mps:0"
-            else:
-                self.device = self.device or "cpu:0"
-
+            if self.device is None:
+                self.device = get_device()
             self.model = AutoModelForQuestionAnswering.from_pretrained(
                 self.model_name_or_path, token=self.token, **self.model_kwargs
             ).to(self.device)
@@ -267,6 +266,7 @@ class ExtractiveReader:
         query_ids: List[int],
         document_ids: List[int],
         no_answer: bool,
+        overlap_threshold: Optional[float],
     ) -> List[List[ExtractedAnswer]]:
         """
         Reconstructs the nested structure that existed before flattening. Also computes a no answer score.
@@ -299,7 +299,8 @@ class ExtractiveReader:
                 answer.query = queries[query_id]
                 current_answers.append(answer)
                 i += 1
-            current_answers = sorted(current_answers, key=lambda answer: answer.score, reverse=True)
+            current_answers = sorted(current_answers, key=lambda ans: ans.score, reverse=True)
+            current_answers = self.deduplicate_by_overlap(current_answers, overlap_threshold=overlap_threshold)
             current_answers = current_answers[:top_k]
             if no_answer:
                 no_answer_score = math.prod(1 - answer.score for answer in current_answers)
@@ -307,12 +308,119 @@ class ExtractiveReader:
                     data=None, query=queries[query_id], meta={}, document=None, score=no_answer_score
                 )
                 current_answers.append(answer_)
-            current_answers = sorted(current_answers, key=lambda answer: answer.score, reverse=True)
+            current_answers = sorted(current_answers, key=lambda ans: ans.score, reverse=True)
             if score_threshold is not None:
                 current_answers = [answer for answer in current_answers if answer.score >= score_threshold]
             nested_answers.append(current_answers)
 
         return nested_answers
+
+    def _calculate_overlap(self, answer1_start: int, answer1_end: int, answer2_start: int, answer2_end: int) -> int:
+        """
+        Calculates the amount of overlap (in number of characters) between two answer offsets.
+
+        Stack overflow post explaining how to calculate overlap between two ranges:
+            https://stackoverflow.com/questions/325933/determine-whether-two-date-ranges-overlap/325964#325964
+        """
+        # Check for overlap: (StartA <= EndB) and (StartB <= EndA)
+        if answer1_start <= answer2_end and answer2_start <= answer1_end:
+            return min(
+                answer1_end - answer1_start,
+                answer1_end - answer2_start,
+                answer2_end - answer1_start,
+                answer2_end - answer2_start,
+            )
+        return 0
+
+    def _should_keep(
+        self, candidate_answer: ExtractedAnswer, current_answers: List[ExtractedAnswer], overlap_threshold: float
+    ) -> bool:
+        """
+        Determine if the answer should be kept based on how much it overlaps with previous answers.
+
+        NOTE: We might want to avoid throwing away answers that only have a few character (or word) overlap:
+            - E.g. The answers "the river in" and "in Maine" from the context "I want to go to the river in Maine."
+            might both want to be kept.
+
+        :param candidate_answer: Candidate answer that will be checked if it should be kept.
+        :param current_answers: Current list of answers that will be kept.
+        :param overlap_threshold: If the overlap between two answers is greater than this threshold then return False.
+        """
+        keep = True
+
+        # If the candidate answer doesn't have a document keep it
+        if not candidate_answer.document:
+            return keep
+
+        for ans in current_answers:
+            # If an answer in current_answers doesn't have a document skip the comparison
+            if not ans.document:
+                continue
+
+            # If offset is missing then keep both
+            if ans.document_offset is None:
+                continue
+
+            # If offset is missing then keep both
+            if candidate_answer.document_offset is None:
+                continue
+
+            # If the answers come from different documents then keep both
+            if candidate_answer.document.id != ans.document.id:
+                continue
+
+            overlap_len = self._calculate_overlap(
+                answer1_start=ans.document_offset.start,
+                answer1_end=ans.document_offset.end,
+                answer2_start=candidate_answer.document_offset.start,
+                answer2_end=candidate_answer.document_offset.end,
+            )
+
+            # If overlap is 0 then keep
+            if overlap_len == 0:
+                continue
+
+            overlap_frac_answer1 = overlap_len / (ans.document_offset.end - ans.document_offset.start)
+            overlap_frac_answer2 = overlap_len / (
+                candidate_answer.document_offset.end - candidate_answer.document_offset.start
+            )
+
+            if overlap_frac_answer1 > overlap_threshold or overlap_frac_answer2 > overlap_threshold:
+                keep = False
+                break
+
+        return keep
+
+    def deduplicate_by_overlap(
+        self, answers: List[ExtractedAnswer], overlap_threshold: Optional[float]
+    ) -> List[ExtractedAnswer]:
+        """
+        This de-duplicates overlapping Extractive Answers from the same document based on how much the spans of the
+        answers overlap.
+
+        :param answers: List of answers to be deduplicated.
+        :param overlap_threshold: If set this will remove duplicate answers if they have an overlap larger than the
+            supplied threshold. For example, for the answers "in the river in Maine" and "the river" we would remove
+            one of these answers since the second answer has a 100% (1.0) overlap with the first answer.
+            However, for the answers "the river in" and "in Maine" there is only a max overlap percentage of 25% so
+            both of these answers could be kept if this variable is set to 0.24 or lower.
+            If None is provided then all answers are kept.
+        """
+        if overlap_threshold is None:
+            return answers
+
+        # Initialize with the first answer and its offsets_in_document
+        deduplicated_answers = [answers[0]]
+
+        # Loop over remaining answers to check for overlaps
+        for ans in answers[1:]:
+            keep = self._should_keep(
+                candidate_answer=ans, current_answers=deduplicated_answers, overlap_threshold=overlap_threshold
+            )
+            if keep:
+                deduplicated_answers.append(ans)
+
+        return deduplicated_answers
 
     @component.output_types(answers=List[ExtractedAnswer])
     def run(
@@ -326,6 +434,7 @@ class ExtractiveReader:
         max_batch_size: Optional[int] = None,
         answers_per_seq: Optional[int] = None,
         no_answer: Optional[bool] = None,
+        overlap_threshold: Optional[float] = None,
     ):
         """
         Locates and extracts answers from the given Documents using the given query.
@@ -334,8 +443,6 @@ class ExtractiveReader:
         :param documents: List of Documents in which you want to search for an answer to the query.
         :param top_k: The maximum number of answers to return.
             An additional answer is returned if no_answer is set to True (default).
-        :param score_threshold:
-        :return: List of ExtractedAnswers sorted by (desc.) answer score.
         :param score_threshold: Returns only answers with the score above this threshold.
         :param max_seq_length: Maximum number of tokens.
             If a sequence exceeds it, the sequence is split.
@@ -345,7 +452,17 @@ class ExtractiveReader:
         :param max_batch_size: Maximum number of samples that are fed through the model at the same time.
         :param answers_per_seq: Number of answer candidates to consider per sequence.
             This is relevant when a Document was split into multiple sequences because of max_seq_length.
+            Default: 20
         :param no_answer: Whether to return no answer scores.
+            Default: True
+        :param overlap_threshold: If set this will remove duplicate answers if they have an overlap larger than the
+            supplied threshold. For example, for the answers "in the river in Maine" and "the river" we would remove
+            one of these answers since the second answer has a 100% (1.0) overlap with the first answer.
+            However, for the answers "the river in" and "in Maine" there is only a max overlap percentage of 25% so
+            both of these answers could be kept if this variable is set to 0.24 or lower.
+            If None is provided then all answers are kept.
+            Default: 0.01
+        :return: List of ExtractedAnswers sorted by (desc.) answer score.
         """
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2
         nested_documents = [documents]
@@ -357,8 +474,9 @@ class ExtractiveReader:
         max_seq_length = max_seq_length or self.max_seq_length
         stride = stride or self.stride
         max_batch_size = max_batch_size or self.max_batch_size
-        answers_per_seq = answers_per_seq or self.answers_per_seq or top_k or 20
+        answers_per_seq = answers_per_seq or self.answers_per_seq or 20
         no_answer = no_answer if no_answer is not None else self.no_answer
+        overlap_threshold = overlap_threshold or self.overlap_threshold
 
         flattened_queries, flattened_documents, query_ids = self._flatten_documents(queries, nested_documents)
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
@@ -394,17 +512,18 @@ class ExtractiveReader:
         )
 
         answers = self._nest_answers(
-            start,
-            end,
-            probabilities,
-            flattened_documents,
-            queries,
-            answers_per_seq,
-            top_k,
-            score_threshold,
-            query_ids,
-            document_ids,
-            no_answer,
+            start=start,
+            end=end,
+            probabilities=probabilities,
+            flattened_documents=flattened_documents,
+            queries=queries,
+            answers_per_seq=answers_per_seq,
+            top_k=top_k,
+            score_threshold=score_threshold,
+            query_ids=query_ids,
+            document_ids=document_ids,
+            no_answer=no_answer,
+            overlap_threshold=overlap_threshold,
         )
 
         return {"answers": answers[0]}  # same temporary batching fix as above

@@ -11,6 +11,7 @@ on:
     paths-ignore:
       - "haystack/**/*.py"
       - "test/**/*.py"
+      - "test/test_requirements.txt"
 
 jobs:
   catch-all:

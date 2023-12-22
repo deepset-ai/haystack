@@ -13,10 +13,25 @@ class TestHTMLToDocument:
         """
         sources = [test_files_path / "html" / "what_is_haystack.html"]
         converter = HTMLToDocument()
-        results = converter.run(sources=sources)
+        results = converter.run(sources=sources, meta={"test": "TEST"})
         docs = results["documents"]
         assert len(docs) == 1
         assert "Haystack" in docs[0].content
+        assert docs[0].meta["test"] == "TEST"
+
+    def test_run_different_extractors(self, test_files_path):
+        """
+        Test if the component runs correctly with different boilrepy3 extractors.
+        """
+        sources = [test_files_path / "html" / "what_is_haystack.html"]
+
+        converter_article = HTMLToDocument(extractor_type="ArticleExtractor")
+        converter_keep_everything = HTMLToDocument(extractor_type="KeepEverythingExtractor")
+
+        doc_article = converter_article.run(sources=sources)["documents"][0]
+        doc_keep_everything = converter_keep_everything.run(sources=sources)["documents"][0]
+
+        assert len(doc_keep_everything.content) > len(doc_article.content)
 
     def test_run_doc_metadata(self, test_files_path):
         """
@@ -30,7 +45,7 @@ class TestHTMLToDocument:
 
         assert len(docs) == 1
         assert "Haystack" in docs[0].content
-        assert docs[0].meta == {"file_name": "what_is_haystack.html"}
+        assert docs[0].meta["file_name"] == "what_is_haystack.html"
 
     def test_incorrect_meta(self, test_files_path):
         """
@@ -49,7 +64,7 @@ class TestHTMLToDocument:
         converter = HTMLToDocument()
         with open(test_files_path / "html" / "what_is_haystack.html", "rb") as file:
             byte_stream = file.read()
-            stream = ByteStream(byte_stream, metadata={"content_type": "text/html", "url": "test_url"})
+            stream = ByteStream(byte_stream, meta={"content_type": "text/html", "url": "test_url"})
 
         results = converter.run(sources=[stream])
         docs = results["documents"]
@@ -67,7 +82,7 @@ class TestHTMLToDocument:
         converter = HTMLToDocument()
         with open(test_files_path / "html" / "what_is_haystack.html", "rb") as file:
             byte_stream = file.read()
-            stream = ByteStream(byte_stream, metadata={"content_type": "text/html", "url": "test_url"})
+            stream = ByteStream(byte_stream, meta={"content_type": "text/html", "url": "test_url"})
 
         metadata = [{"file_name": "what_is_haystack.html"}]
         results = converter.run(sources=[stream], meta=metadata)
@@ -89,7 +104,7 @@ class TestHTMLToDocument:
         with open(test_files_path / "html" / "what_is_haystack.html", "rb") as file:
             byte_stream = file.read()
             # ByteStream has "url" present in metadata
-            stream = ByteStream(byte_stream, metadata={"content_type": "text/html", "url": "test_url_correct"})
+            stream = ByteStream(byte_stream, meta={"content_type": "text/html", "url": "test_url_correct"})
 
         # "url" supplied by the user overwrites value present in metadata
         metadata = [{"file_name": "what_is_haystack.html", "url": "test_url_new"}]

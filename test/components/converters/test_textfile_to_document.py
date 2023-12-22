@@ -14,8 +14,8 @@ class TestTextfileToDocument:
         Test if the component runs correctly.
         """
         bytestream = ByteStream.from_file_path(test_files_path / "txt" / "doc_3.txt")
-        bytestream.metadata["file_path"] = str(test_files_path / "txt" / "doc_3.txt")
-        bytestream.metadata["key"] = "value"
+        bytestream.meta["file_path"] = str(test_files_path / "txt" / "doc_3.txt")
+        bytestream.meta["key"] = "value"
         files = [str(test_files_path / "txt" / "doc_1.txt"), test_files_path / "txt" / "doc_2.txt", bytestream]
         converter = TextFileToDocument()
         output = converter.run(sources=files)
@@ -26,7 +26,7 @@ class TestTextfileToDocument:
         assert "That's yet another file!" in docs[2].content
         assert docs[0].meta["file_path"] == str(files[0])
         assert docs[1].meta["file_path"] == str(files[1])
-        assert docs[2].meta == bytestream.metadata
+        assert docs[2].meta == bytestream.meta
 
     def test_run_error_handling(self, test_files_path, caplog):
         """
@@ -47,12 +47,23 @@ class TestTextfileToDocument:
         Test if the encoding metadata field is used properly
         """
         bytestream = ByteStream.from_file_path(test_files_path / "txt" / "doc_1.txt")
-        bytestream.metadata["key"] = "value"
+        bytestream.meta["key"] = "value"
 
         converter = TextFileToDocument(encoding="utf-16")
         output = converter.run(sources=[bytestream])
         assert "Some text for testing." not in output["documents"][0].content
 
-        bytestream.metadata["encoding"] = "utf-8"
+        bytestream.meta["encoding"] = "utf-8"
         output = converter.run(sources=[bytestream])
         assert "Some text for testing." in output["documents"][0].content
+
+    def test_run_with_meta(self):
+        bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
+
+        converter = TextFileToDocument()
+
+        output = converter.run(sources=[bytestream], meta=[{"language": "it"}])
+        document = output["documents"][0]
+
+        # check that the metadata from the bytestream is merged with that from the meta parameter
+        assert document.meta == {"author": "test_author", "language": "it"}
