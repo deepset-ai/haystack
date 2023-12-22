@@ -1,6 +1,7 @@
 import dataclasses
 import json
 import logging
+import warnings
 from typing import Optional, List, Callable, Dict, Any, Union
 
 from openai import OpenAI, Stream
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class GPTChatGenerator:
+class OpenAIChatGenerator:
     """
     Enables text generation using OpenAI's large language models (LLMs). It supports gpt-4 and gpt-3.5-turbo
     family of models accessed through the chat completions API endpoint.
@@ -27,12 +28,12 @@ class GPTChatGenerator:
     [documentation](https://platform.openai.com/docs/api-reference/chat).
 
     ```python
-    from haystack.components.generators.chat import GPTChatGenerator
+    from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
 
     messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 
-    client = GPTChatGenerator()
+    client = OpenAIChatGenerator()
     response = client.run(messages)
     print(response)
 
@@ -66,7 +67,7 @@ class GPTChatGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates an instance of ChatGPTGenerator. Unless specified otherwise in the `model_name`, this is for OpenAI's
+        Creates an instance of OpenAIChatGenerator. Unless specified otherwise in the `model_name`, this is for OpenAI's
         GPT-3.5 model.
 
         :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
@@ -126,7 +127,7 @@ class GPTChatGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "GPTChatGenerator":
+    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIChatGenerator":
         """
         Deserialize this component from a dictionary.
         :param data: The dictionary representation of this component.
@@ -277,3 +278,14 @@ class GPTChatGenerator:
             logger.warning(
                 "The completion for index %s has been truncated due to the content filter.", message.meta["index"]
             )
+
+
+class GPTChatGenerator(OpenAIChatGenerator):
+    def __init__(self):
+        warnings.warn(
+            "GPTChatGenerator is deprecated and will be removed in the next beta release. "
+            "Please use OpenAIChatGenerator instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__()

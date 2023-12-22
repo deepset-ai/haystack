@@ -2,7 +2,7 @@ import json
 import os
 
 from haystack import Pipeline
-from haystack.components.generators.openai import GPTGenerator
+from haystack.components.generators.openai import OpenAIGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
 import random
 from haystack import component
@@ -83,7 +83,7 @@ prompt_template = """
 # Let's build the pipeline (Make sure to set OPENAI_API_KEY as an environment variable)
 pipeline = Pipeline(max_loops_allowed=5)
 pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-pipeline.add_component(instance=GPTGenerator(), name="llm")
+pipeline.add_component(instance=OpenAIGenerator(), name="llm")
 pipeline.add_component(instance=OutputParser(pydantic_model=CitiesData), name="output_parser")
 
 pipeline.connect("prompt_builder", "llm")

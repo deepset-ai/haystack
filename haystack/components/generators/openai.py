@@ -1,6 +1,7 @@
 import dataclasses
 import json
 import logging
+import warnings
 from typing import Optional, List, Callable, Dict, Any, Union
 
 from openai import OpenAI, Stream
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class GPTGenerator:
+class OpenAIGenerator:
     """
     Enables text generation using OpenAI's large language models (LLMs). It supports gpt-4 and gpt-3.5-turbo
     family of models.
@@ -27,8 +28,8 @@ class GPTGenerator:
     [documentation](https://platform.openai.com/docs/api-reference/chat).
 
     ```python
-    from haystack.components.generators import GPTGenerator
-    client = GPTGenerator()
+    from haystack.components.generators import OpenAIGenerator
+    client = OpenAIGenerator()
     response = client.run("What's Natural Language Processing? Be brief.")
     print(response)
 
@@ -59,7 +60,7 @@ class GPTGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates an instance of GPTGenerator. Unless specified otherwise in the `model_name`, this is for OpenAI's
+        Creates an instance of OpenAIGenerator. Unless specified otherwise in the `model_name`, this is for OpenAI's
         GPT-3.5 model.
 
         :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
@@ -123,7 +124,7 @@ class GPTGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "GPTGenerator":
+    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIGenerator":
         """
         Deserialize this component from a dictionary.
         :param data: The dictionary representation of this component.
@@ -279,3 +280,14 @@ class GPTGenerator:
             logger.warning(
                 "The completion for index %s has been truncated due to the content filter.", message.meta["index"]
             )
+
+
+class GPTGenerator(OpenAIGenerator):
+    def __init__(self):
+        warnings.warn(
+            "GPTGenerator is deprecated and will be removed in the next beta release. "
+            "Please use OpenAIGenerator instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__()

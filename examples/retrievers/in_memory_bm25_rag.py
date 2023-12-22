@@ -4,7 +4,7 @@ from haystack import Document
 from haystack import Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.generators import GPTGenerator
+from haystack.components.generators import OpenAIGenerator
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.document_stores import InMemoryDocumentStore
 
@@ -22,7 +22,7 @@ prompt_template = """
 rag_pipeline = Pipeline()
 rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
 rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-rag_pipeline.add_component(instance=GPTGenerator(api_key=os.environ.get("OPENAI_API_KEY")), name="llm")
+rag_pipeline.add_component(instance=OpenAIGenerator(api_key=os.environ.get("OPENAI_API_KEY")), name="llm")
 rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
 rag_pipeline.connect("retriever", "prompt_builder.documents")
 rag_pipeline.connect("prompt_builder", "llm")
