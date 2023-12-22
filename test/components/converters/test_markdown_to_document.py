@@ -31,17 +31,19 @@ class TestMarkdownToDocument:
             assert "What to build with Haystack" in doc.content
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
 
-    def test_run_with_meta(self):
+    def test_run_with_meta(self, test_files_path):
         bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
 
         converter = MarkdownToDocument()
 
         with patch("haystack.components.converters.markdown.MarkdownIt"):
-            output = converter.run(sources=[bytestream], meta=[{"language": "it"}])
-        document = output["documents"][0]
+            output = converter.run(
+                sources=[bytestream, test_files_path / "markdown" / "sample.md"], meta=[{"language": "it"}]
+            )
 
         # check that the metadata from the bytestream is merged with that from the meta parameter
-        assert document.meta == {"author": "test_author", "language": "it"}
+        assert output["documents"][0].meta == {"author": "test_author", "language": "it"}
+        assert output["documents"][1].meta == {"language": "it"}
 
     @pytest.mark.integration
     def test_run_wrong_file_type(self, test_files_path, caplog):
