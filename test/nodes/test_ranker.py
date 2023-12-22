@@ -236,7 +236,7 @@ def test_ranker(docs, mock_transformer_model, mock_transformer_tokenizer):
 
 @pytest.mark.unit
 def test_init_called_with():
-    with patch("deepset_cloud_custom_nodes.CNSentenceTransformersRanker.__init__") as mock_ranker_init:
+    with patch("haystack.nodes.SentenceTransformersRanker.__init__") as mock_ranker_init:
         mock_ranker_init.return_value = None
         _ = SentenceTransformersRanker(
             model_name_or_path="fake_model", use_gpu=False, model_kwargs={"torch_dtype": torch.float16}
