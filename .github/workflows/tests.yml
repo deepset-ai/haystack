@@ -5,7 +5,7 @@ on:
   workflow_dispatch: # Activate this workflow manually
   push:
     branches:
-      - tika-healtcheck
+      - tika-healthcheck
       - main
       # release branches have the form v1.9.x
       - "v[0-9].*[0-9].x"
