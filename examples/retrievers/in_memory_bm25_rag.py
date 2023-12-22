@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from haystack import Document
 from haystack import Pipeline
@@ -31,7 +32,7 @@ rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
 rag_pipeline.connect("retriever", "answer_builder.documents")
 
 # Draw the pipeline
-rag_pipeline.draw("./rag_pipeline.png")
+rag_pipeline.draw(Path("./rag_pipeline.png"))
 
 # Add Documents
 documents = [
@@ -43,7 +44,7 @@ documents = [
         content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves."
     ),
 ]
-rag_pipeline.get_component("retriever").document_store.write_documents(documents)
+rag_pipeline.get_component("retriever").document_store.write_documents(documents)  # type: ignore
 
 # Run the pipeline
 question = "How many languages are there?"
