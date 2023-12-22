@@ -101,7 +101,7 @@ class SentenceTransformersRanker(BaseRanker):
             pretrained_model_name_or_path=model_name_or_path,
             revision=model_version,
             use_auth_token=use_auth_token,
-            **kwargs
+            **kwargs,
         )
         self.transformer_model.to(str(self.devices[0]))
         self.transformer_tokenizer = AutoTokenizer.from_pretrained(
