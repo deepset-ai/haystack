@@ -14,7 +14,11 @@ with LazyImport(message="Run 'pip install \"torch>=1.13\"'") as torch_import:
 @component
 class TopPSampler:
     """
-    Filters documents using top-p (nucleus) sampling based on their similarity scores' cumulative probability.
+    Implements top-p (nucleus) sampling for document filtering based on cumulative probability scores.
+
+    This class provides functionality to filter a list of documents by selecting those whose scores fall
+    within the top 'p' percent of the cumulative distribution. The method is useful for focusing on high-probability
+    documents while filtering out less relevant ones, based on their assigned scores.
 
     Usage example:
 
@@ -22,11 +26,11 @@ class TopPSampler:
     from haystack import Document
     from haystack.components.samplers import TopPSampler
 
-    sampler = TopPSampler(top_p=0.95)
+    sampler = TopPSampler(top_p=0.95, score_field="similarity_score")
     docs = [
-        Document(text="Berlin", metadata={"similarity_score": -10.6}),
-        Document(text="Belgrade", metadata={"similarity_score": -8.9}),
-        Document(text="Sarajevo", metadata={"similarity_score": -4.6}),
+        Document(text="Berlin", meta={"similarity_score": -10.6}),
+        Document(text="Belgrade", meta={"similarity_score": -8.9}),
+        Document(text="Sarajevo", meta={"similarity_score": -4.6}),
     ]
     output = sampler.run(documents=docs)
     docs = output["documents"]
@@ -39,9 +43,10 @@ class TopPSampler:
         """
         Creates an instance of TopPSampler.
 
-        :param top_p: Cumulative probability threshold (usually between 0.9 and 0.99).
-        :param score_field: Field name in a document's metadata containing the scores. Defaults to the Document score
-        if not provided.
+        :param top_p: Float between 0 and 1 representing the cumulative probability threshold for document selection.
+        Defaults to 1.0, indicating no filtering (all documents are retained).
+        :param score_field: Name of the field in each document's metadata that contains the score. If None, the default
+        document score field is used.
         """
         torch_import.check()
 
@@ -51,12 +56,20 @@ class TopPSampler:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document], top_p: Optional[float] = None):
         """
-        Filter documents based on their similarity scores using top-p sampling.
+        Filters documents using top-p sampling based on their scores.
 
-        :param documents: List of Documents to filter.
-        :param top_p: Cumulative probability threshold. Defaults to the value set during initialization or 1.0
-        if not set.
-        :return: List of filtered Documents.
+        :param documents: List of Document objects to be filtered.
+        :param top_p: Optional; a float to override the cumulative probability threshold set during initialization.
+                 If None, the class's top_p value is used.
+        :return: A dictionary with a key 'documents', containing the list of filtered Document objects.
+
+        This method applies top-p sampling to filter out documents. It selects those documents whose similarity scores
+        are within the top 'p' percent of the cumulative distribution, based on the specified or default top_p value.
+
+        If the specified top_p results in no documents being selected (especially in cases of a low top_p value), the
+        method defaults to returning the document with the highest similarity score.
+
+        :raises ValueError: If the top_p value is not within the range [0, 1].
         """
         if not documents:
             return {"documents": []}
@@ -64,7 +77,7 @@ class TopPSampler:
         top_p = top_p or self.top_p or 1.0  # default to 1.0 if both are None
 
         if not 0 <= top_p <= 1:
-            raise ComponentError(f"top_p must be between 0 and 1. Got {top_p}.")
+            raise ValueError(f"top_p must be between 0 and 1. Got {top_p}.")
 
         similarity_scores = torch.tensor(self._collect_scores(documents), dtype=torch.float32)
 
