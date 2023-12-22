@@ -1,18 +1,14 @@
 import io
 import logging
-import os
-from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-import openai
+from openai import OpenAI
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
-
-
-API_BASE_URL = "https://api.openai.com/v1"
 
 
 @component
@@ -30,8 +26,8 @@ class RemoteWhisperTranscriber:
         self,
         api_key: Optional[str] = None,
         model_name: str = "whisper-1",
+        api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
-        api_base_url: str = API_BASE_URL,
         **kwargs,
     ):
         """
@@ -39,9 +35,9 @@ class RemoteWhisperTranscriber:
 
         :param api_key: OpenAI API key.
         :param model_name: Name of the model to use. It now accepts only `whisper-1`.
-        :param organization: The OpenAI-Organization ID, defaults to `None`. For more details, see OpenAI
-        [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
-        :param api_base: OpenAI base URL, defaults to `"https://api.openai.com/v1"`.
+        :param organization: The Organization ID, defaults to `None`. See
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
+        :param api_base: An optional URL to use as the API base. Defaults to `None`. See OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
         :param kwargs: Other parameters to use for the model. These parameters are all sent directly to the OpenAI
             endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio) for more details.
             Some of the supported parameters:
@@ -62,33 +58,20 @@ class RemoteWhisperTranscriber:
             temperature until certain thresholds are hit.
         """
 
-        # if the user does not provide the API key, check if it is set in the module client
-        api_key = api_key or openai.api_key
-        if api_key is None:
-            try:
-                api_key = os.environ["OPENAI_API_KEY"]
-            except KeyError as e:
-                raise ValueError(
-                    "RemoteWhisperTranscriber expects an OpenAI API key. "
-                    "Set the OPENAI_API_KEY environment variable (recommended) or pass it explicitly."
-                ) from e
-        openai.api_key = api_key
-
         self.organization = organization
         self.model_name = model_name
         self.api_base_url = api_base_url
 
         # Only response_format = "json" is supported
         whisper_params = kwargs
-        if whisper_params.get("response_format") != "json":
+        response_format = whisper_params.get("response_format", "json")
+        if response_format != "json":
             logger.warning(
                 "RemoteWhisperTranscriber only supports 'response_format: json'. This parameter will be overwritten."
             )
         whisper_params["response_format"] = "json"
         self.whisper_params = whisper_params
-
-        if organization is not None:
-            openai.organization = organization
+        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -116,11 +99,7 @@ class RemoteWhisperTranscriber:
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
-        For the supported audio formats, languages, and other parameters, see the
-        [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
-        [github repo](https://github.com/openai/whisper).
-
-        :param audio_files: a list of ByteStream objects to transcribe.
+        :param sources: A list of file paths or ByteStreams containing the audio files to transcribe.
         :returns: a list of Documents, one for each file. The content of the document is the transcription text.
         """
         documents = []
@@ -134,8 +113,8 @@ class RemoteWhisperTranscriber:
             file = io.BytesIO(source.data)
             file.name = str(source.meta["file_path"]) if "file_path" in source.meta else "__fallback__.wav"
 
-            content = openai.Audio.transcribe(file=file, model=self.model_name, **self.whisper_params)
-            doc = Document(content=content["text"], meta=source.meta)
+            content = self.client.audio.transcriptions.create(file=file, model=self.model_name, **self.whisper_params)
+            doc = Document(content=content.text, meta=source.meta)
             documents.append(doc)
 
         return {"documents": documents}

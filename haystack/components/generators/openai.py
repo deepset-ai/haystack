@@ -1,19 +1,16 @@
 import dataclasses
+import json
 import logging
-import os
-from typing import Optional, List, Callable, Dict, Any
+from typing import Optional, List, Callable, Dict, Any, Union
 
-import openai
-from openai.openai_object import OpenAIObject
+from openai import OpenAI, Stream
+from openai.types.chat import ChatCompletionChunk, ChatCompletion
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import StreamingChunk, ChatMessage
 
 logger = logging.getLogger(__name__)
-
-
-API_BASE_URL = "https://api.openai.com/v1"
 
 
 @component
@@ -56,7 +53,8 @@ class GPTGenerator:
         api_key: Optional[str] = None,
         model_name: str = "gpt-3.5-turbo",
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
-        api_base_url: str = API_BASE_URL,
+        api_base_url: Optional[str] = None,
+        organization: Optional[str] = None,
         system_prompt: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
@@ -69,7 +67,9 @@ class GPTGenerator:
         :param model_name: The name of the model to use.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function accepts StreamingChunk as an argument.
-        :param api_base_url: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
+        :param api_base_url: An optional base URL.
+        :param organization: The Organization ID, defaults to `None`. See
+        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param system_prompt: The system prompt to use for text generation. If not provided, the system prompt is
         omitted, and the default system prompt of the model is used.
         :param generation_kwargs: Other parameters to use for the model. These parameters are all sent directly to
@@ -92,25 +92,14 @@ class GPTGenerator:
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         """
-        # if the user does not provide the API key, check if it is set in the module client
-        api_key = api_key or openai.api_key
-        if api_key is None:
-            try:
-                api_key = os.environ["OPENAI_API_KEY"]
-            except KeyError as e:
-                raise ValueError(
-                    "GPTGenerator expects an OpenAI API key. "
-                    "Set the OPENAI_API_KEY environment variable (recommended) or pass it explicitly."
-                ) from e
-        openai.api_key = api_key
-
         self.model_name = model_name
         self.generation_kwargs = generation_kwargs or {}
         self.system_prompt = system_prompt
         self.streaming_callback = streaming_callback
 
         self.api_base_url = api_base_url
-        openai.api_base = api_base_url
+        self.organization = organization
+        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -171,32 +160,34 @@ class GPTGenerator:
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = self._convert_to_openai_format(messages)
 
-        completion = openai.ChatCompletion.create(
+        completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
             model=self.model_name,
-            messages=openai_formatted_messages,
+            messages=openai_formatted_messages,  # type: ignore
             stream=self.streaming_callback is not None,
             **generation_kwargs,
         )
 
-        completions: List[ChatMessage]
-        if self.streaming_callback:
+        completions: List[ChatMessage] = []
+        if isinstance(completion, Stream):
             num_responses = generation_kwargs.pop("n", 1)
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
             chunks: List[StreamingChunk] = []
             chunk = None
+
+            # pylint: disable=not-an-iterable
             for chunk in completion:
-                if chunk.choices:
+                if chunk.choices and self.streaming_callback:
                     chunk_delta: StreamingChunk = self._build_chunk(chunk, chunk.choices[0])
                     chunks.append(chunk_delta)
                     self.streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
             completions = [self._connect_chunks(chunk, chunks)]
-        else:
+        elif isinstance(completion, ChatCompletion):
             completions = [self._build_message(completion, choice) for choice in completion.choices]
 
         # before returning, do post-processing of the completions
-        for completion in completions:
-            self._check_finish_reason(completion)
+        for response in completions:
+            self._check_finish_reason(response)
 
         return {
             "replies": [message.content for message in completions],
@@ -217,7 +208,7 @@ class GPTGenerator:
             openai_formatted_messages.append(filtered_message)
         return openai_formatted_messages
 
-    def _connect_chunks(self, chunk: OpenAIObject, chunks: List[StreamingChunk]) -> ChatMessage:
+    def _connect_chunks(self, chunk: Any, chunks: List[StreamingChunk]) -> ChatMessage:
         """
         Connects the streaming chunks into a single ChatMessage.
         """
@@ -232,27 +223,33 @@ class GPTGenerator:
         )
         return complete_response
 
-    def _build_message(self, completion: OpenAIObject, choice: OpenAIObject) -> ChatMessage:
+    def _build_message(self, completion: Any, choice: Any) -> ChatMessage:
         """
         Converts the response from the OpenAI API to a ChatMessage.
         :param completion: The completion returned by the OpenAI API.
         :param choice: The choice returned by the OpenAI API.
         :return: The ChatMessage.
         """
-        message: OpenAIObject = choice.message
-        content = dict(message.function_call) if choice.finish_reason == "function_call" else message.content
+        message: Any = choice.message
+        # message.content is str but message.function_call is FunctionCall
+        # TODO: update handling for tools, for now enable only for function calls
+        content = (
+            json.dumps({"name": message.function_call.name, "arguments": message.function_call.arguments})
+            if choice.finish_reason == "function_call"
+            else message.content
+        )
         chat_message = ChatMessage.from_assistant(content)
         chat_message.meta.update(
             {
                 "model": completion.model,
                 "index": choice.index,
                 "finish_reason": choice.finish_reason,
-                "usage": dict(completion.usage.items()),
+                "usage": dict(completion.usage),
             }
         )
         return chat_message
 
-    def _build_chunk(self, chunk: OpenAIObject, choice: OpenAIObject) -> StreamingChunk:
+    def _build_chunk(self, chunk: Any, choice: Any) -> StreamingChunk:
         """
         Converts the response from the OpenAI API to a StreamingChunk.
         :param chunk: The chunk returned by the OpenAI API.
@@ -260,12 +257,8 @@ class GPTGenerator:
         :return: The StreamingChunk.
         """
         has_content = bool(hasattr(choice.delta, "content") and choice.delta.content)
-        if has_content:
-            content = choice.delta.content
-        elif hasattr(choice.delta, "function_call"):
-            content = str(choice.delta.function_call)
-        else:
-            content = ""
+        has_function_call = bool(hasattr(choice.delta, "function_call") and choice.delta.function_call)
+        content = choice.delta.content if has_content else choice.delta.function_call if has_function_call else ""
         chunk_message = StreamingChunk(content)
         chunk_message.meta.update({"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason})
         return chunk_message
