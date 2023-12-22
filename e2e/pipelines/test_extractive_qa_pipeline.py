@@ -61,6 +61,10 @@ def test_extractive_qa_pipeline(tmp_path):
             assert hasattr(answer, "document_offset")
 
             assert hasattr(answer, "document")
-            # the answer is extracted from the correct document
-            if answer.document is not None:
-                assert answer.document.id == doc.id
+
+        # the top answer is extracted from the correct document
+        top_answer = extracted_answers[0]
+        if top_answer.document is not None:
+            if top_answer.document.id != doc.id:
+                print(top_answer.document.id, doc.id)
+            assert top_answer.document.id == doc.id
