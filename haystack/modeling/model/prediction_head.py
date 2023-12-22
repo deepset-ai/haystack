@@ -973,7 +973,9 @@ class TextSimilarityHead(PredictionHead):
         passages_per_batch = passage_vectors.shape[0]
         for query_vector in query_vectors:
             query_vector_repeated = query_vector.repeat(passages_per_batch, 1)
-            current_cosine_similarities = nn.functional.cosine_similarity(query_vector_repeated, passage_vectors, dim=1)
+            current_cosine_similarities = nn.functional.cosine_similarity(  # pylint: disable=not-callable
+                query_vector_repeated, passage_vectors, dim=1
+            )
             cosine_similarities.append(current_cosine_similarities)
         return torch.stack(cosine_similarities)
 
