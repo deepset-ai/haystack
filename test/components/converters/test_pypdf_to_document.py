@@ -24,23 +24,24 @@ class TestPyPDFToDocument:
         """
         paths = [test_files_path / "pdf" / "react_paper.pdf"]
         converter = PyPDFToDocument()
-        output = converter.run(sources=paths, meta={"test-key": "test-value"})
+        output = converter.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 1
         assert "ReAct" in docs[0].content
         assert docs[0].meta["test-key"] == "test-value"
 
-    def test_run_with_meta(self):
+    def test_run_with_meta(self, test_files_path):
         bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
 
         converter = PyPDFToDocument()
         with patch("haystack.components.converters.pypdf.PdfReader"):
-            output = converter.run(sources=[bytestream], meta=[{"language": "it"}])
-
-        document = output["documents"][0]
+            output = converter.run(
+                sources=[bytestream, test_files_path / "pdf" / "react_paper.pdf"], meta={"language": "it"}
+            )
 
         # check that the metadata from the bytestream is merged with that from the meta parameter
-        assert document.meta == {"author": "test_author", "language": "it"}
+        assert output["documents"][0].meta == {"author": "test_author", "language": "it"}
+        assert output["documents"][1].meta == {"language": "it"}
 
     def test_run_error_handling(self, test_files_path, caplog):
         """

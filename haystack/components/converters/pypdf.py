@@ -52,7 +52,7 @@ class PyPDFToDocument:
     from haystack.components.converters.pypdf import PyPDFToDocument
 
     converter = PyPDFToDocument()
-    results = converter.run(sources=["sample.pdf"])
+    results = converter.run(sources=["sample.pdf"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
     # 'This is a text from the PDF file.'
