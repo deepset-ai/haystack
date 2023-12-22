@@ -45,7 +45,11 @@ class MarkdownToDocument:
         self.progress_bar = progress_bar
 
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
+    def run(
+        self,
+        sources: List[Union[str, Path, ByteStream]],
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+    ):
         """
         Reads text from a markdown file and executes optional preprocessing steps.
 
