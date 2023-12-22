@@ -18,6 +18,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     from torch.nn import DataParallel
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
+    from haystack.utils.torch_utils import extract_torch_dtype
 
 
 class SentenceTransformersRanker(BaseRanker):
@@ -57,6 +58,7 @@ class SentenceTransformersRanker(BaseRanker):
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
         embed_meta_fields: Optional[List[str]] = None,
+        model_kwargs: Optional[dict] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
@@ -90,8 +92,16 @@ class SentenceTransformersRanker(BaseRanker):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
 
         self.progress_bar = progress_bar
+        self.model_kwargs = model_kwargs
+        kwargs = model_kwargs if model_kwargs else {}
+        torch_dtype = extract_torch_dtype(**kwargs)
+        if torch_dtype:
+            kwargs["torch_dtype"] = torch_dtype
         self.transformer_model = AutoModelForSequenceClassification.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+            pretrained_model_name_or_path=model_name_or_path,
+            revision=model_version,
+            use_auth_token=use_auth_token,
+            **kwargs
         )
         self.transformer_model.to(str(self.devices[0]))
         self.transformer_tokenizer = AutoTokenizer.from_pretrained(
