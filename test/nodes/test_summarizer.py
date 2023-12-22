@@ -90,7 +90,7 @@ def test_summarization_batch_multiple_doc_lists(summarizer):
 
 @pytest.mark.unit
 def test_init_called_with():
-    with patch("deepset_cloud_custom_nodes.CNTransformersSummarizer.__init__") as mock_summarizer_init:
+    with patch("haystack.nodes.TransformersSummarizer.__init__") as mock_summarizer_init:
         mock_summarizer_init.return_value = None
         _ = TransformersSummarizer(
             model_name_or_path="fake_model", use_gpu=False, pipeline_kwargs={"torch_dtype": torch.float16}
