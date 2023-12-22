@@ -8,6 +8,7 @@ from tqdm import tqdm
 from haystack.schema import Document
 from haystack.nodes.summarizer.base import BaseSummarizer
 from haystack.lazy_imports import LazyImport
+from haystack.utils.torch_utils import extract_torch_dtype
 
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,7 @@ class TransformersSummarizer(BaseSummarizer):
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, "torch.device"]]] = None,
+        pipeline_kwargs: Optional[dict] = None,
     ):
         """
         Load a summarization model from transformers.
@@ -107,6 +109,10 @@ class TransformersSummarizer(BaseSummarizer):
         if tokenizer is None:
             tokenizer = model_name_or_path
 
+        kwargs = pipeline_kwargs if pipeline_kwargs else {}
+        torch_dtype = extract_torch_dtype(**kwargs)
+        if torch_dtype:
+            kwargs["torch_dtype"] = torch_dtype
         self.summarizer = pipeline(
             task="summarization",
             model=model_name_or_path,
@@ -114,6 +120,7 @@ class TransformersSummarizer(BaseSummarizer):
             revision=model_version,
             device=self.devices[0],
             use_auth_token=use_auth_token,
+            **kwargs,
         )
         self.max_length = max_length
         self.min_length = min_length
@@ -121,6 +128,7 @@ class TransformersSummarizer(BaseSummarizer):
         self.print_log: Set[str] = set()
         self.batch_size = batch_size
         self.progress_bar = progress_bar
+        self.pipeline_kwargs = pipeline_kwargs
 
     def predict(self, documents: List[Document]) -> List[Document]:
         """
@@ -159,6 +167,7 @@ class TransformersSummarizer(BaseSummarizer):
             return_text=True,
             clean_up_tokenization_spaces=self.clean_up_tokenization_spaces,
             truncation=True,
+            batch_size=self.batch_size,
         )
 
         result: List[Document] = []
