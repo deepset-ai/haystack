@@ -7,7 +7,7 @@ from canals.component.types import Variadic
 from haystack import Pipeline, Document, component, default_to_dict, default_from_dict, DeserializationError
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.components.retrievers import InMemoryBM25Retriever
-from haystack.components.generators import GPTGenerator
+from haystack.components.generators import OpenAIGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.others import Multiplexer
 from haystack.components.routers.conditional_router import ConditionalRouter
@@ -99,7 +99,7 @@ def self_correcting_pipeline():
         ),
         name="prompt_builder",
     )
-    rag_pipeline.add_component(instance=GPTGenerator(), name="llm")
+    rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
     rag_pipeline.add_component(
         instance=ConditionalRouter(
             routes=[
