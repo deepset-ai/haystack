@@ -227,6 +227,7 @@ jobs:
     runs-on: macos-latest
     env:
       HAYSTACK_MPS_ENABLED: false
+
     steps:
       - uses: actions/checkout@v4
 
@@ -247,7 +248,14 @@ jobs:
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Run Tika
-        run: docker run -d -p 9998:9998 apache/tika:2.9.0.0
+        run: |
+          docker run -d -p 9998:9998 \
+          --health-cmd='curl --fail -X GET http://localhost:9998/tika' \
+          --health-interval=5s \
+          --health-retries=5 \
+          --health-timeout=2s \
+          --health-start-period=1m \
+          apache/tika:2.9.0.0
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test
