@@ -18,7 +18,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     from torch.nn import DataParallel
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
-    from haystack.utils.torch_utils import extract_torch_dtype
+    from haystack.utils.torch_utils import resolve_torch_dtype
 
 
 class SentenceTransformersRanker(BaseRanker):
@@ -94,7 +94,7 @@ class SentenceTransformersRanker(BaseRanker):
         self.progress_bar = progress_bar
         self.model_kwargs = model_kwargs
         kwargs = model_kwargs if model_kwargs else {}
-        torch_dtype = extract_torch_dtype(**kwargs)
+        torch_dtype = resolve_torch_dtype(kwargs.get("torch_dtype"))
         if torch_dtype:
             kwargs["torch_dtype"] = torch_dtype
         self.transformer_model = AutoModelForSequenceClassification.from_pretrained(
