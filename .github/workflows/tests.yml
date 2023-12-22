@@ -5,7 +5,7 @@ on:
   workflow_dispatch: # Activate this workflow manually
   push:
     branches:
-      - tika-healthcheck
+      - tika-healtcheck
       - main
       # release branches have the form v1.9.x
       - "v[0-9].*[0-9].x"
@@ -228,11 +228,7 @@ jobs:
     runs-on: macos-latest
     env:
       HAYSTACK_MPS_ENABLED: false
-    services:
-      tika:
-        image: apache/tika:2.9.0.0
-        ports:
-          - 9998:9998
+
     steps:
       - uses: actions/checkout@v4
 
@@ -251,6 +247,16 @@ jobs:
         with:
           path: ${{ env.pythonLocation }}
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Run Tika
+        run: |
+          docker run -d -p 9998:9998 \
+          --health-cmd='curl --fail -X GET http://localhost:9998/tika' \
+          --health-interval=5s \
+          --health-retries=5 \
+          --health-timeout=2s \
+          --health-start-period=1m \
+          apache/tika:2.9.0.0
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test
