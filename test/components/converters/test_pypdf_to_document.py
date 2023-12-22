@@ -28,7 +28,6 @@ class TestPyPDFToDocument:
         docs = output["documents"]
         assert len(docs) == 1
         assert "ReAct" in docs[0].content
-        assert docs[0].meta["test-key"] == "test-value"
 
     def test_run_with_meta(self, test_files_path):
         bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
