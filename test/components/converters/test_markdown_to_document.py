@@ -38,7 +38,7 @@ class TestMarkdownToDocument:
 
         with patch("haystack.components.converters.markdown.MarkdownIt"):
             output = converter.run(
-                sources=[bytestream, test_files_path / "markdown" / "sample.md"], meta=[{"language": "it"}]
+                sources=[bytestream, test_files_path / "markdown" / "sample.md"], meta={"language": "it"}
             )
 
         # check that the metadata from the bytestream is merged with that from the meta parameter
