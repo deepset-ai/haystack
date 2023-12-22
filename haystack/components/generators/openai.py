@@ -296,7 +296,7 @@ class GPTGenerator(OpenAIGenerator):
         warnings.warn(
             "GPTGenerator is deprecated and will be removed in the next beta release. "
             "Please use OpenAIGenerator instead.",
-            DeprecationWarning,
+            UserWarning,
             stacklevel=2,
         )
         super().__init__(

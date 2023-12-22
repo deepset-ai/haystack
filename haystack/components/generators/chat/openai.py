@@ -293,7 +293,7 @@ class GPTChatGenerator(OpenAIChatGenerator):
         warnings.warn(
             "GPTChatGenerator is deprecated and will be removed in the next beta release. "
             "Please use OpenAIChatGenerator instead.",
-            DeprecationWarning,
+            UserWarning,
             stacklevel=2,
         )
         super().__init__(
