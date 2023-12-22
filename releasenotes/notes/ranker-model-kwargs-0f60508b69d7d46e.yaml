@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Add model_kwargs argument to SentenceTransformersRanker to be able to pass through HF transformers loading options
+    
