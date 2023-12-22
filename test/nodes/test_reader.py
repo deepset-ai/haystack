@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+import torch
 from huggingface_hub import snapshot_download
 from haystack.modeling.data_handler.inputs import QAInput, Question
 
@@ -514,3 +515,13 @@ def test_farmreader_predict_batch_preprocessor_batching(mocked_qa_inferencer, do
 
     # We expect 5 calls to the QAInferencer (2 queries * 5 docs / 2 batch_size)
     assert reader.inferencer.inference_from_objects.call_count == 5
+
+
+@pytest.mark.unit
+def test_farmreader_init_called_with() -> None:
+    with patch("haystack.nodes.FARMReader.__init__") as mock_ranker_init:
+        mock_ranker_init.return_value = None
+        _ = FARMReader(model_name_or_path="fake_model", use_gpu=False, model_kwargs={"torch_dtype": torch.float16})
+        mock_ranker_init.assert_called_once_with(
+            model_name_or_path="fake_model", use_gpu=False, model_kwargs={"torch_dtype": torch.float16}
+        )
