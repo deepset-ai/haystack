@@ -1,3 +1,4 @@
+import copy
 import dataclasses
 import json
 import logging
@@ -213,7 +214,40 @@ class OpenAIChatGenerator:
         :param chunk: The last chunk returned by the OpenAI API.
         :param chunks: The list of all chunks returned by the OpenAI API.
         """
-        complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
+        is_tools_call = bool(chunks[0].meta.get("tool_calls"))
+        is_function_call = bool(chunks[0].meta.get("function_call"))
+        # if it's a tool call or function call, we need to build the payload dict from all the chunks
+        if is_tools_call or is_function_call:
+            tools_len = 1 if is_function_call else len(chunks[0].meta.get("tool_calls", []))
+            # don't change this approach of building payload dicts, otherwise mypy will complain
+            p_def: Dict[str, Any] = {
+                "index": 0,
+                "id": "",
+                "function": {"arguments": "", "name": ""},
+                "type": "function",
+            }
+            payloads = [copy.deepcopy(p_def) for _ in range(tools_len)]
+            for chunk_payload in chunks:
+                if is_tools_call:
+                    deltas = chunk_payload.meta.get("tool_calls") or []
+                else:
+                    deltas = [chunk_payload.meta["function_call"]] if chunk_payload.meta.get("function_call") else []
+
+                # deltas is a list of ChoiceDeltaToolCall or ChoiceDeltaFunctionCall
+                for i, delta in enumerate(deltas):
+                    payload = payloads[i]
+                    if is_tools_call:
+                        payload["id"] = delta.id or payload["id"]
+                        payload["type"] = delta.type or payload["type"]
+                        if delta.function:
+                            payload["function"]["name"] += delta.function.name or ""
+                            payload["function"]["arguments"] += delta.function.arguments or ""
+                    elif is_function_call:
+                        payload["function"]["name"] += delta.name or ""
+                        payload["function"]["arguments"] += delta.arguments or ""
+            complete_response = ChatMessage.from_assistant(json.dumps(payloads))
+        else:
+            complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
         complete_response.meta.update(
             {
                 "model": chunk.model,
@@ -262,11 +296,20 @@ class OpenAIChatGenerator:
         :param choice: The choice returned by the OpenAI API.
         :return: The StreamingChunk.
         """
-        has_content = bool(hasattr(choice.delta, "content") and choice.delta.content)
-        has_function_call = bool(hasattr(choice.delta, "function_call") and choice.delta.function_call)
-        content = choice.delta.content if has_content else choice.delta.function_call if has_function_call else ""
-        chunk_message = StreamingChunk(str(content) or "")
-        chunk_message.meta.update({"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason})
+        # we stream the content of the chunk if it's not a tool or function call
+        content = choice.delta.content or ""
+        chunk_message = StreamingChunk(content)
+        # but save the tool calls and function call in the meta if they are present
+        # and then connect the chunks in the _connect_chunks method
+        chunk_message.meta.update(
+            {
+                "model": chunk.model,
+                "index": choice.index,
+                "tool_calls": choice.delta.tool_calls,
+                "function_call": choice.delta.function_call,
+                "finish_reason": choice.finish_reason,
+            }
+        )
         return chunk_message
 
     def _check_finish_reason(self, message: ChatMessage) -> None:
