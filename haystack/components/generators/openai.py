@@ -178,7 +178,7 @@ class OpenAIGenerator:
             # pylint: disable=not-an-iterable
             for chunk in completion:
                 if chunk.choices and self.streaming_callback:
-                    chunk_delta: StreamingChunk = self._build_chunk(chunk, chunk.choices[0])
+                    chunk_delta: StreamingChunk = self._build_chunk(chunk)
                     chunks.append(chunk_delta)
                     self.streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
             completions = [self._connect_chunks(chunk, chunks)]
@@ -243,7 +243,7 @@ class OpenAIGenerator:
         )
         return chat_message
 
-    def _build_chunk(self, chunk: Any, choice: Any) -> StreamingChunk:
+    def _build_chunk(self, chunk: Any) -> StreamingChunk:
         """
         Converts the response from the OpenAI API to a StreamingChunk.
         :param chunk: The chunk returned by the OpenAI API.
@@ -252,6 +252,7 @@ class OpenAIGenerator:
         """
         # function or tools calls are not going to happen in non-chat generation
         # as users can not send ChatMessage with function or tools calls
+        choice = chunk.choices[0]
         content = choice.delta.content or ""
         chunk_message = StreamingChunk(content)
         chunk_message.meta.update({"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason})
