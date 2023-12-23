@@ -4,8 +4,10 @@ import logging
 import warnings
 from typing import Optional, List, Callable, Dict, Any, Union
 
-from openai import OpenAI, Stream
-from openai.types.chat import ChatCompletionChunk, ChatCompletion
+from openai import OpenAI, Stream  # type: ignore
+from openai.types.chat import ChatCompletionChunk, ChatCompletion, ChatCompletionMessage
+from openai.types.chat.chat_completion import Choice
+from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
@@ -222,33 +224,38 @@ class OpenAIChatGenerator:
         )
         return complete_response
 
-    def _build_message(self, completion: Any, choice: Any) -> ChatMessage:
+    def _build_message(self, completion: ChatCompletion, choice: Choice) -> ChatMessage:
         """
         Converts the non-streaming response from the OpenAI API to a ChatMessage.
         :param completion: The completion returned by the OpenAI API.
         :param choice: The choice returned by the OpenAI API.
         :return: The ChatMessage.
         """
-        message: Any = choice.message
-        # message.content is str but message.function_call is FunctionCall
-        # TODO: update handling for tools, for now enable only for function calls
-        content = (
-            json.dumps({"name": message.function_call.name, "arguments": message.function_call.arguments})
-            if choice.finish_reason == "function_call"
-            else message.content
-        )
+        message: ChatCompletionMessage = choice.message
+        content = message.content or ""
+        if message.function_call:
+            # here we mimic the tools format response so that if user passes deprecated `functions` parameter
+            # she'll get the same output as if new `tools` parameter was passed
+            # use pydantic model dump to serialize the function call
+            content = json.dumps(
+                [{"function": message.function_call.model_dump(), "type": "function", "id": completion.id}]
+            )
+        elif message.tool_calls:
+            # new `tools` parameter was passed, use pydantic model dump to serialize the tool calls
+            content = json.dumps([tc.model_dump() for tc in message.tool_calls])
+
         chat_message = ChatMessage.from_assistant(content)
         chat_message.meta.update(
             {
                 "model": completion.model,
                 "index": choice.index,
                 "finish_reason": choice.finish_reason,
-                "usage": dict(completion.usage),
+                "usage": dict(completion.usage or {}),
             }
         )
         return chat_message
 
-    def _build_chunk(self, chunk: Any, choice: Any) -> StreamingChunk:
+    def _build_chunk(self, chunk: ChatCompletionChunk, choice: ChunkChoice) -> StreamingChunk:
         """
         Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
         :param chunk: The chunk returned by the OpenAI API.
@@ -258,7 +265,7 @@ class OpenAIChatGenerator:
         has_content = bool(hasattr(choice.delta, "content") and choice.delta.content)
         has_function_call = bool(hasattr(choice.delta, "function_call") and choice.delta.function_call)
         content = choice.delta.content if has_content else choice.delta.function_call if has_function_call else ""
-        chunk_message = StreamingChunk(content)
+        chunk_message = StreamingChunk(str(content) or "")
         chunk_message.meta.update({"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason})
         return chunk_message
 
