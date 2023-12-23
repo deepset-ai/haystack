@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Update OpenAIChatGenerator to handle both tools and functions calling
