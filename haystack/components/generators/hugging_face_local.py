@@ -67,7 +67,7 @@ class HuggingFaceLocalGenerator:
     ```python
     from haystack.components.generators import HuggingFaceLocalGenerator
 
-    generator = HuggingFaceLocalGenerator(model_name_or_path="google/flan-t5-large",
+    generator = HuggingFaceLocalGenerator(model="google/flan-t5-large",
                                           task="text2text-generation",
                                           generation_kwargs={
                                             "max_new_tokens": 100,
@@ -81,7 +81,7 @@ class HuggingFaceLocalGenerator:
 
     def __init__(
         self,
-        model_name_or_path: str = "google/flan-t5-base",
+        model: str = "google/flan-t5-base",
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
         device: Optional[str] = None,
         token: Optional[Union[str, bool]] = None,
@@ -90,7 +90,7 @@ class HuggingFaceLocalGenerator:
         stop_words: Optional[List[str]] = None,
     ):
         """
-        :param model_name_or_path: The name or path of a Hugging Face model for text generation,
+        :param model: The name or path of a Hugging Face model for text generation,
             for example, "google/flan-t5-large".
             If the model is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
         :param task: The task for the Hugging Face pipeline.
@@ -114,7 +114,7 @@ class HuggingFaceLocalGenerator:
         :param huggingface_pipeline_kwargs: Dictionary containing keyword arguments used to initialize the
             Hugging Face pipeline for text generation.
             These keyword arguments provide fine-grained control over the Hugging Face pipeline.
-            In case of duplication, these kwargs override `model_name_or_path`, `task`, `device`, and `token` init parameters.
+            In case of duplication, these kwargs override `model`, `task`, `device`, and `token` init parameters.
             See Hugging Face's [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task)
             for more information on the available kwargs.
             In this dictionary, you can also include `model_kwargs` to specify the kwargs
@@ -132,7 +132,7 @@ class HuggingFaceLocalGenerator:
 
         # check if the huggingface_pipeline_kwargs contain the essential parameters
         # otherwise, populate them with values from other init parameters
-        huggingface_pipeline_kwargs.setdefault("model", model_name_or_path)
+        huggingface_pipeline_kwargs.setdefault("model", model)
         huggingface_pipeline_kwargs.setdefault("token", token)
         if (
             device is not None

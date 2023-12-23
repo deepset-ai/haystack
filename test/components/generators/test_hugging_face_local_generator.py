@@ -23,7 +23,7 @@ class TestHuggingFaceLocalGenerator:
 
     def test_init_custom_token(self):
         generator = HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-base", task="text2text-generation", token="test-token"
+            model="google/flan-t5-base", task="text2text-generation", token="test-token"
         )
 
         assert generator.huggingface_pipeline_kwargs == {
@@ -33,9 +33,7 @@ class TestHuggingFaceLocalGenerator:
         }
 
     def test_init_custom_device(self):
-        generator = HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-base", task="text2text-generation", device="cuda:0"
-        )
+        generator = HuggingFaceLocalGenerator(model="google/flan-t5-base", task="text2text-generation", device="cuda:0")
 
         assert generator.huggingface_pipeline_kwargs == {
             "model": "google/flan-t5-base",
@@ -65,7 +63,7 @@ class TestHuggingFaceLocalGenerator:
     @patch("haystack.components.generators.hugging_face_local.model_info")
     def test_init_task_inferred_from_model_name(self, model_info_mock):
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
-        generator = HuggingFaceLocalGenerator(model_name_or_path="google/flan-t5-base")
+        generator = HuggingFaceLocalGenerator(model="google/flan-t5-base")
 
         assert generator.huggingface_pipeline_kwargs == {
             "model": "google/flan-t5-base",
@@ -91,7 +89,7 @@ class TestHuggingFaceLocalGenerator:
         }
 
         generator = HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-base",
+            model="google/flan-t5-base",
             task="text2text-generation",
             device="cpu",
             token="test-token",
@@ -147,7 +145,7 @@ class TestHuggingFaceLocalGenerator:
 
     def test_to_dict_with_parameters(self):
         component = HuggingFaceLocalGenerator(
-            model_name_or_path="gpt2",
+            model="gpt2",
             task="text-generation",
             device="cuda:0",
             token="test-token",
@@ -173,7 +171,7 @@ class TestHuggingFaceLocalGenerator:
     @patch("haystack.components.generators.hugging_face_local.pipeline")
     def test_warm_up(self, pipeline_mock):
         generator = HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-base", task="text2text-generation", token="test-token"
+            model="google/flan-t5-base", task="text2text-generation", token="test-token"
         )
         pipeline_mock.assert_not_called()
 
@@ -186,7 +184,7 @@ class TestHuggingFaceLocalGenerator:
     @patch("haystack.components.generators.hugging_face_local.pipeline")
     def test_warm_up_doesn_reload(self, pipeline_mock):
         generator = HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-base", task="text2text-generation", token="test-token"
+            model="google/flan-t5-base", task="text2text-generation", token="test-token"
         )
 
         pipeline_mock.assert_not_called()
@@ -198,9 +196,7 @@ class TestHuggingFaceLocalGenerator:
 
     def test_run(self):
         generator = HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-base",
-            task="text2text-generation",
-            generation_kwargs={"max_new_tokens": 100},
+            model="google/flan-t5-base", task="text2text-generation", generation_kwargs={"max_new_tokens": 100}
         )
 
         # create the pipeline object (simulating the warm_up)
@@ -216,9 +212,7 @@ class TestHuggingFaceLocalGenerator:
     @patch("haystack.components.generators.hugging_face_local.pipeline")
     def test_run_empty_prompt(self, pipeline_mock):
         generator = HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-base",
-            task="text2text-generation",
-            generation_kwargs={"max_new_tokens": 100},
+            model="google/flan-t5-base", task="text2text-generation", generation_kwargs={"max_new_tokens": 100}
         )
 
         generator.warm_up()
@@ -229,9 +223,7 @@ class TestHuggingFaceLocalGenerator:
 
     def test_run_with_generation_kwargs(self):
         generator = HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-base",
-            task="text2text-generation",
-            generation_kwargs={"max_new_tokens": 100},
+            model="google/flan-t5-base", task="text2text-generation", generation_kwargs={"max_new_tokens": 100}
         )
 
         # create the pipeline object (simulating the warm_up)
@@ -245,9 +237,7 @@ class TestHuggingFaceLocalGenerator:
 
     def test_run_fails_without_warm_up(self):
         generator = HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-base",
-            task="text2text-generation",
-            generation_kwargs={"max_new_tokens": 100},
+            model="google/flan-t5-base", task="text2text-generation", generation_kwargs={"max_new_tokens": 100}
         )
 
         with pytest.raises(RuntimeError, match="The generation model has not been loaded."):
@@ -300,7 +290,7 @@ class TestHuggingFaceLocalGenerator:
         if `stop_words` is provided
         """
         generator = HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-base", task="text2text-generation", stop_words=["coca", "cola"]
+            model="google/flan-t5-base", task="text2text-generation", stop_words=["coca", "cola"]
         )
 
         generator.warm_up()
@@ -316,7 +306,7 @@ class TestHuggingFaceLocalGenerator:
         (does not test stopping text generation)
         """
         generator = HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-base", task="text2text-generation", stop_words=["world"]
+            model="google/flan-t5-base", task="text2text-generation", stop_words=["world"]
         )
 
         # create the pipeline object (simulating the warm_up)

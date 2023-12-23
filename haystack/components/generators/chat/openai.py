@@ -59,19 +59,19 @@ class GPTChatGenerator:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_name: str = "gpt-3.5-turbo",
+        model: str = "gpt-3.5-turbo",
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates an instance of ChatGPTGenerator. Unless specified otherwise in the `model_name`, this is for OpenAI's
+        Creates an instance of ChatGPTGenerator. Unless specified otherwise in the `model`, this is for OpenAI's
         GPT-3.5 model.
 
         :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
             environment variable OPENAI_API_KEY (recommended).
-        :param model_name: The name of the model to use.
+        :param model: The name of the model to use.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function accepts StreamingChunk as an argument.
         :param api_base_url: An optional base URL.
@@ -97,7 +97,7 @@ class GPTChatGenerator:
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         """
-        self.model_name = model_name
+        self.model = model
         self.generation_kwargs = generation_kwargs or {}
         self.streaming_callback = streaming_callback
         self.api_base_url = api_base_url
@@ -108,7 +108,7 @@ class GPTChatGenerator:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": self.model_name}
+        return {"model": self.model}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -118,7 +118,7 @@ class GPTChatGenerator:
         callback_name = serialize_callback_handler(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
-            model_name=self.model_name,
+            model=self.model,
             streaming_callback=callback_name,
             api_base_url=self.api_base_url,
             organization=self.organization,
@@ -158,7 +158,7 @@ class GPTChatGenerator:
         openai_formatted_messages = self._convert_to_openai_format(messages)
 
         chat_completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
-            model=self.model_name,
+            model=self.model,
             messages=openai_formatted_messages,  # type: ignore # openai expects list of specific message types
             stream=self.streaming_callback is not None,
             **generation_kwargs,
