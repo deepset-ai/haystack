@@ -155,8 +155,16 @@ class JoinDocuments(JoinNode):
         K = 61
 
         scores_map = defaultdict(int)
-        for result in results:
+        weights = self.weights if self.weights else [1 / len(results)] * len(results)
+
+        # Calculate weighted reciprocal rank fusion score
+        for result, weight in zip(results, weights):
             for rank, doc in enumerate(result):
-                scores_map[doc.id] += 1 / (K + rank)
+                scores_map[doc.id] += (weight * len(results)) / (K + rank)
+
+        # Normalize scores. Note: len(results) / K is the maximum possible score,
+        # achieved by being ranked first in all results with non-zero weight.
+        for id in scores_map:
+            scores_map[id] = scores_map[id] / (len(results) / K)
 
         return scores_map

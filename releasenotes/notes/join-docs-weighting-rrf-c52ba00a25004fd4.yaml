@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Make `JoinDocuments` sensitive to `weights` parameter when
+    `join_mode` is reciprocal rank fusion. Add score normalization
+    for `JoinDocuments` when `join_mode` is reciprocal rank fusion.

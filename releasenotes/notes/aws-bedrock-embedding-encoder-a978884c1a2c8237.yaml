@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Adding Bedrock Embeddings Encoder to use as a retriever.
