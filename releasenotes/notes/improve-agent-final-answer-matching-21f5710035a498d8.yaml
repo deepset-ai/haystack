@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed the bug that caused the agent to discard part of final answers if they were distributed across multiple lines.

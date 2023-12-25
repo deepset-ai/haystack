@@ -28,7 +28,6 @@ from haystack.document_stores import (
 from haystack.nodes import (
     BaseReader,
     BaseRetriever,
-    BaseGenerator,
     BaseSummarizer,
     BaseTranslator,
     DenseRetriever,
@@ -319,11 +318,6 @@ class MockBaseRetriever(MockRetriever):
 
     def embed_documents(self, documents: List[Document]):
         return np.full((len(documents), 768), 0.5)
-
-
-class MockSeq2SegGenerator(BaseGenerator):
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int], max_tokens: Optional[int]) -> Dict:
-        pass
 
 
 class MockSummarizer(BaseSummarizer):
@@ -647,6 +641,15 @@ def get_retriever(retriever_type, document_store):
             model_format="sentence_transformers",
             use_gpu=False,
         )
+    elif retriever_type == "embedding_sbert_instructions":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="sentence-transformers/msmarco-distilbert-dot-v5",
+            model_format="sentence_transformers",
+            query_prompt="Embed this query for retrieval:",
+            passage_prompt="Embed this passage for retrieval:",
+            use_gpu=False,
+        )
     elif retriever_type == "retribert":
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="yjernite/retribert-base-uncased", use_gpu=False
@@ -885,11 +888,6 @@ def samples_path():
 @pytest.fixture
 def sample_txt_file_paths_list(samples_path):
     return list((samples_path / "docs").glob("*.txt"))
-
-
-@pytest.fixture
-def preview_samples_path():
-    return Path(__file__).parent / "preview" / "test_files"
 
 
 @pytest.fixture(autouse=True)

@@ -149,6 +149,7 @@ def test_extract_final_answer():
         "Final Answer:42",
         "Final Answer:   ",
         "Final Answer:    The answer is 99    ",
+        "Final Answer:42 should be the answer\n\nBut it's not the only one\n\n\n\n the answer is 1948",
     ]
     expected_answers = [
         "Florida",
@@ -159,10 +160,11 @@ def test_extract_final_answer():
         "42",
         "",
         "The answer is 99",
+        "42 should be the answer\n\nBut it's not the only one\n\n\n\n the answer is 1948",
     ]
 
     for example, expected_answer in zip(match_examples, expected_answers):
-        agent_step = AgentStep(prompt_node_response=example, final_answer_pattern=r"Final Answer\s*:\s*(.*)")
+        agent_step = AgentStep(prompt_node_response=example, final_answer_pattern=r"(?s)Final Answer\s*:\s*(.*)")
         final_answer = agent_step.final_answer(query="irrelevant")
         assert final_answer["answers"][0].answer == expected_answer
 

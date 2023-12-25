@@ -39,7 +39,7 @@ from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils.deepsetcloud import DeepsetCloud
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError, DocumentStoreError
-from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
+from haystack.nodes import Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
@@ -210,7 +210,7 @@ class Pipeline:
                     params["api_key"] = api_key
                 component_config["params"] = params
 
-        del pipeline_config["name"]  # Would fail validation otherwise
+        pipeline_config.pop("name", None)  # Would fail validation otherwise
         pipeline = cls.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
@@ -963,7 +963,7 @@ class Pipeline:
             from beir.datasets.data_loader import GenericDataLoader
             from beir.retrieval.evaluation import EvaluateRetrieval
         except ModuleNotFoundError as e:
-            raise HaystackError("beir is not installed. Please run `pip install beir`") from e
+            raise HaystackError("beir is not installed. Please run 'pip install beir'") from e
 
         url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{dataset}.zip"
         data_path = util.download_and_unzip(url, dataset_dir)
@@ -2126,7 +2126,7 @@ class Pipeline:
         except ImportError:
             raise ImportError(
                 "Could not import `pygraphviz`. Please install via: \n"
-                "pip install pygraphviz\n"
+                "'pip install pygraphviz'\n"
                 "(You might need to run this first: apt install libgraphviz-dev graphviz )"
             )
 
@@ -2528,9 +2528,6 @@ class Pipeline:
         pipeline_types = {
             # QuestionGenerationPipeline has only one component, which is a QuestionGenerator
             "QuestionGenerationPipeline": lambda x: all(isinstance(x, QuestionGenerator) for x in x.values()),
-            # GenerativeQAPipeline has at least BaseGenerator and BaseRetriever components
-            "GenerativeQAPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
-            and any(isinstance(x, BaseGenerator) for x in x.values()),
             # FAQPipeline has at least one Docs2Answers component
             "FAQPipeline": lambda x: any(isinstance(x, Docs2Answers) for x in x.values()),
             # ExtractiveQAPipeline has at least one BaseRetriever component and one BaseReader component

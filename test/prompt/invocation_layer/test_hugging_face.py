@@ -59,6 +59,9 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
     assert kwargs["task"] == "text2text-generation"
     assert kwargs["model"] == "google/flan-t5-base"
 
+    # use_auth_token is no longer used in HuggingFace pipelines and should never be passed
+    assert "use_auth_token" not in kwargs
+
     # no matter what kwargs we pass or don't pass, there are always 14 predefined kwargs passed to the pipeline
     assert len(kwargs) == 14
 
@@ -76,7 +79,7 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
         "pipeline_class",
         "use_fast",
         "revision",
-        "use_auth_token",
+        "token",
         "trust_remote_code",
     ]
 

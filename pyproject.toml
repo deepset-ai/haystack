@@ -49,7 +49,7 @@ dependencies = [
   "requests",
   "httpx",
   "pydantic<2",
-  "transformers==4.34.1",
+  "transformers==4.35.2",
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.3.0", # TF-IDF and metrics
@@ -85,23 +85,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-preview = [
-  "canals==0.9.0",
-  "requests",
-  "pandas",
-  "rank_bm25",
-  "tqdm",
-  "tenacity",
-  "lazy-imports",
-  "posthog",  # telemetry
-
-  "Jinja2",
-  "openai<1.0.0",
-  "pyyaml",
-  "more-itertools",  # DocumentSplitter
-]
 inference = [
-  "transformers[torch,sentencepiece]==4.34.1",
+  "transformers[torch,sentencepiece]==4.35.2",
   "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "huggingface-hub>=0.5.0",
 ]
@@ -145,19 +130,18 @@ pinecone = [
 opensearch = [
   "opensearch-py>=2",
 ]
+mongodb = [
+  "pymongo>=4.6",
+]
 docstores = [
-  "farm-haystack[elasticsearch,faiss,weaviate,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss,weaviate,pinecone,opensearch,mongodb]",
 ]
 docstores-gpu = [
-  "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch,mongodb]",
 ]
 aws = [
-  "boto3",
-  # Costraint botocore to avoid taking to much time to resolve the dependency tree.
-  # boto3 used to constraint it at this version more than a year ago. To avoid breaking
-  # people using old versions we use a similar constraint without upper bound.
-  # https://github.com/boto/boto3/blob/dae73bef223abbedfa7317a783070831febc0c90/setup.py#L16
-  "botocore>=1.27",
+  # first version to support Amazon Bedrock
+  "boto3>=1.28.57",
 ]
 crawler = [
   "selenium>=4.11.0"
@@ -169,6 +153,7 @@ preprocessing = [
 file-conversion = [
   "azure-ai-formrecognizer>=3.2.0b2",  # Microsoft Azure's Form Recognizer service (text and table exctrator)
   "python-docx",
+  "python-pptx",
   "tika",  # Apache Tika (text & metadata extractor)
   "beautifulsoup4",
   "markdown",
@@ -223,7 +208,6 @@ dev = [
   "pylint",
   "farm-haystack[formatting]",
   # Documentation
-  "pydoc-markdown",
   "toml",
   "reno",
   # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.
@@ -238,12 +222,16 @@ formatting = [
   "black[jupyter]~=23.0",
 ]
 
+audio = [
+  "openai-whisper>=20231106"
+]
+
 all = [
-  "farm-haystack[inference,docstores,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview]",
+  "farm-haystack[inference,docstores,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,audio]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[inference,docstores-gpu,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,preview]",
+  "farm-haystack[inference,docstores-gpu,crawler,preprocessing,file-conversion,pdf,ocr,metrics,aws,audio]",
 ]
 
 [project.scripts]
@@ -279,7 +267,7 @@ line-length = 120
 skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
 
 [tool.codespell]
-ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge"
+ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist"
 quiet-level = 3
 skip = "test/nodes/*,test/others/*,test/samples/*"
 
@@ -425,7 +413,6 @@ max-complexity = 28
 
 [tool.ruff.per-file-ignores]
 "examples/basic_qa_pipeline.py" = ["C416"]
-"haystack/preview/testing/document_store.py" = ["C416", "F821"]
 "haystack/telemetry.py" = ["F821"]
 
 [tool.ruff.pylint]

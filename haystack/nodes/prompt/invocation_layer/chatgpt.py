@@ -33,6 +33,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         model_name_or_path: str = "gpt-3.5-turbo",
         max_length: Optional[int] = 500,
         api_base: str = "https://api.openai.com/v1",
+        timeout: Optional[float] = None,
         **kwargs,
     ):
         """
@@ -48,7 +49,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         sensitive content using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation)
         if set. If the input or answers are flagged, an empty list is returned in place of the answers.
         """
-        super().__init__(api_key, model_name_or_path, max_length, api_base=api_base, **kwargs)
+        super().__init__(api_key, model_name_or_path, max_length, api_base=api_base, timeout=timeout, **kwargs)
 
     def _extract_token(self, event_data: Dict[str, Any]):
         delta = event_data["choices"][0]["delta"]
@@ -192,12 +193,17 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         extra_payload = {"messages": messages}
         payload = {**base_payload, **extra_payload}
         if not stream:
-            response = openai_request(url=self.url, headers=self.headers, payload=payload)
+            response = openai_request(url=self.url, headers=self.headers, payload=payload, timeout=self.timeout)
             _check_openai_finish_reason(result=response, payload=payload)
             assistant_response = [choice["message"]["content"].strip() for choice in response["choices"]]
         else:
             response = openai_request(
-                url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
+                url=self.url,
+                headers=self.headers,
+                payload=payload,
+                timeout=self.timeout,
+                read_response=False,
+                stream=True,
             )
             handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
             assistant_response = self._process_streaming_response(response=response, stream_handler=handler)

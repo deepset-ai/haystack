@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, Literal
 
 from haystack.document_stores.base import BaseDocumentStore, FilterType
-from haystack.nodes.answer_generator.base import BaseGenerator
 from haystack.nodes.other.docs2answers import Docs2Answers
 from haystack.nodes.other.document_merger import DocumentMerger
 from haystack.nodes.question_generator.question_generator import QuestionGenerator
@@ -401,35 +400,6 @@ class DocumentSearchPipeline(BaseStandardPipeline):
         """
         :param query: the query string.
         :param params: params for the `retriever` and `reader`. For instance, params={"Retriever": {"top_k": 10}}
-        :param debug: Whether the pipeline should instruct nodes to collect debug information
-              about their execution. By default these include the input parameters
-              they received and the output they generated.
-              All debug information can then be found in the dict returned
-              by this method under the key "_debug"
-        """
-        output = self.pipeline.run(query=query, params=params, debug=debug)
-        return output
-
-
-class GenerativeQAPipeline(BaseStandardPipeline):
-    """
-    Pipeline for Generative Question Answering.
-    """
-
-    def __init__(self, generator: BaseGenerator, retriever: BaseRetriever):
-        """
-        :param generator: Generator instance
-        :param retriever: Retriever instance
-        """
-        self.pipeline = Pipeline()
-        self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
-        self.pipeline.add_node(component=generator, name="Generator", inputs=["Retriever"])
-
-    def run(self, query: str, params: Optional[dict] = None, debug: Optional[bool] = None):
-        """
-        :param query: the query string.
-        :param params: params for the `retriever` and `generator`. For instance,
-                       params={"Retriever": {"top_k": 10}, "Generator": {"top_k": 5}}
         :param debug: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
               they received and the output they generated.

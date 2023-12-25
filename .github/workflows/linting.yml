@@ -6,9 +6,6 @@ on:
     paths:
       - "**.py"
       - "**/pyproject.toml"
-      - "!haystack/preview/**/*.py"
-      - "!test/preview/**/*.py"
-      - "!e2e/preview/**/*.py"
 
 env:
   PYTHON_VERSION: "3.8"
@@ -41,7 +38,6 @@ jobs:
       - name: Install Haystack
         run: |
           pip install ".[all,dev]"
-          pip install --no-deps llvmlite numba "openai-whisper>=20230918"
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
@@ -75,8 +71,7 @@ jobs:
 
       - name: Install Haystack
         run: |
-          pip install ".[all,dev]"
-          pip install --no-deps llvmlite numba "openai-whisper>=20230918"
+          pip install ".[all,dev]" pydoc-markdown
           pip install ./haystack-linter
 
       - name: Pylint

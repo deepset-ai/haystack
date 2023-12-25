@@ -183,7 +183,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         trust_remote_code = kwargs.get("trust_remote_code", False)
         hub_kwargs = {
             "revision": kwargs.get("revision", None),
-            "use_auth_token": kwargs.get("use_auth_token", None),
+            # use_auth_token is no longer used in HuggingFace pipelines. We convert it to token
+            "token": kwargs.get("use_auth_token", None),
             "trust_remote_code": trust_remote_code,
         }
         model_kwargs = kwargs.get("model_kwargs", {})

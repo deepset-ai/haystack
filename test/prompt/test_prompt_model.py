@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from haystack.nodes.prompt.prompt_model import PromptModel
-from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, HFLocalInvocationLayer
+from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
 
 from .conftest import create_mock_layer_that_supports
 
@@ -37,6 +37,16 @@ def test_construtor_with_custom_model():
 def test_constructor_with_no_supported_model():
     with pytest.raises(ValueError, match="Model some-random-model is not supported"):
         PromptModel("some-random-model")
+
+
+@pytest.mark.unit
+def test_constructor_with_invocation_layer_class_string(mock_auto_tokenizer):
+    model = PromptModel(
+        invocation_layer_class="haystack.nodes.prompt.invocation_layer.CohereInvocationLayer", api_key="fake_api_key"
+    )
+    from haystack.nodes.prompt.invocation_layer import CohereInvocationLayer
+
+    assert isinstance(model.model_invocation_layer, CohereInvocationLayer)
 
 
 @pytest.mark.asyncio

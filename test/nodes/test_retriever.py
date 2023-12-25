@@ -313,6 +313,28 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_i
 
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "weaviate", "pinecone"], indirect=True)
+@pytest.mark.parametrize("retriever", ["embedding_sbert_instructions"], indirect=True)
+def test_embedding_with_instructions(document_store: BaseDocumentStore, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    docs = document_store.get_all_documents()
+    docs.sort(key=lambda d: d.id)
+
+    print([doc.id for doc in docs])
+
+    expected_values = [0.00484978, 0.02258789, 0.03414359, -0.01461711, 0.01784192]
+    for doc, expected_value in zip(docs, expected_values):
+        embedding = doc.embedding
+        # always normalize vector as faiss returns normalized vectors and other document stores do not
+        embedding /= np.linalg.norm(embedding)
+        assert len(embedding) == 768
+        assert isclose(embedding[0], expected_value, rel_tol=0.01)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "weaviate", "pinecone"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.embedding_dim(128)
 def test_retribert_embedding(document_store, retriever, docs_with_ids):

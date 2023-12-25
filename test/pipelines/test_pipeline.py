@@ -23,7 +23,6 @@ from haystack.nodes.retriever.sparse import FilterRetriever
 from haystack.pipelines import (
     Pipeline,
     RootNode,
-    GenerativeQAPipeline,
     FAQPipeline,
     ExtractiveQAPipeline,
     SearchSummarizationPipeline,
@@ -47,7 +46,6 @@ from ..conftest import (
     DC_API_KEY,
     DC_TEST_INDEX,
     MockDocumentStore,
-    MockSeq2SegGenerator,
     MockRetriever,
     MockNode,
     deepset_cloud_fixture,
@@ -694,9 +692,6 @@ def test_generate_code_can_handle_weak_cyclic_pipelines():
 
 @pytest.mark.unit
 def test_pipeline_classify_type(tmp_path):
-    pipe = GenerativeQAPipeline(generator=MockSeq2SegGenerator(), retriever=MockRetriever())
-    assert pipe.get_type().startswith("GenerativeQAPipeline")
-
     pipe = FAQPipeline(retriever=MockRetriever())
     assert pipe.get_type().startswith("FAQPipeline")
 
@@ -1026,8 +1021,9 @@ def test_save_nonexisting_pipeline_to_deepset_cloud():
             matches = False
             reason = "No DeepsetCloudDocumentStore found."
             request_body = request.body or ""
-            json_body = yaml.safe_load(request_body)
-            components = json_body["components"]
+            json_body = json.loads(request_body)
+            config = yaml.safe_load(json_body["config"])
+            components = config["components"]
             for component in components:
                 if component["type"].endswith("DocumentStore"):
                     if component["type"] == "DeepsetCloudDocumentStore":

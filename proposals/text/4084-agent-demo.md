@@ -83,7 +83,7 @@ The main Agent modules/tools are:
 ## SearchEngine
 
 SearchEngine is a symbolic API module allowing programmatic interaction with Google and other search engines. We'll have
-multiple providers of SearchEngine including https://serper.dev and https://serpapi.com as initial providers.
+multiple providers of SearchEngine including https://serper.dev, https://www.searchapi.io/ and https://serpapi.com as initial providers.
 
 SearchEngine will return a list of results (e.g. List[Document]), the content of each document being a "snippet" of the
 single search result, while all other attributes of the search results (e.g. title, url link, etc.) will
