@@ -133,7 +133,7 @@ class AzureGenerator(OpenAIGenerator):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIGenerator":
+    def from_dict(cls, data: Dict[str, Any]) -> "AzureGenerator":
         """
         Deserialize this component from a dictionary.
         :param data: The dictionary representation of this component.

@@ -5,7 +5,6 @@ from typing import Optional, Callable, Dict, Any
 from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
 
 from haystack import default_to_dict, default_from_dict
-from haystack.components.generators import OpenAIGenerator
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import StreamingChunk
@@ -137,7 +136,7 @@ class AzureChatGenerator(OpenAIChatGenerator):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIGenerator":
+    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIChatGenerator":
         """
         Deserialize this component from a dictionary.
         :param data: The dictionary representation of this component.
