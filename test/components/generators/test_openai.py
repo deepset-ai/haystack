@@ -4,14 +4,14 @@ from typing import List
 import pytest
 from openai import OpenAIError
 
-from haystack.components.generators import GPTGenerator
+from haystack.components.generators import OpenAIGenerator
 from haystack.components.generators.utils import default_streaming_callback
 from haystack.dataclasses import StreamingChunk, ChatMessage
 
 
-class TestGPTGenerator:
+class TestOpenAIGenerator:
     def test_init_default(self):
-        component = GPTGenerator(api_key="test-api-key")
+        component = OpenAIGenerator(api_key="test-api-key")
         assert component.client.api_key == "test-api-key"
         assert component.model_name == "gpt-3.5-turbo"
         assert component.streaming_callback is None
@@ -20,10 +20,10 @@ class TestGPTGenerator:
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(OpenAIError):
-            GPTGenerator()
+            OpenAIGenerator()
 
     def test_init_with_parameters(self):
-        component = GPTGenerator(
+        component = OpenAIGenerator(
             api_key="test-api-key",
             model_name="gpt-4",
             streaming_callback=default_streaming_callback,
@@ -36,10 +36,10 @@ class TestGPTGenerator:
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
 
     def test_to_dict_default(self):
-        component = GPTGenerator(api_key="test-api-key")
+        component = OpenAIGenerator(api_key="test-api-key")
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.generators.openai.GPTGenerator",
+            "type": "haystack.components.generators.openai.OpenAIGenerator",
             "init_parameters": {
                 "model_name": "gpt-3.5-turbo",
                 "streaming_callback": None,
@@ -50,7 +50,7 @@ class TestGPTGenerator:
         }
 
     def test_to_dict_with_parameters(self):
-        component = GPTGenerator(
+        component = OpenAIGenerator(
             api_key="test-api-key",
             model_name="gpt-4",
             streaming_callback=default_streaming_callback,
@@ -59,7 +59,7 @@ class TestGPTGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.generators.openai.GPTGenerator",
+            "type": "haystack.components.generators.openai.OpenAIGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "system_prompt": None,
@@ -70,7 +70,7 @@ class TestGPTGenerator:
         }
 
     def test_to_dict_with_lambda_streaming_callback(self):
-        component = GPTGenerator(
+        component = OpenAIGenerator(
             api_key="test-api-key",
             model_name="gpt-4",
             streaming_callback=lambda x: x,
@@ -79,7 +79,7 @@ class TestGPTGenerator:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.generators.openai.GPTGenerator",
+            "type": "haystack.components.generators.openai.OpenAIGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "system_prompt": None,
@@ -92,7 +92,7 @@ class TestGPTGenerator:
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
-            "type": "haystack.components.generators.openai.GPTGenerator",
+            "type": "haystack.components.generators.openai.OpenAIGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "system_prompt": None,
@@ -101,7 +101,7 @@ class TestGPTGenerator:
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
-        component = GPTGenerator.from_dict(data)
+        component = OpenAIGenerator.from_dict(data)
         assert component.model_name == "gpt-4"
         assert component.streaming_callback is default_streaming_callback
         assert component.api_base_url == "test-base-url"
@@ -110,7 +110,7 @@ class TestGPTGenerator:
     def test_from_dict_fail_wo_env_var(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         data = {
-            "type": "haystack.components.generators.openai.GPTGenerator",
+            "type": "haystack.components.generators.openai.OpenAIGenerator",
             "init_parameters": {
                 "model_name": "gpt-4",
                 "api_base_url": "test-base-url",
@@ -119,10 +119,10 @@ class TestGPTGenerator:
             },
         }
         with pytest.raises(OpenAIError):
-            GPTGenerator.from_dict(data)
+            OpenAIGenerator.from_dict(data)
 
     def test_run(self, mock_chat_completion):
-        component = GPTGenerator(api_key="test-api-key")
+        component = OpenAIGenerator(api_key="test-api-key")
         response = component.run("What's Natural Language Processing?")
 
         # check that the component returns the correct ChatMessage response
@@ -139,7 +139,7 @@ class TestGPTGenerator:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 
-        component = GPTGenerator(streaming_callback=streaming_callback)
+        component = OpenAIGenerator(streaming_callback=streaming_callback)
         response = component.run("Come on, stream!")
 
         # check we called the streaming callback
@@ -153,7 +153,7 @@ class TestGPTGenerator:
         assert "Hello" in response["replies"][0]  # see mock_chat_completion_chunk
 
     def test_run_with_params(self, mock_chat_completion):
-        component = GPTGenerator(api_key="test-api-key", generation_kwargs={"max_tokens": 10, "temperature": 0.5})
+        component = OpenAIGenerator(api_key="test-api-key", generation_kwargs={"max_tokens": 10, "temperature": 0.5})
         response = component.run("What's Natural Language Processing?")
 
         # check that the component calls the OpenAI API with the correct parameters
@@ -169,7 +169,7 @@ class TestGPTGenerator:
         assert [isinstance(reply, str) for reply in response["replies"]]
 
     def test_check_abnormal_completions(self, caplog):
-        component = GPTGenerator(api_key="test-api-key")
+        component = OpenAIGenerator(api_key="test-api-key")
 
         # underlying implementation uses ChatMessage objects so we have to use them here
         messages: List[ChatMessage] = []
@@ -202,7 +202,7 @@ class TestGPTGenerator:
     )
     @pytest.mark.integration
     def test_live_run(self):
-        component = GPTGenerator(api_key=os.environ.get("OPENAI_API_KEY"))
+        component = OpenAIGenerator(api_key=os.environ.get("OPENAI_API_KEY"))
         results = component.run("What's the capital of France?")
         assert len(results["replies"]) == 1
         assert len(results["meta"]) == 1
@@ -224,7 +224,7 @@ class TestGPTGenerator:
     )
     @pytest.mark.integration
     def test_live_run_wrong_model(self):
-        component = GPTGenerator(model_name="something-obviously-wrong", api_key=os.environ.get("OPENAI_API_KEY"))
+        component = OpenAIGenerator(model_name="something-obviously-wrong", api_key=os.environ.get("OPENAI_API_KEY"))
         with pytest.raises(OpenAIError):
             component.run("Whatever")
 
@@ -244,7 +244,7 @@ class TestGPTGenerator:
                 self.responses += chunk.content if chunk.content else ""
 
         callback = Callback()
-        component = GPTGenerator(os.environ.get("OPENAI_API_KEY"), streaming_callback=callback)
+        component = OpenAIGenerator(os.environ.get("OPENAI_API_KEY"), streaming_callback=callback)
         results = component.run("What's the capital of France?")
 
         assert len(results["replies"]) == 1
