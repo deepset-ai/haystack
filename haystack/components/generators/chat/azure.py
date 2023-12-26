@@ -107,7 +107,7 @@ class AzureChatGenerator(OpenAIChatGenerator):
         self.azure_endpoint = azure_endpoint
         self.azure_deployment = azure_deployment
         self.organization = organization
-        self.model_name = azure_deployment
+        self.model_name = azure_deployment or "gpt-35-turbo"
 
         self.client = AzureOpenAI(
             api_version=api_version,
