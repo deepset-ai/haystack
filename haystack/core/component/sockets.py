@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import get_args, List, Type
+from typing import get_args, List, Type, Any, Optional
 import logging
 from dataclasses import dataclass, field
 
@@ -11,13 +11,21 @@ from haystack.core.component.types import CANALS_VARIADIC_ANNOTATION
 logger = logging.getLogger(__name__)
 
 
+class _empty:
+    """Marker object for Signature.empty and Parameter.empty."""
+
+
 @dataclass
 class InputSocket:
     name: str
     type: Type
-    is_mandatory: bool = True
+    default_value: Any = _empty
     is_variadic: bool = field(init=False)
     senders: List[str] = field(default_factory=list)
+
+    @property
+    def is_mandatory(self):
+        return self.default_value == _empty
 
     def __post_init__(self):
         try:
