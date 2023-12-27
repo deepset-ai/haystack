@@ -18,7 +18,7 @@ class TopPSampler:
 
     This class provides functionality to filter a list of documents by selecting those whose scores fall
     within the top 'p' percent of the cumulative distribution. The method is useful for focusing on high-probability
-    documents while filtering out less relevant ones, based on their assigned scores.
+    documents while filtering out less relevant ones based on their assigned scores.
 
     Usage example:
 
@@ -59,9 +59,9 @@ class TopPSampler:
         Filters documents using top-p sampling based on their scores.
 
         :param documents: List of Document objects to be filtered.
-        :param top_p: Optional; a float to override the cumulative probability threshold set during initialization.
+        :param top_p: Optional. A float to override the cumulative probability threshold set during initialization.
                  If None, the class's top_p value is used.
-        :return: A dictionary with a key 'documents', containing the list of filtered Document objects.
+        :return: A dictionary with a key 'documents' containing the list of filtered Document objects.
 
         This method applies top-p sampling to filter out documents. It selects those documents whose similarity scores
         are within the top 'p' percent of the cumulative distribution, based on the specified or default top_p value.
