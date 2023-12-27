@@ -27,7 +27,7 @@ jobs:
 
       - name: Get release note files
         id: changed-files
-        uses: tj-actions/changed-files@v40
+        uses: tj-actions/changed-files@v41
         with:
           files: releasenotes/notes/*.yaml
 
