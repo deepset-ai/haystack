@@ -38,7 +38,7 @@ class OpenAIDocumentEmbedder:
         suffix: str = "",
         batch_size: int = 32,
         progress_bar: bool = True,
-        metadata_fields_to_embed: Optional[List[str]] = None,
+        meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
     ):
         """
@@ -54,7 +54,7 @@ class OpenAIDocumentEmbedder:
         :param batch_size: Number of Documents to encode at once.
         :param progress_bar: Whether to show a progress bar or not. Can be helpful to disable in production deployments
                              to keep the logs clean.
-        :param metadata_fields_to_embed: List of meta fields that should be embedded along with the Document text.
+        :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document text.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
         self.model_name = model_name
@@ -64,7 +64,7 @@ class OpenAIDocumentEmbedder:
         self.suffix = suffix
         self.batch_size = batch_size
         self.progress_bar = progress_bar
-        self.metadata_fields_to_embed = metadata_fields_to_embed or []
+        self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
         self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
@@ -89,7 +89,7 @@ class OpenAIDocumentEmbedder:
             suffix=self.suffix,
             batch_size=self.batch_size,
             progress_bar=self.progress_bar,
-            metadata_fields_to_embed=self.metadata_fields_to_embed,
+            meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
         )
 
@@ -100,9 +100,7 @@ class OpenAIDocumentEmbedder:
         texts_to_embed = []
         for doc in documents:
             meta_values_to_embed = [
-                str(doc.meta[key])
-                for key in self.metadata_fields_to_embed
-                if key in doc.meta and doc.meta[key] is not None
+                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key] is not None
             ]
 
             text_to_embed = (
@@ -121,7 +119,7 @@ class OpenAIDocumentEmbedder:
         """
 
         all_embeddings = []
-        metadata: Dict[str, Any] = {}
+        meta: Dict[str, Any] = {}
         for i in tqdm(
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
@@ -130,17 +128,17 @@ class OpenAIDocumentEmbedder:
             embeddings = [el.embedding for el in response.data]
             all_embeddings.extend(embeddings)
 
-            if "model" not in metadata:
-                metadata["model"] = response.model
-            if "usage" not in metadata:
-                metadata["usage"] = dict(response.usage)
+            if "model" not in meta:
+                meta["model"] = response.model
+            if "usage" not in meta:
+                meta["usage"] = dict(response.usage)
             else:
-                metadata["usage"]["prompt_tokens"] += response.usage.prompt_tokens
-                metadata["usage"]["total_tokens"] += response.usage.total_tokens
+                meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
+                meta["usage"]["total_tokens"] += response.usage.total_tokens
 
-        return all_embeddings, metadata
+        return all_embeddings, meta
 
-    @component.output_types(documents=List[Document], metadata=Dict[str, Any])
+    @component.output_types(documents=List[Document], meta=Dict[str, Any])
     def run(self, documents: List[Document]):
         """
         Embed a list of Documents.
@@ -156,9 +154,9 @@ class OpenAIDocumentEmbedder:
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
-        embeddings, metadata = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
+        embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
         for doc, emb in zip(documents, embeddings):
             doc.embedding = emb
 
-        return {"documents": documents, "metadata": metadata}
+        return {"documents": documents, "meta": meta}

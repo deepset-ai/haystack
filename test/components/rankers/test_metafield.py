@@ -6,12 +6,12 @@ from haystack.components.rankers.meta_field import MetaFieldRanker
 
 class TestMetaFieldRanker:
     def test_to_dict(self):
-        component = MetaFieldRanker(metadata_field="rating")
+        component = MetaFieldRanker(meta_field="rating")
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.rankers.meta_field.MetaFieldRanker",
             "init_parameters": {
-                "metadata_field": "rating",
+                "meta_field": "rating",
                 "weight": 1.0,
                 "top_k": None,
                 "ranking_mode": "reciprocal_rank_fusion",
@@ -19,11 +19,11 @@ class TestMetaFieldRanker:
         }
 
     def test_to_dict_with_custom_init_parameters(self):
-        component = MetaFieldRanker(metadata_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score")
+        component = MetaFieldRanker(meta_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score")
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.rankers.meta_field.MetaFieldRanker",
-            "init_parameters": {"metadata_field": "rating", "weight": 0.5, "top_k": 5, "ranking_mode": "linear_score"},
+            "init_parameters": {"meta_field": "rating", "weight": 0.5, "top_k": 5, "ranking_mode": "linear_score"},
         }
 
     @pytest.mark.integration
@@ -32,7 +32,7 @@ class TestMetaFieldRanker:
         """
         Test if the component ranks documents correctly.
         """
-        ranker = MetaFieldRanker(metadata_field="rating")
+        ranker = MetaFieldRanker(meta_field="rating")
         docs_before = [Document(content="abc", meta={"rating": value}) for value in metafield_values]
 
         output = ranker.run(documents=docs_before)
@@ -46,14 +46,14 @@ class TestMetaFieldRanker:
 
     @pytest.mark.integration
     def test_returns_empty_list_if_no_documents_are_provided(self):
-        ranker = MetaFieldRanker(metadata_field="rating")
+        ranker = MetaFieldRanker(meta_field="rating")
         output = ranker.run(documents=[])
         docs_after = output["documents"]
         assert docs_after == []
 
     @pytest.mark.integration
     def test_raises_component_error_if_metadata_not_found(self):
-        ranker = MetaFieldRanker(metadata_field="rating")
+        ranker = MetaFieldRanker(meta_field="rating")
         docs_before = [Document(content="abc", meta={"wrong_field": 1.3})]
         with pytest.raises(ComponentError):
             ranker.run(documents=docs_before)
@@ -61,17 +61,17 @@ class TestMetaFieldRanker:
     @pytest.mark.integration
     def test_raises_component_error_if_wrong_ranking_mode(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(metadata_field="rating", ranking_mode="wrong_mode")
+            MetaFieldRanker(meta_field="rating", ranking_mode="wrong_mode")
 
     @pytest.mark.integration
     @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
     def test_raises_component_error_if_wrong_weight(self, score):
         with pytest.raises(ValueError):
-            MetaFieldRanker(metadata_field="rating", weight=score)
+            MetaFieldRanker(meta_field="rating", weight=score)
 
     @pytest.mark.integration
     def test_linear_score(self):
-        ranker = MetaFieldRanker(metadata_field="rating", ranking_mode="linear_score", weight=0.5)
+        ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
         docs_before = [
             Document(content="abc", meta={"rating": 1.3}, score=0.3),
             Document(content="abc", meta={"rating": 0.7}, score=0.4),
@@ -83,7 +83,7 @@ class TestMetaFieldRanker:
 
     @pytest.mark.integration
     def test_reciprocal_rank_fusion(self):
-        ranker = MetaFieldRanker(metadata_field="rating", ranking_mode="reciprocal_rank_fusion", weight=0.5)
+        ranker = MetaFieldRanker(meta_field="rating", ranking_mode="reciprocal_rank_fusion", weight=0.5)
         docs_before = [
             Document(content="abc", meta={"rating": 1.3}, score=0.3),
             Document(content="abc", meta={"rating": 0.7}, score=0.4),
@@ -96,7 +96,7 @@ class TestMetaFieldRanker:
     @pytest.mark.integration
     @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
     def test_linear_score_raises_warning_if_doc_wrong_score(self, score):
-        ranker = MetaFieldRanker(metadata_field="rating", ranking_mode="linear_score", weight=0.5)
+        ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
         docs_before = [
             Document(id=1, content="abc", meta={"rating": 1.3}, score=score),
             Document(id=2, content="abc", meta={"rating": 0.7}, score=0.4),
@@ -109,7 +109,7 @@ class TestMetaFieldRanker:
 
     @pytest.mark.integration
     def test_linear_score_raises_raises_warning_if_doc_without_score(self):
-        ranker = MetaFieldRanker(metadata_field="rating", ranking_mode="linear_score", weight=0.5)
+        ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
         docs_before = [
             Document(content="abc", meta={"rating": 1.3}),
             Document(content="abc", meta={"rating": 0.7}),
