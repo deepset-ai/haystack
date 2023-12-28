@@ -12,7 +12,7 @@ from haystack.dataclasses import StreamingChunk
 logger = logging.getLogger(__name__)
 
 
-class AzureChatGenerator(OpenAIChatGenerator):
+class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     """
     Enables text generation using OpenAI's large language models (LLMs) on Azure. It supports gpt-4 and gpt-3.5-turbo
     family of models accessed through the chat completions API endpoint.
@@ -25,12 +25,12 @@ class AzureChatGenerator(OpenAIChatGenerator):
     [documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/).
 
     ```python
-    from haystack.components.generators.chat import AzureChatGenerator
+    from haystack.components.generators.chat import AzureOpenAIGenerator
     from haystack.dataclasses import ChatMessage
 
     messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 
-    client = AzureChatGenerator(azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
+    client = AzureOpenAIGenerator(azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
                                 api_key="<you api key>",
                                 azure_deployment="<this a model name, e.g. gpt-35-turbo>")
     response = client.run(messages)

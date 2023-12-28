@@ -12,7 +12,7 @@ from haystack.dataclasses import StreamingChunk
 logger = logging.getLogger(__name__)
 
 
-class AzureGenerator(OpenAIGenerator):
+class AzureOpenAIGenerator(OpenAIGenerator):
     """
     Enables text generation using OpenAI's large language models (LLMs) on Azure. It supports gpt-4 and gpt-3.5-turbo
     family of models.
@@ -26,8 +26,8 @@ class AzureGenerator(OpenAIGenerator):
 
 
     ```python
-    from haystack.components.generators import AzureGenerator
-    client = AzureGenerator(azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
+    from haystack.components.generators import AzureOpenAIGenerator
+    client = AzureOpenAIGenerator(azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
                             api_key="<you api key>",
                             azure_deployment="<this a model name, e.g. gpt-35-turbo>")
     response = client.run("What's Natural Language Processing? Be brief.")
@@ -133,7 +133,7 @@ class AzureGenerator(OpenAIGenerator):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AzureGenerator":
+    def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAIGenerator":
         """
         Deserialize this component from a dictionary.
         :param data: The dictionary representation of this component.
