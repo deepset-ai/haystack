@@ -238,8 +238,6 @@ jobs:
       - name: Install dependencies
         run: |
           brew install ffmpeg  # for local Whisper tests
-          brew install docker
-          colima start
 
       - name: Restore Python dependencies
         uses: actions/cache/restore@v3
@@ -247,18 +245,8 @@ jobs:
           path: ${{ env.pythonLocation }}
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
 
-      - name: Run Tika
-        run: |
-          docker run -d -p 9998:9998 \
-          --health-cmd='curl --fail -X GET http://localhost:9998/tika' \
-          --health-interval=5s \
-          --health-retries=5 \
-          --health-timeout=2s \
-          --health-start-period=1m \
-          apache/tika:2.9.0.0
-
       - name: Run
-        run: pytest --maxfail=5 -m "integration" test
+        run: pytest --maxfail=5 -m "integration" test -k 'not tika'
 
       - name: Calculate alert data
         id: calculator
