@@ -178,13 +178,7 @@ def test_join_with_rrf(docs):
     results = p.run(query=query)
 
     # list of precalculated expected results
-    expected_scores = [
-        0.03278688524590164,
-        0.03200204813108039,
-        0.03200204813108039,
-        0.031009615384615385,
-        0.031009615384615385,
-    ]
+    expected_scores = [1.0, 0.9684979838709676, 0.9684979838709676, 0.9533577533577533, 0.9533577533577533]
     assert all(
         doc.score == pytest.approx(expected_scores[idx], abs=1e-3) for idx, doc in enumerate(results["documents"])
     )
