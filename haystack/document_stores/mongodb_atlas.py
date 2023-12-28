@@ -36,7 +36,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
     ):
         """
         Document Store using MongoDB Atlas as a backend (https://www.mongodb.com/docs/atlas/getting-started/).
-        It is compatible with EmbeddingRetrievers and filters.
+        It is compatible with EmbeddingRetriever and filters.
 
         :param mongo_connection_string: MongoDB Atlas connection string in the format: "mongodb+srv://{mongo_atlas_username}:{mongo_atlas_password}@{mongo_atlas_host}/?{mongo_atlas_params_string}".
         :param database_name: Name of the database to use.
