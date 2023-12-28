@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Any
 import requests
 
 from haystack import Document, component, default_to_dict, ComponentError
+from haystack.utils import get_api_key_from_param_or_env
 
 logger = logging.getLogger(__name__)
 
@@ -42,15 +43,10 @@ class SerperDevWebSearch:
         For example, you can set 'num' to 20 to increase the number of search results.
         See the [Serper Dev website](https://serper.dev/) for more details.
         """
-        if api_key is None:
-            try:
-                api_key = os.environ["SERPERDEV_API_KEY"]
-            except KeyError as e:
-                raise ValueError(
-                    "SerperDevWebSearch expects an API key. "
-                    "Set the SERPERDEV_API_KEY environment variable (recommended) or pass it explicitly."
-                ) from e
-            raise ValueError("API key for SerperDev API must be set.")
+        api_key = get_api_key_from_param_or_env(
+            component_name=self.__class__.__name__, param=api_key, environment_variable="SERPERDEV_API_KEY"
+        )
+
         self.api_key = api_key
         self.top_k = top_k
         self.allowed_domains = allowed_domains

@@ -7,6 +7,7 @@ from haystack.lazy_imports import LazyImport
 from haystack import component, Document, default_to_dict
 from haystack.dataclasses import ByteStream
 from haystack.components.converters.utils import get_bytestream_from_source
+from haystack.utils import get_api_key_from_param_or_env
 
 logger = logging.getLogger(__name__)
 
@@ -51,16 +52,10 @@ class AzureOCRDocumentConverter:
         """
         azure_import.check()
 
-        if api_key is None:
-            try:
-                api_key = os.environ["AZURE_AI_API_KEY"]
-            except KeyError as e:
-                raise ValueError(
-                    "AzureOCRDocumentConverter expects an Azure Credential key. "
-                    "Set the AZURE_AI_API_KEY environment variable (recommended) or pass it explicitly."
-                ) from e
+        api_key = get_api_key_from_param_or_env(
+            component_name=self.__class__.__name__, param=api_key, environment_variable="AZURE_AI_API_KEY"
+        )
 
-        self.api_key = api_key
         self.document_analysis_client = DocumentAnalysisClient(
             endpoint=endpoint, credential=AzureKeyCredential(api_key)
         )
