@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
-import os
 import logging
 
 from haystack.lazy_imports import LazyImport

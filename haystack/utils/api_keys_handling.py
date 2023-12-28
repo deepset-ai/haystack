@@ -1,7 +1,8 @@
 import os
+from typing import Optional
 
 
-def get_api_key_from_param_or_env(component_name: str, param: str, environment_variable: str) -> str:
+def get_api_key_from_param_or_env(component_name: str, environment_variable: str, param: Optional[str] = None) -> str:
     """
     Reads an API key from a parameter or environment variable.
     :param component_name: The name of the component/document store that requires the API key.
