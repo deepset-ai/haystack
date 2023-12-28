@@ -53,7 +53,7 @@ def test_openai_token_limit_warning(mock_openai_tokenizer, caplog):
 @pytest.mark.parametrize(
     "model_name,max_tokens_limit",
     [
-        ("text-davinci-003", 4097),
+        ("gpt-3.5-turbo-instruct", 4097),
         ("gpt-3.5-turbo", 4096),
         ("gpt-3.5-turbo-16k", 16384),
         ("gpt-4-32k", 32768),
@@ -76,7 +76,7 @@ def test_openai_token_limit_warning_not_triggered(caplog, mock_openai_tokenizer,
 @pytest.mark.parametrize(
     "model_name,max_tokens_limit",
     [
-        ("text-davinci-003", 4097),
+        ("gpt-3.5-turbo-instruct", 4097),
         ("gpt-3.5-turbo", 4096),
         ("gpt-3.5-turbo-16k", 16384),
         ("gpt-4-32k", 32768),

@@ -19,7 +19,7 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
         azure_deployment_name: str,
         api_key: str,
         api_version: str = "2022-12-01",
-        model_name_or_path: str = "text-davinci-003",
+        model_name_or_path: str = "gpt-3.5-turbo-instruct",
         max_length: Optional[int] = 100,
         **kwargs,
     ):

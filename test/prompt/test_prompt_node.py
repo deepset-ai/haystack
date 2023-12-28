@@ -216,7 +216,7 @@ def test_azure_vs_open_ai_invocation_layer_selection():
     node = PromptNode("gpt-4", api_key="some_key", model_kwargs=azure_model_kwargs)
     assert isinstance(node.prompt_model.model_invocation_layer, AzureChatGPTInvocationLayer)
 
-    node = PromptNode("text-davinci-003", api_key="some_key", model_kwargs=azure_model_kwargs)
+    node = PromptNode("gpt-3.5-turbo-instruct", api_key="some_key", model_kwargs=azure_model_kwargs)
     assert isinstance(node.prompt_model.model_invocation_layer, AzureOpenAIInvocationLayer)
 
     node = PromptNode("gpt-4", api_key="some_key")
@@ -224,7 +224,7 @@ def test_azure_vs_open_ai_invocation_layer_selection():
         node.prompt_model.model_invocation_layer, AzureChatGPTInvocationLayer
     )
 
-    node = PromptNode("text-davinci-003", api_key="some_key")
+    node = PromptNode("gpt-3.5-turbo-instruct", api_key="some_key")
     assert isinstance(node.prompt_model.model_invocation_layer, OpenAIInvocationLayer) and not isinstance(
         node.prompt_model.model_invocation_layer, AzureChatGPTInvocationLayer
     )
@@ -850,7 +850,7 @@ def test_complex_pipeline_with_all_features(tmp_path, haystack_openai_config):
             - name: pmodel_openai
               type: PromptModel
               params:
-                model_name_or_path: text-davinci-003
+                model_name_or_path: gpt-3.5-turbo-instruct
                 model_kwargs:
                   temperature: 0.9
                   max_tokens: 64
@@ -1052,7 +1052,7 @@ def test_content_moderation_gpt_3():
     OpenAIInvocationLayer.
     """
     prompt_node = PromptNode(
-        model_name_or_path="text-davinci-003", api_key="key", model_kwargs={"moderate_content": True}
+        model_name_or_path="gpt-3.5-turbo-instruct", api_key="key", model_kwargs={"moderate_content": True}
     )
     with patch("haystack.nodes.prompt.invocation_layer.open_ai.check_openai_policy_violation") as mock_check, patch(
         "haystack.nodes.prompt.invocation_layer.open_ai.openai_request"
