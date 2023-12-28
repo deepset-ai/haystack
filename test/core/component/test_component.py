@@ -164,3 +164,15 @@ def test_component_decorator_set_it_as_component():
 
     comp = MockComponent()
     assert isinstance(comp, Component)
+
+
+def test_input_has_default_value():
+    @component
+    class MockComponent:
+        @component.output_types(value=int)
+        def run(self, value: int = 42):
+            return {"value": value}
+
+    comp = MockComponent()
+    assert comp.__canals_input__["value"].default_value == 42
+    assert not comp.__canals_input__["value"].is_mandatory
