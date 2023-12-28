@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import get_args, List, Type, Any, Optional
+from typing import get_args, List, Type, Any
 import logging
 from dataclasses import dataclass, field
 
