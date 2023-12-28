@@ -1,5 +1,4 @@
 import dataclasses
-import json
 import logging
 import warnings
 from typing import Optional, List, Callable, Dict, Any, Union
@@ -179,7 +178,7 @@ class OpenAIGenerator:
             # pylint: disable=not-an-iterable
             for chunk in completion:
                 if chunk.choices and self.streaming_callback:
-                    chunk_delta: StreamingChunk = self._build_chunk(chunk, chunk.choices[0])
+                    chunk_delta: StreamingChunk = self._build_chunk(chunk)
                     chunks.append(chunk_delta)
                     self.streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
             completions = [self._connect_chunks(chunk, chunks)]
@@ -231,15 +230,9 @@ class OpenAIGenerator:
         :param choice: The choice returned by the OpenAI API.
         :return: The ChatMessage.
         """
-        message: Any = choice.message
-        # message.content is str but message.function_call is FunctionCall
-        # TODO: update handling for tools, for now enable only for function calls
-        content = (
-            json.dumps({"name": message.function_call.name, "arguments": message.function_call.arguments})
-            if choice.finish_reason == "function_call"
-            else message.content
-        )
-        chat_message = ChatMessage.from_assistant(content)
+        # function or tools calls are not going to happen in non-chat generation
+        # as users can not send ChatMessage with function or tools calls
+        chat_message = ChatMessage.from_assistant(choice.message.content or "")
         chat_message.meta.update(
             {
                 "model": completion.model,
@@ -250,16 +243,17 @@ class OpenAIGenerator:
         )
         return chat_message
 
-    def _build_chunk(self, chunk: Any, choice: Any) -> StreamingChunk:
+    def _build_chunk(self, chunk: Any) -> StreamingChunk:
         """
         Converts the response from the OpenAI API to a StreamingChunk.
         :param chunk: The chunk returned by the OpenAI API.
         :param choice: The choice returned by the OpenAI API.
         :return: The StreamingChunk.
         """
-        has_content = bool(hasattr(choice.delta, "content") and choice.delta.content)
-        has_function_call = bool(hasattr(choice.delta, "function_call") and choice.delta.function_call)
-        content = choice.delta.content if has_content else choice.delta.function_call if has_function_call else ""
+        # function or tools calls are not going to happen in non-chat generation
+        # as users can not send ChatMessage with function or tools calls
+        choice = chunk.choices[0]
+        content = choice.delta.content or ""
         chunk_message = StreamingChunk(content)
         chunk_message.meta.update({"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason})
         return chunk_message
