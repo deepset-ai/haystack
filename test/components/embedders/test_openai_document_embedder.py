@@ -31,7 +31,7 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.suffix == ""
         assert embedder.batch_size == 32
         assert embedder.progress_bar is True
-        assert embedder.metadata_fields_to_embed == []
+        assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
 
     def test_init_with_parameters(self):
@@ -43,7 +43,7 @@ class TestOpenAIDocumentEmbedder:
             suffix="suffix",
             batch_size=64,
             progress_bar=False,
-            metadata_fields_to_embed=["test_field"],
+            meta_fields_to_embed=["test_field"],
             embedding_separator=" | ",
         )
         assert embedder.organization == "my-org"
@@ -52,7 +52,7 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.suffix == "suffix"
         assert embedder.batch_size == 64
         assert embedder.progress_bar is False
-        assert embedder.metadata_fields_to_embed == ["test_field"]
+        assert embedder.meta_fields_to_embed == ["test_field"]
         assert embedder.embedding_separator == " | "
 
     def test_init_fail_wo_api_key(self, monkeypatch):
@@ -73,7 +73,7 @@ class TestOpenAIDocumentEmbedder:
                 "suffix": "",
                 "batch_size": 32,
                 "progress_bar": True,
-                "metadata_fields_to_embed": [],
+                "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
             },
         }
@@ -87,7 +87,7 @@ class TestOpenAIDocumentEmbedder:
             suffix="suffix",
             batch_size=64,
             progress_bar=False,
-            metadata_fields_to_embed=["test_field"],
+            meta_fields_to_embed=["test_field"],
             embedding_separator=" | ",
         )
         data = component.to_dict()
@@ -101,7 +101,7 @@ class TestOpenAIDocumentEmbedder:
                 "suffix": "suffix",
                 "batch_size": 64,
                 "progress_bar": False,
-                "metadata_fields_to_embed": ["test_field"],
+                "meta_fields_to_embed": ["test_field"],
                 "embedding_separator": " | ",
             },
         }
@@ -112,7 +112,7 @@ class TestOpenAIDocumentEmbedder:
         ]
 
         embedder = OpenAIDocumentEmbedder(
-            api_key="fake-api-key", metadata_fields_to_embed=["meta_field"], embedding_separator=" | "
+            api_key="fake-api-key", meta_fields_to_embed=["meta_field"], embedding_separator=" | "
         )
 
         prepared_texts = embedder._prepare_texts_to_embed(documents)
@@ -172,13 +172,11 @@ class TestOpenAIDocumentEmbedder:
 
         model = "text-similarity-ada-001"
 
-        embedder = OpenAIDocumentEmbedder(
-            model_name=model, metadata_fields_to_embed=["topic"], embedding_separator=" | "
-        )
+        embedder = OpenAIDocumentEmbedder(model_name=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
 
         result = embedder.run(documents=docs)
         documents_with_embeddings = result["documents"]
-        metadata = result["metadata"]
+        metadata = result["meta"]
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)

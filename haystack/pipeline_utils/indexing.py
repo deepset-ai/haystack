@@ -29,7 +29,7 @@ def download_files(sources: List[str]) -> List[str]:
 
     all_files = []
     for stream in streams["streams"]:
-        file_suffix = ".html" if stream.metadata["content_type"] == "text/html" else ".pdf"
+        file_suffix = ".html" if stream.meta["content_type"] == "text/html" else ".pdf"
         f = NamedTemporaryFile(delete=False, suffix=file_suffix)
         stream.to_file(Path(f.name))
         all_files.append(f.name)

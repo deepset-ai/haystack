@@ -18,11 +18,11 @@ class MetaFieldRanker:
     from haystack import Document
     from haystack.components.rankers import MetaFieldRanker
 
-    ranker = MetaFieldRanker(metadata_field="rating")
+    ranker = MetaFieldRanker(meta_field="rating")
     docs = [
-        Document(text="Paris", metadata={"rating": 1.3}),
-        Document(text="Berlin", metadata={"rating": 0.7}),
-        Document(text="Barcelona", metadata={"rating": 2.1}),
+        Document(text="Paris", meta={"rating": 1.3}),
+        Document(text="Berlin", meta={"rating": 0.7}),
+        Document(text="Barcelona", meta={"rating": 2.1}),
     ]
 
     output = ranker.run(documents=docs)
@@ -32,7 +32,7 @@ class MetaFieldRanker:
 
     def __init__(
         self,
-        metadata_field: str,
+        meta_field: str,
         weight: float = 1.0,
         top_k: Optional[int] = None,
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"] = "reciprocal_rank_fusion",
@@ -40,7 +40,7 @@ class MetaFieldRanker:
         """
         Creates an instance of MetaFieldRanker.
 
-        :param metadata_field: The name of the metadata field to rank by.
+        :param meta_field: The name of the metadata field to rank by.
         :param weight: In range [0,1].
                 0 disables ranking by a metadata field.
                 0.5 content and metadata fields have the same impact for the ranking.
@@ -51,7 +51,7 @@ class MetaFieldRanker:
                 Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
         """
 
-        self.metadata_field = metadata_field
+        self.meta_field = meta_field
         self.weight = weight
         self.top_k = top_k
         self.ranking_mode = ranking_mode
@@ -82,11 +82,7 @@ class MetaFieldRanker:
         Serialize object to a dictionary.
         """
         return default_to_dict(
-            self,
-            metadata_field=self.metadata_field,
-            weight=self.weight,
-            top_k=self.top_k,
-            ranking_mode=self.ranking_mode,
+            self, meta_field=self.meta_field, weight=self.weight, top_k=self.top_k, ranking_mode=self.ranking_mode
         )
 
     @component.output_types(documents=List[Document])
@@ -109,15 +105,15 @@ class MetaFieldRanker:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
         try:
-            sorted_by_metadata = sorted(documents, key=lambda doc: doc.meta[self.metadata_field], reverse=True)
+            sorted_by_metadata = sorted(documents, key=lambda doc: doc.meta[self.meta_field], reverse=True)
         except KeyError:
             raise ComponentError(
                 """
-                The parameter <metadata_field> is currently set to '{}' but the Documents {} don't have this metadata key.\n
+                The parameter <meta_field> is currently set to '{}' but the Documents {} don't have this metadata key.\n
                 Double-check the names of the metadata fields in your documents \n
-                and set <metadata_field> to the name of the field that contains the metadata you want to use for ranking.
+                and set <meta_field> to the name of the field that contains the metadata you want to use for ranking.
                 """.format(
-                    self.metadata_field, ",".join([doc.id for doc in documents if self.metadata_field not in doc.meta])
+                    self.meta_field, ",".join([doc.id for doc in documents if self.meta_field not in doc.meta])
                 )
             )
 

@@ -21,8 +21,8 @@ class OpenAITextEmbedder:
     print(text_embedder.run(text_to_embed))
 
     # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-    # 'metadata': {'model': 'text-embedding-ada-002-v2',
-    #              'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
+    # 'meta': {'model': 'text-embedding-ada-002-v2',
+    #          'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
     ```
     """
 
@@ -71,7 +71,7 @@ class OpenAITextEmbedder:
             self, model_name=self.model_name, organization=self.organization, prefix=self.prefix, suffix=self.suffix
         )
 
-    @component.output_types(embedding=List[float], metadata=Dict[str, Any])
+    @component.output_types(embedding=List[float], meta=Dict[str, Any])
     def run(self, text: str):
         """Embed a string."""
         if not isinstance(text, str):
@@ -87,6 +87,6 @@ class OpenAITextEmbedder:
         text_to_embed = text_to_embed.replace("\n", " ")
 
         response = self.client.embeddings.create(model=self.model_name, input=text_to_embed)
-        metadata = {"model": response.model, "usage": dict(response.usage)}
+        meta = {"model": response.model, "usage": dict(response.usage)}
 
-        return {"embedding": response.data[0].embedding, "metadata": metadata}
+        return {"embedding": response.data[0].embedding, "meta": meta}
