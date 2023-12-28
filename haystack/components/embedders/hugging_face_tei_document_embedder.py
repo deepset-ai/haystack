@@ -88,7 +88,7 @@ class HuggingFaceTEIDocumentEmbedder:
         suffix: str = "",
         batch_size: int = 32,
         progress_bar: bool = True,
-        metadata_fields_to_embed: Optional[List[str]] = None,
+        meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
     ):
         """
@@ -105,7 +105,7 @@ class HuggingFaceTEIDocumentEmbedder:
         :param batch_size: Number of Documents to encode at once.
         :param progress_bar: Whether to show a progress bar or not. Can be helpful to disable in production deployments
                              to keep the logs clean.
-        :param metadata_fields_to_embed: List of meta fields that should be embedded along with the Document text.
+        :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document text.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
         transformers_import.check()
@@ -129,7 +129,7 @@ class HuggingFaceTEIDocumentEmbedder:
         self.suffix = suffix
         self.batch_size = batch_size
         self.progress_bar = progress_bar
-        self.metadata_fields_to_embed = metadata_fields_to_embed or []
+        self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
     def to_dict(self) -> Dict[str, Any]:
@@ -145,7 +145,7 @@ class HuggingFaceTEIDocumentEmbedder:
             suffix=self.suffix,
             batch_size=self.batch_size,
             progress_bar=self.progress_bar,
-            metadata_fields_to_embed=self.metadata_fields_to_embed,
+            meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
         )
 
@@ -163,9 +163,7 @@ class HuggingFaceTEIDocumentEmbedder:
         texts_to_embed = []
         for doc in documents:
             meta_values_to_embed = [
-                str(doc.meta[key])
-                for key in self.metadata_fields_to_embed
-                if key in doc.meta and doc.meta[key] is not None
+                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key] is not None
             ]
 
             text_to_embed = (

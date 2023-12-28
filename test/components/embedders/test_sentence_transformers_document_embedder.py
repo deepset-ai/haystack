@@ -17,7 +17,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.batch_size == 32
         assert embedder.progress_bar is True
         assert embedder.normalize_embeddings is False
-        assert embedder.metadata_fields_to_embed == []
+        assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
 
     def test_init_with_parameters(self):
@@ -30,7 +30,7 @@ class TestSentenceTransformersDocumentEmbedder:
             batch_size=64,
             progress_bar=False,
             normalize_embeddings=True,
-            metadata_fields_to_embed=["test_field"],
+            meta_fields_to_embed=["test_field"],
             embedding_separator=" | ",
         )
         assert embedder.model_name_or_path == "model"
@@ -41,7 +41,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.batch_size == 64
         assert embedder.progress_bar is False
         assert embedder.normalize_embeddings is True
-        assert embedder.metadata_fields_to_embed == ["test_field"]
+        assert embedder.meta_fields_to_embed == ["test_field"]
         assert embedder.embedding_separator == " | "
 
     def test_to_dict(self):
@@ -59,7 +59,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "progress_bar": True,
                 "normalize_embeddings": False,
                 "embedding_separator": "\n",
-                "metadata_fields_to_embed": [],
+                "meta_fields_to_embed": [],
             },
         }
 
@@ -73,7 +73,7 @@ class TestSentenceTransformersDocumentEmbedder:
             batch_size=64,
             progress_bar=False,
             normalize_embeddings=True,
-            metadata_fields_to_embed=["meta_field"],
+            meta_fields_to_embed=["meta_field"],
             embedding_separator=" - ",
         )
         data = component.to_dict()
@@ -90,7 +90,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "progress_bar": False,
                 "normalize_embeddings": True,
                 "embedding_separator": " - ",
-                "metadata_fields_to_embed": ["meta_field"],
+                "meta_fields_to_embed": ["meta_field"],
             },
         }
 
@@ -149,7 +149,7 @@ class TestSentenceTransformersDocumentEmbedder:
 
     def test_embed_metadata(self):
         embedder = SentenceTransformersDocumentEmbedder(
-            model_name_or_path="model", metadata_fields_to_embed=["meta_field"], embedding_separator="\n"
+            model_name_or_path="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
         embedder.embedding_backend = MagicMock()
 
@@ -175,7 +175,7 @@ class TestSentenceTransformersDocumentEmbedder:
             model_name_or_path="model",
             prefix="my_prefix ",
             suffix=" my_suffix",
-            metadata_fields_to_embed=["meta_field"],
+            meta_fields_to_embed=["meta_field"],
             embedding_separator="\n",
         )
         embedder.embedding_backend = MagicMock()
