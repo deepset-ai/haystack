@@ -109,6 +109,89 @@ You can find some of our hosted demos with instructions to run them locally too 
 
 🌎 **[Explore The World](https://haystack-demo.deepset.ai/) - Extractive Question Answering**
 
+### HOW TO USE TEI
+
+1. Using TEI locally with CPU
+
+You can install text-embeddings-inference locally to run it on your own machine. Here are the step-by-step instructions for installation:
+
+Step 1: Install Rust
+[Install Rust]((https://rustup.rs/) on your machine by run the following in your terminal, then following the instructions:
+
+Copied
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+Step 2: Install necessary packages
+Depending on your machine’s architecture, run one of the following commands:
+
+For x86 Machines
+
+cargo install --path router -F candle -F mkl
+For M1 or M2 Machines
+
+cargo install --path router -F candle -F accelerate
+Step 3: Launch Text Embeddings Inference
+Once the installation is successfully complete, you can launch Text Embeddings Inference on CPU with the following command:
+
+
+model=BAAI/bge-large-en-v1.5
+revision=refs/pr/5
+
+text-embeddings-router --model-id $model --revision $revision --port 8080
+In some cases, you might also need the OpenSSL libraries and gcc installed. On Linux machines, run the following command:
+
+
+sudo apt-get install libssl-dev gcc -y
+
+
+
+2. Using TEI locally with GPU
+You can install text-embeddings-inference locally to run it on your own machine with a GPU. To make sure that your hardware is supported, check out the Supported models and hardware page.
+
+Step 1: CUDA and NVIDIA drivers
+Make sure you have CUDA and the NVIDIA drivers installed - we recommend using NVIDIA drivers with CUDA version 12.2 or higher.
+
+Add the NVIDIA binaries to your path:
+export PATH=$PATH:/usr/local/cuda/bin
+Step 2: Install Rust
+[Install Rust]((https://rustup.rs/) on your machine by run the following in your terminal, then following the instructions:
+
+
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+Step 3: Install necessary packages
+This step can take a while as we need to compile a lot of cuda kernels.
+
+For Turing GPUs (T4, RTX 2000 series … )
+
+cargo install --path router -F candle-cuda-turing --no-default-features
+For Ampere and Hopper
+Copied
+cargo install --path router -F candle-cuda --no-default-features
+Step 4: Launch Text Embeddings Inference
+You can now launch Text Embeddings Inference on GPU with:
+
+
+model=BAAI/bge-large-en-v1.5
+revision=refs/pr/5
+
+text-embeddings-router --model-id $model --revision $revision --port 8080
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ### 🖖 Community
 
 If you have a feature request or a bug report, feel free to open an [issue in Github](https://github.com/deepset-ai/haystack/issues). We regularly check these and you can expect a quick response. If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project, you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://discord.gg/haystack). We also check [𝕏 (Twitter)](https://twitter.com/haystack_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
