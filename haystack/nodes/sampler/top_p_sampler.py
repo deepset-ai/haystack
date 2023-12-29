@@ -35,7 +35,7 @@ class TopPSampler(BaseSampler):
 
     ```python
     prompt_node = PromptNode(
-        "text-davinci-003",
+        "gpt-3.5-turbo-instruct",
         api_key=openai_key,
         max_length=256,
         default_prompt_template="question-answering-with-document-scores",
