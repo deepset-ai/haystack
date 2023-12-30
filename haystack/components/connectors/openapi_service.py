@@ -54,35 +54,47 @@ class OpenAPIServiceConnector:
         if not last_message.is_from(ChatRole.ASSISTANT):
             raise ValueError(f"{last_message} is not from the assistant.")
 
-        method_invocation_descriptor = self._parse_message(last_message.content)
+        function_invocation_payloads = self._parse_message(last_message)
 
         # instantiate the OpenAPI service for the given specification
         openapi_service = OpenAPI(service_openapi_spec)
         self._authenticate_service(openapi_service)
 
-        service_response = self._invoke_method(openapi_service, method_invocation_descriptor)
-        return {"service_response": [ChatMessage.from_user(str(service_response))]}
+        response_messages = []
+        for method_invocation_descriptor in function_invocation_payloads:
+            service_response = self._invoke_method(openapi_service, method_invocation_descriptor)
+            response_messages.append(ChatMessage.from_user(str(service_response)))
 
-    def _parse_message(self, content: str) -> Dict[str, Any]:
+        return {"service_response": response_messages}
+
+    def _parse_message(self, message: ChatMessage) -> List[Dict[str, Any]]:
         """
-        Parses the message content to extract the method invocation descriptor.
+        Parses the message to extract the method invocation descriptor.
 
-        :param content: The JSON string content of the message.
-        :type content: str
-        :return: A dictionary with method name and arguments.
-        :rtype: Dict[str, Any]
+        :param message: ChatMessage containing the tools calls
+        :type message: ChatMessage
+        :return: A list of function invocation payloads
+        :rtype: List[Dict[str, Any]]
         :raises ValueError: If the content is not valid JSON or lacks required fields.
         """
+        function_payloads = []
         try:
-            method_invocation_descriptor = json.loads(content)
+            tool_calls = json.loads(message.content)
         except json.JSONDecodeError:
-            raise ValueError("Invalid JSON content, cannot parse invocation message.", content)
+            raise ValueError("Invalid JSON content, expected OpenAI tools message.", message.content)
 
-        if "name" not in method_invocation_descriptor or "arguments" not in method_invocation_descriptor:
-            raise ValueError("Missing required fields in the invocation message content.", content)
+        for tool_call in tool_calls:
+            # this should never happen, but just in case do a sanity check
+            if "type" not in tool_call:
+                raise ValueError("Message payload doesn't seem to be a tool invocation descriptor", message.content)
 
-        method_invocation_descriptor["arguments"] = json.loads(method_invocation_descriptor["arguments"])
-        return method_invocation_descriptor
+            # In OpenAPIServiceConnector we know how to handle functions tools only
+            if tool_call["type"] == "function":
+                function_call = tool_call["function"]
+                function_payloads.append(
+                    {"arguments": json.loads(function_call["arguments"]), "name": function_call["name"]}
+                )
+        return function_payloads
 
     def _authenticate_service(self, openapi_service: OpenAPI):
         """

@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Update OpenAIChatGenerator to handle both tools and functions calling. OpenAIChatGenerator now supports both tools
+    and functions `generation_kwargs` parameters that enable function/tools invocation.

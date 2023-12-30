@@ -34,7 +34,7 @@ class TestHuggingFaceTEIDocumentEmbedder:
         assert embedder.suffix == ""
         assert embedder.batch_size == 32
         assert embedder.progress_bar is True
-        assert embedder.metadata_fields_to_embed == []
+        assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
 
     def test_init_with_parameters(self, mock_check_valid_model):
@@ -46,7 +46,7 @@ class TestHuggingFaceTEIDocumentEmbedder:
             suffix="suffix",
             batch_size=64,
             progress_bar=False,
-            metadata_fields_to_embed=["test_field"],
+            meta_fields_to_embed=["test_field"],
             embedding_separator=" | ",
         )
 
@@ -57,7 +57,7 @@ class TestHuggingFaceTEIDocumentEmbedder:
         assert embedder.suffix == "suffix"
         assert embedder.batch_size == 64
         assert embedder.progress_bar is False
-        assert embedder.metadata_fields_to_embed == ["test_field"]
+        assert embedder.meta_fields_to_embed == ["test_field"]
         assert embedder.embedding_separator == " | "
 
     def test_initialize_with_invalid_url(self, mock_check_valid_model):
@@ -83,7 +83,7 @@ class TestHuggingFaceTEIDocumentEmbedder:
                 "suffix": "",
                 "batch_size": 32,
                 "progress_bar": True,
-                "metadata_fields_to_embed": [],
+                "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
             },
         }
@@ -97,7 +97,7 @@ class TestHuggingFaceTEIDocumentEmbedder:
             suffix="suffix",
             batch_size=64,
             progress_bar=False,
-            metadata_fields_to_embed=["test_field"],
+            meta_fields_to_embed=["test_field"],
             embedding_separator=" | ",
         )
 
@@ -112,7 +112,7 @@ class TestHuggingFaceTEIDocumentEmbedder:
                 "suffix": "suffix",
                 "batch_size": 64,
                 "progress_bar": False,
-                "metadata_fields_to_embed": ["test_field"],
+                "meta_fields_to_embed": ["test_field"],
                 "embedding_separator": " | ",
             },
         }
@@ -126,7 +126,7 @@ class TestHuggingFaceTEIDocumentEmbedder:
             model="sentence-transformers/all-mpnet-base-v2",
             url="https://some_embedding_model.com",
             token="fake-api-token",
-            metadata_fields_to_embed=["meta_field"],
+            meta_fields_to_embed=["meta_field"],
             embedding_separator=" | ",
         )
 
@@ -195,7 +195,7 @@ class TestHuggingFaceTEIDocumentEmbedder:
                 token="fake-api-token",
                 prefix="prefix ",
                 suffix=" suffix",
-                metadata_fields_to_embed=["topic"],
+                meta_fields_to_embed=["topic"],
                 embedding_separator=" | ",
             )
 
@@ -231,7 +231,7 @@ class TestHuggingFaceTEIDocumentEmbedder:
                 token="fake-api-token",
                 prefix="prefix ",
                 suffix=" suffix",
-                metadata_fields_to_embed=["topic"],
+                meta_fields_to_embed=["topic"],
                 embedding_separator=" | ",
                 batch_size=1,
             )
