@@ -124,7 +124,7 @@ class TestRouter:
     def test_complex_condition(self):
         routes = [
             {
-                "condition": "{{messages[-1].metadata.finish_reason == 'function_call'}}",
+                "condition": "{{messages[-1].meta.finish_reason == 'function_call'}}",
                 "output": "{{streams}}",
                 "output_type": List[int],
                 "output_name": "streams",
@@ -138,7 +138,7 @@ class TestRouter:
         ]
         router = ConditionalRouter(routes)
         message = mock.MagicMock()
-        message.metadata.finish_reason = "function_call"
+        message.meta.finish_reason = "function_call"
         result = router.run(messages=[message], streams=[1, 2, 3], query="my query")
         assert result == {"streams": [1, 2, 3]}
 

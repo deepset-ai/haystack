@@ -1,6 +1,6 @@
 import dataclasses
-import json
 import logging
+import warnings
 from typing import Optional, List, Callable, Dict, Any, Union
 
 from openai import OpenAI, Stream
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class GPTGenerator:
+class OpenAIGenerator:
     """
     Enables text generation using OpenAI's large language models (LLMs). It supports gpt-4 and gpt-3.5-turbo
     family of models.
@@ -27,8 +27,8 @@ class GPTGenerator:
     [documentation](https://platform.openai.com/docs/api-reference/chat).
 
     ```python
-    from haystack.components.generators import GPTGenerator
-    client = GPTGenerator()
+    from haystack.components.generators import OpenAIGenerator
+    client = OpenAIGenerator()
     response = client.run("What's Natural Language Processing? Be brief.")
     print(response)
 
@@ -59,7 +59,7 @@ class GPTGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates an instance of GPTGenerator. Unless specified otherwise in the `model`, this is for OpenAI's
+        Creates an instance of OpenAIGenerator. Unless specified otherwise in the `model`, this is for OpenAI's
         GPT-3.5 model.
 
         :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
@@ -123,7 +123,7 @@ class GPTGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "GPTGenerator":
+    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIGenerator":
         """
         Deserialize this component from a dictionary.
         :param data: The dictionary representation of this component.
@@ -178,7 +178,7 @@ class GPTGenerator:
             # pylint: disable=not-an-iterable
             for chunk in completion:
                 if chunk.choices and self.streaming_callback:
-                    chunk_delta: StreamingChunk = self._build_chunk(chunk, chunk.choices[0])
+                    chunk_delta: StreamingChunk = self._build_chunk(chunk)
                     chunks.append(chunk_delta)
                     self.streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
             completions = [self._connect_chunks(chunk, chunks)]
@@ -230,15 +230,9 @@ class GPTGenerator:
         :param choice: The choice returned by the OpenAI API.
         :return: The ChatMessage.
         """
-        message: Any = choice.message
-        # message.content is str but message.function_call is FunctionCall
-        # TODO: update handling for tools, for now enable only for function calls
-        content = (
-            json.dumps({"name": message.function_call.name, "arguments": message.function_call.arguments})
-            if choice.finish_reason == "function_call"
-            else message.content
-        )
-        chat_message = ChatMessage.from_assistant(content)
+        # function or tools calls are not going to happen in non-chat generation
+        # as users can not send ChatMessage with function or tools calls
+        chat_message = ChatMessage.from_assistant(choice.message.content or "")
         chat_message.meta.update(
             {
                 "model": completion.model,
@@ -249,16 +243,17 @@ class GPTGenerator:
         )
         return chat_message
 
-    def _build_chunk(self, chunk: Any, choice: Any) -> StreamingChunk:
+    def _build_chunk(self, chunk: Any) -> StreamingChunk:
         """
         Converts the response from the OpenAI API to a StreamingChunk.
         :param chunk: The chunk returned by the OpenAI API.
         :param choice: The choice returned by the OpenAI API.
         :return: The StreamingChunk.
         """
-        has_content = bool(hasattr(choice.delta, "content") and choice.delta.content)
-        has_function_call = bool(hasattr(choice.delta, "function_call") and choice.delta.function_call)
-        content = choice.delta.content if has_content else choice.delta.function_call if has_function_call else ""
+        # function or tools calls are not going to happen in non-chat generation
+        # as users can not send ChatMessage with function or tools calls
+        choice = chunk.choices[0]
+        content = choice.delta.content or ""
         chunk_message = StreamingChunk(content)
         chunk_message.meta.update({"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason})
         return chunk_message
@@ -279,3 +274,31 @@ class GPTGenerator:
             logger.warning(
                 "The completion for index %s has been truncated due to the content filter.", message.meta["index"]
             )
+
+
+class GPTGenerator(OpenAIGenerator):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model_name: str = "gpt-3.5-turbo",
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        api_base_url: Optional[str] = None,
+        organization: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+    ):
+        warnings.warn(
+            "GPTGenerator is deprecated and will be removed in the next beta release. "
+            "Please use OpenAIGenerator instead.",
+            UserWarning,
+            stacklevel=2,
+        )
+        super().__init__(
+            api_key=api_key,
+            model_name=model_name,
+            streaming_callback=streaming_callback,
+            api_base_url=api_base_url,
+            organization=organization,
+            system_prompt=system_prompt,
+            generation_kwargs=generation_kwargs,
+        )
