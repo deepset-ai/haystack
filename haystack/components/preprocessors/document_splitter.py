@@ -18,7 +18,7 @@ class DocumentSplitter:
     ):
         """
         :param split_by: The unit by which the document should be split. Choose from "word" for splitting by " ",
-        "sentence" for splitting by ".", or "passage" for splitting by "\n\n".
+        "sentence" for splitting by ".", or "passage" for splitting by "\\n\\n".
         :param split_length: The maximum number of units in each split.
         :param split_overlap: The number of units that each split should overlap.
         """
