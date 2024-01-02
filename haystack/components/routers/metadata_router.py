@@ -47,7 +47,7 @@ class MetadataRouter:
                                 {"field": "meta.created_at", "operator": "<", "value": "2024-01-01"},
                             ],
                         },
-                    }
+                      }
                       ```
         """
         self.rules = rules
