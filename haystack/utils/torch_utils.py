@@ -54,12 +54,11 @@ def get_devices(devices: Optional[List[Union[str, torch.device]]]) -> List[torch
     return [torch.device("cpu")]
 
 
-def extract_torch_dtype(**kwargs) -> Optional["torch.dtype"]:
+def resolve_torch_dtype(torch_dtype: Optional[Union[str, "torch.dtype"]]) -> Optional["torch.dtype"]:
     """
     Extract the torch dtype specified in kwargs. This function ensures the returned dtype is of a `torch.dtype` type.
     """
     torch_dtype_resolved = None
-    torch_dtype = kwargs.get("torch_dtype", None)
     if torch_dtype is not None:
         if isinstance(torch_dtype, str):
             if "torch." in torch_dtype:

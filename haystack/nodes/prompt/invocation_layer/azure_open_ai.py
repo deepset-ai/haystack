@@ -19,7 +19,7 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
         azure_deployment_name: str,
         api_key: str,
         api_version: str = "2022-12-01",
-        model_name_or_path: str = "text-davinci-003",
+        model_name_or_path: str = "gpt-3.5-turbo-instruct",
         max_length: Optional[int] = 100,
         **kwargs,
     ):
@@ -42,7 +42,7 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
         Ensures Azure OpenAI Invocation Layer is selected when `azure_base_url` and `azure_deployment_name` are provided in
         addition to a list of supported models.
         """
-        valid_model = model_name_or_path in ["ada", "babbage", "davinci", "curie"] or any(
+        valid_model = model_name_or_path in ["ada", "babbage", "davinci", "curie", "gpt-3.5-turbo-instruct"] or any(
             m in model_name_or_path for m in ["-ada-", "-babbage-", "-davinci-", "-curie-"]
         )
         return valid_model and has_azure_parameters(**kwargs)

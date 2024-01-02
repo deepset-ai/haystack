@@ -27,6 +27,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     )
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
     from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler
+    from haystack.utils.torch_utils import resolve_torch_dtype
 
     class StopWordsCriteria(StoppingCriteria):
         """
@@ -177,7 +178,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         device_map = kwargs.get("device_map", None)
         device = kwargs.get("device") if device_map is None else None
         # prepare torch_dtype for pipeline invocation
-        torch_dtype = self._extract_torch_dtype(**kwargs)
+        torch_dtype = resolve_torch_dtype(kwargs.get("torch_dtype"))
         # and the model (prefer model instance over model_name_or_path str identifier)
         model = kwargs.get("model") or kwargs.get("model_name_or_path")
         trust_remote_code = kwargs.get("trust_remote_code", False)
