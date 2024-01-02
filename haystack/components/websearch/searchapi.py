@@ -1,12 +1,11 @@
 import json
 import logging
 from typing import Dict, List, Optional, Any
+import os
 
 import requests
 
 from haystack import Document, component, default_to_dict, ComponentError
-from haystack.utils import get_api_key_from_param_or_env
-
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +42,14 @@ class SearchApiWebSearch:
         For example, you can set 'num' to 100 to increase the number of search results.
         See the [SearchApi website](https://www.searchapi.io/) for more details.
         """
-        api_key = get_api_key_from_param_or_env(
-            component_name=self.__class__.__name__, param=api_key, environment_variable="SEARCHAPI_API_KEY"
-        )
+        api_key = api_key or os.environ.get("SEARCHAPI_API_KEY")
+        # we check whether api_key is None or an empty string
+        if not api_key:
+            msg = (
+                "SearchApiWebSearch expects an API key. "
+                "Set the SEARCHAPI_API_KEY environment variable (recommended) or pass it explicitly."
+            )
+            raise ValueError(msg)
 
         self.api_key = api_key
         self.top_k = top_k

@@ -1,12 +1,12 @@
 from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
 import logging
+import os
 
 from haystack.lazy_imports import LazyImport
 from haystack import component, Document, default_to_dict
 from haystack.dataclasses import ByteStream
 from haystack.components.converters.utils import get_bytestream_from_source
-from haystack.utils import get_api_key_from_param_or_env
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +51,14 @@ class AzureOCRDocumentConverter:
         """
         azure_import.check()
 
-        api_key = get_api_key_from_param_or_env(
-            component_name=self.__class__.__name__, param=api_key, environment_variable="AZURE_AI_API_KEY"
-        )
+        api_key = api_key or os.environ.get("AZURE_AI_API_KEY")
+        # we check whether api_key is None or an empty string
+        if not api_key:
+            msg = (
+                "AzureOCRDocumentConverter expects an API key. "
+                "Set the AZURE_AI_API_KEY environment variable (recommended) or pass it explicitly."
+            )
+            raise ValueError(msg)
 
         self.document_analysis_client = DocumentAnalysisClient(
             endpoint=endpoint, credential=AzureKeyCredential(api_key)
