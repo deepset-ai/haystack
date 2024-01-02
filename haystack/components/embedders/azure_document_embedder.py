@@ -30,7 +30,7 @@ class AzureOpenAIDocumentEmbedder:
 
     def __init__(
         self,
-        azure_endpoint: str,
+        azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",
         azure_deployment: Optional[str] = None,
         api_key: Optional[str] = None,

@@ -28,7 +28,7 @@ class AzureOpenAITextEmbedder:
 
     def __init__(
         self,
-        azure_endpoint: str,
+        azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",
         azure_deployment: Optional[str] = None,
         api_key: Optional[str] = None,
@@ -88,6 +88,8 @@ class AzureOpenAITextEmbedder:
             azure_deployment=self.azure_deployment,
             organization=self.organization,
             api_version=self.api_version,
+            prefix=self.prefix,
+            suffix=self.suffix,
         )
 
     @component.output_types(embedding=List[float], meta=Dict[str, Any])
