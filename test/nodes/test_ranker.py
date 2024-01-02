@@ -235,6 +235,18 @@ def test_ranker(docs, mock_transformer_model, mock_transformer_tokenizer):
 
 
 @pytest.mark.unit
+def test_init_called_with():
+    with patch("haystack.nodes.SentenceTransformersRanker.__init__") as mock_ranker_init:
+        mock_ranker_init.return_value = None
+        _ = SentenceTransformersRanker(
+            model_name_or_path="fake_model", use_gpu=False, model_kwargs={"torch_dtype": torch.float16}
+        )
+        mock_ranker_init.assert_called_once_with(
+            model_name_or_path="fake_model", use_gpu=False, model_kwargs={"torch_dtype": torch.float16}
+        )
+
+
+@pytest.mark.unit
 def test_ranker_run(docs, mock_transformer_model, mock_transformer_tokenizer):
     with patch("torch.nn.DataParallel"):
         ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
