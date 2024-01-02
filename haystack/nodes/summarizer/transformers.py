@@ -18,7 +18,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     from transformers import pipeline
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
     from haystack.utils.torch_utils import ListDataset
-    from haystack.utils.torch_utils import extract_torch_dtype
+    from haystack.utils.torch_utils import resolve_torch_dtype
 
 
 class TransformersSummarizer(BaseSummarizer):
@@ -110,7 +110,7 @@ class TransformersSummarizer(BaseSummarizer):
             tokenizer = model_name_or_path
 
         kwargs = pipeline_kwargs if pipeline_kwargs else {}
-        torch_dtype = extract_torch_dtype(**kwargs)
+        torch_dtype = resolve_torch_dtype(kwargs.get("torch_dtype"))
         if torch_dtype:
             kwargs["torch_dtype"] = torch_dtype
         self.summarizer = pipeline(
