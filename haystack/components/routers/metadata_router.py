@@ -48,7 +48,7 @@ class MetadataRouter:
                             ],
                         },
                     }
-                    ```
+                      ```
         """
         self.rules = rules
         component.set_output_types(self, unmatched=List[Document], **{edge: List[Document] for edge in rules})
