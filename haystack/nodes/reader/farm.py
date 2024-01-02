@@ -38,7 +38,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     from haystack.modeling.training import Trainer, DistillationTrainer, TinyBERTDistillationTrainer
     from haystack.modeling.evaluation import Evaluator
     from haystack.modeling.utils import set_all_seeds, initialize_device_settings
-    from haystack.utils.torch_utils import extract_torch_dtype
+    from haystack.utils.torch_utils import resolve_torch_dtype
 
 
 class FARMReader(BaseReader):
@@ -152,7 +152,7 @@ class FARMReader(BaseReader):
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
         kwargs = model_kwargs if model_kwargs else {}
-        torch_dtype = extract_torch_dtype(**kwargs)
+        torch_dtype = resolve_torch_dtype(kwargs.get("torch_dtype"))
         if torch_dtype:
             kwargs["torch_dtype"] = torch_dtype
         self.inferencer = QAInferencer.load(
