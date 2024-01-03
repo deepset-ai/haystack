@@ -85,13 +85,15 @@ class TransformersSimilarityRanker:
         """
         Warm up the model and tokenizer used for scoring the Documents.
         """
-        # Always load with accelerate? --> means must always use device_map
         if self.model is None:
             # Set up device_map which allows quantized loading and multi device inference
             # requires accelerate which is always installed when using `pip install transformers[torch]`
             device_map = self.model_kwargs.get("device_map")
             if device_map is None:
-                device_map = get_device()
+                if self.device is not None:
+                    device_map = self.device
+                else:
+                    device_map = get_device()
             self.model_kwargs["device_map"] = device_map
 
             self.model = AutoModelForSequenceClassification.from_pretrained(
