@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Switch to using `device_map` when loading a TransformersSimilarityRanker
