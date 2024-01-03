@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional, Dict, Any, Tuple
 
 from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
@@ -64,6 +65,14 @@ class AzureOpenAIDocumentEmbedder:
         :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document text.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
+        # Why is this here?
+        # AzureOpenAI init is forcing us to use an init method that takes either base_url or azure_endpoint as not
+        # None init parameters. This way we accommodate the use case where env var AZURE_OPENAI_ENDPOINT is set instead
+        # of passing it as a parameter.
+        azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
+        if not azure_endpoint:
+            raise ValueError("Please provide an Azure endpoint or set the environment variable AZURE_OPENAI_ENDPOINT.")
+
         self.api_version = api_version
         self.azure_endpoint = azure_endpoint
         self.azure_deployment = azure_deployment or "text-embedding-ada-002"

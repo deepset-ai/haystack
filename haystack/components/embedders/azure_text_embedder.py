@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional, Dict, Any
 
 from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
@@ -53,6 +54,14 @@ class AzureOpenAITextEmbedder:
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         """
+        # Why is this here?
+        # AzureOpenAI init is forcing us to use an init method that takes either base_url or azure_endpoint as not
+        # None init parameters. This way we accommodate the use case where env var AZURE_OPENAI_ENDPOINT is set instead
+        # of passing it as a parameter.
+        azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
+        if not azure_endpoint:
+            raise ValueError("Please provide an Azure endpoint or set the environment variable AZURE_OPENAI_ENDPOINT.")
+
         self.api_version = api_version
         self.azure_endpoint = azure_endpoint
         self.azure_deployment = azure_deployment or "text-embedding-ada-002"
