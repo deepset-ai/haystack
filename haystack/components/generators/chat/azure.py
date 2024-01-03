@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Optional, Callable, Dict, Any
 
 # pylint: disable=import-error
@@ -59,7 +60,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     # pylint: disable=super-init-not-called
     def __init__(
         self,
-        azure_endpoint: str,
+        azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",
         azure_deployment: Optional[str] = "gpt-35-turbo",
         api_key: Optional[str] = None,
@@ -103,6 +104,15 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
+
+        # Why is this here?
+        # AzureOpenAI init is forcing us to use an init method that takes either base_url or azure_endpoint as not
+        # None init parameters. This way we accommodate the use case where env var AZURE_OPENAI_ENDPOINT is set instead
+        # of passing it as a parameter.
+        azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
+        if not azure_endpoint:
+            raise ValueError("Please provide an Azure endpoint or set the environment variable AZURE_OPENAI_ENDPOINT.")
+
         self.generation_kwargs = generation_kwargs or {}
         self.streaming_callback = streaming_callback
         self.api_version = api_version
