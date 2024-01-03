@@ -1,7 +1,13 @@
-from typing import Any, Dict, List, Union
+import re
+import string
+from typing import Any, Callable, Dict, List, Union
+
+import numpy as np
 
 from haystack import Pipeline
 from haystack.core.component import Component
+from haystack.evaluation.eval_utils import get_answers_from_output
+from haystack.evaluation.metrics import Metric, MetricsResult
 
 
 class EvaluationResult:
@@ -26,6 +32,93 @@ class EvaluationResult:
         self.inputs = inputs
         self.outputs = outputs
         self.expected_outputs = expected_outputs
+
+        # Determine the type of the runnable
+        if str(type(runnable).__name__) == "Pipeline":
+            self.runnable_type = "pipeline"
+        else:
+            self.runnable_type = "component"
+
+    # pylint: disable=too-many-return-statements
+    def calculate_metrics(self, metric: Union[Metric, Callable[..., MetricsResult]], **kwargs) -> MetricsResult:
+        """
+        Calculate evaluation metrics based on the provided Metric or using the custom metric function.
+
+        :param metric: The Metric indicating the type of metric to calculate or custom function to compute.
+        :return: MetricsResult containing the calculated metric.
+        """
+        if metric == Metric.RECALL:
+            return self._calculate_recall(**kwargs)
+
+        elif metric == Metric.F1:
+            return self._calculate_f1(**kwargs)
+
+        elif metric == Metric.MRR:
+            return self._calculate_mrr(**kwargs)
+
+        elif metric == Metric.MAP:
+            return self._calculate_map(**kwargs)
+
+        elif metric == Metric.EM:
+            predictions = get_answers_from_output(self.outputs, self.runnable_type)
+            labels = get_answers_from_output(self.expected_outputs, self.runnable_type)
+            return self._calculate_em(predictions=predictions, labels=labels, **kwargs)
+
+        elif metric == Metric.SAS:
+            return self._calculate_sas(**kwargs)
+
+        return metric(self, **kwargs)
+
+    def _calculate_recall(self):
+        return MetricsResult({"recall": None})
+
+    def _calculate_map(self):
+        return MetricsResult({"mean_average_precision": None})
+
+    def _calculate_mrr(self):
+        return MetricsResult({"mean_reciprocal_rank": None})
+
+    def _calculate_f1(self):
+        return MetricsResult({"f1": None})
+
+    def _calculate_em(
+        self,
+        predictions,
+        labels,
+        regexes_to_ignore=None,
+        ignore_case=False,
+        ignore_punctuation=False,
+        ignore_numbers=False,
+    ):
+        if regexes_to_ignore is not None:
+            for s in regexes_to_ignore:
+                predictions = np.array([re.sub(s, "", x) for x in predictions])
+                labels = np.array([re.sub(s, "", x) for x in labels])
+        else:
+            predictions = np.asarray(predictions)
+            labels = np.asarray(labels)
+
+        if ignore_case:
+            predictions = np.char.lower(predictions)
+            labels = np.char.lower(labels)
+
+        if ignore_punctuation:
+            repl_table = string.punctuation.maketrans("", "", string.punctuation)
+            predictions = np.char.translate(predictions, table=repl_table)
+            labels = np.char.translate(labels, table=repl_table)
+
+        if ignore_numbers:
+            repl_table = string.digits.maketrans("", "", string.digits)
+            predictions = np.char.translate(predictions, table=repl_table)
+            labels = np.char.translate(labels, table=repl_table)
+
+        score_list = predictions == labels
+        em = np.mean(score_list)
+        return MetricsResult({"exact_match": em})
+
+    def _calculate_sas(self):
+        val = 0
+        return MetricsResult({"exact_match": val})
 
 
 def eval(

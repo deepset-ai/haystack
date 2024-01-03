@@ -1,12 +1,15 @@
+import json
+
 from haystack import Pipeline
 from haystack.components.readers import ExtractiveReader
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.dataclasses import Document, ExtractedAnswer
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.evaluation.eval import eval
+from haystack.evaluation.metrics import Metric
 
 
-def test_extractive_qa_pipeline():
+def test_extractive_qa_pipeline(tmp_path):
     # Create the pipeline
     qa_pipeline = Pipeline()
     qa_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
@@ -32,11 +35,7 @@ def test_extractive_qa_pipeline():
                         query="Who lives in Paris?",
                         score=0.7713339924812317,
                         data="Jean and I",
-                        document=Document(
-                            id="6c90b78ad94e4e634e2a067b5fe2d26d4ce95405ec222cbaefaeb09ab4dce81e",
-                            content="My name is Jean and I live in Paris.",
-                            score=0.33144005810482535,
-                        ),
+                        document=Document(content="My name is Jean and I live in Paris.", score=0.33144005810482535),
                         context=None,
                         document_offset=ExtractedAnswer.Span(start=11, end=21),
                         context_offset=None,
@@ -62,11 +61,7 @@ def test_extractive_qa_pipeline():
                         query="Who lives in Berlin?",
                         score=0.7047999501228333,
                         data="Mark and I",
-                        document=Document(
-                            id="10a183e965c2e107e20507c717f16559c58a8ba4bc7c577ea8dc32a8d6ca7a20",
-                            content="My name is Mark and I live in Berlin.",
-                            score=0.33144005810482535,
-                        ),
+                        document=Document(content="My name is Mark and I live in Berlin.", score=0.33144005810482535),
                         context=None,
                         document_offset=ExtractedAnswer.Span(start=11, end=21),
                         context_offset=None,
@@ -92,11 +87,7 @@ def test_extractive_qa_pipeline():
                         query="Who lives in Rome?",
                         score=0.7661304473876953,
                         data="Giorgio and I",
-                        document=Document(
-                            id="fb0f1efe94b3c78aa1c4e5a17a5ef8270f70e89d36a3665c8362675e8a769a27",
-                            content="My name is Giorgio and I live in Rome.",
-                            score=0.33144005810482535,
-                        ),
+                        document=Document(content="My name is Giorgio and I live in Rome.", score=0.33144005810482535),
                         context=None,
                         document_offset=ExtractedAnswer.Span(start=11, end=24),
                         context_offset=None,
@@ -123,3 +114,15 @@ def test_extractive_qa_pipeline():
     assert eval_result.expected_outputs == expected_outputs
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == qa_pipeline.to_dict()
+
+    metrics_default = eval_result.calculate_metrics(Metric.EM)
+    metrics_custom_parameters = eval_result.calculate_metrics(
+        Metric.EM, ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+    )
+    # Save metric results to json
+    metrics_default.save(tmp_path / "exact_match_score.json")
+
+    assert metrics_default["exact_match"] == 1.0
+    assert metrics_custom_parameters["exact_match"] == 1.0
+    with open(tmp_path / "exact_match_score.json", "r") as f:
+        assert metrics_default == json.load(f)
