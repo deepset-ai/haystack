@@ -96,6 +96,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         """
+        # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
+        # with the API.
         self.generation_kwargs = generation_kwargs or {}
         self.system_prompt = system_prompt
         self.streaming_callback = streaming_callback

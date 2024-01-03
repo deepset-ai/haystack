@@ -101,6 +101,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         """
+        # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
+        # with the API.
         self.generation_kwargs = generation_kwargs or {}
         self.streaming_callback = streaming_callback
         self.api_version = api_version
@@ -136,7 +138,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIChatGenerator":
+    def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAIChatGenerator":
         """
         Deserialize this component from a dictionary.
         :param data: The dictionary representation of this component.
