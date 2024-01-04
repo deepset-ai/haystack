@@ -1,6 +1,9 @@
+from typing import List
+
 import pytest
 from jinja2 import TemplateSyntaxError
 
+from haystack import component, Document, Pipeline
 from haystack.components.builders import DynamicPromptBuilder
 
 
@@ -74,3 +77,34 @@ class TestDynamicPromptBuilder:
 
         # provided variables are a superset of the required variables
         prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name", "city", "age"})
+
+    def test_example_in_pipeline(self):
+        prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"])
+
+        @component
+        class DocumentProducer:
+            @component.output_types(documents=List[Document])
+            def run(self, doc_input: str):
+                return {"documents": [Document(content=doc_input)]}
+
+        pipe = Pipeline()
+        pipe.add_component("doc_producer", DocumentProducer())
+        pipe.add_component("prompt_builder", prompt_builder)
+        pipe.connect("doc_producer.documents", "prompt_builder.documents")
+
+        template = "Here is the document: {{documents[0].content}} \\n Answer: {{query}}"
+        result = pipe.run(
+            data={
+                "doc_producer": {"doc_input": "Hello world, I live in Berlin"},
+                "prompt_builder": {
+                    "prompt_source": template,
+                    "template_variables": {"query": "Where does the speaker live?"},
+                },
+            }
+        )
+
+        assert result == {
+            "prompt_builder": {
+                "prompt": "Here is the document: Hello world, I live in Berlin \\n Answer: Where does the speaker live?"
+            }
+        }
