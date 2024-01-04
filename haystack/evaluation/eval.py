@@ -91,6 +91,24 @@ class EvaluationResult:
         ignore_punctuation=False,
         ignore_numbers=False,
     ):
+        """
+        Calculates the Exact Match (EM) score between two lists of predictions and labels.
+        Exact Match (EM) score measures the percentage of samples where the predicted text exactly matches the
+          corresponding ground truth label.
+
+        :param predictions: A list of predicted text strings.
+        :param labels (list): A list of ground truth (reference) text strings.
+        :param regexes_to_ignore (list, optional): A list of regular expressions. If provided, it removes substrings
+            matching these regular expressions from both predictions and labels before comparison. Defaults to None.
+        :param ignore_case (bool, optional): If True, performs case-insensitive comparison. Defaults to False.
+        :param ignore_punctuation (bool, optional): If True, removes punctuation from both predictions and labels before
+            comparison. Defaults to False.
+        :param ignore_numbers (bool, optional): If True, removes numerical digits from both predictions and labels
+            before comparison. Defaults to False.
+
+        :return: A MetricsResult object containing the calculated Exact Match (EM) score.
+        """
+
         if len(predictions) != len(labels):
             raise ValueError("The number of predictions and labels must be the same.")
         if len(predictions) == len(labels) == 0:
