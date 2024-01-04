@@ -180,4 +180,8 @@ class TransformersSimilarityRanker:
             i = sorted_index
             documents[i].score = similarity_scores[i]
             ranked_docs.append(documents[i])
+
+        if self.score_threshold is not None:
+            ranked_docs = [doc for doc in ranked_docs if doc.score >= self.score_threshold]
+
         return {"documents": ranked_docs[:top_k]}
