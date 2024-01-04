@@ -66,7 +66,6 @@ class DynamicChatPromptBuilder:
     closer to your visit.", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, meta={'model': 'gpt-3.5-turbo-0613',
     'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201,
     'total_tokens': 238}})]}}
-
     ```
 
     The primary advantage of using DynamicChatPromptBuilder is showcased in the examples provided above.
