@@ -85,7 +85,7 @@ class TransformersSimilarityRanker:
         self.calibration_factor = calibration_factor
         if self.scale_score and self.calibration_factor is None:
             raise ValueError(
-                f"scale_score is True so calibration_factor must be provided, bug got {calibration_factor}"
+                f"scale_score is True so calibration_factor must be provided, but got {calibration_factor}"
             )
         self.score_threshold = score_threshold
         self.model_kwargs = model_kwargs or {}
@@ -166,7 +166,7 @@ class TransformersSimilarityRanker:
 
         if scale_score and calibration_factor is None:
             raise ValueError(
-                f"scale_score is True so calibration_factor must be provided, bug got {calibration_factor}"
+                f"scale_score is True so calibration_factor must be provided, but got {calibration_factor}"
             )
 
         if score_threshold is None:
