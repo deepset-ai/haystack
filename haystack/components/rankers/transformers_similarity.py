@@ -199,7 +199,7 @@ class TransformersSimilarityRanker:
 
         _, sorted_indices = torch.sort(similarity_scores, descending=True)
 
-        sorted_indices = sorted_indices.cpu().tolist()
+        sorted_indices = sorted_indices.cpu().tolist()  # type: ignore
         similarity_scores = similarity_scores.cpu().tolist()
         ranked_docs = []
         for sorted_index in sorted_indices:
