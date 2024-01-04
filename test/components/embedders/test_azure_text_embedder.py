@@ -45,7 +45,7 @@ class TestAzureOpenAITextEmbedder:
     def test_run(self):
         # the default model is text-embedding-ada-002 even if we don't specify it, but let's be explicit
         embedder = AzureOpenAITextEmbedder(
-            azure_deployment="text-embedding-ada-002", prefix="prefix ", suffix=" suffix"
+            azure_deployment="text-embedding-ada-002", prefix="prefix ", suffix=" suffix", organization="HaystackCI"
         )
         result = embedder.run(text="The food was delicious")
 

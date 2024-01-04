@@ -56,7 +56,10 @@ class TestAzureOpenAIDocumentEmbedder:
         ]
         # the default model is text-embedding-ada-002 even if we don't specify it, but let's be explicit
         embedder = AzureOpenAIDocumentEmbedder(
-            azure_deployment="text-embedding-ada-002", meta_fields_to_embed=["topic"], embedding_separator=" | "
+            azure_deployment="text-embedding-ada-002",
+            meta_fields_to_embed=["topic"],
+            embedding_separator=" | ",
+            organization="HaystackCI",
         )
 
         result = embedder.run(documents=docs)
