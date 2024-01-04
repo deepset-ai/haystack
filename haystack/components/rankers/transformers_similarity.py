@@ -43,6 +43,7 @@ class TransformersSimilarityRanker:
         top_k: int = 10,
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
+        scale_score: bool = True,
         model_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -57,6 +58,8 @@ class TransformersSimilarityRanker:
         :param top_k: The maximum number of Documents to return per query.
         :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document content.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document content.
+        :param scale_score: Whether the raw logit predictions will be scaled using a Sigmoid activation function.
+            Set this to False if you do not want any scaling of the raw logit predictions.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForSequenceClassification.from_pretrained`
             when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
             see the model's documentation.
@@ -73,6 +76,8 @@ class TransformersSimilarityRanker:
         self.tokenizer = None
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
+        self.scale_score = scale_score
+        self.scale_score_function = None
         self.model_kwargs = model_kwargs or {}
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -94,6 +99,11 @@ class TransformersSimilarityRanker:
             self.model.eval()
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
+            if self.scale_score:
+                self.scale_score_function = torch.nn.Sigmoid()
+            else:
+                self.scale_score_function = torch.nn.Identity()
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
@@ -106,6 +116,7 @@ class TransformersSimilarityRanker:
             top_k=self.top_k,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
+            scale_score=self.scale_score,
             model_kwargs=self.model_kwargs,
         )
 
@@ -149,11 +160,15 @@ class TransformersSimilarityRanker:
         )
         with torch.inference_mode():
             similarity_scores = self.model(**features).logits.squeeze(dim=1)  # type: ignore
+        similarity_scores = self.scale_score_function(similarity_scores)
 
         _, sorted_indices = torch.sort(similarity_scores, descending=True)
+
+        sorted_indices = sorted_indices.cpu().tolist()
+        similarity_scores = similarity_scores.cpu().tolist()
         ranked_docs = []
-        for sorted_index_tensor in sorted_indices:
-            i = sorted_index_tensor.item()
-            documents[i].score = similarity_scores[i].item()
+        for sorted_index in sorted_indices:
+            i = sorted_index
+            documents[i].score = similarity_scores[i]
             ranked_docs.append(documents[i])
         return {"documents": ranked_docs[:top_k]}

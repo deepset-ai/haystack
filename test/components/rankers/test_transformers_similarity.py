@@ -19,6 +19,7 @@ class TestSimilarityRanker:
                 "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
+                "scale_score": True,
                 "model_kwargs": {},
             },
         }
@@ -29,6 +30,7 @@ class TestSimilarityRanker:
             device="cuda",
             token="my_token",
             top_k=5,
+            scale_score=False,
             model_kwargs={"torch_dtype": "auto"},
         )
         data = component.to_dict()
@@ -41,6 +43,7 @@ class TestSimilarityRanker:
                 "top_k": 5,
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
+                "scale_score": False,
                 "model_kwargs": {"torch_dtype": "auto"},
             },
         }
@@ -53,6 +56,7 @@ class TestSimilarityRanker:
         )
         embedder.model = MagicMock()
         embedder.tokenizer = MagicMock()
+        embedder.scale_score_function = MagicMock()
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
