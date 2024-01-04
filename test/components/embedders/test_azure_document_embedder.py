@@ -54,7 +54,10 @@ class TestAzureOpenAIDocumentEmbedder:
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
-        embedder = AzureOpenAIDocumentEmbedder(meta_fields_to_embed=["topic"], embedding_separator=" | ")
+        # the default model is text-embedding-ada-002 even if we don't specify it, but let's be explicit
+        embedder = AzureOpenAIDocumentEmbedder(
+            azure_deployment="text-embedding-ada-002", meta_fields_to_embed=["topic"], embedding_separator=" | "
+        )
 
         result = embedder.run(documents=docs)
         documents_with_embeddings = result["documents"]
@@ -67,4 +70,4 @@ class TestAzureOpenAIDocumentEmbedder:
             assert isinstance(doc.embedding, list)
             assert len(doc.embedding) == 1536
             assert all(isinstance(x, float) for x in doc.embedding)
-        assert metadata == {"model": "text-similarity-ada:002", "usage": {"prompt_tokens": 15, "total_tokens": 15}}
+        assert metadata == {"model": "ada", "usage": {"prompt_tokens": 15, "total_tokens": 15}}

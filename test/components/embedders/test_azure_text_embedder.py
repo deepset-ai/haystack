@@ -43,9 +43,12 @@ class TestAzureOpenAITextEmbedder:
         ),
     )
     def test_run(self):
-        embedder = AzureOpenAITextEmbedder(prefix="prefix ", suffix=" suffix")
+        # the default model is text-embedding-ada-002 even if we don't specify it, but let's be explicit
+        embedder = AzureOpenAITextEmbedder(
+            azure_deployment="text-embedding-ada-002", prefix="prefix ", suffix=" suffix"
+        )
         result = embedder.run(text="The food was delicious")
 
         assert len(result["embedding"]) == 1536
         assert all(isinstance(x, float) for x in result["embedding"])
-        assert result["meta"] == {"model": "text-similarity-ada:002", "usage": {"prompt_tokens": 6, "total_tokens": 6}}
+        assert result["meta"] == {"model": "ada", "usage": {"prompt_tokens": 6, "total_tokens": 6}}
