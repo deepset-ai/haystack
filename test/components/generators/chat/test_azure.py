@@ -78,7 +78,7 @@ class TestOpenAIChatGenerator:
     )
     def test_live_run(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = AzureOpenAIChatGenerator()
+        component = AzureOpenAIChatGenerator(organization="HaystackCI")
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]

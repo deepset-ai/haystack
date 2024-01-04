@@ -80,7 +80,7 @@ class TestAzureOpenAIGenerator:
         ),
     )
     def test_live_run(self):
-        component = AzureOpenAIGenerator()
+        component = AzureOpenAIGenerator(organization="HaystackCI")
         results = component.run("What's the capital of France?")
         assert len(results["replies"]) == 1
         assert len(results["meta"]) == 1
