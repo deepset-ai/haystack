@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from openai import OpenAIError
 
@@ -67,5 +69,31 @@ class TestAzureOpenAIGenerator:
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("AZURE_OPENAI_API_KEY", None) and not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
+        reason=(
+            "Please export env variables called AZURE_OPENAI_API_KEY containing "
+            "the Azure OpenAI key, AZURE_OPENAI_ENDPOINT containing "
+            "the Azure OpenAI endpoint URL to run this test."
+        ),
+    )
+    def test_live_run(self):
+        component = AzureOpenAIGenerator()
+        results = component.run("What's the capital of France?")
+        assert len(results["replies"]) == 1
+        assert len(results["meta"]) == 1
+        response: str = results["replies"][0]
+        assert "Paris" in response
+
+        metadata = results["meta"][0]
+        assert "gpt-35-turbo" in metadata["model"]
+        assert metadata["finish_reason"] == "stop"
+
+        assert "usage" in metadata
+        assert "prompt_tokens" in metadata["usage"] and metadata["usage"]["prompt_tokens"] > 0
+        assert "completion_tokens" in metadata["usage"] and metadata["usage"]["completion_tokens"] > 0
+        assert "total_tokens" in metadata["usage"] and metadata["usage"]["total_tokens"] > 0
 
     # additional tests intentionally omitted as they are covered by test_openai.py

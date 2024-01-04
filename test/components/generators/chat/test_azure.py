@@ -1,8 +1,11 @@
+import os
+
 import pytest
 from openai import OpenAIError
 
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.components.generators.utils import default_streaming_callback
+from haystack.dataclasses import ChatMessage
 
 
 class TestOpenAIChatGenerator:
@@ -63,5 +66,24 @@ class TestOpenAIChatGenerator:
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("AZURE_OPENAI_API_KEY", None) and not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
+        reason=(
+            "Please export env variables called AZURE_OPENAI_API_KEY containing "
+            "the Azure OpenAI key, AZURE_OPENAI_ENDPOINT containing "
+            "the Azure OpenAI endpoint URL to run this test."
+        ),
+    )
+    def test_live_run(self):
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = AzureOpenAIChatGenerator()
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        assert "Paris" in message.content
+        assert "gpt-35-turbo" in message.meta["model"]
+        assert message.meta["finish_reason"] == "stop"
 
     # additional tests intentionally omitted as they are covered by test_openai.py
