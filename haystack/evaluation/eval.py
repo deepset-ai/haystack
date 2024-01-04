@@ -12,7 +12,8 @@ from haystack.evaluation.metrics import Metric, MetricsResult
 
 class EvaluationResult:
     """
-    EvaluationResult keeps track of all the information related to evaluation, namely the runnable (Pipeline or component), inputs, outputs, and expected outputs.
+    EvaluationResult keeps track of all the information related to evaluation, namely the runnable (Pipeline or
+    component), inputs, outputs, and expected outputs.
     The EvaluationResult keeps track of all the information stored by eval.
 
     :param runnable: The runnable (Pipeline or component) used for evaluation.
@@ -90,6 +91,12 @@ class EvaluationResult:
         ignore_punctuation=False,
         ignore_numbers=False,
     ):
+        if len(predictions) != len(labels):
+            raise ValueError("The number of predictions and labels must be the same.")
+        if len(predictions) == len(labels) == 0:
+            # Return Exact Match as 0 for no inputs
+            return MetricsResult({"exact_match": 0.0})
+
         if regexes_to_ignore is not None:
             for s in regexes_to_ignore:
                 predictions = np.array([re.sub(s, "", x) for x in predictions])
@@ -134,7 +141,8 @@ def eval(
     :param inputs: List of inputs used for evaluation.
     :param expected_outputs: List of expected outputs used for evaluation.
 
-    :return: An instance of EvaluationResult containing information about the evaluation, including the runnable, inputs, outputs, and expected outputs.
+    :return: An instance of EvaluationResult containing information about the evaluation, including the runnable,
+    inputs, outputs, and expected outputs.
     """
 
     outputs = []
@@ -142,8 +150,8 @@ def eval(
     # Check that expected outputs has the correct shape
     if len(inputs) != len(expected_outputs):
         raise ValueError(
-            f"The number of inputs ({len(inputs)}) does not match the number of expected outputs ({len(expected_outputs)}). "
-            " Please ensure that each input has a corresponding expected output."
+            f"The number of inputs ({len(inputs)}) does not match the number of expected outputs "
+            f"({len(expected_outputs)}). Please ensure that each input has a corresponding expected output."
         )
 
     for input_ in inputs:

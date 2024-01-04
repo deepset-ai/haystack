@@ -18,6 +18,10 @@ class Metric(Enum):
 
 
 class MetricsResult(dict):
+    """
+    Stores the metric values computed during the evaluation.
+    """
+
     def save(self, file: Union[str, Path]):
         """
         Save the metrics stored in the MetricsResult to a json file.
