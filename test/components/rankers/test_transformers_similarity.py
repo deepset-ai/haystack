@@ -84,7 +84,7 @@ class TestSimilarityRanker:
         )
 
     @patch("torch.sort")
-    def test_no_scale_score(self, mocked_sort):
+    def test_scale_score_false(self, mocked_sort):
         mocked_sort.return_value = (None, torch.tensor([0, 1]))
         embedder = TransformersSimilarityRanker(model_name_or_path="model", scale_score=False)
         embedder.model = MagicMock()
