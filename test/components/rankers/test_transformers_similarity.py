@@ -120,9 +120,9 @@ class TestSimilarityRanker:
         assert docs_after[0].content == expected_first_text
 
         sorted_scores = sorted(scores, reverse=True)
-        assert docs_after[0].score == pytest.approx(sorted_scores[0])
-        assert docs_after[1].score == pytest.approx(sorted_scores[1])
-        assert docs_after[2].score == pytest.approx(sorted_scores[2])
+        assert docs_after[0].score == pytest.approx(sorted_scores[0], rel=1e-6)
+        assert docs_after[1].score == pytest.approx(sorted_scores[1], rel=1e-6)
+        assert docs_after[2].score == pytest.approx(sorted_scores[2], rel=1e-6)
 
     #  Returns an empty list if no documents are provided
     @pytest.mark.integration
