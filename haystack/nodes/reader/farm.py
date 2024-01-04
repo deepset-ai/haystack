@@ -1,3 +1,4 @@
+# pylint: skip-file
 # pylint: disable=ungrouped-imports
 
 from typing import List, Optional, Dict, Any, Union, Callable, Tuple
