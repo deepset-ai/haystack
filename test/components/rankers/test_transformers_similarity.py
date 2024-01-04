@@ -20,6 +20,8 @@ class TestSimilarityRanker:
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
                 "scale_score": True,
+                "calibration_factor": 1.0,
+                "score_threshold": None,
                 "model_kwargs": {},
             },
         }
@@ -31,6 +33,8 @@ class TestSimilarityRanker:
             token="my_token",
             top_k=5,
             scale_score=False,
+            calibration_factor=None,
+            score_threshold=0.01,
             model_kwargs={"torch_dtype": "auto"},
         )
         data = component.to_dict()
@@ -44,19 +48,22 @@ class TestSimilarityRanker:
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
                 "scale_score": False,
+                "calibration_factor": None,
+                "score_threshold": 0.01,
                 "model_kwargs": {"torch_dtype": "auto"},
             },
         }
 
+    @patch("torch.sigmoid")
     @patch("torch.sort")
-    def test_embed_meta(self, mocked_sort):
+    def test_embed_meta(self, mocked_sort, mocked_sigmoid):
         mocked_sort.return_value = (None, torch.tensor([0]))
+        mocked_sigmoid.return_value = torch.tensor([0])
         embedder = TransformersSimilarityRanker(
             model_name_or_path="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
         embedder.model = MagicMock()
         embedder.tokenizer = MagicMock()
-        embedder.scale_score_function = MagicMock()
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
