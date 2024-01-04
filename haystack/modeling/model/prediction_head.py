@@ -1,3 +1,5 @@
+# pylint: skip-file
+
 import json
 import logging
 import os
