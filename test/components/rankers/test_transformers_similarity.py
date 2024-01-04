@@ -95,8 +95,8 @@ class TestSimilarityRanker:
 
         documents = [Document(content="document number 0"), Document(content="document number 1")]
         out = embedder.run(query="test", documents=documents)
-        assert out["documents"][0].score == pytest.approx(-10.6859, rel=1e-4)
-        assert out["documents"][1].score == pytest.approx(-8.9874, rel=1e-4)
+        assert out["documents"][0].score == pytest.approx(-10.6859, abs=1e-4)
+        assert out["documents"][1].score == pytest.approx(-8.9874, abs=1e-4)
 
     @patch("torch.sort")
     def test_score_threshold(self, mocked_sort):
@@ -150,9 +150,9 @@ class TestSimilarityRanker:
         assert docs_after[0].content == expected_first_text
 
         sorted_scores = sorted(scores, reverse=True)
-        assert docs_after[0].score == pytest.approx(sorted_scores[0], rel=1e-6)
-        assert docs_after[1].score == pytest.approx(sorted_scores[1], rel=1e-6)
-        assert docs_after[2].score == pytest.approx(sorted_scores[2], rel=1e-6)
+        assert docs_after[0].score == pytest.approx(sorted_scores[0], abs=1e-6)
+        assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-6)
+        assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
 
     #  Returns an empty list if no documents are provided
     @pytest.mark.integration
