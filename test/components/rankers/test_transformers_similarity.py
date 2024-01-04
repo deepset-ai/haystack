@@ -77,14 +77,29 @@ class TestSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
-        "query,docs_before_texts,expected_first_text",
+        "query,docs_before_texts,expected_first_text,scores",
         [
-            ("City in Bosnia and Herzegovina", ["Berlin", "Belgrade", "Sarajevo"], "Sarajevo"),
-            ("Machine learning", ["Python", "Bakery in Paris", "Tesla Giga Berlin"], "Python"),
-            ("Cubist movement", ["Nirvana", "Pablo Picasso", "Coffee"], "Pablo Picasso"),
+            (
+                "City in Bosnia and Herzegovina",
+                ["Berlin", "Belgrade", "Sarajevo"],
+                "Sarajevo",
+                [2.2864143829792738e-05, 0.00012495707778725773, 0.009869757108390331],
+            ),
+            (
+                "Machine learning",
+                ["Python", "Bakery in Paris", "Tesla Giga Berlin"],
+                "Python",
+                [1.9063229046878405e-05, 1.434577916370472e-05, 1.3049247172602918e-05],
+            ),
+            (
+                "Cubist movement",
+                ["Nirvana", "Pablo Picasso", "Coffee"],
+                "Pablo Picasso",
+                [1.3313065210240893e-05, 9.90335684036836e-05, 1.3518535524781328e-05],
+            ),
         ],
     )
-    def test_run(self, query, docs_before_texts, expected_first_text):
+    def test_run(self, query, docs_before_texts, expected_first_text, scores):
         """
         Test if the component ranks documents correctly.
         """
@@ -97,7 +112,7 @@ class TestSimilarityRanker:
         assert len(docs_after) == 3
         assert docs_after[0].content == expected_first_text
 
-        sorted_scores = sorted([doc.score for doc in docs_after], reverse=True)
+        sorted_scores = sorted(scores, reverse=True)
         assert [doc.score for doc in docs_after] == sorted_scores
 
     #  Returns an empty list if no documents are provided
