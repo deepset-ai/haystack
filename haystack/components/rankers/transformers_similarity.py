@@ -64,7 +64,7 @@ class TransformersSimilarityRanker:
             Set this to False if you do not want any scaling of the raw logit predictions.
         :param calibration_factor: Factor used for calibrating probabilities calculated by
             `sigmoid(logits * calibration_factor)`. This is only used if `scale_score` is set to True.
-        :param score_threshold: Returns only answers with a score above this threshold.
+        :param score_threshold: If provided only returns documents with a score above this threshold.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForSequenceClassification.from_pretrained`
             when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
             see the model's documentation.
@@ -128,13 +128,26 @@ class TransformersSimilarityRanker:
         )
 
     @component.output_types(documents=List[Document])
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+    def run(
+        self,
+        query: str,
+        documents: List[Document],
+        top_k: Optional[int] = None,
+        scale_score: Optional[bool] = None,
+        calibration_factor: Optional[float] = None,
+        score_threshold: Optional[float] = None,
+    ):
         """
         Returns a list of Documents ranked by their similarity to the given query.
 
         :param query: Query string.
         :param documents: List of Documents.
         :param top_k: The maximum number of Documents you want the Ranker to return.
+        :param scale_score: Whether the raw logit predictions will be scaled using a Sigmoid activation function.
+            Set this to False if you do not want any scaling of the raw logit predictions.
+        :param calibration_factor: Factor used for calibrating probabilities calculated by
+            `sigmoid(logits * calibration_factor)`. This is only used if `scale_score` is set to True.
+        :param score_threshold: If provided only returns documents with a score above this threshold.
         :return: List of Documents sorted by their similarity to the query with the most similar Documents appearing first.
         """
         if not documents:
@@ -142,9 +155,22 @@ class TransformersSimilarityRanker:
 
         if top_k is None:
             top_k = self.top_k
-
         elif top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
+
+        if scale_score is None:
+            scale_score = self.scale_score
+
+        if calibration_factor is None:
+            calibration_factor = self.calibration_factor
+
+        if scale_score and calibration_factor is None:
+            raise ValueError(
+                f"scale_score is True so calibration_factor must be provided, bug got {calibration_factor}"
+            )
+
+        if score_threshold is None:
+            score_threshold = self.score_threshold
 
         # If a model path is provided but the model isn't loaded
         if self.model_name_or_path and not self.model:
@@ -168,8 +194,8 @@ class TransformersSimilarityRanker:
         with torch.inference_mode():
             similarity_scores = self.model(**features).logits.squeeze(dim=1)  # type: ignore
 
-        if self.scale_score:
-            similarity_scores = torch.sigmoid(similarity_scores * self.calibration_factor)
+        if scale_score:
+            similarity_scores = torch.sigmoid(similarity_scores * calibration_factor)
 
         _, sorted_indices = torch.sort(similarity_scores, descending=True)
 
@@ -181,7 +207,7 @@ class TransformersSimilarityRanker:
             documents[i].score = similarity_scores[i]
             ranked_docs.append(documents[i])
 
-        if self.score_threshold is not None:
-            ranked_docs = [doc for doc in ranked_docs if doc.score >= self.score_threshold]
+        if score_threshold is not None:
+            ranked_docs = [doc for doc in ranked_docs if doc.score >= score_threshold]
 
         return {"documents": ranked_docs[:top_k]}
