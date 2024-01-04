@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 import pytest
 import torch
+from transformers.modeling_outputs import SequenceClassifierOutput
 
 from haystack import Document, ComponentError
 from haystack.components.rankers.transformers_similarity import TransformersSimilarityRanker
@@ -81,6 +82,22 @@ class TestSimilarityRanker:
             truncation=True,
             return_tensors="pt",
         )
+
+    @patch("torch.sort")
+    def test_no_scale_score(self, mocked_sort):
+        mocked_sort.return_value = (None, torch.tensor([0, 1]))
+        embedder = TransformersSimilarityRanker(model_name_or_path="model", scale_score=False)
+        embedder.model = MagicMock()
+        embedder.model.return_value = SequenceClassifierOutput(
+            loss=None, logits=torch.FloatTensor([[-10.6859], [-8.9874]]), hidden_states=None, attentions=None
+        )
+        embedder.tokenizer = MagicMock()
+
+        documents = [Document(content="document number 0"), Document(content="document number 1")]
+
+        out = embedder.run(query="test", documents=documents)
+        assert out["documents"][0].score == pytest.approx(-10.6859, rel=1e-4)
+        assert out["documents"][1].score == pytest.approx(-8.9874, rel=1e-4)
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
