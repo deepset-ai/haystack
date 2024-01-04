@@ -26,13 +26,13 @@ class DynamicChatPromptBuilder:
 
     ```python
     from haystack.components.builders import DynamicChatPromptBuilder
-    from haystack.components.generators.chat import GPTChatGenerator
+    from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack import Pipeline
 
     # no parameter init, we don't use any runtime template variables
     prompt_builder = DynamicChatPromptBuilder()
-    llm = GPTChatGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
+    llm = OpenAIChatGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)
@@ -66,7 +66,6 @@ class DynamicChatPromptBuilder:
     closer to your visit.", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, meta={'model': 'gpt-3.5-turbo-0613',
     'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201,
     'total_tokens': 238}})]}}
-
     ```
 
     The primary advantage of using DynamicChatPromptBuilder is showcased in the examples provided above.
@@ -75,10 +74,9 @@ class DynamicChatPromptBuilder:
 
     In the example above, the first query asks for general information about Berlin, and the second query requests
     the weather forecast for Berlin in the next few days. DynamicChatPromptBuilder efficiently handles these distinct
-    prompt structures by adjusting pipeline run parameters invocations, as opposed to a
-    regular PromptBuilder, which would require recreating or reloading the pipeline for each distinct type of query,
-    leading to inefficiency and potential service disruptions, especially in server environments where continuous
-    service is vital.
+    prompt structures by adjusting pipeline run parameters invocations, as opposed to a regular PromptBuilder, which
+    would require recreating or reloading the pipeline for each distinct type of query, leading to inefficiency and
+    potential service disruptions, especially in server environments where continuous service is vital.
 
     Note that the weather forecast in the example above is fictional, but it can be easily connected to a weather
     API to provide real weather forecasts.
