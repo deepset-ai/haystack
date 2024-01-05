@@ -74,7 +74,6 @@ class AzureOpenAIDocumentEmbedder:
         self.azure_endpoint = azure_endpoint
         self.azure_deployment = azure_deployment or "text-embedding-ada-002"
         self.organization = organization
-        self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
         self.batch_size = batch_size
