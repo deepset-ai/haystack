@@ -31,7 +31,7 @@ class AzureOpenAITextEmbedder:
         self,
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",
-        azure_deployment: Optional[str] = "text-embedding-ada-002",
+        azure_deployment: str = "text-embedding-ada-002",
         api_key: Optional[str] = None,
         azure_ad_token: Optional[str] = None,
         azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
