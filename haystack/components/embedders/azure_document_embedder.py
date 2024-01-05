@@ -33,7 +33,7 @@ class AzureOpenAIDocumentEmbedder:
         self,
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",
-        azure_deployment: Optional[str] = None,
+        azure_deployment: Optional[str] = "text-embedding-ada-002",
         api_key: Optional[str] = None,
         azure_ad_token: Optional[str] = None,
         azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
@@ -72,7 +72,7 @@ class AzureOpenAIDocumentEmbedder:
 
         self.api_version = api_version
         self.azure_endpoint = azure_endpoint
-        self.azure_deployment = azure_deployment or "text-embedding-ada-002"
+        self.azure_deployment = azure_deployment
         self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
@@ -81,7 +81,7 @@ class AzureOpenAIDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
-        self.client = AzureOpenAI(
+        self._client = AzureOpenAI(
             api_version=api_version,
             azure_endpoint=azure_endpoint,
             azure_deployment=azure_deployment,
@@ -142,7 +142,7 @@ class AzureOpenAIDocumentEmbedder:
         meta: Dict[str, Any] = {"model": "", "usage": {"prompt_tokens": 0, "total_tokens": 0}}
         for i in tqdm(range(0, len(texts_to_embed), batch_size), desc="Embedding Texts"):
             batch = texts_to_embed[i : i + batch_size]
-            response = self.client.embeddings.create(model=self.azure_deployment, input=batch)
+            response = self._client.embeddings.create(model=self.azure_deployment, input=batch)
 
             # Append embeddings to the list
             all_embeddings.extend(el.embedding for el in response.data)

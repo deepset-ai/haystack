@@ -10,7 +10,7 @@ class TestAzureOpenAITextEmbedder:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         embedder = AzureOpenAITextEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
 
-        assert embedder.client.api_key == "fake-api-key"
+        assert embedder._client.api_key == "fake-api-key"
         assert embedder.azure_deployment == "text-embedding-ada-002"
         assert embedder.organization is None
         assert embedder.prefix == ""
