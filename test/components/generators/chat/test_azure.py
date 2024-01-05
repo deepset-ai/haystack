@@ -17,7 +17,7 @@ class TestOpenAIChatGenerator:
         assert not component.generation_kwargs
 
     def test_init_fail_wo_api_key(self, monkeypatch):
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("AZURE_OPENAI_API_KEY", raising=False)
         with pytest.raises(OpenAIError):
             AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
 
