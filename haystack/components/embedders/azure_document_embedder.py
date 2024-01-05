@@ -65,10 +65,7 @@ class AzureOpenAIDocumentEmbedder:
         :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document text.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
-        # Why is this here?
-        # AzureOpenAI init is forcing us to use an init method that takes either base_url or azure_endpoint as not
-        # None init parameters. This way we accommodate the use case where env var AZURE_OPENAI_ENDPOINT is set instead
-        # of passing it as a parameter.
+        # if not provided as a parameter, azure_endpoint is read from the env var AZURE_OPENAI_ENDPOINT
         azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
         if not azure_endpoint:
             raise ValueError("Please provide an Azure endpoint or set the environment variable AZURE_OPENAI_ENDPOINT.")
