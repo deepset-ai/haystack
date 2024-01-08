@@ -1,13 +1,14 @@
+import os
 from typing import List, Optional, Dict, Any, Tuple
 
-from openai import OpenAI
+from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
 from tqdm import tqdm
 
 from haystack import component, Document, default_to_dict
 
 
 @component
-class OpenAIDocumentEmbedder:
+class AzureOpenAIDocumentEmbedder:
     """
     A component for computing Document embeddings using OpenAI models.
     The embedding of each Document is stored in the `embedding` field of the Document.
@@ -15,11 +16,11 @@ class OpenAIDocumentEmbedder:
     Usage example:
     ```python
     from haystack import Document
-    from haystack.components.embedders import OpenAIDocumentEmbedder
+    from haystack.components.embedders import AzureOpenAIDocumentEmbedder
 
     doc = Document(content="I love pizza!")
 
-    document_embedder = OpenAIDocumentEmbedder()
+    document_embedder = AzureOpenAIDocumentEmbedder()
 
     result = document_embedder.run([doc])
     print(result['documents'][0].embedding)
@@ -30,9 +31,12 @@ class OpenAIDocumentEmbedder:
 
     def __init__(
         self,
+        azure_endpoint: Optional[str] = None,
+        api_version: Optional[str] = "2023-05-15",
+        azure_deployment: str = "text-embedding-ada-002",
         api_key: Optional[str] = None,
-        model_name: str = "text-embedding-ada-002",
-        api_base_url: Optional[str] = None,
+        azure_ad_token: Optional[str] = None,
+        azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
         organization: Optional[str] = None,
         prefix: str = "",
         suffix: str = "",
@@ -42,11 +46,15 @@ class OpenAIDocumentEmbedder:
         embedding_separator: str = "\n",
     ):
         """
-        Create a OpenAIDocumentEmbedder component.
-        :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
-                        environment variable OPENAI_API_KEY (recommended).
-        :param model_name: The name of the model to use.
-        :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
+        Create an AzureOpenAITextEmbedder component.
+
+        :param azure_endpoint: The endpoint of the deployed model, e.g. `https://example-resource.azure.openai.com/`
+        :param api_version: The version of the API to use. Defaults to 2023-05-15
+        :param azure_deployment: The deployment of the model, usually the model name.
+        :param api_key: The API key to use for authentication.
+        :param azure_ad_token: Azure Active Directory token, see https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id
+        :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked
+        on every request.
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param prefix: A string to add to the beginning of each text.
@@ -57,8 +65,14 @@ class OpenAIDocumentEmbedder:
         :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document text.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
-        self.model_name = model_name
-        self.api_base_url = api_base_url
+        # if not provided as a parameter, azure_endpoint is read from the env var AZURE_OPENAI_ENDPOINT
+        azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
+        if not azure_endpoint:
+            raise ValueError("Please provide an Azure endpoint or set the environment variable AZURE_OPENAI_ENDPOINT.")
+
+        self.api_version = api_version
+        self.azure_endpoint = azure_endpoint
+        self.azure_deployment = azure_deployment
         self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
@@ -67,13 +81,21 @@ class OpenAIDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
-        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
+        self._client = AzureOpenAI(
+            api_version=api_version,
+            azure_endpoint=azure_endpoint,
+            azure_deployment=azure_deployment,
+            api_key=api_key,
+            azure_ad_token=azure_ad_token,
+            azure_ad_token_provider=azure_ad_token_provider,
+            organization=organization,
+        )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": self.model_name}
+        return {"model": self.azure_deployment}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -82,9 +104,10 @@ class OpenAIDocumentEmbedder:
         """
         return default_to_dict(
             self,
-            model_name=self.model_name,
+            azure_endpoint=self.azure_endpoint,
+            azure_deployment=self.azure_deployment,
             organization=self.organization,
-            api_base_url=self.api_base_url,
+            api_version=self.api_version,
             prefix=self.prefix,
             suffix=self.suffix,
             batch_size=self.batch_size,
@@ -105,11 +128,8 @@ class OpenAIDocumentEmbedder:
 
             text_to_embed = (
                 self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""]) + self.suffix
-            )
+            ).replace("\n", " ")
 
-            # copied from OpenAI embedding_utils (https://github.com/openai/openai-python/blob/main/openai/embeddings_utils.py)
-            # replace newlines, which can negatively affect performance.
-            text_to_embed = text_to_embed.replace("\n", " ")
             texts_to_embed.append(text_to_embed)
         return texts_to_embed
 
@@ -118,21 +138,21 @@ class OpenAIDocumentEmbedder:
         Embed a list of texts in batches.
         """
 
-        all_embeddings = []
-        meta: Dict[str, Any] = {}
-        for i in tqdm(
-            range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
-        ):
+        all_embeddings: List[List[float]] = []
+        meta: Dict[str, Any] = {"model": "", "usage": {"prompt_tokens": 0, "total_tokens": 0}}
+        for i in tqdm(range(0, len(texts_to_embed), batch_size), desc="Embedding Texts"):
             batch = texts_to_embed[i : i + batch_size]
-            response = self.client.embeddings.create(model=self.model_name, input=batch)
-            embeddings = [el.embedding for el in response.data]
-            all_embeddings.extend(embeddings)
+            response = self._client.embeddings.create(model=self.azure_deployment, input=batch)
 
-            if "model" not in meta:
+            # Append embeddings to the list
+            all_embeddings.extend(el.embedding for el in response.data)
+
+            # Update the meta information only once if it's empty
+            if not meta["model"]:
                 meta["model"] = response.model
-            if "usage" not in meta:
                 meta["usage"] = dict(response.usage)
             else:
+                # Update the usage tokens
                 meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
                 meta["usage"]["total_tokens"] += response.usage.total_tokens
 
@@ -141,21 +161,17 @@ class OpenAIDocumentEmbedder:
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     def run(self, documents: List[Document]):
         """
-        Embed a list of Documents.
-        The embedding of each Document is stored in the `embedding` field of the Document.
+        Embed a list of Documents. The embedding of each Document is stored in the `embedding` field of the Document.
 
         :param documents: A list of Documents to embed.
         """
-        if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
-            raise TypeError(
-                "OpenAIDocumentEmbedder expects a list of Documents as input."
-                "In case you want to embed a string, please use the OpenAITextEmbedder."
-            )
+        if not (isinstance(documents, list) and all(isinstance(doc, Document) for doc in documents)):
+            raise TypeError("Input must be a list of Document instances. For strings, use AzureOpenAITextEmbedder.")
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
-
         embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
+        # Assign the corresponding embeddings to each document
         for doc, emb in zip(documents, embeddings):
             doc.embedding = emb
 

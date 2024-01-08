@@ -83,7 +83,4 @@ class TestOpenAITextEmbedder:
 
         assert len(result["embedding"]) == 1024
         assert all(isinstance(x, float) for x in result["embedding"])
-        assert result["metadata"] == {
-            "model": "text-similarity-ada:001",
-            "usage": {"prompt_tokens": 6, "total_tokens": 6},
-        }
+        assert result["meta"] == {"model": "text-similarity-ada:001", "usage": {"prompt_tokens": 6, "total_tokens": 6}}
