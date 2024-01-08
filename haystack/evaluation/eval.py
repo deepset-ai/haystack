@@ -29,12 +29,6 @@ class EvaluationResult:
         self.outputs = outputs
         self.expected_outputs = expected_outputs
 
-        # Determine the type of the runnable
-        if str(type(runnable).__name__) == "Pipeline":
-            self.runnable_type = "pipeline"
-        else:
-            self.runnable_type = "component"
-
     # pylint: disable=too-many-return-statements
     def calculate_metrics(self, metric: Union[Metric, Callable[..., MetricsResult]], **kwargs) -> MetricsResult:
         """
