@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from openai import OpenAIError
 
@@ -74,6 +76,7 @@ class TestOpenAITextEmbedder:
         with pytest.raises(TypeError, match="OpenAITextEmbedder expects a string as an input"):
             embedder.run(text=list_integers_input)
 
+    @pytest.mark.skipif("OPENAI_API_KEY" not in os.environ, reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     def test_run(self):
         model = "text-similarity-ada-001"
