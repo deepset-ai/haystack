@@ -954,6 +954,9 @@ class FARMReader(BaseReader):
         if answer.meta is None:
             answer.meta = {}
 
+        if answer.offsets_in_document is None:
+            return answer
+
         # Calculate the answer page number
         meta_to_add = {}
         if answer.document_ids:
