@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add model_kwargs to FARMReader to allow loading in fp16 at inference time

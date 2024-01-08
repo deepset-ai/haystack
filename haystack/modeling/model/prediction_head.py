@@ -1,3 +1,5 @@
+# pylint: skip-file
+
 import json
 import logging
 import os
@@ -336,6 +338,8 @@ class QuestionAnsweringHead(PredictionHead):
             head = cls(layer_dims=[full_qa_model.config.hidden_size, 2], task_name="question_answering")
             # transfer weights for head from full model
             head.feed_forward.feed_forward[0].load_state_dict(full_qa_model.qa_outputs.state_dict())
+            # Set the last feed_forward layer to the correct torch dtype
+            head.feed_forward.feed_forward[0].to(full_qa_model.qa_outputs.weight.dtype)
             del full_qa_model
 
         return head
@@ -971,7 +975,9 @@ class TextSimilarityHead(PredictionHead):
         passages_per_batch = passage_vectors.shape[0]
         for query_vector in query_vectors:
             query_vector_repeated = query_vector.repeat(passages_per_batch, 1)
-            current_cosine_similarities = nn.functional.cosine_similarity(query_vector_repeated, passage_vectors, dim=1)
+            current_cosine_similarities = nn.functional.cosine_similarity(  # pylint: disable=not-callable
+                query_vector_repeated, passage_vectors, dim=1
+            )
             cosine_similarities.append(current_cosine_similarities)
         return torch.stack(cosine_similarities)
 

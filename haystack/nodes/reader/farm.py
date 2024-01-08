@@ -38,6 +38,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     from haystack.modeling.training import Trainer, DistillationTrainer, TinyBERTDistillationTrainer
     from haystack.modeling.evaluation import Evaluator
     from haystack.modeling.utils import set_all_seeds, initialize_device_settings
+    from haystack.utils.torch_utils import resolve_torch_dtype
 
 
 class FARMReader(BaseReader):
@@ -77,6 +78,7 @@ class FARMReader(BaseReader):
         use_auth_token: Optional[Union[str, bool]] = None,
         max_query_length: int = 64,
         preprocessing_batch_size: Optional[int] = None,
+        model_kwargs: Optional[dict] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
@@ -149,6 +151,10 @@ class FARMReader(BaseReader):
         self.return_no_answers = return_no_answer
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
+        kwargs = model_kwargs if model_kwargs else {}
+        torch_dtype = resolve_torch_dtype(kwargs.get("torch_dtype"))
+        if torch_dtype:
+            kwargs["torch_dtype"] = torch_dtype
         self.inferencer = QAInferencer.load(
             model_name_or_path,
             batch_size=batch_size,
@@ -166,6 +172,7 @@ class FARMReader(BaseReader):
             devices=self.devices,  # type: ignore [arg-type]
             use_auth_token=use_auth_token,
             max_query_length=max_query_length,
+            **kwargs,
         )
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
