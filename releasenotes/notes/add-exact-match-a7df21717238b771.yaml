@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Adds a function to EvaluationResult for calculating the Exact Match metric.
