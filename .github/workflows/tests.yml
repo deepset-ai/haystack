@@ -129,7 +129,15 @@ jobs:
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Run
-        run: pytest -m "not integration" test
+        run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integration" test
+
+      - name: Coveralls
+        # We upload only coverage for ubuntu as handling both os
+        # complicates the workflow too much for little to no gain
+        if: matrix.os == 'ubuntu-latest'
+        uses: coverallsapp/github-action@v2
+        with:
+          path-to-lcov: coverage.xml
 
       - name: Calculate alert data
         id: calculator
