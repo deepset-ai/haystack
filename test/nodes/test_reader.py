@@ -46,6 +46,74 @@ def test_reader_basic(reader):
     assert isinstance(reader, BaseReader)
 
 
+def test_add_answer_page_number() -> None:
+    documents = [
+        Document(content="This is a test.\fSentence on second page about nothing.", meta={"page_number": 1}),
+        Document(content="Second sentence on the second page.", meta={"page_number": 2}),
+    ]
+    with patch("haystack.nodes.FARMReader.__init__") as mock_reader_init:
+        mock_reader_init.return_value = None
+        reader = FARMReader(model_name_or_path="fake_model", use_gpu=False)
+    answer_with_meta = reader._add_answer_page_number(
+        documents=documents,
+        answer=Answer(
+            answer="nothing",
+            type="extractive",
+            score=0.2,
+            context=documents[0].content,
+            document_ids=[documents[0].id],
+            offsets_in_document=[Span(start=46, end=46 + len("nothing"))],
+        ),
+    )
+    assert answer_with_meta.meta is not None
+    assert answer_with_meta.meta["answer_page_number"] == 2
+
+
+def test_add_answer_page_number_no_doc_page() -> None:
+    documents = [
+        Document(content="This is a test.\fSentence on second page about nothing."),
+        Document(content="Second sentence on the second page."),
+    ]
+    with patch("haystack.nodes.FARMReader.__init__") as mock_reader_init:
+        mock_reader_init.return_value = None
+        reader = FARMReader(model_name_or_path="fake_model", use_gpu=False)
+    answer_with_meta = reader._add_answer_page_number(
+        documents=documents,
+        answer=Answer(
+            answer="nothing",
+            type="extractive",
+            score=0.2,
+            context=documents[0].content,
+            document_ids=[documents[0].id],
+            offsets_in_document=[Span(start=46, end=46 + len("nothing"))],
+        ),
+    )
+    assert answer_with_meta.meta == {}
+
+
+def test_add_answer_page_number_with_meta() -> None:
+    documents = [
+        Document(content="This is a test.\fSentence on second page about nothing.", meta={"page_number": 1}),
+        Document(content="Second sentence on the second page."),
+    ]
+    with patch("haystack.nodes.FARMReader.__init__") as mock_reader_init:
+        mock_reader_init.return_value = None
+        reader = FARMReader(model_name_or_path="fake_model", use_gpu=False)
+    answer_with_meta = reader._add_answer_page_number(
+        documents=documents,
+        answer=Answer(
+            answer="nothing",
+            type="extractive",
+            score=0.2,
+            context=documents[0].content,
+            document_ids=[documents[0].id],
+            offsets_in_document=[Span(start=46, end=46 + len("nothing"))],
+            meta={"test": 1},
+        ),
+    )
+    assert answer_with_meta.meta == {"test": 1, "answer_page_number": 2}
+
+
 def test_output(reader, docs):
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
     assert prediction is not None
@@ -59,6 +127,8 @@ def test_output(reader, docs):
     assert 0 <= prediction["answers"][0].score <= 1
     assert prediction["answers"][0].context == "My name is Carla and I live in Berlin"
     assert len(prediction["answers"]) == 5
+    if isinstance(reader, FARMReader):
+        assert prediction["answers"][0].meta["answer_page_number"] == 2
 
 
 def test_output_batch_single_query_single_doc_list(reader, docs):
