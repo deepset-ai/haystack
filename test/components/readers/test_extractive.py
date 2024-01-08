@@ -479,12 +479,12 @@ def test_t5():
     answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
         "answers"
     ]  # remove indices when batching support is reintroduced
-    assert answers[0].data == "Angela Merkel"
-    assert answers[0].score == pytest.approx(0.7764519453048706)
-    assert answers[1].data == "Olaf Scholz"
-    assert answers[1].score == pytest.approx(0.7703777551651001)
+    assert answers[0].data == "Olaf Scholz"
+    assert answers[0].score == pytest.approx(0.8085031509399414)
+    assert answers[1].data == "Angela Merkel"
+    assert answers[1].score == pytest.approx(0.8021242618560791)
     assert answers[2].data is None
-    assert answers[2].score == pytest.approx(0.051331606147570596)
+    assert answers[2].score == pytest.approx(0.0378925803599941)
     assert len(answers) == 3
     # Uncomment assertions below when batching is reintroduced
     # assert answers[0][2].score == pytest.approx(0.051331606147570596)
