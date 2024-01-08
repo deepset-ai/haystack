@@ -51,6 +51,10 @@ def mock_tokenizer():
 @pytest.fixture()
 def mock_reader(mock_tokenizer):
     class MockModel(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.hf_device_map = {"": "cpu:0"}
+
         def to(self, device):
             assert device == "cpu:0"
             self.device_set = True
@@ -59,7 +63,7 @@ def mock_reader(mock_tokenizer):
         def forward(self, input_ids, attention_mask, *args, **kwargs):
             assert input_ids.device == torch.device("cpu")
             assert attention_mask.device == torch.device("cpu")
-            assert self.device_set
+            # assert self.device_set
             start = torch.zeros(input_ids.shape[:2])
             end = torch.zeros(input_ids.shape[:2])
             start[:, 27] = 1
@@ -265,10 +269,16 @@ def test_nest_answers(mock_reader: ExtractiveReader):
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
 def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
-    reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token")
+    class ModelMock:
+        def __init__(self):
+            self.hf_device_map = {"": "mps:0"}
+
+    mocked_automodel.return_value = ModelMock()
+
+    reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token", model_kwargs={"device_map": "cpu:0"})
     reader.warm_up()
 
-    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token", device_map="cpu:0")
     mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
 
 

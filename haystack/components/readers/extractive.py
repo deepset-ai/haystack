@@ -133,11 +133,21 @@ class ExtractiveReader:
         Loads model and tokenizer
         """
         if self.model is None:
-            if self.device is None:
-                self.device = get_device()
+            # Set up device_map which allows quantized loading and multi device inference
+            # requires accelerate which is always installed when using `pip install transformers[torch]`
+            device_map = self.model_kwargs.get("device_map")
+            if device_map is None:
+                if self.device is not None:
+                    device_map = self.device
+                else:
+                    device_map = get_device()
+            self.model_kwargs["device_map"] = device_map
+
             self.model = AutoModelForQuestionAnswering.from_pretrained(
                 self.model_name_or_path, token=self.token, **self.model_kwargs
-            ).to(self.device)
+            )
+            # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
+            self.device = next(iter(self.model.hf_device_map.values()))
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
     def _flatten_documents(
