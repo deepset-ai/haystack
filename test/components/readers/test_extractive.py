@@ -474,7 +474,7 @@ class TestDeduplication:
 
 @pytest.mark.integration
 def test_t5():
-    reader = ExtractiveReader("TARUNBHATT/flan-t5-small-finetuned-squad")
+    reader = ExtractiveReader("sjrhuschlee/flan-t5-base-squad2")
     reader.warm_up()
     answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
         "answers"
