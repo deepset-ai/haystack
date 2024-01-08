@@ -27,6 +27,7 @@ class TestTikaDocumentConverter:
                 sources=[bytestream, test_files_path / "markdown" / "sample.md"], meta={"language": "it"}
             )
 
+        # check that the metadata from the sources is merged with that from the meta parameter
         assert output["documents"][0].meta["author"] == "test_author"
         assert output["documents"][0].meta["language"] == "it"
         assert output["documents"][1].meta["language"] == "it"
