@@ -7,7 +7,7 @@ from tqdm import tqdm
 from haystack import Document, component
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
-from haystack.components.converters.utils import get_bytestream_from_source
+from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 
 with LazyImport("Run 'pip install markdown-it-py mdit_plain'") as markdown_conversion_imports:
     from markdown_it import MarkdownIt
@@ -27,7 +27,7 @@ class MarkdownToDocument:
     from haystack.components.converters.markdown import MarkdownToDocument
 
     converter = MarkdownToDocument()
-    results = converter.run(sources=["sample.md"])
+    results = converter.run(sources=["sample.md"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
     # 'This is a text from the markdown file.'
@@ -45,13 +45,20 @@ class MarkdownToDocument:
         self.progress_bar = progress_bar
 
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
+    def run(
+        self,
+        sources: List[Union[str, Path, ByteStream]],
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+    ):
         """
         Reads text from a markdown file and executes optional preprocessing steps.
 
         :param sources: A list of markdown data sources (file paths or binary objects)
-        :param meta: Optional list of metadata to attach to the Documents.
-          The length of the list must match the number of paths. Defaults to `None`.
+        :param meta: Optional metadata to attach to the Documents.
+          This value can be either a list of dictionaries or a single dictionary.
+          If it's a single dictionary, its content is added to the metadata of all produced Documents.
+          If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+          Defaults to `None`.
         :return: A dictionary containing a list of Document objects under the 'documents' key.
         """
         parser = MarkdownIt(renderer_cls=RendererPlain)
@@ -59,14 +66,10 @@ class MarkdownToDocument:
             parser.enable("table")
 
         documents = []
-
-        if meta is None:
-            meta = [{}] * len(sources)
-        elif len(sources) != len(meta):
-            raise ValueError("The length of the metadata list must match the number of sources.")
+        meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
         for source, metadata in tqdm(
-            zip(sources, meta),
+            zip(sources, meta_list),
             total=len(sources),
             desc="Converting markdown files to Documents",
             disable=not self.progress_bar,
