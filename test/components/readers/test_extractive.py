@@ -271,7 +271,7 @@ def test_nest_answers(mock_reader: ExtractiveReader):
 def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
     class ModelMock:
         def __init__(self):
-            self.hf_device_map = {"": "mps:0"}
+            self.hf_device_map = {"": "cpu:0"}
 
     mocked_automodel.return_value = ModelMock()
 
