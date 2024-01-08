@@ -79,11 +79,14 @@ class TestOpenAITextEmbedder:
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     def test_run(self):
-        model = "text-similarity-ada-001"
+        model = "text-embedding-ada-002"
 
         embedder = OpenAITextEmbedder(model_name=model, prefix="prefix ", suffix=" suffix")
         result = embedder.run(text="The food was delicious")
 
-        assert len(result["embedding"]) == 1024
+        assert len(result["embedding"]) == 1536
         assert all(isinstance(x, float) for x in result["embedding"])
-        assert result["meta"] == {"model": "text-similarity-ada:001", "usage": {"prompt_tokens": 6, "total_tokens": 6}}
+        assert result["meta"] == {
+            "model": "text-embedding-ada-002-v2",
+            "usage": {"prompt_tokens": 6, "total_tokens": 6},
+        }

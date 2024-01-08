@@ -172,7 +172,7 @@ class TestOpenAIDocumentEmbedder:
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
-        model = "text-similarity-ada-001"
+        model = "text-embedding-ada-002"
 
         embedder = OpenAIDocumentEmbedder(model_name=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
 
@@ -185,6 +185,6 @@ class TestOpenAIDocumentEmbedder:
         for doc in documents_with_embeddings:
             assert isinstance(doc, Document)
             assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 1024
+            assert len(doc.embedding) == 1536
             assert all(isinstance(x, float) for x in doc.embedding)
-        assert metadata == {"model": "text-similarity-ada:001", "usage": {"prompt_tokens": 15, "total_tokens": 15}}
+        assert metadata == {"model": "text-embedding-ada-002-v2", "usage": {"prompt_tokens": 15, "total_tokens": 15}}
