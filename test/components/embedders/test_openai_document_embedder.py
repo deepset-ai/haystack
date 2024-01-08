@@ -164,7 +164,7 @@ class TestOpenAIDocumentEmbedder:
         assert result["documents"] is not None
         assert not result["documents"]  # empty list
 
-    @pytest.mark.skipif("OPENAI_API_KEY" not in os.environ, reason="OPENAI_API_KEY is not set")
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     def test_run(self):
         docs = [
