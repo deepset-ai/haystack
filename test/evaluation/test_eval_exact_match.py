@@ -4,7 +4,6 @@ import pytest
 from haystack.evaluation.eval import EvaluationResult
 
 
-# Define test cases for _calculate_em function
 class TestExactMatch:
     @pytest.fixture
     def evaluation_result(self):
