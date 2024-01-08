@@ -1,12 +1,7 @@
-import re
-import string
 from typing import Any, Callable, Dict, List, Union
-
-import numpy as np
 
 from haystack import Pipeline
 from haystack.core.component import Component
-from haystack.evaluation.eval_utils import get_answers_from_output
 from haystack.evaluation.metrics import Metric, MetricsResult
 
 
@@ -61,9 +56,7 @@ class EvaluationResult:
             return self._calculate_map(**kwargs)
 
         elif metric == Metric.EM:
-            predictions = get_answers_from_output(self.outputs, self.runnable_type)
-            labels = get_answers_from_output(self.expected_outputs, self.runnable_type)
-            return self._calculate_em(predictions=predictions, labels=labels, **kwargs)
+            return self._calculate_em(**kwargs)
 
         elif metric == Metric.SAS:
             return self._calculate_sas(**kwargs)
@@ -82,68 +75,11 @@ class EvaluationResult:
     def _calculate_f1(self):
         return MetricsResult({"f1": None})
 
-    def _calculate_em(
-        self,
-        predictions,
-        labels,
-        regexes_to_ignore=None,
-        ignore_case=False,
-        ignore_punctuation=False,
-        ignore_numbers=False,
-    ):
-        """
-        Calculates the Exact Match (EM) score between two lists of predictions and labels.
-        Exact Match (EM) score measures the percentage of samples where the predicted text exactly matches the
-          corresponding ground truth label.
-
-        :param predictions: A list of predicted text strings.
-        :param labels (list): A list of ground truth (reference) text strings.
-        :param regexes_to_ignore (list, optional): A list of regular expressions. If provided, it removes substrings
-            matching these regular expressions from both predictions and labels before comparison. Defaults to None.
-        :param ignore_case (bool, optional): If True, performs case-insensitive comparison. Defaults to False.
-        :param ignore_punctuation (bool, optional): If True, removes punctuation from both predictions and labels before
-            comparison. Defaults to False.
-        :param ignore_numbers (bool, optional): If True, removes numerical digits from both predictions and labels
-            before comparison. Defaults to False.
-
-        :return: A MetricsResult object containing the calculated Exact Match (EM) score.
-        """
-
-        if len(predictions) != len(labels):
-            raise ValueError("The number of predictions and labels must be the same.")
-        if len(predictions) == len(labels) == 0:
-            # Return Exact Match as 0 for no inputs
-            return MetricsResult({"exact_match": 0.0})
-
-        if regexes_to_ignore is not None:
-            for s in regexes_to_ignore:
-                predictions = np.array([re.sub(s, "", x) for x in predictions])
-                labels = np.array([re.sub(s, "", x) for x in labels])
-        else:
-            predictions = np.asarray(predictions)
-            labels = np.asarray(labels)
-
-        if ignore_case:
-            predictions = np.char.lower(predictions)
-            labels = np.char.lower(labels)
-
-        if ignore_punctuation:
-            repl_table = string.punctuation.maketrans("", "", string.punctuation)
-            predictions = np.char.translate(predictions, table=repl_table)
-            labels = np.char.translate(labels, table=repl_table)
-
-        if ignore_numbers:
-            repl_table = string.digits.maketrans("", "", string.digits)
-            predictions = np.char.translate(predictions, table=repl_table)
-            labels = np.char.translate(labels, table=repl_table)
-
-        score_list = predictions == labels
-        em = np.mean(score_list)
-        return MetricsResult({"exact_match": em})
+    def _calculate_em(self):
+        return MetricsResult({"exact_match": 1.0})
 
     def _calculate_sas(self):
-        val = 0
-        return MetricsResult({"exact_match": val})
+        return MetricsResult({"exact_match": None})
 
 
 def eval(
