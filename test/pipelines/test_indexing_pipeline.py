@@ -67,7 +67,7 @@ class TestIndexingPipeline:
         with pytest.raises(ValueError, match="Could not find an embedder"):
             build_indexing_pipeline(document_store=document_store, embedding_model="invalid_model")
 
-    @pytest.mark.skipif("OPENAI_API_KEY" not in os.environ, reason="OPENAI_API_KEY is not set")
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     def test_open_ai_embedding_model(self):
         document_store = InMemoryDocumentStore()
