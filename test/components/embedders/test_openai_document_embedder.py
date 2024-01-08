@@ -183,6 +183,6 @@ class TestOpenAIDocumentEmbedder:
         for doc in documents_with_embeddings:
             assert isinstance(doc, Document)
             assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 1024
+            assert len(doc.embedding) == 1536
             assert all(isinstance(x, float) for x in doc.embedding)
-        assert metadata == {"model": "text-similarity-ada:001", "usage": {"prompt_tokens": 15, "total_tokens": 15}}
+        assert metadata == {"model": "text-embedding-ada-002-v2", "usage": {"prompt_tokens": 15, "total_tokens": 15}}
