@@ -138,7 +138,6 @@ jobs:
         uses: coverallsapp/github-action@v2
         with:
           path-to-lcov: coverage.xml
-          parallel: true
 
       - name: Calculate alert data
         id: calculator
