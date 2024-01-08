@@ -153,16 +153,12 @@ class TransformersSimilarityRanker:
         if not documents:
             return {"documents": []}
 
-        if top_k is None:
-            top_k = self.top_k
-        elif top_k <= 0:
+        top_k = top_k or self.top_k
+        if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-        if scale_score is None:
-            scale_score = self.scale_score
-
-        if calibration_factor is None:
-            calibration_factor = self.calibration_factor
+        scale_score = scale_score or self.scale_score
+        calibration_factor = calibration_factor or self.calibration_factor
 
         if scale_score and calibration_factor is None:
             raise ValueError(
