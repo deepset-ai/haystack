@@ -962,7 +962,7 @@ class FARMReader(BaseReader):
         if answer.document_ids:
             for doc in documents:
                 if doc.id in answer.document_ids and ("page_number" in doc.meta):
-                    ans_start = answer.offsets_in_document[0].start
+                    ans_start = answer.offsets_in_document[0].start  # type: ignore
                     answer_page_number = doc.meta["page_number"] + doc.content[:ans_start].count("\f")
                     meta_to_add = {"answer_page_number": answer_page_number}
                     break
