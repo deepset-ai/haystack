@@ -76,7 +76,7 @@ class TestOpenAITextEmbedder:
 
     @pytest.mark.integration
     def test_run(self):
-        model = "text-similarity-ada-001"
+        model = "text-embedding-ada-002"
 
         embedder = OpenAITextEmbedder(model_name=model, prefix="prefix ", suffix=" suffix")
         result = embedder.run(text="The food was delicious")

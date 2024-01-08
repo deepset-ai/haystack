@@ -170,7 +170,7 @@ class TestOpenAIDocumentEmbedder:
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
-        model = "text-similarity-ada-001"
+        model = "text-embedding-ada-002"
 
         embedder = OpenAIDocumentEmbedder(model_name=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
 
