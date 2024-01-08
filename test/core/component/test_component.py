@@ -295,3 +295,16 @@ def test_outputs_dynamic_from_init():
 
     comp = MockComponent()
     assert find_component_outputs(comp) == {"value": {"type": int}}
+
+
+def test_keyword_only_args():
+    @component
+    class MockComponent:
+        def __init__(self):
+            component.set_output_types(self, value=int)
+
+        def run(self, *, arg: int):
+            return {"value": arg}
+
+    comp = MockComponent()
+    assert find_component_inputs(comp) == {"arg": {"is_mandatory": True, "is_variadic": False, "type": int}}

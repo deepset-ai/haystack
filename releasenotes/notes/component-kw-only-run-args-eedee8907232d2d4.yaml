@@ -1,0 +1,3 @@
+---
+fixes:
+  - Fix ComponentMeta ignoring keyword-only parameters in the `run` method.
