@@ -80,7 +80,12 @@ class NamedEntityExtractor:
     _METADATA_KEY = "named_entities"
 
     def __init__(
-        self, *, backend: Union[str, NamedEntityExtractorBackend], model_name_or_path: str, device_id: int = -1
+        self,
+        *,
+        backend: Union[str, NamedEntityExtractorBackend],
+        model_name_or_path: str,
+        pipeline_kwargs: Optional[Dict[str, Any]] = None,
+        device_id: int = -1,
     ) -> None:
         """
         Construct a Named Entity extractor component.
@@ -90,6 +95,11 @@ class NamedEntityExtractor:
         :param model_name_or_path:
             Name of the model or a path to the model on
             the local disk.
+
+            Dependent on the backend.
+        :param pipeline_kwargs:
+            Keyword arguments passed to the pipeline. The
+            pipeline can override these arguments.
 
             Dependent on the backend.
         :param device_id:
@@ -105,16 +115,20 @@ class NamedEntityExtractor:
 
         self._backend: _NerBackend
         if backend == NamedEntityExtractorBackend.HUGGING_FACE:
-            self._backend = _HfBackend(model_name_or_path=model_name_or_path, device_id=device_id)
+            self._backend = _HfBackend(
+                model_name_or_path=model_name_or_path, device_id=device_id, pipeline_kwargs=pipeline_kwargs
+            )
         elif backend == NamedEntityExtractorBackend.SPACY:
-            self._backend = _SpacyBackend(model_name_or_path=model_name_or_path, device_id=device_id)
+            self._backend = _SpacyBackend(
+                model_name_or_path=model_name_or_path, device_id=device_id, pipeline_kwargs=pipeline_kwargs
+            )
         else:
             raise ComponentError(f"Unknown NER backend '{type(backend).__name__}' for extractor")
 
     def warm_up(self):
         try:
             self._backend.initialize()
-        except BaseException as e:
+        except Exception as e:
             raise ComponentError(
                 f"Named entity extractor with backend '{self._backend.type} failed to initialize."
             ) from e
@@ -136,23 +150,19 @@ class NamedEntityExtractor:
         return {"documents": documents}
 
     def to_dict(self) -> Dict[str, Any]:
-        if isinstance(self._backend, _HfBackend):
-            backend_type = NamedEntityExtractorBackend.HUGGING_FACE
-        elif isinstance(self._backend, _SpacyBackend):
-            backend_type = NamedEntityExtractorBackend.SPACY
-        else:
-            # Unreachable.
-            raise ComponentError(f"Unknown backend '{type(self._backend).__name__}'")
-
         return default_to_dict(
-            self, backend=backend_type, model_name_or_path=self._backend.model_name, device_id=self._backend.device_id
+            self,
+            backend=self._backend.type,
+            model_name_or_path=self._backend.model_name,
+            device_id=self._backend.device_id,
+            pipeline_kwargs=self._backend._pipeline_kwargs,
         )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "NamedEntityExtractor":
         try:
             return default_from_dict(cls, data)
-        except BaseException as e:
+        except Exception as e:
             raise DeserializationError(f"Couldn't deserialize {cls.__name__} instance") from e
 
     @property
@@ -182,10 +192,11 @@ class _NerBackend(ABC):
     Base class for NER backends.
     """
 
-    def __init__(self, type: NamedEntityExtractorBackend) -> None:
+    def __init__(self, type: NamedEntityExtractorBackend, pipeline_kwargs: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
 
         self._type = type
+        self._pipeline_kwargs = pipeline_kwargs if pipeline_kwargs is not None else {}
 
     @abstractmethod
     def initialize(self):
@@ -244,7 +255,9 @@ class _HfBackend(_NerBackend):
     Hugging Face backend for NER.
     """
 
-    def __init__(self, *, model_name_or_path: str, device_id: int) -> None:
+    def __init__(
+        self, *, model_name_or_path: str, device_id: int, pipeline_kwargs: Optional[Dict[str, Any]] = None
+    ) -> None:
         """
         Construct a Hugging Face NER backend.
 
@@ -257,8 +270,11 @@ class _HfBackend(_NerBackend):
 
             To execute on the CPU, pass a value of `-1`.
             To execute on the GPU, pass the GPU identifier.
+        :param pipeline_kwargs:
+            Keyword arguments passed to the pipeline. The
+            pipeline can override these arguments.
         """
-        super().__init__(NamedEntityExtractorBackend.HUGGING_FACE)
+        super().__init__(NamedEntityExtractorBackend.HUGGING_FACE, pipeline_kwargs)
 
         transformers_import.check()
 
@@ -272,13 +288,20 @@ class _HfBackend(_NerBackend):
     def initialize(self):
         self.tokenizer = AutoTokenizer.from_pretrained(self._model_name_or_path)
         self.model = AutoModelForTokenClassification.from_pretrained(self._model_name_or_path)
-        self.pipeline = pipeline(
-            "ner", model=self.model, tokenizer=self.tokenizer, aggregation_strategy="simple", device=self.device_id
-        )
+
+        pipeline_params = {
+            "task": "ner",
+            "model": self.model,
+            "tokenizer": self.tokenizer,
+            "aggregation_strategy": "simple",
+            "device": self.device_id,
+        }
+        pipeline_params.update({k: v for k, v in self._pipeline_kwargs.items() if k not in pipeline_params})
+        self.pipeline = pipeline(**pipeline_params)
 
     def annotate(self, texts: List[str], *, batch_size: int = 1) -> List[List[NamedEntityAnnotation]]:
         if not self.initialized:
-            raise ComponentError("Hugging Face NER backend was not initialized")
+            raise ComponentError("Hugging Face NER backend was not initialized - Did you call `warm_up()`?")
 
         assert self.pipeline is not None
         outputs = self.pipeline(texts, batch_size=batch_size)
@@ -313,7 +336,9 @@ class _SpacyBackend(_NerBackend):
     spaCy backend for NER.
     """
 
-    def __init__(self, *, model_name_or_path: str, device_id: int) -> None:
+    def __init__(
+        self, *, model_name_or_path: str, device_id: int, pipeline_kwargs: Optional[Dict[str, Any]] = None
+    ) -> None:
         """
         Construct a spaCy NER backend.
 
@@ -326,8 +351,11 @@ class _SpacyBackend(_NerBackend):
 
             To execute on the CPU, pass a value of `-1`.
             To execute on the GPU, pass the GPU identifier.
+        :param pipeline_kwargs:
+            Keyword arguments passed to the pipeline. The
+            pipeline can override these arguments.
         """
-        super().__init__(NamedEntityExtractorBackend.SPACY)
+        super().__init__(NamedEntityExtractorBackend.SPACY, pipeline_kwargs)
 
         spacy_import.check()
 
@@ -350,13 +378,15 @@ class _SpacyBackend(_NerBackend):
             if name not in pipes_to_keep:
                 self.pipeline.disable_pipe(name)
 
+        self._pipeline_kwargs = {k: v for k, v in self._pipeline_kwargs.items() if k not in ("texts", "batch_size")}
+
     def annotate(self, texts: List[str], *, batch_size: int = 1) -> List[List[NamedEntityAnnotation]]:
         if not self.initialized:
-            raise ComponentError("spaCy NER backend was not initialized")
+            raise ComponentError("spaCy NER backend was not initialized - Did you call `warm_up()`?")
 
         assert self.pipeline is not None
         with self._select_device():
-            outputs = list(self.pipeline.pipe(texts, batch_size=batch_size))
+            outputs = list(self.pipeline.pipe(texts=texts, batch_size=batch_size, **self._pipeline_kwargs))
 
         return [
             [
