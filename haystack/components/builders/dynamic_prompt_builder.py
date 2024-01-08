@@ -17,22 +17,21 @@ class DynamicPromptBuilder:
     The following example demonstrates how to use the DynamicPromptBuilder:
 
     ```python
+    from typing import List
     from haystack.components.builders import DynamicPromptBuilder
-    from haystack.components.generators.chat import GPTChatGenerator
-    from haystack.dataclasses import ChatMessage
-    from haystack import Pipeline
-
+    from haystack.components.generators import OpenAIGenerator
+    from haystack import Pipeline, component, Document
 
     prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"])
-    llm = GPTGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
+    llm = OpenAIGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
 
 
     @component
     class DocumentProducer:
 
-      @component.output_types(documents=List[Document])
-      def run(self, doc_input: str):
-        return {"documents": [Document(content=doc_input)]}
+        @component.output_types(documents=List[Document])
+        def run(self, doc_input: str):
+            return {"documents": [Document(content=doc_input)]}
 
 
     pipe = Pipeline()
@@ -43,9 +42,16 @@ class DynamicPromptBuilder:
     pipe.connect("prompt_builder.prompt", "llm.prompt")
 
     template = "Here is the document: {{documents[0].content}} \\n Answer: {{query}}"
-    pipe.run(data={"doc_producer": {"doc_input": "Hello world, I live in Berlin"},
-               "prompt_builder": {"prompt_source": template,
-                                  "template_variables":{"query": "Where does the speaker live?"}}})
+    result = pipe.run(
+        data={
+            "doc_producer": {"doc_input": "Hello world, I live in Berlin"},
+            "prompt_builder": {
+                "prompt_source": template,
+                "template_variables": {"query": "Where does the speaker live?"},
+            },
+        }
+    )
+    print(result)
 
     >> {'llm': {'replies': ['The speaker lives in Berlin.'],
     >> 'meta': [{'model': 'gpt-3.5-turbo-0613',
@@ -118,8 +124,8 @@ class DynamicPromptBuilder:
                 "Please provide an appropriate template variable to enable prompt generation."
             )
 
-        template = self._validate_template(prompt_source, set(template_variables.keys()))
-        result = template.render(template_variables)
+        template = self._validate_template(prompt_source, set(template_variables_combined.keys()))
+        result = template.render(template_variables_combined)
         return {"prompt": result}
 
     def _validate_template(self, template_text: str, provided_variables: Set[str]):

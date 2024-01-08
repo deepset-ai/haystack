@@ -4,6 +4,8 @@ from haystack.components.embedders.sentence_transformers_text_embedder import Se
 from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
 from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
 from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
+from haystack.components.embedders.azure_text_embedder import AzureOpenAITextEmbedder
+from haystack.components.embedders.azure_document_embedder import AzureOpenAIDocumentEmbedder
 
 __all__ = [
     "HuggingFaceTEITextEmbedder",
@@ -12,4 +14,6 @@ __all__ = [
     "SentenceTransformersDocumentEmbedder",
     "OpenAITextEmbedder",
     "OpenAIDocumentEmbedder",
+    "AzureOpenAITextEmbedder",
+    "AzureOpenAIDocumentEmbedder",
 ]
