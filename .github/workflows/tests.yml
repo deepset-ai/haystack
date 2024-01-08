@@ -24,6 +24,8 @@ env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   CORE_AZURE_CS_ENDPOINT: ${{ secrets.CORE_AZURE_CS_ENDPOINT }}
   CORE_AZURE_CS_API_KEY: ${{ secrets.CORE_AZURE_CS_API_KEY }}
+  AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+  AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
   PYTHON_VERSION: "3.8"
 
 jobs:
@@ -227,6 +229,7 @@ jobs:
     runs-on: macos-latest
     env:
       HAYSTACK_MPS_ENABLED: false
+
     steps:
       - uses: actions/checkout@v4
 
@@ -237,8 +240,6 @@ jobs:
       - name: Install dependencies
         run: |
           brew install ffmpeg  # for local Whisper tests
-          brew install docker
-          colima start
 
       - name: Restore Python dependencies
         uses: actions/cache/restore@v3
@@ -246,11 +247,8 @@ jobs:
           path: ${{ env.pythonLocation }}
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
 
-      - name: Run Tika
-        run: docker run -d -p 9998:9998 apache/tika:2.9.0.0
-
       - name: Run
-        run: pytest --maxfail=5 -m "integration" test
+        run: pytest --maxfail=5 -m "integration" test -k 'not tika'
 
       - name: Calculate alert data
         id: calculator

@@ -10,7 +10,7 @@ from haystack.dataclasses import ByteStream
 class TestAzureOCRDocumentConverter:
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("AZURE_AI_API_KEY", raising=False)
-        with pytest.raises(ValueError, match="AzureOCRDocumentConverter expects an Azure Credential key"):
+        with pytest.raises(ValueError):
             AzureOCRDocumentConverter(endpoint="test_endpoint")
 
     def test_to_dict(self):

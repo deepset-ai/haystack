@@ -8,7 +8,7 @@ from haystack import Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.embedders import SentenceTransformersTextEmbedder
-from haystack.components.generators import GPTGenerator, HuggingFaceTGIGenerator
+from haystack.components.generators import OpenAIGenerator, HuggingFaceTGIGenerator
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.dataclasses import Answer
 from haystack.document_stores import InMemoryDocumentStore, DocumentStore
@@ -179,13 +179,13 @@ class _GeneratorResolver(ABC):
 
 class _OpenAIResolved(_GeneratorResolver):
     """
-    Resolves the OpenAI GPTGenerator.
+    Resolves the OpenAIGenerator.
     """
 
     def resolve(self, model_key: str, api_key: str) -> Any:
         # does the model_key match the pattern OpenAI GPT pattern?
         if re.match(r"^gpt-4-.*", model_key) or re.match(r"^gpt-3.5-.*", model_key):
-            return GPTGenerator(model_name=model_key, api_key=api_key)
+            return OpenAIGenerator(model_name=model_key, api_key=api_key)
         return None
 
 

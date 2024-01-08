@@ -51,7 +51,7 @@ dependencies = [
   "tqdm",
   "tenacity",
   "lazy-imports",
-  "openai",
+  "openai>=1.1.0",
   "Jinja2",
   "posthog",  # telemetry
   "pyyaml",

@@ -7,7 +7,7 @@ from haystack.document_stores import InMemoryDocumentStore
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
-from haystack.components.generators import GPTGenerator
+from haystack.components.generators import OpenAIGenerator
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 
@@ -30,7 +30,7 @@ def test_bm25_rag_pipeline(tmp_path):
     rag_pipeline = Pipeline()
     rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
     rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-    rag_pipeline.add_component(instance=GPTGenerator(api_key=os.environ.get("OPENAI_API_KEY")), name="llm")
+    rag_pipeline.add_component(instance=OpenAIGenerator(api_key=os.environ.get("OPENAI_API_KEY")), name="llm")
     rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
     rag_pipeline.connect("retriever", "prompt_builder.documents")
     rag_pipeline.connect("prompt_builder", "llm")
@@ -102,7 +102,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
         instance=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()), name="retriever"
     )
     rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-    rag_pipeline.add_component(instance=GPTGenerator(api_key=os.environ.get("OPENAI_API_KEY")), name="llm")
+    rag_pipeline.add_component(instance=OpenAIGenerator(api_key=os.environ.get("OPENAI_API_KEY")), name="llm")
     rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
     rag_pipeline.connect("text_embedder", "retriever")
     rag_pipeline.connect("retriever", "prompt_builder.documents")
