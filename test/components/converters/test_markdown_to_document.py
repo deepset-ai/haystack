@@ -31,6 +31,19 @@ class TestMarkdownToDocument:
             assert "What to build with Haystack" in doc.content
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
 
+    def test_run_calls_normalize_metadata(self, test_files_path):
+        bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
+
+        converter = MarkdownToDocument()
+
+        with patch("haystack.components.converters.markdown.normalize_metadata") as normalize_metadata, patch(
+            "haystack.components.converters.markdown.MarkdownIt"
+        ):
+            converter.run(sources=[bytestream, test_files_path / "markdown" / "sample.md"], meta={"language": "it"})
+
+        # check that the metadata normalizer is called properly
+        normalize_metadata.assert_called_with(meta={"language": "it"}, sources_count=2)
+
     def test_run_with_meta(self, test_files_path):
         bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
 
