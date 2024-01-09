@@ -4,9 +4,6 @@ from haystack import Document, Pipeline, ComponentError
 from haystack.components.extractors import NamedEntityAnnotation, NamedEntityExtractor, NamedEntityExtractorBackend
 
 
-SPACY_TEST_MODEL_NAME = "en_core_web_trf"
-
-
 @pytest.fixture
 def raw_texts():
     return [
