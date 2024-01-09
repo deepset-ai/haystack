@@ -140,16 +140,6 @@ jobs:
       - name: Run
         run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/${{ matrix.topic }}
 
-      - name: Coveralls Parallel
-        # We upload only coverage for ubuntu as handling both os
-        # complicates the workflow too much for little to no gain
-        if: matrix.os == 'ubuntu-latest'
-        uses: coverallsapp/github-action@v2
-        with:
-          path-to-lcov: coverage.xml
-          flag-name: ${{ matrix.topic }}
-          parallel: true
-
       - name: Calculate alert data
         id: calculator
         shell: bash
@@ -180,15 +170,6 @@ jobs:
                 - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  upload-coverage:
-    needs: unit-tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Coveralls Finished
-        uses: coverallsapp/github-action@v2
-        with:
-          parallel-finished: true
 
   integration-tests-elasticsearch7:
     name: Integration / Elasticsearch7 / ${{ matrix.os }}
