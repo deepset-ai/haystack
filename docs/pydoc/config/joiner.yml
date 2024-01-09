@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/caching]
-    modules: ["cache_checker"]
+    search_path: [../../../haystack/components/joiners]
+    modules: ["document_joiner"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmePreviewRenderer
-  excerpt: Checks if any document coming from the given URL is already present in the store.
+  excerpt: Routes data to the right component based on its file type or metadata.
   category_slug: haystack-classes
-  title: UrlCacheChecker API
-  slug: caching-api
-  order: 160
+  title: Joiner API
+  slug: joiner-api
+  order: 140
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: caching_api.md
+    filename: joiner_api.md
