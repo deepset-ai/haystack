@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class _empty:
-    """Marker object for Signature.empty and Parameter.empty."""
+    """Custom object for marking InputSocket.default_value as not set."""
 
 
 @dataclass
