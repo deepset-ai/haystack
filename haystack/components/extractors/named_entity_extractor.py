@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 from ... import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
 from ...lazy_imports import LazyImport
 
-with LazyImport(message="Run 'pip install transformers'") as transformers_import:
+with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
     from transformers import AutoModelForTokenClassification, AutoTokenizer
     from transformers import Pipeline as HfPipeline
     from transformers import pipeline
