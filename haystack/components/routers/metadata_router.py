@@ -47,8 +47,8 @@ class MetadataRouter:
                                 {"field": "meta.created_at", "operator": "<", "value": "2024-01-01"},
                             ],
                         },
-                    }
-                    ```
+                      }
+                      ```
         """
         self.rules = rules
         component.set_output_types(self, unmatched=List[Document], **{edge: List[Document] for edge in rules})

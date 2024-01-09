@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class RemoteWhisperTranscriber:
     """
     Transcribes audio files using OpenAI's Whisper using OpenAI API. Requires an API key. See the
-    [OpenAI blog post](https://beta.openai.com/docs/api-reference/whisper for more details.
+    [OpenAI blog post](https://beta.openai.com/docs/api-reference/whisper) for more details.
     You can get one by signing up for an [OpenAI account](https://beta.openai.com/).
 
     For the supported audio formats, languages, and other parameters, see the
@@ -100,7 +100,7 @@ class RemoteWhisperTranscriber:
         Transcribe the audio files into a list of Documents, one for each input file.
 
         :param sources: A list of file paths or ByteStreams containing the audio files to transcribe.
-        :returns: a list of Documents, one for each file. The content of the document is the transcription text.
+        :returns: A list of Documents, one for each file. The content of the document is the transcription text.
         """
         documents = []
 
