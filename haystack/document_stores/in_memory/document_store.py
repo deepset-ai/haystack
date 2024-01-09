@@ -212,8 +212,11 @@ class InMemoryDocumentStore:
         return_documents = []
         for i in top_docs_positions:
             doc = all_documents[i]
+            score = docs_scores[i]
+            if score <= 0.0:
+                continue
             doc_fields = doc.to_dict()
-            doc_fields["score"] = docs_scores[i]
+            doc_fields["score"] = score
             return_document = Document.from_dict(doc_fields)
             return_documents.append(return_document)
         return return_documents

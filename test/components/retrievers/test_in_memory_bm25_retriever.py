@@ -113,15 +113,14 @@ class TestMemoryBM25Retriever:
             InMemoryBM25Retriever.from_dict(data)
 
     def test_retriever_valid_run(self, mock_docs):
-        top_k = 5
         ds = InMemoryDocumentStore()
         ds.write_documents(mock_docs)
 
-        retriever = InMemoryBM25Retriever(ds, top_k=top_k)
+        retriever = InMemoryBM25Retriever(ds, top_k=5)
         result = retriever.run(query="PHP")
 
         assert "documents" in result
-        assert len(result["documents"]) == top_k
+        assert len(result["documents"]) == 1
         assert result["documents"][0].content == "PHP is a popular programming language"
 
     def test_invalid_run_wrong_store_type(self):
@@ -174,5 +173,5 @@ class TestMemoryBM25Retriever:
         assert "retriever" in result
         results_docs = result["retriever"]["documents"]
         assert results_docs
-        assert len(results_docs) == top_k
+        assert len(results_docs) == 1
         assert results_docs[0].content == query_result
