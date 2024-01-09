@@ -51,8 +51,7 @@ class TestSimilarityRanker:
                 "scale_score": False,
                 "calibration_factor": None,
                 "score_threshold": 0.01,
-                # torch_dtype is correctly serialized
-                "model_kwargs": {"torch_dtype": "torch.float16"},
+                "model_kwargs": {"torch_dtype": "torch.float16"},  # torch_dtype is correctly serialized
             },
         }
 
@@ -62,7 +61,7 @@ class TestSimilarityRanker:
             "init_parameters": {
                 "device": "cuda",
                 "model_name_or_path": "my_model",
-                "token": None,  # we don't serialize valid tokens,
+                "token": None,
                 "top_k": 5,
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
@@ -80,7 +79,7 @@ class TestSimilarityRanker:
         assert component.top_k == 5
         assert component.meta_fields_to_embed == []
         assert component.embedding_separator == "\n"
-        assert component.scale_score is False
+        assert not component.scale_score
         assert component.calibration_factor is None
         assert component.score_threshold == 0.01
         # torch_dtype is correctly deserialized

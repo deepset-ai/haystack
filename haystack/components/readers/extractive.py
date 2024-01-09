@@ -4,7 +4,7 @@ import math
 import warnings
 import logging
 
-from haystack import component, default_to_dict, ComponentError, Document, ExtractedAnswer
+from haystack import component, default_to_dict, default_from_dict, ComponentError, Document, ExtractedAnswer
 from haystack.lazy_imports import LazyImport
 from haystack.utils import get_device
 
@@ -112,7 +112,7 @@ class ExtractiveReader:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(
+        serialization_dict = default_to_dict(
             self,
             model_name_or_path=self.model_name_or_path,
             device=self.device,
@@ -127,6 +127,28 @@ class ExtractiveReader:
             calibration_factor=self.calibration_factor,
             model_kwargs=self.model_kwargs,
         )
+
+        model_kwargs = serialization_dict["init_parameters"]["model_kwargs"]
+        # convert torch.dtype to string for serialization
+        if "torch_dtype" in model_kwargs and isinstance(model_kwargs["torch_dtype"], torch.dtype):
+            serialization_dict["init_parameters"]["model_kwargs"]["torch_dtype"] = str(model_kwargs["torch_dtype"])
+
+        return serialization_dict
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ExtractiveReader":
+        """
+        Deserialize this component from a dictionary.
+        """
+        init_params = data.get("init_parameters", {})
+        model_kwargs = init_params.get("model_kwargs", {})
+        # convert string to torch.dtype
+        if "torch_dtype" in model_kwargs:
+            torch_dtype_str = model_kwargs["torch_dtype"]
+            if torch_dtype_str.startswith("torch."):
+                data["init_parameters"]["model_kwargs"]["torch_dtype"] = getattr(torch, torch_dtype_str.strip("torch."))
+
+        return default_from_dict(cls, data)
 
     def warm_up(self):
         """
