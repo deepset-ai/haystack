@@ -143,11 +143,10 @@ class ComponentMeta(type):
                 inspect.Parameter.VAR_POSITIONAL,
                 inspect.Parameter.VAR_KEYWORD,
             ):  # ignore variable args
-                instance.__canals_input__[param] = InputSocket(
-                    name=param,
-                    type=run_signature.parameters[param].annotation,
-                    is_mandatory=run_signature.parameters[param].default == inspect.Parameter.empty,
-                )
+                socket_kwargs = {"name": param, "type": run_signature.parameters[param].annotation}
+                if run_signature.parameters[param].default != inspect.Parameter.empty:
+                    socket_kwargs["default_value"] = run_signature.parameters[param].default
+                instance.__canals_input__[param] = InputSocket(**socket_kwargs)
         return instance
 
 
