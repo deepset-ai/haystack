@@ -82,7 +82,11 @@ class PyPDFToDocument:
         return default_to_dict(self, converter_name=self.converter_name)
 
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
+    def run(
+        self,
+        sources: List[Union[str, Path, ByteStream]],
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+    ):
         """
         Converts a list of PDF sources into Document objects using the configured converter.
 
