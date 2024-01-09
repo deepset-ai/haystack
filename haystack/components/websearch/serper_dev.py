@@ -1,7 +1,7 @@
 import json
-import os
 import logging
 from typing import Dict, List, Optional, Any
+import os
 
 import requests
 
@@ -42,15 +42,15 @@ class SerperDevWebSearch:
         For example, you can set 'num' to 20 to increase the number of search results.
         See the [Serper Dev website](https://serper.dev/) for more details.
         """
-        if api_key is None:
-            try:
-                api_key = os.environ["SERPERDEV_API_KEY"]
-            except KeyError as e:
-                raise ValueError(
-                    "SerperDevWebSearch expects an API key. "
-                    "Set the SERPERDEV_API_KEY environment variable (recommended) or pass it explicitly."
-                ) from e
-            raise ValueError("API key for SerperDev API must be set.")
+        api_key = api_key or os.environ.get("SERPERDEV_API_KEY")
+        # we check whether api_key is None or an empty string
+        if not api_key:
+            msg = (
+                "SerperDevWebSearch expects an API key. "
+                "Set the SERPERDEV_API_KEY environment variable (recommended) or pass it explicitly."
+            )
+            raise ValueError(msg)
+
         self.api_key = api_key
         self.top_k = top_k
         self.allowed_domains = allowed_domains
