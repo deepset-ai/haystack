@@ -6,7 +6,7 @@ from haystack import Pipeline, DeserializationError
 from haystack.testing.factory import document_store_class
 from haystack.components.retrievers.in_memory_bm25_retriever import InMemoryBM25Retriever
 from haystack.dataclasses import Document
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 @pytest.fixture()

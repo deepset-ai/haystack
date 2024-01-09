@@ -1,21 +1,14 @@
 from typing import Protocol, Optional, Dict, Any, List
 import logging
-from enum import Enum
 
 from haystack.dataclasses import Document
 
+from .policy import DuplicatePolicy
 
 # Ellipsis are needed for the type checker, it's safe to disable module-wide
 # pylint: disable=unnecessary-ellipsis
 
 logger = logging.getLogger(__name__)
-
-
-class DuplicatePolicy(Enum):
-    NONE = "none"
-    SKIP = "skip"
-    OVERWRITE = "overwrite"
-    FAIL = "fail"
 
 
 class DocumentStore(Protocol):
