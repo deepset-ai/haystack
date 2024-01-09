@@ -3,7 +3,7 @@ import logging
 import pytest
 
 from haystack import Document
-from haystack.components.routers.document_joiner import DocumentJoiner
+from haystack.components.joiners.document_joiner import DocumentJoiner
 
 
 class TestDocumentJoiner:

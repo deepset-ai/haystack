@@ -18,16 +18,19 @@ class TestTikaDocumentConverter:
         assert len(documents) == 1
         assert documents[0].content == "Content of mock source"
 
-    def test_run_with_meta(self):
+    def test_run_with_meta(self, test_files_path):
         bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
 
         converter = TikaDocumentConverter()
         with patch("haystack.components.converters.tika.tika_parser.from_buffer"):
-            output = converter.run(sources=[bytestream], meta=[{"language": "it"}])
-        document = output["documents"][0]
+            output = converter.run(
+                sources=[bytestream, test_files_path / "markdown" / "sample.md"], meta={"language": "it"}
+            )
 
-        # check that the metadata from the bytestream is merged with that from the meta parameter
-        assert document.meta == {"author": "test_author", "language": "it"}
+        # check that the metadata from the sources is merged with that from the meta parameter
+        assert output["documents"][0].meta["author"] == "test_author"
+        assert output["documents"][0].meta["language"] == "it"
+        assert output["documents"][1].meta["language"] == "it"
 
     def test_run_nonexistent_file(self, caplog):
         component = TikaDocumentConverter()

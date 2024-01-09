@@ -11,7 +11,8 @@ from haystack.components.converters import TextFileToDocument
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, OpenAIDocumentEmbedder
 from haystack.components.fetchers import LinkContentFetcher
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
-from haystack.components.routers import FileTypeRouter, DocumentJoiner
+from haystack.components.routers import FileTypeRouter
+from haystack.components.joiners import DocumentJoiner
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.protocol import DocumentStore
 
