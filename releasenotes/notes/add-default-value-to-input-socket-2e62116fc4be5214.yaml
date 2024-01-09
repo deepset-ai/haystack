@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Add a field called `default_value` to the `InputSocket` dataclass.
+    Derive `is_mandatory` value from the presence of `default_value`.

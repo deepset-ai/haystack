@@ -3,7 +3,7 @@ import json
 from haystack import Pipeline, Document
 from haystack.components.embedders import SentenceTransformersTextEmbedder
 from haystack.components.rankers import TransformersSimilarityRanker
-from haystack.components.routers.document_joiner import DocumentJoiner
+from haystack.components.joiners.document_joiner import DocumentJoiner
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 
