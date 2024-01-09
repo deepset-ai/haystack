@@ -6,7 +6,7 @@ from copy import deepcopy
 from datetime import datetime
 from functools import reduce
 from itertools import islice
-from typing import Any, Dict, Generator, List, Literal, Optional, Set, Union
+from typing import Any, Dict, Generator, List, Literal, Optional, Set, Tuple, Union
 
 import numpy as np
 from tqdm import tqdm
@@ -33,7 +33,9 @@ AND_OPERATOR = "$and"
 IN_OPERATOR = "$in"
 EQ_OPERATOR = "$eq"
 
-DEFAULT_BATCH_SIZE = 128
+DEFAULT_BATCH_SIZE = 64
+DEFAULT_POOL_THREADS = 1
+DEFAULT_DOCUMENT_CHUNK_SIZE = 1000
 
 PINECONE_STARTER_POD = "starter"
 
@@ -93,6 +95,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         recreate_index: bool = False,
         metadata_config: Optional[Dict] = None,
         validate_index_sync: bool = True,
+        pool_threads: int = DEFAULT_POOL_THREADS,
     ):
         """
         :param api_key: Pinecone vector database API key ([https://app.pinecone.io](https://app.pinecone.io)).
@@ -130,6 +133,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             [selective metadata filtering](https://www.pinecone.io/docs/manage-indexes/#selective-metadata-indexing) feature.
             Should be in the format `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`. By default,
             no fields are indexed.
+        :param pool_threads: Number of threads to use for index upsert.
         """
         pinecone_import.check()
         if metadata_config is None:
@@ -196,6 +200,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 shards=self.shards,
                 recreate_index=recreate_index,
                 metadata_config=self.metadata_config,
+                pool_threads=pool_threads,
             )
 
         super().__init__()
@@ -215,6 +220,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         shards: Optional[int] = 1,
         recreate_index: bool = False,
         metadata_config: Optional[Dict] = None,
+        pool_threads: int = DEFAULT_POOL_THREADS,
     ) -> "pinecone.Index":
         """
         Create a new index for storing documents in case an index with the name
@@ -242,7 +248,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     shards=shards,
                     metadata_config=metadata_config,
                 )
-            index_connection = pinecone.Index(index)
+            index_connection = pinecone.Index(index, pool_threads)
 
         # Get index statistics
         stats = index_connection.describe_index_stats()
@@ -400,6 +406,23 @@ class PineconeDocumentStore(BaseDocumentStore):
         for id_batch in get_batches_from_generator(ids, batch_size):
             self.pinecone_indexes[index].delete(ids=list(id_batch), namespace=namespace)
 
+    def _upsert_vectors(
+        self,
+        index_name: str,
+        data: List[Tuple],
+        namespace: Optional[str],
+        use_async: bool = False,
+        batch_size: int = DEFAULT_BATCH_SIZE,
+    ) -> None:
+        index = self.pinecone_indexes[index_name]
+        results = [
+            index.upsert(vectors=batch, namespace=namespace, async_req=use_async)
+            for batch in get_batches_from_generator(data, batch_size)
+        ]
+        if use_async:
+            for res in results:
+                res.get()
+
     def get_document_count(
         self,
         filters: Optional[FilterType] = None,
@@ -531,6 +554,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         labels: Optional[bool] = False,
         namespace: Optional[str] = None,
+        use_async: bool = False,
+        document_chunk_size: int = DEFAULT_DOCUMENT_CHUNK_SIZE,
     ):
         """
         Add new documents to the DocumentStore.
@@ -538,7 +563,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param documents: List of `Dicts` or list of `Documents`. If they already contain embeddings, we'll index them
             right away in Pinecone. If not, you can later call `update_embeddings()` to create & index them.
         :param index: Index name for storing the docs and metadata.
-        :param batch_size: Number of documents to process at a time. When working with large number of documents,
+        :param batch_size: Number of documents to upsert at a time. When working with large number of documents,
             batching can help to reduce the memory footprint.
         :param duplicate_documents: handle duplicate documents based on parameter options.
             Parameter options:
@@ -548,6 +573,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param headers: PineconeDocumentStore does not support headers.
         :param labels: Tells us whether these records are labels or not. Defaults to False.
         :param namespace: Optional namespace to write documents to. If not specified, None is default.
+        :param use_async: If set to True, Pinecone index will upsert documents in parallel.
+        :param document_chunk_size: Number of documents to process at a time. If use_async is set to True,
+            along with batch_size will speed up document upsert by doing it in parallel.
         :raises DuplicateDocumentError: Exception trigger on duplicate document.
         """
         if headers:
@@ -563,6 +591,20 @@ class PineconeDocumentStore(BaseDocumentStore):
         if index_connection:
             self.pinecone_indexes[index] = index_connection
 
+        pool_threads = self.pinecone_indexes[index].pool_threads
+        if use_async and pool_threads == 1:
+            logger.warning(
+                "Documents will be upserted synchronosly, because the number of threads for Pinecone index is set to %s. "
+                "To enable upsert in parallel, initialize PineconeDocumentStore() again setting parameter `pool_threads`.",
+                pool_threads,
+            )
+        elif not use_async and pool_threads != 1:
+            logger.warning(
+                "Parameter `use_async` set to `False` will be ignored and documents will be upserted asynchronously, "
+                "because the number of threads for Pinecone index is set to %s.",
+                pool_threads,
+            )
+
         field_map = self._create_document_field_map()
         document_objects = [
             Document.from_dict(doc, field_map=field_map) if isinstance(doc, dict) else doc for doc in documents
@@ -570,6 +612,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         document_objects = self._handle_duplicate_documents(
             documents=document_objects, index=index, duplicate_documents=duplicate_documents
         )
+
+        # set chunk size to document_chunk_size for async upsert or batch_size otherwise (regular upsert)
+        chunk_size = document_chunk_size if use_async else batch_size
         if document_objects:
             add_vectors = document_objects[0].embedding is not None
             # If these are not labels, we need to find the correct value for `doc_type` metadata field
@@ -577,53 +622,47 @@ class PineconeDocumentStore(BaseDocumentStore):
                 type_metadata = DOCUMENT_WITH_EMBEDDING if add_vectors else DOCUMENT_WITHOUT_EMBEDDING
             else:
                 type_metadata = LABEL
-            if not add_vectors:
-                # To store documents in Pinecone, we use dummy embeddings (to be replaced with real embeddings later)
-                embeddings_to_index = np.zeros((batch_size, self.embedding_dim), dtype="float32")
-                # Convert embeddings to list objects
-                embeddings = [embed.tolist() if embed is not None else None for embed in embeddings_to_index]
 
             with tqdm(
                 total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
             ) as progress_bar:
-                for document_batch in get_batches_from_generator(document_objects, batch_size):
-                    document_batch = list(document_batch)
-                    document_batch_copy = deepcopy(document_batch)
-                    ids = [doc.id for doc in document_batch]
+                for document_chunk in get_batches_from_generator(document_objects, chunk_size):
+                    document_chunk = list(document_chunk)
+                    ids = [doc.id for doc in document_chunk]
                     # If duplicate_documents set to `skip` or `fail`, we need to check for existing documents
                     if duplicate_documents in ["skip", "fail"]:
                         existing_documents = self.get_documents_by_id(
-                            ids=ids, index=index, namespace=namespace, include_type_metadata=True
+                            ids=ids, index=index, namespace=namespace, include_type_metadata=True, batch_size=chunk_size
                         )
-                        # First check for documents in current batch that exist in the index
+                        # First check for documents in current chunk that exist in the index
                         if existing_documents:
                             if duplicate_documents == "skip":
                                 # If we should skip existing documents, we drop the ids that already exist
                                 skip_ids = [doc.id for doc in existing_documents]
-                                # We need to drop the affected document objects from the batch
-                                document_batch = [doc for doc in document_batch if doc.id not in skip_ids]
+                                # We need to drop the affected document objects from the chunk
+                                document_chunk = [doc for doc in document_chunk if doc.id not in skip_ids]
                                 # Now rebuild the ID list
-                                ids = [doc.id for doc in document_batch]
+                                ids = [doc.id for doc in document_chunk]
                                 progress_bar.update(len(skip_ids))
                             elif duplicate_documents == "fail":
                                 # Otherwise, we raise an error
                                 raise DuplicateDocumentError(
                                     f"Document ID {existing_documents[0].id} already exists in index {index}"
                                 )
-                        # Now check for duplicate documents within the batch itself
+                        # Now check for duplicate documents within the chunk itself
                         if len(ids) != len(set(ids)):
                             if duplicate_documents == "skip":
                                 # We just keep the first instance of each duplicate document
                                 ids = []
-                                temp_document_batch = []
-                                for doc in document_batch:
+                                temp_document_chunk = []
+                                for doc in document_chunk:
                                     if doc.id not in ids:
                                         ids.append(doc.id)
-                                        temp_document_batch.append(doc)
-                                document_batch = temp_document_batch
+                                        temp_document_chunk.append(doc)
+                                document_chunk = temp_document_chunk
                             elif duplicate_documents == "fail":
                                 # Otherwise, we raise an error
-                                raise DuplicateDocumentError(f"Duplicate document IDs found in batch: {ids}")
+                                raise DuplicateDocumentError(f"Duplicate document IDs found in chunk: {ids}")
                     metadata = [
                         self._meta_for_pinecone(
                             {
@@ -633,22 +672,28 @@ class PineconeDocumentStore(BaseDocumentStore):
                                 **doc.meta,
                             }
                         )
-                        for doc in document_batch_copy
+                        for doc in document_chunk
                     ]
                     if add_vectors:
-                        embeddings = [doc.embedding for doc in document_batch_copy]
+                        embeddings = [doc.embedding for doc in document_chunk]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
                         if self.similarity == "cosine":
                             # Normalize embeddings inplace
                             self.normalize_embedding(embeddings_to_index)
                         # Convert embeddings to list objects
                         embeddings = [embed.tolist() if embed is not None else None for embed in embeddings_to_index]
-                    data_to_write_to_pinecone = zip(ids, embeddings, metadata)
-                    # Metadata fields and embeddings are stored in Pinecone
-                    self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone, namespace=namespace)
+                    else:
+                        # Use dummy embeddings for all documents
+                        embeddings_to_index = np.zeros((len(document_chunk), self.embedding_dim), dtype="float32")
+                        # Convert embeddings to list objects
+                        embeddings = [embed.tolist() if embed is not None else None for embed in embeddings_to_index]
+
+                    data_to_write_to_pinecone = list(zip(ids, embeddings, metadata))
+                    # Store chunk by chunk (for regular upsert) or chunk by chunk (for async upsert) in vector store
+                    self._upsert_vectors(index, data_to_write_to_pinecone, namespace, use_async, batch_size)  # type: ignore
                     # Add IDs to ID list
                     self._add_local_ids(index, ids)
-                    progress_bar.update(batch_size)
+                    progress_bar.update(chunk_size)
             progress_bar.close()
 
     def _create_document_field_map(self) -> Dict:
@@ -662,6 +707,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         filters: Optional[FilterType] = None,
         batch_size: int = DEFAULT_BATCH_SIZE,
         namespace: Optional[str] = None,
+        use_async: bool = False,
+        document_chunk_size: int = DEFAULT_DOCUMENT_CHUNK_SIZE,
     ):
         """
         Updates the embeddings in the document store using the encoding model specified in the retriever.
@@ -702,6 +749,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param batch_size: Number of documents to process at a time. When working with large number of documents,
             batching can help reduce memory footprint.
         :param namespace: Optional namespace to retrieve document from. If not specified, None is default.
+        :param use_async: If set to True, Pinecone index will update embeddings in parallel.
+        :param document_chunk_size: Number of documents to process at a time. If use_async is set to True,
+            along with batch_size will speed up updating the embeddings by doing it in parallel.
         """
         index = self._index(index)
         if index not in self.pinecone_indexes:
@@ -709,6 +759,21 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"Couldn't find a the index '{index}' in Pinecone. Try to init the "
                 f"PineconeDocumentStore() again ..."
             )
+
+        pool_threads = self.pinecone_indexes[index].pool_threads
+        if use_async and pool_threads == 1:
+            logger.warning(
+                "Embeddings will be upserted synchronosly, because the number of threads for Pinecone index is %s. "
+                "To enable upsert in parallel, initialize PineconeDocumentStore() again setting parameter `pool_threads`.",
+                pool_threads,
+            )
+        elif not use_async and pool_threads > 1:
+            logger.warning(
+                "Parameter `use_async` set to `False` will be ignored and embeddings will be upserted asynchronously, "
+                "because the number of threads for Pinecone index is set to %s.",
+                pool_threads,
+            )
+
         document_count = self.get_document_count(
             index=index,
             filters=filters,
@@ -737,20 +802,22 @@ class PineconeDocumentStore(BaseDocumentStore):
             include_type_metadata=True,
         )
 
+        chunk_size = document_chunk_size if use_async else batch_size
         with tqdm(
             total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
         ) as progress_bar:
-            for _ in range(0, document_count, batch_size):
-                document_batch = list(islice(documents, batch_size))
-                embeddings = retriever.embed_documents(document_batch)
+            for _ in range(0, document_count, chunk_size):
+                document_chunk = list(islice(documents, chunk_size))
+                document_chunk_size = len(document_chunk)
+                embeddings = retriever.embed_documents(document_chunk)
                 if embeddings.size == 0:
-                    # Skip batch if there are no embeddings. Otherwise, incorrect embedding shape will be inferred and
+                    # Skip chunk if there are no embeddings. Otherwise, incorrect embedding shape will be inferred and
                     # Pinecone APi will return a "No vectors provided" Bad Request Error
                     progress_bar.set_description_str("Documents Processed")
                     progress_bar.update(batch_size)
                     continue
                 self._validate_embeddings_shape(
-                    embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+                    embeddings=embeddings, num_documents=document_chunk_size, embedding_dim=self.embedding_dim
                 )
 
                 if self.similarity == "cosine":
@@ -758,7 +825,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
                 metadata = []
                 ids = []
-                for doc in document_batch:
+                for doc in document_chunk:
                     metadata.append(
                         self._meta_for_pinecone(
                             {
@@ -772,13 +839,12 @@ class PineconeDocumentStore(BaseDocumentStore):
                     )
                     ids.append(doc.id)
                 # Update existing vectors in pinecone index
-                self.pinecone_indexes[index].upsert(
-                    vectors=zip(ids, embeddings.tolist(), metadata), namespace=namespace
-                )
+                data = list(zip(ids, embeddings.tolist(), metadata))
+                self._upsert_vectors(index, data, namespace, use_async, batch_size)  # type: ignore
                 # Add these vector IDs to local store
                 self._add_local_ids(index, ids)
                 progress_bar.set_description_str("Documents Processed")
-                progress_bar.update(batch_size)
+                progress_bar.update(document_chunk_size)
 
     def get_all_documents(
         self,
@@ -1034,7 +1100,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 embedding_matrix = [result["vectors"][_id]["values"] for _id in vector_id_matrix]
                 data_to_write_to_pinecone = list(zip(vector_id_matrix, embedding_matrix, meta_matrix))
                 # Store metadata nd embeddings in new target_namespace
-                self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone, namespace=target_namespace)
+                self._upsert_vectors(index, data_to_write_to_pinecone, target_namespace, use_async=False)  # type: ignore
                 # Delete vectors from source_namespace
                 self.delete_documents(index=index, ids=id_batch, namespace=source_namespace, drop_ids=False)
                 progress_bar.set_description_str("Documents Moved")
@@ -1159,7 +1225,8 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if doc.embedding is not None:
             meta = {"content": doc.content, "content_type": doc.content_type, **meta}
-            self.pinecone_indexes[index].upsert(vectors=[(id, doc.embedding.tolist(), meta)], namespace=self.namespace)
+            data = [(id, doc.embedding.tolist(), meta)]
+            self._upsert_vectors(index, data, self.namespace, use_async=False)  # type: ignore
 
     def delete_documents(
         self,
