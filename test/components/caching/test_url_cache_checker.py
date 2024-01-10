@@ -6,28 +6,32 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.caching.cache_checker import CacheChecker
 
 
-class TestUrlCacheChecker:
+class TestCacheChecker:
     def test_to_dict(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
-        component = CacheChecker(document_store=mocked_docstore_class(), cache_field="url")
+        component = CacheChecker(document_store=mocked_docstore_class(), cache_field="url", cache_field_type=str)
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.caching.cache_checker.CacheChecker",
             "init_parameters": {
                 "document_store": {"type": "haystack.testing.factory.MockedDocumentStore", "init_parameters": {}},
                 "cache_field": "url",
+                "cache_field_type": "str",
             },
         }
 
     def test_to_dict_with_custom_init_parameters(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
-        component = CacheChecker(document_store=mocked_docstore_class(), cache_field="my_url_field")
+        component = CacheChecker(
+            document_store=mocked_docstore_class(), cache_field="my_url_field", cache_field_type=str
+        )
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.caching.cache_checker.CacheChecker",
             "init_parameters": {
                 "document_store": {"type": "haystack.testing.factory.MockedDocumentStore", "init_parameters": {}},
                 "cache_field": "my_url_field",
+                "cache_field_type": "str",
             },
         }
 
@@ -40,11 +44,13 @@ class TestUrlCacheChecker:
                     "init_parameters": {},
                 },
                 "cache_field": "my_url_field",
+                "cache_field_type": "str",
             },
         }
         component = CacheChecker.from_dict(data)
         assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.cache_field == "my_url_field"
+        assert component.cache_field_type == str
 
     def test_from_dict_without_docstore(self):
         data = {"type": "haystack.components.caching.cache_checker.CacheChecker", "init_parameters": {}}
@@ -76,6 +82,6 @@ class TestUrlCacheChecker:
             Document(content="doc4", meta={"url": "https://example.com/2"}),
         ]
         docstore.write_documents(documents)
-        checker = CacheChecker(docstore, cache_field="url")
+        checker = CacheChecker(docstore, cache_field="url", cache_field_type=str)
         results = checker.run(items=["https://example.com/1", "https://example.com/5"])
         assert results == {"hits": [documents[0], documents[2]], "misses": ["https://example.com/5"]}
