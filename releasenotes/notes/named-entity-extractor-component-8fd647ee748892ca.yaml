@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added a new extractor component, namely NamedEntityExtractor. This component accepts a list of Documents as its input - the raw text in the documents are annotated by the extractor and the annotations are stored in the document's meta dictionary (under the key named_entities).
+
+    The component is designed to support multiple NER backends, and the current implementations support two at the moment: Hugging Face and spaCy. These two backends implement support for any HF/spaCy model that supports token classification/NER respectively.
