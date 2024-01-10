@@ -28,7 +28,7 @@ def test_is_mandatory():
     c = Connection(None, None, "destination_component", InputSocket("in", int))
     assert c.is_mandatory
 
-    c = Connection(None, None, "destination_component", InputSocket("in", int, is_mandatory=False))
+    c = Connection(None, None, "destination_component", InputSocket("in", int, 42))
     assert not c.is_mandatory
 
     c = Connection("source_component", OutputSocket("out", int), None, None)
