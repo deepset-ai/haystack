@@ -5,6 +5,7 @@ import importlib
 import logging
 
 from haystack import component, Document, default_from_dict, default_to_dict, DeserializationError
+from haystack.utils.type_serialization import serialize_type, deserialize_type
 from haystack.document_stores import DocumentStore
 
 
@@ -31,7 +32,12 @@ class CacheChecker:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(self, document_store=self.document_store.to_dict(), cache_field=self.cache_field)
+        return default_to_dict(
+            self,
+            document_store=self.document_store.to_dict(),
+            cache_field=self.cache_field,
+            cache_field_type=serialize_type(self.cache_field_type),
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CacheChecker":
@@ -57,6 +63,8 @@ class CacheChecker:
         docstore = docstore_class.from_dict(init_params["document_store"])
 
         data["init_parameters"]["document_store"] = docstore
+        data["init_parameters"]["cache_field_type"] = deserialize_type(data["init_parameters"]["cache_field_type"])
+
         return default_from_dict(cls, data)
 
     def run(self, items: List[Any]):
