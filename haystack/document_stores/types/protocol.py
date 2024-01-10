@@ -3,7 +3,7 @@ import logging
 
 from haystack.dataclasses import Document
 
-from .policy import DuplicatePolicy
+from haystack.document_stores.types.policy import DuplicatePolicy
 
 # Ellipsis are needed for the type checker, it's safe to disable module-wide
 # pylint: disable=unnecessary-ellipsis
