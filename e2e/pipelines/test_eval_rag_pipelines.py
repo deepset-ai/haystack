@@ -116,9 +116,9 @@ def test_bm25_rag_pipeline(tmp_path):
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == rag_pipeline.to_dict()
 
-    metrics_default = eval_result.calculate_metrics(Metric.EM)
+    metrics_default = eval_result.calculate_metrics(Metric.EM, output_key="answers")
     metrics_custom_parameters = eval_result.calculate_metrics(
-        Metric.EM, ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+        Metric.EM, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
     )
     # Save metric results to json
     metrics_default.save(tmp_path / "exact_match_score.json")
@@ -249,9 +249,9 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == rag_pipeline.to_dict()
 
-    metrics_default = eval_result.calculate_metrics(Metric.EM)
+    metrics_default = eval_result.calculate_metrics(Metric.EM, output_key="answers")
     metrics_custom_parameters = eval_result.calculate_metrics(
-        Metric.EM, ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+        Metric.EM, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
     )
     # Save metric results to json
     metrics_default.save(tmp_path / "exact_match_score.json")

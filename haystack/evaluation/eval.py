@@ -1,12 +1,10 @@
-import re
-import string
 from typing import Any, Callable, Dict, List, Union
 
 import numpy as np
 
 from haystack import Pipeline
 from haystack.core.component import Component
-from haystack.evaluation.eval_utils import get_answers_from_output
+from haystack.evaluation.eval_utils import get_answers_from_output, preprocess_text
 from haystack.evaluation.metrics import Metric, MetricsResult
 
 
@@ -42,7 +40,7 @@ class EvaluationResult:
 
         # Mapping of metrics to their corresponding functions.
         # This should be kept in sync with the Metric enum
-        self._supported_metrics = {
+        self._supported_metrics: Dict[Metric, Callable[..., MetricsResult]] = {
             Metric.RECALL: self._calculate_recall,
             Metric.MRR: self._calculate_mrr,
             Metric.MAP: self._calculate_map,
@@ -51,7 +49,6 @@ class EvaluationResult:
             Metric.SAS: self._calculate_sas,
         }
 
-
     def calculate_metrics(self, metric: Union[Metric, Callable[..., MetricsResult]], **kwargs) -> MetricsResult:
         """
         Calculate evaluation metrics based on the provided Metric or using the custom metric function.
@@ -59,6 +56,7 @@ class EvaluationResult:
         :param metric: The Metric indicating the type of metric to calculate or custom function to compute.
         :return: MetricsResult containing the calculated metric.
         """
+
         if isinstance(metric, Metric):
             return self._supported_metrics[metric](**kwargs)
 
@@ -77,19 +75,14 @@ class EvaluationResult:
         return MetricsResult({"f1": None})
 
     def _calculate_em(
-        self,
-        regexes_to_ignore=None,
-        ignore_case=False,
-        ignore_punctuation=False,
-        ignore_numbers=False,
-    ):
+        self, output_key: str, regexes_to_ignore=None, ignore_case=False, ignore_punctuation=False, ignore_numbers=False
+    ) -> MetricsResult:
         """
         Calculates the Exact Match (EM) score between two lists of predictions and labels.
         Exact Match (EM) score measures the percentage of samples where the predicted text exactly matches the
           corresponding ground truth label.
 
-        :param predictions: A list of predicted text strings.
-        :param labels (list): A list of ground truth (reference) text strings.
+        :param output_key: The key of the output to use for comparison.
         :param regexes_to_ignore (list, optional): A list of regular expressions. If provided, it removes substrings
             matching these regular expressions from both predictions and labels before comparison. Defaults to None.
         :param ignore_case (bool, optional): If True, performs case-insensitive comparison. Defaults to False.
@@ -97,43 +90,29 @@ class EvaluationResult:
             comparison. Defaults to False.
         :param ignore_numbers (bool, optional): If True, removes numerical digits from both predictions and labels
             before comparison. Defaults to False.
-
         :return: A MetricsResult object containing the calculated Exact Match (EM) score.
         """
-        predictions = get_answers_from_output(self.outputs, self.runnable_type)
-        labels = get_answers_from_output(self.expected_outputs, self.runnable_type)
-        
+
+        predictions = get_answers_from_output(
+            outputs=self.outputs, output_key=output_key, runnable_type=self.runnable_type
+        )
+        labels = get_answers_from_output(
+            outputs=self.expected_outputs, output_key=output_key, runnable_type=self.runnable_type
+        )
+
         if len(predictions) != len(labels):
             raise ValueError("The number of predictions and labels must be the same.")
         if len(predictions) == len(labels) == 0:
             # Return Exact Match as 0 for no inputs
             return MetricsResult({"exact_match": 0.0})
 
-        if regexes_to_ignore is not None:
-            for s in regexes_to_ignore:
-                predictions = np.array([re.sub(s, "", x) for x in predictions])
-                labels = np.array([re.sub(s, "", x) for x in labels])
-        else:
-            predictions = np.asarray(predictions)
-            labels = np.asarray(labels)
+        predictions = preprocess_text(predictions, regexes_to_ignore, ignore_case, ignore_punctuation, ignore_numbers)
+        labels = preprocess_text(labels, regexes_to_ignore, ignore_case, ignore_punctuation, ignore_numbers)
 
-        if ignore_case:
-            predictions = np.char.lower(predictions)
-            labels = np.char.lower(labels)
+        score_list = np.array(predictions) == np.array(labels)
+        exact_match_score = np.mean(score_list)
 
-        if ignore_punctuation:
-            repl_table = string.punctuation.maketrans("", "", string.punctuation)
-            predictions = np.char.translate(predictions, table=repl_table)
-            labels = np.char.translate(labels, table=repl_table)
-
-        if ignore_numbers:
-            repl_table = string.digits.maketrans("", "", string.digits)
-            predictions = np.char.translate(predictions, table=repl_table)
-            labels = np.char.translate(labels, table=repl_table)
-
-        score_list = predictions == labels
-        em = np.mean(score_list)
-        return MetricsResult({"exact_match": em})
+        return MetricsResult({"exact_match": exact_match_score})
 
     def _calculate_sas(self):
         return MetricsResult({"exact_match": None})
