@@ -185,7 +185,7 @@ class _OpenAIResolved(_GeneratorResolver):
     def resolve(self, model_key: str, api_key: str) -> Any:
         # does the model_key match the pattern OpenAI GPT pattern?
         if re.match(r"^gpt-4-.*", model_key) or re.match(r"^gpt-3.5-.*", model_key):
-            return OpenAIGenerator(model_name=model_key, api_key=api_key)
+            return OpenAIGenerator(model=model_key, api_key=api_key)
         return None
 
 
