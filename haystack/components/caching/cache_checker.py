@@ -1,12 +1,17 @@
-from typing import List, Dict, Any, Type
+from typing import List, Dict, Any
 
+import sys
 import importlib
-
 import logging
 
 from haystack import component, Document, default_from_dict, default_to_dict, DeserializationError
 from haystack.utils.type_serialization import serialize_type, deserialize_type
 from haystack.document_stores import DocumentStore
+
+if sys.version_info < (3, 10):
+    from typing_extensions import TypeAlias
+else:
+    from typing import TypeAlias
 
 
 logger = logging.getLogger(__name__)
@@ -19,7 +24,7 @@ class CacheChecker:
     cache field.
     """
 
-    def __init__(self, document_store: DocumentStore, cache_field: str, cache_field_type: Type = Any):
+    def __init__(self, document_store: DocumentStore, cache_field: str, cache_field_type: TypeAlias = Any):
         """
         Create a UrlCacheChecker component.
         """
