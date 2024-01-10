@@ -141,6 +141,7 @@ class ExtractiveReader:
         """
         Deserialize this component from a dictionary.
         """
+        torch_and_transformers_import.check()
         init_params = data.get("init_parameters", {})
         model_kwargs = init_params.get("model_kwargs", {})
         # convert string to torch.dtype
