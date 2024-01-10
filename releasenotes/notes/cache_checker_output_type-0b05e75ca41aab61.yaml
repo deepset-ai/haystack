@@ -1,0 +1,3 @@
+---
+enhancements:
+  - Add `cache_field_type` to `CacheChecker` to make connections possible in a pipeline.
