@@ -3,7 +3,7 @@ from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
 from haystack.components.generators import HuggingFaceLocalGenerator
-from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import Document
 from haystack.document_stores import InMemoryDocumentStore

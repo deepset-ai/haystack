@@ -6,7 +6,7 @@ from pprint import pprint
 from canals.component.types import Variadic
 from haystack import Pipeline, Document, component, default_to_dict, default_from_dict, DeserializationError
 from haystack.document_stores import InMemoryDocumentStore
-from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.others import Multiplexer
