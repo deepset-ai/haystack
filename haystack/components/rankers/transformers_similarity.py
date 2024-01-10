@@ -128,9 +128,10 @@ class TransformersSimilarityRanker:
         )
 
         model_kwargs = serialization_dict["init_parameters"]["model_kwargs"]
-        # convert torch.dtype to string for serialization
-        if "torch_dtype" in model_kwargs and isinstance(model_kwargs["torch_dtype"], torch.dtype):
-            serialization_dict["init_parameters"]["model_kwargs"]["torch_dtype"] = str(model_kwargs["torch_dtype"])
+        for key, value in model_kwargs.items():
+            # convert torch.dtype to string for serialization
+            if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and isinstance(value, torch.dtype):
+                serialization_dict["init_parameters"]["model_kwargs"][key] = str(value)
 
         return serialization_dict
 
@@ -142,10 +143,9 @@ class TransformersSimilarityRanker:
         init_params = data.get("init_parameters", {})
         model_kwargs = init_params.get("model_kwargs", {})
         # convert string to torch.dtype
-        if "torch_dtype" in model_kwargs:
-            torch_dtype_str = model_kwargs["torch_dtype"]
-            if torch_dtype_str.startswith("torch."):
-                data["init_parameters"]["model_kwargs"]["torch_dtype"] = getattr(torch, torch_dtype_str.strip("torch."))
+        for key, value in model_kwargs.items():
+            if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and value.startswith("torch."):
+                data["init_parameters"]["model_kwargs"][key] = getattr(torch, value.strip("torch."))
 
         return default_from_dict(cls, data)
 
