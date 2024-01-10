@@ -29,6 +29,17 @@ class EvaluationResult:
         self.outputs = outputs
         self.expected_outputs = expected_outputs
 
+        # Mapping of metrics to their corresponding functions.
+        # This should be kept in sync with the Metric enum
+        self._supported_metrics = {
+            Metric.RECALL: self._calculate_recall,
+            Metric.MRR: self._calculate_mrr,
+            Metric.MAP: self._calculate_map,
+            Metric.F1: self._calculate_f1,
+            Metric.EM: self._calculate_em,
+            Metric.SAS: self._calculate_sas,
+        }
+
     # pylint: disable=too-many-return-statements
     def calculate_metrics(self, metric: Union[Metric, Callable[..., MetricsResult]], **kwargs) -> MetricsResult:
         """
@@ -37,23 +48,9 @@ class EvaluationResult:
         :param metric: The Metric indicating the type of metric to calculate or custom function to compute.
         :return: MetricsResult containing the calculated metric.
         """
-        if metric == Metric.RECALL:
-            return self._calculate_recall(**kwargs)
 
-        elif metric == Metric.F1:
-            return self._calculate_f1(**kwargs)
-
-        elif metric == Metric.MRR:
-            return self._calculate_mrr(**kwargs)
-
-        elif metric == Metric.MAP:
-            return self._calculate_map(**kwargs)
-
-        elif metric == Metric.EM:
-            return self._calculate_em(**kwargs)
-
-        elif metric == Metric.SAS:
-            return self._calculate_sas(**kwargs)
+        if metric in self._supported_metrics:
+            return self._supported_metrics[metric](**kwargs)
 
         return metric(self, **kwargs)
 
