@@ -1,9 +1,9 @@
 from haystack import Document, Pipeline
 from haystack.components.embedders import SentenceTransformersTextEmbedder
 from haystack.components.rankers import TransformersSimilarityRanker
-from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.joiners.document_joiner import DocumentJoiner
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.evaluation.eval import eval
 
 

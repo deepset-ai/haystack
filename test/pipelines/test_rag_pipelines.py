@@ -3,7 +3,7 @@ import os
 import pytest
 
 from haystack.dataclasses import Answer
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.pipeline_utils.rag import build_rag_pipeline
 from haystack.testing.factory import document_store_class
 

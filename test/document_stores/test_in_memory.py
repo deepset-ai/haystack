@@ -5,9 +5,8 @@ import pandas as pd
 import pytest
 
 from haystack import Document
-from haystack.document_stores import InMemoryDocumentStore, DocumentStoreError, DuplicatePolicy, DuplicateDocumentError
-
-
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.testing.document_store import DocumentStoreBaseTests
 
 
