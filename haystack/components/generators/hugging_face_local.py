@@ -209,7 +209,7 @@ class HuggingFaceLocalGenerator:
         # convert torch.dtype to string for serialization
         # 1. torch_dtype can be specified in huggingface_pipeline_kwargs
         torch_dtype = huggingface_pipeline_kwargs.get("torch_dtype", None)
-        if isinstance(huggingface_pipeline_kwargs["torch_dtype"], torch.dtype):
+        if isinstance(torch_dtype, torch.dtype):
             serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["torch_dtype"] = str(torch_dtype)
         # 2. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
         model_kwargs = huggingface_pipeline_kwargs.get("model_kwargs", {})
