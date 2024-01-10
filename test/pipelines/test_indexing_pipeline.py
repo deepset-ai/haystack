@@ -3,7 +3,7 @@ import os
 import pytest
 
 from haystack.pipeline_utils.indexing import build_indexing_pipeline
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestIndexingPipeline:

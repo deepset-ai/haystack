@@ -3,14 +3,14 @@ from typing import List, Any, Optional, Dict
 import logging
 from pprint import pprint
 
-from canals.component.types import Variadic
 from haystack import Pipeline, Document, component, default_to_dict, default_from_dict, DeserializationError
-from haystack.document_stores import InMemoryDocumentStore
-from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.others import Multiplexer
 from haystack.components.routers.conditional_router import ConditionalRouter
+from haystack.core.component.types import Variadic
 
 
 logging.getLogger().setLevel(logging.DEBUG)
@@ -64,7 +64,7 @@ class PaginatedRetriever:
 
         if self.retrieved_documents is None:
             self.retrieved_documents = self.retriever.run(
-                query=query[0], filters=filters, top_k=top_k, scale_score=scale_score
+                query=query[0], filters=filters, top_k=top_k, scale_score=scale_score  # type: ignore
             )["documents"]
 
         if not self.retrieved_documents:
