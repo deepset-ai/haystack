@@ -1,3 +1,5 @@
+import json
+
 from haystack import Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
@@ -8,9 +10,10 @@ from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import Document
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.evaluation.eval import eval
+from haystack.evaluation.metrics import Metric
 
 
-def test_bm25_rag_pipeline():
+def test_bm25_rag_pipeline(tmp_path):
     prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
@@ -68,8 +71,16 @@ def test_bm25_rag_pipeline():
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == rag_pipeline.to_dict()
 
+    metrics = eval_result.calculate_metrics(Metric.EM)
+    # Save metric results to json
+    metrics.save(tmp_path / "exact_match_score.json")
 
-def test_embedding_retrieval_rag_pipeline():
+    assert metrics["exact_match"] == 1.0
+    with open(tmp_path / "exact_match_score.json", "r") as f:
+        assert metrics == json.load(f)
+
+
+def test_embedding_retrieval_rag_pipeline(tmp_path):
     # Create the RAG pipeline
     prompt_template = """
     Given these documents, answer the question.\nDocuments:
@@ -143,3 +154,11 @@ def test_embedding_retrieval_rag_pipeline():
     assert eval_result.expected_outputs == expected_outputs
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == rag_pipeline.to_dict()
+
+    metrics = eval_result.calculate_metrics(Metric.EM)
+    # Save metric results to json
+    metrics.save(tmp_path / "exact_match_score.json")
+
+    assert metrics["exact_match"] == 1.0
+    with open(tmp_path / "exact_match_score.json", "r") as f:
+        assert metrics == json.load(f)
