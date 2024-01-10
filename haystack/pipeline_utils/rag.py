@@ -9,7 +9,7 @@ from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.embedders import SentenceTransformersTextEmbedder
 from haystack.components.generators import OpenAIGenerator, HuggingFaceTGIGenerator
-from haystack.components.retrievers import InMemoryEmbeddingRetriever
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.dataclasses import Answer
 from haystack.document_stores.types import DocumentStore
 from haystack.document_stores.in_memory import InMemoryDocumentStore

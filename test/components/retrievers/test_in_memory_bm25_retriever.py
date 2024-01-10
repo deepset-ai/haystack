@@ -4,7 +4,7 @@ import pytest
 
 from haystack import Pipeline, DeserializationError
 from haystack.testing.factory import document_store_class
-from haystack.components.retrievers.in_memory_bm25_retriever import InMemoryBM25Retriever
+from haystack.components.retrievers.in_memory.bm25_retriever import InMemoryBM25Retriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -47,7 +47,7 @@ class TestMemoryBM25Retriever:
 
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
+            "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {
                 "document_store": {"type": "MyFakeStore", "init_parameters": {}},
                 "filters": None,
@@ -65,7 +65,7 @@ class TestMemoryBM25Retriever:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
+            "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {
                 "document_store": serialized_ds,
                 "filters": {"name": "test.txt"},
@@ -78,7 +78,7 @@ class TestMemoryBM25Retriever:
 
     def test_from_dict(self):
         data = {
-            "type": "haystack.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
+            "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {
                 "document_store": {
                     "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
@@ -106,7 +106,7 @@ class TestMemoryBM25Retriever:
 
     def test_from_dict_nonexisting_docstore(self):
         data = {
-            "type": "haystack.components.retrievers.in_memory_bm25_retriever.InMemoryBM25Retriever",
+            "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {"document_store": {"type": "Nonexisting.Docstore", "init_parameters": {}}},
         }
         with pytest.raises(DeserializationError):
