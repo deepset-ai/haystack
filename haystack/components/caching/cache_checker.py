@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Type
 
 import importlib
 
@@ -18,12 +18,14 @@ class CacheChecker:
     cache field.
     """
 
-    def __init__(self, document_store: DocumentStore, cache_field: str):
+    def __init__(self, document_store: DocumentStore, cache_field: str, cache_field_type: Type):
         """
         Create a UrlCacheChecker component.
         """
         self.document_store = document_store
         self.cache_field = cache_field
+        self.cache_field_type = cache_field_type
+        component.set_output_types(self, hits=List[Document], misses=List[cache_field_type])
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -57,7 +59,6 @@ class CacheChecker:
         data["init_parameters"]["document_store"] = docstore
         return default_from_dict(cls, data)
 
-    @component.output_types(hits=List[Document], misses=List[Any])
     def run(self, items: List[Any]):
         """
         Checks if any document associated with the specified field is already present in the store. If matching documents
