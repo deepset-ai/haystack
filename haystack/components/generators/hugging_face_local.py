@@ -206,9 +206,14 @@ class HuggingFaceLocalGenerator:
         if isinstance(huggingface_pipeline_kwargs["token"], str):
             serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["token"] = None
 
+        # convert torch.dtype to string for serialization
+        # 1. torch_dtype can be specified in huggingface_pipeline_kwargs
+        torch_dtype = huggingface_pipeline_kwargs.get("torch_dtype", None)
+        if isinstance(huggingface_pipeline_kwargs["torch_dtype"], torch.dtype):
+            serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["torch_dtype"] = str(torch_dtype)
+        # 2. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
         model_kwargs = huggingface_pipeline_kwargs.get("model_kwargs", {})
         for key, value in model_kwargs.items():
-            # convert torch.dtype to string for serialization
             if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and isinstance(value, torch.dtype):
                 serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["model_kwargs"][key] = str(value)
 
@@ -223,7 +228,15 @@ class HuggingFaceLocalGenerator:
         init_params = data.get("init_parameters", {})
         huggingface_pipeline_kwargs = init_params.get("huggingface_pipeline_kwargs", {})
         model_kwargs = huggingface_pipeline_kwargs.get("model_kwargs", {})
+
         # convert string to torch.dtype
+        # 1. torch_dtype can be specified in huggingface_pipeline_kwargs
+        torch_dtype = huggingface_pipeline_kwargs.get("torch_dtype", None)
+        if torch_dtype and torch_dtype.startswith("torch."):
+            data["init_parameters"]["huggingface_pipeline_kwargs"]["torch_dtype"] = getattr(
+                torch, torch_dtype.strip("torch.")
+            )
+        # 2. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
         for key, value in model_kwargs.items():
             if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and value.startswith("torch."):
                 data["init_parameters"]["huggingface_pipeline_kwargs"]["model_kwargs"][key] = getattr(
