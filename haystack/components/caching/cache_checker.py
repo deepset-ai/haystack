@@ -19,7 +19,7 @@ class CacheChecker:
     cache field.
     """
 
-    def __init__(self, document_store: DocumentStore, cache_field: str, cache_field_type: Type):
+    def __init__(self, document_store: DocumentStore, cache_field: str, cache_field_type: Type = Any):
         """
         Create a UrlCacheChecker component.
         """
