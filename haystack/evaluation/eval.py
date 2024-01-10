@@ -40,7 +40,6 @@ class EvaluationResult:
             Metric.SAS: self._calculate_sas,
         }
 
-    # pylint: disable=too-many-return-statements
     def calculate_metrics(self, metric: Union[Metric, Callable[..., MetricsResult]], **kwargs) -> MetricsResult:
         """
         Calculate evaluation metrics based on the provided Metric or using the custom metric function.
@@ -49,7 +48,7 @@ class EvaluationResult:
         :return: MetricsResult containing the calculated metric.
         """
 
-        if metric in self._supported_metrics:
+        if isinstance(metric, Metric):
             return self._supported_metrics[metric](**kwargs)
 
         return metric(self, **kwargs)
