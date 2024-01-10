@@ -55,6 +55,37 @@ class TestSimilarityRanker:
             },
         }
 
+    def test_to_dict_with_quantization_options(self):
+        component = TransformersSimilarityRanker(
+            model_kwargs={
+                "load_in_4bit": True,
+                "bnb_4bit_use_double_quant": True,
+                "bnb_4bit_quant_type": "nf4",
+                "bnb_4bit_compute_dtype": torch.bfloat16,
+            }
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
+            "init_parameters": {
+                "device": "cpu",
+                "top_k": 10,
+                "token": None,
+                "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+                "meta_fields_to_embed": [],
+                "embedding_separator": "\n",
+                "scale_score": True,
+                "calibration_factor": 1.0,
+                "score_threshold": None,
+                "model_kwargs": {
+                    "load_in_4bit": True,
+                    "bnb_4bit_use_double_quant": True,
+                    "bnb_4bit_quant_type": "nf4",
+                    "bnb_4bit_compute_dtype": "torch.bfloat16",
+                },
+            },
+        }
+
     def test_from_dict(self):
         data = {
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
