@@ -14,7 +14,7 @@ from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.routers import FileTypeRouter
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.writers import DocumentWriter
-from haystack.document_stores.protocol import DocumentStore
+from haystack.document_stores.types import DocumentStore
 
 
 def download_files(sources: List[str]) -> List[str]:

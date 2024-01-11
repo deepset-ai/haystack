@@ -2,9 +2,9 @@ import json
 
 from haystack import Pipeline
 from haystack.components.readers import ExtractiveReader
-from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.dataclasses import Document, ExtractedAnswer
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.evaluation.eval import eval
 from haystack.evaluation.metrics import Metric
 
