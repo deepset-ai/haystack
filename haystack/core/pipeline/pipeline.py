@@ -434,7 +434,8 @@ class Pipeline:
         # }
 
         # TODO: This could be a queue
-        waiting_for_input: List[Component] = []
+        waiting_for_input: List[(str, Component)] = []
+        # TODO: Convert component inputs to list if they're variadic
         last_inputs: Dict[str, Dict[str, Any]] = {**data}
 
         # Take all components that have at least 1 input not connected, and all components that have no inputs at all
@@ -442,37 +443,81 @@ class Pipeline:
         for node_name in self.graph.nodes:
             component: Component = self.graph.nodes[node_name]["instance"]
 
+            if len(component.__canals_input__) == 0:
+                # Component has at least no input, can run right away
+                to_run.append((node_name, component))
+                continue
+
             for socket in component.__canals_input__.values():
                 if not socket.senders:
                     # Component has at least one input not connected, can run right away
                     to_run.append((node_name, component))
                     break
 
-            if len(component.__canals_input__) == 0:
-                # Component has at least no input, can run right away
-                to_run.append((node_name, component))
-                continue
+        # TODO: Think about max loops allowed:
+        # Rename it to max_visits_allowed or max_run_per_component_allowed
+        # Remove it even
 
         final_outputs = {}
         while len(to_run) > 0:
             name, comp = to_run.pop(0)
-            if len(comp.__canals_input__) == len(last_inputs[name]):
+            if name in last_inputs and len(comp.__canals_input__) == len(last_inputs[name]):
+                # This component has all the inputs it needs to run
                 res = comp.run(**last_inputs[name])
+
+                if (name, comp) in waiting_for_input:
+                    # We manage to run this component that was in the waiting list, we can remove it.
+                    # This happens when a component was put in the waiting list but we reached it from another edge.
+                    waiting_for_input.remove((name, comp))
+
                 for sender_component_name, receiver_component_name, edge_data in self.graph.edges(data=True):
+                    if receiver_component_name == name and edge_data["to_socket"].is_variadic:
+                        # Delete variadic inputs that were already consumed
+                        last_inputs[name][edge_data["to_socket"].name] = []
+
                     if name != sender_component_name:
+                        continue
+
+                    if edge_data["from_socket"].name not in res:
+                        # This output has not been produced by the component, skip it
                         continue
 
                     if receiver_component_name not in last_inputs:
                         last_inputs[receiver_component_name] = {}
-                    last_inputs[receiver_component_name][edge_data["to_socket"].name] = res.pop(
-                        edge_data["from_socket"].name
-                    )
+                    value = res.pop(edge_data["from_socket"].name)
+
+                    if edge_data["to_socket"].is_variadic:
+                        if edge_data["to_socket"].name not in last_inputs[receiver_component_name]:
+                            last_inputs[receiver_component_name][edge_data["to_socket"].name] = []
+                        last_inputs[receiver_component_name][edge_data["to_socket"].name].append(value)
+                    else:
+                        last_inputs[receiver_component_name][edge_data["to_socket"].name] = value
+
+                    # We got some input for this component, add it to the queue
                     to_run.append((receiver_component_name, self.graph.nodes[receiver_component_name]["instance"]))
 
                 if len(res) > 0:
                     final_outputs[name] = res
             else:
-                waiting_for_input.append(comp)
+                # This component doesn't have enough inputs so we can't run it yet
+                waiting_for_input.append((name, comp))
+
+            if len(to_run) == 0 and len(waiting_for_input) > 0:
+                # We ran out of components to run, but we still have some components that are waiting for input.
+                # Let's try to run them again.
+                name, comp = waiting_for_input.pop(0)
+
+                if name not in last_inputs:
+                    last_inputs[name] = {}
+
+                # Set default values for the inputs that are still missing
+                for input_socket in comp.__canals_input__.values():
+                    if input_socket.is_mandatory:
+                        continue
+                    if input_socket.name not in last_inputs[name]:
+                        last_inputs[name][input_socket.name] = input_socket.default_value
+
+                to_run.append((name, comp))
 
         return final_outputs
 
