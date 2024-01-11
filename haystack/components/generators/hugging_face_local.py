@@ -216,6 +216,13 @@ class HuggingFaceLocalGenerator:
         for key, value in model_kwargs.items():
             if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and isinstance(value, torch.dtype):
                 serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["model_kwargs"][key] = str(value)
+        # 3. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
+        quantization_config = model_kwargs.get("quantization_config", {})
+        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
+        if isinstance(bnb_4bit_compute_dtype, torch.dtype):
+            serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["model_kwargs"]["quantization_config"][
+                "bnb_4bit_compute_dtype"
+            ] = str(bnb_4bit_compute_dtype)
 
         return serialization_dict
 
@@ -242,6 +249,13 @@ class HuggingFaceLocalGenerator:
                 data["init_parameters"]["huggingface_pipeline_kwargs"]["model_kwargs"][key] = getattr(
                     torch, value.strip("torch.")
                 )
+        # 3. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
+        quantization_config = model_kwargs.get("quantization_config", {})
+        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
+        if bnb_4bit_compute_dtype and bnb_4bit_compute_dtype.startswith("torch."):
+            data["init_parameters"]["huggingface_pipeline_kwargs"]["model_kwargs"]["quantization_config"][
+                "bnb_4bit_compute_dtype"
+            ] = getattr(torch, bnb_4bit_compute_dtype.strip("torch."))
 
         return default_from_dict(cls, data)
 

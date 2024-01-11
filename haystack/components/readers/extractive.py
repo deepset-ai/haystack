@@ -128,11 +128,19 @@ class ExtractiveReader:
             model_kwargs=self.model_kwargs,
         )
 
+        # convert torch.dtype to string for serialization
+        # 1. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
         model_kwargs = serialization_dict["init_parameters"]["model_kwargs"]
         for key, value in model_kwargs.items():
-            # convert torch.dtype to string for serialization
             if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and isinstance(value, torch.dtype):
                 serialization_dict["init_parameters"]["model_kwargs"][key] = str(value)
+        # 2. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
+        quantization_config = model_kwargs.get("quantization_config", {})
+        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
+        if isinstance(bnb_4bit_compute_dtype, torch.dtype):
+            serialization_dict["init_parameters"]["model_kwargs"]["quantization_config"][
+                "bnb_4bit_compute_dtype"
+            ] = str(bnb_4bit_compute_dtype)
 
         return serialization_dict
 
@@ -145,9 +153,17 @@ class ExtractiveReader:
         init_params = data.get("init_parameters", {})
         model_kwargs = init_params.get("model_kwargs", {})
         # convert string to torch.dtype
+        # 1. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
         for key, value in model_kwargs.items():
             if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and value.startswith("torch."):
                 data["init_parameters"]["model_kwargs"][key] = getattr(torch, value.strip("torch."))
+        # 2. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
+        quantization_config = model_kwargs.get("quantization_config", {})
+        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
+        if isinstance(bnb_4bit_compute_dtype, str) and bnb_4bit_compute_dtype.startswith("torch."):
+            data["init_parameters"]["model_kwargs"]["quantization_config"]["bnb_4bit_compute_dtype"] = getattr(
+                torch, bnb_4bit_compute_dtype.strip("torch.")
+            )
 
         return default_from_dict(cls, data)
 
