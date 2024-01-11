@@ -1,0 +1,34 @@
+---
+upgrade:
+  - |
+    Make Pipeline wait for connected inputs even if they're optional.
+
+    So far Pipeline would not wait for an input coming from a connection that already has a default value.
+    This PR modifies the behavior of the Pipeline to wait for such connections. This normally means that components
+    that used to trigger earlier might now need to wait for other components to send their values before they could be
+    run.
+
+    For example, here is an affected pipeline:
+
+    ```python
+    @component
+    class WithDefault:
+        @component.output_types(c=int)
+        def run(self, a: int, b: int = 2):
+            return {"c": a + b}
+
+    pipeline = Pipeline()
+    pipeline.add_component("first", WithDefault())
+    pipeline.add_component("second", WithDefault())
+    pipeline.add_component("third", WithDefault())
+    pipeline.connect("first", "second.a")
+    pipeline.connect("second", "third.b")
+    ```
+
+    before, the order of execution would be `first -> third -> second`. From now on, it becomes
+    `first -> second -> third`, because third is forced to wait for second to produce the value of `b` that it should
+    use for the calculations.
+
+    This change should only affect early misfiring of some components that, incorrectly, did not wait for some
+    optional input values to be produced. However there might be corner cases which a correct order of execution is
+    affected. If that is the case, please reference this PR on your issue: #6727
