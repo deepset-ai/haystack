@@ -3,9 +3,9 @@ import json
 import pytest
 
 from haystack import Pipeline, Document
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.writers import DocumentWriter
-from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.builders.answer_builder import AnswerBuilder

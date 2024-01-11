@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 
 from haystack import default_from_dict, default_to_dict
 from haystack.dataclasses import Document
-from haystack.document_stores.protocol import DuplicatePolicy
+from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.filters import document_matches_filter, convert
 from haystack.document_stores.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.utils import expit

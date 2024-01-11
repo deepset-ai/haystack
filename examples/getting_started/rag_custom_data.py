@@ -1,4 +1,4 @@
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.pipeline_utils import build_rag_pipeline, build_indexing_pipeline
 from haystack.pipeline_utils.indexing import download_files
 

@@ -3,7 +3,7 @@ import pytest
 from haystack import Document, DeserializationError
 from haystack.testing.factory import document_store_class
 from haystack.components.writers.document_writer import DocumentWriter
-from haystack.document_stores import DuplicatePolicy
+from haystack.document_stores.types import DuplicatePolicy
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 

@@ -1,6 +1,6 @@
 import os
 from haystack import Document
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.pipeline_utils import build_rag_pipeline
 
 API_KEY = "SET YOUR OPENAI API KEY HERE"
