@@ -7,7 +7,7 @@ from haystack.components.preprocessors import DocumentSplitter, DocumentCleaner
 from haystack.components.classifiers import DocumentLanguageClassifier
 from haystack.components.routers import FileTypeRouter, MetadataRouter
 from haystack.components.writers import DocumentWriter
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 def test_preprocessing_pipeline(tmp_path):
