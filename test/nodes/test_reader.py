@@ -41,45 +41,18 @@ def no_answer_reader(request):
         )
 
 
-@pytest.fixture
-def fake_inferencer():
-    class FakePredictionHead:
-        def __init__(self):
-            self.context_window_size = None
-            self.no_ans_boost = None
-            self.n_best = None
-            self.n_best_per_sample = None
-            self.duplicate_filtering = None
-            self.use_confidence_scores_for_ranking = None
-
-    class FakeModel:
-        def __init__(self):
-            self.prediction_heads = [FakePredictionHead()]
-
-    class FakeInferencer:
-        def __init__(self):
-            self.model = FakeModel()
-
-    return FakeInferencer()
-
-
 def test_reader_basic(reader):
     assert reader is not None
     assert isinstance(reader, BaseReader)
 
 
-def test_add_answer_page_number(fake_inferencer) -> None:
+@patch("haystack.nodes.reader.farm.QAInferencer")
+def test_add_answer_page_number(mocked_qa_inferencer) -> None:
     documents = [
         Document(content="This is a test.\fSentence on second page about nothing.", meta={"page_number": 1}),
         Document(content="Second sentence on the second page.", meta={"page_number": 2}),
     ]
-    with (
-        patch("haystack.modeling.utils.initialize_device_settings") as mock_init_device,
-        patch("haystack.modeling.infer.QAInferencer.load") as mock_qainferencer,
-    ):
-        mock_init_device.return_value = None, None
-        mock_qainferencer.return_value = fake_inferencer
-        reader = FARMReader(model_name_or_path="fake_model", use_gpu=False)
+    reader = FARMReader(model_name_or_path="fake_model", use_gpu=False)
     answer_with_meta = reader._add_answer_page_number(
         documents=documents,
         answer=Answer(
@@ -95,18 +68,13 @@ def test_add_answer_page_number(fake_inferencer) -> None:
     assert answer_with_meta.meta["answer_page_number"] == 2
 
 
-def test_add_answer_page_number_no_doc_page(fake_qainferencer) -> None:
+@patch("haystack.nodes.reader.farm.QAInferencer")
+def test_add_answer_page_number_no_doc_page(mocked_qa_inferencer) -> None:
     documents = [
         Document(content="This is a test.\fSentence on second page about nothing."),
         Document(content="Second sentence on the second page."),
     ]
-    with (
-        patch("haystack.modeling.utils.initialize_device_settings") as mock_init_device,
-        patch("haystack.modeling.infer.QAInferencer.load") as mock_qainferencer,
-    ):
-        mock_init_device.return_value = None, None
-        mock_qainferencer.return_value = fake_inferencer
-        reader = FARMReader(model_name_or_path="fake_model", use_gpu=False)
+    reader = FARMReader(model_name_or_path="fake_model", use_gpu=False)
     answer_with_meta = reader._add_answer_page_number(
         documents=documents,
         answer=Answer(
@@ -121,18 +89,13 @@ def test_add_answer_page_number_no_doc_page(fake_qainferencer) -> None:
     assert answer_with_meta.meta == {}
 
 
-def test_add_answer_page_number_with_meta(fake_inferencer) -> None:
+@patch("haystack.nodes.reader.farm.QAInferencer")
+def test_add_answer_page_number_with_meta(mocked_qa_inferencer) -> None:
     documents = [
         Document(content="This is a test.\fSentence on second page about nothing.", meta={"page_number": 1}),
         Document(content="Second sentence on the second page."),
     ]
-    with (
-        patch("haystack.modeling.utils.initialize_device_settings") as mock_init_device,
-        patch("haystack.modeling.infer.QAInferencer.load") as mock_qainferencer,
-    ):
-        mock_init_device.return_value = None, None
-        mock_qainferencer.return_value = fake_inferencer
-        reader = FARMReader(model_name_or_path="fake_model", use_gpu=False)
+    reader = FARMReader(model_name_or_path="fake_model", use_gpu=False)
     answer_with_meta = reader._add_answer_page_number(
         documents=documents,
         answer=Answer(
