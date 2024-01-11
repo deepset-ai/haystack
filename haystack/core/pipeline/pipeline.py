@@ -422,102 +422,59 @@ class Pipeline:
                 logger.info("Warming up component %s...", node)
                 self.graph.nodes[node]["instance"].warm_up()
 
-    def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:  # pylint: disable=too-many-locals
-        """
-        Runs the pipeline.
+    def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
+        # NOTE: We're assuming data is formatted like so as of now
+        # data = {
+        #     "comp1": {"input1": 1, "input2": 2},
+        # }
+        #
+        # TODO: Support also this format:
+        # data = {
+        #     "input1": 1, "input2": 2,
+        # }
 
-        Args:
-            data: the inputs to give to the input components of the Pipeline.
-            debug: whether to collect and return debug information.
+        # TODO: This could be a queue
+        waiting_for_input: List[Component] = []
+        last_inputs: Dict[str, Dict[str, Any]] = {**data}
 
-        Returns:
-            A dictionary with the outputs of the output components of the Pipeline.
+        # Take all components that have at least 1 input not connected, and all components that have no inputs at all
+        to_run: List[(str, Component)] = []
+        for node_name in self.graph.nodes:
+            component: Component = self.graph.nodes[node_name]["instance"]
 
-        Raises:
-            PipelineRuntimeError: if the any of the components fail or return unexpected output.
-        """
-        self._clear_visits_count()
-        data = validate_pipeline_input(self.graph, input_values=data)
-        logger.info("Pipeline execution started.")
+            for socket in component.__canals_input__.values():
+                if not socket.senders:
+                    # Component has at least one input not connected, can run right away
+                    to_run.append((node_name, component))
+                    break
 
-        self._debug = {}
-        if debug:
-            logger.info("Debug mode ON.")
-            os.makedirs("debug", exist_ok=True)
-
-        logger.debug(
-            "Mandatory connections:\n%s",
-            "\n".join(
-                f" - {component}: {', '.join([str(s) for s in sockets])}"
-                for component, sockets in self._mandatory_connections.items()
-            ),
-        )
-
-        self.warm_up()
-
-        # Prepare the inputs buffers and components queue
-        components_queue: List[str] = []
-        mandatory_values_buffer: Dict[Connection, Any] = {}
-        optional_values_buffer: Dict[Connection, Any] = {}
-        pipeline_output: Dict[str, Dict[str, Any]] = defaultdict(dict)
-
-        for node_name, input_data in data.items():
-            for socket_name, value in input_data.items():
-                # Make a copy of the input value so components don't need to
-                # take care of mutability.
-                value = deepcopy(value)
-                connection = Connection(
-                    None, None, node_name, self.graph.nodes[node_name]["input_sockets"][socket_name]
-                )
-                self._add_value_to_buffers(
-                    value, connection, components_queue, mandatory_values_buffer, optional_values_buffer
-                )
-
-        # *** PIPELINE EXECUTION LOOP ***
-        step = 0
-        while components_queue:  # pylint: disable=too-many-nested-blocks
-            step += 1
-            if debug:
-                self._record_pipeline_step(
-                    step, components_queue, mandatory_values_buffer, optional_values_buffer, pipeline_output
-                )
-
-            component_name = components_queue.pop(0)
-            logger.debug("> Queue at step %s: %s %s", step, component_name, components_queue)
-            self._check_max_loops(component_name)
-
-            # **** RUN THE NODE ****
-            if not self._ready_to_run(component_name, mandatory_values_buffer, components_queue):
+            if len(component.__canals_input__) == 0:
+                # Component has at least no input, can run right away
+                to_run.append((node_name, component))
                 continue
 
-            inputs = {
-                **self._extract_inputs_from_buffer(component_name, mandatory_values_buffer),
-                **self._extract_inputs_from_buffer(component_name, optional_values_buffer),
-            }
-            outputs = self._run_component(name=component_name, inputs=dict(inputs))
+        final_outputs = {}
+        while len(to_run) > 0:
+            name, comp = to_run.pop(0)
+            if len(comp.__canals_input__) == len(last_inputs[name]):
+                res = comp.run(**last_inputs[name])
+                for sender_component_name, receiver_component_name, edge_data in self.graph.edges(data=True):
+                    if name != sender_component_name:
+                        continue
 
-            # **** PROCESS THE OUTPUT ****
-            for socket_name, value in outputs.items():
-                targets = self._collect_targets(component_name, socket_name)
-                if not targets:
-                    pipeline_output[component_name][socket_name] = value
-                else:
-                    for target in targets:
-                        self._add_value_to_buffers(
-                            value, target, components_queue, mandatory_values_buffer, optional_values_buffer
-                        )
+                    if receiver_component_name not in last_inputs:
+                        last_inputs[receiver_component_name] = {}
+                    last_inputs[receiver_component_name][edge_data["to_socket"].name] = res.pop(
+                        edge_data["from_socket"].name
+                    )
+                    to_run.append((receiver_component_name, self.graph.nodes[receiver_component_name]["instance"]))
 
-        if debug:
-            self._record_pipeline_step(
-                step + 1, components_queue, mandatory_values_buffer, optional_values_buffer, pipeline_output
-            )
-            os.makedirs(self._debug_path, exist_ok=True)
-            with open(self._debug_path / "data.json", "w", encoding="utf-8") as datafile:
-                json.dump(self._debug, datafile, indent=4, default=str)
-            pipeline_output["_debug"] = self._debug  # type: ignore
+                if len(res) > 0:
+                    final_outputs[name] = res
+            else:
+                waiting_for_input.append(comp)
 
-        logger.info("Pipeline executed successfully.")
-        return dict(pipeline_output)
+        return final_outputs
 
     def _record_pipeline_step(
         self, step, components_queue, mandatory_values_buffer, optional_values_buffer, pipeline_output
