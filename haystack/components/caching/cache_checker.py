@@ -53,8 +53,8 @@ class CacheChecker:
 
         docstore_class = getattr(module, type_)
         docstore = docstore_class.from_dict(init_params["document_store"])
-        data["init_parameters"]["document_store"] = docstore
 
+        data["init_parameters"]["document_store"] = docstore
         return default_from_dict(cls, data)
 
     @component.output_types(hits=List[Document], misses=List)
