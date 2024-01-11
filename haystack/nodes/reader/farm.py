@@ -943,10 +943,32 @@ class FARMReader(BaseReader):
         predictions = self._deduplicate_predictions(predictions, documents)
         # assemble answers from all the different documents & format them.
         answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, top_k)
+        answers = [self._add_answer_page_number(documents=documents, answer=answer) for answer in answers]
         # TODO: potentially simplify return here to List[Answer] and handle no_ans_gap differently
         result = {"query": query, "no_ans_gap": max_no_ans_gap, "answers": answers}
 
         return result
+
+    def _add_answer_page_number(self, documents: List[Document], answer: Answer) -> Answer:
+        # Following the implementation of BaseReader.add_doc_meta_data_to_answer
+        if answer.meta is None:
+            answer.meta = {}
+
+        if answer.offsets_in_document is None:
+            return answer
+
+        # Calculate the answer page number
+        meta_to_add = {}
+        if answer.document_ids:
+            for doc in documents:
+                if doc.id in answer.document_ids and ("page_number" in doc.meta):
+                    ans_start = answer.offsets_in_document[0].start  # type: ignore
+                    answer_page_number = doc.meta["page_number"] + doc.content[:ans_start].count("\f")
+                    meta_to_add = {"answer_page_number": answer_page_number}
+                    break
+
+        answer.meta.update(meta_to_add)
+        return answer
 
     def eval_on_file(
         self,

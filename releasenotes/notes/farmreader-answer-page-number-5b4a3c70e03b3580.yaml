@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Correctly calculate the answer page number for Extractive Answers
