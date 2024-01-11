@@ -9,29 +9,25 @@ from haystack.components.caching.cache_checker import CacheChecker
 class TestCacheChecker:
     def test_to_dict(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
-        component = CacheChecker(document_store=mocked_docstore_class(), cache_field="url", cache_field_type=str)
+        component = CacheChecker(document_store=mocked_docstore_class(), cache_field="url")
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.caching.cache_checker.CacheChecker",
             "init_parameters": {
                 "document_store": {"type": "haystack.testing.factory.MockedDocumentStore", "init_parameters": {}},
                 "cache_field": "url",
-                "cache_field_type": "str",
             },
         }
 
     def test_to_dict_with_custom_init_parameters(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
-        component = CacheChecker(
-            document_store=mocked_docstore_class(), cache_field="my_url_field", cache_field_type=str
-        )
+        component = CacheChecker(document_store=mocked_docstore_class(), cache_field="my_url_field")
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.caching.cache_checker.CacheChecker",
             "init_parameters": {
                 "document_store": {"type": "haystack.testing.factory.MockedDocumentStore", "init_parameters": {}},
                 "cache_field": "my_url_field",
-                "cache_field_type": "str",
             },
         }
 
@@ -44,13 +40,11 @@ class TestCacheChecker:
                     "init_parameters": {},
                 },
                 "cache_field": "my_url_field",
-                "cache_field_type": "str",
             },
         }
         component = CacheChecker.from_dict(data)
         assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.cache_field == "my_url_field"
-        assert component.cache_field_type == str
 
     def test_from_dict_without_docstore(self):
         data = {"type": "haystack.components.caching.cache_checker.CacheChecker", "init_parameters": {}}

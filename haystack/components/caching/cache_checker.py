@@ -1,18 +1,10 @@
 from typing import List, Dict, Any
 
-import sys
-import importlib
 import logging
+import importlib
 
 from haystack import component, Document, default_from_dict, default_to_dict, DeserializationError
-from haystack.utils.type_serialization import serialize_type, deserialize_type
 from haystack.document_stores import DocumentStore
-
-if sys.version_info < (3, 10):
-    from typing_extensions import TypeAlias
-else:
-    from typing import TypeAlias
-
 
 logger = logging.getLogger(__name__)
 
@@ -24,25 +16,18 @@ class CacheChecker:
     cache field.
     """
 
-    def __init__(self, document_store: DocumentStore, cache_field: str, cache_field_type: TypeAlias = Any):
+    def __init__(self, document_store: DocumentStore, cache_field: str):
         """
         Create a UrlCacheChecker component.
         """
         self.document_store = document_store
         self.cache_field = cache_field
-        self.cache_field_type = cache_field_type
-        component.set_output_types(self, hits=List[Document], misses=List[cache_field_type])
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(
-            self,
-            document_store=self.document_store.to_dict(),
-            cache_field=self.cache_field,
-            cache_field_type=serialize_type(self.cache_field_type),
-        )
+        return default_to_dict(self, document_store=self.document_store.to_dict(), cache_field=self.cache_field)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CacheChecker":
@@ -68,10 +53,10 @@ class CacheChecker:
         docstore = docstore_class.from_dict(init_params["document_store"])
 
         data["init_parameters"]["document_store"] = docstore
-        data["init_parameters"]["cache_field_type"] = deserialize_type(data["init_parameters"]["cache_field_type"])
 
         return default_from_dict(cls, data)
 
+    @component.output_types(hits=List[Document], misses=List)
     def run(self, items: List[Any]):
         """
         Checks if any document associated with the specified field is already present in the store. If matching documents
