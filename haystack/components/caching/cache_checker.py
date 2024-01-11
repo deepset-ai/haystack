@@ -1,10 +1,12 @@
 from typing import List, Dict, Any
 
-import logging
 import importlib
+
+import logging
 
 from haystack import component, Document, default_from_dict, default_to_dict, DeserializationError
 from haystack.document_stores import DocumentStore
+
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +53,6 @@ class CacheChecker:
 
         docstore_class = getattr(module, type_)
         docstore = docstore_class.from_dict(init_params["document_store"])
-
         data["init_parameters"]["document_store"] = docstore
 
         return default_from_dict(cls, data)

@@ -76,6 +76,6 @@ class TestCacheChecker:
             Document(content="doc4", meta={"url": "https://example.com/2"}),
         ]
         docstore.write_documents(documents)
-        checker = CacheChecker(docstore, cache_field="url", cache_field_type=str)
+        checker = CacheChecker(docstore, cache_field="url")
         results = checker.run(items=["https://example.com/1", "https://example.com/5"])
         assert results == {"hits": [documents[0], documents[2]], "misses": ["https://example.com/5"]}
