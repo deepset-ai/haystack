@@ -17,7 +17,7 @@ renderer:
   category_slug: haystack-classes
   title: Other Components API
   slug: others
-  order: 170
+  order: 180
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
