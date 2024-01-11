@@ -64,7 +64,6 @@ class Pipeline:
         self.max_loops_allowed = max_loops_allowed
         self.graph = networkx.MultiDiGraph()
         self._connections: List[Connection] = []
-        self._mandatory_connections: Dict[str, List[Connection]] = defaultdict(list)
         self._debug: Dict[int, Dict[str, Any]] = {}
         self._debug_path = Path(debug_path)
 
@@ -330,8 +329,6 @@ class Pipeline:
         )
 
         self._connections.append(connection)
-        if connection.is_mandatory:
-            self._mandatory_connections[connection.receiver].append(connection)
 
     def get_component(self, name: str) -> Component:
         """
@@ -443,14 +440,6 @@ class Pipeline:
         if debug:
             logger.info("Debug mode ON.")
             os.makedirs("debug", exist_ok=True)
-
-        logger.debug(
-            "Mandatory connections:\n%s",
-            "\n".join(
-                f" - {component}: {', '.join([str(s) for s in sockets])}"
-                for component, sockets in self._mandatory_connections.items()
-            ),
-        )
 
         self.warm_up()
 
