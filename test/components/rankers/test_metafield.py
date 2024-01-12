@@ -1,4 +1,5 @@
 import pytest
+import logging
 
 from haystack import Document, ComponentError
 from haystack.components.rankers.meta_field import MetaFieldRanker
@@ -15,25 +16,33 @@ class TestMetaFieldRanker:
                 "weight": 1.0,
                 "top_k": None,
                 "ranking_mode": "reciprocal_rank_fusion",
+                "infer_type": True,
             },
         }
 
     def test_to_dict_with_custom_init_parameters(self):
-        component = MetaFieldRanker(meta_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score")
+        component = MetaFieldRanker(
+            meta_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score", infer_type=False
+        )
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.rankers.meta_field.MetaFieldRanker",
-            "init_parameters": {"meta_field": "rating", "weight": 0.5, "top_k": 5, "ranking_mode": "linear_score"},
+            "init_parameters": {
+                "meta_field": "rating",
+                "weight": 0.5,
+                "top_k": 5,
+                "ranking_mode": "linear_score",
+                "infer_type": False,
+            },
         }
 
-    @pytest.mark.integration
-    @pytest.mark.parametrize("metafield_values, expected_first_value", [([1.3, 0.7, 2.1], 2.1), ([1, 5, 8], 8)])
-    def test_run(self, metafield_values, expected_first_value):
+    @pytest.mark.parametrize("meta_field_values, expected_first_value", [([1.3, 0.7, 2.1], 2.1), ([1, 5, 8], 8)])
+    def test_run(self, meta_field_values, expected_first_value):
         """
         Test if the component ranks documents correctly.
         """
         ranker = MetaFieldRanker(meta_field="rating")
-        docs_before = [Document(content="abc", meta={"rating": value}) for value in metafield_values]
+        docs_before = [Document(content="abc", meta={"rating": value}) for value in meta_field_values]
 
         output = ranker.run(documents=docs_before)
         docs_after = output["documents"]
@@ -44,32 +53,37 @@ class TestMetaFieldRanker:
         sorted_scores = sorted([doc.meta["rating"] for doc in docs_after], reverse=True)
         assert [doc.meta["rating"] for doc in docs_after] == sorted_scores
 
-    @pytest.mark.integration
+    def test_run_with_weight_equal_to_0(self):
+        ranker = MetaFieldRanker(meta_field="rating", weight=0)
+        docs_before = [Document(content="abc", meta={"rating": value}) for value in [1.1, 0.5, 2.3]]
+        output = ranker.run(documents=docs_before)
+        docs_after = output["documents"]
+
+        assert len(docs_after) == 3
+        sorted_scores = sorted([doc.meta["rating"] for doc in docs_after], reverse=True)
+        assert [doc.meta["rating"] for doc in docs_after] == sorted_scores
+
     def test_returns_empty_list_if_no_documents_are_provided(self):
         ranker = MetaFieldRanker(meta_field="rating")
         output = ranker.run(documents=[])
         docs_after = output["documents"]
         assert docs_after == []
 
-    @pytest.mark.integration
     def test_raises_component_error_if_metadata_not_found(self):
         ranker = MetaFieldRanker(meta_field="rating")
         docs_before = [Document(content="abc", meta={"wrong_field": 1.3})]
         with pytest.raises(ComponentError):
             ranker.run(documents=docs_before)
 
-    @pytest.mark.integration
     def test_raises_component_error_if_wrong_ranking_mode(self):
         with pytest.raises(ValueError):
             MetaFieldRanker(meta_field="rating", ranking_mode="wrong_mode")
 
-    @pytest.mark.integration
     @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
     def test_raises_component_error_if_wrong_weight(self, score):
         with pytest.raises(ValueError):
             MetaFieldRanker(meta_field="rating", weight=score)
 
-    @pytest.mark.integration
     def test_linear_score(self):
         ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
         docs_before = [
@@ -81,7 +95,6 @@ class TestMetaFieldRanker:
         docs_after = output["documents"]
         assert docs_after[0].score == 0.8
 
-    @pytest.mark.integration
     def test_reciprocal_rank_fusion(self):
         ranker = MetaFieldRanker(meta_field="rating", ranking_mode="reciprocal_rank_fusion", weight=0.5)
         docs_before = [
@@ -93,22 +106,19 @@ class TestMetaFieldRanker:
         docs_after = output["documents"]
         assert docs_after[0].score == 0.01626123744050767
 
-    @pytest.mark.integration
     @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
-    def test_linear_score_raises_warning_if_doc_wrong_score(self, score):
+    def test_linear_score_raises_warning_if_doc_wrong_score(self, score, caplog):
         ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
         docs_before = [
-            Document(id=1, content="abc", meta={"rating": 1.3}, score=score),
-            Document(id=2, content="abc", meta={"rating": 0.7}, score=0.4),
-            Document(id=3, content="abc", meta={"rating": 2.1}, score=0.6),
+            Document(id="1", content="abc", meta={"rating": 1.3}, score=score),
+            Document(id="2", content="abc", meta={"rating": 0.7}, score=0.4),
+            Document(id="3", content="abc", meta={"rating": 2.1}, score=0.6),
         ]
-        with pytest.warns(
-            UserWarning, match=rf"The score {score} for Document 1 is outside the \[0,1\] range; defaulting to 0"
-        ):
+        with caplog.at_level(logging.WARNING):
             ranker.run(documents=docs_before)
+            assert f"The score {score} for Document 1 is outside the [0,1] range; defaulting to 0" in caplog.text
 
-    @pytest.mark.integration
-    def test_linear_score_raises_raises_warning_if_doc_without_score(self):
+    def test_linear_score_raises_raises_warning_if_doc_without_score(self, caplog):
         ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
         docs_before = [
             Document(content="abc", meta={"rating": 1.3}),
@@ -116,5 +126,6 @@ class TestMetaFieldRanker:
             Document(content="abc", meta={"rating": 2.1}),
         ]
 
-        with pytest.warns(UserWarning, match="The score wasn't provided; defaulting to 0."):
+        with caplog.at_level(logging.WARNING):
             ranker.run(documents=docs_before)
+            assert "The score wasn't provided; defaulting to 0." in caplog.text

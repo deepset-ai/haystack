@@ -1,5 +1,4 @@
 import logging
-import warnings
 from collections import defaultdict
 from typing import List, Dict, Any, Optional, Literal
 
@@ -36,6 +35,7 @@ class MetaFieldRanker:
         weight: float = 1.0,
         top_k: Optional[int] = None,
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"] = "reciprocal_rank_fusion",
+        sort_order: Literal["ascending", "descending"] = "descending",
         infer_type: bool = True,
     ):
         """
@@ -51,6 +51,7 @@ class MetaFieldRanker:
         :param ranking_mode: The mode used to combine the Retriever's and Ranker's scores.
                 Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
                 Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
+        :param sort_order:
         :param infer_type: Whether to try and infer the data type of meta value that is a string. For example, we have
                 the field `"date": "2015-02-01"` we would infer the type of "date" to be a datetime object.
         """
@@ -60,8 +61,15 @@ class MetaFieldRanker:
         self.top_k = top_k
         self.ranking_mode = ranking_mode
         self.infer_type = infer_type
+        self._validate_params(weight=weight, top_k=top_k, ranking_mode=ranking_mode)
 
-        if self.weight < 0 or self.weight > 1:
+    def _validate_params(
+        self, weight: float, top_k: Optional[int], ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"]
+    ):
+        if top_k is not None and top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
+
+        if weight < 0 or weight > 1:
             raise ValueError(
                 """
                 Parameter <weight> must be in range [0,1] but is currently set to '{}'.\n
@@ -72,13 +80,13 @@ class MetaFieldRanker:
                 )
             )
 
-        if self.ranking_mode not in ["reciprocal_rank_fusion", "linear_score"]:
+        if ranking_mode not in ["reciprocal_rank_fusion", "linear_score"]:
             raise ValueError(
                 """
                 The value of parameter <ranking_mode> must be 'reciprocal_rank_fusion' or 'linear_score', but is currently set to '{}'. \n
                 Change the <ranking_mode> value to 'reciprocal_rank_fusion' or 'linear_score' when initializing the MetaFieldRanker.
                 """.format(
-                    self.ranking_mode
+                    ranking_mode
                 )
             )
 
@@ -87,7 +95,12 @@ class MetaFieldRanker:
         Serialize object to a dictionary.
         """
         return default_to_dict(
-            self, meta_field=self.meta_field, weight=self.weight, top_k=self.top_k, ranking_mode=self.ranking_mode
+            self,
+            meta_field=self.meta_field,
+            weight=self.weight,
+            top_k=self.top_k,
+            ranking_mode=self.ranking_mode,
+            infer_type=self.infer_type,
         )
 
     @component.output_types(documents=List[Document])
@@ -121,31 +134,9 @@ class MetaFieldRanker:
             return {"documents": []}
 
         top_k = top_k or self.top_k
-        if top_k is not None and top_k <= 0:
-            raise ValueError(f"top_k must be > 0, but got {top_k}")
-
         weight = weight or self.weight
-        if weight < 0 or weight > 1:
-            raise ValueError(
-                """
-                Parameter <weight> must be in range [0,1] but is currently set to '{}'.\n
-                '0' disables sorting by a meta field, '0.5' assigns equal weight to the previous relevance scores and the meta field, and '1' ranks by the meta field only.\n
-                Change the <weight> parameter to a value in range 0 to 1.
-                """.format(
-                    weight
-                )
-            )
-
         ranking_mode = ranking_mode or self.ranking_mode
-        if ranking_mode not in ["reciprocal_rank_fusion", "linear_score"]:
-            raise ValueError(
-                """
-                The value of parameter <ranking_mode> must be 'reciprocal_rank_fusion' or 'linear_score', but is currently set to '{}'. \n
-                Change the <ranking_mode> value to 'reciprocal_rank_fusion' or 'linear_score'.
-                """.format(
-                    ranking_mode
-                )
-            )
+        self._validate_params(weight=weight, top_k=top_k, ranking_mode=ranking_mode)
 
         try:
             sorted_by_meta = sorted(documents, key=lambda doc: doc.meta[self.meta_field], reverse=True)
@@ -180,12 +171,10 @@ class MetaFieldRanker:
             for i, (doc, sorted_doc) in enumerate(zip(documents, sorted_documents)):
                 score = float(0)
                 if doc.score is None:
-                    warnings.warn("The score wasn't provided; defaulting to 0.")
+                    logger.warning("The score wasn't provided; defaulting to 0.")
                 elif doc.score < 0 or doc.score > 1:
-                    warnings.warn(
-                        "The score {} for Document {} is outside the [0,1] range; defaulting to 0".format(
-                            doc.score, doc.id
-                        )
+                    logger.warning(
+                        "The score %s for Document %s is outside the [0,1] range; defaulting to 0", doc.score, doc.id
                     )
                 else:
                     score = doc.score
