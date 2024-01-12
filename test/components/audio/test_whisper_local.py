@@ -15,35 +15,33 @@ SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
 class TestLocalWhisperTranscriber:
     def test_init(self):
         transcriber = LocalWhisperTranscriber(
-            model_name_or_path="large-v2"
+            model="large-v2"
         )  # Doesn't matter if it's huge, the model is not loaded in init.
-        assert transcriber.model_name == "large-v2"
+        assert transcriber.model == "large-v2"
         assert transcriber.device == torch.device("cpu")
         assert transcriber._model is None
 
     def test_init_wrong_model(self):
         with pytest.raises(ValueError, match="Model name 'whisper-1' not recognized"):
-            LocalWhisperTranscriber(model_name_or_path="whisper-1")
+            LocalWhisperTranscriber(model="whisper-1")
 
     def test_to_dict(self):
         transcriber = LocalWhisperTranscriber()
         data = transcriber.to_dict()
         assert data == {
             "type": "haystack.components.audio.whisper_local.LocalWhisperTranscriber",
-            "init_parameters": {"model_name_or_path": "large", "device": "cpu", "whisper_params": {}},
+            "init_parameters": {"model": "large", "device": "cpu", "whisper_params": {}},
         }
 
     def test_to_dict_with_custom_init_parameters(self):
         transcriber = LocalWhisperTranscriber(
-            model_name_or_path="tiny",
-            device="cuda",
-            whisper_params={"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
+            model="tiny", device="cuda", whisper_params={"return_segments": True, "temperature": [0.1, 0.6, 0.8]}
         )
         data = transcriber.to_dict()
         assert data == {
             "type": "haystack.components.audio.whisper_local.LocalWhisperTranscriber",
             "init_parameters": {
-                "model_name_or_path": "tiny",
+                "model": "tiny",
                 "device": "cuda",
                 "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
             },
@@ -51,20 +49,20 @@ class TestLocalWhisperTranscriber:
 
     def test_warmup(self):
         with patch("haystack.components.audio.whisper_local.whisper") as mocked_whisper:
-            transcriber = LocalWhisperTranscriber(model_name_or_path="large-v2")
+            transcriber = LocalWhisperTranscriber(model="large-v2")
             mocked_whisper.load_model.assert_not_called()
             transcriber.warm_up()
             mocked_whisper.load_model.assert_called_once_with("large-v2", device=torch.device(type="cpu"))
 
     def test_warmup_doesnt_reload(self):
         with patch("haystack.components.audio.whisper_local.whisper") as mocked_whisper:
-            transcriber = LocalWhisperTranscriber(model_name_or_path="large-v2")
+            transcriber = LocalWhisperTranscriber(model="large-v2")
             transcriber.warm_up()
             transcriber.warm_up()
             mocked_whisper.load_model.assert_called_once()
 
     def test_run_with_path(self):
-        comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
+        comp = LocalWhisperTranscriber(model="large-v2")
         comp._model = MagicMock()
         comp._model.transcribe.return_value = {
             "text": "test transcription",
@@ -81,7 +79,7 @@ class TestLocalWhisperTranscriber:
         assert results["documents"] == [expected]
 
     def test_run_with_str(self):
-        comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
+        comp = LocalWhisperTranscriber(model="large-v2")
         comp._model = MagicMock()
         comp._model.transcribe.return_value = {
             "text": "test transcription",
@@ -100,7 +98,7 @@ class TestLocalWhisperTranscriber:
         assert results["documents"] == [expected]
 
     def test_transcribe(self):
-        comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
+        comp = LocalWhisperTranscriber(model="large-v2")
         comp._model = MagicMock()
         comp._model.transcribe.return_value = {
             "text": "test transcription",
@@ -117,7 +115,7 @@ class TestLocalWhisperTranscriber:
         assert results == [expected]
 
     def test_transcribe_stream(self):
-        comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
+        comp = LocalWhisperTranscriber(model="large-v2")
         comp._model = MagicMock()
         comp._model.transcribe.return_value = {
             "text": "test transcription",
@@ -135,7 +133,7 @@ class TestLocalWhisperTranscriber:
     @pytest.mark.integration
     @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
     def test_whisper_local_transcriber(self, test_files_path):
-        comp = LocalWhisperTranscriber(model_name_or_path="medium", whisper_params={"language": "english"})
+        comp = LocalWhisperTranscriber(model="medium", whisper_params={"language": "english"})
         comp.warm_up()
         output = comp.run(
             sources=[
