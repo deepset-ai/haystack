@@ -29,7 +29,7 @@ class OpenAITextEmbedder:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_name: str = "text-embedding-ada-002",
+        model: str = "text-embedding-ada-002",
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         prefix: str = "",
@@ -40,7 +40,7 @@ class OpenAITextEmbedder:
 
         :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
             environment variable OPENAI_API_KEY (recommended).
-        :param model_name: The name of the OpenAI model to use. For more details on the available models,
+        :param model: The name of the OpenAI model to use. For more details on the available models,
             see [OpenAI documentation](https://platform.openai.com/docs/guides/embeddings/embedding-models).
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
@@ -48,7 +48,7 @@ class OpenAITextEmbedder:
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         """
-        self.model_name = model_name
+        self.model = model
         self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
@@ -59,7 +59,7 @@ class OpenAITextEmbedder:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": self.model_name}
+        return {"model": self.model}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -68,7 +68,7 @@ class OpenAITextEmbedder:
         """
 
         return default_to_dict(
-            self, model_name=self.model_name, organization=self.organization, prefix=self.prefix, suffix=self.suffix
+            self, model=self.model, organization=self.organization, prefix=self.prefix, suffix=self.suffix
         )
 
     @component.output_types(embedding=List[float], meta=Dict[str, Any])
@@ -86,7 +86,7 @@ class OpenAITextEmbedder:
         # replace newlines, which can negatively affect performance.
         text_to_embed = text_to_embed.replace("\n", " ")
 
-        response = self.client.embeddings.create(model=self.model_name, input=text_to_embed)
+        response = self.client.embeddings.create(model=self.model, input=text_to_embed)
         meta = {"model": response.model, "usage": dict(response.usage)}
 
         return {"embedding": response.data[0].embedding, "meta": meta}

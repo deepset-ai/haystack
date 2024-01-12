@@ -31,7 +31,7 @@ class OpenAIDocumentEmbedder:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_name: str = "text-embedding-ada-002",
+        model: str = "text-embedding-ada-002",
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         prefix: str = "",
@@ -45,7 +45,7 @@ class OpenAIDocumentEmbedder:
         Create a OpenAIDocumentEmbedder component.
         :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
                         environment variable OPENAI_API_KEY (recommended).
-        :param model_name: The name of the model to use.
+        :param model: The name of the model to use.
         :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
@@ -57,7 +57,7 @@ class OpenAIDocumentEmbedder:
         :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document text.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
-        self.model_name = model_name
+        self.model = model
         self.api_base_url = api_base_url
         self.organization = organization
         self.prefix = prefix
@@ -73,7 +73,7 @@ class OpenAIDocumentEmbedder:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": self.model_name}
+        return {"model": self.model}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -82,7 +82,7 @@ class OpenAIDocumentEmbedder:
         """
         return default_to_dict(
             self,
-            model_name=self.model_name,
+            model=self.model,
             organization=self.organization,
             api_base_url=self.api_base_url,
             prefix=self.prefix,
@@ -124,7 +124,7 @@ class OpenAIDocumentEmbedder:
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
             batch = texts_to_embed[i : i + batch_size]
-            response = self.client.embeddings.create(model=self.model_name, input=batch)
+            response = self.client.embeddings.create(model=self.model, input=batch)
             embeddings = [el.embedding for el in response.data]
             all_embeddings.extend(embeddings)
 
