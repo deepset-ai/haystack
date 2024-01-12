@@ -13,7 +13,6 @@ from haystack.lazy_imports import LazyImport
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 
-WebDriver = object
 with LazyImport("Run 'pip install farm-haystack[crawler]'") as selenium_import:
     from selenium import webdriver as selenium_webdriver
     from selenium.webdriver.remote.webdriver import WebDriver
@@ -142,7 +141,7 @@ class Crawler(BaseComponent):
         self.driver = selenium_webdriver.Chrome(service=Service(), options=options)
 
     def __del__(self):
-        self.driver.quit()  #  type: ignore[attr-defined]
+        self.driver.quit()
 
     def crawl(
         self,
@@ -343,10 +342,10 @@ class Crawler(BaseComponent):
         documents: List[Document] = []
         for link in urls:
             logger.info("Scraping contents from '%s'", link)
-            self.driver.get(link)  #  type: ignore[attr-defined]
+            self.driver.get(link)
             if loading_wait_time is not None:
                 time.sleep(loading_wait_time)
-            el = self.driver.find_element(by=By.TAG_NAME, value="body")  #  type: ignore[attr-defined]
+            el = self.driver.find_element(by=By.TAG_NAME, value="body")
 
             if extract_hidden_text:
                 text = el.get_attribute("textContent")
@@ -479,11 +478,11 @@ class Crawler(BaseComponent):
         already_found_links: Optional[List] = None,
         loading_wait_time: Optional[int] = None,
     ) -> Set[str]:
-        self.driver.get(base_url)  #  type: ignore[attr-defined]
+        self.driver.get(base_url)
 
         if loading_wait_time is not None:
             time.sleep(loading_wait_time)
-        a_elements = self.driver.find_elements(by=By.XPATH, value="//a[@href]")  #  type: ignore[attr-defined]
+        a_elements = self.driver.find_elements(by=By.XPATH, value="//a[@href]")
 
         sub_links = set()
 
