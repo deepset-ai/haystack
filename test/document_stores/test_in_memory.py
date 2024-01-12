@@ -5,9 +5,7 @@ import pandas as pd
 import pytest
 
 from haystack import Document
-from haystack.document_stores import InMemoryDocumentStore, DocumentStoreError, DuplicatePolicy, DuplicateDocumentError
-
-
+from haystack.document_stores import DocumentStoreError, DuplicateDocumentError, DuplicatePolicy, InMemoryDocumentStore
 from haystack.testing.document_store import DocumentStoreBaseTests
 
 
@@ -74,7 +72,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             document_store.write_documents(docs)
 
     def test_bm25_retrieval(self, document_store: InMemoryDocumentStore):
-        document_store = InMemoryDocumentStore(bm25_algorithm="BM25L")
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
         document_store.write_documents(docs)
