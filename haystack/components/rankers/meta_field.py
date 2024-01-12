@@ -2,6 +2,7 @@ import logging
 from collections import defaultdict
 from typing import List, Dict, Any, Optional, Literal, Set
 from dateutil.parser import parse
+import yaml
 
 from haystack import Document, component, default_to_dict
 
@@ -163,7 +164,7 @@ class MetaFieldRanker:
         docs_missing_meta_field = []
         unique_meta_values = set()
         for document in documents:
-            # Using try except block to handle situation that the meta_value could be None
+            # Using try except block instead of .meta.get() to handle situation that the meta_value could be None
             try:
                 meta_value = document.meta[self.meta_field]
                 docs_with_meta_field.append(document)
@@ -171,50 +172,62 @@ class MetaFieldRanker:
             except KeyError:
                 docs_missing_meta_field.append(document)
 
+        # If all docs are missing self.meta_field return original documents
         if len(docs_missing_meta_field) == len(documents):
             logger.warning(
-                "The parameter <meta_field> is currently set to '%s', but none of the provided Documents have this meta key.\n"
-                "The provided Document IDs are %s.\n"
-                "Set <meta_field> to the name of the field that is present within the provided Documents.\n"
-                % (self.meta_field, ",".join([doc.id for doc in documents]))
+                "The parameter <meta_field> is currently set to '%s', but none of the provided Documents with IDs %s have this meta key.\n"
+                "Set <meta_field> to the name of a field that is present within the provided Documents.\n"
+                "Returning the original Documents since there are no values to rank.",
+                self.meta_field,
+                ",".join([doc.id for doc in documents]),
             )
-        elif len(docs_missing_meta_field) > 0:
+            return {"documents": documents}
+
+        if len(docs_missing_meta_field) > 0:
             logger.warning(
                 "The parameter <meta_field> is currently set to '%s' but the Documents with IDs %s don't have this meta key.\n"
-                "These Documents will be placed at the end of the sorting order.\n"
-                % (self.meta_field, ",".join([doc.id for doc in docs_missing_meta_field]))
+                "These Documents will be placed at the end of the sorting order.",
+                self.meta_field,
+                ",".join([doc.id for doc in docs_missing_meta_field]),
+            )
+
+        # - If all string type then try to infer using yaml.safe_load ??
+        if infer_type and all(isinstance(d.meta[self.meta_field], str) for d in docs_with_meta_field):
+            ...
+        else:
+            logger.warning(
+                "The parameter <infer_type> is currently set to `%s`, but not all of meta values in the provided Documents are strings.\n"
+                "Therefore,",
+                infer_type,
             )
 
         reverse = sort_order == "descending"
-        sorted_by_meta = sorted(docs_with_meta_field, key=lambda doc: doc.meta[self.meta_field], reverse=reverse)
+        try:
+            sorted_by_meta = sorted(docs_with_meta_field, key=lambda doc: doc.meta[self.meta_field], reverse=reverse)
+        except TypeError as error:
+            # Return original documents if mixed types that are not comparable are returned (e.g. int and list)
+            logger.warning(
+                "Tried to sort Documents with IDs %s, but got TypeError with the message: %s\n"
+                "Returning the original Documents since meta field ranking is not possible.",
+                ",".join([doc.id for doc in docs_missing_meta_field]),
+                error,
+            )
+            return {"documents": documents}
+
         # Add the docs missing the meta_field back on the end
-        sorted_by_meta += docs_missing_meta_field
+        sorted_documents = sorted_by_meta + docs_missing_meta_field
 
         if self.weight > 0:
-            sorted_documents = self._merge_scores(documents, sorted_by_meta)
-            return {"documents": sorted_documents[:top_k]}
-        else:
-            return {"documents": sorted_by_meta[:top_k]}
+            sorted_documents = self._merge_rankings(documents, sorted_documents)
+        return {"documents": sorted_documents[:top_k]}
 
-    def _infer_type(self, unique_meta_values: Set[str]):
-        return None
+    def _check_all_same_type(self, documents: List[Document]) -> bool:
+        all_types = {type(d.meta[self.meta_field]) for d in documents}
+        return len(all_types) == 1
 
-    def _is_date(self, string: str):
+    def _merge_rankings(self, documents: List[Document], sorted_documents: List[Document]) -> List[Document]:
         """
-        Return whether the string can be interpreted as a date.
-
-        :param string: str, string to check for date
-        """
-        try:
-            parse(string)
-        except ValueError:
-            return False
-
-        return True
-
-    def _merge_scores(self, documents: List[Document], sorted_documents: List[Document]) -> List[Document]:
-        """
-        Merge scores for Documents sorted both by their content and by their meta field.
+        Merge the two different rankings for Documents sorted both by their content and by their meta field.
         """
         scores_map: Dict = defaultdict(int)
 

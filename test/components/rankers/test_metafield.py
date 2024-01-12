@@ -1,7 +1,7 @@
 import pytest
 import logging
 
-from haystack import Document, ComponentError
+from haystack import Document
 from haystack.components.rankers.meta_field import MetaFieldRanker
 
 
@@ -81,11 +81,11 @@ class TestMetaFieldRanker:
 
     def test_warning_if_meta_not_found(self, caplog):
         ranker = MetaFieldRanker(meta_field="rating")
-        docs_before = [Document(content="abc", meta={"wrong_field": 1.3})]
+        docs_before = [Document(id="1", content="abc", meta={"wrong_field": 1.3})]
         with caplog.at_level(logging.WARNING):
             ranker.run(documents=docs_before)
             assert (
-                "The parameter <meta_field> is currently set to 'rating', but none of the provided Documents have this meta key."
+                "The parameter <meta_field> is currently set to 'rating', but none of the provided Documents with IDs 1 have this meta key."
                 in caplog.text
             )
 
