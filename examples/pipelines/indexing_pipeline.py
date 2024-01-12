@@ -7,7 +7,7 @@ from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.routers import FileTypeRouter
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.writers import DocumentWriter
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 # Create components and an indexing pipeline that converts txt and pdf files to documents, cleans and splits them, and

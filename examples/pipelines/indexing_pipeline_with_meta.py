@@ -1,14 +1,17 @@
 from typing import Dict, Any
 from pathlib import Path
 from datetime import datetime
+import os
 
 from haystack import Pipeline
+from haystack.dataclasses import ByteStream
 from haystack.components.others import Multiplexer
 from haystack.components.converters import PyPDFToDocument, TextFileToDocument
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
-from haystack.components.routers import FileTypeRouter, DocumentJoiner
+from haystack.components.routers import FileTypeRouter
+from haystack.components.joiners import DocumentJoiner
 from haystack.components.writers import DocumentWriter
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 document_store = InMemoryDocumentStore()
@@ -33,9 +36,20 @@ p.connect("joiner.documents", "cleaner.documents")
 p.connect("cleaner.documents", "splitter.documents")
 p.connect("splitter.documents", "writer.documents")
 
+# Add metadata to your files by using ByteStream
+sources = []
+for position, path in enumerate(list(Path(".").iterdir())):
+    if path.is_file():
+        # Create the ByteStream
+        source = ByteStream.from_file_path(path)
+        # Add the metadata
+        source.meta["path"] = path
+        source.meta["position"] = position
+        sources.append(source)
+
 result = p.run(
     {
-        "file_type_router": {"sources": list(Path(".").iterdir())},
+        "file_type_router": {"sources": sources},
         "metadata_multiplexer": {"value": {"date_added": datetime.now().isoformat()}},
     }
 )
