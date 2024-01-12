@@ -170,7 +170,6 @@ class TestHuggingFaceLocalGenerator:
                 "huggingface_pipeline_kwargs": {
                     "model": "gpt2",
                     "task": "text-generation",
-                    "token": None,  # we don't want serialize valid tokens
                     "device": "cuda:0",
                     "model_kwargs": {
                         "load_in_4bit": True,
@@ -212,7 +211,6 @@ class TestHuggingFaceLocalGenerator:
                 "huggingface_pipeline_kwargs": {
                     "model": "gpt2",
                     "task": "text-generation",
-                    "token": None,  # we don't want serialize valid tokens
                     "device": "cuda:0",
                     "model_kwargs": {
                         "quantization_config": {
@@ -236,7 +234,6 @@ class TestHuggingFaceLocalGenerator:
                 "huggingface_pipeline_kwargs": {
                     "model": "gpt2",
                     "task": "text-generation",
-                    "token": None,  # we don't want serialize valid tokens
                     "device": "cuda:0",
                     "model_kwargs": {
                         "load_in_4bit": True,
@@ -256,8 +253,8 @@ class TestHuggingFaceLocalGenerator:
         assert component.huggingface_pipeline_kwargs == {
             "model": "gpt2",
             "task": "text-generation",
-            "token": None,
             "device": "cuda:0",
+            "token": None,
             "model_kwargs": {
                 "load_in_4bit": True,
                 "bnb_4bit_use_double_quant": True,

@@ -204,8 +204,7 @@ class HuggingFaceLocalGenerator:
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
         # we don't want to serialize valid tokens
         if isinstance(huggingface_pipeline_kwargs["token"], str):
-            serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["token"] = None
-
+            serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"].pop("token")
         # convert torch.dtype to string for serialization
         # 1. torch_dtype can be specified in huggingface_pipeline_kwargs
         torch_dtype = huggingface_pipeline_kwargs.get("torch_dtype", None)
