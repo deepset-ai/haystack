@@ -17,7 +17,7 @@ renderer:
   category_slug: haystack-classes
   title: Joiner API
   slug: joiner-api
-  order: 140
+  order: 75
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true

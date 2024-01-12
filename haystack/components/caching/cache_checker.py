@@ -57,7 +57,7 @@ class CacheChecker:
         data["init_parameters"]["document_store"] = docstore
         return default_from_dict(cls, data)
 
-    @component.output_types(hits=List[Document], misses=List[Any])
+    @component.output_types(hits=List[Document], misses=List)
     def run(self, items: List[Any]):
         """
         Checks if any document associated with the specified field is already present in the store. If matching documents

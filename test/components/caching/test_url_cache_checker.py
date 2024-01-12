@@ -6,7 +6,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.caching.cache_checker import CacheChecker
 
 
-class TestUrlCacheChecker:
+class TestCacheChecker:
     def test_to_dict(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
         component = CacheChecker(document_store=mocked_docstore_class(), cache_field="url")
