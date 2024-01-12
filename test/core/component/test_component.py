@@ -176,3 +176,17 @@ def test_input_has_default_value():
     comp = MockComponent()
     assert comp.__canals_input__["value"].default_value == 42
     assert not comp.__canals_input__["value"].is_mandatory
+
+
+def test_keyword_only_args():
+    @component
+    class MockComponent:
+        def __init__(self):
+            component.set_output_types(self, value=int)
+
+        def run(self, *, arg: int):
+            return {"value": arg}
+
+    comp = MockComponent()
+    component_inputs = {name: {"type": socket.type} for name, socket in comp.__canals_input__.items()}
+    assert component_inputs == {"arg": {"type": int}}
