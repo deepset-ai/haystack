@@ -25,14 +25,14 @@ class TestRemoteWhisperTranscriber:
     def test_init_default(self):
         transcriber = RemoteWhisperTranscriber(api_key="test_api_key")
         assert transcriber.client.api_key == "test_api_key"
-        assert transcriber.model_name == "whisper-1"
+        assert transcriber.model == "whisper-1"
         assert transcriber.organization is None
         assert transcriber.whisper_params == {"response_format": "json"}
 
     def test_init_custom_parameters(self):
         transcriber = RemoteWhisperTranscriber(
             api_key="test_api_key",
-            model_name="whisper-1",
+            model="whisper-1",
             organization="test-org",
             api_base_url="test_api_url",
             language="en",
@@ -41,7 +41,7 @@ class TestRemoteWhisperTranscriber:
             temperature="0.5",
         )
 
-        assert transcriber.model_name == "whisper-1"
+        assert transcriber.model == "whisper-1"
         assert transcriber.organization == "test-org"
         assert transcriber.api_base_url == "test_api_url"
         assert transcriber.whisper_params == {
@@ -57,7 +57,7 @@ class TestRemoteWhisperTranscriber:
         assert data == {
             "type": "haystack.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
-                "model_name": "whisper-1",
+                "model": "whisper-1",
                 "api_base_url": None,
                 "organization": None,
                 "response_format": "json",
@@ -67,7 +67,7 @@ class TestRemoteWhisperTranscriber:
     def test_to_dict_with_custom_init_parameters(self):
         transcriber = RemoteWhisperTranscriber(
             api_key="test_api_key",
-            model_name="whisper-1",
+            model="whisper-1",
             organization="test-org",
             api_base_url="test_api_url",
             language="en",
@@ -79,7 +79,7 @@ class TestRemoteWhisperTranscriber:
         assert data == {
             "type": "haystack.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
-                "model_name": "whisper-1",
+                "model": "whisper-1",
                 "organization": "test-org",
                 "api_base_url": "test_api_url",
                 "language": "en",
@@ -95,7 +95,7 @@ class TestRemoteWhisperTranscriber:
         data = {
             "type": "haystack.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
-                "model_name": "whisper-1",
+                "model": "whisper-1",
                 "api_base_url": "https://api.openai.com/v1",
                 "organization": None,
                 "response_format": "json",
@@ -104,7 +104,7 @@ class TestRemoteWhisperTranscriber:
 
         transcriber = RemoteWhisperTranscriber.from_dict(data)
 
-        assert transcriber.model_name == "whisper-1"
+        assert transcriber.model == "whisper-1"
         assert transcriber.organization is None
         assert transcriber.api_base_url == "https://api.openai.com/v1"
         assert transcriber.whisper_params == {"response_format": "json"}
@@ -115,7 +115,7 @@ class TestRemoteWhisperTranscriber:
         data = {
             "type": "haystack.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
-                "model_name": "whisper-1",
+                "model": "whisper-1",
                 "organization": "test-org",
                 "api_base_url": "test_api_url",
                 "language": "en",
@@ -126,7 +126,7 @@ class TestRemoteWhisperTranscriber:
         }
         transcriber = RemoteWhisperTranscriber.from_dict(data)
 
-        assert transcriber.model_name == "whisper-1"
+        assert transcriber.model == "whisper-1"
         assert transcriber.organization == "test-org"
         assert transcriber.api_base_url == "test_api_url"
         assert transcriber.whisper_params == {
@@ -142,7 +142,7 @@ class TestRemoteWhisperTranscriber:
         data = {
             "type": "haystack.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
-                "model_name": "whisper-1",
+                "model": "whisper-1",
                 "api_base_url": "https://api.openai.com/v1",
                 "organization": None,
                 "response_format": "json",
