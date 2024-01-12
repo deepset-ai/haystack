@@ -139,7 +139,10 @@ class ComponentMeta(type):
             instance.__canals_input__ = {}
         run_signature = inspect.signature(getattr(cls, "run"))
         for param in list(run_signature.parameters)[1:]:  # First is 'self' and it doesn't matter.
-            if run_signature.parameters[param].kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:  # ignore `**kwargs`
+            if run_signature.parameters[param].kind not in (
+                inspect.Parameter.VAR_POSITIONAL,
+                inspect.Parameter.VAR_KEYWORD,
+            ):  # ignore variable args
                 socket_kwargs = {"name": param, "type": run_signature.parameters[param].annotation}
                 if run_signature.parameters[param].default != inspect.Parameter.empty:
                     socket_kwargs["default_value"] = run_signature.parameters[param].default
