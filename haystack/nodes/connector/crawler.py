@@ -17,10 +17,11 @@ from haystack.schema import Document
 WebDriver = object
 with LazyImport("Run 'pip install farm-haystack[crawler]'") as selenium_import:
     from selenium import webdriver as selenium_webdriver
+    from selenium.webdriver.remote.webdriver import WebDriver
+    from selenium.common.exceptions import StaleElementReferenceException
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.remote.webdriver import WebDriver
 
 logger = logging.getLogger(__name__)
 
@@ -98,12 +99,27 @@ class Crawler(BaseComponent):
                  3) ["--remote-debugging-port=9222"]
                     This option enables remote debug over HTTP.
             See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
-            If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
+            If your crawler fails, raising a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
         :param webdriver: A pre-configured Selenium WebDriver.
             When webdriver_options is not sufficient, use this parameter to override the whole web driver. This lets you use different engines other than the default Chrome.
         """
         selenium_import.check()
         super().__init__()
+
+        self.urls = urls
+        self.crawler_depth = crawler_depth
+        self.filter_urls = filter_urls
+        self.overwrite_existing_files = overwrite_existing_files
+        self.id_hash_keys = id_hash_keys
+        self.extract_hidden_text = extract_hidden_text
+        self.loading_wait_time = loading_wait_time
+        self.crawler_naming_function = crawler_naming_function
+        self.output_dir = output_dir
+        self.file_path_meta_field_name = file_path_meta_field_name
+
+        if webdriver is not None:
+            self.driver = webdriver
+            return
 
         IN_COLAB = "google.colab" in sys.modules
         IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
@@ -124,62 +140,7 @@ class Crawler(BaseComponent):
         for option in set(webdriver_options):
             options.add_argument(option)
 
-        if webdriver is not None:
-            self.driver = webdriver
-        elif IN_COLAB:
-            try:
-                self.driver = selenium_webdriver.Chrome(service=Service("chromedriver"), options=options)
-            except WebDriverException as exc:
-                raise NodeError(
-                    """
-        \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
-                        %%shell
-                        cat > /etc/apt/sources.list.d/debian.list <<'EOF'
-                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster.gpg] http://deb.debian.org/debian buster main
-                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster-updates.gpg] http://deb.debian.org/debian buster-updates main
-                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-security-buster.gpg] http://deb.debian.org/debian-security buster/updates main
-                        EOF
-
-                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys DCC9EFBF77E11517
-                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648ACFD622F3D138
-                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 112695A0E562B32A
-                        apt-key export 77E11517 | gpg --dearmour -o /usr/share/keyrings/debian-buster.gpg
-                        apt-key export 22F3D138 | gpg --dearmour -o /usr/share/keyrings/debian-buster-updates.gpg
-                        apt-key export E562B32A | gpg --dearmour -o /usr/share/keyrings/debian-security-buster.gpg
-
-                        cat > /etc/apt/preferences.d/chromium.pref << 'EOF'
-                        Package: *
-                        Pin: release a=eoan
-                        Pin-Priority: 500
-
-
-                        Package: *
-                        Pin: origin "deb.debian.org"
-                        Pin-Priority: 300
-
-
-                        Package: chromium*
-                        Pin: origin "deb.debian.org"
-                        Pin-Priority: 700
-                        EOF
-
-                        apt-get update
-                        apt-get install chromium chromium-driver
-        If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
-                ) from exc
-        else:
-            logger.info("'chrome-driver' will be automatically installed.")
-            self.driver = selenium_webdriver.Chrome(service=Service(), options=options)
-        self.urls = urls
-        self.crawler_depth = crawler_depth
-        self.filter_urls = filter_urls
-        self.overwrite_existing_files = overwrite_existing_files
-        self.id_hash_keys = id_hash_keys
-        self.extract_hidden_text = extract_hidden_text
-        self.loading_wait_time = loading_wait_time
-        self.crawler_naming_function = crawler_naming_function
-        self.output_dir = output_dir
-        self.file_path_meta_field_name = file_path_meta_field_name
+        self.driver = selenium_webdriver.Chrome(service=Service(), options=options)
 
     def __del__(self):
         self.driver.quit()  #  type: ignore[attr-defined]
