@@ -1,10 +1,12 @@
 from unittest.mock import MagicMock, patch
+
 import pytest
 import torch
 from transformers.modeling_outputs import SequenceClassifierOutput
 
-from haystack import Document, ComponentError
+from haystack import ComponentError, Document
 from haystack.components.rankers.transformers_similarity import TransformersSimilarityRanker
+from haystack.utils.device import ComponentDevice
 
 
 class TestSimilarityRanker:
@@ -14,7 +16,7 @@ class TestSimilarityRanker:
         assert data == {
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
-                "device": "cpu",
+                "device": ComponentDevice.resolve_device(None).to_dict(),
                 "top_k": 10,
                 "token": None,
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
@@ -30,7 +32,7 @@ class TestSimilarityRanker:
     def test_to_dict_with_custom_init_parameters(self):
         component = TransformersSimilarityRanker(
             model="my_model",
-            device="cuda",
+            device=ComponentDevice.from_str("cuda:0"),
             token="my_token",
             top_k=5,
             scale_score=False,
@@ -42,7 +44,7 @@ class TestSimilarityRanker:
         assert data == {
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
-                "device": "cuda",
+                "device": ComponentDevice.from_str("cuda:0").to_dict(),
                 "model": "my_model",
                 "token": None,  # we don't serialize valid tokens,
                 "top_k": 5,
@@ -68,7 +70,7 @@ class TestSimilarityRanker:
         assert data == {
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
-                "device": "cpu",
+                "device": ComponentDevice.resolve_device(None).to_dict(),
                 "top_k": 10,
                 "token": None,
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
@@ -90,7 +92,7 @@ class TestSimilarityRanker:
         data = {
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
-                "device": "cuda",
+                "device": ComponentDevice.from_str("cuda:0").to_dict(),
                 "model": "my_model",
                 "token": None,
                 "top_k": 5,
@@ -104,7 +106,7 @@ class TestSimilarityRanker:
         }
 
         component = TransformersSimilarityRanker.from_dict(data)
-        assert component.device == "cuda"
+        assert component.device == ComponentDevice.from_str("cuda:0")
         assert component.model == "my_model"
         assert component.token is None
         assert component.top_k == 5

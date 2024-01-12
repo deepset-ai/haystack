@@ -1,6 +1,6 @@
 import pytest
 
-from haystack import Document, Pipeline, ComponentError
+from haystack import ComponentError, Document, Pipeline
 from haystack.components.extractors import NamedEntityAnnotation, NamedEntityExtractor, NamedEntityExtractorBackend
 
 
@@ -44,7 +44,7 @@ def spacy_annotations():
 
 def test_ner_extractor_init():
     extractor = NamedEntityExtractor(
-        backend=NamedEntityExtractorBackend.HUGGING_FACE, model_name_or_path="dslim/bert-base-NER", device_id=-1
+        backend=NamedEntityExtractorBackend.HUGGING_FACE, model_name_or_path="dslim/bert-base-NER"
     )
 
     with pytest.raises(ComponentError, match=r"not initialized"):

@@ -4,8 +4,9 @@ from dataclasses import dataclass
 from enum import Enum, EnumMeta
 from typing import Any, Dict, List, Optional, Union
 
-from ... import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
-from ...lazy_imports import LazyImport
+from haystack import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
+from haystack.lazy_imports import LazyImport
+from haystack.utils.device import ComponentDevice
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
     from transformers import AutoModelForTokenClassification, AutoTokenizer
@@ -85,7 +86,7 @@ class NamedEntityExtractor:
         backend: Union[str, NamedEntityExtractorBackend],
         model_name_or_path: str,
         pipeline_kwargs: Optional[Dict[str, Any]] = None,
-        device_id: int = -1,
+        device: Optional[ComponentDevice] = None,
     ) -> None:
         """
         Construct a Named Entity extractor component.
@@ -102,25 +103,28 @@ class NamedEntityExtractor:
             pipeline can override these arguments.
 
             Dependent on the backend.
-        :param device_id:
-            Identifier of the device on which the backend
-            is executed.
+        :param device:
+            The device on which the model is loaded. If `None`,
+            the default device is automatically selected.
 
-            To execute on the CPU, pass a value of `-1`.
-            To execute on the GPU, pass the GPU identifier.
+            If a device/device map is specified in `pipeline_kwargs`,
+            it overrides this parameter (only applicable to the HuggingFace
+            backend).
         """
 
         if isinstance(backend, str):
             backend = NamedEntityExtractorBackend(backend)
 
         self._backend: _NerBackend
+        device = ComponentDevice.resolve_device(device)
+
         if backend == NamedEntityExtractorBackend.HUGGING_FACE:
             self._backend = _HfBackend(
-                model_name_or_path=model_name_or_path, device_id=device_id, pipeline_kwargs=pipeline_kwargs
+                model_name_or_path=model_name_or_path, device=device, pipeline_kwargs=pipeline_kwargs
             )
         elif backend == NamedEntityExtractorBackend.SPACY:
             self._backend = _SpacyBackend(
-                model_name_or_path=model_name_or_path, device_id=device_id, pipeline_kwargs=pipeline_kwargs
+                model_name_or_path=model_name_or_path, device=device, pipeline_kwargs=pipeline_kwargs
             )
         else:
             raise ComponentError(f"Unknown NER backend '{type(backend).__name__}' for extractor")
@@ -154,13 +158,15 @@ class NamedEntityExtractor:
             self,
             backend=self._backend.type,
             model_name_or_path=self._backend.model_name,
-            device_id=self._backend.device_id,
+            device=self._backend.device.to_dict(),
             pipeline_kwargs=self._backend._pipeline_kwargs,
         )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "NamedEntityExtractor":
         try:
+            init_params = data["init_parameters"]
+            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
             return default_from_dict(cls, data)
         except Exception as e:
             raise DeserializationError(f"Couldn't deserialize {cls.__name__} instance") from e
@@ -192,10 +198,16 @@ class _NerBackend(ABC):
     Base class for NER backends.
     """
 
-    def __init__(self, type: NamedEntityExtractorBackend, pipeline_kwargs: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(
+        self,
+        type: NamedEntityExtractorBackend,
+        device: ComponentDevice,
+        pipeline_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> None:
         super().__init__()
 
         self._type = type
+        self._device = device
         self._pipeline_kwargs = pipeline_kwargs if pipeline_kwargs is not None else {}
 
     @abstractmethod
@@ -235,12 +247,12 @@ class _NerBackend(ABC):
         """
 
     @property
-    @abstractmethod
-    def device_id(self) -> int:
+    def device(self) -> ComponentDevice:
         """
         Returns the identifier of the device on which
         the backend's model is loaded.
         """
+        return self._device
 
     @property
     def type(self) -> NamedEntityExtractorBackend:
@@ -256,7 +268,7 @@ class _HfBackend(_NerBackend):
     """
 
     def __init__(
-        self, *, model_name_or_path: str, device_id: int, pipeline_kwargs: Optional[Dict[str, Any]] = None
+        self, *, model_name_or_path: str, device: ComponentDevice, pipeline_kwargs: Optional[Dict[str, Any]] = None
     ) -> None:
         """
         Construct a Hugging Face NER backend.
@@ -264,23 +276,21 @@ class _HfBackend(_NerBackend):
         :param model_name_or_path:
             Name of the model or a path to the Hugging Face
             model on the local disk.
-        :param device_id:
-            Identifier of the device on which the backend
-            is executed.
+        :param device:
+            The device on which the model is loaded. If `None`,
+            the default device is automatically selected.
 
-            To execute on the CPU, pass a value of `-1`.
-            To execute on the GPU, pass the GPU identifier.
+            If a device/device map is specified in `pipeline_kwargs`,
+            it overrides this parameter.
         :param pipeline_kwargs:
             Keyword arguments passed to the pipeline. The
             pipeline can override these arguments.
         """
-        super().__init__(NamedEntityExtractorBackend.HUGGING_FACE, pipeline_kwargs)
+        super().__init__(NamedEntityExtractorBackend.HUGGING_FACE, device, pipeline_kwargs)
 
         transformers_import.check()
 
         self._model_name_or_path = model_name_or_path
-        self._device_id = device_id
-
         self.tokenizer: Optional[AutoTokenizer] = None
         self.model: Optional[AutoModelForTokenClassification] = None
         self.pipeline: Optional[HfPipeline] = None
@@ -294,9 +304,9 @@ class _HfBackend(_NerBackend):
             "model": self.model,
             "tokenizer": self.tokenizer,
             "aggregation_strategy": "simple",
-            "device": self.device_id,
         }
         pipeline_params.update({k: v for k, v in self._pipeline_kwargs.items() if k not in pipeline_params})
+        self.device.update_hf_kwargs(pipeline_params, overwrite=False)
         self.pipeline = pipeline(**pipeline_params)
 
     def annotate(self, texts: List[str], *, batch_size: int = 1) -> List[List[NamedEntityAnnotation]]:
@@ -326,10 +336,6 @@ class _HfBackend(_NerBackend):
     def model_name(self) -> str:
         return self._model_name_or_path
 
-    @property
-    def device_id(self) -> int:
-        return self._device_id
-
 
 class _SpacyBackend(_NerBackend):
     """
@@ -337,7 +343,7 @@ class _SpacyBackend(_NerBackend):
     """
 
     def __init__(
-        self, *, model_name_or_path: str, device_id: int, pipeline_kwargs: Optional[Dict[str, Any]] = None
+        self, *, model_name_or_path: str, device: ComponentDevice, pipeline_kwargs: Optional[Dict[str, Any]] = None
     ) -> None:
         """
         Construct a spaCy NER backend.
@@ -345,24 +351,22 @@ class _SpacyBackend(_NerBackend):
         :param model_name_or_path:
             Name of the model or a path to the spaCy
             model on the local disk.
-        :param device_id:
-            Identifier of the device on which the backend
-            is executed.
-
-            To execute on the CPU, pass a value of `-1`.
-            To execute on the GPU, pass the GPU identifier.
+        :param device:
+            The device on which the model is loaded. If `None`,
+            the default device is automatically selected.
         :param pipeline_kwargs:
             Keyword arguments passed to the pipeline. The
             pipeline can override these arguments.
         """
-        super().__init__(NamedEntityExtractorBackend.SPACY, pipeline_kwargs)
+        super().__init__(NamedEntityExtractorBackend.SPACY, device, pipeline_kwargs)
 
         spacy_import.check()
 
         self._model_name_or_path = model_name_or_path
-        self._device_id = device_id
-
         self.pipeline: Optional[SpacyPipeline] = None
+
+        if self.device.multiple_devices:
+            raise ValueError("spaCy backend for named entity extractor only supports inference on single devices")
 
     def initialize(self):
         # We need to initialize the model on the GPU if needed.
@@ -404,10 +408,6 @@ class _SpacyBackend(_NerBackend):
     def model_name(self) -> str:
         return self._model_name_or_path
 
-    @property
-    def device_id(self) -> int:
-        return self._device_id
-
     @contextmanager
     def _select_device(self):
         """
@@ -420,10 +420,11 @@ class _SpacyBackend(_NerBackend):
         # the active device in spaCy/Thinc, we can't do much
         # about it as a consumer unless we start poking into their
         # internals.
+        device_id = self._device.to_spacy()
         try:
-            if self._device_id >= 0:
-                spacy.require_gpu(self._device_id)
+            if device_id >= 0:
+                spacy.require_gpu(device_id)
             yield
         finally:
-            if self._device_id >= 0:
+            if device_id >= 0:
                 spacy.require_cpu()

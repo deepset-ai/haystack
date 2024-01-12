@@ -1,10 +1,11 @@
 # pylint: disable=too-many-public-methods
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import pytest
 import torch
 
 from haystack.components.generators.hugging_face_local import HuggingFaceLocalGenerator, StopWordsCriteria
+from haystack.utils import ComponentDevice, Device
 
 
 class TestHuggingFaceLocalGenerator:
@@ -17,6 +18,7 @@ class TestHuggingFaceLocalGenerator:
             "model": "google/flan-t5-base",
             "task": "text2text-generation",
             "token": None,
+            "device": ComponentDevice.resolve_device(None).to_hf(),
         }
         assert generator.generation_kwargs == {}
         assert generator.pipeline is None
@@ -30,10 +32,13 @@ class TestHuggingFaceLocalGenerator:
             "model": "google/flan-t5-base",
             "task": "text2text-generation",
             "token": "test-token",
+            "device": ComponentDevice.resolve_device(None).to_hf(),
         }
 
     def test_init_custom_device(self):
-        generator = HuggingFaceLocalGenerator(model="google/flan-t5-base", task="text2text-generation", device="cuda:0")
+        generator = HuggingFaceLocalGenerator(
+            model="google/flan-t5-base", task="text2text-generation", device=ComponentDevice.from_str("cuda:0")
+        )
 
         assert generator.huggingface_pipeline_kwargs == {
             "model": "google/flan-t5-base",
@@ -49,6 +54,7 @@ class TestHuggingFaceLocalGenerator:
             "model": "google/flan-t5-base",
             "task": "text2text-generation",
             "token": None,
+            "device": ComponentDevice.resolve_device(None).to_hf(),
         }
 
     def test_init_task_in_huggingface_pipeline_kwargs(self):
@@ -58,6 +64,7 @@ class TestHuggingFaceLocalGenerator:
             "model": "google/flan-t5-base",
             "task": "text2text-generation",
             "token": None,
+            "device": ComponentDevice.resolve_device(None).to_hf(),
         }
 
     @patch("haystack.components.generators.hugging_face_local.model_info")
@@ -69,6 +76,7 @@ class TestHuggingFaceLocalGenerator:
             "model": "google/flan-t5-base",
             "task": "text2text-generation",
             "token": None,
+            "device": ComponentDevice.resolve_device(None).to_hf(),
         }
 
     def test_init_invalid_task(self):
@@ -91,7 +99,7 @@ class TestHuggingFaceLocalGenerator:
         generator = HuggingFaceLocalGenerator(
             model="google/flan-t5-base",
             task="text2text-generation",
-            device="cpu",
+            device=ComponentDevice.from_str("cpu"),
             token="test-token",
             huggingface_pipeline_kwargs=huggingface_pipeline_kwargs,
         )
@@ -137,6 +145,7 @@ class TestHuggingFaceLocalGenerator:
                     "model": "google/flan-t5-base",
                     "task": "text2text-generation",
                     "token": None,
+                    "device": ComponentDevice.resolve_device(None).to_hf(),
                 },
                 "generation_kwargs": {},
                 "stop_words": None,
@@ -147,7 +156,7 @@ class TestHuggingFaceLocalGenerator:
         component = HuggingFaceLocalGenerator(
             model="gpt2",
             task="text-generation",
-            device="cuda:0",
+            device=ComponentDevice.from_str("cuda:0"),
             token="test-token",
             generation_kwargs={"max_new_tokens": 100},
             stop_words=["coca", "cola"],
@@ -186,7 +195,7 @@ class TestHuggingFaceLocalGenerator:
         component = HuggingFaceLocalGenerator(
             model="gpt2",
             task="text-generation",
-            device="cuda:0",
+            device=ComponentDevice.from_str("cuda:0"),
             token="test-token",
             generation_kwargs={"max_new_tokens": 100},
             stop_words=["coca", "cola"],
@@ -274,7 +283,10 @@ class TestHuggingFaceLocalGenerator:
         generator.warm_up()
 
         pipeline_mock.assert_called_once_with(
-            model="google/flan-t5-base", task="text2text-generation", token="test-token"
+            model="google/flan-t5-base",
+            task="text2text-generation",
+            token="test-token",
+            device=ComponentDevice.resolve_device(None).to_hf(),
         )
 
     @patch("haystack.components.generators.hugging_face_local.pipeline")

@@ -1,17 +1,17 @@
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+import logging
 import math
 import warnings
-import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from haystack import component, default_to_dict, default_from_dict, ComponentError, Document, ExtractedAnswer
+from haystack import ComponentError, Document, ExtractedAnswer, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import get_device
+from haystack.utils import ComponentDevice
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    from transformers import AutoModelForQuestionAnswering, AutoTokenizer
-    from tokenizers import Encoding
     import torch
+    from tokenizers import Encoding
+    from transformers import AutoModelForQuestionAnswering, AutoTokenizer
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ class ExtractiveReader:
     def __init__(
         self,
         model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
-        device: Optional[str] = None,
+        device: Optional[ComponentDevice] = None,
         token: Union[bool, str, None] = None,
         top_k: int = 20,
         score_threshold: Optional[float] = None,
@@ -57,7 +57,8 @@ class ExtractiveReader:
         :param model: A Hugging Face transformers question answering model.
             Can either be a path to a folder containing the model files or an identifier for the Hugging Face hub.
             Default: `'deepset/roberta-base-squad2-distilled'`
-        :param device: Pytorch device string. Uses GPU by default, if available.
+        :param device: The device on which the model is loaded. If `None`, the default device is automatically
+            selected.
         :param token: The API token used to download private models from Hugging Face.
             If this parameter is set to `True`, then the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) is used.
@@ -89,7 +90,7 @@ class ExtractiveReader:
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model)
         self.model = None
-        self.device = device
+        self.device = ComponentDevice.resolve_device(device)
         self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
@@ -101,6 +102,9 @@ class ExtractiveReader:
         self.calibration_factor = calibration_factor
         self.model_kwargs = model_kwargs or {}
         self.overlap_threshold = overlap_threshold
+
+        if self.device.multiple_devices:
+            raise ValueError(f"{type(ExtractiveReader).__name__} currently only supports inference on single devices")
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -115,7 +119,7 @@ class ExtractiveReader:
         serialization_dict = default_to_dict(
             self,
             model=self.model_name_or_path,
-            device=self.device,
+            device=self.device.to_dict(),
             token=self.token if not isinstance(self.token, str) else None,
             max_seq_length=self.max_seq_length,
             top_k=self.top_k,
@@ -152,6 +156,10 @@ class ExtractiveReader:
         torch_and_transformers_import.check()
         init_params = data.get("init_parameters", {})
         model_kwargs = init_params.get("model_kwargs", {})
+
+        serialized_device = init_params.get("device", {})
+        init_params["device"] = ComponentDevice.from_dict(serialized_device)
+
         # convert string to torch.dtype
         # 1. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
         for key, value in model_kwargs.items():
@@ -164,7 +172,6 @@ class ExtractiveReader:
             data["init_parameters"]["model_kwargs"]["quantization_config"]["bnb_4bit_compute_dtype"] = getattr(
                 torch, bnb_4bit_compute_dtype.strip("torch.")
             )
-
         return default_from_dict(cls, data)
 
     def warm_up(self):
@@ -172,11 +179,9 @@ class ExtractiveReader:
         Loads model and tokenizer
         """
         if self.model is None:
-            if self.device is None:
-                self.device = get_device()
             self.model = AutoModelForQuestionAnswering.from_pretrained(
                 self.model_name_or_path, token=self.token, **self.model_kwargs
-            ).to(self.device)
+            ).to(self.device.to_torch())
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
     def _flatten_documents(
@@ -218,8 +223,8 @@ class ExtractiveReader:
             stride=stride,
         )
 
-        input_ids = encodings_pt.input_ids.to(self.device)
-        attention_mask = encodings_pt.attention_mask.to(self.device)
+        input_ids = encodings_pt.input_ids.to(self.device.to_torch())
+        attention_mask = encodings_pt.attention_mask.to(self.device.to_torch())
 
         query_ids = [query_ids[index] for index in encodings_pt.overflow_to_sample_mapping]
         document_ids = [document_ids[sample_id] for sample_id in encodings_pt.overflow_to_sample_mapping]
@@ -227,7 +232,7 @@ class ExtractiveReader:
         encodings = encodings_pt.encodings
         sequence_ids = torch.tensor(
             [[id_ if id_ is not None else -1 for id_ in encoding.sequence_ids] for encoding in encodings]
-        ).to(self.device)
+        ).to(self.device.to_torch())
 
         return input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids
 
@@ -256,7 +261,7 @@ class ExtractiveReader:
 
         # The mask here onwards is the same for all instances in the batch
         # As such we do away with the batch dimension
-        mask = torch.ones(logits.shape[-2:], dtype=torch.bool, device=self.device)
+        mask = torch.ones(logits.shape[-2:], dtype=torch.bool, device=self.device.to_torch())
         mask = torch.triu(mask)  # End shouldn't be before start
         masked_logits = torch.where(mask, logits, -torch.inf)
         probabilities = torch.sigmoid(masked_logits * self.calibration_factor)

@@ -2,6 +2,7 @@ import pytest
 
 from haystack import ComponentError, DeserializationError
 from haystack.components.extractors import NamedEntityExtractor, NamedEntityExtractorBackend
+from haystack.utils.device import ComponentDevice
 
 
 @pytest.mark.unit
@@ -21,7 +22,9 @@ def test_named_entity_extractor_backend():
 @pytest.mark.unit
 def test_named_entity_extractor_serde():
     extractor = NamedEntityExtractor(
-        backend=NamedEntityExtractorBackend.HUGGING_FACE, model_name_or_path="dslim/bert-base-NER", device_id=-1
+        backend=NamedEntityExtractorBackend.HUGGING_FACE,
+        model_name_or_path="dslim/bert-base-NER",
+        device=ComponentDevice.from_str("cuda:22"),
     )
 
     serde_data = extractor.to_dict()
@@ -29,7 +32,7 @@ def test_named_entity_extractor_serde():
 
     assert type(new_extractor._backend) == type(extractor._backend)
     assert new_extractor._backend.model_name == extractor._backend.model_name
-    assert new_extractor._backend.device_id == extractor._backend.device_id
+    assert new_extractor._backend.device == extractor._backend.device
 
     with pytest.raises(DeserializationError, match=r"Couldn't deserialize"):
         serde_data["init_parameters"].pop("backend")
