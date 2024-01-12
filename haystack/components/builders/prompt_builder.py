@@ -31,8 +31,7 @@ class PromptBuilder:
         self.template = Template(template)
         ast = self.template.environment.parse(template)
         template_variables = meta.find_undeclared_variables(ast)
-        for var in template_variables:
-            component.set_input_type(self, var, Any, "")
+        component.set_input_types(self, **{var: Any for var in template_variables})
 
     def to_dict(self) -> Dict[str, Any]:
         return default_to_dict(self, template=self._template_string)
