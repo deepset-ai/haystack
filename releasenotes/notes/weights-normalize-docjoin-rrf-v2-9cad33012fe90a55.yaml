@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Enables score weighting and normalization for
+    DocumentJoiner node with reciprocal rank fusion.
