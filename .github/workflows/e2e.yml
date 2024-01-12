@@ -5,9 +5,21 @@ on:
   workflow_dispatch: # Activate this workflow manually
   schedule:
     - cron: "0 0 * * *"
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths:
+      - "e2e/**/*.py"
+      - ".github/workflows/e2e.yml"
 
 env:
   PYTHON_VERSION: "3.8"
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+  SERPERDEV_API_KEY: ${{ secrets.SERPERDEV_API_KEY }}
 
 jobs:
   e2e:
@@ -17,15 +29,21 @@ jobs:
       matrix:
         folder:
           - "document_search"
+          - "pipelines"
 
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt install ffmpeg  # for local Whisper tests
 
     - name: Run Elasticsearch
       run: |
@@ -39,23 +57,27 @@ jobs:
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.17.2
 
     - name: Install Haystack
-      run: pip install .[inference,elasticsearch7,faiss,weaviate,opensearch,dev]
+      run: pip install -e .[inference,elasticsearch7,faiss,weaviate,opensearch,dev,pdf] langdetect
 
-    - name: Cache HF models
-      id: cache-hf-models
-      uses: actions/cache@v3
-      with:
-        path: ./e2e
-        key: ${{ runner.os }}-${{ hashFiles('**/models_to_cache.txt') }}
-      env:
-        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 15
-    - name: Download models
-      if: steps.cache-hf-models.outputs.cache-hit != 'true'
-      shell: python
-      run: |
-        from transformers import AutoModel
-        with open("./e2e/models_to_cache.txt") as file:
-          AutoModel.from_pretrained(file.readline().rstrip())
+    # FIXME caching prevents PRs from running the e2e tests properly
+
+    # - name: Cache HF models
+    #   id: cache-hf-models
+    #   uses: actions/cache@v3
+    #   with:
+    #     path: ./e2e
+    #     key: ${{ runner.os }}-${{ hashFiles('**/models_to_cache.txt') }}
+    #   env:
+    #     SEGMENT_DOWNLOAD_TIMEOUT_MINS: 15
+
+    # - name: Download models
+    #   if: steps.cache-hf-models.outputs.cache-hit != 'true'
+    #   shell: python
+    #   run: |
+    #     from transformers import AutoModel
+    #     with open("./e2e/models_to_cache.txt") as file:
+    #       AutoModel.from_pretrained(file.readline().rstrip())
+
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers

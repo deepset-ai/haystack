@@ -79,7 +79,7 @@ def test_webqa_pipeline():
     search_key = os.environ.get("SERPERDEV_API_KEY")
     openai_key = os.environ.get("OPENAI_API_KEY")
     pn = PromptNode(
-        "text-davinci-003",
+        "gpt-3.5-turbo-instruct",
         api_key=openai_key,
         max_length=256,
         default_prompt_template="question-answering-with-document-scores",
@@ -90,4 +90,4 @@ def test_webqa_pipeline():
     assert isinstance(result, dict)
     assert len(result["results"]) == 1
     answer = result["results"][0]
-    assert "Stark" in answer or "NED" in answer
+    assert "stark" in answer.lower() or "ned" in answer.lower()

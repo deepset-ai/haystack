@@ -258,7 +258,7 @@ def client(tmp_path):
 
 def test_get_all_documents(client):
     response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
-    assert 200 == response.status_code
+    assert response.status_code == 200
     # Ensure `get_all_documents` was called with the expected `filters` param
     MockDocumentStore.mocker.get_all_documents.assert_called_with(filters={}, index=None)
     # Ensure results are part of the response body
@@ -268,21 +268,21 @@ def test_get_all_documents(client):
 
 def test_get_documents_with_filters(client):
     response = client.post(url="/documents/get_by_filters", data='{"filters": {"test_index": ["2"]}}')
-    assert 200 == response.status_code
+    assert response.status_code == 200
     # Ensure `get_all_documents` was called with the expected `filters` param
     MockDocumentStore.mocker.get_all_documents.assert_called_with(filters={"test_index": ["2"]}, index=None)
 
 
 def test_delete_all_documents(client):
     response = client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
-    assert 200 == response.status_code
+    assert response.status_code == 200
     # Ensure `delete_documents` was called on the Document Store instance
     MockDocumentStore.mocker.delete_documents.assert_called_with(filters={}, index=None)
 
 
 def test_delete_documents_with_filters(client):
     response = client.post(url="/documents/delete_by_filters", data='{"filters": {"test_index": ["1"]}}')
-    assert 200 == response.status_code
+    assert response.status_code == 200
     # Ensure `delete_documents` was called on the Document Store instance with the same params
     MockDocumentStore.mocker.delete_documents.assert_called_with(filters={"test_index": ["1"]}, index=None)
 
@@ -290,7 +290,7 @@ def test_delete_documents_with_filters(client):
 def test_file_upload(client):
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"test_key": "test_value"}'})
-    assert 200 == response.status_code
+    assert response.status_code == 200
     # Ensure the `convert` method was called with the right keyword params
     _, kwargs = MockPDFToTextConverter.mocker.convert.call_args
     # Files are renamed with random prefix like 83f4c1f5b2bd43f2af35923b9408076b_sample_pdf_1.pdf
@@ -302,7 +302,7 @@ def test_file_upload(client):
 def test_file_upload_with_no_meta(client):
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(url="/file-upload", files=file_to_upload, data={})
-    assert 200 == response.status_code
+    assert response.status_code == 200
     # Ensure the `convert` method was called with the right keyword params
     _, kwargs = MockPDFToTextConverter.mocker.convert.call_args
     assert kwargs["meta"] == {"name": "sample_pdf_1.pdf"}
@@ -311,7 +311,7 @@ def test_file_upload_with_no_meta(client):
 def test_file_upload_with_empty_meta(client):
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": ""})
-    assert 200 == response.status_code
+    assert response.status_code == 200
     # Ensure the `convert` method was called with the right keyword params
     _, kwargs = MockPDFToTextConverter.mocker.convert.call_args
     assert kwargs["meta"] == {"name": "sample_pdf_1.pdf"}
@@ -320,7 +320,7 @@ def test_file_upload_with_empty_meta(client):
 def test_file_upload_with_wrong_meta(client):
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": "1"})
-    assert 500 == response.status_code
+    assert response.status_code == 500
     # Ensure the `convert` method was never called
     MockPDFToTextConverter.mocker.convert.assert_not_called()
 
@@ -330,7 +330,7 @@ def test_file_upload_cleanup_after_indexing(client):
     with mock.patch("rest_api.controller.file_upload.FILE_UPLOAD_PATH", os.environ.get("FILE_UPLOAD_PATH")):
         file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
         response = client.post(url="/file-upload", files=file_to_upload, data={})
-        assert 200 == response.status_code
+        assert response.status_code == 200
         # ensure upload folder is empty
         uploaded_files = os.listdir(os.environ.get("FILE_UPLOAD_PATH"))
         assert len(uploaded_files) == 0
@@ -341,7 +341,7 @@ def test_file_upload_keep_files_after_indexing(client):
     with mock.patch("rest_api.controller.file_upload.FILE_UPLOAD_PATH", os.environ.get("FILE_UPLOAD_PATH")):
         file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
         response = client.post(url="/file-upload", files=file_to_upload, params={"keep_files": "true"})
-        assert 200 == response.status_code
+        assert response.status_code == 200
         # ensure original file was kept
         uploaded_files = os.listdir(os.environ.get("FILE_UPLOAD_PATH"))
         assert len(uploaded_files) == 1
@@ -352,7 +352,7 @@ def test_query_with_no_filter(client):
         # `run` must return a dictionary containing a `query` key
         mocked_pipeline.run.return_value = {"query": TEST_QUERY}
         response = client.post(url="/query", json={"query": TEST_QUERY})
-        assert 200 == response.status_code
+        assert response.status_code == 200
         # Ensure `run` was called with the expected parameters
         mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params={}, debug=False)
 
@@ -363,7 +363,7 @@ def test_query_with_one_filter(client):
         # `run` must return a dictionary containing a `query` key
         mocked_pipeline.run.return_value = {"query": TEST_QUERY}
         response = client.post(url="/query", json={"query": TEST_QUERY, "params": params})
-        assert 200 == response.status_code
+        assert response.status_code == 200
         # Ensure `run` was called with the expected parameters
         mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=params, debug=False)
 
@@ -374,7 +374,7 @@ def test_query_with_one_global_filter(client):
         # `run` must return a dictionary containing a `query` key
         mocked_pipeline.run.return_value = {"query": TEST_QUERY}
         response = client.post(url="/query", json={"query": TEST_QUERY, "params": params})
-        assert 200 == response.status_code
+        assert response.status_code == 200
         # Ensure `run` was called with the expected parameters
         mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=params, debug=False)
 
@@ -385,7 +385,7 @@ def test_query_with_filter_list(client):
         # `run` must return a dictionary containing a `query` key
         mocked_pipeline.run.return_value = {"query": TEST_QUERY}
         response = client.post(url="/query", json={"query": TEST_QUERY, "params": params})
-        assert 200 == response.status_code
+        assert response.status_code == 200
         # Ensure `run` was called with the expected parameters
         mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=params, debug=False)
 
@@ -395,7 +395,7 @@ def test_query_with_no_documents_and_no_answers(client):
         # `run` must return a dictionary containing a `query` key
         mocked_pipeline.run.return_value = {"query": TEST_QUERY}
         response = client.post(url="/query", json={"query": TEST_QUERY})
-        assert 200 == response.status_code
+        assert response.status_code == 200
         response_json = response.json()
         assert response_json["documents"] == []
         assert response_json["answers"] == []
@@ -414,7 +414,7 @@ def test_query_with_bool_in_params(client):
             "params": {"debug": True, "Retriever": {"top_k": 5}, "Reader": {"top_k": 3}},
         }
         response = client.post(url="/query", json=request_body)
-        assert 200 == response.status_code
+        assert response.status_code == 200
         response_json = response.json()
         assert response_json["documents"] == []
         assert response_json["answers"] == []
@@ -436,7 +436,7 @@ def test_query_with_embeddings(client):
             ],
         }
         response = client.post(url="/query", json={"query": TEST_QUERY})
-        assert 200 == response.status_code
+        assert response.status_code == 200
         assert len(response.json()["documents"]) == 1
         assert response.json()["documents"][0]["content"] == "test"
         assert response.json()["documents"][0]["content_type"] == "text"
@@ -471,7 +471,7 @@ def test_query_with_dataframe(client):
             ],
         }
         response = client.post(url="/query", json={"query": TEST_QUERY})
-        assert 200 == response.status_code
+        assert response.status_code == 200
         assert len(response.json()["documents"]) == 1
         assert response.json()["documents"][0]["content"] == [["col1", "col2"], ["text_1", 1], ["text_2", 2]]
         assert response.json()["documents"][0]["content_type"] == "table"
@@ -500,7 +500,7 @@ def test_query_with_prompt_node(client):
             "results": ["test"],
         }
         response = client.post(url="/query", json={"query": TEST_QUERY})
-        assert 200 == response.status_code
+        assert response.status_code == 200
         assert len(response.json()["documents"]) == 1
         assert response.json()["documents"][0]["content"] == "test"
         assert response.json()["documents"][0]["content_type"] == "text"
@@ -513,7 +513,7 @@ def test_query_with_prompt_node(client):
 
 def test_write_feedback(client, feedback):
     response = client.post(url="/feedback", json=feedback)
-    assert 200 == response.status_code
+    assert response.status_code == 200
     # Ensure `write_labels` was called on the Document Store instance passing a list
     # containing only one label
     args, _ = MockDocumentStore.mocker.write_labels.call_args
@@ -528,7 +528,7 @@ def test_write_feedback(client, feedback):
 def test_write_feedback_without_id(client, feedback):
     del feedback["id"]
     response = client.post(url="/feedback", json=feedback)
-    assert 200 == response.status_code
+    assert response.status_code == 200
     # Ensure `write_labels` was called on the Document Store instance passing a list
     # containing only one label
     args, _ = MockDocumentStore.mocker.write_labels.call_args
@@ -563,7 +563,7 @@ def test_delete_feedback(client, monkeypatch, feedback):
 
     # Call the API and ensure `delete_labels` was called only on the label with id=123
     response = client.delete(url="/feedback")
-    assert 200 == response.status_code
+    assert response.status_code == 200
     MockDocumentStore.mocker.delete_labels.assert_called_with(ids=["123"], index=None)
 
 

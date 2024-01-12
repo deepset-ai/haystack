@@ -15,5 +15,5 @@ def test_invocation_layer_order():
     assert HFInferenceEndpointInvocationLayer in invocation_layers
     index_hf = invocation_layers.index(HFLocalInvocationLayer) + 1
     index_hf_inference = invocation_layers.index(HFInferenceEndpointInvocationLayer) + 1
-    assert index_hf > len(invocation_layers) / 2
-    assert index_hf_inference > len(invocation_layers) / 2
+    assert index_hf >= 7
+    assert index_hf_inference >= 7

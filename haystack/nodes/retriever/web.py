@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from multiprocessing import cpu_count
-from typing import Dict, Iterator, List, Optional, Literal, Union, Tuple
+from typing import Dict, Iterator, List, Optional, Literal, Union, Tuple, Any
 
 from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore
@@ -50,6 +50,7 @@ class WebRetriever(BaseRetriever):
         self,
         api_key: str,
         search_engine_provider: Union[str, SearchEngine] = "SerperDev",
+        search_engine_kwargs: Optional[Dict[str, Any]] = None,
         top_search_results: Optional[int] = 10,
         top_k: Optional[int] = 5,
         mode: Literal["snippets", "raw_documents", "preprocessed_documents"] = "snippets",
@@ -58,10 +59,13 @@ class WebRetriever(BaseRetriever):
         cache_index: Optional[str] = None,
         cache_headers: Optional[Dict[str, str]] = None,
         cache_time: int = 1 * 24 * 60 * 60,
+        allowed_domains: Optional[List[str]] = None,
+        link_content_fetcher: Optional[LinkContentFetcher] = None,
     ):
         """
         :param api_key: API key for the search engine provider.
-        :param search_engine_provider: Name of the search engine provider class, see `providers.py` for a list of supported providers.
+        :param search_engine_provider: Name of the search engine provider class. The options are "SerperDev" (default), "SearchApi", "SerpAPI", "BingAPI" or "GoogleAPI"
+        :param search_engine_kwargs: Additional parameters to pass to the search engine provider.
         :param top_search_results: Number of top search results to be retrieved.
         :param top_k: Top k documents to be returned by the retriever.
         :param mode: Whether to return snippets, raw documents, or preprocessed documents. Snippets are the default.
@@ -70,11 +74,20 @@ class WebRetriever(BaseRetriever):
         :param cache_index: Index name to be used to cache search results.
         :param cache_headers: Headers to be used to cache search results.
         :param cache_time: Time in seconds to cache search results. Defaults to 24 hours.
+        :param allowed_domains: List of domains to restrict the search to. If not provided, the search is unrestricted.
+        :param link_content_fetcher: LinkContentFetcher to be used to fetch the content from the links. If not provided,
+        the default LinkContentFetcher is used.
+
         """
         super().__init__()
         self.web_search = WebSearch(
-            api_key=api_key, top_k=top_search_results, search_engine_provider=search_engine_provider
+            api_key=api_key,
+            top_k=top_search_results,
+            allowed_domains=allowed_domains,
+            search_engine_provider=search_engine_provider,
+            search_engine_kwargs=search_engine_kwargs,
         )
+        self.link_content_fetcher = link_content_fetcher or LinkContentFetcher()
         self.mode = mode
         self.cache_document_store = cache_document_store
         self.document_store = cache_document_store
@@ -181,15 +194,13 @@ class WebRetriever(BaseRetriever):
         if not links:
             return []
 
-        fetcher = LinkContentFetcher(raise_on_failure=True)
-
         def link_fetch(link: SearchResult) -> List[Document]:
             """
             Encapsulate the link fetching logic in a function to be used in a ThreadPoolExecutor.
             """
             docs: List[Document] = []
             try:
-                docs = fetcher.fetch(
+                docs = self.link_content_fetcher.fetch(
                     url=link.url,
                     doc_kwargs={
                         "id_hash_keys": ["meta.url"],

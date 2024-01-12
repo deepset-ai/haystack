@@ -61,9 +61,11 @@ class Crawler(BaseComponent):
         Init object with basic params for crawling (can be overwritten later).
 
         :param urls: List of http(s) address(es) (can also be supplied later when calling crawl())
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-            0: Only initial list of urls
-            1: Follow links found on the initial URLs (but no further)
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Can be any integer >= 0.
+                                For example:
+                                0: Only initial list of urls.
+                                1: Follow links found on the initial URLs (but no further).
+                                2: Additionally follow links found on the second-level URLs.
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
             All URLs not matching at least one of the regular expressions will be dropped.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
@@ -203,9 +205,11 @@ class Crawler(BaseComponent):
         If no parameters are provided to this method, the instance attributes that were passed during __init__ will be used.
 
         :param urls: List of http addresses or single http address
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-                              0: Only initial list of urls
-                              1: Follow links found on the initial URLs (but no further)
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Can be any integer >= 0.
+                                For example:
+                                0: Only initial list of urls.
+                                1: Follow links found on the initial URLs (but no further).
+                                2: Additionally follow links found on the second-level URLs.
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
                            All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
@@ -425,9 +429,11 @@ class Crawler(BaseComponent):
 
         :param output_dir: Path for the directory to store files
         :param urls: List of http addresses or single http address
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-                              0: Only initial list of urls
-                              1: Follow links found on the initial URLs (but no further)
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Can be any integer >= 0.
+                                For example:
+                                0: Only initial list of urls.
+                                1: Follow links found on the initial URLs (but no further).
+                                2: Additionally follow links found on the second-level URLs.
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
                            All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
@@ -532,14 +538,16 @@ class Crawler(BaseComponent):
                 )
                 continue
 
-            if sub_link and not (already_found_links and sub_link in already_found_links):
-                if self._is_internal_url(base_url=base_url, sub_link=sub_link) and (
-                    not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
-                ):
-                    if filter_pattern is not None:
-                        if filter_pattern.search(sub_link):
-                            sub_links.add(sub_link)
-                    else:
+            if (
+                sub_link
+                and not (already_found_links and sub_link in already_found_links)
+                and self._is_internal_url(base_url=base_url, sub_link=sub_link)
+                and (not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link))
+            ):
+                if filter_pattern is not None:
+                    if filter_pattern.search(sub_link):
                         sub_links.add(sub_link)
+                else:
+                    sub_links.add(sub_link)
 
         return sub_links

@@ -3,6 +3,7 @@ import pytest
 
 from haystack import Document
 from haystack.nodes.other.join_docs import JoinDocuments
+from copy import deepcopy
 
 
 @pytest.mark.unit
@@ -54,3 +55,97 @@ def test_joindocuments_preserves_root_node():
     join_docs = JoinDocuments()
     result, _ = join_docs.run(inputs)
     assert result["root_node"] == "File"
+
+
+@pytest.mark.unit
+def test_joindocuments_concatenate_keep_only_highest_ranking_duplicate():
+    inputs = [
+        {
+            "documents": [
+                Document(content="text document 1", content_type="text", score=0.2),
+                Document(content="text document 2", content_type="text", score=0.3),
+            ]
+        },
+        {"documents": [Document(content="text document 2", content_type="text", score=0.7)]},
+    ]
+    expected_outputs = {
+        "documents": [
+            Document(content="text document 2", content_type="text", score=0.7),
+            Document(content="text document 1", content_type="text", score=0.2),
+        ]
+    }
+
+    join_docs = JoinDocuments(join_mode="concatenate")
+    result, _ = join_docs.run(inputs)
+    assert len(result["documents"]) == 2
+    assert result["documents"] == expected_outputs["documents"]
+
+
+@pytest.mark.unit
+def test_joindocuments_concatenate_duplicate_docs_null_score():
+    """
+    Test that the concatenate method correctly handles duplicate documents,
+    when one has a null score.
+    """
+    inputs = [
+        {
+            "documents": [
+                Document(content="text document 1", content_type="text", score=0.2),
+                Document(content="text document 2", content_type="text", score=0.3),
+                Document(content="text document 3", content_type="text", score=None),
+            ]
+        },
+        {
+            "documents": [
+                Document(content="text document 2", content_type="text", score=0.7),
+                Document(content="text document 1", content_type="text", score=None),
+            ]
+        },
+    ]
+    expected_outputs = {
+        "documents": [
+            Document(content="text document 2", content_type="text", score=0.7),
+            Document(content="text document 1", content_type="text", score=0.2),
+            Document(content="text document 3", content_type="text", score=None),
+        ]
+    }
+
+    join_docs = JoinDocuments(join_mode="concatenate")
+    result, _ = join_docs.run(inputs)
+    assert len(result["documents"]) == 3
+    assert result["documents"] == expected_outputs["documents"]
+
+
+@pytest.mark.unit
+def test_joindocuments_rrf_weights():
+    """
+    Test that the reciprocal rank fusion method correctly handles weights.
+    """
+    inputs_none = [
+        {
+            "documents": [
+                Document(content="text document 1", content_type="text", score=0.2),
+                Document(content="text document 2", content_type="text", score=0.3),
+            ]
+        },
+        {
+            "documents": [
+                Document(content="text document 3", content_type="text", score=0.7),
+                Document(content="text document 4", content_type="text", score=None),
+            ]
+        },
+    ]
+
+    inputs_even = deepcopy(inputs_none)
+    inputs_uneven = deepcopy(inputs_none)
+
+    join_docs_none = JoinDocuments(join_mode="reciprocal_rank_fusion")
+    result_none, _ = join_docs_none.run(inputs_none)
+    join_docs_even = JoinDocuments(join_mode="reciprocal_rank_fusion", weights=[0.5, 0.5])
+    result_even, _ = join_docs_even.run(inputs_even)
+    join_docs_uneven = JoinDocuments(join_mode="reciprocal_rank_fusion", weights=[0.7, 0.3])
+    result_uneven, _ = join_docs_uneven.run(inputs_uneven)
+
+    assert result_none["documents"] == result_even["documents"]
+    assert result_uneven["documents"] != result_none["documents"]
+    assert result_uneven["documents"][0].score > result_none["documents"][0].score

@@ -1,12 +1,12 @@
 from haystack.nodes.base import BaseComponent
 
-from haystack.nodes.answer_generator import BaseGenerator, OpenAIAnswerGenerator
 from haystack.nodes.document_classifier import BaseDocumentClassifier, TransformersDocumentClassifier
 from haystack.nodes.extractor import EntityExtractor, simplify_ner_for_qa
 from haystack.nodes.file_classifier import FileTypeClassifier
 from haystack.nodes.file_converter import (
     BaseConverter,
     DocxToTextConverter,
+    PptxConverter,
     ImageToTextConverter,
     MarkdownConverter,
     PDFToTextConverter,
@@ -24,9 +24,16 @@ from haystack.nodes.other import Docs2Answers, JoinDocuments, RouteDocuments, Jo
 from haystack.nodes.preprocessor import BasePreProcessor, PreProcessor
 from haystack.nodes.prompt import PromptNode, PromptTemplate, PromptModel, BaseOutputParser, AnswerParser
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
-from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
+from haystack.nodes.query_classifier import TransformersQueryClassifier
 from haystack.nodes.question_generator import QuestionGenerator
-from haystack.nodes.ranker import BaseRanker, SentenceTransformersRanker, CohereRanker
+from haystack.nodes.ranker import (
+    BaseRanker,
+    SentenceTransformersRanker,
+    CohereRanker,
+    LostInTheMiddleRanker,
+    DiversityRanker,
+    RecentnessRanker,
+)
 from haystack.nodes.reader import BaseReader, FARMReader, TransformersReader, TableReader, RCIReader
 from haystack.nodes.retriever import (
     BaseRetriever,

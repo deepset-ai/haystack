@@ -16,6 +16,7 @@ from haystack.nodes import (
     AzureConverter,
     CsvTextConverter,
     DocxToTextConverter,
+    PptxConverter,
     JsonConverter,
     MarkdownConverter,
     ParsrConverter,
@@ -24,8 +25,6 @@ from haystack.nodes import (
     TextConverter,
     TikaConverter,
 )
-
-from ..conftest import fail_at_version
 
 
 @pytest.mark.tika
@@ -179,32 +178,6 @@ def test_pdf_parallel_ocr(Converter, samples_path):
     assert pages[-1] == "This is the page 50 of the document."
 
 
-@fail_at_version(1, 18)
-def test_deprecated_encoding():
-    with pytest.warns(DeprecationWarning):
-        converter = PDFToTextConverter(encoding="utf-8")
-
-
-@fail_at_version(1, 18)
-def test_deprecated_encoding_in_convert_method(samples_path):
-    converter = PDFToTextConverter()
-    with pytest.warns(DeprecationWarning):
-        converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf", encoding="utf-8")
-
-
-@fail_at_version(1, 18)
-def test_deprecated_keep_physical_layout():
-    with pytest.warns(DeprecationWarning):
-        converter = PDFToTextConverter(keep_physical_layout=True)
-
-
-@fail_at_version(1, 18)
-def test_deprecated_keep_physical_layout_in_convert_method(samples_path):
-    converter = PDFToTextConverter()
-    with pytest.warns(DeprecationWarning):
-        converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf", keep_physical_layout=True)
-
-
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter, samples_path):
@@ -233,6 +206,13 @@ def test_docx_converter(samples_path):
     converter = DocxToTextConverter()
     document = converter.convert(file_path=samples_path / "docx" / "sample_docx.docx")[0]
     assert document.content.startswith("Sample Docx File")
+
+
+@pytest.mark.unit
+def test_pptx_converter(samples_path):
+    converter = PptxConverter()
+    document = converter.convert(file_path=samples_path / "pptx" / "sample_pptx.pptx")[0]
+    assert document.content.startswith("Sample Pptx File")
 
 
 @pytest.mark.unit
@@ -394,7 +374,7 @@ def test_id_hash_keys_from_pipeline_params(samples_path):
     converter = TextConverter()
     output, _ = converter.run(file_paths=[doc_path, doc_path], meta=meta, id_hash_keys=["content", "meta"])
     documents = output["documents"]
-    unique_ids = set(d.id for d in documents)
+    unique_ids = {d.id for d in documents}
 
     assert len(documents) == 2
     assert len(unique_ids) == 2

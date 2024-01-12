@@ -38,6 +38,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     from haystack.modeling.training import Trainer, DistillationTrainer, TinyBERTDistillationTrainer
     from haystack.modeling.evaluation import Evaluator
     from haystack.modeling.utils import set_all_seeds, initialize_device_settings
+    from haystack.utils.torch_utils import resolve_torch_dtype
 
 
 class FARMReader(BaseReader):
@@ -77,6 +78,7 @@ class FARMReader(BaseReader):
         use_auth_token: Optional[Union[str, bool]] = None,
         max_query_length: int = 64,
         preprocessing_batch_size: Optional[int] = None,
+        model_kwargs: Optional[dict] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
@@ -130,7 +132,7 @@ class FARMReader(BaseReader):
         :param confidence_threshold: Filters out predictions below confidence_threshold. Value should be between 0 and 1. Disabled by default.
         :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
         :param local_files_only: Whether to force checking for local files only (and forbid downloads)
-        :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
+        :param force_download: Whether to force a (re-)download even if the model exists locally in the cache.
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
@@ -149,6 +151,10 @@ class FARMReader(BaseReader):
         self.return_no_answers = return_no_answer
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
+        kwargs = model_kwargs if model_kwargs else {}
+        torch_dtype = resolve_torch_dtype(kwargs.get("torch_dtype"))
+        if torch_dtype:
+            kwargs["torch_dtype"] = torch_dtype
         self.inferencer = QAInferencer.load(
             model_name_or_path,
             batch_size=batch_size,
@@ -166,6 +172,7 @@ class FARMReader(BaseReader):
             devices=self.devices,  # type: ignore [arg-type]
             use_auth_token=use_auth_token,
             max_query_length=max_query_length,
+            **kwargs,
         )
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
@@ -936,10 +943,32 @@ class FARMReader(BaseReader):
         predictions = self._deduplicate_predictions(predictions, documents)
         # assemble answers from all the different documents & format them.
         answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, top_k)
+        answers = [self._add_answer_page_number(documents=documents, answer=answer) for answer in answers]
         # TODO: potentially simplify return here to List[Answer] and handle no_ans_gap differently
         result = {"query": query, "no_ans_gap": max_no_ans_gap, "answers": answers}
 
         return result
+
+    def _add_answer_page_number(self, documents: List[Document], answer: Answer) -> Answer:
+        # Following the implementation of BaseReader.add_doc_meta_data_to_answer
+        if answer.meta is None:
+            answer.meta = {}
+
+        if answer.offsets_in_document is None:
+            return answer
+
+        # Calculate the answer page number
+        meta_to_add = {}
+        if answer.document_ids:
+            for doc in documents:
+                if doc.id in answer.document_ids and ("page_number" in doc.meta):
+                    ans_start = answer.offsets_in_document[0].start  # type: ignore
+                    answer_page_number = doc.meta["page_number"] + doc.content[:ans_start].count("\f")
+                    meta_to_add = {"answer_page_number": answer_page_number}
+                    break
+
+        answer.meta.update(meta_to_add)
+        return answer
 
     def eval_on_file(
         self,
@@ -1153,10 +1182,10 @@ class FARMReader(BaseReader):
                             }
 
             # Get rid of the question key again (after we aggregated we don't need it anymore)
-            d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
+            d[str(doc_id)]["qas"] = list(aggregated_per_question.values())
 
         # Convert input format for FARM
-        farm_input = [v for v in d.values()]
+        farm_input = list(d.values())
         n_queries = len([y for x in farm_input for y in x["qas"]])
 
         # Create DataLoader that can be passed to the Evaluator
@@ -1398,11 +1427,8 @@ class FARMReader(BaseReader):
     @staticmethod
     def _check_no_answer(c: "QACandidate"):
         # check for correct value in "answer"
-        if c.offset_answer_start == 0 and c.offset_answer_end == 0:
-            if c.answer != "no_answer":
-                logger.error(
-                    "Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'"
-                )
+        if c.offset_answer_start == 0 and c.offset_answer_end == 0 and c.answer != "no_answer":
+            logger.error("Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'")
         return c.answer == "no_answer"
 
     def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):

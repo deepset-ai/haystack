@@ -40,9 +40,8 @@ def eval_data_from_json(
             logger.warning("No title information found for documents in QA file: %s", filename)
 
         for squad_document in data["data"]:
-            if max_docs:
-                if len(docs) > max_docs:
-                    break
+            if max_docs and len(docs) > max_docs:
+                break
             # Extracting paragraphs and their labels from a SQuAD document dict
             cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
                 squad_document, preprocessor, open_domain
@@ -84,9 +83,8 @@ def eval_data_from_jsonl(
 
     with open(filename, "r", encoding="utf-8") as file:
         for document in file:
-            if max_docs:
-                if len(docs) > max_docs:
-                    break
+            if max_docs and len(docs) > max_docs:
+                break
             # Extracting paragraphs and their labels from a SQuAD document dict
             squad_document = json.loads(document)
             cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
@@ -96,19 +94,18 @@ def eval_data_from_jsonl(
             labels.extend(cur_labels)
             problematic_ids.extend(cur_problematic_ids)
 
-            if batch_size is not None:
-                if len(docs) >= batch_size:
-                    if len(problematic_ids) > 0:
-                        logger.warning(
-                            "Could not convert an answer for %s questions.\n"
-                            "There were conversion errors for question ids: %s",
-                            len(problematic_ids),
-                            problematic_ids,
-                        )
-                    yield docs, labels
-                    docs = []
-                    labels = []
-                    problematic_ids = []
+            if batch_size is not None and len(docs) >= batch_size:
+                if len(problematic_ids) > 0:
+                    logger.warning(
+                        "Could not convert an answer for %s questions.\n"
+                        "There were conversion errors for question ids: %s",
+                        len(problematic_ids),
+                        problematic_ids,
+                    )
+                yield docs, labels
+                docs = []
+                labels = []
+                problematic_ids = []
 
     yield docs, labels
 
@@ -175,6 +172,9 @@ def _extract_docs_and_labels_from_dict(
 
         ## Assign Labels to corresponding documents
         for qa in paragraph["qas"]:
+            meta_qa = {
+                k: v for k, v in qa.items() if k not in ("is_impossible", "answers", "question", "id", "missing")
+            }
             if not qa.get("is_impossible", False):
                 for answer in qa["answers"]:
                     ans = answer["text"]
@@ -194,6 +194,7 @@ def _extract_docs_and_labels_from_dict(
                             is_correct_answer=True,
                             is_correct_document=True,
                             origin="gold-label",
+                            meta=meta_qa,
                         )
                         labels.append(label)
                     else:
@@ -237,6 +238,7 @@ def _extract_docs_and_labels_from_dict(
                             is_correct_answer=True,
                             is_correct_document=True,
                             origin="gold-label",
+                            meta=meta_qa,
                         )
                         labels.append(label)
             else:
@@ -255,6 +257,7 @@ def _extract_docs_and_labels_from_dict(
                         is_correct_answer=True,
                         is_correct_document=True,
                         origin="gold-label",
+                        meta=meta_qa,
                     )
 
                     labels.append(label)

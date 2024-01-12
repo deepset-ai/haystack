@@ -1,0 +1,3 @@
+---
+preview:
+  - Remove `BaseTestComponent` class used to test `Component`s

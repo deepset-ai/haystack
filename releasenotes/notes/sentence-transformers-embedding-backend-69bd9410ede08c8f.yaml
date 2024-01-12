@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Add Sentence Transformers Embedding Backend.
+    It will be used by Embedder components and is responsible for computing embeddings.

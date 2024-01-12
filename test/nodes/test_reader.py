@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+import torch
 from huggingface_hub import snapshot_download
 from haystack.modeling.data_handler.inputs import QAInput, Question
 
@@ -45,6 +46,71 @@ def test_reader_basic(reader):
     assert isinstance(reader, BaseReader)
 
 
+@patch("haystack.nodes.reader.farm.QAInferencer")
+def test_add_answer_page_number(mocked_qa_inferencer) -> None:
+    documents = [
+        Document(content="This is a test.\fSentence on second page about nothing.", meta={"page_number": 1}),
+        Document(content="Second sentence on the second page.", meta={"page_number": 2}),
+    ]
+    reader = FARMReader(model_name_or_path="fake_model", use_gpu=False)
+    answer_with_meta = reader._add_answer_page_number(
+        documents=documents,
+        answer=Answer(
+            answer="nothing",
+            type="extractive",
+            score=0.2,
+            context=documents[0].content,
+            document_ids=[documents[0].id],
+            offsets_in_document=[Span(start=46, end=46 + len("nothing"))],
+        ),
+    )
+    assert answer_with_meta.meta is not None
+    assert answer_with_meta.meta["answer_page_number"] == 2
+
+
+@patch("haystack.nodes.reader.farm.QAInferencer")
+def test_add_answer_page_number_no_doc_page(mocked_qa_inferencer) -> None:
+    documents = [
+        Document(content="This is a test.\fSentence on second page about nothing."),
+        Document(content="Second sentence on the second page."),
+    ]
+    reader = FARMReader(model_name_or_path="fake_model", use_gpu=False)
+    answer_with_meta = reader._add_answer_page_number(
+        documents=documents,
+        answer=Answer(
+            answer="nothing",
+            type="extractive",
+            score=0.2,
+            context=documents[0].content,
+            document_ids=[documents[0].id],
+            offsets_in_document=[Span(start=46, end=46 + len("nothing"))],
+        ),
+    )
+    assert answer_with_meta.meta == {}
+
+
+@patch("haystack.nodes.reader.farm.QAInferencer")
+def test_add_answer_page_number_with_meta(mocked_qa_inferencer) -> None:
+    documents = [
+        Document(content="This is a test.\fSentence on second page about nothing.", meta={"page_number": 1}),
+        Document(content="Second sentence on the second page."),
+    ]
+    reader = FARMReader(model_name_or_path="fake_model", use_gpu=False)
+    answer_with_meta = reader._add_answer_page_number(
+        documents=documents,
+        answer=Answer(
+            answer="nothing",
+            type="extractive",
+            score=0.2,
+            context=documents[0].content,
+            document_ids=[documents[0].id],
+            offsets_in_document=[Span(start=46, end=46 + len("nothing"))],
+            meta={"test": 1},
+        ),
+    )
+    assert answer_with_meta.meta == {"test": 1, "answer_page_number": 2}
+
+
 def test_output(reader, docs):
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
     assert prediction is not None
@@ -58,6 +124,8 @@ def test_output(reader, docs):
     assert 0 <= prediction["answers"][0].score <= 1
     assert prediction["answers"][0].context == "My name is Carla and I live in Berlin"
     assert len(prediction["answers"]) == 5
+    if isinstance(reader, FARMReader):
+        assert prediction["answers"][0].meta["answer_page_number"] == 2
 
 
 def test_output_batch_single_query_single_doc_list(reader, docs):
@@ -160,14 +228,14 @@ def test_deduplication_for_overlapping_documents(reader):
     prediction = reader.predict(query="Where does Carla live?", documents=docs, top_k=5)
 
     # Check that there are no duplicate answers
-    assert len(set(ans.answer for ans in prediction["answers"])) == len(prediction["answers"])
+    assert len({ans.answer for ans in prediction["answers"]}) == len(prediction["answers"])
 
 
 @pytest.mark.integration
 def test_model_download_options():
     # download disabled and model is not cached locally
     with pytest.raises(OSError):
-        impossible_reader = FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True, num_processes=0)
+        FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True, num_processes=0)
 
 
 @pytest.mark.integration
@@ -226,17 +294,15 @@ def test_top_k(reader, docs, top_k):
 def test_farm_reader_invalid_params():
     # invalid max_seq_len (greater than model maximum seq length)
     with pytest.raises(Exception):
-        reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=513)
+        FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=513)
 
     # invalid max_seq_len (max_seq_len >= doc_stride)
     with pytest.raises(Exception):
-        reader = FARMReader(
-            model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=129, doc_stride=128
-        )
+        FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=129, doc_stride=128)
 
     # invalid doc_stride (doc_stride >= (max_seq_len - max_query_length))
     with pytest.raises(Exception):
-        reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, doc_stride=999)
+        FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, doc_stride=999)
 
 
 def test_farm_reader_update_params(docs):
@@ -516,3 +582,13 @@ def test_farmreader_predict_batch_preprocessor_batching(mocked_qa_inferencer, do
 
     # We expect 5 calls to the QAInferencer (2 queries * 5 docs / 2 batch_size)
     assert reader.inferencer.inference_from_objects.call_count == 5
+
+
+@pytest.mark.unit
+def test_farmreader_init_called_with() -> None:
+    with patch("haystack.nodes.FARMReader.__init__") as mock_ranker_init:
+        mock_ranker_init.return_value = None
+        _ = FARMReader(model_name_or_path="fake_model", use_gpu=False, model_kwargs={"torch_dtype": torch.float16})
+        mock_ranker_init.assert_called_once_with(
+            model_name_or_path="fake_model", use_gpu=False, model_kwargs={"torch_dtype": torch.float16}
+        )

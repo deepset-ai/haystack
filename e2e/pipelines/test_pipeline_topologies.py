@@ -3,17 +3,10 @@ import pytest
 
 from haystack.pipelines import Pipeline, RootNode
 from haystack.document_stores import InMemoryDocumentStore
-from haystack.nodes import (
-    DensePassageRetriever,
-    BM25Retriever,
-    SklearnQueryClassifier,
-    TransformersQueryClassifier,
-    JoinDocuments,
-    FARMReader,
-)
+from haystack.nodes import DensePassageRetriever, BM25Retriever, TransformersQueryClassifier, JoinDocuments, FARMReader
 
 
-@pytest.mark.parametrize("classifier", [SklearnQueryClassifier(), TransformersQueryClassifier()])
+@pytest.mark.parametrize("classifier", [TransformersQueryClassifier()])
 def test_query_keyword_statement_classifier(classifier):
     class KeywordOutput(RootNode):
         outgoing_edges = 2
@@ -41,7 +34,7 @@ def test_query_keyword_statement_classifier(classifier):
 
 
 def test_join_merge_no_weights(docs):
-    document_store = InMemoryDocumentStore(embedding_dim=768, similarity="dot_product")
+    document_store = InMemoryDocumentStore(embedding_dim=768, similarity="dot_product", use_bm25=True)
     document_store.write_documents(documents=docs)
     bm25 = BM25Retriever(document_store=document_store)
     dpr = DensePassageRetriever(
@@ -64,7 +57,7 @@ def test_join_merge_no_weights(docs):
 
 
 def test_join_merge_with_weights(docs):
-    document_store = InMemoryDocumentStore(embedding_dim=768, similarity="dot_product")
+    document_store = InMemoryDocumentStore(embedding_dim=768, similarity="dot_product", use_bm25=True)
     document_store.write_documents(documents=docs)
     bm25 = BM25Retriever(document_store=document_store)
     dpr = DensePassageRetriever(
@@ -88,7 +81,7 @@ def test_join_merge_with_weights(docs):
 
 
 def test_join_concatenate(docs):
-    document_store = InMemoryDocumentStore(embedding_dim=768, similarity="dot_product")
+    document_store = InMemoryDocumentStore(embedding_dim=768, similarity="dot_product", use_bm25=True)
     document_store.write_documents(documents=docs)
     bm25 = BM25Retriever(document_store=document_store)
     dpr = DensePassageRetriever(
@@ -111,7 +104,7 @@ def test_join_concatenate(docs):
 
 
 def test_join_concatenate_with_topk(docs):
-    document_store = InMemoryDocumentStore(embedding_dim=768, similarity="dot_product")
+    document_store = InMemoryDocumentStore(embedding_dim=768, similarity="dot_product", use_bm25=True)
     document_store.write_documents(documents=docs)
     bm25 = BM25Retriever(document_store=document_store)
     dpr = DensePassageRetriever(
@@ -135,8 +128,8 @@ def test_join_concatenate_with_topk(docs):
     assert len(two_results["documents"]) == 2
 
 
-def test_join_with_reader(docs, reader):
-    document_store = InMemoryDocumentStore(embedding_dim=768, similarity="dot_product")
+def test_join_with_reader(docs):
+    document_store = InMemoryDocumentStore(embedding_dim=768, similarity="dot_product", use_bm25=True)
     document_store.write_documents(documents=docs)
     bm25 = BM25Retriever(document_store=document_store)
     dpr = DensePassageRetriever(
@@ -164,7 +157,7 @@ def test_join_with_reader(docs, reader):
 
 
 def test_join_with_rrf(docs):
-    document_store = InMemoryDocumentStore(embedding_dim=768, similarity="dot_product")
+    document_store = InMemoryDocumentStore(embedding_dim=768, similarity="dot_product", use_bm25=True)
     document_store.write_documents(documents=docs)
     bm25 = BM25Retriever(document_store=document_store)
     dpr = DensePassageRetriever(
@@ -185,13 +178,7 @@ def test_join_with_rrf(docs):
     results = p.run(query=query)
 
     # list of precalculated expected results
-    expected_scores = [
-        0.03278688524590164,
-        0.03200204813108039,
-        0.03200204813108039,
-        0.031009615384615385,
-        0.031009615384615385,
-    ]
+    expected_scores = [1.0, 0.9684979838709676, 0.9684979838709676, 0.9533577533577533, 0.9533577533577533]
     assert all(
         doc.score == pytest.approx(expected_scores[idx], abs=1e-3) for idx, doc in enumerate(results["documents"])
     )

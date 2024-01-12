@@ -43,5 +43,5 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN python3 -c "from haystack.utils.docker import cache_schema; cache_schema()"
 
 # Haystack Preprocessor uses NLTK punkt model to divide text into a list of sentences.
-# We cache these models for seemless user experience.
+# We cache these models for seamless user experience.
 RUN python3 -c "from haystack.utils.docker import cache_nltk_model; cache_nltk_model()"

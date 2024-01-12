@@ -59,8 +59,11 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
     assert kwargs["task"] == "text2text-generation"
     assert kwargs["model"] == "google/flan-t5-base"
 
-    # no matter what kwargs we pass or don't pass, there are always 13 predefined kwargs passed to the pipeline
-    assert len(kwargs) == 13
+    # use_auth_token is no longer used in HuggingFace pipelines and should never be passed
+    assert "use_auth_token" not in kwargs
+
+    # no matter what kwargs we pass or don't pass, there are always 14 predefined kwargs passed to the pipeline
+    assert len(kwargs) == 14
 
     # and these kwargs are passed to the pipeline
     assert list(kwargs.keys()) == [
@@ -74,8 +77,9 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
         "torch_dtype",
         "model_kwargs",
         "pipeline_class",
+        "use_fast",
         "revision",
-        "use_auth_token",
+        "token",
         "trust_remote_code",
     ]
 
@@ -248,8 +252,8 @@ def test_constructor_with_invalid_kwargs(mock_pipeline, mock_get_task):
     # invalid kwargs are ignored and not passed to the pipeline
     assert "some_invalid_kwarg" not in kwargs
 
-    # still our 13 kwargs passed to the pipeline
-    assert len(kwargs) == 13
+    # still our 14 kwargs passed to the pipeline
+    assert len(kwargs) == 14
 
 
 @pytest.mark.unit
@@ -287,8 +291,8 @@ def test_constructor_with_various_kwargs(mock_pipeline, mock_get_task):
     assert kwargs["device_map"] and kwargs["device_map"] == "auto"
     assert kwargs["revision"] == "1.1"
 
-    # still on 13 kwargs passed to the pipeline
-    assert len(kwargs) == 13
+    # still on 14 kwargs passed to the pipeline
+    assert len(kwargs) == 14
 
 
 @pytest.mark.integration
@@ -623,7 +627,7 @@ def test_tokenizer_loading_unsupported_model(mock_tokenizer, mock_config, mock_p
     mock_config.return_value = Mock(tokenizer_class=None)
 
     with caplog.at_level(logging.WARNING):
-        invocation_layer = HFLocalInvocationLayer("unsupported_model", trust_remote_code=True)
+        HFLocalInvocationLayer("unsupported_model", trust_remote_code=True)
         assert (
             "The transformers library doesn't know which tokenizer class should be "
             "loaded for the model unsupported_model. Therefore, the tokenizer will be loaded in Haystack's "
@@ -647,7 +651,7 @@ def test_tokenizer_loading_unsupported_model_with_initialized_model(
     model.config = Mock(tokenizer_class=None, _name_or_path="unsupported_model")
 
     with caplog.at_level(logging.WARNING):
-        invocation_layer = HFLocalInvocationLayer(model_name_or_path="unsupported", model=model, trust_remote_code=True)
+        HFLocalInvocationLayer(model_name_or_path="unsupported", model=model, trust_remote_code=True)
         assert (
             "The transformers library doesn't know which tokenizer class should be "
             "loaded for the model unsupported_model. Therefore, the tokenizer will be loaded in Haystack's "
@@ -670,7 +674,7 @@ def test_tokenizer_loading_unsupported_model_with_tokenizer_class_in_config(
     mock_config.return_value = Mock(tokenizer_class="Some-Supported-Tokenizer")
 
     with caplog.at_level(logging.WARNING):
-        invocation_layer = HFLocalInvocationLayer(model_name_or_path="unsupported_model", trust_remote_code=True)
+        HFLocalInvocationLayer(model_name_or_path="unsupported_model", trust_remote_code=True)
         assert not mock_tokenizer.called
         assert not caplog.text
 

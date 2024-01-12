@@ -15,7 +15,7 @@ from haystack.schema import Document
 logger = logging.getLogger(__name__)
 
 with LazyImport(
-    message="Run 'pip install farm-haystack[file-conversion]' or 'pip install " "azure-ai-formrecognizer>=3.2.0b2'"
+    message="Run 'pip install farm-haystack[file-conversion]' or 'pip install \"azure-ai-formrecognizer>=3.2.0b2\"'"
 ) as azure_import:
     from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
     from azure.core.credentials import AzureKeyCredential
@@ -203,7 +203,7 @@ class AzureConverter(BaseConverter):
                 if not isinstance(table.content, pd.DataFrame):
                     raise HaystackError("Document's content field must be of type 'pd.DataFrame'.")
                 for _, row in table.content.iterrows():
-                    for _, cell in row.items():
+                    for cell in row.values():
                         file_text += f" {cell}"
             if not self.validate_language(file_text, valid_languages):
                 logger.warning(

@@ -66,7 +66,7 @@ PROMPTHUB_CACHE_PATH = os.environ.get(
 #
 # After some discussion we deemed the change to be too breaking for existing
 # use cases and which steps would have been necessary to migrate to the
-# new API in case someone was using an harcoded template we decided to
+# new API in case someone was using an hardcoded template we decided to
 # bring them back.
 #
 # So for the time being this must live here, no new template must be added
@@ -329,7 +329,7 @@ def fetch_from_prompthub(name: str) -> prompthub.Prompt:
     try:
         prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
     except HTTPError as http_error:
-        if http_error.response.status_code != 404:
+        if http_error.response.status_code != 404:  # type: ignore[union-attr]
             raise http_error
         raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
     return prompt_data
@@ -460,7 +460,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 cache_prompt(data)
 
         except HTTPError as http_error:
-            if http_error.response.status_code != 404:
+            if http_error.response.status_code != 404:  # type: ignore[union-attr]
                 raise http_error
             raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
         return data.text

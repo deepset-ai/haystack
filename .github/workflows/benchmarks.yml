@@ -19,12 +19,12 @@ jobs:
     outputs:
       cml_runner_id: ${{ steps.deploy.outputs.cml_runner_id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: iterative/setup-cml@v1
+      - uses: iterative/setup-cml@v2
 
       - name: AWS authentication
-        uses: aws-actions/configure-aws-credentials@5fd3084fc36e372ff1fff382a39b10d03659f355
+        uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
@@ -34,13 +34,15 @@ jobs:
         env:
           repo_token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
         run: |
-          cml runner launch \
-            --single \
-            --cloud aws \
-            --cloud-region ${{ env.AWS_REGION }} \
-            --cloud-type=p3.2xlarge \
-            --cloud-hdd-size=64 \
-            --labels=cml
+          OUTPUT=$(cml runner launch \
+          --cloud aws \
+          --cloud-region ${{ env.AWS_REGION }} \
+          --cloud-type=p3.2xlarge \
+          --cloud-hdd-size=64 \
+          --labels=cml 2>&1 | tee /dev/fd/2)
+          # Extract 'id' from the log and set it as an environment variable
+          ID_VALUE=$(echo "$OUTPUT" | jq -r '.message? | fromjson? | select(.id != null) | .id // empty')
+          echo "cml_runner_id=$ID_VALUE" >> "$GITHUB_OUTPUT"
 
   run-reader-benchmarks:
     needs: deploy-runner
@@ -51,7 +53,7 @@ jobs:
     timeout-minutes: 2880
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Haystack + Datadog requirements
         run: |
@@ -99,7 +101,7 @@ jobs:
     timeout-minutes: 2880
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Haystack + Datadog requirements
         run: |
@@ -148,7 +150,7 @@ jobs:
     timeout-minutes: 2880
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Haystack + Datadog requirements
         run: |
@@ -197,7 +199,7 @@ jobs:
     timeout-minutes: 2880
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Haystack + Datadog requirements
         run: |
@@ -226,3 +228,24 @@ jobs:
         with:
           name: benchmark-results-opensearch
           path: test/benchmarks/out/
+
+  terminate-runner:
+    if: always()
+    needs:
+      - deploy-runner
+      - run-opensearch-benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: AWS authentication
+        uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
+
+      - name: Terminate EC2 instance
+        env:
+          CML_RUNNER_ID: ${{needs.deploy-runner.outputs.cml_runner_id}}
+        run: |
+          # Get the instance ID using its Name tag and terminate the instance
+          INSTANCE_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${{ env.CML_RUNNER_ID }}" --query "Reservations[*].Instances[*].[InstanceId]" --output text)
+          aws ec2 terminate-instances --instance-ids "$INSTANCE_ID"

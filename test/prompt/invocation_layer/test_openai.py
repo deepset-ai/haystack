@@ -53,7 +53,7 @@ def test_openai_token_limit_warning(mock_openai_tokenizer, caplog):
 @pytest.mark.parametrize(
     "model_name,max_tokens_limit",
     [
-        ("text-davinci-003", 4097),
+        ("gpt-3.5-turbo-instruct", 4096),
         ("gpt-3.5-turbo", 4096),
         ("gpt-3.5-turbo-16k", 16384),
         ("gpt-4-32k", 32768),
@@ -76,7 +76,7 @@ def test_openai_token_limit_warning_not_triggered(caplog, mock_openai_tokenizer,
 @pytest.mark.parametrize(
     "model_name,max_tokens_limit",
     [
-        ("text-davinci-003", 4097),
+        ("gpt-3.5-turbo-instruct", 4096),
         ("gpt-3.5-turbo", 4096),
         ("gpt-3.5-turbo-16k", 16384),
         ("gpt-4-32k", 32768),
@@ -132,6 +132,7 @@ def test_supports(load_openai_tokenizer):
     assert layer.supports("davinci")
     assert layer.supports("text-ada-001")
     assert layer.supports("text-davinci-002")
+    assert layer.supports("gpt-3.5-turbo-instruct")
 
     # the following model contains "ada" in the name, but it's not from OpenAI
     assert not layer.supports("ybelkada/mpt-7b-bf16-sharded")
