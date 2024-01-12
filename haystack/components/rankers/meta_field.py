@@ -160,7 +160,7 @@ class MetaFieldRanker:
         self._validate_params(weight=weight, top_k=top_k, ranking_mode=ranking_mode, sort_order=sort_order)
 
         docs_with_meta_field = []
-        docs_no_meta_field = []
+        docs_missing_meta_field = []
         unique_meta_values = set()
         for document in documents:
             # Using try except block to handle situation that the meta_value could be None
@@ -169,27 +169,26 @@ class MetaFieldRanker:
                 docs_with_meta_field.append(document)
                 unique_meta_values.add(meta_value)
             except KeyError:
-                docs_no_meta_field.append(document)
+                docs_missing_meta_field.append(document)
 
-        if len(docs_with_meta_field) == 0:
+        if len(docs_missing_meta_field) == len(documents):
             logger.warning(
                 "The parameter <meta_field> is currently set to '%s', but none of the provided Documents have this meta key.\n"
                 "The provided Document IDs are %s.\n"
                 "Set <meta_field> to the name of the field that is present within the provided Documents.\n"
                 % (self.meta_field, ",".join([doc.id for doc in documents]))
             )
-
-        if len(docs_no_meta_field) > 0:
+        elif len(docs_missing_meta_field) > 0:
             logger.warning(
                 "The parameter <meta_field> is currently set to '%s' but the Documents with IDs %s don't have this meta key.\n"
                 "These Documents will be placed at the end of the sorting order.\n"
-                % (self.meta_field, ",".join([doc.id for doc in docs_no_meta_field]))
+                % (self.meta_field, ",".join([doc.id for doc in docs_missing_meta_field]))
             )
 
         reverse = sort_order == "descending"
         sorted_by_meta = sorted(docs_with_meta_field, key=lambda doc: doc.meta[self.meta_field], reverse=reverse)
         # Add the docs missing the meta_field back on the end
-        sorted_by_meta += docs_no_meta_field
+        sorted_by_meta += docs_missing_meta_field
 
         if self.weight > 0:
             sorted_documents = self._merge_scores(documents, sorted_by_meta)
