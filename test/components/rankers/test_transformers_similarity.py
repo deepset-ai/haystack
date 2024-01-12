@@ -17,7 +17,7 @@ class TestSimilarityRanker:
                 "device": "cpu",
                 "top_k": 10,
                 "token": None,
-                "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+                "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
                 "scale_score": True,
@@ -29,7 +29,7 @@ class TestSimilarityRanker:
 
     def test_to_dict_with_custom_init_parameters(self):
         component = TransformersSimilarityRanker(
-            model_name_or_path="my_model",
+            model="my_model",
             device="cuda",
             token="my_token",
             top_k=5,
@@ -43,7 +43,7 @@ class TestSimilarityRanker:
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
                 "device": "cuda",
-                "model_name_or_path": "my_model",
+                "model": "my_model",
                 "token": None,  # we don't serialize valid tokens,
                 "top_k": 5,
                 "meta_fields_to_embed": [],
@@ -71,7 +71,7 @@ class TestSimilarityRanker:
                 "device": "cpu",
                 "top_k": 10,
                 "token": None,
-                "model_name_or_path": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+                "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
                 "scale_score": True,
@@ -91,7 +91,7 @@ class TestSimilarityRanker:
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
                 "device": "cuda",
-                "model_name_or_path": "my_model",
+                "model": "my_model",
                 "token": None,
                 "top_k": 5,
                 "meta_fields_to_embed": [],
@@ -105,7 +105,7 @@ class TestSimilarityRanker:
 
         component = TransformersSimilarityRanker.from_dict(data)
         assert component.device == "cuda"
-        assert component.model_name_or_path == "my_model"
+        assert component.model == "my_model"
         assert component.token is None
         assert component.top_k == 5
         assert component.meta_fields_to_embed == []
@@ -122,9 +122,9 @@ class TestSimilarityRanker:
         mocked_sort.return_value = (None, torch.tensor([0]))
         mocked_sigmoid.return_value = torch.tensor([0])
         embedder = TransformersSimilarityRanker(
-            model_name_or_path="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
+            model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
-        embedder.model = MagicMock()
+        embedder._model = MagicMock()
         embedder.tokenizer = MagicMock()
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
@@ -147,9 +147,9 @@ class TestSimilarityRanker:
     @patch("torch.sort")
     def test_scale_score_false(self, mocked_sort):
         mocked_sort.return_value = (None, torch.tensor([0, 1]))
-        embedder = TransformersSimilarityRanker(model_name_or_path="model", scale_score=False)
-        embedder.model = MagicMock()
-        embedder.model.return_value = SequenceClassifierOutput(
+        embedder = TransformersSimilarityRanker(model="model", scale_score=False)
+        embedder._model = MagicMock()
+        embedder._model.return_value = SequenceClassifierOutput(
             loss=None, logits=torch.FloatTensor([[-10.6859], [-8.9874]]), hidden_states=None, attentions=None
         )
         embedder.tokenizer = MagicMock()
@@ -162,9 +162,9 @@ class TestSimilarityRanker:
     @patch("torch.sort")
     def test_score_threshold(self, mocked_sort):
         mocked_sort.return_value = (None, torch.tensor([0, 1]))
-        embedder = TransformersSimilarityRanker(model_name_or_path="model", scale_score=False, score_threshold=0.1)
-        embedder.model = MagicMock()
-        embedder.model.return_value = SequenceClassifierOutput(
+        embedder = TransformersSimilarityRanker(model="model", scale_score=False, score_threshold=0.1)
+        embedder._model = MagicMock()
+        embedder._model.return_value = SequenceClassifierOutput(
             loss=None, logits=torch.FloatTensor([[0.955], [0.001]]), hidden_states=None, attentions=None
         )
         embedder.tokenizer = MagicMock()
@@ -201,7 +201,7 @@ class TestSimilarityRanker:
         """
         Test if the component ranks documents correctly.
         """
-        ranker = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2")
+        ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
         ranker.warm_up()
         docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
@@ -244,7 +244,7 @@ class TestSimilarityRanker:
         """
         Test if the component ranks documents correctly with a custom top_k.
         """
-        ranker = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
+        ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
         ranker.warm_up()
         docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
@@ -261,7 +261,7 @@ class TestSimilarityRanker:
         """
         Test if the component runs with a single document.
         """
-        ranker = TransformersSimilarityRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", device=None)
+        ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2", device=None)
         ranker.warm_up()
         docs_before = [Document(content="Berlin")]
         output = ranker.run(query="City in Germany", documents=docs_before)

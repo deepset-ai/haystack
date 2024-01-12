@@ -37,7 +37,7 @@ class TransformersSimilarityRanker:
 
     def __init__(
         self,
-        model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         device: Optional[str] = "cpu",
         token: Union[bool, str, None] = None,
         top_k: int = 10,
@@ -51,7 +51,7 @@ class TransformersSimilarityRanker:
         """
         Creates an instance of TransformersSimilarityRanker.
 
-        :param model_name_or_path: The name or path of a pre-trained cross-encoder model
+        :param model: The name or path of a pre-trained cross-encoder model
             from the Hugging Face Hub.
         :param device: The torch device (for example, cuda:0, cpu, mps) to which you want to limit model inference.
         :param token: The API token used to download private models from Hugging Face.
@@ -66,18 +66,18 @@ class TransformersSimilarityRanker:
             `sigmoid(logits * calibration_factor)`. This is only used if `scale_score` is set to True.
         :param score_threshold: If provided only returns documents with a score above this threshold.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForSequenceClassification.from_pretrained`
-            when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
+            when loading the model specified in `model`. For details on what kwargs you can pass,
             see the model's documentation.
         """
         torch_and_transformers_import.check()
 
-        self.model_name_or_path = model_name_or_path
+        self.model = model
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.top_k = top_k
         self.device = device
         self.token = token
-        self.model = None
+        self._model = None
         self.tokenizer = None
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
@@ -94,20 +94,20 @@ class TransformersSimilarityRanker:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": str(self.model_name_or_path)}
+        return {"model": str(self.model)}
 
     def warm_up(self):
         """
         Warm up the model and tokenizer used for scoring the Documents.
         """
-        if self.model is None:
+        if self._model is None:
             if self.device is None:
                 self.device = get_device()
-            self.model = AutoModelForSequenceClassification.from_pretrained(
-                self.model_name_or_path, token=self.token, **self.model_kwargs
+            self._model = AutoModelForSequenceClassification.from_pretrained(
+                self.model, token=self.token, **self.model_kwargs
             ).to(self.device)
-            self.model.eval()
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
+            self._model.eval()
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model, token=self.token)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -116,7 +116,7 @@ class TransformersSimilarityRanker:
         serialization_dict = default_to_dict(
             self,
             device=self.device,
-            model_name_or_path=self.model_name_or_path,
+            model=self.model,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             top_k=self.top_k,
             meta_fields_to_embed=self.meta_fields_to_embed,
@@ -208,7 +208,7 @@ class TransformersSimilarityRanker:
             score_threshold = self.score_threshold
 
         # If a model path is provided but the model isn't loaded
-        if self.model_name_or_path and not self.model:
+        if self.model and not self._model:
             raise ComponentError(
                 f"The component {self.__class__.__name__} wasn't warmed up. Run 'warm_up()' before calling 'run()'."
             )
@@ -227,7 +227,7 @@ class TransformersSimilarityRanker:
             self.device
         )
         with torch.inference_mode():
-            similarity_scores = self.model(**features).logits.squeeze(dim=1)  # type: ignore
+            similarity_scores = self._model(**features).logits.squeeze(dim=1)  # type: ignore
 
         if scale_score:
             similarity_scores = torch.sigmoid(similarity_scores * calibration_factor)
