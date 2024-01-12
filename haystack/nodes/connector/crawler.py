@@ -54,7 +54,7 @@ class Crawler(BaseComponent):
         file_path_meta_field_name: Optional[str] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         webdriver_options: Optional[List[str]] = None,
-        webdriver: Optional[WebDriver] = None,
+        webdriver: Optional["WebDriver"] = None,
     ):
         """
         Init object with basic params for crawling (can be overwritten later).
