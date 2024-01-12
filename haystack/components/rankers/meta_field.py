@@ -10,7 +10,8 @@ logger = logging.getLogger(__name__)
 @component
 class MetaFieldRanker:
     """
-    Ranks Documents based on the value of their specific meta field. The ranking is done in a descending order.
+    Ranks Documents based on the value of their specific meta field.
+    The ranking can be performed in descending order or ascending order.
 
     Usage example:
     ```
@@ -51,7 +52,8 @@ class MetaFieldRanker:
         :param ranking_mode: The mode used to combine the Retriever's and Ranker's scores.
                 Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
                 Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
-        :param sort_order:
+        :param sort_order: Whether to sort the meta field by ascending or descending order.
+                Possible values are `descending` (default) and `ascending`.
         :param infer_type: Whether to try and infer the data type of meta value that is a string. For example, we have
                 the field `"date": "2015-02-01"` we would infer the type of "date" to be a datetime object.
         """
@@ -60,34 +62,42 @@ class MetaFieldRanker:
         self.weight = weight
         self.top_k = top_k
         self.ranking_mode = ranking_mode
+        self.sort_order = sort_order
         self.infer_type = infer_type
-        self._validate_params(weight=weight, top_k=top_k, ranking_mode=ranking_mode)
+        self._validate_params(
+            weight=self.weight, top_k=self.top_k, ranking_mode=self.ranking_mode, sort_order=self.sort_order
+        )
 
     def _validate_params(
-        self, weight: float, top_k: Optional[int], ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"]
+        self,
+        weight: float,
+        top_k: Optional[int],
+        ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"],
+        sort_order: Literal["ascending", "descending"],
     ):
         if top_k is not None and top_k <= 0:
-            raise ValueError(f"top_k must be > 0, but got {top_k}")
+            raise ValueError("top_k must be > 0, but got %s" % top_k)
 
         if weight < 0 or weight > 1:
             raise ValueError(
-                """
-                Parameter <weight> must be in range [0,1] but is currently set to '{}'.\n
-                '0' disables sorting by a meta field, '0.5' assigns equal weight to the previous relevance scores and the meta field, and '1' ranks by the meta field only.\n
-                Change the <weight> parameter to a value in range 0 to 1 when initializing the MetaFieldRanker.
-                """.format(
-                    self.weight
-                )
+                "Parameter <weight> must be in range [0,1] but is currently set to '%s'.\n'0' disables sorting by a "
+                "meta field, '0.5' assigns equal weight to the previous relevance scores and the meta field, and "
+                "'1' ranks by the meta field only.\nChange the <weight> parameter to a value in range 0 to 1 when "
+                "initializing the MetaFieldRanker." % self.weight
             )
 
         if ranking_mode not in ["reciprocal_rank_fusion", "linear_score"]:
             raise ValueError(
-                """
-                The value of parameter <ranking_mode> must be 'reciprocal_rank_fusion' or 'linear_score', but is currently set to '{}'. \n
-                Change the <ranking_mode> value to 'reciprocal_rank_fusion' or 'linear_score' when initializing the MetaFieldRanker.
-                """.format(
-                    ranking_mode
-                )
+                "The value of parameter <ranking_mode> must be 'reciprocal_rank_fusion' or 'linear_score', but is "
+                "currently set to '%s'.\nChange the <ranking_mode> value to 'reciprocal_rank_fusion' or "
+                "'linear_score' when initializing the MetaFieldRanker." % ranking_mode
+            )
+
+        if sort_order not in ["ascending", "descending"]:
+            raise ValueError(
+                "The value of parameter <sort_order> must be 'ascending' or 'descending', but is currently set to '%s'.\n"
+                "Change the <sort_order> value to 'ascending' or 'descending' when initializing the "
+                "MetaFieldRanker." % sort_order
             )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -110,6 +120,8 @@ class MetaFieldRanker:
         top_k: Optional[int] = None,
         weight: Optional[float] = None,
         ranking_mode: Optional[Literal["reciprocal_rank_fusion", "linear_score"]] = None,
+        sort_order: Optional[Literal["ascending", "descending"]] = None,
+        infer_type: Optional[bool] = None,
     ):
         """
         Use this method to rank a list of Documents based on the selected meta field by:
@@ -136,19 +148,19 @@ class MetaFieldRanker:
         top_k = top_k or self.top_k
         weight = weight or self.weight
         ranking_mode = ranking_mode or self.ranking_mode
-        self._validate_params(weight=weight, top_k=top_k, ranking_mode=ranking_mode)
+        sort_order = sort_order or self.sort_order
+        infer_type = infer_type or self.infer_type
+        self._validate_params(weight=weight, top_k=top_k, ranking_mode=ranking_mode, sort_order=sort_order)
 
+        reverse = sort_order == "descending"
         try:
-            sorted_by_meta = sorted(documents, key=lambda doc: doc.meta[self.meta_field], reverse=True)
+            sorted_by_meta = sorted(documents, key=lambda doc: doc.meta[self.meta_field], reverse=reverse)
         except KeyError:
             raise ComponentError(
-                """
-                The parameter <meta_field> is currently set to '{}' but the Documents {} don't have this meta key.\n
-                Double-check the names of the meta fields in your documents \n
-                and set <meta_field> to the name of the field that contains the meta you want to use for ranking.
-                """.format(
-                    self.meta_field, ",".join([doc.id for doc in documents if self.meta_field not in doc.meta])
-                )
+                "The parameter <meta_field> is currently set to '%s' but the Documents %s don't have this meta key.\n"
+                "Double-check the names of the meta fields in your documents \n"
+                "and set <meta_field> to the name of the field that contains the meta you want to use for ranking."
+                % (self.meta_field, ",".join([doc.id for doc in documents if self.meta_field not in doc.meta]))
             )
 
         if self.weight > 0:
