@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from typing import List, Dict, Any, Optional, Literal, Set
+from typing import List, Dict, Any, Optional, Literal
 from dateutil.parser import parse
 import yaml
 
@@ -39,7 +39,7 @@ class MetaFieldRanker:
         top_k: Optional[int] = None,
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"] = "reciprocal_rank_fusion",
         sort_order: Literal["ascending", "descending"] = "descending",
-        infer_type: bool = True,
+        infer_type: bool = False,
     ):
         """
         Creates an instance of MetaFieldRanker.
@@ -164,24 +164,15 @@ class MetaFieldRanker:
         if weight == 0:
             return {"documents": documents[:top_k]}
 
-        docs_with_meta_field = []
-        docs_missing_meta_field = []
-        unique_meta_values = set()
-        for document in documents:
-            # Using try except block instead of .meta.get() to handle situation that the meta_value could be None
-            try:
-                meta_value = document.meta[self.meta_field]
-                docs_with_meta_field.append(document)
-                unique_meta_values.add(meta_value)
-            except KeyError:
-                docs_missing_meta_field.append(document)
+        docs_with_meta_field = [doc for doc in documents if self.meta_field in doc.meta]
+        docs_missing_meta_field = [doc for doc in documents if self.meta_field not in doc.meta]
 
         # If all docs are missing self.meta_field return original documents
-        if len(docs_missing_meta_field) == len(documents):
+        if len(docs_with_meta_field) == 0:
             logger.warning(
                 "The parameter <meta_field> is currently set to '%s', but none of the provided Documents with IDs %s have this meta key.\n"
                 "Set <meta_field> to the name of a field that is present within the provided Documents.\n"
-                "Returning the original Documents since there are no values to rank.",
+                "Returning the <top_k> of the original Documents since there are no values to rank.",
                 self.meta_field,
                 ",".join([doc.id for doc in documents]),
             )
@@ -195,40 +186,52 @@ class MetaFieldRanker:
                 ",".join([doc.id for doc in docs_missing_meta_field]),
             )
 
-        # If all string type then try to infer using yaml.safe_load ??
-        if infer_type and all(isinstance(d.meta[self.meta_field], str) for d in docs_with_meta_field):
-            ...
-        else:
-            logger.warning(
-                "The parameter <infer_type> is currently set to `%s`, but not all of meta values in the provided Documents are strings.\n"
-                "Therefore,",
-                infer_type,
-            )
-
         # Sort the documents by self.meta_field
+        parsed_meta = self._parse_meta(docs_with_meta_field=docs_with_meta_field, infer_type=infer_type)
         reverse = sort_order == "descending"
+        tuple_parsed_meta_and_docs = list(zip(parsed_meta, docs_with_meta_field))
         try:
-            sorted_by_meta = sorted(docs_with_meta_field, key=lambda doc: doc.meta[self.meta_field], reverse=reverse)
+            sorted_by_meta = sorted(tuple_parsed_meta_and_docs, key=lambda x: x[0], reverse=reverse)
         except TypeError as error:
             # Return original documents if mixed types that are not comparable are returned (e.g. int and list)
             logger.warning(
                 "Tried to sort Documents with IDs %s, but got TypeError with the message: %s\n"
-                "Returning the original Documents since meta field ranking is not possible.",
-                ",".join([doc.id for doc in docs_missing_meta_field]),
+                "Returning the <top_k> of the original Documents since meta field ranking is not possible.",
+                ",".join([doc.id for doc in docs_with_meta_field]),
                 error,
             )
             return {"documents": documents[:top_k]}
 
         # Add the docs missing the meta_field back on the end
+        sorted_by_meta = [doc for meta, doc in sorted_by_meta]
         sorted_documents = sorted_by_meta + docs_missing_meta_field
-        # Merge the two ranked lists
         sorted_documents = self._merge_rankings(documents, sorted_documents)
-
         return {"documents": sorted_documents[:top_k]}
 
-    def _check_all_same_type(self, documents: List[Document]) -> bool:
-        all_types = {type(d.meta[self.meta_field]) for d in documents}
-        return len(all_types) == 1
+    def _parse_meta(self, docs_with_meta_field: List[Document], infer_type: bool) -> List[Any]:
+        parse_fn = self._identity
+        if infer_type:
+            # If all string type try to parse the string using self._parse otherwise use self._identity
+            unique_meta_values = {doc.meta[self.meta_field] for doc in docs_with_meta_field}
+            if all(isinstance(meta_value, str) for meta_value in unique_meta_values):
+                parse_fn = self._date_parse
+            else:
+                logger.warning(
+                    "The parameter <infer_type> is currently set to `True`, but not all of meta values in the "
+                    "provided Documents with IDs %s are strings.\n"
+                    "Therefore, inferring the type of the meta values will be skipped.\n"
+                    "Set all meta values found under the <meta_field> parameter to strings to use <infer_type>.",
+                    ",".join([doc.id for doc in docs_with_meta_field]),
+                )
+        return [parse_fn(d.meta[self.meta_field]) for d in docs_with_meta_field]
+
+    @staticmethod
+    def _date_parse(meta_value: str) -> Any:
+        return meta_value
+
+    @staticmethod
+    def _identity(meta_value: Any) -> Any:
+        return meta_value
 
     def _merge_rankings(self, documents: List[Document], sorted_documents: List[Document]) -> List[Document]:
         """

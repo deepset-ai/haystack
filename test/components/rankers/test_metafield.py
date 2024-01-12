@@ -16,13 +16,13 @@ class TestMetaFieldRanker:
                 "weight": 1.0,
                 "top_k": None,
                 "ranking_mode": "reciprocal_rank_fusion",
-                "infer_type": True,
+                "infer_type": False,
             },
         }
 
     def test_to_dict_with_custom_init_parameters(self):
         component = MetaFieldRanker(
-            meta_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score", infer_type=False
+            meta_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score", infer_type=True
         )
         data = component.to_dict()
         assert data == {
@@ -32,7 +32,7 @@ class TestMetaFieldRanker:
                 "weight": 0.5,
                 "top_k": 5,
                 "ranking_mode": "linear_score",
-                "infer_type": False,
+                "infer_type": True,
             },
         }
 
@@ -110,6 +110,18 @@ class TestMetaFieldRanker:
                 "The parameter <meta_field> is currently set to 'rating' but the Documents with IDs 1 don't have this meta key."
                 in caplog.text
             )
+
+    def test_warning_if_unsortable_values(self, caplog):
+        ranker = MetaFieldRanker(meta_field="rating")
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": 1.3}),
+            Document(id="2", content="abc", meta={"rating": "1.2"}),
+            Document(id="3", content="abc", meta={"rating": 2.1}),
+        ]
+        with caplog.at_level(logging.WARNING):
+            output = ranker.run(documents=docs_before)
+            assert len(output["documents"]) == 3
+            assert "Tried to sort Documents with IDs 1,2,3, but got TypeError with the message:" in caplog.text
 
     def test_raises_value_error_if_wrong_ranking_mode(self):
         with pytest.raises(ValueError):
