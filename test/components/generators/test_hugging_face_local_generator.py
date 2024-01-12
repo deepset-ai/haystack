@@ -153,6 +153,14 @@ class TestHuggingFaceLocalGenerator:
             token="test-token",
             generation_kwargs={"max_new_tokens": 100},
             stop_words=["coca", "cola"],
+            huggingface_pipeline_kwargs={
+                "model_kwargs": {
+                    "load_in_4bit": True,
+                    "bnb_4bit_use_double_quant": True,
+                    "bnb_4bit_quant_type": "nf4",
+                    "bnb_4bit_compute_dtype": torch.bfloat16,
+                }
+            },
         )
         data = component.to_dict()
 
@@ -162,13 +170,101 @@ class TestHuggingFaceLocalGenerator:
                 "huggingface_pipeline_kwargs": {
                     "model": "gpt2",
                     "task": "text-generation",
-                    "token": None,  # we don't want serialize valid tokens
                     "device": "cuda:0",
+                    "model_kwargs": {
+                        "load_in_4bit": True,
+                        "bnb_4bit_use_double_quant": True,
+                        "bnb_4bit_quant_type": "nf4",
+                        # dtype is correctly serialized
+                        "bnb_4bit_compute_dtype": "torch.bfloat16",
+                    },
                 },
                 "generation_kwargs": {"max_new_tokens": 100, "return_full_text": False},
                 "stop_words": ["coca", "cola"],
             },
         }
+
+    def test_to_dict_with_quantization_config(self):
+        component = HuggingFaceLocalGenerator(
+            model_name_or_path="gpt2",
+            task="text-generation",
+            device="cuda:0",
+            token="test-token",
+            generation_kwargs={"max_new_tokens": 100},
+            stop_words=["coca", "cola"],
+            huggingface_pipeline_kwargs={
+                "model_kwargs": {
+                    "quantization_config": {
+                        "load_in_4bit": True,
+                        "bnb_4bit_use_double_quant": True,
+                        "bnb_4bit_quant_type": "nf4",
+                        "bnb_4bit_compute_dtype": torch.bfloat16,
+                    }
+                }
+            },
+        )
+        data = component.to_dict()
+
+        assert data == {
+            "type": "haystack.components.generators.hugging_face_local.HuggingFaceLocalGenerator",
+            "init_parameters": {
+                "huggingface_pipeline_kwargs": {
+                    "model": "gpt2",
+                    "task": "text-generation",
+                    "device": "cuda:0",
+                    "model_kwargs": {
+                        "quantization_config": {
+                            "load_in_4bit": True,
+                            "bnb_4bit_use_double_quant": True,
+                            "bnb_4bit_quant_type": "nf4",
+                            # dtype is correctly serialized
+                            "bnb_4bit_compute_dtype": "torch.bfloat16",
+                        }
+                    },
+                },
+                "generation_kwargs": {"max_new_tokens": 100, "return_full_text": False},
+                "stop_words": ["coca", "cola"],
+            },
+        }
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.generators.hugging_face_local.HuggingFaceLocalGenerator",
+            "init_parameters": {
+                "huggingface_pipeline_kwargs": {
+                    "model": "gpt2",
+                    "task": "text-generation",
+                    "device": "cuda:0",
+                    "model_kwargs": {
+                        "load_in_4bit": True,
+                        "bnb_4bit_use_double_quant": True,
+                        "bnb_4bit_quant_type": "nf4",
+                        # dtype is correctly serialized
+                        "bnb_4bit_compute_dtype": "torch.bfloat16",
+                    },
+                },
+                "generation_kwargs": {"max_new_tokens": 100, "return_full_text": False},
+                "stop_words": ["coca", "cola"],
+            },
+        }
+
+        component = HuggingFaceLocalGenerator.from_dict(data)
+
+        assert component.huggingface_pipeline_kwargs == {
+            "model": "gpt2",
+            "task": "text-generation",
+            "device": "cuda:0",
+            "token": None,
+            "model_kwargs": {
+                "load_in_4bit": True,
+                "bnb_4bit_use_double_quant": True,
+                "bnb_4bit_quant_type": "nf4",
+                # dtype is correctly deserialized
+                "bnb_4bit_compute_dtype": torch.bfloat16,
+            },
+        }
+        assert component.generation_kwargs == {"max_new_tokens": 100, "return_full_text": False}
+        assert component.stop_words == ["coca", "cola"]
 
     @patch("haystack.components.generators.hugging_face_local.pipeline")
     def test_warm_up(self, pipeline_mock):

@@ -88,7 +88,7 @@ example_documents = [
 
 
 def test_to_dict():
-    component = ExtractiveReader("my-model", token="secret-token", model_kwargs={"torch_dtype": "auto"})
+    component = ExtractiveReader("my-model", token="secret-token", model_kwargs={"torch_dtype": torch.float16})
     data = component.to_dict()
 
     assert data == {
@@ -105,7 +105,7 @@ def test_to_dict():
             "answers_per_seq": None,
             "no_answer": True,
             "calibration_factor": 0.1,
-            "model_kwargs": {"torch_dtype": "auto"},
+            "model_kwargs": {"torch_dtype": "torch.float16"},  # torch_dtype is correctly serialized
         },
     }
 
@@ -131,6 +131,40 @@ def test_to_dict_empty_model_kwargs():
             "model_kwargs": {},
         },
     }
+
+
+def test_from_dict():
+    data = {
+        "type": "haystack.components.readers.extractive.ExtractiveReader",
+        "init_parameters": {
+            "model_name_or_path": "my-model",
+            "device": None,
+            "token": None,
+            "top_k": 20,
+            "score_threshold": None,
+            "max_seq_length": 384,
+            "stride": 128,
+            "max_batch_size": None,
+            "answers_per_seq": None,
+            "no_answer": True,
+            "calibration_factor": 0.1,
+            "model_kwargs": {"torch_dtype": "torch.float16"},
+        },
+    }
+
+    component = ExtractiveReader.from_dict(data)
+    assert component.model_name_or_path == "my-model"
+    assert component.token is None
+    assert component.top_k == 20
+    assert component.score_threshold is None
+    assert component.max_seq_length == 384
+    assert component.stride == 128
+    assert component.max_batch_size is None
+    assert component.answers_per_seq is None
+    assert component.no_answer
+    assert component.calibration_factor == 0.1
+    # torch_dtype is correctly deserialized
+    assert component.model_kwargs == {"torch_dtype": torch.float16}
 
 
 def test_output(mock_reader: ExtractiveReader):

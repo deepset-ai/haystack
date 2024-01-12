@@ -1,8 +1,7 @@
 import logging
 from typing import Any, Dict, List, Literal, Optional, Union
-from copy import deepcopy
 
-from haystack import component, default_to_dict
+from haystack import component, default_to_dict, default_from_dict
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
@@ -195,18 +194,69 @@ class HuggingFaceLocalGenerator:
         """
         Serialize this component to a dictionary.
         """
-        pipeline_kwargs_to_serialize = deepcopy(self.huggingface_pipeline_kwargs)
-
-        # we don't want to serialize valid tokens
-        if isinstance(pipeline_kwargs_to_serialize["token"], str):
-            pipeline_kwargs_to_serialize["token"] = None
-
-        return default_to_dict(
+        serialization_dict = default_to_dict(
             self,
-            huggingface_pipeline_kwargs=pipeline_kwargs_to_serialize,
+            huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
             generation_kwargs=self.generation_kwargs,
             stop_words=self.stop_words,
         )
+
+        huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
+        # we don't want to serialize valid tokens
+        if isinstance(huggingface_pipeline_kwargs["token"], str):
+            serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"].pop("token")
+        # convert torch.dtype to string for serialization
+        # 1. torch_dtype can be specified in huggingface_pipeline_kwargs
+        torch_dtype = huggingface_pipeline_kwargs.get("torch_dtype", None)
+        if isinstance(torch_dtype, torch.dtype):
+            serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["torch_dtype"] = str(torch_dtype)
+        # 2. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
+        model_kwargs = huggingface_pipeline_kwargs.get("model_kwargs", {})
+        for key, value in model_kwargs.items():
+            if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and isinstance(value, torch.dtype):
+                serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["model_kwargs"][key] = str(value)
+        # 3. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
+        quantization_config = model_kwargs.get("quantization_config", {})
+        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
+        if isinstance(bnb_4bit_compute_dtype, torch.dtype):
+            serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["model_kwargs"]["quantization_config"][
+                "bnb_4bit_compute_dtype"
+            ] = str(bnb_4bit_compute_dtype)
+
+        return serialization_dict
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceLocalGenerator":
+        """
+        Deserialize this component from a dictionary.
+        """
+        torch_and_transformers_import.check()
+        init_params = data.get("init_parameters", {})
+        huggingface_pipeline_kwargs = init_params.get("huggingface_pipeline_kwargs", {})
+        model_kwargs = huggingface_pipeline_kwargs.get("model_kwargs", {})
+
+        # convert string to torch.dtype
+        # 1. torch_dtype can be specified in huggingface_pipeline_kwargs
+        torch_dtype = huggingface_pipeline_kwargs.get("torch_dtype", None)
+        if torch_dtype and torch_dtype.startswith("torch."):
+            data["init_parameters"]["huggingface_pipeline_kwargs"]["torch_dtype"] = getattr(
+                torch, torch_dtype.strip("torch.")
+            )
+        # 2. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
+        for key, value in model_kwargs.items():
+            if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and value.startswith("torch."):
+                data["init_parameters"]["huggingface_pipeline_kwargs"]["model_kwargs"][key] = getattr(
+                    torch, value.strip("torch.")
+                )
+        # 3. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
+        quantization_config = model_kwargs.get("quantization_config", {})
+        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
+        if bnb_4bit_compute_dtype and bnb_4bit_compute_dtype.startswith("torch."):
+            data["init_parameters"]["huggingface_pipeline_kwargs"]["model_kwargs"]["quantization_config"][
+                "bnb_4bit_compute_dtype"
+            ] = getattr(torch, bnb_4bit_compute_dtype.strip("torch."))
+
+        return default_from_dict(cls, data)
 
     @component.output_types(replies=List[str])
     def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
