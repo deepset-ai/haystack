@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 from urllib.parse import urlparse
 
-from haystack.errors import NodeError
 from haystack.lazy_imports import LazyImport
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
