@@ -93,8 +93,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     """
     rag_pipeline = Pipeline()
     rag_pipeline.add_component(
-        instance=SentenceTransformersTextEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
-        name="text_embedder",
+        instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="text_embedder"
     )
     rag_pipeline.add_component(
         instance=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()), name="retriever"
@@ -124,7 +123,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     document_store = rag_pipeline.get_component("retriever").document_store
     indexing_pipeline = Pipeline()
     indexing_pipeline.add_component(
-        instance=SentenceTransformersDocumentEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
+        instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
         name="document_embedder",
     )
     indexing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="document_writer")

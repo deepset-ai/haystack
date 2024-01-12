@@ -92,7 +92,7 @@ def resolve_embedder(embedding_model: str) -> SentenceTransformersTextEmbedder:
     :param embedding_model: The embedding model to use.
     """
     try:
-        embedder = SentenceTransformersTextEmbedder(model_name_or_path=embedding_model)
+        embedder = SentenceTransformersTextEmbedder(model=embedding_model)
     except Exception:
         raise ValueError(
             f"Embedding model: {embedding_model} is not supported. Please provide a SentenceTransformers model."
