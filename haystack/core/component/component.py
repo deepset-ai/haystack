@@ -279,6 +279,9 @@ class _Component:
             the whole namespace from the decorated class.
             """
             for key, val in dict(class_.__dict__).items():
+                # __dict__ and __weakref__ are class-bound, we should let Python recreate them.
+                if key in ("__dict__", "__weakref__"):
+                    continue
                 namespace[key] = val
 
         # Recreate the decorated component class so it uses our metaclass
