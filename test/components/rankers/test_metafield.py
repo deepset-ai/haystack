@@ -79,13 +79,26 @@ class TestMetaFieldRanker:
         docs_after = output["documents"]
         assert docs_after == []
 
-    def test_raises_component_error_if_metadata_not_found(self, caplog):
+    def test_warning_if_meta_not_found(self, caplog):
         ranker = MetaFieldRanker(meta_field="rating")
         docs_before = [Document(content="abc", meta={"wrong_field": 1.3})]
         with caplog.at_level(logging.WARNING):
             ranker.run(documents=docs_before)
             assert (
                 "The parameter <meta_field> is currently set to 'rating', but none of the provided Documents have this meta key."
+                in caplog.text
+            )
+
+    def test_warning_if_some_meta_not_found(self, caplog):
+        ranker = MetaFieldRanker(meta_field="rating")
+        docs_before = [
+            Document(id="1", content="abc", meta={"wrong_field": 1.3}),
+            Document(id="2", content="def", meta={"rating": 1.3}),
+        ]
+        with caplog.at_level(logging.WARNING):
+            ranker.run(documents=docs_before)
+            assert (
+                "The parameter <meta_field> is currently set to 'rating' but the Documents with IDs 1 don't have this meta key."
                 in caplog.text
             )
 
