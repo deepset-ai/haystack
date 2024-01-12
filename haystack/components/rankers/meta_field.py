@@ -160,6 +160,10 @@ class MetaFieldRanker:
         infer_type = infer_type or self.infer_type
         self._validate_params(weight=weight, top_k=top_k, ranking_mode=ranking_mode, sort_order=sort_order)
 
+        # If the weight is 0 then ranking by meta field is disabled and the original documents should be returned
+        if weight == 0:
+            return {"documents": documents[:top_k]}
+
         docs_with_meta_field = []
         docs_missing_meta_field = []
         unique_meta_values = set()
@@ -181,7 +185,7 @@ class MetaFieldRanker:
                 self.meta_field,
                 ",".join([doc.id for doc in documents]),
             )
-            return {"documents": documents}
+            return {"documents": documents[:top_k]}
 
         if len(docs_missing_meta_field) > 0:
             logger.warning(
@@ -191,7 +195,7 @@ class MetaFieldRanker:
                 ",".join([doc.id for doc in docs_missing_meta_field]),
             )
 
-        # - If all string type then try to infer using yaml.safe_load ??
+        # If all string type then try to infer using yaml.safe_load ??
         if infer_type and all(isinstance(d.meta[self.meta_field], str) for d in docs_with_meta_field):
             ...
         else:
@@ -201,6 +205,7 @@ class MetaFieldRanker:
                 infer_type,
             )
 
+        # Sort the documents by self.meta_field
         reverse = sort_order == "descending"
         try:
             sorted_by_meta = sorted(docs_with_meta_field, key=lambda doc: doc.meta[self.meta_field], reverse=reverse)
@@ -212,13 +217,13 @@ class MetaFieldRanker:
                 ",".join([doc.id for doc in docs_missing_meta_field]),
                 error,
             )
-            return {"documents": documents}
+            return {"documents": documents[:top_k]}
 
         # Add the docs missing the meta_field back on the end
         sorted_documents = sorted_by_meta + docs_missing_meta_field
+        # Merge the two ranked lists
+        sorted_documents = self._merge_rankings(documents, sorted_documents)
 
-        if self.weight > 0:
-            sorted_documents = self._merge_rankings(documents, sorted_documents)
         return {"documents": sorted_documents[:top_k]}
 
     def _check_all_same_type(self, documents: List[Document]) -> bool:

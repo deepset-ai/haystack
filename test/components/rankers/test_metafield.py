@@ -54,7 +54,16 @@ class TestMetaFieldRanker:
         assert [doc.meta["rating"] for doc in docs_after] == sorted_scores
 
     def test_run_with_weight_equal_to_0(self):
-        ranker = MetaFieldRanker(meta_field="rating", weight=0)
+        ranker = MetaFieldRanker(meta_field="rating", weight=0.0)
+        docs_before = [Document(content="abc", meta={"rating": value}) for value in [1.1, 0.5, 2.3]]
+        output = ranker.run(documents=docs_before)
+        docs_after = output["documents"]
+
+        assert len(docs_after) == 3
+        assert [doc.meta["rating"] for doc in docs_after] == [1.1, 0.5, 2.3]
+
+    def test_run_with_weight_equal_to_1(self):
+        ranker = MetaFieldRanker(meta_field="rating", weight=1.0)
         docs_before = [Document(content="abc", meta={"rating": value}) for value in [1.1, 0.5, 2.3]]
         output = ranker.run(documents=docs_before)
         docs_after = output["documents"]
@@ -64,7 +73,7 @@ class TestMetaFieldRanker:
         assert [doc.meta["rating"] for doc in docs_after] == sorted_scores
 
     def test_sort_order_ascending(self):
-        ranker = MetaFieldRanker(meta_field="rating", weight=0, sort_order="ascending")
+        ranker = MetaFieldRanker(meta_field="rating", weight=1.0, sort_order="ascending")
         docs_before = [Document(content="abc", meta={"rating": value}) for value in [1.1, 0.5, 2.3]]
         output = ranker.run(documents=docs_before)
         docs_after = output["documents"]
