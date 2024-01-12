@@ -25,7 +25,7 @@ class RemoteWhisperTranscriber:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_name: str = "whisper-1",
+        model: str = "whisper-1",
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         **kwargs,
@@ -34,7 +34,7 @@ class RemoteWhisperTranscriber:
         Transcribes a list of audio files into a list of Documents.
 
         :param api_key: OpenAI API key.
-        :param model_name: Name of the model to use. It now accepts only `whisper-1`.
+        :param model: Name of the model to use. It now accepts only `whisper-1`.
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param api_base: An optional URL to use as the API base. Defaults to `None`. See OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
@@ -59,7 +59,7 @@ class RemoteWhisperTranscriber:
         """
 
         self.organization = organization
-        self.model_name = model_name
+        self.model = model
         self.api_base_url = api_base_url
 
         # Only response_format = "json" is supported
@@ -81,7 +81,7 @@ class RemoteWhisperTranscriber:
         """
         return default_to_dict(
             self,
-            model_name=self.model_name,
+            model=self.model,
             organization=self.organization,
             api_base_url=self.api_base_url,
             **self.whisper_params,
@@ -113,7 +113,7 @@ class RemoteWhisperTranscriber:
             file = io.BytesIO(source.data)
             file.name = str(source.meta["file_path"]) if "file_path" in source.meta else "__fallback__.wav"
 
-            content = self.client.audio.transcriptions.create(file=file, model=self.model_name, **self.whisper_params)
+            content = self.client.audio.transcriptions.create(file=file, model=self.model, **self.whisper_params)
             doc = Document(content=content.text, meta=source.meta)
             documents.append(doc)
 
