@@ -38,7 +38,7 @@ class ExtractiveReader:
 
     def __init__(
         self,
-        model_name_or_path: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
+        model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
         device: Optional[str] = None,
         token: Union[bool, str, None] = None,
         top_k: int = 20,
@@ -54,7 +54,7 @@ class ExtractiveReader:
     ) -> None:
         """
         Creates an ExtractiveReader
-        :param model_name_or_path: A Hugging Face transformers question answering model.
+        :param model: A Hugging Face transformers question answering model.
             Can either be a path to a folder containing the model files or an identifier for the Hugging Face hub.
             Default: `'deepset/roberta-base-squad2-distilled'`
         :param device: Pytorch device string. Uses GPU by default, if available.
@@ -83,12 +83,12 @@ class ExtractiveReader:
             both of these answers could be kept if this variable is set to 0.24 or lower.
             If None is provided then all answers are kept.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
-            when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
+            when loading the model specified in `model`. For details on what kwargs you can pass,
             see the model's documentation.
         """
         torch_and_transformers_import.check()
-        self.model_name_or_path = str(model_name_or_path)
-        self.model = None
+        self.model = str(model)
+        self._model = None
         self.device = device
         self.token = token
         self.max_seq_length = max_seq_length
@@ -106,7 +106,7 @@ class ExtractiveReader:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": self.model_name_or_path}
+        return {"model": self.model}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -114,7 +114,7 @@ class ExtractiveReader:
         """
         serialization_dict = default_to_dict(
             self,
-            model_name_or_path=self.model_name_or_path,
+            model=self.model,
             device=self.device,
             token=self.token if not isinstance(self.token, str) else None,
             max_seq_length=self.max_seq_length,
@@ -171,13 +171,13 @@ class ExtractiveReader:
         """
         Loads model and tokenizer
         """
-        if self.model is None:
+        if self._model is None:
             if self.device is None:
                 self.device = get_device()
-            self.model = AutoModelForQuestionAnswering.from_pretrained(
-                self.model_name_or_path, token=self.token, **self.model_kwargs
+            self._model = AutoModelForQuestionAnswering.from_pretrained(
+                self.model, token=self.token, **self.model_kwargs
             ).to(self.device)
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model, token=self.token)
 
     def _flatten_documents(
         self, queries: List[str], documents: List[List[Document]]
@@ -505,7 +505,7 @@ class ExtractiveReader:
         """
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2
         nested_documents = [documents]
-        if self.model is None:
+        if self._model is None:
             raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
 
         top_k = top_k or self.top_k
@@ -534,7 +534,7 @@ class ExtractiveReader:
             cur_input_ids = input_ids[start_index:end_index]
             cur_attention_mask = attention_mask[start_index:end_index]
 
-            output = self.model(input_ids=cur_input_ids, attention_mask=cur_attention_mask)
+            output = self._model(input_ids=cur_input_ids, attention_mask=cur_attention_mask)
             cur_start_logits = output.start_logits
             cur_end_logits = output.end_logits
             if num_batches != 1:
