@@ -75,9 +75,13 @@ class TestMetaFieldRanker:
         with pytest.raises(ComponentError):
             ranker.run(documents=docs_before)
 
-    def test_raises_component_error_if_wrong_ranking_mode(self):
+    def test_raises_value_error_if_wrong_ranking_mode(self):
         with pytest.raises(ValueError):
             MetaFieldRanker(meta_field="rating", ranking_mode="wrong_mode")
+
+    def test_raises_value_error_if_wrong_top_k(self):
+        with pytest.raises(ValueError):
+            MetaFieldRanker(meta_field="rating", top_k=-1)
 
     @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
     def test_raises_component_error_if_wrong_weight(self, score):
