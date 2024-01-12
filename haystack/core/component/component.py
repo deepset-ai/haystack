@@ -74,7 +74,7 @@ from typing import Protocol, runtime_checkable, Any
 from types import new_class
 from copy import deepcopy
 
-from haystack.core.component.sockets import InputSocket, OutputSocket
+from haystack.core.component.sockets import InputSocket, OutputSocket, _empty
 from haystack.core.errors import ComponentError
 
 logger = logging.getLogger(__name__)
@@ -165,6 +165,19 @@ class _Component:
 
     def __init__(self):
         self.registry = {}
+
+    def set_input_type(self, instance, name: str, type: Any, default: Any = _empty):
+        """
+        Add a single input socket to the component instance.
+
+        :param instance: Component instance where the input type will be added.
+        :param name: name of the input socket.
+        :param type: type of the input socket.
+        :param default: default value of the input socket, defaults to _empty
+        """
+        if not hasattr(instance, "__canals_input__"):
+            instance.__canals_input__ = {}
+        instance.__canals_input__[name] = InputSocket(name=name, type=type, default_value=default)
 
     def set_input_types(self, instance, **types):
         """
@@ -279,6 +292,9 @@ class _Component:
             the whole namespace from the decorated class.
             """
             for key, val in dict(class_.__dict__).items():
+                # __dict__ and __weakref__ are class-bound, we should let Python recreate them.
+                if key in ("__dict__", "__weakref__"):
+                    continue
                 namespace[key] = val
 
         # Recreate the decorated component class so it uses our metaclass

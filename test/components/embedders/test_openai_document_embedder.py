@@ -26,7 +26,7 @@ class TestOpenAIDocumentEmbedder:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAIDocumentEmbedder()
-        assert embedder.model_name == "text-embedding-ada-002"
+        assert embedder.model == "text-embedding-ada-002"
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
@@ -38,7 +38,7 @@ class TestOpenAIDocumentEmbedder:
     def test_init_with_parameters(self):
         embedder = OpenAIDocumentEmbedder(
             api_key="fake-api-key",
-            model_name="model",
+            model="model",
             organization="my-org",
             prefix="prefix",
             suffix="suffix",
@@ -48,7 +48,7 @@ class TestOpenAIDocumentEmbedder:
             embedding_separator=" | ",
         )
         assert embedder.organization == "my-org"
-        assert embedder.model_name == "model"
+        assert embedder.model == "model"
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
         assert embedder.batch_size == 64
@@ -68,7 +68,7 @@ class TestOpenAIDocumentEmbedder:
             "type": "haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
             "init_parameters": {
                 "api_base_url": None,
-                "model_name": "text-embedding-ada-002",
+                "model": "text-embedding-ada-002",
                 "organization": None,
                 "prefix": "",
                 "suffix": "",
@@ -82,7 +82,7 @@ class TestOpenAIDocumentEmbedder:
     def test_to_dict_with_custom_init_parameters(self):
         component = OpenAIDocumentEmbedder(
             api_key="fake-api-key",
-            model_name="model",
+            model="model",
             organization="my-org",
             prefix="prefix",
             suffix="suffix",
@@ -96,7 +96,7 @@ class TestOpenAIDocumentEmbedder:
             "type": "haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
             "init_parameters": {
                 "api_base_url": None,
-                "model_name": "model",
+                "model": "model",
                 "organization": "my-org",
                 "prefix": "prefix",
                 "suffix": "suffix",
@@ -174,7 +174,7 @@ class TestOpenAIDocumentEmbedder:
 
         model = "text-embedding-ada-002"
 
-        embedder = OpenAIDocumentEmbedder(model_name=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
+        embedder = OpenAIDocumentEmbedder(model=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
 
         result = embedder.run(documents=docs)
         documents_with_embeddings = result["documents"]

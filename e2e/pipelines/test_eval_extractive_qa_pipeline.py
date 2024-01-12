@@ -1,12 +1,15 @@
+import json
+
 from haystack import Pipeline
 from haystack.components.readers import ExtractiveReader
-from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.dataclasses import Document, ExtractedAnswer
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.evaluation.eval import eval
+from haystack.evaluation.metrics import Metric
 
 
-def test_extractive_qa_pipeline():
+def test_extractive_qa_pipeline(tmp_path):
     # Create the pipeline
     qa_pipeline = Pipeline()
     qa_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
@@ -123,3 +126,11 @@ def test_extractive_qa_pipeline():
     assert eval_result.expected_outputs == expected_outputs
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == qa_pipeline.to_dict()
+
+    metrics = eval_result.calculate_metrics(Metric.EM)
+    # Save metric results to json
+    metrics.save(tmp_path / "exact_match_score.json")
+
+    assert metrics["exact_match"] == 1.0
+    with open(tmp_path / "exact_match_score.json", "r") as f:
+        assert metrics == json.load(f)

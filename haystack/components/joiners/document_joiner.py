@@ -31,7 +31,7 @@ class DocumentJoiner:
     p = Pipeline()
     p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="bm25_retriever")
     p.add_component(
-            instance=SentenceTransformersTextEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
+            instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
             name="text_embedder",
         )
     p.add_component(instance=InMemoryEmbeddingRetriever(document_store=document_store), name="embedding_retriever")

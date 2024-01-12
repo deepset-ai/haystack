@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Adds `calculate_metrics()` function to EvaluationResult for computation of evaluation metrics.
+    Adds `Metric` class to store list of available metrics.
+    Adds `MetricsResult` class to store the metric values computed during the evaluation.
