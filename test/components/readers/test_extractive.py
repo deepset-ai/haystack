@@ -72,7 +72,7 @@ def mock_reader(mock_tokenizer):
 
     with patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained") as model:
         model.return_value = MockModel()
-        reader = ExtractiveReader(model_name_or_path="mock-model", device="cpu:0")
+        reader = ExtractiveReader(model="mock-model", device="cpu:0")
         reader.warm_up()
         return reader
 
@@ -94,7 +94,7 @@ def test_to_dict():
     assert data == {
         "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
-            "model_name_or_path": "my-model",
+            "model": "my-model",
             "device": None,
             "token": None,  # don't serialize valid tokens
             "top_k": 20,
@@ -117,7 +117,7 @@ def test_to_dict_empty_model_kwargs():
     assert data == {
         "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
-            "model_name_or_path": "my-model",
+            "model": "my-model",
             "device": None,
             "token": None,  # don't serialize valid tokens
             "top_k": 20,
@@ -137,7 +137,7 @@ def test_from_dict():
     data = {
         "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
-            "model_name_or_path": "my-model",
+            "model": "my-model",
             "device": None,
             "token": None,
             "top_k": 20,
@@ -153,7 +153,7 @@ def test_from_dict():
     }
 
     component = ExtractiveReader.from_dict(data)
-    assert component.model_name_or_path == "my-model"
+    assert component.model == "my-model"
     assert component.token is None
     assert component.top_k == 20
     assert component.score_threshold is None
@@ -556,7 +556,7 @@ def test_matches_hf_pipeline():
     answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
         "answers"
     ]  # [0] Remove first two indices when batching support is reintroduced
-    pipe = pipeline("question-answering", model=reader.model, tokenizer=reader.tokenizer, align_to_words=False)
+    pipe = pipeline("question-answering", model=reader._model, tokenizer=reader.tokenizer, align_to_words=False)
     answers_hf = pipe(
         question=example_queries[0],
         context=example_documents[0][0].content,
