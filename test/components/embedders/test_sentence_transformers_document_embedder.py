@@ -8,8 +8,8 @@ from haystack.components.embedders.sentence_transformers_document_embedder impor
 
 class TestSentenceTransformersDocumentEmbedder:
     def test_init_default(self):
-        embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
-        assert embedder.model_name_or_path == "model"
+        embedder = SentenceTransformersDocumentEmbedder(model="model")
+        assert embedder.model == "model"
         assert embedder.device == "cpu"
         assert embedder.token is None
         assert embedder.prefix == ""
@@ -22,7 +22,7 @@ class TestSentenceTransformersDocumentEmbedder:
 
     def test_init_with_parameters(self):
         embedder = SentenceTransformersDocumentEmbedder(
-            model_name_or_path="model",
+            model="model",
             device="cuda",
             token=True,
             prefix="prefix",
@@ -33,7 +33,7 @@ class TestSentenceTransformersDocumentEmbedder:
             meta_fields_to_embed=["test_field"],
             embedding_separator=" | ",
         )
-        assert embedder.model_name_or_path == "model"
+        assert embedder.model == "model"
         assert embedder.device == "cuda"
         assert embedder.token is True
         assert embedder.prefix == "prefix"
@@ -45,12 +45,12 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.embedding_separator == " | "
 
     def test_to_dict(self):
-        component = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
+        component = SentenceTransformersDocumentEmbedder(model="model")
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
             "init_parameters": {
-                "model_name_or_path": "model",
+                "model": "model",
                 "device": "cpu",
                 "token": None,
                 "prefix": "",
@@ -65,7 +65,7 @@ class TestSentenceTransformersDocumentEmbedder:
 
     def test_to_dict_with_custom_init_parameters(self):
         component = SentenceTransformersDocumentEmbedder(
-            model_name_or_path="model",
+            model="model",
             device="cuda",
             token="the-token",
             prefix="prefix",
@@ -81,7 +81,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert data == {
             "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
             "init_parameters": {
-                "model_name_or_path": "model",
+                "model": "model",
                 "device": "cuda",
                 "token": None,  # the token is not serialized
                 "prefix": "prefix",
@@ -98,25 +98,23 @@ class TestSentenceTransformersDocumentEmbedder:
         "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup(self, mocked_factory):
-        embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
+        embedder = SentenceTransformersDocumentEmbedder(model="model")
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
-        mocked_factory.get_embedding_backend.assert_called_once_with(
-            model_name_or_path="model", device="cpu", use_auth_token=None
-        )
+        mocked_factory.get_embedding_backend.assert_called_once_with(model="model", device="cpu", use_auth_token=None)
 
     @patch(
         "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup_doesnt_reload(self, mocked_factory):
-        embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
+        embedder = SentenceTransformersDocumentEmbedder(model="model")
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
         embedder.warm_up()
         mocked_factory.get_embedding_backend.assert_called_once()
 
     def test_run(self):
-        embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
+        embedder = SentenceTransformersDocumentEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
         embedder.embedding_backend.embed = lambda x, **kwargs: np.random.rand(len(x), 16).tolist()
 
@@ -132,7 +130,7 @@ class TestSentenceTransformersDocumentEmbedder:
             assert isinstance(doc.embedding[0], float)
 
     def test_run_wrong_input_format(self):
-        embedder = SentenceTransformersDocumentEmbedder(model_name_or_path="model")
+        embedder = SentenceTransformersDocumentEmbedder(model="model")
 
         string_input = "text"
         list_integers_input = [1, 2, 3]
@@ -149,7 +147,7 @@ class TestSentenceTransformersDocumentEmbedder:
 
     def test_embed_metadata(self):
         embedder = SentenceTransformersDocumentEmbedder(
-            model_name_or_path="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
+            model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
         embedder.embedding_backend = MagicMock()
 
@@ -172,7 +170,7 @@ class TestSentenceTransformersDocumentEmbedder:
 
     def test_prefix_suffix(self):
         embedder = SentenceTransformersDocumentEmbedder(
-            model_name_or_path="model",
+            model="model",
             prefix="my_prefix ",
             suffix=" my_suffix",
             meta_fields_to_embed=["meta_field"],
