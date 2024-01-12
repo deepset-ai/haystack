@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 @component
 class MetaFieldRanker:
     """
-    Ranks Documents based on the value of their specific metadata field. The ranking is done in a descending order.
+    Ranks Documents based on the value of their specific meta field. The ranking is done in a descending order.
 
     Usage example:
     ```
@@ -36,32 +36,36 @@ class MetaFieldRanker:
         weight: float = 1.0,
         top_k: Optional[int] = None,
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"] = "reciprocal_rank_fusion",
+        infer_type: bool = True,
     ):
         """
         Creates an instance of MetaFieldRanker.
 
-        :param meta_field: The name of the metadata field to rank by.
+        :param meta_field: The name of the meta field to rank by.
         :param weight: In range [0,1].
-                0 disables ranking by a metadata field.
-                0.5 content and metadata fields have the same impact for the ranking.
-                1 means ranking by a metadata field only. The highest value comes first.
+                0 disables ranking by a meta field.
+                0.5 content and meta fields have the same impact for the ranking.
+                1 means ranking by a meta field only. The highest value comes first.
         :param top_k: The maximum number of Documents you want the Ranker to return per query. If not provided, the
                 Ranker returns all documents it receives in the new ranking order.
         :param ranking_mode: The mode used to combine the Retriever's and Ranker's scores.
                 Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
                 Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
+        :param infer_type: Whether to try and infer the data type of meta value that is a string. For example, we have
+                the field `"date": "2015-02-01"` we would infer the type of "date" to be a datetime object.
         """
 
         self.meta_field = meta_field
         self.weight = weight
         self.top_k = top_k
         self.ranking_mode = ranking_mode
+        self.infer_type = infer_type
 
         if self.weight < 0 or self.weight > 1:
             raise ValueError(
                 """
                 Parameter <weight> must be in range [0,1] but is currently set to '{}'.\n
-                '0' disables sorting by a metadata field, '0.5' assigns equal weight to the previous relevance scores and the metadata field, and '1' ranks by the metadata field only.\n
+                '0' disables sorting by a meta field, '0.5' assigns equal weight to the previous relevance scores and the meta field, and '1' ranks by the meta field only.\n
                 Change the <weight> parameter to a value in range 0 to 1 when initializing the MetaFieldRanker.
                 """.format(
                     self.weight
@@ -95,18 +99,18 @@ class MetaFieldRanker:
         ranking_mode: Optional[Literal["reciprocal_rank_fusion", "linear_score"]] = None,
     ):
         """
-        Use this method to rank a list of Documents based on the selected metadata field by:
-        1. Sorting the Documents by the metadata field in descending order.
-        2. Merging the scores from the metadata field with the scores from the previous component according to the strategy and weight provided.
+        Use this method to rank a list of Documents based on the selected meta field by:
+        1. Sorting the Documents by the meta field in descending order.
+        2. Merging the scores from the meta field with the scores from the previous component according to the strategy and weight provided.
         3. Returning the top-k documents.
 
         :param documents: Documents to be ranked.
         :param top_k: (optional) The number of Documents you want the Ranker to return.
                 If not provided, the top_k provided at initialization time is used.
         :param weight: (optional) In range [0,1].
-                0 disables ranking by a metadata field.
-                0.5 content and metadata fields have the same impact for the ranking.
-                1 means ranking by a metadata field only. The highest value comes first.
+                0 disables ranking by a meta field.
+                0.5 content and meta fields have the same impact for the ranking.
+                1 means ranking by a meta field only. The highest value comes first.
                 If not provided, the weight provided at initialization time is used.
         :param ranking_mode: (optional) The mode used to combine the Retriever's and Ranker's scores.
                 Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
@@ -116,9 +120,8 @@ class MetaFieldRanker:
         if not documents:
             return {"documents": []}
 
-        if top_k is None:
-            top_k = self.top_k
-        elif top_k <= 0:
+        top_k = top_k or self.top_k
+        if top_k is not None and top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
         weight = weight or self.weight
@@ -126,7 +129,7 @@ class MetaFieldRanker:
             raise ValueError(
                 """
                 Parameter <weight> must be in range [0,1] but is currently set to '{}'.\n
-                '0' disables sorting by a metadata field, '0.5' assigns equal weight to the previous relevance scores and the metadata field, and '1' ranks by the metadata field only.\n
+                '0' disables sorting by a meta field, '0.5' assigns equal weight to the previous relevance scores and the meta field, and '1' ranks by the meta field only.\n
                 Change the <weight> parameter to a value in range 0 to 1.
                 """.format(
                     weight
@@ -145,27 +148,27 @@ class MetaFieldRanker:
             )
 
         try:
-            sorted_by_metadata = sorted(documents, key=lambda doc: doc.meta[self.meta_field], reverse=True)
+            sorted_by_meta = sorted(documents, key=lambda doc: doc.meta[self.meta_field], reverse=True)
         except KeyError:
             raise ComponentError(
                 """
-                The parameter <meta_field> is currently set to '{}' but the Documents {} don't have this metadata key.\n
-                Double-check the names of the metadata fields in your documents \n
-                and set <meta_field> to the name of the field that contains the metadata you want to use for ranking.
+                The parameter <meta_field> is currently set to '{}' but the Documents {} don't have this meta key.\n
+                Double-check the names of the meta fields in your documents \n
+                and set <meta_field> to the name of the field that contains the meta you want to use for ranking.
                 """.format(
                     self.meta_field, ",".join([doc.id for doc in documents if self.meta_field not in doc.meta])
                 )
             )
 
         if self.weight > 0:
-            sorted_documents = self._merge_scores(documents, sorted_by_metadata)
+            sorted_documents = self._merge_scores(documents, sorted_by_meta)
             return {"documents": sorted_documents[:top_k]}
         else:
-            return {"documents": sorted_by_metadata[:top_k]}
+            return {"documents": sorted_by_meta[:top_k]}
 
     def _merge_scores(self, documents: List[Document], sorted_documents: List[Document]) -> List[Document]:
         """
-        Merge scores for Documents sorted both by their content and by their metadata field.
+        Merge scores for Documents sorted both by their content and by their meta field.
         """
         scores_map: Dict = defaultdict(int)
 
@@ -207,7 +210,7 @@ class MetaFieldRanker:
     @staticmethod
     def _calc_linear_score(rank: int, amount: int) -> float:
         """
-        Calculate the metadata field score as a linear score between the greatest and the lowest score in the list.
+        Calculate the meta field score as a linear score between the greatest and the lowest score in the list.
         This linear scaling is useful for:
           - Reducing the effect of outliers
           - Creating scores that are meaningfully distributed in the range [0,1],
