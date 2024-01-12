@@ -1,8 +1,9 @@
 import logging
 from collections import defaultdict
-from typing import List, Dict, Any, Optional, Literal
+from typing import List, Dict, Any, Optional, Literal, Set
+from dateutil.parser import parse
 
-from haystack import ComponentError, Document, component, default_to_dict
+from haystack import Document, component, default_to_dict
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +126,7 @@ class MetaFieldRanker:
     ):
         """
         Use this method to rank a list of Documents based on the selected meta field by:
-        1. Sorting the Documents by the meta field in descending order.
+        1. Sorting the Documents by the meta field in descending or ascending order.
         2. Merging the scores from the meta field with the scores from the previous component according to the strategy and weight provided.
         3. Returning the top-k documents.
 
@@ -141,6 +142,12 @@ class MetaFieldRanker:
                 Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
                 Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
                 If not provided, the ranking_mode provided at initialization time is used.
+        :param sort_order: Whether to sort the meta field by ascending or descending order.
+                Possible values are `descending` (default) and `ascending`.
+                If not provided, the sort_order provided at initialization time is used.
+        :param infer_type: Whether to try and infer the data type of meta value that is a string. For example, we have
+                the field `"date": "2015-02-01"` we would infer the type of "date" to be a datetime object.
+                If not provided, the infer_type provided at initialization time is used.
         """
         if not documents:
             return {"documents": []}
@@ -152,22 +159,59 @@ class MetaFieldRanker:
         infer_type = infer_type or self.infer_type
         self._validate_params(weight=weight, top_k=top_k, ranking_mode=ranking_mode, sort_order=sort_order)
 
-        reverse = sort_order == "descending"
-        try:
-            sorted_by_meta = sorted(documents, key=lambda doc: doc.meta[self.meta_field], reverse=reverse)
-        except KeyError:
-            raise ComponentError(
-                "The parameter <meta_field> is currently set to '%s' but the Documents %s don't have this meta key.\n"
-                "Double-check the names of the meta fields in your documents \n"
-                "and set <meta_field> to the name of the field that contains the meta you want to use for ranking."
-                % (self.meta_field, ",".join([doc.id for doc in documents if self.meta_field not in doc.meta]))
+        docs_with_meta_field = []
+        docs_no_meta_field = []
+        unique_meta_values = set()
+        for document in documents:
+            # Using try except block to handle situation that the meta_value could be None
+            try:
+                meta_value = document.meta[self.meta_field]
+                docs_with_meta_field.append(document)
+                unique_meta_values.add(meta_value)
+            except KeyError:
+                docs_no_meta_field.append(document)
+
+        if len(docs_with_meta_field) == 0:
+            logger.warning(
+                "The parameter <meta_field> is currently set to '%s', but none of the provided Documents have this meta key.\n"
+                "The provided Document IDs are %s.\n"
+                "Set <meta_field> to the name of the field that is present within the provided Documents.\n"
+                % (self.meta_field, ",".join([doc.id for doc in documents]))
             )
+
+        if len(docs_no_meta_field) > 0:
+            logger.warning(
+                "The parameter <meta_field> is currently set to '%s' but the Documents with IDs %s don't have this meta key.\n"
+                "These Documents will be placed at the end of the sorting order.\n"
+                % (self.meta_field, ",".join([doc.id for doc in docs_no_meta_field]))
+            )
+
+        reverse = sort_order == "descending"
+        sorted_by_meta = sorted(docs_with_meta_field, key=lambda doc: doc.meta[self.meta_field], reverse=reverse)
+        # Add the docs missing the meta_field back on the end
+        sorted_by_meta += docs_no_meta_field
 
         if self.weight > 0:
             sorted_documents = self._merge_scores(documents, sorted_by_meta)
             return {"documents": sorted_documents[:top_k]}
         else:
             return {"documents": sorted_by_meta[:top_k]}
+
+    def _infer_type(self, unique_meta_values: Set[str]):
+        return None
+
+    def _is_date(self, string: str):
+        """
+        Return whether the string can be interpreted as a date.
+
+        :param string: str, string to check for date
+        """
+        try:
+            parse(string)
+        except ValueError:
+            return False
+
+        return True
 
     def _merge_scores(self, documents: List[Document], sorted_documents: List[Document]) -> List[Document]:
         """
@@ -176,26 +220,28 @@ class MetaFieldRanker:
         scores_map: Dict = defaultdict(int)
 
         if self.ranking_mode == "reciprocal_rank_fusion":
-            for i, (doc, sorted_doc) in enumerate(zip(documents, sorted_documents)):
-                scores_map[doc.id] += self._calculate_rrf(rank=i) * (1 - self.weight)
+            for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents)):
+                scores_map[document.id] += self._calculate_rrf(rank=i) * (1 - self.weight)
                 scores_map[sorted_doc.id] += self._calculate_rrf(rank=i) * self.weight
         elif self.ranking_mode == "linear_score":
-            for i, (doc, sorted_doc) in enumerate(zip(documents, sorted_documents)):
+            for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents)):
                 score = float(0)
-                if doc.score is None:
+                if document.score is None:
                     logger.warning("The score wasn't provided; defaulting to 0.")
-                elif doc.score < 0 or doc.score > 1:
+                elif document.score < 0 or document.score > 1:
                     logger.warning(
-                        "The score %s for Document %s is outside the [0,1] range; defaulting to 0", doc.score, doc.id
+                        "The score %s for Document %s is outside the [0,1] range; defaulting to 0",
+                        document.score,
+                        document.id,
                     )
                 else:
-                    score = doc.score
+                    score = document.score
 
-                scores_map[doc.id] += score * (1 - self.weight)
+                scores_map[document.id] += score * (1 - self.weight)
                 scores_map[sorted_doc.id] += self._calc_linear_score(rank=i, amount=len(sorted_documents)) * self.weight
 
-        for doc in documents:
-            doc.score = scores_map[doc.id]
+        for document in documents:
+            document.score = scores_map[document.id]
 
         new_sorted_documents = sorted(documents, key=lambda doc: doc.score if doc.score else -1, reverse=True)
         return new_sorted_documents

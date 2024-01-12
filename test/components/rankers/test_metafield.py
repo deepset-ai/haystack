@@ -63,17 +63,31 @@ class TestMetaFieldRanker:
         sorted_scores = sorted([doc.meta["rating"] for doc in docs_after], reverse=True)
         assert [doc.meta["rating"] for doc in docs_after] == sorted_scores
 
+    def test_sort_order_ascending(self):
+        ranker = MetaFieldRanker(meta_field="rating", weight=0, sort_order="ascending")
+        docs_before = [Document(content="abc", meta={"rating": value}) for value in [1.1, 0.5, 2.3]]
+        output = ranker.run(documents=docs_before)
+        docs_after = output["documents"]
+
+        assert len(docs_after) == 3
+        sorted_scores = sorted([doc.meta["rating"] for doc in docs_after])
+        assert [doc.meta["rating"] for doc in docs_after] == sorted_scores
+
     def test_returns_empty_list_if_no_documents_are_provided(self):
         ranker = MetaFieldRanker(meta_field="rating")
         output = ranker.run(documents=[])
         docs_after = output["documents"]
         assert docs_after == []
 
-    def test_raises_component_error_if_metadata_not_found(self):
+    def test_raises_component_error_if_metadata_not_found(self, caplog):
         ranker = MetaFieldRanker(meta_field="rating")
         docs_before = [Document(content="abc", meta={"wrong_field": 1.3})]
-        with pytest.raises(ComponentError):
+        with caplog.at_level(logging.WARNING):
             ranker.run(documents=docs_before)
+            assert (
+                "The parameter <meta_field> is currently set to 'rating', but none of the provided Documents have this meta key."
+                in caplog.text
+            )
 
     def test_raises_value_error_if_wrong_ranking_mode(self):
         with pytest.raises(ValueError):
@@ -87,6 +101,10 @@ class TestMetaFieldRanker:
     def test_raises_component_error_if_wrong_weight(self, score):
         with pytest.raises(ValueError):
             MetaFieldRanker(meta_field="rating", weight=score)
+
+    def test_raises_value_error_if_wrong_sort_order(self):
+        with pytest.raises(ValueError):
+            MetaFieldRanker(meta_field="rating", sort_order="wrong_order")
 
     def test_linear_score(self):
         ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
