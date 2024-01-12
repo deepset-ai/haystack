@@ -433,9 +433,27 @@ class Pipeline:
         #     "input1": 1, "input2": 2,
         # }
 
-        # TODO: This could be a queue
+        # NOTE: The above NOTE and TODO are technically not true.
+        # This implementation of run supports only the first format, but the second format is actually
+        # never received by this method. It's handled by the `run()` method of the `Pipeline` class
+        # defined in `haystack/pipeline.py`.
+        # As of now we're ok with this, but we'll need to merge those two classes at some point.
+
         waiting_for_input: List[(str, Component)] = []
-        # TODO: Convert component inputs to list if they're variadic
+        for component_name, component_inputs in data.items():
+            if component_name not in self.graph.nodes:
+                # This is not a component name, it must be the name of one or more input sockets.
+                # Those are handled in a different way, so we skip them here.
+                continue
+            instance = self.graph.nodes[component_name]["instance"]
+            for component_input, input_value in component_inputs.items():
+                if instance.__canals_input__[component_input].is_variadic:
+                    # Components that have variadic inputs need to receive lists as input.
+                    # We don't want to force the user to always pass lists, so we convert single values to lists here.
+                    # If it's already a list we assume the component takes a variadic input of lists, so we
+                    # convert it in any case.
+                    data[component_name][component_input] = [input_value]
+
         last_inputs: Dict[str, Dict[str, Any]] = {**data}
 
         # Take all components that have at least 1 input not connected, and all components that have no inputs at all
