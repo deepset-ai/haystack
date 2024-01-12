@@ -184,7 +184,7 @@ class TestHuggingFaceLocalGenerator:
 
     def test_to_dict_with_quantization_config(self):
         component = HuggingFaceLocalGenerator(
-            model_name_or_path="gpt2",
+            model="gpt2",
             task="text-generation",
             device="cuda:0",
             token="test-token",
