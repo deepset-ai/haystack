@@ -4,7 +4,7 @@ import math
 import warnings
 import logging
 
-from haystack import component, default_to_dict, ComponentError, Document, ExtractedAnswer
+from haystack import component, default_to_dict, default_from_dict, ComponentError, Document, ExtractedAnswer
 from haystack.lazy_imports import LazyImport
 from haystack.utils import get_device
 
@@ -112,7 +112,7 @@ class ExtractiveReader:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(
+        serialization_dict = default_to_dict(
             self,
             model_name_or_path=self.model_name_or_path,
             device=self.device,
@@ -127,6 +127,45 @@ class ExtractiveReader:
             calibration_factor=self.calibration_factor,
             model_kwargs=self.model_kwargs,
         )
+
+        # convert torch.dtype to string for serialization
+        # 1. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
+        model_kwargs = serialization_dict["init_parameters"]["model_kwargs"]
+        for key, value in model_kwargs.items():
+            if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and isinstance(value, torch.dtype):
+                serialization_dict["init_parameters"]["model_kwargs"][key] = str(value)
+        # 2. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
+        quantization_config = model_kwargs.get("quantization_config", {})
+        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
+        if isinstance(bnb_4bit_compute_dtype, torch.dtype):
+            serialization_dict["init_parameters"]["model_kwargs"]["quantization_config"][
+                "bnb_4bit_compute_dtype"
+            ] = str(bnb_4bit_compute_dtype)
+
+        return serialization_dict
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ExtractiveReader":
+        """
+        Deserialize this component from a dictionary.
+        """
+        torch_and_transformers_import.check()
+        init_params = data.get("init_parameters", {})
+        model_kwargs = init_params.get("model_kwargs", {})
+        # convert string to torch.dtype
+        # 1. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
+        for key, value in model_kwargs.items():
+            if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and value.startswith("torch."):
+                data["init_parameters"]["model_kwargs"][key] = getattr(torch, value.strip("torch."))
+        # 2. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
+        quantization_config = model_kwargs.get("quantization_config", {})
+        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
+        if isinstance(bnb_4bit_compute_dtype, str) and bnb_4bit_compute_dtype.startswith("torch."):
+            data["init_parameters"]["model_kwargs"]["quantization_config"]["bnb_4bit_compute_dtype"] = getattr(
+                torch, bnb_4bit_compute_dtype.strip("torch.")
+            )
+
+        return default_from_dict(cls, data)
 
     def warm_up(self):
         """
