@@ -28,7 +28,7 @@ def test_bm25_rag_pipeline(tmp_path):
     rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
     rag_pipeline.add_component(
         instance=HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-small",
+            model="google/flan-t5-small",
             task="text2text-generation",
             generation_kwargs={"max_new_tokens": 100, "temperature": 0.5, "do_sample": True},
         ),
