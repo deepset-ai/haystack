@@ -25,8 +25,7 @@ def test_preprocessing_pipeline(tmp_path):
         instance=DocumentSplitter(split_by="sentence", split_length=1), name="splitter"
     )
     preprocessing_pipeline.add_component(
-        instance=SentenceTransformersDocumentEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
-        name="embedder",
+        instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="embedder"
     )
     preprocessing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
     preprocessing_pipeline.connect("file_type_router.text/plain", "text_file_converter.sources")
