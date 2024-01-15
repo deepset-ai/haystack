@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 import torch
+from transformers import PreTrainedTokenizerFast
 
 from haystack.components.generators.hugging_face_local import HuggingFaceLocalGenerator, StopWordsCriteria
 from haystack.utils import ComponentDevice, Device
@@ -374,7 +375,7 @@ class TestHuggingFaceLocalGenerator:
         # "ambiguously" token comes from "ambiguously". The algorithm will return True for presence of
         # "unambiguously" in input_ids1 which is not correct.
 
-        stop_words_criteria = StopWordsCriteria(tokenizer=Mock(), stop_words=["mock data"])
+        stop_words_criteria = StopWordsCriteria(tokenizer=Mock(spec=PreTrainedTokenizerFast), stop_words=["mock data"])
         # because we are mocking the tokenizer, we need to set the stop words manually
         stop_words_criteria.stop_ids = stop_words_id
 
