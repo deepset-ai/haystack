@@ -16,13 +16,13 @@ class TestMetaFieldRanker:
                 "weight": 1.0,
                 "top_k": None,
                 "ranking_mode": "reciprocal_rank_fusion",
-                "infer_type": False,
+                "sort_order": "descending",
             },
         }
 
     def test_to_dict_with_custom_init_parameters(self):
         component = MetaFieldRanker(
-            meta_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score", infer_type=True
+            meta_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score", sort_order="ascending"
         )
         data = component.to_dict()
         assert data == {
@@ -32,7 +32,7 @@ class TestMetaFieldRanker:
                 "weight": 0.5,
                 "top_k": 5,
                 "ranking_mode": "linear_score",
-                "infer_type": True,
+                "sort_order": "ascending",
             },
         }
 
