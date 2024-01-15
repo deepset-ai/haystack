@@ -270,7 +270,8 @@ class ComponentDevice:
             raise ValueError("Only single devices can be converted to PyTorch format")
 
         torch_import.check()
-        return torch.device(str(self._single_device), self._single_device.id)
+        assert self._single_device is not None
+        return torch.device(str(self._single_device))
 
     def to_torch_str(self) -> str:
         """
@@ -283,6 +284,7 @@ class ComponentDevice:
         if self._single_device is None:
             raise ValueError("Only single devices can be converted to PyTorch format")
 
+        assert self._single_device is not None
         return str(self._single_device)
 
     def to_spacy(self) -> int:
@@ -296,11 +298,14 @@ class ComponentDevice:
         if self._single_device is None:
             raise ValueError("Only single devices can be converted to spaCy format")
 
+        assert self._single_device is not None
         if self._single_device.type == DeviceType.GPU:
+            assert self._single_device.id is not None
             return self._single_device.id
         else:
             return -1
 
+    # pylint: disable=inconsistent-return-statements
     def to_hf(self) -> Union[Union[int, str], Dict[str, Union[int, str]]]:
         """
         Convert the component device representation to HuggingFace format.
@@ -311,6 +316,7 @@ class ComponentDevice:
 
         def convert_device(device: Device, *, gpu_id_only: bool = False) -> Union[int, str]:
             if gpu_id_only and device.type == DeviceType.GPU:
+                assert device.id is not None
                 return device.id
             else:
                 return str(device)
@@ -339,7 +345,7 @@ class ComponentDevice:
             The HuggingFace keyword arguments dictionary.
         """
         if not overwrite and any(x in hf_kwargs for x in ("device", "device_map")):
-            return
+            return hf_kwargs
 
         converted = self.to_hf()
         key = "device_map" if self.multiple_devices else "device"
@@ -375,7 +381,7 @@ class ComponentDevice:
 
         return device
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the component device representation to a JSON-serializable
         dictionary.
@@ -392,7 +398,7 @@ class ComponentDevice:
             assert False
 
     @classmethod
-    def from_dict(cls, dict: Dict[str, str]) -> "ComponentDevice":
+    def from_dict(cls, dict: Dict[str, Any]) -> "ComponentDevice":
         """
         Create a component device representation from a JSON-serialized
         dictionary.
@@ -454,11 +460,11 @@ def _split_device_string(string: str) -> Tuple[str, Optional[int]]:
         The device type and device id, if any.
     """
     if ":" in string:
-        device_type, device_id = string.split(":")
+        device_type, device_id_str = string.split(":")
         try:
-            device_id = int(device_id)
+            device_id = int(device_id_str)
         except ValueError:
-            raise ValueError(f"Device id must be an integer, got {device_id}")
+            raise ValueError(f"Device id must be an integer, got {device_id_str}")
     else:
         device_type = string
         device_id = None
