@@ -20,8 +20,7 @@ p.add_component(instance=DocumentJoiner(), name="joiner")
 p.add_component(instance=DocumentCleaner(), name="cleaner")
 p.add_component(instance=DocumentSplitter(split_by="sentence", split_length=250, split_overlap=30), name="splitter")
 p.add_component(
-    instance=SentenceTransformersDocumentEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
-    name="embedder",
+    instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="embedder"
 )
 p.add_component(instance=DocumentWriter(document_store=InMemoryDocumentStore()), name="writer")
 
