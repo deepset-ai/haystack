@@ -80,6 +80,12 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
             device: Union[str, "torch.device"] = "cpu",
         ):
             super().__init__()
+            # check if tokenizer is a valid tokenizer
+            if not isinstance(tokenizer, (PreTrainedTokenizer, PreTrainedTokenizerFast)):
+                raise ValueError(
+                    f"Invalid tokenizer provided for StopWordsCriteria - {tokenizer}. "
+                    f"Please provide a valid tokenizer from the HuggingFace Transformers library."
+                )
             encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
             self.stop_ids = encoded_stop_words.input_ids.to(device)
 
