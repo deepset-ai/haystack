@@ -138,6 +138,7 @@ def test_from_dict():
             "conn_type": "int",
             "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
             "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
+            "mandatory": True,
         },
     )
     assert connections[1] == (
@@ -147,6 +148,7 @@ def test_from_dict():
             "conn_type": "int",
             "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
             "to_socket": InputSocket(name="value", type=int, senders=["double"]),
+            "mandatory": True,
         },
     )
 
@@ -217,6 +219,7 @@ def test_from_dict_with_components_instances():
             "conn_type": "int",
             "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
             "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
+            "mandatory": True,
         },
     )
     assert connections[1] == (
@@ -226,6 +229,7 @@ def test_from_dict_with_components_instances():
             "conn_type": "int",
             "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
             "to_socket": InputSocket(name="value", type=int, senders=["double"]),
+            "mandatory": True,
         },
     )
 
