@@ -1,7 +1,7 @@
 import json
 
 from haystack import Pipeline, Document
-from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
 from haystack.components.rankers import TransformersSimilarityRanker
 from haystack.components.joiners.document_joiner import DocumentJoiner
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -46,7 +46,9 @@ def test_hybrid_doc_search_pipeline(tmp_path):
         Document(content="My name is Mario and I live in the capital of Italy."),
         Document(content="My name is Giorgio and I live in Rome."),
     ]
-    hybrid_pipeline.get_component("bm25_retriever").document_store.write_documents(documents)
+    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    embedded_documents = doc_embedder.run(documents=documents)["documents"]
+    hybrid_pipeline.get_component("bm25_retriever").document_store.write_documents(embedded_documents)
 
     query = "Who lives in Rome?"
     result = hybrid_pipeline.run(
