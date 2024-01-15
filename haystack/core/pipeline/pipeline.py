@@ -505,6 +505,10 @@ class Pipeline:
                     # This happens when a component was put in the waiting list but we reached it from another edge.
                     waiting_for_input.remove((name, comp))
 
+                # We keep track of which keys to remove from res at the end of the loop.
+                # This is done after the output has been distributed to the next components, so that
+                # we're sure all components that need this output have received it.
+                to_remove_from_res = set()
                 for sender_component_name, receiver_component_name, edge_data in self.graph.edges(data=True):
                     if receiver_component_name == name and edge_data["to_socket"].is_variadic:
                         # Delete variadic inputs that were already consumed
@@ -519,7 +523,8 @@ class Pipeline:
 
                     if receiver_component_name not in last_inputs:
                         last_inputs[receiver_component_name] = {}
-                    value = res.pop(edge_data["from_socket"].name)
+                    to_remove_from_res.add(edge_data["from_socket"].name)
+                    value = res[edge_data["from_socket"].name]
 
                     if edge_data["to_socket"].is_variadic:
                         if edge_data["to_socket"].name not in last_inputs[receiver_component_name]:
@@ -530,6 +535,9 @@ class Pipeline:
 
                     # We got some input for this component, add it to the queue
                     to_run.append((receiver_component_name, self.graph.nodes[receiver_component_name]["instance"]))
+
+                for key in to_remove_from_res:
+                    del res[key]
 
                 if len(res) > 0:
                     final_outputs[name] = res
