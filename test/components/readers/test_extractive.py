@@ -153,7 +153,7 @@ def test_from_dict():
     }
 
     component = ExtractiveReader.from_dict(data)
-    assert component.model == "my-model"
+    assert component.model_name_or_path == "my-model"
     assert component.token is None
     assert component.top_k == 20
     assert component.score_threshold is None
@@ -556,7 +556,7 @@ def test_matches_hf_pipeline():
     answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
         "answers"
     ]  # [0] Remove first two indices when batching support is reintroduced
-    pipe = pipeline("question-answering", model=reader._model, tokenizer=reader.tokenizer, align_to_words=False)
+    pipe = pipeline("question-answering", model=reader.model, tokenizer=reader.tokenizer, align_to_words=False)
     answers_hf = pipe(
         question=example_queries[0],
         context=example_documents[0][0].content,
