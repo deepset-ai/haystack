@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Implement framework-agnostic device representations. The main impetus behind this change is to move away from stringified representations of devices that are not portable between different frameworks.
+    It also enables support for multi-device inference in a generic manner.
