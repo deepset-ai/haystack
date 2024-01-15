@@ -327,6 +327,7 @@ class Pipeline:
             conn_type=_type_name(connection.sender_socket.type),
             from_socket=connection.sender_socket,
             to_socket=connection.receiver_socket,
+            mandatory=connection.is_mandatory,
         )
 
         self._connections.append(connection)
