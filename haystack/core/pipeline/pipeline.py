@@ -459,6 +459,9 @@ class Pipeline:
         # Take all components that have at least 1 input not connected, and all components that have no inputs at all
         to_run: List[(str, Component)] = []
         for node_name in self.graph.nodes:
+            # NOTE: We never add Components that have variadic inputs here.
+            # This is a problem, because that could be the first component in the pipeline.
+            # See test_distinct_loops_pipeline.py
             component: Component = self.graph.nodes[node_name]["instance"]
 
             if len(component.__canals_input__) == 0:
@@ -467,7 +470,10 @@ class Pipeline:
                 continue
 
             for socket in component.__canals_input__.values():
-                if not socket.senders:
+                # NOTE: The is_variadic check should solve the problem mentioned above.
+                # Though we need to investigate a bit as the test mentioned above is still
+                # stuck in a loop, for another reason though.
+                if not socket.senders or socket.is_variadic:
                     # Component has at least one input not connected, can run right away
                     to_run.append((node_name, component))
                     break
@@ -476,12 +482,17 @@ class Pipeline:
         # Rename it to max_visits_allowed or max_run_per_component_allowed
         # Remove it even
 
+        # TODO: Rename these and document why we need them
+        previous_previous_waiting_for_input = None
+        previous_waiting_for_input = None
         final_outputs = {}
         while len(to_run) > 0:
             name, comp = to_run.pop(0)
             if name in last_inputs and len(comp.__canals_input__) == len(last_inputs[name]):
                 # This component has all the inputs it needs to run
                 res = comp.run(**last_inputs[name])
+                previous_previous_waiting_for_input = None
+                previous_waiting_for_input = None
 
                 if (name, comp) in waiting_for_input:
                     # We manage to run this component that was in the waiting list, we can remove it.
@@ -518,9 +529,28 @@ class Pipeline:
                     final_outputs[name] = res
             else:
                 # This component doesn't have enough inputs so we can't run it yet
-                waiting_for_input.append((name, comp))
+                # previous_waiting_for_input = waiting_for_input
+                if (name, comp) not in waiting_for_input:
+                    waiting_for_input.append((name, comp))
 
             if len(to_run) == 0 and len(waiting_for_input) > 0:
+                foo = (
+                    sorted([x[0] for x in previous_previous_waiting_for_input])
+                    if previous_previous_waiting_for_input is not None
+                    else None
+                )
+                bar = (
+                    sorted([x[0] for x in previous_waiting_for_input])
+                    if previous_waiting_for_input is not None
+                    else None
+                )
+                if foo is not None and bar is not None and foo == bar:
+                    break
+                previous_previous_waiting_for_input = (
+                    previous_waiting_for_input.copy() if previous_waiting_for_input is not None else None
+                )
+                previous_waiting_for_input = waiting_for_input.copy()
+
                 # We ran out of components to run, but we still have some components that are waiting for input.
                 # Let's try to run them again.
                 name, comp = waiting_for_input.pop(0)
