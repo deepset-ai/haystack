@@ -77,7 +77,7 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
             self,
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
             stop_words: List[str],
-            device: Union[str, "torch.device"] = "cpu",
+            device: Union[str, torch.device] = "cpu",
         ):
             super().__init__()
             # check if tokenizer is a valid tokenizer
@@ -94,14 +94,14 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
             encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
             self.stop_ids = encoded_stop_words.input_ids.to(device)
 
-        def __call__(self, input_ids: "torch.LongTensor", scores: "torch.FloatTensor", **kwargs) -> bool:
+        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
             for stop_id in self.stop_ids:
                 found_stop_word = self.is_stop_word_found(input_ids, stop_id)
                 if found_stop_word:
                     return True
             return False
 
-        def is_stop_word_found(self, generated_text_ids: "torch.Tensor", stop_id: "torch.Tensor") -> bool:
+        def is_stop_word_found(self, generated_text_ids: torch.Tensor, stop_id: torch.Tensor) -> bool:
             generated_text_ids = generated_text_ids[-1]
             len_generated_text_ids = generated_text_ids.size(0)
             len_stop_id = stop_id.size(0)
