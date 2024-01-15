@@ -47,6 +47,7 @@ def test_hybrid_doc_search_pipeline(tmp_path):
         Document(content="My name is Giorgio and I live in Rome."),
     ]
     doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder.warm_up()
     embedded_documents = doc_embedder.run(documents=documents)["documents"]
     hybrid_pipeline.get_component("bm25_retriever").document_store.write_documents(embedded_documents)
 
