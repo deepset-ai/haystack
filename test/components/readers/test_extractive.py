@@ -72,7 +72,7 @@ def mock_reader(mock_tokenizer):
 
     with patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained") as model:
         model.return_value = MockModel()
-        reader = ExtractiveReader(model_name_or_path="mock-model", device="cpu:0")
+        reader = ExtractiveReader(model="mock-model", device="cpu:0")
         reader.warm_up()
         return reader
 
@@ -94,7 +94,7 @@ def test_to_dict():
     assert data == {
         "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
-            "model_name_or_path": "my-model",
+            "model": "my-model",
             "device": None,
             "token": None,  # don't serialize valid tokens
             "top_k": 20,
@@ -117,7 +117,7 @@ def test_to_dict_empty_model_kwargs():
     assert data == {
         "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
-            "model_name_or_path": "my-model",
+            "model": "my-model",
             "device": None,
             "token": None,  # don't serialize valid tokens
             "top_k": 20,
@@ -137,7 +137,7 @@ def test_from_dict():
     data = {
         "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
-            "model_name_or_path": "my-model",
+            "model": "my-model",
             "device": None,
             "token": None,
             "top_k": 20,

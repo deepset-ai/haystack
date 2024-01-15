@@ -10,7 +10,7 @@ def test_extractive_qa_pipeline(tmp_path):
     # Create the pipeline
     qa_pipeline = Pipeline()
     qa_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
-    qa_pipeline.add_component(instance=ExtractiveReader(model_name_or_path="deepset/tinyroberta-squad2"), name="reader")
+    qa_pipeline.add_component(instance=ExtractiveReader(model="deepset/tinyroberta-squad2"), name="reader")
     qa_pipeline.connect("retriever", "reader")
 
     # Draw the pipeline
