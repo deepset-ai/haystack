@@ -2,14 +2,14 @@ import logging
 import sys
 from typing import Any, Dict, List, Literal, Optional, Union, Callable
 
+from haystack.components.generators.hf_utils import PIPELINE_SUPPORTED_TASKS
+
 from haystack import component, default_to_dict, default_from_dict
 from haystack.components.generators.hf_utils import StopWordsCriteria, HFTokenStreamingHandler
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
-
-SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
     import torch
@@ -25,16 +25,23 @@ class HuggingFaceLocalChatGenerator:
 
     Usage example:
     ```python
-    from haystack.components.generators import HuggingFaceLocalChatGenerator
+    from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
+    from haystack.dataclasses import ChatMessage
 
-    generator = HuggingFaceLocalChatGenerator(model="mistralai/Mistral-7B-Instruct-v0.2",
-                                          generation_kwargs={
-                                            "max_new_tokens": 500,
-                                            })
-    messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
-                ChatMessage.from_user("What's Natural Language Processing?")]
+
+
+    generator = HuggingFaceLocalChatGenerator(model="mistralai/Mistral-7B-Instruct-v0.2")
+    messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
     print(generator.run(messages))
-    # {'replies': ['John Cusack']}
+
+    # {'replies': [ChatMessage(content=' Natural Language Processing (NLP) is a subfield of artificial
+    intelligence that deals with the interaction between computers and human language. It enables computers
+    to understand, interpret, and generate human language in a valuable way. NLP involves various techniques
+    such as speech recognition, text analysis, sentiment analysis, and machine translation. The ultimate goal
+    is to make it easier for computers to process and derive meaning from human language, improving communication
+    between humans and machines.', role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
+    meta={'finish_reason': 'stop', 'index': 0, 'model': 'mistralai/Mistral-7B-Instruct-v0.2',
+    'usage': {'completion_tokens': 90, 'prompt_tokens': 19, 'total_tokens': 109}})]}
     ```
     """
 
@@ -117,9 +124,9 @@ class HuggingFaceLocalChatGenerator:
                     huggingface_pipeline_kwargs["model"], token=huggingface_pipeline_kwargs["token"]
                 ).pipeline_tag
 
-        if task not in SUPPORTED_TASKS:
+        if task not in PIPELINE_SUPPORTED_TASKS:
             raise ValueError(
-                f"Task '{task}' is not supported. " f"The supported tasks are: {', '.join(SUPPORTED_TASKS)}."
+                f"Task '{task}' is not supported. " f"The supported tasks are: {', '.join(PIPELINE_SUPPORTED_TASKS)}."
             )
         huggingface_pipeline_kwargs["task"] = task
 
@@ -133,10 +140,12 @@ class HuggingFaceLocalChatGenerator:
                 "Found both the `stop_words` init parameter and the `stopping_criteria` key in `generation_kwargs`. "
                 "Please specify only one of them."
             )
+        generation_kwargs.setdefault("max_new_tokens", 512)
+        generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", [])
+        generation_kwargs["stop_sequences"].extend(stop_words or [])
 
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
         self.generation_kwargs = generation_kwargs
-        self.stop_words = stop_words
         self.chat_template = chat_template
         self.streaming_callback = streaming_callback
         self.pipeline = None
@@ -158,10 +167,7 @@ class HuggingFaceLocalChatGenerator:
         Serialize this component to a dictionary.
         """
         serialization_dict = default_to_dict(
-            self,
-            huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
-            generation_kwargs=self.generation_kwargs,
-            stop_words=self.stop_words,
+            self, huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs, generation_kwargs=self.generation_kwargs
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
@@ -247,11 +253,12 @@ class HuggingFaceLocalChatGenerator:
                 num_responses,
             )
 
-        # Combine and deduplicate stop words, pop them from generation_kwargs as they are not supported by the pipeline
-        stop_words_combined = set(generation_kwargs.pop("stop_sequences", []))
-        stop_words_combined.update(generation_kwargs.pop("stop_words", []))
-        stop_words_combined.update(self.stop_words or [])
-        stop_words: List[str] = list(stop_words_combined)
+        # merge stop_words and stop_sequences into a single list
+        generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", [])
+        generation_kwargs["stop_sequences"].extend(generation_kwargs.pop("stop_words", []))
+
+        # pipeline call doesn't support stop_sequences, so we need to pop it
+        stop_words = generation_kwargs.pop("stop_sequences", None)
 
         # Set up stop words criteria if stop words exist
         stop_words_criteria = StopWordsCriteria(tokenizer, stop_words, self.pipeline.device) if stop_words else None
@@ -268,7 +275,7 @@ class HuggingFaceLocalChatGenerator:
 
         # Prepare tokenizer for generation
         generation_kwargs["pad_token_id"] = (
-            tokenizer.eos_token_id if not tokenizer.pad_token_id else generation_kwargs.get("pad_token_id", None)
+            generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
         )
 
         # Generate responses

@@ -8,6 +8,8 @@ with LazyImport(message="Run 'pip install transformers'") as transformers_import
     from huggingface_hub import InferenceClient, HfApi
     from huggingface_hub.utils import RepositoryNotFoundError
 
+PIPELINE_SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
+
 
 def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepted_params: Optional[List[str]] = None):
     """
@@ -61,6 +63,8 @@ def check_valid_model(model_id: str, token: Optional[str]) -> None:
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
     import torch
     from transformers import StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer
+
+    transformers_import.check()
 
     class StopWordsCriteria(StoppingCriteria):
         """
