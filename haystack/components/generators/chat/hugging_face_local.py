@@ -1,4 +1,5 @@
 import logging
+import sys
 from typing import Any, Dict, List, Literal, Optional, Union, Callable
 
 from haystack import component, default_to_dict, default_from_dict
@@ -279,20 +280,35 @@ class HuggingFaceLocalChatGenerator:
             replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
         # Create ChatMessage instances for each reply
-        chat_messages = [self.create_message(reply, tokenizer, prepared_prompt) for reply in replies]
+        chat_messages = [
+            self.create_message(reply, r_index, tokenizer, prepared_prompt, generation_kwargs)
+            for r_index, reply in enumerate(replies)
+        ]
         return {"replies": chat_messages}
 
     def create_message(
-        self, text: str, tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast], prompt: str
+        self,
+        text: str,
+        index: int,
+        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+        prompt: str,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
     ) -> ChatMessage:
         """
         Create a ChatMessage instance from the provided text, populated with metadata.
         """
         completion_tokens = len(tokenizer.encode(text, add_special_tokens=False))
         prompt_token_count = len(tokenizer.encode(prompt, add_special_tokens=False))
+
+        # not the most sophisticated finish_reason detection, improve later to match
+        # https://platform.openai.com/docs/guides/text-generation/chat-completions-response-format
+        finish_reason = (
+            "length" if completion_tokens >= generation_kwargs.get("max_new_tokens", sys.maxsize) else "stop"
+        )
+
         meta = {
-            "finish_reason": "TODO",
-            "index": 0,
+            "finish_reason": finish_reason,
+            "index": index,
             "model": self.huggingface_pipeline_kwargs["model"],
             "usage": {
                 "completion_tokens": completion_tokens,
