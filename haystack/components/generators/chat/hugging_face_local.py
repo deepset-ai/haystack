@@ -2,7 +2,7 @@ import logging
 from typing import Any, Dict, List, Literal, Optional, Union, Callable
 
 from haystack import component, default_to_dict, default_from_dict
-from haystack.components.generators.hf_utils import StopWordsCriteria, check_generation_params, HFTokenStreamingHandler
+from haystack.components.generators.hf_utils import StopWordsCriteria, HFTokenStreamingHandler
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
 
@@ -13,7 +13,7 @@ SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
     import torch
     from huggingface_hub import model_info
-    from transformers import StoppingCriteriaList, pipeline
+    from transformers import StoppingCriteriaList, pipeline, PreTrainedTokenizer, PreTrainedTokenizerFast
 
 
 @component
@@ -223,7 +223,7 @@ class HuggingFaceLocalChatGenerator:
     @component.output_types(replies=List[ChatMessage])
     def run(self, messages: List[ChatMessage], generation_kwargs: Optional[Dict[str, Any]] = None):
         """
-        Invoke the text generation inference based on the provided messages and generation parameters.
+        Invoke text generation inference based on the provided messages and generation parameters.
 
         :param messages: A list of ChatMessage instances representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
@@ -234,33 +234,66 @@ class HuggingFaceLocalChatGenerator:
 
         tokenizer = self.pipeline.tokenizer
 
-        # check generation kwargs given as parameters to override the default ones
-        additional_params = ["n", "stop_words"]
-        check_generation_params(generation_kwargs, additional_params)
-
-        # update generation kwargs by merging with the default ones
+        # Check and update generation parameters
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
-        num_responses = generation_kwargs.pop("n", 1)
+        num_responses = generation_kwargs.get("num_return_sequences", 1)
+
         if self.streaming_callback and num_responses > 1:
             logger.warning(
-                f"Streaming is enabled, but the number of responses is set to {num_responses}. "
-                f"Streaming is only supported for single response generation."
-                f"Setting the number of responses to 1."
+                "Streaming is enabled, but the number of responses is set to %d. "
+                "Streaming is only supported for single response generation. "
+                "Setting the number of responses to 1.",
+                num_responses,
             )
 
-        stop_words_criteria = (
-            StopWordsCriteria(tokenizer, self.stop_words, self.pipeline.device) if self.stop_words else None
-        )
+        # Combine and deduplicate stop words, pop them from generation_kwargs as they are not supported by the pipeline
+        stop_words_combined = set(generation_kwargs.pop("stop_sequences", []))
+        stop_words_combined.update(generation_kwargs.pop("stop_words", []))
+        stop_words_combined.update(self.stop_words or [])
+        stop_words: List[str] = list(stop_words_combined)
 
+        # Set up stop words criteria if stop words exist
+        stop_words_criteria = StopWordsCriteria(tokenizer, stop_words, self.pipeline.device) if stop_words else None
         if stop_words_criteria:
             generation_kwargs["stopping_criteria"] = StoppingCriteriaList([stop_words_criteria])
+
         if self.streaming_callback:
-            generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, self.streaming_callback)
+            generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, self.streaming_callback, stop_words)
 
-        # apply either model's chat template or the user-provided one
-        prepared_prompt: str = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        # Prepare the prompt for the model
+        prepared_prompt = tokenizer.apply_chat_template(
+            messages, tokenize=False, chat_template=self.chat_template, add_generation_prompt=True
+        )
 
+        # Generate responses
         output = self.pipeline(prepared_prompt, **generation_kwargs)
-        replies = [o["generated_text"] for o in output if "generated_text" in o]
-        chat_messages = [ChatMessage.from_assistant(r) for r in replies]
+        replies = [o.get("generated_text", "") for o in output]
+
+        # Remove stop words from replies if present
+        for stop_word in stop_words:
+            replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+
+        # Create ChatMessage instances for each reply
+        chat_messages = [self.create_message(reply, tokenizer, prepared_prompt) for reply in replies]
         return {"replies": chat_messages}
+
+    def create_message(
+        self, text: str, tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast], prompt: str
+    ) -> ChatMessage:
+        """
+        Create a ChatMessage instance from the provided text, populated with metadata.
+        """
+        completion_tokens = len(tokenizer.encode(text, add_special_tokens=False))
+        prompt_token_count = len(tokenizer.encode(prompt, add_special_tokens=False))
+        meta = {
+            "finish_reason": "TODO",
+            "index": 0,
+            "model": self.huggingface_pipeline_kwargs["model"],
+            "usage": {
+                "completion_tokens": completion_tokens,
+                "prompt_tokens": prompt_token_count,
+                "total_tokens": prompt_token_count + completion_tokens,
+            },
+        }
+
+        return ChatMessage.from_assistant(text, meta=meta)
