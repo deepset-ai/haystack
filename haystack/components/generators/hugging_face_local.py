@@ -2,7 +2,6 @@ import logging
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from haystack import component, default_to_dict, default_from_dict
-from haystack.components.generators.hf_utils import StopWordsCriteria
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
@@ -13,6 +12,7 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
     import torch
     from huggingface_hub import model_info
     from transformers import StoppingCriteriaList, pipeline
+    from haystack.components.generators.hf_utils import StopWordsCriteria
 
 
 @component
