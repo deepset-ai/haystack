@@ -16,7 +16,7 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
     import torch
     from huggingface_hub import model_info
     from transformers import StoppingCriteriaList, pipeline, PreTrainedTokenizer, PreTrainedTokenizerFast
-    from haystack.components.generators.hf_utils import StopWordsCriteria
+    from haystack.components.generators.hf_utils import StopWordsCriteria  # pylint: disable=ungrouped-imports
 
 
 @component
