@@ -84,7 +84,7 @@ class NamedEntityExtractor:
         self,
         *,
         backend: Union[str, NamedEntityExtractorBackend],
-        model_name_or_path: str,
+        model: str,
         pipeline_kwargs: Optional[Dict[str, Any]] = None,
         device: Optional[ComponentDevice] = None,
     ) -> None:
@@ -93,7 +93,7 @@ class NamedEntityExtractor:
 
         :param backend:
             Backend to use for NER.
-        :param model_name_or_path:
+        :param model:
             Name of the model or a path to the model on
             the local disk.
 
@@ -119,13 +119,9 @@ class NamedEntityExtractor:
         device = ComponentDevice.resolve_device(device)
 
         if backend == NamedEntityExtractorBackend.HUGGING_FACE:
-            self._backend = _HfBackend(
-                model_name_or_path=model_name_or_path, device=device, pipeline_kwargs=pipeline_kwargs
-            )
+            self._backend = _HfBackend(model_name_or_path=model, device=device, pipeline_kwargs=pipeline_kwargs)
         elif backend == NamedEntityExtractorBackend.SPACY:
-            self._backend = _SpacyBackend(
-                model_name_or_path=model_name_or_path, device=device, pipeline_kwargs=pipeline_kwargs
-            )
+            self._backend = _SpacyBackend(model_name_or_path=model, device=device, pipeline_kwargs=pipeline_kwargs)
         else:
             raise ComponentError(f"Unknown NER backend '{type(backend).__name__}' for extractor")
 
@@ -157,7 +153,7 @@ class NamedEntityExtractor:
         return default_to_dict(
             self,
             backend=self._backend.type,
-            model_name_or_path=self._backend.model_name,
+            model=self._backend.model_name,
             device=self._backend.device.to_dict(),
             pipeline_kwargs=self._backend._pipeline_kwargs,
         )

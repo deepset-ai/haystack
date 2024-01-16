@@ -32,7 +32,7 @@ class DynamicChatPromptBuilder:
 
     # no parameter init, we don't use any runtime template variables
     prompt_builder = DynamicChatPromptBuilder()
-    llm = OpenAIChatGenerator(api_key="<your-api-key>", model_name="gpt-3.5-turbo")
+    llm = OpenAIChatGenerator(api_key="<your-api-key>", model="gpt-3.5-turbo")
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)
