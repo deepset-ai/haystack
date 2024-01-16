@@ -1,6 +1,7 @@
 import inspect
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Callable
 
+from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
@@ -59,7 +60,7 @@ def check_valid_model(model_id: str, token: Optional[str]) -> None:
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
     import torch
-    from transformers import StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast
+    from transformers import StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer
 
     class StopWordsCriteria(StoppingCriteria):
         """
@@ -107,3 +108,16 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
             len_stop_id = stop_id.size(0)
             result = all(generated_text_ids[len_generated_text_ids - len_stop_id :].eq(stop_id))
             return result
+
+    class HFTokenStreamingHandler(TextStreamer):
+        def __init__(
+            self,
+            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            stream_handler: Callable[[StreamingChunk], None],
+        ):
+            super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
+            self.token_handler = stream_handler
+
+        def on_finalized_text(self, token: str, stream_end: bool = False):
+            token_to_send = token + "\n" if stream_end else token
+            self.token_handler(StreamingChunk(content=token_to_send))
