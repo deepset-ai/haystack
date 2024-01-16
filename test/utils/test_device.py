@@ -98,16 +98,23 @@ def test_component_device_multiple():
     }
 
 
+@patch("torch.backends.mps.is_available")
 @patch("torch.cuda.is_available")
-def test_component_device_resolution(torch_cuda_is_available):
+def test_component_device_resolution(torch_cuda_is_available, torch_backends_mps_is_available):
     assert ComponentDevice.resolve_device(ComponentDevice.from_single(Device.cpu()))._single_device == Device.cpu()
 
     torch_cuda_is_available.return_value = True
     assert ComponentDevice.resolve_device(None)._single_device == Device.gpu(0)
 
     torch_cuda_is_available.return_value = False
+    torch_backends_mps_is_available.return_value = True
     assert ComponentDevice.resolve_device(None)._single_device == Device.mps()
 
     torch_cuda_is_available.return_value = False
+    torch_backends_mps_is_available.return_value = False
+    assert ComponentDevice.resolve_device(None)._single_device == Device.cpu()
+
+    torch_cuda_is_available.return_value = False
+    torch_backends_mps_is_available.return_value = True
     os.environ["HAYSTACK_MPS_ENABLED"] = "false"
     assert ComponentDevice.resolve_device(None)._single_device == Device.cpu()
