@@ -6,6 +6,7 @@ from haystack.components.generators.hf_utils import PIPELINE_SUPPORTED_TASKS
 
 from haystack import component, default_to_dict, default_from_dict
 from haystack.components.generators.hf_utils import StopWordsCriteria, HFTokenStreamingHandler
+from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
 
@@ -169,8 +170,12 @@ class HuggingFaceLocalChatGenerator:
         """
         Serialize this component to a dictionary.
         """
+        callback_name = serialize_callback_handler(self.streaming_callback) if self.streaming_callback else None
         serialization_dict = default_to_dict(
-            self, huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs, generation_kwargs=self.generation_kwargs
+            self,
+            huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
+            generation_kwargs=self.generation_kwargs,
+            streaming_callback=callback_name,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
@@ -202,8 +207,13 @@ class HuggingFaceLocalChatGenerator:
         """
         Deserialize this component from a dictionary.
         """
-        torch_and_transformers_import.check()
+        torch_and_transformers_import.check()  # leave this, cls method
+
         init_params = data.get("init_parameters", {})
+        serialized_callback_handler = init_params.get("streaming_callback")
+        if serialized_callback_handler:
+            data["init_parameters"]["streaming_callback"] = deserialize_callback_handler(serialized_callback_handler)
+
         huggingface_pipeline_kwargs = init_params.get("huggingface_pipeline_kwargs", {})
         model_kwargs = huggingface_pipeline_kwargs.get("model_kwargs", {})
 
