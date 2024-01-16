@@ -114,10 +114,13 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
             self,
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
             stream_handler: Callable[[StreamingChunk], None],
+            stop_words: Optional[List[str]] = None,
         ):
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
             self.token_handler = stream_handler
+            self.stop_words = stop_words or []
 
-        def on_finalized_text(self, token: str, stream_end: bool = False):
-            token_to_send = token + "\n" if stream_end else token
-            self.token_handler(StreamingChunk(content=token_to_send))
+        def on_finalized_text(self, word: str, stream_end: bool = False):
+            word_to_send = word + "\n" if stream_end else word
+            if word_to_send not in self.stop_words:
+                self.token_handler(StreamingChunk(content=word_to_send))
