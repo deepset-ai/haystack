@@ -2,6 +2,7 @@ import logging
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from haystack import component, default_to_dict, default_from_dict
+from haystack.components.generators.hf_utils import StopWordsCriteria
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
@@ -11,49 +12,7 @@ SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
     import torch
     from huggingface_hub import model_info
-    from transformers import (
-        pipeline,
-        StoppingCriteriaList,
-        StoppingCriteria,
-        PreTrainedTokenizer,
-        PreTrainedTokenizerFast,
-    )
-
-    class StopWordsCriteria(StoppingCriteria):
-        """
-        Stops text generation if any one of the stop words is generated.
-
-        Note: When a stop word is encountered, the generation of new text is stopped.
-        However, if the stop word is in the prompt itself, it can stop generating new text
-        prematurely after the first token. This is particularly important for LLMs designed
-        for dialogue generation. For these models, like for example mosaicml/mpt-7b-chat,
-        the output includes both the new text and the original prompt. Therefore, it's important
-        to make sure your prompt has no stop words.
-        """
-
-        def __init__(
-            self,
-            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
-            stop_words: List[str],
-            device: Union[str, "torch.device"] = "cpu",
-        ):
-            super().__init__()
-            encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
-            self.stop_ids = encoded_stop_words.input_ids.to(device)
-
-        def __call__(self, input_ids: "torch.LongTensor", scores: "torch.FloatTensor", **kwargs) -> bool:
-            for stop_id in self.stop_ids:
-                found_stop_word = self.is_stop_word_found(input_ids, stop_id)
-                if found_stop_word:
-                    return True
-            return False
-
-        def is_stop_word_found(self, generated_text_ids: "torch.Tensor", stop_id: "torch.Tensor") -> bool:
-            generated_text_ids = generated_text_ids[-1]
-            len_generated_text_ids = generated_text_ids.size(0)
-            len_stop_id = stop_id.size(0)
-            result = all(generated_text_ids[len_generated_text_ids - len_stop_id :].eq(stop_id))
-            return result
+    from transformers import StoppingCriteriaList, pipeline
 
 
 @component
