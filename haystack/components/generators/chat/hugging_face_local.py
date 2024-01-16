@@ -321,7 +321,7 @@ class HuggingFaceLocalChatGenerator:
         index: int,
         tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
         prompt: str,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        generation_kwargs: Dict[str, Any],
     ) -> ChatMessage:
         """
         Create a ChatMessage instance from the provided text, populated with metadata.
