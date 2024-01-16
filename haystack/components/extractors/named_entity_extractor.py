@@ -365,7 +365,7 @@ class _SpacyBackend(_NerBackend):
         self._model_name_or_path = model_name_or_path
         self.pipeline: Optional[SpacyPipeline] = None
 
-        if self.device.multiple_devices:
+        if self.device.has_multiple_devices:
             raise ValueError("spaCy backend for named entity extractor only supports inference on single devices")
 
     def initialize(self):

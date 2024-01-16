@@ -103,7 +103,7 @@ class ExtractiveReader:
         self.model_kwargs = model_kwargs or {}
         self.overlap_threshold = overlap_threshold
 
-        if self.device.multiple_devices:
+        if self.device.has_multiple_devices:
             raise ValueError(f"{type(ExtractiveReader).__name__} currently only supports inference on single devices")
 
     def _get_telemetry_data(self) -> Dict[str, Any]:

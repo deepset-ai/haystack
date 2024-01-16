@@ -53,10 +53,21 @@ def test_device_map():
     with pytest.raises(ValueError, match="unexpected device"):
         DeviceMap.from_hf({"layer1": 0.1})
 
+    assert map.first_device == Device.gpu(0)
+    assert DeviceMap({}).first_device is None
+
+
+def test_component_device_empty_and_full():
+    with pytest.raises(ValueError, match="neither be empty nor contain"):
+        ComponentDevice().first_device
+
+    with pytest.raises(ValueError, match="neither be empty nor contain"):
+        ComponentDevice(Device.cpu(), DeviceMap({})).to_hf()
+
 
 def test_component_device_single():
     single = ComponentDevice.from_single(Device.gpu(1))
-    assert not single.multiple_devices
+    assert not single.has_multiple_devices
     assert single._single_device == Device.gpu(1)
     assert single._multiple_devices is None
 
@@ -68,13 +79,14 @@ def test_component_device_single():
     assert single.to_hf() == "cuda:1"
     assert single.update_hf_kwargs({}, overwrite=False) == {"device": "cuda:1"}
     assert single.update_hf_kwargs({"device": 0}, overwrite=True) == {"device": "cuda:1"}
+    assert single.first_device == single._single_device
 
 
 def test_component_device_multiple():
     multiple = ComponentDevice.from_multiple(
         DeviceMap({"layer1": Device.cpu(), "layer2": Device.gpu(1), "layer3": Device.disk()})
     )
-    assert multiple.multiple_devices
+    assert multiple.has_multiple_devices
     assert multiple._single_device is None
     assert multiple._multiple_devices == DeviceMap(
         {"layer1": Device.cpu(), "layer2": Device.gpu(1), "layer3": Device.disk()}
@@ -96,6 +108,7 @@ def test_component_device_multiple():
     assert multiple.update_hf_kwargs({"device_map": {None: None}}, overwrite=True) == {
         "device_map": {"layer1": "cpu", "layer2": 1, "layer3": "disk"}
     }
+    assert multiple.first_device == Device.cpu()
 
 
 @patch("torch.backends.mps.is_available")

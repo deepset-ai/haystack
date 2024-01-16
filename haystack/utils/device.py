@@ -167,6 +167,19 @@ class DeviceMap:
         """
         return {key: str(device) for key, device in self.mapping.items()}
 
+    @property
+    def first_device(self) -> Optional[Device]:
+        """
+        Return the first device in the mapping, if any.
+
+        :returns:
+            The first device.
+        """
+        if not self.mapping:
+            return None
+        else:
+            return next(iter(self.mapping.values()))
+
     @staticmethod
     def from_dict(dict: Dict[str, str]) -> "DeviceMap":
         """
@@ -258,6 +271,15 @@ class ComponentDevice:
         """
         return cls(_multiple_devices=device_map)
 
+    def _validate(self):
+        """
+        Validate the component device representation.
+        """
+        if not (self._single_device is not None) ^ (self._multiple_devices is not None):
+            raise ValueError(
+                "The component device can neither be empty nor contain both a single device and a device map"
+            )
+
     def to_torch(self) -> "torch.device":
         """
         Convert the component device representation to PyTorch format.
@@ -266,6 +288,8 @@ class ComponentDevice:
         :returns:
             The PyTorch device representation.
         """
+        self._validate()
+
         if self._single_device is None:
             raise ValueError("Only single devices can be converted to PyTorch format")
 
@@ -281,6 +305,8 @@ class ComponentDevice:
         :returns:
             The PyTorch device string representation.
         """
+        self._validate()
+
         if self._single_device is None:
             raise ValueError("Only single devices can be converted to PyTorch format")
 
@@ -295,6 +321,8 @@ class ComponentDevice:
         :returns:
             The spaCy device representation.
         """
+        self._validate()
+
         if self._single_device is None:
             raise ValueError("Only single devices can be converted to spaCy format")
 
@@ -305,7 +333,6 @@ class ComponentDevice:
         else:
             return -1
 
-    # pylint: disable=inconsistent-return-statements
     def to_hf(self) -> Union[Union[int, str], Dict[str, Union[int, str]]]:
         """
         Convert the component device representation to HuggingFace format.
@@ -313,6 +340,7 @@ class ComponentDevice:
         :returns:
             The HuggingFace device representation.
         """
+        self._validate()
 
         def convert_device(device: Device, *, gpu_id_only: bool = False) -> Union[int, str]:
             if gpu_id_only and device.type == DeviceType.GPU:
@@ -323,13 +351,9 @@ class ComponentDevice:
 
         if self._single_device is not None:
             return convert_device(self._single_device)
-        elif self._multiple_devices is not None:
-            return {
-                key: convert_device(device, gpu_id_only=True) for key, device in self._multiple_devices.mapping.items()
-            }
-        else:
-            # Unreachable
-            assert False
+
+        assert self._multiple_devices is not None
+        return {key: convert_device(device, gpu_id_only=True) for key, device in self._multiple_devices.mapping.items()}
 
     def update_hf_kwargs(self, hf_kwargs: Dict[str, Any], *, overwrite: bool) -> Dict[str, Any]:
         """
@@ -344,21 +368,42 @@ class ComponentDevice:
         :returns:
             The HuggingFace keyword arguments dictionary.
         """
+        self._validate()
+
         if not overwrite and any(x in hf_kwargs for x in ("device", "device_map")):
             return hf_kwargs
 
         converted = self.to_hf()
-        key = "device_map" if self.multiple_devices else "device"
+        key = "device_map" if self.has_multiple_devices else "device"
         hf_kwargs[key] = converted
         return hf_kwargs
 
     @property
-    def multiple_devices(self) -> bool:
+    def has_multiple_devices(self) -> bool:
         """
         Whether this component device representation contains multiple
         devices.
         """
+        self._validate()
+
         return self._multiple_devices is not None
+
+    @property
+    def first_device(self) -> Optional[Device]:
+        """
+        Return either the single device or the first device in the
+        device map, if any.
+
+        :returns:
+            The first device.
+        """
+        self._validate()
+
+        if self._single_device is not None:
+            return self._single_device
+
+        assert self._multiple_devices is not None
+        return self._multiple_devices.first_device
 
     @staticmethod
     def resolve_device(device: Optional["ComponentDevice"] = None) -> "ComponentDevice":
@@ -427,20 +472,16 @@ def _get_default_device() -> Device:
     """
     try:
         torch_import.check()
-        has_torch = True
-    except ImportError:
-        has_torch = False
 
-    if not has_torch:
-        has_mps = False
-        has_cuda = False
-    else:
         has_mps = (
             hasattr(torch.backends, "mps")
             and torch.backends.mps.is_available()
             and os.getenv("HAYSTACK_MPS_ENABLED", "true") != "false"
         )
         has_cuda = torch.cuda.is_available()
+    except ImportError:
+        has_mps = False
+        has_cuda = False
 
     if has_cuda:
         return Device.gpu()

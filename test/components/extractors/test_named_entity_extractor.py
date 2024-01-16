@@ -24,7 +24,7 @@ def test_named_entity_extractor_serde():
     extractor = NamedEntityExtractor(
         backend=NamedEntityExtractorBackend.HUGGING_FACE,
         model_name_or_path="dslim/bert-base-NER",
-        device=ComponentDevice.from_str("cuda:22"),
+        device=ComponentDevice.from_str("cuda:1"),
     )
 
     serde_data = extractor.to_dict()

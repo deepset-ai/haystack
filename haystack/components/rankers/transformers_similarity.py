@@ -91,7 +91,7 @@ class TransformersSimilarityRanker:
         self.score_threshold = score_threshold
         self.model_kwargs = model_kwargs or {}
 
-        if self.device.multiple_devices:
+        if self.device.has_multiple_devices:
             raise ValueError(
                 f"{type(TransformersSimilarityRanker).__name__} currently only supports inference on single devices"
             )
