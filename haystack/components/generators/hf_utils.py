@@ -122,5 +122,5 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
 
         def on_finalized_text(self, word: str, stream_end: bool = False):
             word_to_send = word + "\n" if stream_end else word
-            if word_to_send not in self.stop_words:
+            if word_to_send.strip() not in self.stop_words:
                 self.token_handler(StreamingChunk(content=word_to_send))

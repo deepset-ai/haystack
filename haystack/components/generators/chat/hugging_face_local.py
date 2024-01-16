@@ -265,6 +265,11 @@ class HuggingFaceLocalChatGenerator:
             messages, tokenize=False, chat_template=self.chat_template, add_generation_prompt=True
         )
 
+        # Prepare tokenizer for generation
+        generation_kwargs["pad_token_id"] = (
+            tokenizer.eos_token_id if not tokenizer.pad_token_id else generation_kwargs.get("pad_token_id", None)
+        )
+
         # Generate responses
         output = self.pipeline(prepared_prompt, **generation_kwargs)
         replies = [o.get("generated_text", "") for o in output]
