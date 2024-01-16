@@ -6,22 +6,22 @@ from haystack.components.extractors import NamedEntityExtractor, NamedEntityExtr
 
 @pytest.mark.unit
 def test_named_entity_extractor_backend():
-    _ = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model_name_or_path="dslim/bert-base-NER")
+    _ = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
 
-    _ = NamedEntityExtractor(backend="hugging_face", model_name_or_path="dslim/bert-base-NER")
+    _ = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
 
-    _ = NamedEntityExtractor(backend=NamedEntityExtractorBackend.SPACY, model_name_or_path="en_core_web_sm")
+    _ = NamedEntityExtractor(backend=NamedEntityExtractorBackend.SPACY, model="en_core_web_sm")
 
-    _ = NamedEntityExtractor(backend="spacy", model_name_or_path="en_core_web_sm")
+    _ = NamedEntityExtractor(backend="spacy", model="en_core_web_sm")
 
     with pytest.raises(ComponentError, match=r"Invalid backend"):
-        NamedEntityExtractor(backend="random_backend", model_name_or_path="dslim/bert-base-NER")
+        NamedEntityExtractor(backend="random_backend", model="dslim/bert-base-NER")
 
 
 @pytest.mark.unit
 def test_named_entity_extractor_serde():
     extractor = NamedEntityExtractor(
-        backend=NamedEntityExtractorBackend.HUGGING_FACE, model_name_or_path="dslim/bert-base-NER", device_id=-1
+        backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER", device_id=-1
     )
 
     serde_data = extractor.to_dict()
