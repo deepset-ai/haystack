@@ -2,7 +2,7 @@ import logging
 from typing import Any, Dict, List, Literal, Optional, Union, Callable
 
 from haystack import component, default_to_dict, default_from_dict
-from haystack.components.generators.hf_utils import StopWordsCriteria, check_generation_params
+from haystack.components.generators.hf_utils import StopWordsCriteria, check_generation_params, HFTokenStreamingHandler
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
 
@@ -139,7 +139,6 @@ class HuggingFaceLocalChatGenerator:
         self.chat_template = chat_template
         self.streaming_callback = streaming_callback
         self.pipeline = None
-        self.stopping_criteria_list = None
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -152,12 +151,6 @@ class HuggingFaceLocalChatGenerator:
     def warm_up(self):
         if self.pipeline is None:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
-
-        if self.stop_words and self.stopping_criteria_list is None:
-            stop_words_criteria = StopWordsCriteria(
-                tokenizer=self.pipeline.tokenizer, stop_words=self.stop_words, device=self.pipeline.device
-            )
-            self.stopping_criteria_list = StoppingCriteriaList([stop_words_criteria])
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -248,18 +241,26 @@ class HuggingFaceLocalChatGenerator:
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
         num_responses = generation_kwargs.pop("n", 1)
+        if self.streaming_callback and num_responses > 1:
+            logger.warning(
+                f"Streaming is enabled, but the number of responses is set to {num_responses}. "
+                f"Streaming is only supported for single response generation."
+                f"Setting the number of responses to 1."
+            )
+
+        stop_words_criteria = (
+            StopWordsCriteria(tokenizer, self.stop_words, self.pipeline.device) if self.stop_words else None
+        )
+
+        if stop_words_criteria:
+            generation_kwargs["stopping_criteria"] = StoppingCriteriaList([stop_words_criteria])
+        if self.streaming_callback:
+            generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, self.streaming_callback)
 
         # apply either model's chat template or the user-provided one
         prepared_prompt: str = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
-        prompt_token_count: int = 100  # calculate_token_length(prepared_prompt, tokenizer)
-
-        return self._run_non_streaming(prepared_prompt, prompt_token_count, num_responses, generation_kwargs)
-
-    def _run_non_streaming(
-        self, prepared_prompt: str, prompt_token_count: int, num_responses: int, generation_kwargs: Dict[str, Any]
-    ) -> Dict[str, List[ChatMessage]]:
-        output = self.pipeline(prepared_prompt, stopping_criteria=self.stopping_criteria_list, **generation_kwargs)
+        output = self.pipeline(prepared_prompt, **generation_kwargs)
         replies = [o["generated_text"] for o in output if "generated_text" in o]
         chat_messages = [ChatMessage.from_assistant(r) for r in replies]
         return {"replies": chat_messages}
