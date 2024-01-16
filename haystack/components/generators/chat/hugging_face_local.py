@@ -20,8 +20,11 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
 @component
 class HuggingFaceLocalChatGenerator:
     """
-    Generator based on a Hugging Face model.
-    This component provides an interface to generate text using a Hugging Face model that runs locally.
+
+    The `HuggingFaceLocalChatGenerator` class is a component designed for generating chat responses using models from
+    Hugging Face's model hub. It is tailored for local runtime text generation tasks and provides a convenient interface
+    for working with chat-based models, such as `mistralai/Mistral-7B-Instruct-v0.2` or `meta-llama/Llama-2-7b-chat-hf`
+    etc.
 
     Usage example:
     ```python
@@ -30,7 +33,7 @@ class HuggingFaceLocalChatGenerator:
 
 
 
-    generator = HuggingFaceLocalChatGenerator(model="mistralai/Mistral-7B-Instruct-v0.2")
+    generator = HuggingFaceLocalChatGenerator(model="mistralai/Mistral-7B-Instruct-v0.2", device="cuda:0")
     messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
     print(generator.run(messages))
 
@@ -259,6 +262,15 @@ class HuggingFaceLocalChatGenerator:
 
         # pipeline call doesn't support stop_sequences, so we need to pop it
         stop_words = generation_kwargs.pop("stop_sequences", None)
+
+        # check all stop words are strings
+        if stop_words and not all(isinstance(word, str) for word in stop_words):
+            logger.warning(
+                "Invalid stop words provided. Stop words must be specified as a list of strings. "
+                "Ignoring stop words: %s",
+                stop_words,
+            )
+            stop_words = None
 
         # Set up stop words criteria if stop words exist
         stop_words_criteria = StopWordsCriteria(tokenizer, stop_words, self.pipeline.device) if stop_words else None
