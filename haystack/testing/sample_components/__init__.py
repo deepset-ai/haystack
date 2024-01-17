@@ -8,7 +8,7 @@ from haystack.testing.sample_components.double import Double
 from haystack.testing.sample_components.fstring import FString
 from haystack.testing.sample_components.greet import Greet
 from haystack.testing.sample_components.hello import Hello
-from haystack.testing.sample_components.joiner import FirstIntSelector, StringJoiner, StringListJoiner
+from haystack.testing.sample_components.joiner import StringJoiner, StringListJoiner
 from haystack.testing.sample_components.parity import Parity
 from haystack.testing.sample_components.remainder import Remainder
 from haystack.testing.sample_components.repeat import Repeat
@@ -34,7 +34,6 @@ __all__ = [
     "Hello",
     "TextSplitter",
     "StringListJoiner",
-    "FirstIntSelector",
     "SelfLoop",
     "FString",
 ]

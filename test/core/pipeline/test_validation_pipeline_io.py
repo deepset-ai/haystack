@@ -5,12 +5,12 @@ from typing import Optional
 
 import pytest
 
-from haystack.core.pipeline import Pipeline
+from haystack.core.component.sockets import InputSocket, OutputSocket
 from haystack.core.component.types import Variadic
 from haystack.core.errors import PipelineValidationError
-from haystack.core.component.sockets import InputSocket, OutputSocket
+from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
-from haystack.testing.sample_components import Double, AddFixedValue, Sum, Parity
+from haystack.testing.sample_components import AddFixedValue, Double, Parity, Sum
 
 
 def test_find_pipeline_input_no_input():
