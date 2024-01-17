@@ -467,7 +467,6 @@ class Pipeline:
                 continue
 
             for socket in component.__canals_input__.values():
-                # if not socket.senders and socket.name in last_inputs.get(node_name, {}):
                 if not socket.senders or socket.is_variadic:
                     # Component has at least one input not connected or is variadic, can run right away.
                     to_run.append((node_name, component))
@@ -494,7 +493,6 @@ class Pipeline:
         while len(to_run) > 0:
             name, comp = to_run.pop(0)
 
-            # if any(socket.is_variadic for socket in comp.__canals_input__.values()):
             if any(socket.is_variadic for socket in comp.__canals_input__.values()) and not getattr(
                 comp, "is_greedy", False
             ):
@@ -546,6 +544,7 @@ class Pipeline:
                     if edge_data["to_socket"].is_variadic:
                         if edge_data["to_socket"].name not in last_inputs[receiver_component_name]:
                             last_inputs[receiver_component_name][edge_data["to_socket"].name] = []
+                        # Add to the list of variadic inputs
                         last_inputs[receiver_component_name][edge_data["to_socket"].name].append(value)
                     else:
                         last_inputs[receiver_component_name][edge_data["to_socket"].name] = value
@@ -553,10 +552,6 @@ class Pipeline:
                     pair = (receiver_component_name, self.graph.nodes[receiver_component_name]["instance"])
                     if pair not in waiting_for_input and pair not in to_run:
                         to_run.append(pair)
-                    # if edge_data["to_socket"].is_variadic and pair not in waiting_for_input:
-                    #     waiting_for_input.append(pair)
-                    # elif pair not in waiting_for_input and pair not in to_run:
-                    #     to_run.append(pair)
 
                 for key in to_remove_from_res:
                     del res[key]
@@ -578,18 +573,22 @@ class Pipeline:
                     and before_last_waiting_for_input == last_waiting_for_input
                 ):
                     # Are we actually stuck or there's a lazy variadic waiting for input?
+                    # This is our last resort, if there's no lazy variadic waiting for input
+                    # we're stuck for real and we can't make any progress.
                     for name, comp in waiting_for_input:
                         is_variadic = any(socket.is_variadic for socket in comp.__canals_input__.values())
                         if is_variadic and not getattr(comp, "is_greedy", False):
                             break
                     else:
-                        # We're stuck in a loop, we can't make any progress
+                        # We're stuck in a loop for real, we can't make any progress.
+                        # BAIL!
                         break
+
+                    # There was a lazy variadic waiting for input, we can run it
                     waiting_for_input.remove((name, comp))
                     to_run.append((name, comp))
                     continue
-                    # We're stuck in a loop, we can't make any progress
-                    # break
+
                 before_last_waiting_for_input = (
                     last_waiting_for_input.copy() if last_waiting_for_input is not None else None
                 )
@@ -600,6 +599,7 @@ class Pipeline:
                     if name not in last_inputs:
                         last_inputs[name] = {}
 
+                    # Lazy variadics must be removed only if there's nothing else to run at this stage
                     is_variadic = any(socket.is_variadic for socket in comp.__canals_input__.values())
                     if is_variadic and not getattr(comp, "is_greedy", False):
                         there_are_only_lazy_variadics = True
@@ -613,6 +613,7 @@ class Pipeline:
                         if not there_are_only_lazy_variadics:
                             continue
 
+                    # Find the first component that has all the inputs it needs to run
                     has_enough_inputs = True
                     for input_socket in comp.__canals_input__.values():
                         if input_socket.is_mandatory and input_socket.name not in last_inputs[name]:
@@ -625,28 +626,9 @@ class Pipeline:
                             last_inputs[name][input_socket.name] = input_socket.default_value
                     if has_enough_inputs:
                         break
-                # else:
-                #     # Get out of the main run loop, we're stuck in a loop
-                #     break
 
                 waiting_for_input.remove((name, comp))
                 to_run.append((name, comp))
-
-                # We ran out of components to run, but we still have some components that are waiting for input.
-                # Let's try to run them again.
-                # name, comp = waiting_for_input.pop(0)
-
-                # if name not in last_inputs:
-                #     last_inputs[name] = {}
-
-                # # Set default values for the inputs that are still missing
-                # for input_socket in comp.__canals_input__.values():
-                #     if input_socket.is_mandatory:
-                #         continue
-                #     if input_socket.name not in last_inputs[name]:
-                #         last_inputs[name][input_socket.name] = input_socket.default_value
-
-                # to_run.append((name, comp))
 
         return final_outputs
 
