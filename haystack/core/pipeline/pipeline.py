@@ -3,9 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import datetime
 import importlib
-import json
 import logging
-import os
 from collections import defaultdict
 from copy import copy
 from pathlib import Path
@@ -24,7 +22,7 @@ from haystack.core.errors import (
 )
 from haystack.core.pipeline.descriptions import find_pipeline_outputs
 from haystack.core.pipeline.draw.draw import RenderingEngines, _draw
-from haystack.core.pipeline.validation import find_pipeline_inputs, validate_pipeline_input
+from haystack.core.pipeline.validation import find_pipeline_inputs
 from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name
 
@@ -448,13 +446,15 @@ class Pipeline:
                 component_inputs = data.get(component_name, {})
                 if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
                     raise ValueError("Missing input for component {component_name}: {socket_name}")
-                elif socket.senders and socket_name in component_inputs and not socket.is_variadic:
+                if socket.senders and socket_name in component_inputs and not socket.is_variadic:
                     raise ValueError(
                         f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
                     )
 
-    # TODO: We're ignoring this for the time being, after we properly optimize this function we'll remove the noqa
-    def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:  # noqa: C901, PLR0912
+    # TODO: We're ignoring this linting rules for the time being, after we properly optimize this function we'll remove the noqa
+    def run(  # noqa: C901, PLR0912 pylint: disable=too-many-branches
+        self, data: Dict[str, Any], debug: bool = False
+    ) -> Dict[str, Any]:
         # NOTE: We're assuming data is formatted like so as of now
         # data = {
         #     "comp1": {"input1": 1, "input2": 2},
@@ -666,7 +666,7 @@ class Pipeline:
                         if input_socket.is_mandatory and input_socket.name not in last_inputs[name]:
                             has_enough_inputs = False
                             break
-                        elif input_socket.is_mandatory:
+                        if input_socket.is_mandatory:
                             continue
 
                         if input_socket.name not in last_inputs[name]:
