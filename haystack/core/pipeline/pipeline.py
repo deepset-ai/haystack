@@ -7,7 +7,7 @@ import logging
 from collections import defaultdict
 from copy import copy
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Set, Type, TypeVar, Union
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Type, TypeVar, Union
 
 import networkx  # type:ignore
 
@@ -495,9 +495,9 @@ class Pipeline:
 
         # Take all components that have at least 1 input not connected or is variadic,
         # and all components that have no inputs at all
-        to_run: List[(str, Component)] = []
+        to_run: List[Tuple[str, Component]] = []
         for node_name in self.graph.nodes:
-            component: Component = self.graph.nodes[node_name]["instance"]
+            component = self.graph.nodes[node_name]["instance"]
 
             if len(component.__canals_input__) == 0:
                 # Component has no input, can run right away
@@ -520,19 +520,19 @@ class Pipeline:
         last_waiting_for_input: Optional[Set[str]] = None
 
         # The waiting_for_input list is used to keep track of components that are waiting for input.
-        waiting_for_input: List[(str, Component)] = []
+        waiting_for_input: List[Tuple[str, Component]] = []
 
         # This is what we'll return at the end
         final_outputs = {}
         while len(to_run) > 0:
             name, comp = to_run.pop(0)
 
-            if any(socket.is_variadic for socket in comp.__canals_input__.values()) and not getattr(
+            if any(socket.is_variadic for socket in comp.__canals_input__.values()) and not getattr(  # type: ignore
                 comp, "is_greedy", False
             ):
                 there_are_non_variadics = False
                 for _, other_comp in to_run:
-                    if not any(socket.is_variadic for socket in other_comp.__canals_input__.values()):
+                    if not any(socket.is_variadic for socket in other_comp.__canals_input__.values()):  # type: ignore
                         there_are_non_variadics = True
                         break
 
@@ -541,7 +541,7 @@ class Pipeline:
                         waiting_for_input.append((name, comp))
                     continue
 
-            if name in last_inputs and len(comp.__canals_input__) == len(last_inputs[name]):
+            if name in last_inputs and len(comp.__canals_input__) == len(last_inputs[name]):  # type: ignore
                 # This component has all the inputs it needs to run
                 res = comp.run(**last_inputs[name])
 
@@ -593,8 +593,7 @@ class Pipeline:
                     if pair not in waiting_for_input and pair not in to_run:
                         to_run.append(pair)
 
-                for key in to_remove_from_res:
-                    del res[key]
+                res = {k: v for k, v in res.items() if k not in to_remove_from_res}
 
                 if len(res) > 0:
                     final_outputs[name] = res
@@ -616,7 +615,7 @@ class Pipeline:
                     # This is our last resort, if there's no lazy variadic waiting for input
                     # we're stuck for real and we can't make any progress.
                     for name, comp in waiting_for_input:
-                        is_variadic = any(socket.is_variadic for socket in comp.__canals_input__.values())
+                        is_variadic = any(socket.is_variadic for socket in comp.__canals_input__.values())  # type: ignore
                         if is_variadic and not getattr(comp, "is_greedy", False):
                             break
                     else:
@@ -647,14 +646,14 @@ class Pipeline:
                         last_inputs[name] = {}
 
                     # Lazy variadics must be removed only if there's nothing else to run at this stage
-                    is_variadic = any(socket.is_variadic for socket in comp.__canals_input__.values())
+                    is_variadic = any(socket.is_variadic for socket in comp.__canals_input__.values())  # type: ignore
                     if is_variadic and not getattr(comp, "is_greedy", False):
                         there_are_only_lazy_variadics = True
                         for other_name, other_comp in waiting_for_input:
                             if name == other_name:
                                 continue
                             there_are_only_lazy_variadics &= any(
-                                socket.is_variadic for socket in other_comp.__canals_input__.values()
+                                socket.is_variadic for socket in other_comp.__canals_input__.values()  # type: ignore
                             ) and not getattr(other_comp, "is_greedy", False)
 
                         if not there_are_only_lazy_variadics:
@@ -662,7 +661,7 @@ class Pipeline:
 
                     # Find the first component that has all the inputs it needs to run
                     has_enough_inputs = True
-                    for input_socket in comp.__canals_input__.values():
+                    for input_socket in comp.__canals_input__.values():  # type: ignore
                         if input_socket.is_mandatory and input_socket.name not in last_inputs[name]:
                             has_enough_inputs = False
                             break
