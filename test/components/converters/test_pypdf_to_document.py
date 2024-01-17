@@ -31,6 +31,13 @@ class TestPyPDFToDocument:
         assert len(docs) == 1
         assert "History" in docs[0].content
 
+    def test_page_breaks_added(self, test_files_path, pypdf_converter):
+        paths = [test_files_path / "pdf" / "sample_pdf_1.pdf"]
+        output = pypdf_converter.run(sources=paths)
+        docs = output["documents"]
+        assert len(docs) == 1
+        assert docs[0].content.count("\f") == 3
+
     def test_run_with_meta(self, test_files_path, pypdf_converter):
         bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
 

@@ -31,7 +31,7 @@ class DefaultConverter:
 
     def convert(self, reader: "PdfReader") -> Document:
         """Extract text from the PDF and return a Document object with the text content."""
-        text = "\f".join(page.extract_text() for page in reader.pages if page.extract_text())
+        text = "\f".join(page.extract_text() for page in reader.pages)
         return Document(content=text)
 
 
