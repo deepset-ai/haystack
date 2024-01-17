@@ -28,7 +28,7 @@ class DocumentSplitter:
 
         self.split_by = split_by
         if split_by not in ["word", "sentence", "page", "passage"]:
-            raise ValueError("split_by must be one of 'word', 'sentence' or 'passage'.")
+            raise ValueError("split_by must be one of 'word', 'sentence', 'page' or 'passage'.")
         if split_length <= 0:
             raise ValueError("split_length must be greater than 0.")
         self.split_length = split_length
