@@ -94,6 +94,20 @@ class TestDocumentSplitter:
         assert result["documents"][1].content == "And there is a third sentence.\n\n"
         assert result["documents"][2].content == " And another passage."
 
+    def test_split_by_page(self):
+        splitter = DocumentSplitter(split_by="page", split_length=1)
+        result = splitter.run(
+            documents=[
+                Document(
+                    content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+                )
+            ]
+        )
+        assert len(result["documents"]) == 3
+        assert result["documents"][0].content == "This is a text with some words. There is a second sentence.\x0c"
+        assert result["documents"][1].content == " And there is a third sentence.\x0c"
+        assert result["documents"][2].content == " And another passage."
+
     def test_split_by_word_with_overlap(self):
         splitter = DocumentSplitter(split_by="word", split_length=10, split_overlap=2)
         result = splitter.run(

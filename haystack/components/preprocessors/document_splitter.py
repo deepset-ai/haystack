@@ -21,7 +21,7 @@ class DocumentSplitter:
     ):
         """
         :param split_by: The unit by which the document should be split. Choose from "word" for splitting by " ",
-        "sentence" for splitting by ".", "page" for splittling by "\f" or "passage" for splitting by "\\n\\n".
+        "sentence" for splitting by ".", "page" for splitting by "\f" or "passage" for splitting by "\\n\\n".
         :param split_length: The maximum number of units in each split.
         :param split_overlap: The number of units that each split should overlap.
         """
@@ -74,7 +74,7 @@ class DocumentSplitter:
             split_at = " "
         else:
             raise NotImplementedError(
-                "DocumentSplitter only supports 'page', 'passage', 'sentence' or 'word' split_by options."
+                "DocumentSplitter only supports 'word', 'sentence', 'passage' or 'page' split_by options."
             )
         units = text.split(split_at)
         # Add the delimiter back to all units except the last one
