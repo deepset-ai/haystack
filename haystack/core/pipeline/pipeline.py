@@ -1,33 +1,32 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Optional, Any, Dict, List, Union, TypeVar, Type, Set
-
-import os
-import json
 import datetime
-import logging
 import importlib
-from pathlib import Path
-from copy import deepcopy
+import json
+import logging
+import os
 from collections import defaultdict
+from copy import deepcopy
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Type, TypeVar, Union
 
 import networkx  # type:ignore
 
-from haystack.core.component import component, Component, InputSocket, OutputSocket
+from haystack.core.component import Component, InputSocket, OutputSocket, component
+from haystack.core.component.connection import Connection, parse_connect_string
 from haystack.core.errors import (
-    PipelineError,
     PipelineConnectError,
+    PipelineError,
     PipelineMaxLoops,
     PipelineRuntimeError,
     PipelineValidationError,
 )
 from haystack.core.pipeline.descriptions import find_pipeline_outputs
-from haystack.core.pipeline.draw.draw import _draw, RenderingEngines
-from haystack.core.pipeline.validation import validate_pipeline_input, find_pipeline_inputs
-from haystack.core.component.connection import Connection, parse_connect_string
+from haystack.core.pipeline.draw.draw import RenderingEngines, _draw
+from haystack.core.pipeline.validation import find_pipeline_inputs, validate_pipeline_input
+from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name
-from haystack.core.serialization import component_to_dict, component_from_dict
 
 logger = logging.getLogger(__name__)
 
@@ -422,7 +421,8 @@ class Pipeline:
                 logger.info("Warming up component %s...", node)
                 self.graph.nodes[node]["instance"].warm_up()
 
-    def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
+    # TODO: We're ignoring this for the time being, after we properly optimize this function we'll remove the noqa
+    def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:  # noqa: C901, PLR0912
         # NOTE: We're assuming data is formatted like so as of now
         # data = {
         #     "comp1": {"input1": 1, "input2": 2},
@@ -467,6 +467,7 @@ class Pipeline:
                 continue
 
             for socket in component.__canals_input__.values():
+                # if not socket.senders and socket.name in last_inputs.get(node_name, {}):
                 if not socket.senders or socket.is_variadic:
                     # Component has at least one input not connected or is variadic, can run right away.
                     to_run.append((node_name, component))
@@ -492,6 +493,22 @@ class Pipeline:
         final_outputs = {}
         while len(to_run) > 0:
             name, comp = to_run.pop(0)
+
+            # if any(socket.is_variadic for socket in comp.__canals_input__.values()):
+            if any(socket.is_variadic for socket in comp.__canals_input__.values()) and not getattr(
+                comp, "is_greedy", False
+            ):
+                there_are_non_variadics = False
+                for _, other_comp in to_run:
+                    if not any(socket.is_variadic for socket in other_comp.__canals_input__.values()):
+                        there_are_non_variadics = True
+                        break
+
+                if there_are_non_variadics:
+                    if (name, comp) not in waiting_for_input:
+                        waiting_for_input.append((name, comp))
+                    continue
+
             if name in last_inputs and len(comp.__canals_input__) == len(last_inputs[name]):
                 # This component has all the inputs it needs to run
                 res = comp.run(**last_inputs[name])
@@ -533,8 +550,13 @@ class Pipeline:
                     else:
                         last_inputs[receiver_component_name][edge_data["to_socket"].name] = value
 
-                    # We got some input for this component, add it to the queue
-                    to_run.append((receiver_component_name, self.graph.nodes[receiver_component_name]["instance"]))
+                    pair = (receiver_component_name, self.graph.nodes[receiver_component_name]["instance"])
+                    if pair not in waiting_for_input and pair not in to_run:
+                        to_run.append(pair)
+                    # if edge_data["to_socket"].is_variadic and pair not in waiting_for_input:
+                    #     waiting_for_input.append(pair)
+                    # elif pair not in waiting_for_input and pair not in to_run:
+                    #     to_run.append(pair)
 
                 for key in to_remove_from_res:
                     del res[key]
@@ -543,7 +565,6 @@ class Pipeline:
                     final_outputs[name] = res
             else:
                 # This component doesn't have enough inputs so we can't run it yet
-                # previous_waiting_for_input = waiting_for_input
                 if (name, comp) not in waiting_for_input:
                     waiting_for_input.append((name, comp))
 
@@ -556,28 +577,76 @@ class Pipeline:
                     and last_waiting_for_input is not None
                     and before_last_waiting_for_input == last_waiting_for_input
                 ):
+                    # Are we actually stuck or there's a lazy variadic waiting for input?
+                    for name, comp in waiting_for_input:
+                        is_variadic = any(socket.is_variadic for socket in comp.__canals_input__.values())
+                        if is_variadic and not getattr(comp, "is_greedy", False):
+                            break
+                    else:
+                        # We're stuck in a loop, we can't make any progress
+                        break
+                    waiting_for_input.remove((name, comp))
+                    to_run.append((name, comp))
+                    continue
                     # We're stuck in a loop, we can't make any progress
-                    break
+                    # break
                 before_last_waiting_for_input = (
                     last_waiting_for_input.copy() if last_waiting_for_input is not None else None
                 )
                 last_waiting_for_input = {item[0] for item in waiting_for_input}
 
+                # Remove from waiting only if there is actually enough input to run
+                for name, comp in waiting_for_input:
+                    if name not in last_inputs:
+                        last_inputs[name] = {}
+
+                    is_variadic = any(socket.is_variadic for socket in comp.__canals_input__.values())
+                    if is_variadic and not getattr(comp, "is_greedy", False):
+                        there_are_only_lazy_variadics = True
+                        for other_name, other_comp in waiting_for_input:
+                            if name == other_name:
+                                continue
+                            there_are_only_lazy_variadics &= any(
+                                socket.is_variadic for socket in other_comp.__canals_input__.values()
+                            ) and not getattr(other_comp, "is_greedy", False)
+
+                        if not there_are_only_lazy_variadics:
+                            continue
+
+                    has_enough_inputs = True
+                    for input_socket in comp.__canals_input__.values():
+                        if input_socket.is_mandatory and input_socket.name not in last_inputs[name]:
+                            has_enough_inputs = False
+                            break
+                        elif input_socket.is_mandatory:
+                            continue
+
+                        if input_socket.name not in last_inputs[name]:
+                            last_inputs[name][input_socket.name] = input_socket.default_value
+                    if has_enough_inputs:
+                        break
+                # else:
+                #     # Get out of the main run loop, we're stuck in a loop
+                #     break
+
+                waiting_for_input.remove((name, comp))
+                to_run.append((name, comp))
+
                 # We ran out of components to run, but we still have some components that are waiting for input.
                 # Let's try to run them again.
-                name, comp = waiting_for_input.pop(0)
+                # name, comp = waiting_for_input.pop(0)
 
-                if name not in last_inputs:
-                    last_inputs[name] = {}
+                # if name not in last_inputs:
+                #     last_inputs[name] = {}
 
-                # Set default values for the inputs that are still missing
-                for input_socket in comp.__canals_input__.values():
-                    if input_socket.is_mandatory:
-                        continue
-                    if input_socket.name not in last_inputs[name]:
-                        last_inputs[name][input_socket.name] = input_socket.default_value
+                # # Set default values for the inputs that are still missing
+                # for input_socket in comp.__canals_input__.values():
+                #     if input_socket.is_mandatory:
+                #         continue
+                #     if input_socket.name not in last_inputs[name]:
+                #         last_inputs[name][input_socket.name] = input_socket.default_value
 
-                to_run.append((name, comp))
+                # to_run.append((name, comp))
 
         return final_outputs
 
