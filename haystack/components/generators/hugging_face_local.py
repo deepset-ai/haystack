@@ -11,8 +11,7 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 
-with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
-    import torch
+with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
     from huggingface_hub import model_info
     from transformers import StoppingCriteriaList, pipeline
 
@@ -84,7 +83,7 @@ class HuggingFaceLocalGenerator:
             For some chat models, the output includes both the new text and the original prompt.
             In these cases, it's important to make sure your prompt has no stop words.
         """
-        torch_and_transformers_import.check()
+        transformers_import.check()
 
         huggingface_pipeline_kwargs = huggingface_pipeline_kwargs or {}
         generation_kwargs = generation_kwargs or {}
