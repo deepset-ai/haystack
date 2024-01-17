@@ -41,13 +41,13 @@ def test_bm25_rag_pipeline(tmp_path):
     # Draw the pipeline
     rag_pipeline.draw(tmp_path / "test_bm25_rag_pipeline.png")
 
-    # Serialize the pipeline to JSON
-    with open(tmp_path / "test_bm25_rag_pipeline.json", "w") as f:
-        json.dump(rag_pipeline.to_dict(), f)
+    # Serialize the pipeline to YAML
+    with open(tmp_path / "test_bm25_rag_pipeline.yaml", "w") as f:
+        rag_pipeline.dump(f)
 
     # Load the pipeline back
-    with open(tmp_path / "test_bm25_rag_pipeline.json", "r") as f:
-        rag_pipeline = Pipeline.from_dict(json.load(f))
+    with open(tmp_path / "test_bm25_rag_pipeline.yaml", "r") as f:
+        rag_pipeline = Pipeline.load(f)
 
     # Populate the document store
     documents = [
