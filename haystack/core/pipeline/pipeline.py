@@ -7,9 +7,9 @@ import json
 import logging
 import os
 from collections import defaultdict
-from copy import deepcopy
+from copy import copy
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Type, TypeVar, Union
+from typing import Any, Dict, List, Mapping, Optional, Set, Type, TypeVar, Union
 
 import networkx  # type:ignore
 
@@ -438,7 +438,6 @@ class Pipeline:
         # never received by this method. It's handled by the `run()` method of the `Pipeline` class
         # defined in `haystack/pipeline.py`.
         # As of now we're ok with this, but we'll need to merge those two classes at some point.
-
         for component_name, component_inputs in data.items():
             if component_name not in self.graph.nodes:
                 # This is not a component name, it must be the name of one or more input sockets.
@@ -446,6 +445,8 @@ class Pipeline:
                 continue
             instance = self.graph.nodes[component_name]["instance"]
             for component_input, input_value in component_inputs.items():
+                # Handle mutable input data
+                data[component_name][component_input] = copy(input_value)
                 if instance.__canals_input__[component_input].is_variadic:
                     # Components that have variadic inputs need to receive lists as input.
                     # We don't want to force the user to always pass lists, so we convert single values to lists here.
@@ -510,6 +511,12 @@ class Pipeline:
             if name in last_inputs and len(comp.__canals_input__) == len(last_inputs[name]):
                 # This component has all the inputs it needs to run
                 res = comp.run(**last_inputs[name])
+
+                if not isinstance(res, Mapping):
+                    raise PipelineRuntimeError(
+                        f"Component '{name}' didn't return a dictionary. "
+                        "Components must always return dictionaries: check the the documentation."
+                    )
 
                 # Reset the waiting for input previous states, we managed to run a component
                 before_last_waiting_for_input = None
