@@ -257,15 +257,6 @@ class HuggingFaceLocalChatGenerator:
 
         # Check and update generation parameters
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
-        num_responses = generation_kwargs.get("num_return_sequences", 1)
-
-        if self.streaming_callback and num_responses > 1:
-            logger.warning(
-                "Streaming is enabled, but the number of responses is set to %d. "
-                "Streaming is only supported for single response generation. "
-                "Setting the number of responses to 1.",
-                num_responses,
-            )
 
         stop_words = generation_kwargs.pop("stop_words", []) + generation_kwargs.pop("stop_sequences", [])
         # pipeline call doesn't support stop_sequences, so we need to pop it
@@ -276,7 +267,16 @@ class HuggingFaceLocalChatGenerator:
         if stop_words_criteria:
             generation_kwargs["stopping_criteria"] = StoppingCriteriaList([stop_words_criteria])
 
+        num_responses = generation_kwargs.get("num_return_sequences", 1)
         if self.streaming_callback:
+            if num_responses > 1:
+                logger.warning(
+                    "Streaming is enabled, but the number of responses is set to %d. "
+                    "Streaming is only supported for single response generation. "
+                    "Setting the number of responses to 1.",
+                    num_responses,
+                )
+                generation_kwargs["num_return_sequences"] = 1
             generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, self.streaming_callback, stop_words)
 
         # Prepare the prompt for the model
@@ -284,7 +284,7 @@ class HuggingFaceLocalChatGenerator:
             messages, tokenize=False, chat_template=self.chat_template, add_generation_prompt=True
         )
 
-        # Prepare tokenizer for generation
+        # Avoid some unnecessary warnings in the generation pipeline call
         generation_kwargs["pad_token_id"] = (
             generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
         )
