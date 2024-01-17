@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Union
 from haystack import ComponentError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -131,20 +132,7 @@ class TransformersSimilarityRanker:
             model_kwargs=self.model_kwargs,
         )
 
-        # convert torch.dtype to string for serialization
-        # 1. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
-        model_kwargs = serialization_dict["init_parameters"]["model_kwargs"]
-        for key, value in model_kwargs.items():
-            if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and isinstance(value, torch.dtype):
-                serialization_dict["init_parameters"]["model_kwargs"][key] = str(value)
-        # 2. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
-        quantization_config = model_kwargs.get("quantization_config", {})
-        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
-        if isinstance(bnb_4bit_compute_dtype, torch.dtype):
-            serialization_dict["init_parameters"]["model_kwargs"]["quantization_config"][
-                "bnb_4bit_compute_dtype"
-            ] = str(bnb_4bit_compute_dtype)
-
+        serialize_hf_model_kwargs(serialization_dict["init_parameters"]["model_kwargs"])
         return serialization_dict
 
     @classmethod
@@ -152,25 +140,9 @@ class TransformersSimilarityRanker:
         """
         Deserialize this component from a dictionary.
         """
-        torch_and_transformers_import.check()
-        init_params = data.get("init_parameters", {})
-        model_kwargs = init_params.get("model_kwargs", {})
-
-        serialized_device = init_params.get("device", {})
-        init_params["device"] = ComponentDevice.from_dict(serialized_device)
-
-        # convert string to torch.dtype
-        # 1. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
-        for key, value in model_kwargs.items():
-            if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and value.startswith("torch."):
-                data["init_parameters"]["model_kwargs"][key] = getattr(torch, value.strip("torch."))
-        # 2. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
-        quantization_config = model_kwargs.get("quantization_config", {})
-        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
-        if isinstance(bnb_4bit_compute_dtype, str) and bnb_4bit_compute_dtype.startswith("torch."):
-            data["init_parameters"]["model_kwargs"]["quantization_config"]["bnb_4bit_compute_dtype"] = getattr(
-                torch, bnb_4bit_compute_dtype.strip("torch.")
-            )
+        init_params = data["init_parameters"]
+        init_params["device"] = ComponentDevice.from_dict(init_params["device"])
+        deserialize_hf_model_kwargs(init_params["model_kwargs"])
 
         return default_from_dict(cls, data)
 
