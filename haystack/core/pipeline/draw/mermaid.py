@@ -12,7 +12,10 @@ from haystack.core.type_utils import _type_name
 
 logger = logging.getLogger(__name__)
 
-
+ARROWTAIL_MANDATORY = "--"
+ARROWTAIL_OPTIONAL = "-."
+ARROWHEAD_MANDATORY = "-->"
+ARROWHEAD_OPTIONAL = ".->"
 MERMAID_STYLED_TEMPLATE = """
 %%{{ init: {{'theme': 'neutral' }} }}%%
 
@@ -81,11 +84,15 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
         if comp not in ["input", "output"]
     }
 
-    connections_list = [
-        f"{states[from_comp]} -- \"{conn_data['label']}<br><small><i>{conn_data['conn_type']}</i></small>\" --> {states[to_comp]}"
-        for from_comp, to_comp, conn_data in graph.edges(data=True)
-        if from_comp != "input" and to_comp != "output"
-    ]
+    connections_list = []
+    for from_comp, to_comp, conn_data in graph.edges(data=True):
+        if from_comp != "input" and to_comp != "output":
+            arrowtail = ARROWTAIL_MANDATORY if conn_data["mandatory"] else ARROWTAIL_OPTIONAL
+            arrowhead = ARROWHEAD_MANDATORY if conn_data["mandatory"] else ARROWHEAD_OPTIONAL
+            label = f'"{conn_data["label"]}<br><small><i>{conn_data["conn_type"]}</i></small>"'
+            conn_string = f"{states[from_comp]} {arrowtail} {label} {arrowhead} {states[to_comp]}"
+            connections_list.append(conn_string)
+
     input_connections = [
         f"i{{*}} -- \"{conn_data['label']}<br><small><i>{conn_data['conn_type']}</i></small>\" --> {states[to_comp]}"
         for _, to_comp, conn_data in graph.out_edges("input", data=True)

@@ -1,11 +1,14 @@
+import os
+
 import pytest
 
 from haystack.dataclasses import Answer
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.pipeline_utils.rag import build_rag_pipeline
 from haystack.testing.factory import document_store_class
 
 
+@pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
 @pytest.mark.integration
 def test_rag_pipeline(mock_chat_completion):
     rag_pipe = build_rag_pipeline(document_store=InMemoryDocumentStore())

@@ -1,10 +1,10 @@
 import logging
 from pathlib import Path
-from typing import List, Union, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Union
 
-from haystack import ComponentError, Document, component, default_to_dict
+from haystack import ComponentError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import get_device
+from haystack.utils import ComponentDevice
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +37,8 @@ class TransformersSimilarityRanker:
 
     def __init__(
         self,
-        model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-        device: Optional[str] = "cpu",
+        model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        device: Optional[ComponentDevice] = None,
         token: Union[bool, str, None] = None,
         top_k: int = 10,
         meta_fields_to_embed: Optional[List[str]] = None,
@@ -51,9 +51,10 @@ class TransformersSimilarityRanker:
         """
         Creates an instance of TransformersSimilarityRanker.
 
-        :param model_name_or_path: The name or path of a pre-trained cross-encoder model
+        :param model: The name or path of a pre-trained cross-encoder model
             from the Hugging Face Hub.
-        :param device: The torch device (for example, cuda:0, cpu, mps) to which you want to limit model inference.
+        :param device: The device on which the model is loaded. If `None`, the default device is automatically
+            selected.
         :param token: The API token used to download private models from Hugging Face.
             If this parameter is set to `True`, the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) is used.
@@ -66,18 +67,18 @@ class TransformersSimilarityRanker:
             `sigmoid(logits * calibration_factor)`. This is only used if `scale_score` is set to True.
         :param score_threshold: If provided only returns documents with a score above this threshold.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForSequenceClassification.from_pretrained`
-            when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
+            when loading the model specified in `model`. For details on what kwargs you can pass,
             see the model's documentation.
         """
         torch_and_transformers_import.check()
 
-        self.model_name_or_path = model_name_or_path
+        self.model = model
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.top_k = top_k
-        self.device = device
+        self.device = ComponentDevice.resolve_device(device)
         self.token = token
-        self.model = None
+        self._model = None
         self.tokenizer = None
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
@@ -90,43 +91,54 @@ class TransformersSimilarityRanker:
         self.score_threshold = score_threshold
         self.model_kwargs = model_kwargs or {}
 
+        if self.device.has_multiple_devices:
+            raise ValueError(
+                f"{type(TransformersSimilarityRanker).__name__} currently only supports inference on single devices"
+            )
+
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": str(self.model_name_or_path)}
+        return {"model": str(self.model)}
 
     def warm_up(self):
         """
         Warm up the model and tokenizer used for scoring the Documents.
         """
-        if self.model is None:
-            # Set up device_map which allows quantized loading and multi device inference
-            # requires accelerate which is always installed when using `pip install transformers[torch]`
-            device_map = self.model_kwargs.get("device_map")
-            if device_map is None:
-                if self.device is not None:
-                    device_map = self.device
-                else:
-                    device_map = get_device()
-            self.model_kwargs["device_map"] = device_map
+        if self._model is None:
+            # # Set up device_map which allows quantized loading and multi device inference
+            # # requires accelerate which is always installed when using `pip install transformers[torch]`
+            # device_map = self.model_kwargs.get("device_map")
+            # if device_map is None:
+            #     if self.device is not None:
+            #         device_map = self.device
+            #     else:
+            #         device_map = get_device()
+            # self.model_kwargs["device_map"] = device_map
+            #
+            # self.model = AutoModelForSequenceClassification.from_pretrained(
+            #     self.model_name_or_path, token=self.token, **self.model_kwargs
+            # )
+            # self.model.eval()
+            # # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
+            # self.device = next(iter(self.model.hf_device_map.values()))
+            # self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
-            self.model = AutoModelForSequenceClassification.from_pretrained(
-                self.model_name_or_path, token=self.token, **self.model_kwargs
-            )
-            self.model.eval()
-            # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
-            self.device = next(iter(self.model.hf_device_map.values()))
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
+            self._model = AutoModelForSequenceClassification.from_pretrained(
+                self.model, token=self.token, **self.model_kwargs
+            ).to(self.device.to_torch())
+            self._model.eval()
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model, token=self.token)
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(
+        serialization_dict = default_to_dict(
             self,
-            device=self.device,
-            model_name_or_path=self.model_name_or_path,
+            device=self.device.to_dict(),
+            model=self.model,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             top_k=self.top_k,
             meta_fields_to_embed=self.meta_fields_to_embed,
@@ -136,6 +148,49 @@ class TransformersSimilarityRanker:
             score_threshold=self.score_threshold,
             model_kwargs=self.model_kwargs,
         )
+
+        # convert torch.dtype to string for serialization
+        # 1. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
+        model_kwargs = serialization_dict["init_parameters"]["model_kwargs"]
+        for key, value in model_kwargs.items():
+            if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and isinstance(value, torch.dtype):
+                serialization_dict["init_parameters"]["model_kwargs"][key] = str(value)
+        # 2. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
+        quantization_config = model_kwargs.get("quantization_config", {})
+        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
+        if isinstance(bnb_4bit_compute_dtype, torch.dtype):
+            serialization_dict["init_parameters"]["model_kwargs"]["quantization_config"][
+                "bnb_4bit_compute_dtype"
+            ] = str(bnb_4bit_compute_dtype)
+
+        return serialization_dict
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "TransformersSimilarityRanker":
+        """
+        Deserialize this component from a dictionary.
+        """
+        torch_and_transformers_import.check()
+        init_params = data.get("init_parameters", {})
+        model_kwargs = init_params.get("model_kwargs", {})
+
+        serialized_device = init_params.get("device", {})
+        init_params["device"] = ComponentDevice.from_dict(serialized_device)
+
+        # convert string to torch.dtype
+        # 1. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
+        for key, value in model_kwargs.items():
+            if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and value.startswith("torch."):
+                data["init_parameters"]["model_kwargs"][key] = getattr(torch, value.strip("torch."))
+        # 2. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
+        quantization_config = model_kwargs.get("quantization_config", {})
+        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
+        if isinstance(bnb_4bit_compute_dtype, str) and bnb_4bit_compute_dtype.startswith("torch."):
+            data["init_parameters"]["model_kwargs"]["quantization_config"]["bnb_4bit_compute_dtype"] = getattr(
+                torch, bnb_4bit_compute_dtype.strip("torch.")
+            )
+
+        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
     def run(
@@ -179,7 +234,7 @@ class TransformersSimilarityRanker:
             score_threshold = self.score_threshold
 
         # If a model path is provided but the model isn't loaded
-        if self.model_name_or_path and not self.model:
+        if self.model and not self._model:
             raise ComponentError(
                 f"The component {self.__class__.__name__} wasn't warmed up. Run 'warm_up()' before calling 'run()'."
             )
@@ -195,10 +250,10 @@ class TransformersSimilarityRanker:
         features = self.tokenizer(
             query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
         ).to(  # type: ignore
-            self.device
+            self.device.to_torch()
         )
         with torch.inference_mode():
-            similarity_scores = self.model(**features).logits.squeeze(dim=1)  # type: ignore
+            similarity_scores = self._model(**features).logits.squeeze(dim=1)  # type: ignore
 
         if scale_score:
             similarity_scores = torch.sigmoid(similarity_scores * calibration_factor)

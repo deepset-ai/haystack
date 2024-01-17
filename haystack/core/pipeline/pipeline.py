@@ -327,6 +327,7 @@ class Pipeline:
             conn_type=_type_name(connection.sender_socket.type),
             from_socket=connection.sender_socket,
             to_socket=connection.receiver_socket,
+            mandatory=connection.is_mandatory,
         )
 
         self._connections.append(connection)
@@ -361,11 +362,16 @@ class Pipeline:
             A dictionary where each key is a pipeline component name and each value is a dictionary of
             inputs sockets of that component.
         """
-        inputs = {
-            comp: {socket.name: {"type": socket.type, "is_mandatory": socket.is_mandatory} for socket in data}
-            for comp, data in find_pipeline_inputs(self.graph).items()
-            if data
-        }
+        inputs: Dict[str, Dict[str, Any]] = {}
+        for component_name, data in find_pipeline_inputs(self.graph).items():
+            sockets_description = {}
+            for socket in data:
+                sockets_description[socket.name] = {"type": socket.type, "is_mandatory": socket.is_mandatory}
+                if not socket.is_mandatory:
+                    sockets_description[socket.name]["default_value"] = socket.default_value
+
+            if sockets_description:
+                inputs[component_name] = sockets_description
         return inputs
 
     def outputs(self) -> Dict[str, Dict[str, Any]]:

@@ -20,7 +20,7 @@ class TestOpenAIChatGenerator:
     def test_init_default(self):
         component = OpenAIChatGenerator(api_key="test-api-key")
         assert component.client.api_key == "test-api-key"
-        assert component.model_name == "gpt-3.5-turbo"
+        assert component.model == "gpt-3.5-turbo"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
 
@@ -32,13 +32,13 @@ class TestOpenAIChatGenerator:
     def test_init_with_parameters(self):
         component = OpenAIChatGenerator(
             api_key="test-api-key",
-            model_name="gpt-4",
+            model="gpt-4",
             streaming_callback=default_streaming_callback,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.client.api_key == "test-api-key"
-        assert component.model_name == "gpt-4"
+        assert component.model == "gpt-4"
         assert component.streaming_callback is default_streaming_callback
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
 
@@ -48,7 +48,7 @@ class TestOpenAIChatGenerator:
         assert data == {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
-                "model_name": "gpt-3.5-turbo",
+                "model": "gpt-3.5-turbo",
                 "organization": None,
                 "streaming_callback": None,
                 "api_base_url": None,
@@ -59,7 +59,7 @@ class TestOpenAIChatGenerator:
     def test_to_dict_with_parameters(self):
         component = OpenAIChatGenerator(
             api_key="test-api-key",
-            model_name="gpt-4",
+            model="gpt-4",
             streaming_callback=default_streaming_callback,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
@@ -68,7 +68,7 @@ class TestOpenAIChatGenerator:
         assert data == {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
-                "model_name": "gpt-4",
+                "model": "gpt-4",
                 "organization": None,
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
@@ -79,7 +79,7 @@ class TestOpenAIChatGenerator:
     def test_to_dict_with_lambda_streaming_callback(self):
         component = OpenAIChatGenerator(
             api_key="test-api-key",
-            model_name="gpt-4",
+            model="gpt-4",
             streaming_callback=lambda x: x,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
@@ -88,7 +88,7 @@ class TestOpenAIChatGenerator:
         assert data == {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
-                "model_name": "gpt-4",
+                "model": "gpt-4",
                 "organization": None,
                 "api_base_url": "test-base-url",
                 "streaming_callback": "chat.test_openai.<lambda>",
@@ -100,14 +100,14 @@ class TestOpenAIChatGenerator:
         data = {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
-                "model_name": "gpt-4",
+                "model": "gpt-4",
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
         component = OpenAIChatGenerator.from_dict(data)
-        assert component.model_name == "gpt-4"
+        assert component.model == "gpt-4"
         assert component.streaming_callback is default_streaming_callback
         assert component.api_base_url == "test-base-url"
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
@@ -117,7 +117,7 @@ class TestOpenAIChatGenerator:
         data = {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
-                "model_name": "gpt-4",
+                "model": "gpt-4",
                 "organization": None,
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
@@ -222,9 +222,7 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_wrong_model(self, chat_messages):
-        component = OpenAIChatGenerator(
-            model_name="something-obviously-wrong", api_key=os.environ.get("OPENAI_API_KEY")
-        )
+        component = OpenAIChatGenerator(model="something-obviously-wrong", api_key=os.environ.get("OPENAI_API_KEY"))
         with pytest.raises(OpenAIError):
             component.run(chat_messages)
 

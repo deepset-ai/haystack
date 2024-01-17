@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 import numpy as np
@@ -25,7 +26,7 @@ class TestOpenAIDocumentEmbedder:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAIDocumentEmbedder()
-        assert embedder.model_name == "text-embedding-ada-002"
+        assert embedder.model == "text-embedding-ada-002"
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
@@ -37,7 +38,7 @@ class TestOpenAIDocumentEmbedder:
     def test_init_with_parameters(self):
         embedder = OpenAIDocumentEmbedder(
             api_key="fake-api-key",
-            model_name="model",
+            model="model",
             organization="my-org",
             prefix="prefix",
             suffix="suffix",
@@ -47,7 +48,7 @@ class TestOpenAIDocumentEmbedder:
             embedding_separator=" | ",
         )
         assert embedder.organization == "my-org"
-        assert embedder.model_name == "model"
+        assert embedder.model == "model"
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
         assert embedder.batch_size == 64
@@ -67,7 +68,7 @@ class TestOpenAIDocumentEmbedder:
             "type": "haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
             "init_parameters": {
                 "api_base_url": None,
-                "model_name": "text-embedding-ada-002",
+                "model": "text-embedding-ada-002",
                 "organization": None,
                 "prefix": "",
                 "suffix": "",
@@ -81,7 +82,7 @@ class TestOpenAIDocumentEmbedder:
     def test_to_dict_with_custom_init_parameters(self):
         component = OpenAIDocumentEmbedder(
             api_key="fake-api-key",
-            model_name="model",
+            model="model",
             organization="my-org",
             prefix="prefix",
             suffix="suffix",
@@ -95,7 +96,7 @@ class TestOpenAIDocumentEmbedder:
             "type": "haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
             "init_parameters": {
                 "api_base_url": None,
-                "model_name": "model",
+                "model": "model",
                 "organization": "my-org",
                 "prefix": "prefix",
                 "suffix": "suffix",
@@ -163,6 +164,7 @@ class TestOpenAIDocumentEmbedder:
         assert result["documents"] is not None
         assert not result["documents"]  # empty list
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     def test_run(self):
         docs = [
@@ -170,9 +172,9 @@ class TestOpenAIDocumentEmbedder:
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
-        model = "text-similarity-ada-001"
+        model = "text-embedding-ada-002"
 
-        embedder = OpenAIDocumentEmbedder(model_name=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
+        embedder = OpenAIDocumentEmbedder(model=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
 
         result = embedder.run(documents=docs)
         documents_with_embeddings = result["documents"]
@@ -183,6 +185,6 @@ class TestOpenAIDocumentEmbedder:
         for doc in documents_with_embeddings:
             assert isinstance(doc, Document)
             assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 1024
+            assert len(doc.embedding) == 1536
             assert all(isinstance(x, float) for x in doc.embedding)
-        assert metadata == {"model": "text-similarity-ada:001", "usage": {"prompt_tokens": 15, "total_tokens": 15}}
+        assert metadata == {"model": "text-embedding-ada-002-v2", "usage": {"prompt_tokens": 15, "total_tokens": 15}}

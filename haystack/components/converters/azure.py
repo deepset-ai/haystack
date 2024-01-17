@@ -6,7 +6,7 @@ import os
 from haystack.lazy_imports import LazyImport
 from haystack import component, Document, default_to_dict
 from haystack.dataclasses import ByteStream
-from haystack.components.converters.utils import get_bytestream_from_source
+from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class AzureOCRDocumentConverter:
     from haystack.components.converters.azure import AzureOCRDocumentConverter
 
     converter = AzureOCRDocumentConverter()
-    results = converter.run(sources=["image-based-document.pdf"])
+    results = converter.run(sources=["image-based-document.pdf"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
     # 'This is a text from the PDF file.'
@@ -76,20 +76,19 @@ class AzureOCRDocumentConverter:
         the raw responses from Azure's Document Intelligence service.
 
         :param sources: List of file paths or ByteStream objects.
-        :param meta: Optional list of metadata to attach to the Documents.
-          The length of the list must match the number of sources. Defaults to `None`.
+        :param meta: Optional metadata to attach to the Documents.
+          This value can be either a list of dictionaries or a single dictionary.
+          If it's a single dictionary, its content is added to the metadata of all produced Documents.
+          If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+          Defaults to `None`.
         :return: A dictionary containing a list of Document objects under the 'documents' key
           and the raw Azure response under the 'raw_azure_response' key.
         """
         documents = []
         azure_output = []
+        meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        if meta is None:
-            meta = [{}] * len(sources)
-        elif len(sources) != len(meta):
-            raise ValueError("The length of the metadata list must match the number of sources.")
-
-        for source, metadata in zip(sources, meta):
+        for source, metadata in zip(sources, meta_list):
             try:
                 bytestream = get_bytestream_from_source(source=source)
             except Exception as e:

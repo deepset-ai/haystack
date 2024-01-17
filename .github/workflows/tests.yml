@@ -18,7 +18,6 @@ on:
       - "haystack/**/*.py"
       - "test/**/*.py"
       - "test/test_requirements.txt"
-      - "!haystack/core/**/*.py"
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

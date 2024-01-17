@@ -1,7 +1,9 @@
+import os
+
 import pytest
 
 from haystack.pipeline_utils.indexing import build_indexing_pipeline
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestIndexingPipeline:
@@ -65,6 +67,7 @@ class TestIndexingPipeline:
         with pytest.raises(ValueError, match="Could not find an embedder"):
             build_indexing_pipeline(document_store=document_store, embedding_model="invalid_model")
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     def test_open_ai_embedding_model(self):
         document_store = InMemoryDocumentStore()
