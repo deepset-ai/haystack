@@ -267,21 +267,9 @@ class HuggingFaceLocalChatGenerator:
                 num_responses,
             )
 
-        # merge stop_words and stop_sequences into a single list
-        generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", [])
-        generation_kwargs["stop_sequences"].extend(generation_kwargs.pop("stop_words", []))
-
+        stop_words = generation_kwargs.pop("stop_words", []) + generation_kwargs.pop("stop_sequences", [])
         # pipeline call doesn't support stop_sequences, so we need to pop it
-        stop_words = generation_kwargs.pop("stop_sequences", None)
-
-        # check all stop words are strings
-        if stop_words and not all(isinstance(word, str) for word in stop_words):
-            logger.warning(
-                "Invalid stop words provided. Stop words must be specified as a list of strings. "
-                "Ignoring stop words: %s",
-                stop_words,
-            )
-            stop_words = None
+        stop_words = self._validate_stop_words(stop_words)
 
         # Set up stop words criteria if stop words exist
         stop_words_criteria = StopWordsCriteria(tokenizer, stop_words, self.pipeline.device) if stop_words else None
@@ -326,9 +314,17 @@ class HuggingFaceLocalChatGenerator:
     ) -> ChatMessage:
         """
         Create a ChatMessage instance from the provided text, populated with metadata.
+
+        :param text: The generated text.
+        :param index: The index of the generated text.
+        :param tokenizer: The tokenizer used for generation.
+        :param prompt: The prompt used for generation.
+        :param generation_kwargs: The generation parameters.
+        :return: A ChatMessage instance.
         """
         completion_tokens = len(tokenizer.encode(text, add_special_tokens=False))
         prompt_token_count = len(tokenizer.encode(prompt, add_special_tokens=False))
+        total_tokens = prompt_token_count + completion_tokens
 
         # not the most sophisticated finish_reason detection, improve later to match
         # https://platform.openai.com/docs/guides/text-generation/chat-completions-response-format
@@ -343,8 +339,27 @@ class HuggingFaceLocalChatGenerator:
             "usage": {
                 "completion_tokens": completion_tokens,
                 "prompt_tokens": prompt_token_count,
-                "total_tokens": prompt_token_count + completion_tokens,
+                "total_tokens": total_tokens,
             },
         }
 
         return ChatMessage.from_assistant(text, meta=meta)
+
+    def _validate_stop_words(self, stop_words: Optional[List[str]]) -> Optional[List[str]]:
+        """
+        Validates the provided stop words.
+
+        :param stop_words: A list of stop words to validate.
+        :return: A sanitized list of stop words or None if validation fails.
+        """
+        if stop_words and not all(isinstance(word, str) for word in stop_words):
+            logger.warning(
+                "Invalid stop words provided. Stop words must be specified as a list of strings. "
+                "Ignoring stop words: %s",
+                stop_words,
+            )
+            return None
+
+        # deduplicate stop words
+        stop_words = list(set(stop_words or []))
+        return stop_words
