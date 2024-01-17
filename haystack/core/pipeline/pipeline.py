@@ -421,6 +421,38 @@ class Pipeline:
                 logger.info("Warming up component %s...", node)
                 self.graph.nodes[node]["instance"].warm_up()
 
+    def _validate_input(self, data: Dict[str, Any]):
+        """
+        Validates that data:
+        * Each Component name actually exists in the Pipeline
+        * Each Component is not missing any input
+        * Each Component has only one input per input socket, if not variadic
+        * Each Component doesn't receive inputs that are already sent by another Component
+
+        Raises ValueError if any of the above is not true.
+        """
+        for component_name, component_inputs in data.items():
+            if component_name not in self.graph.nodes:
+                raise ValueError(f"Component named {component_name} not found in the pipeline.")
+            instance = self.graph.nodes[component_name]["instance"]
+            for socket_name, socket in instance.__canals_input__.items():
+                if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
+                    raise ValueError("Missing input for component {component_name}: {socket_name}")
+            for input_name in component_inputs.keys():
+                if input_name not in instance.__canals_input__:
+                    raise ValueError(f"Input {input_name} not found in component {component_name}.")
+
+        for component_name in self.graph.nodes:
+            instance = self.graph.nodes[component_name]["instance"]
+            for socket_name, socket in instance.__canals_input__.items():
+                component_inputs = data.get(component_name, {})
+                if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
+                    raise ValueError("Missing input for component {component_name}: {socket_name}")
+                elif socket.senders and socket_name in component_inputs and not socket.is_variadic:
+                    raise ValueError(
+                        f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
+                    )
+
     # TODO: We're ignoring this for the time being, after we properly optimize this function we'll remove the noqa
     def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:  # noqa: C901, PLR0912
         # NOTE: We're assuming data is formatted like so as of now
@@ -432,6 +464,11 @@ class Pipeline:
         # data = {
         #     "input1": 1, "input2": 2,
         # }
+
+        # for input_name, input_value in component_inputs.items():
+
+        # Raise if input is malformed in some way
+        self._validate_input(data)
 
         # NOTE: The above NOTE and TODO are technically not true.
         # This implementation of run supports only the first format, but the second format is actually
@@ -472,10 +509,6 @@ class Pipeline:
                     # Component has at least one input not connected or is variadic, can run right away.
                     to_run.append((node_name, component))
                     break
-
-        # TODO: Think about max loops allowed:
-        # Rename it to max_visits_allowed or max_run_per_component_allowed
-        # Remove it even
 
         # These variables are used to detect when we're stuck in a loop.
         # Stuck loops can happen when one or more components are waiting for input but
