@@ -21,6 +21,7 @@ class TestPyPDFToDocument:
         with pytest.raises(ValueError):
             PyPDFToDocument(converter_name="non_existing_converter")
 
+    @pytest.mark.integration
     def test_run(self, test_files_path, pypdf_converter):
         """
         Test if the component runs correctly.
@@ -31,6 +32,7 @@ class TestPyPDFToDocument:
         assert len(docs) == 1
         assert "History" in docs[0].content
 
+    @pytest.mark.integration
     def test_page_breaks_added(self, test_files_path, pypdf_converter):
         paths = [test_files_path / "pdf" / "sample_pdf_1.pdf"]
         output = pypdf_converter.run(sources=paths)
@@ -60,6 +62,7 @@ class TestPyPDFToDocument:
             pypdf_converter.run(sources=paths)
             assert "Could not read non_existing_file.pdf" in caplog.text
 
+    @pytest.mark.integration
     def test_mixed_sources_run(self, test_files_path, pypdf_converter):
         """
         Test if the component runs correctly when mixed sources are provided.
@@ -74,6 +77,7 @@ class TestPyPDFToDocument:
         assert "History and standardization" in docs[0].content
         assert "History and standardization" in docs[1].content
 
+    @pytest.mark.integration
     def test_custom_converter(self, test_files_path):
         """
         Test if the component correctly handles custom converters.
