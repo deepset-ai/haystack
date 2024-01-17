@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from haystack import ComponentError, Document, ExtractedAnswer, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice
+from haystack.utils import ComponentDevice, DeviceMap
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     import torch
@@ -90,7 +90,7 @@ class ExtractiveReader:
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model)
         self.model = None
-        self.device = ComponentDevice.resolve_device(device)
+
         self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
@@ -102,6 +102,17 @@ class ExtractiveReader:
         self.calibration_factor = calibration_factor
         self.model_kwargs = model_kwargs or {}
         self.overlap_threshold = overlap_threshold
+
+        # Resolve device if device_map is provided in model_kwargs
+        if self.model_kwargs.get("device_map") and device is not None:
+            raise ValueError(
+                "The parameters `device` and `device_map` from `model_kwargs` cannot both be provided. Provide only one or the other."
+            )
+        elif self.model_kwargs.get("device_map") and device is None:
+            component_device = ComponentDevice.from_multiple(DeviceMap.from_hf(self.model_kwargs.get("device_map")))
+        else:
+            component_device = ComponentDevice.resolve_device(device)
+        self.device = component_device
 
         if self.device.has_multiple_devices:
             raise ValueError(f"{type(ExtractiveReader).__name__} currently only supports inference on single devices")
@@ -188,7 +199,7 @@ class ExtractiveReader:
             #     else:
             #         device_map = get_device()
             # self.model_kwargs["device_map"] = device_map
-
+            #
             # self.model = AutoModelForQuestionAnswering.from_pretrained(
             #     self.model_name_or_path, token=self.token, **self.model_kwargs
             # )
