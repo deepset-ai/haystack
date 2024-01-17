@@ -9,6 +9,7 @@ from haystack.components.generators.hf_utils import HFTokenStreamingHandler
 from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
+from haystack.utils import ComponentDevice
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class HuggingFaceLocalChatGenerator:
 
     The `HuggingFaceLocalChatGenerator` class is a component designed for generating chat responses using models from
     Hugging Face's model hub. It is tailored for local runtime text generation tasks and provides a convenient interface
-    for working with chat-based models, such as `mistralai/Mistral-7B-Instruct-v0.2` or `meta-llama/Llama-2-7b-chat-hf`
+    for working with chat-based models, such as `HuggingFaceH4/zephyr-7b-beta` or `meta-llama/Llama-2-7b-chat-hf`
     etc.
 
     Usage example:
@@ -52,9 +53,9 @@ class HuggingFaceLocalChatGenerator:
 
     def __init__(
         self,
-        model: str = "mistralai/Mistral-7B-Instruct-v0.2",
+        model: str = "HuggingFaceH4/zephyr-7b-beta",
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
-        device: Optional[str] = None,
+        device: Optional[ComponentDevice] = None,
         token: Optional[Union[str, bool]] = None,
         chat_template: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
@@ -64,7 +65,9 @@ class HuggingFaceLocalChatGenerator:
     ):
         """
         :param model: The name or path of a Hugging Face model for text generation,
-            for example, "google/flan-t5-large".
+            for example, mistralai/Mistral-7B-Instruct-v0.2,T TheBloke/OpenHermes-2.5-Mistral-7B-16k-AWQ, etc.
+            The important aspect of the model is that it should be a chat model and that it supports ChatML messaging
+            format.
             If the model is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
         :param task: The task for the Hugging Face pipeline.
             Possible values are "text-generation" and "text2text-generation".
@@ -73,9 +76,8 @@ class HuggingFaceLocalChatGenerator:
             If the task is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
             If not specified, the component will attempt to infer the task from the model name,
             calling the Hugging Face Hub API.
-        :param device: The device on which the model is loaded. (e.g., "cpu", "cuda:0").
-            If `device` or `device_map` is specified in the `huggingface_pipeline_kwargs`,
-            this parameter will be ignored.
+        :param device: The device on which the model is loaded. If `None`, the default device is automatically
+            selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
         :param token: The token to use as HTTP bearer authorization for remote files.
             If True, will use the token generated when running huggingface-cli login (stored in ~/.huggingface).
             If the token is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
@@ -89,6 +91,7 @@ class HuggingFaceLocalChatGenerator:
             See Hugging Face's documentation for more information:
             - https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation
             - https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig
+            - The only generation_kwargs we set by default is max_new_tokens, which is set to 512 tokens.
         :param huggingface_pipeline_kwargs: Dictionary containing keyword arguments used to initialize the
             Hugging Face pipeline for text generation.
             These keyword arguments provide fine-grained control over the Hugging Face pipeline.
@@ -113,12 +116,9 @@ class HuggingFaceLocalChatGenerator:
         # otherwise, populate them with values from other init parameters
         huggingface_pipeline_kwargs.setdefault("model", model)
         huggingface_pipeline_kwargs.setdefault("token", token)
-        if (
-            device is not None
-            and "device" not in huggingface_pipeline_kwargs
-            and "device_map" not in huggingface_pipeline_kwargs
-        ):
-            huggingface_pipeline_kwargs["device"] = device
+
+        device = ComponentDevice.resolve_device(device)
+        device.update_hf_kwargs(huggingface_pipeline_kwargs, overwrite=False)
 
         # task identification and validation
         if task is None:
