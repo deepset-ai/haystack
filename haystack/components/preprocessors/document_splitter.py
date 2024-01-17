@@ -74,7 +74,7 @@ class DocumentSplitter:
             split_at = " "
         else:
             raise NotImplementedError(
-                "DocumentSplitter only supports 'word', 'sentence', 'passage' or 'page' split_by options."
+                "DocumentSplitter only supports 'word', 'sentence', 'page' or 'passage' split_by options."
             )
         units = text.split(split_at)
         # Add the delimiter back to all units except the last one
