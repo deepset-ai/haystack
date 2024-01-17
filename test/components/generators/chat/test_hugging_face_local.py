@@ -152,26 +152,38 @@ class TestHuggingFaceLocalChatGenerator:
             model="mistralai/Mistral-7B-Instruct-v0.2", task="text2text-generation", token=None
         )
 
-    def test_generate_text_response_with_valid_prompt_and_generation_parameters(
-        self, model_info_mock, mock_pipeline_tokenizer, chat_messages
-    ):
-        model = "meta-llama/Llama-2-13b-chat-hf"
-        generation_kwargs = {"n": 1}
-        stop_words = ["stop"]
-        streaming_callback = None
+    def test_run(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
+        generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
 
-        generator = HuggingFaceLocalChatGenerator(
-            model=model,
-            generation_kwargs=generation_kwargs,
-            stop_words=stop_words,
-            streaming_callback=streaming_callback,
-        )
-
-        # Use the mocked pipeline from the fixture
+        # Use the mocked pipeline from the fixture and simulate warm_up
         generator.pipeline = mock_pipeline_tokenizer
 
         results = generator.run(messages=chat_messages)
 
+        assert "replies" in results
+        assert isinstance(results["replies"][0], ChatMessage)
+        chat_message = results["replies"][0]
+        assert chat_message.is_from(ChatRole.ASSISTANT)
+        assert chat_message.content == "Berlin is cool"
+
+    def test_run_with_custom_generation_parameters(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
+        generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
+
+        # Use the mocked pipeline from the fixture and simulate warm_up
+        generator.pipeline = mock_pipeline_tokenizer
+
+        generation_kwargs = {"temperature": 0.8, "max_new_tokens": 100}
+
+        # Use the mocked pipeline from the fixture and simulate warm_up
+        generator.pipeline = mock_pipeline_tokenizer
+        results = generator.run(messages=chat_messages, generation_kwargs=generation_kwargs)
+
+        # check kwargs passed pipeline
+        _, kwargs = generator.pipeline.call_args
+        assert kwargs["max_new_tokens"] == 100
+        assert kwargs["temperature"] == 0.8
+
+        # replies are properly parsed and returned
         assert "replies" in results
         assert isinstance(results["replies"][0], ChatMessage)
         chat_message = results["replies"][0]
