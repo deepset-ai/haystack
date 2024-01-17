@@ -267,8 +267,8 @@ class HuggingFaceLocalChatGenerator:
         if stop_words_criteria:
             generation_kwargs["stopping_criteria"] = StoppingCriteriaList([stop_words_criteria])
 
-        num_responses = generation_kwargs.get("num_return_sequences", 1)
         if self.streaming_callback:
+            num_responses = generation_kwargs.get("num_return_sequences", 1)
             if num_responses > 1:
                 logger.warning(
                     "Streaming is enabled, but the number of responses is set to %d. "
@@ -277,6 +277,7 @@ class HuggingFaceLocalChatGenerator:
                     num_responses,
                 )
                 generation_kwargs["num_return_sequences"] = 1
+            # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, self.streaming_callback, stop_words)
 
         # Prepare the prompt for the model
