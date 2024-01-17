@@ -160,3 +160,12 @@ class TestHTMLToDocument:
         assert len(docs) == 3
         for doc in docs:
             assert "Haystack" in doc.content
+
+    def test_serde(self):
+        """
+        Test if the component runs correctly gets serialized and deserialized.
+        """
+        converter = HTMLToDocument("ArticleExtractor")
+        serde_data = converter.to_dict()
+        new_converter = HTMLToDocument.from_dict(serde_data)
+        assert new_converter.extractor_type == converter.extractor_type
