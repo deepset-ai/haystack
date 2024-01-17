@@ -1,10 +1,10 @@
 import logging
 from pathlib import Path
-from typing import List, Union, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Union
 
-from haystack import ComponentError, Document, component, default_to_dict, default_from_dict
+from haystack import ComponentError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import get_device
+from haystack.utils import ComponentDevice
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class TransformersSimilarityRanker:
     def __init__(
         self,
         model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-        device: Optional[str] = "cpu",
+        device: Optional[ComponentDevice] = None,
         token: Union[bool, str, None] = None,
         top_k: int = 10,
         meta_fields_to_embed: Optional[List[str]] = None,
@@ -53,7 +53,8 @@ class TransformersSimilarityRanker:
 
         :param model: The name or path of a pre-trained cross-encoder model
             from the Hugging Face Hub.
-        :param device: The torch device (for example, cuda:0, cpu, mps) to which you want to limit model inference.
+        :param device: The device on which the model is loaded. If `None`, the default device is automatically
+            selected.
         :param token: The API token used to download private models from Hugging Face.
             If this parameter is set to `True`, the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) is used.
@@ -75,7 +76,7 @@ class TransformersSimilarityRanker:
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.top_k = top_k
-        self.device = device
+        self.device = ComponentDevice.resolve_device(device)
         self.token = token
         self._model = None
         self.tokenizer = None
@@ -90,6 +91,11 @@ class TransformersSimilarityRanker:
         self.score_threshold = score_threshold
         self.model_kwargs = model_kwargs or {}
 
+        if self.device.has_multiple_devices:
+            raise ValueError(
+                f"{type(TransformersSimilarityRanker).__name__} currently only supports inference on single devices"
+            )
+
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
@@ -101,11 +107,9 @@ class TransformersSimilarityRanker:
         Warm up the model and tokenizer used for scoring the Documents.
         """
         if self._model is None:
-            if self.device is None:
-                self.device = get_device()
             self._model = AutoModelForSequenceClassification.from_pretrained(
                 self.model, token=self.token, **self.model_kwargs
-            ).to(self.device)
+            ).to(self.device.to_torch())
             self._model.eval()
             self.tokenizer = AutoTokenizer.from_pretrained(self.model, token=self.token)
 
@@ -115,7 +119,7 @@ class TransformersSimilarityRanker:
         """
         serialization_dict = default_to_dict(
             self,
-            device=self.device,
+            device=self.device.to_dict(),
             model=self.model,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             top_k=self.top_k,
@@ -151,6 +155,10 @@ class TransformersSimilarityRanker:
         torch_and_transformers_import.check()
         init_params = data.get("init_parameters", {})
         model_kwargs = init_params.get("model_kwargs", {})
+
+        serialized_device = init_params.get("device", {})
+        init_params["device"] = ComponentDevice.from_dict(serialized_device)
+
         # convert string to torch.dtype
         # 1. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
         for key, value in model_kwargs.items():
@@ -224,7 +232,7 @@ class TransformersSimilarityRanker:
         features = self.tokenizer(
             query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
         ).to(  # type: ignore
-            self.device
+            self.device.to_torch()
         )
         with torch.inference_mode():
             similarity_scores = self._model(**features).logits.squeeze(dim=1)  # type: ignore

@@ -1,9 +1,10 @@
 import logging
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from haystack import component, default_to_dict, default_from_dict
+from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.hf_utils import StopWordsCriteria
 from haystack.lazy_imports import LazyImport
+from haystack.utils import ComponentDevice
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ class HuggingFaceLocalGenerator:
         self,
         model: str = "google/flan-t5-base",
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
-        device: Optional[str] = None,
+        device: Optional[ComponentDevice] = None,
         token: Optional[Union[str, bool]] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
@@ -58,9 +59,8 @@ class HuggingFaceLocalGenerator:
             If the task is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
             If not specified, the component will attempt to infer the task from the model name,
             calling the Hugging Face Hub API.
-        :param device: The device on which the model is loaded. (e.g., "cpu", "cuda:0").
-            If `device` or `device_map` is specified in the `huggingface_pipeline_kwargs`,
-            this parameter will be ignored.
+        :param device: The device on which the model is loaded. If `None`, the default device is automatically
+            selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
         :param token: The token to use as HTTP bearer authorization for remote files.
             If True, will use the token generated when running huggingface-cli login (stored in ~/.huggingface).
             If the token is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
@@ -92,12 +92,9 @@ class HuggingFaceLocalGenerator:
         # otherwise, populate them with values from other init parameters
         huggingface_pipeline_kwargs.setdefault("model", model)
         huggingface_pipeline_kwargs.setdefault("token", token)
-        if (
-            device is not None
-            and "device" not in huggingface_pipeline_kwargs
-            and "device_map" not in huggingface_pipeline_kwargs
-        ):
-            huggingface_pipeline_kwargs["device"] = device
+
+        device = ComponentDevice.resolve_device(device)
+        device.update_hf_kwargs(huggingface_pipeline_kwargs, overwrite=False)
 
         # task identification and validation
         if task is None:
