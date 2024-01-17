@@ -5,6 +5,7 @@ from transformers import PreTrainedTokenizer
 
 from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
 from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.utils import ComponentDevice
 
 
 # used to test serialization of streaming_callback
@@ -53,52 +54,65 @@ class TestHuggingFaceLocalChatGenerator:
 
     def test_init_custom_token(self):
         generator = HuggingFaceLocalChatGenerator(
-            model="mistralai/Mistral-7B-Instruct-v0.2", task="text2text-generation", token="test-token"
+            model="mistralai/Mistral-7B-Instruct-v0.2",
+            task="text2text-generation",
+            token="test-token",
+            device=ComponentDevice.from_str("cpu"),
         )
 
         assert generator.huggingface_pipeline_kwargs == {
             "model": "mistralai/Mistral-7B-Instruct-v0.2",
             "task": "text2text-generation",
             "token": "test-token",
+            "device": "cpu",
         }
 
     def test_init_custom_device(self):
         generator = HuggingFaceLocalChatGenerator(
-            model="mistralai/Mistral-7B-Instruct-v0.2", task="text2text-generation", device="cuda:0"
+            model="mistralai/Mistral-7B-Instruct-v0.2",
+            task="text2text-generation",
+            device=ComponentDevice.from_str("cpu"),
         )
 
         assert generator.huggingface_pipeline_kwargs == {
             "model": "mistralai/Mistral-7B-Instruct-v0.2",
             "task": "text2text-generation",
             "token": None,
-            "device": "cuda:0",
+            "device": "cpu",
         }
 
     def test_init_task_parameter(self):
-        generator = HuggingFaceLocalChatGenerator(task="text2text-generation")
+        generator = HuggingFaceLocalChatGenerator(task="text2text-generation", device=ComponentDevice.from_str("cpu"))
 
         assert generator.huggingface_pipeline_kwargs == {
-            "model": "mistralai/Mistral-7B-Instruct-v0.2",
+            "model": "HuggingFaceH4/zephyr-7b-beta",
             "task": "text2text-generation",
             "token": None,
+            "device": "cpu",
         }
 
     def test_init_task_in_huggingface_pipeline_kwargs(self):
-        generator = HuggingFaceLocalChatGenerator(huggingface_pipeline_kwargs={"task": "text2text-generation"})
+        generator = HuggingFaceLocalChatGenerator(
+            huggingface_pipeline_kwargs={"task": "text2text-generation"}, device=ComponentDevice.from_str("cpu")
+        )
 
         assert generator.huggingface_pipeline_kwargs == {
-            "model": "mistralai/Mistral-7B-Instruct-v0.2",
+            "model": "HuggingFaceH4/zephyr-7b-beta",
             "task": "text2text-generation",
             "token": None,
+            "device": "cpu",
         }
 
     def test_init_task_inferred_from_model_name(self, model_info_mock):
-        generator = HuggingFaceLocalChatGenerator(model="mistralai/Mistral-7B-Instruct-v0.2")
+        generator = HuggingFaceLocalChatGenerator(
+            model="mistralai/Mistral-7B-Instruct-v0.2", device=ComponentDevice.from_str("cpu")
+        )
 
         assert generator.huggingface_pipeline_kwargs == {
             "model": "mistralai/Mistral-7B-Instruct-v0.2",
             "task": "text2text-generation",
             "token": None,
+            "device": "cpu",
         }
 
     def test_init_invalid_task(self):
@@ -141,7 +155,9 @@ class TestHuggingFaceLocalChatGenerator:
     @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
     def test_warm_up(self, pipeline_mock):
         generator = HuggingFaceLocalChatGenerator(
-            model="mistralai/Mistral-7B-Instruct-v0.2", task="text2text-generation"
+            model="mistralai/Mistral-7B-Instruct-v0.2",
+            task="text2text-generation",
+            device=ComponentDevice.from_str("cpu"),
         )
 
         pipeline_mock.assert_not_called()
@@ -149,7 +165,7 @@ class TestHuggingFaceLocalChatGenerator:
         generator.warm_up()
 
         pipeline_mock.assert_called_once_with(
-            model="mistralai/Mistral-7B-Instruct-v0.2", task="text2text-generation", token=None
+            model="mistralai/Mistral-7B-Instruct-v0.2", task="text2text-generation", token=None, device="cpu"
         )
 
     def test_run(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
