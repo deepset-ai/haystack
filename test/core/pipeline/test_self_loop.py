@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 
-from haystack.core.component import component
 from haystack.core.pipeline import Pipeline
 from haystack.testing.sample_components import AddFixedValue, SelfLoop
 
