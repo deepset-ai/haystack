@@ -107,7 +107,7 @@ class TestSimilarityRanker:
 
         component = TransformersSimilarityRanker.from_dict(data)
         assert component.device == ComponentDevice.from_str("cuda:0")
-        assert component.model == "my_model"
+        assert component.model_name_or_path == "my_model"
         assert component.token is None
         assert component.top_k == 5
         assert component.meta_fields_to_embed == []
@@ -126,7 +126,7 @@ class TestSimilarityRanker:
         embedder = TransformersSimilarityRanker(
             model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
-        embedder._model = MagicMock()
+        embedder.model = MagicMock()
         embedder.tokenizer = MagicMock()
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
@@ -150,8 +150,8 @@ class TestSimilarityRanker:
     def test_scale_score_false(self, mocked_sort):
         mocked_sort.return_value = (None, torch.tensor([0, 1]))
         embedder = TransformersSimilarityRanker(model="model", scale_score=False)
-        embedder._model = MagicMock()
-        embedder._model.return_value = SequenceClassifierOutput(
+        embedder.model = MagicMock()
+        embedder.model.return_value = SequenceClassifierOutput(
             loss=None, logits=torch.FloatTensor([[-10.6859], [-8.9874]]), hidden_states=None, attentions=None
         )
         embedder.tokenizer = MagicMock()
@@ -165,8 +165,8 @@ class TestSimilarityRanker:
     def test_score_threshold(self, mocked_sort):
         mocked_sort.return_value = (None, torch.tensor([0, 1]))
         embedder = TransformersSimilarityRanker(model="model", scale_score=False, score_threshold=0.1)
-        embedder._model = MagicMock()
-        embedder._model.return_value = SequenceClassifierOutput(
+        embedder.model = MagicMock()
+        embedder.model.return_value = SequenceClassifierOutput(
             loss=None, logits=torch.FloatTensor([[0.955], [0.001]]), hidden_states=None, attentions=None
         )
         embedder.tokenizer = MagicMock()

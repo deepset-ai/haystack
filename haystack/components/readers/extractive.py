@@ -91,7 +91,7 @@ class ExtractiveReader:
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model)
         self.model = None
-
+        self.tokenizer = None
         self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
@@ -107,7 +107,8 @@ class ExtractiveReader:
         # Resolve device if device_map is provided in model_kwargs
         if self.model_kwargs.get("device_map") and device is not None:
             raise ValueError(
-                "The parameters `device` and `device_map` from `model_kwargs` cannot both be provided. Provide only one or the other."
+                "The parameters `device` and `device_map` from `model_kwargs` cannot both be provided."
+                "Provide only one or the other."
             )
         elif self.model_kwargs.get("device_map") and device is None:
             component_device = ComponentDevice.from_multiple(DeviceMap.from_hf(self.model_kwargs.get("device_map")))

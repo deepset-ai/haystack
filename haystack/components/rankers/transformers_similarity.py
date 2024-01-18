@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from haystack import ComponentError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice
+from haystack.utils import ComponentDevice, DeviceMap
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 logger = logging.getLogger(__name__)
@@ -73,64 +73,58 @@ class TransformersSimilarityRanker:
         """
         torch_and_transformers_import.check()
 
-        self.model = model
-        if top_k <= 0:
-            raise ValueError(f"top_k must be > 0, but got {top_k}")
-        self.top_k = top_k
-        self.device = ComponentDevice.resolve_device(device)
-        self.token = token
-        self._model = None
+        self.model_name_or_path = str(model)
+        self.model = None
         self.tokenizer = None
+        self.top_k = top_k
+        self.token = token
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.scale_score = scale_score
         self.calibration_factor = calibration_factor
+        self.score_threshold = score_threshold
+        self.model_kwargs = model_kwargs or {}
+
+        # Resolve device if device_map is provided in model_kwargs
+        if self.model_kwargs.get("device_map") and device is not None:
+            raise ValueError(
+                "The parameters `device` and `device_map` from `model_kwargs` cannot both be provided."
+                "Provide only one or the other."
+            )
+        elif self.model_kwargs.get("device_map") and device is None:
+            component_device = ComponentDevice.from_multiple(DeviceMap.from_hf(self.model_kwargs.get("device_map")))
+        else:
+            component_device = ComponentDevice.resolve_device(device)
+        self.device = component_device
+
+        # Parameter validation
         if self.scale_score and self.calibration_factor is None:
             raise ValueError(
                 f"scale_score is True so calibration_factor must be provided, but got {calibration_factor}"
             )
-        self.score_threshold = score_threshold
-        self.model_kwargs = model_kwargs or {}
 
-        if self.device.has_multiple_devices:
-            raise ValueError(
-                f"{type(TransformersSimilarityRanker).__name__} currently only supports inference on single devices"
-            )
+        if self.top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": str(self.model)}
+        return {"model": self.model_name_or_path}
 
     def warm_up(self):
         """
         Warm up the model and tokenizer used for scoring the Documents.
         """
-        if self._model is None:
-            # # Set up device_map which allows quantized loading and multi device inference
-            # # requires accelerate which is always installed when using `pip install transformers[torch]`
-            # device_map = self.model_kwargs.get("device_map")
-            # if device_map is None:
-            #     if self.device is not None:
-            #         device_map = self.device
-            #     else:
-            #         device_map = get_device()
-            # self.model_kwargs["device_map"] = device_map
-            #
-            # self.model = AutoModelForSequenceClassification.from_pretrained(
-            #     self.model_name_or_path, token=self.token, **self.model_kwargs
-            # )
-            # self.model.eval()
-            # # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
-            # self.device = next(iter(self.model.hf_device_map.values()))
-            # self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
-
-            self._model = AutoModelForSequenceClassification.from_pretrained(
-                self.model, token=self.token, **self.model_kwargs
-            ).to(self.device.to_torch())
-            self._model.eval()
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model, token=self.token)
+        if self.model is None:
+            # Set up device_map which allows quantized loading and multi device inference
+            # requires accelerate which is always installed when using `pip install transformers[torch]`
+            self.model_kwargs["device_map"] = self.device.to_hf()
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                self.model_name_or_path, token=self.token, **self.model_kwargs
+            )
+            self.model.eval()
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -139,7 +133,7 @@ class TransformersSimilarityRanker:
         serialization_dict = default_to_dict(
             self,
             device=self.device.to_dict(),
-            model=self.model,
+            model=self.model_name_or_path,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             top_k=self.top_k,
             meta_fields_to_embed=self.meta_fields_to_embed,
@@ -191,22 +185,20 @@ class TransformersSimilarityRanker:
             return {"documents": []}
 
         top_k = top_k or self.top_k
-        if top_k <= 0:
-            raise ValueError(f"top_k must be > 0, but got {top_k}")
-
         scale_score = scale_score or self.scale_score
         calibration_factor = calibration_factor or self.calibration_factor
+        score_threshold = score_threshold or self.score_threshold
+
+        if top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
 
         if scale_score and calibration_factor is None:
             raise ValueError(
                 f"scale_score is True so calibration_factor must be provided, but got {calibration_factor}"
             )
 
-        if score_threshold is None:
-            score_threshold = self.score_threshold
-
         # If a model path is provided but the model isn't loaded
-        if self.model and not self._model:
+        if self.model is None:
             raise ComponentError(
                 f"The component {self.__class__.__name__} wasn't warmed up. Run 'warm_up()' before calling 'run()'."
             )
@@ -222,10 +214,10 @@ class TransformersSimilarityRanker:
         features = self.tokenizer(
             query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
         ).to(  # type: ignore
-            self.device.to_torch()
+            str(self.device.first_device)
         )
         with torch.inference_mode():
-            similarity_scores = self._model(**features).logits.squeeze(dim=1)  # type: ignore
+            similarity_scores = self.model(**features).logits.squeeze(dim=1)  # type: ignore
 
         if scale_score:
             similarity_scores = torch.sigmoid(similarity_scores * calibration_factor)
