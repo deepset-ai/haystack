@@ -28,7 +28,7 @@ def normalize_metadata(
     makes sure to return a list of dictionaries of the correct length for the converter to use.
 
     :param meta: the meta input of the converter, as-is
-    :sources_count: the number of sources the converter received
+    :param sources_count: the number of sources the converter received
     :returns: a list of dictionaries of the make length as the sources list
     """
     if meta is None:

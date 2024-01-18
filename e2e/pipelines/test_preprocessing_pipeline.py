@@ -39,14 +39,13 @@ def test_preprocessing_pipeline(tmp_path):
     # Draw the pipeline
     preprocessing_pipeline.draw(tmp_path / "test_preprocessing_pipeline.png")
 
-    # Serialize the pipeline to JSON
-    with open(tmp_path / "test_preprocessing_pipeline.json", "w") as f:
-        print(json.dumps(preprocessing_pipeline.to_dict(), indent=4))
-        json.dump(preprocessing_pipeline.to_dict(), f)
+    # Serialize the pipeline to YAML
+    with open(tmp_path / "test_preprocessing_pipeline.yaml", "w") as f:
+        preprocessing_pipeline.dump(f)
 
     # Load the pipeline back
-    with open(tmp_path / "test_preprocessing_pipeline.json", "r") as f:
-        preprocessing_pipeline = Pipeline.from_dict(json.load(f))
+    with open(tmp_path / "test_preprocessing_pipeline.yaml", "r") as f:
+        preprocessing_pipeline = Pipeline.load(f)
 
     # Write a txt file
     with open(tmp_path / "test_file_english.txt", "w") as f:

@@ -16,14 +16,13 @@ def test_extractive_qa_pipeline(tmp_path):
     # Draw the pipeline
     qa_pipeline.draw(tmp_path / "test_extractive_qa_pipeline.png")
 
-    # Serialize the pipeline to JSON
-    with open(tmp_path / "test_bm25_rag_pipeline.json", "w") as f:
-        print(json.dumps(qa_pipeline.to_dict(), indent=4))
-        json.dump(qa_pipeline.to_dict(), f)
+    # Serialize the pipeline to YAML
+    with open(tmp_path / "test_bm25_rag_pipeline.yaml", "w") as f:
+        qa_pipeline.dump(f)
 
     # Load the pipeline back
-    with open(tmp_path / "test_bm25_rag_pipeline.json", "r") as f:
-        qa_pipeline = Pipeline.from_dict(json.load(f))
+    with open(tmp_path / "test_bm25_rag_pipeline.yaml", "r") as f:
+        qa_pipeline = Pipeline.load(f)
 
     # Populate the document store
     documents = [
