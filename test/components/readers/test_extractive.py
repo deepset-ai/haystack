@@ -56,15 +56,9 @@ def mock_reader(mock_tokenizer):
             super().__init__()
             self.hf_device_map = {"": "cpu:0"}
 
-        def to(self, device):
-            assert device == torch.device("cpu")
-            self.device_set = True
-            return self
-
         def forward(self, input_ids, attention_mask, *args, **kwargs):
             assert input_ids.device == torch.device("cpu")
             assert attention_mask.device == torch.device("cpu")
-            # assert self.device_set
             start = torch.zeros(input_ids.shape[:2])
             end = torch.zeros(input_ids.shape[:2])
             start[:, 27] = 1
