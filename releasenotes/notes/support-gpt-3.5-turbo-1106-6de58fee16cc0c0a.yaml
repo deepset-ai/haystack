@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Correctly calculate the max token limit for gpt-3.5-turbo-1106
