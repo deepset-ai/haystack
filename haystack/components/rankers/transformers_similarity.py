@@ -93,7 +93,9 @@ class TransformersSimilarityRanker:
             )
 
         if self.model_kwargs.get("device_map") and device is None:
-            component_device = ComponentDevice.from_multiple(DeviceMap.from_hf(self.model_kwargs.get("device_map")))
+            device_map = self.model_kwargs.get("device_map")
+            assert isinstance(device_map, (str, dict))
+            component_device = ComponentDevice.from_multiple(DeviceMap.from_hf(device_map))
         else:
             component_device = ComponentDevice.resolve_device(device)
         self.device = component_device
