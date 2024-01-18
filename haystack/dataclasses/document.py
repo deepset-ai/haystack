@@ -1,11 +1,11 @@
-import io
 import hashlib
+import io
 import logging
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Dict, List, Optional
 
-import numpy
-import pandas
+from numpy import ndarray
+from pandas import DataFrame, read_json
 
 from haystack.dataclasses.byte_stream import ByteStream
 
@@ -24,7 +24,7 @@ class _BackwardCompatible(type):
         """
         # Move `content` to new fields depending on the type
         content = kwargs.get("content")
-        if isinstance(content, pandas.DataFrame):
+        if isinstance(content, DataFrame):
             kwargs["dataframe"] = content
             del kwargs["content"]
 
@@ -33,7 +33,7 @@ class _BackwardCompatible(type):
             del kwargs["content_type"]
 
         # Embedding were stored as NumPy arrays in 1.x, so we convert it to the new type
-        if isinstance(embedding := kwargs.get("embedding"), numpy.ndarray):
+        if isinstance(embedding := kwargs.get("embedding"), ndarray):
             kwargs["embedding"] = embedding.tolist()
 
         # id_hash_keys is not used anymore
@@ -61,7 +61,7 @@ class Document(metaclass=_BackwardCompatible):
 
     id: str = field(default="")
     content: Optional[str] = field(default=None)
-    dataframe: Optional[pandas.DataFrame] = field(default=None)
+    dataframe: Optional[DataFrame] = field(default=None)
     blob: Optional[ByteStream] = field(default=None)
     meta: Dict[str, Any] = field(default_factory=dict)
     score: Optional[float] = field(default=None)
@@ -141,7 +141,7 @@ class Document(metaclass=_BackwardCompatible):
         `dataframe` and `blob` fields are converted to their original types.
         """
         if (dataframe := data.get("dataframe")) is not None:
-            data["dataframe"] = pandas.read_json(io.StringIO(dataframe))
+            data["dataframe"] = read_json(io.StringIO(dataframe))
         if blob := data.get("blob"):
             data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
         # Store metadata for a moment while we try un-flattening allegedly flatten metadata.
