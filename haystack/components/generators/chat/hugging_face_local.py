@@ -36,7 +36,8 @@ class HuggingFaceLocalChatGenerator:
 
 
 
-    generator = HuggingFaceLocalChatGenerator(model="mistralai/Mistral-7B-Instruct-v0.2", device="cuda:0")
+    generator = HuggingFaceLocalChatGenerator(model="HuggingFaceH4/zephyr-7b-beta",
+                                             huggingface_pipeline_kwargs={"device_map":"auto"})
     messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
     print(generator.run(messages))
 
