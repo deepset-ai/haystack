@@ -1,11 +1,14 @@
 import inspect
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Callable
 
+from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient, HfApi
     from huggingface_hub.utils import RepositoryNotFoundError
+
+PIPELINE_SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 
 
 def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepted_params: Optional[List[str]] = None):
@@ -59,7 +62,9 @@ def check_valid_model(model_id: str, token: Optional[str]) -> None:
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
     import torch
-    from transformers import StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast
+    from transformers import StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer
+
+    transformers_import.check()
 
     class StopWordsCriteria(StoppingCriteria):
         """
@@ -107,3 +112,19 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
             len_stop_id = stop_id.size(0)
             result = all(generated_text_ids[len_generated_text_ids - len_stop_id :].eq(stop_id))
             return result
+
+    class HFTokenStreamingHandler(TextStreamer):
+        def __init__(
+            self,
+            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            stream_handler: Callable[[StreamingChunk], None],
+            stop_words: Optional[List[str]] = None,
+        ):
+            super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
+            self.token_handler = stream_handler
+            self.stop_words = stop_words or []
+
+        def on_finalized_text(self, word: str, stream_end: bool = False):
+            word_to_send = word + "\n" if stream_end else word
+            if word_to_send.strip() not in self.stop_words:
+                self.token_handler(StreamingChunk(content=word_to_send))
