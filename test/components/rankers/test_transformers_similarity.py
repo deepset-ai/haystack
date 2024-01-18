@@ -6,7 +6,7 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 
 from haystack import ComponentError, Document
 from haystack.components.rankers.transformers_similarity import TransformersSimilarityRanker
-from haystack.utils.device import ComponentDevice
+from haystack.utils.device import ComponentDevice, DeviceMap
 
 
 class TestSimilarityRanker:
@@ -180,6 +180,15 @@ class TestSimilarityRanker:
             _ = TransformersSimilarityRanker(
                 "model", model_kwargs={"device_map": "cpu"}, device=ComponentDevice.from_str("cuda")
             )
+
+    @patch("haystack.components.rankers.transformers_similarity.AutoTokenizer.from_pretrained")
+    @patch("haystack.components.rankers.transformers_similarity.AutoModelForSequenceClassification.from_pretrained")
+    def test_device_map_dict(self, mocked_automodel, mocked_autotokenizer):
+        ranker = TransformersSimilarityRanker("model", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}})
+        ranker.warm_up()
+
+        mocked_automodel.assert_called_once_with("model", token=None, device_map={"layer_1": 1, "classifier": "cpu"})
+        assert ranker.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"layer_1": 1, "classifier": "cpu"}))
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
