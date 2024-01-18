@@ -4,7 +4,7 @@
 import logging
 
 from haystack.core.pipeline import Pipeline
-from haystack.testing.sample_components import AddFixedValue, Remainder, Double, Sum
+from haystack.testing.sample_components import AddFixedValue, Double, Remainder, Sum
 
 logging.basicConfig(level=logging.DEBUG)
 
