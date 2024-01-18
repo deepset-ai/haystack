@@ -175,6 +175,12 @@ class TestSimilarityRanker:
         out = embedder.run(query="test", documents=documents)
         assert len(out["documents"]) == 1
 
+    def test_device_map_and_device_raises(self):
+        with pytest.raises(ValueError):
+            _ = TransformersSimilarityRanker(
+                "model", model_kwargs={"device_map": "cpu"}, device=ComponentDevice.from_str("cuda")
+            )
+
     @pytest.mark.integration
     @pytest.mark.parametrize(
         "query,docs_before_texts,expected_first_text,scores",
@@ -229,7 +235,6 @@ class TestSimilarityRanker:
     @pytest.mark.integration
     def test_raises_component_error_if_model_not_warmed_up(self):
         sampler = TransformersSimilarityRanker()
-
         with pytest.raises(ComponentError):
             sampler.run(query="query", documents=[Document(content="document")])
 

@@ -330,6 +330,13 @@ def test_device_map_dict(mocked_automodel, mocked_autotokenizer):
     assert reader.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"layer_1": 1, "classifier": "cpu"}))
 
 
+def test_device_map_and_device_raises():
+    with pytest.raises(ValueError):
+        _ = ExtractiveReader(
+            "deepset/roberta-base-squad2", model_kwargs={"device_map": "cpu"}, device=ComponentDevice.from_str("cuda")
+        )
+
+
 class TestDeduplication:
     @pytest.fixture
     def doc1(self):
