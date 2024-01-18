@@ -104,17 +104,20 @@ class ExtractiveReader:
         self.model_kwargs = model_kwargs or {}
         self.overlap_threshold = overlap_threshold
 
-        # Resolve device if device_map is provided in model_kwargs
         if self.model_kwargs.get("device_map") and device is not None:
             raise ValueError(
                 "The parameters `device` and `device_map` from `model_kwargs` cannot both be provided."
                 "Provide only one or the other."
             )
 
+        # Resolve device if device_map is provided in model_kwargs
         if self.model_kwargs.get("device_map") and device is None:
             device_map = self.model_kwargs.get("device_map")
-            assert isinstance(device_map, (str, dict))
-            component_device = ComponentDevice.from_multiple(DeviceMap.from_hf(device_map))
+            if isinstance(device_map, str):
+                component_device = ComponentDevice.from_str(device_map)
+            else:
+                assert isinstance(device_map, dict)
+                component_device = ComponentDevice.from_multiple(DeviceMap.from_hf(device_map))
         else:
             component_device = ComponentDevice.resolve_device(device)
         self.device = component_device

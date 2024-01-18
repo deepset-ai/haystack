@@ -8,7 +8,7 @@ from transformers import pipeline
 
 from haystack import Document, ExtractedAnswer
 from haystack.components.readers import ExtractiveReader
-from haystack.utils.device import ComponentDevice
+from haystack.utils.device import ComponentDevice, DeviceMap
 
 
 @pytest.fixture
@@ -314,11 +314,26 @@ def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
-def test_warm_up_device_map(mocked_automodel, mocked_autotokenizer):
-    reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token", model_kwargs={"device_map": "cpu:0"})
+def test_device_map_str(mocked_automodel, mocked_autotokenizer):
+    reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "cpu:0"})
     reader.warm_up()
 
-    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", device_map="cpu:0")
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token=None, device_map="cpu:0")
+    assert reader.device == ComponentDevice.from_str("cpu:0")
+
+
+@patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
+@patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+def test_device_map_dict(mocked_automodel, mocked_autotokenizer):
+    reader = ExtractiveReader(
+        "deepset/roberta-base-squad2", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}}
+    )
+    reader.warm_up()
+
+    mocked_automodel.assert_called_once_with(
+        "deepset/roberta-base-squad2", token=None, device_map={"layer_1": 1, "classifier": "cpu"}
+    )
+    assert reader.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"layer_1": 1, "classifier": "cpu"}))
 
 
 class TestDeduplication:
