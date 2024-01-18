@@ -110,7 +110,7 @@ jobs:
 
       - name: Get changed files
         id: files
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v42
         with:
           files: |
             examples/**.py
