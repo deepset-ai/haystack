@@ -305,17 +305,20 @@ def test_nest_answers(mock_reader: ExtractiveReader):
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
 def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
-    class ModelMock:
-        def __init__(self):
-            self.hf_device_map = {"": "cpu:0"}
+    reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token", device=ComponentDevice.from_str("cpu"))
+    reader.warm_up()
 
-    mocked_automodel.return_value = ModelMock()
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token", device_map="cpu")
+    mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
 
+
+@patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
+@patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+def test_warm_up_device_map(mocked_automodel, mocked_autotokenizer):
     reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token", model_kwargs={"device_map": "cpu:0"})
     reader.warm_up()
 
-    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token", device_map="cpu:0")
-    mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", device_map="cpu:0")
 
 
 class TestDeduplication:
