@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from haystack import ComponentError, Document, ExtractedAnswer, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, DeviceMap
-from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils import ComponentDevice
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs, resolve_hf_device_map
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     import torch
@@ -113,11 +113,8 @@ class ExtractiveReader:
         # Resolve device if device_map is provided in model_kwargs
         if self.model_kwargs.get("device_map") and device is None:
             device_map = self.model_kwargs.get("device_map")
-            if isinstance(device_map, str):
-                component_device = ComponentDevice.from_str(device_map)
-            else:
-                assert isinstance(device_map, dict)
-                component_device = ComponentDevice.from_multiple(DeviceMap.from_hf(device_map))
+            assert device_map is not None
+            component_device = resolve_hf_device_map(device_map)
         else:
             component_device = ComponentDevice.resolve_device(device)
         self.device = component_device
