@@ -20,7 +20,9 @@ def build_rag_pipeline(
     embedding_model: str = "intfloat/e5-base-v2",
     generation_model: str = "gpt-3.5-turbo",
     llm_api_key: Optional[str] = None,
+    api_base_url: Optional[str] = None,
     prompt_template: Optional[str] = None,
+    system_prompt: Optional[str] = None
 ):
     """
     Returns a prebuilt pipeline to perform retrieval augmented generation
@@ -35,7 +37,7 @@ def build_rag_pipeline(
     # Resolve components based on the chosen parameters
     retriever = resolve_retriever(document_store)
     embedder = resolve_embedder(embedding_model)
-    generator = resolve_generator(generation_model, llm_api_key)
+    generator = resolve_generator(generation_model, llm_api_key, api_base_url, system_prompt)
     prompt_template = resolve_prompt_template(prompt_template)
 
     # Add them to the Pipeline and connect them
@@ -126,7 +128,10 @@ def resolve_retriever(document_store, retriever_class: Optional[str] = None) -> 
     return retriever
 
 
-def resolve_generator(generation_model: str, llm_api_key: Optional[str] = None) -> Optional[Any]:
+def resolve_generator(generation_model: str, 
+                      llm_api_key: Optional[str] = None,
+                      api_base_url: Optional[str] = None,
+                      system_prompt: Optional[str] = None) -> Optional[Any]:
     """
     Resolves the generator to use for the given generation model.
     :param generation_model: The generation model to use.
@@ -135,7 +140,7 @@ def resolve_generator(generation_model: str, llm_api_key: Optional[str] = None) 
     generator = None
     for resolver_clazz in _GeneratorResolver.get_resolvers():
         resolver = resolver_clazz()
-        generator = resolver.resolve(generation_model, llm_api_key)
+        generator = resolver.resolve(generation_model, llm_api_key, api_base_url, system_prompt)
         if generator:
             break
     if not generator:
@@ -183,10 +188,18 @@ class _OpenAIResolved(_GeneratorResolver):
     Resolves the OpenAIGenerator.
     """
 
-    def resolve(self, model_key: str, api_key: str) -> Any:
+    def resolve(self, 
+                model_key: str, 
+                api_key: str, 
+                api_base_url: Optional[str] = None,
+                system_prompt: Optional[str] = None) -> Any:
         # does the model_key match the pattern OpenAI GPT pattern?
         if re.match(r"^gpt-4-.*", model_key) or re.match(r"^gpt-3.5-.*", model_key):
-            return OpenAIGenerator(model=model_key, api_key=api_key)
+            openai_generator = OpenAIGenerator(model=model_key, 
+                                               api_key=api_key, 
+                                               api_base_url=api_base_url,
+                                               system_prompt=system_prompt)
+            return openai_generator
         return None
 
 

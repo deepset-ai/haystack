@@ -28,6 +28,11 @@ class HTMLToDocument:
 
     """
 
+    def log_attributes(self):
+        logger.debug("Logging attributes of HTMLToDocument instance:")
+        for attr_name, attr_value in self.__dict__.items():
+            logger.debug(f"  {attr_name}: {attr_value}")
+
     def __init__(
         self,
         extractor_type: Literal[
