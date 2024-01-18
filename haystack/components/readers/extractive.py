@@ -114,9 +114,6 @@ class ExtractiveReader:
             component_device = ComponentDevice.resolve_device(device)
         self.device = component_device
 
-        if self.device.has_multiple_devices:
-            raise ValueError(f"{type(ExtractiveReader).__name__} currently only supports inference on single devices")
-
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
@@ -190,26 +187,12 @@ class ExtractiveReader:
         Loads model and tokenizer
         """
         if self.model is None:
-            # # Set up device_map which allows quantized loading and multi device inference
-            # # requires accelerate which is always installed when using `pip install transformers[torch]`
-            # device_map = self.model_kwargs.get("device_map")
-            # if device_map is None:
-            #     if self.device is not None:
-            #         device_map = self.device
-            #     else:
-            #         device_map = get_device()
-            # self.model_kwargs["device_map"] = device_map
-            #
-            # self.model = AutoModelForQuestionAnswering.from_pretrained(
-            #     self.model_name_or_path, token=self.token, **self.model_kwargs
-            # )
-            # # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
-            # self.device = next(iter(self.model.hf_device_map.values()))
-            # self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
-
+            # Set up device_map which allows quantized loading and multi device inference
+            # requires accelerate which is always installed when using `pip install transformers[torch]`
+            self.model_kwargs["device_map"] = self.device.to_hf()
             self.model = AutoModelForQuestionAnswering.from_pretrained(
                 self.model_name_or_path, token=self.token, **self.model_kwargs
-            ).to(self.device.to_torch())
+            )
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
 
     def _flatten_documents(
@@ -251,8 +234,11 @@ class ExtractiveReader:
             stride=stride,
         )
 
-        input_ids = encodings_pt.input_ids.to(self.device.to_torch())
-        attention_mask = encodings_pt.attention_mask.to(self.device.to_torch())
+        # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
+        first_device = str(self.device.first_device)
+
+        input_ids = encodings_pt.input_ids.to(first_device)
+        attention_mask = encodings_pt.attention_mask.to(first_device)
 
         query_ids = [query_ids[index] for index in encodings_pt.overflow_to_sample_mapping]
         document_ids = [document_ids[sample_id] for sample_id in encodings_pt.overflow_to_sample_mapping]
@@ -260,7 +246,7 @@ class ExtractiveReader:
         encodings = encodings_pt.encodings
         sequence_ids = torch.tensor(
             [[id_ if id_ is not None else -1 for id_ in encoding.sequence_ids] for encoding in encodings]
-        ).to(self.device.to_torch())
+        ).to(first_device)
 
         return input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids
 
@@ -289,7 +275,7 @@ class ExtractiveReader:
 
         # The mask here onwards is the same for all instances in the batch
         # As such we do away with the batch dimension
-        mask = torch.ones(logits.shape[-2:], dtype=torch.bool, device=self.device.to_torch())
+        mask = torch.ones(logits.shape[-2:], dtype=torch.bool, device=logits.device)
         mask = torch.triu(mask)  # End shouldn't be before start
         masked_logits = torch.where(mask, logits, -torch.inf)
         probabilities = torch.sigmoid(masked_logits * self.calibration_factor)
