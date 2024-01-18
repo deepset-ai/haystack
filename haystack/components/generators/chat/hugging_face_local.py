@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Literal, Optional, Union, Callable
 from haystack.components.generators.hf_utils import PIPELINE_SUPPORTED_TASKS
 
 from haystack import component, default_to_dict, default_from_dict
-from haystack.components.generators.hf_utils import HFTokenStreamingHandler
 from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
@@ -16,7 +15,10 @@ logger = logging.getLogger(__name__)
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
     from huggingface_hub import model_info
     from transformers import StoppingCriteriaList, pipeline, PreTrainedTokenizer, PreTrainedTokenizerFast
-    from haystack.components.generators.hf_utils import StopWordsCriteria  # pylint: disable=ungrouped-imports
+    from haystack.components.generators.hf_utils import (  # pylint: disable=ungrouped-imports
+        StopWordsCriteria,
+        HFTokenStreamingHandler,
+    )
     from haystack.utils.hf import serialize_hf_model_kwargs, deserialize_hf_model_kwargs
 
 
