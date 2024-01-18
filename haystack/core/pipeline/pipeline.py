@@ -465,7 +465,9 @@ class Pipeline:
         #     "input1": 1, "input2": 2,
         # }
 
-        # for input_name, input_value in component_inputs.items():
+        # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
+        # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
+        self.warm_up()
 
         # Raise if input is malformed in some way
         self._validate_input(data)
