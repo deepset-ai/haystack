@@ -1,33 +1,30 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Optional, Any, Dict, List, Union, TypeVar, Type, Set
-
-import os
-import json
 import datetime
-import logging
 import importlib
-from pathlib import Path
-from copy import deepcopy
+import logging
 from collections import defaultdict
+from copy import copy
+from pathlib import Path
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Type, TypeVar, Union
 
 import networkx  # type:ignore
 
-from haystack.core.component import component, Component, InputSocket, OutputSocket
+from haystack.core.component import Component, InputSocket, OutputSocket, component
+from haystack.core.component.connection import Connection, parse_connect_string
 from haystack.core.errors import (
-    PipelineError,
     PipelineConnectError,
+    PipelineError,
     PipelineMaxLoops,
     PipelineRuntimeError,
     PipelineValidationError,
 )
 from haystack.core.pipeline.descriptions import find_pipeline_outputs
-from haystack.core.pipeline.draw.draw import _draw, RenderingEngines
-from haystack.core.pipeline.validation import validate_pipeline_input, find_pipeline_inputs
-from haystack.core.component.connection import Connection, parse_connect_string
+from haystack.core.pipeline.draw.draw import RenderingEngines, _draw
+from haystack.core.pipeline.validation import find_pipeline_inputs
+from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name
-from haystack.core.serialization import component_to_dict, component_from_dict
 
 logger = logging.getLogger(__name__)
 
@@ -422,102 +419,266 @@ class Pipeline:
                 logger.info("Warming up component %s...", node)
                 self.graph.nodes[node]["instance"].warm_up()
 
-    def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:  # pylint: disable=too-many-locals
+    def _validate_input(self, data: Dict[str, Any]):
         """
-        Runs the pipeline.
+        Validates that data:
+        * Each Component name actually exists in the Pipeline
+        * Each Component is not missing any input
+        * Each Component has only one input per input socket, if not variadic
+        * Each Component doesn't receive inputs that are already sent by another Component
 
-        Args:
-            data: the inputs to give to the input components of the Pipeline.
-            debug: whether to collect and return debug information.
-
-        Returns:
-            A dictionary with the outputs of the output components of the Pipeline.
-
-        Raises:
-            PipelineRuntimeError: if the any of the components fail or return unexpected output.
+        Raises ValueError if any of the above is not true.
         """
-        self._clear_visits_count()
-        data = validate_pipeline_input(self.graph, input_values=data)
-        logger.info("Pipeline execution started.")
+        for component_name, component_inputs in data.items():
+            if component_name not in self.graph.nodes:
+                raise ValueError(f"Component named {component_name} not found in the pipeline.")
+            instance = self.graph.nodes[component_name]["instance"]
+            for socket_name, socket in instance.__canals_input__.items():
+                if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
+                    raise ValueError("Missing input for component {component_name}: {socket_name}")
+            for input_name in component_inputs.keys():
+                if input_name not in instance.__canals_input__:
+                    raise ValueError(f"Input {input_name} not found in component {component_name}.")
 
-        self._debug = {}
-        if debug:
-            logger.info("Debug mode ON.")
-            os.makedirs("debug", exist_ok=True)
+        for component_name in self.graph.nodes:
+            instance = self.graph.nodes[component_name]["instance"]
+            for socket_name, socket in instance.__canals_input__.items():
+                component_inputs = data.get(component_name, {})
+                if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
+                    raise ValueError("Missing input for component {component_name}: {socket_name}")
+                if socket.senders and socket_name in component_inputs and not socket.is_variadic:
+                    raise ValueError(
+                        f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
+                    )
 
-        logger.debug(
-            "Mandatory connections:\n%s",
-            "\n".join(
-                f" - {component}: {', '.join([str(s) for s in sockets])}"
-                for component, sockets in self._mandatory_connections.items()
-            ),
-        )
+    # TODO: We're ignoring this linting rules for the time being, after we properly optimize this function we'll remove the noqa
+    def run(  # noqa: C901, PLR0912 pylint: disable=too-many-branches
+        self, data: Dict[str, Any], debug: bool = False
+    ) -> Dict[str, Any]:
+        # NOTE: We're assuming data is formatted like so as of now
+        # data = {
+        #     "comp1": {"input1": 1, "input2": 2},
+        # }
+        #
+        # TODO: Support also this format:
+        # data = {
+        #     "input1": 1, "input2": 2,
+        # }
 
+        # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
+        # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
         self.warm_up()
 
-        # Prepare the inputs buffers and components queue
-        components_queue: List[str] = []
-        mandatory_values_buffer: Dict[Connection, Any] = {}
-        optional_values_buffer: Dict[Connection, Any] = {}
-        pipeline_output: Dict[str, Dict[str, Any]] = defaultdict(dict)
+        # Raise if input is malformed in some way
+        self._validate_input(data)
 
-        for node_name, input_data in data.items():
-            for socket_name, value in input_data.items():
-                # Make a copy of the input value so components don't need to
-                # take care of mutability.
-                value = deepcopy(value)
-                connection = Connection(
-                    None, None, node_name, self.graph.nodes[node_name]["input_sockets"][socket_name]
-                )
-                self._add_value_to_buffers(
-                    value, connection, components_queue, mandatory_values_buffer, optional_values_buffer
-                )
+        # NOTE: The above NOTE and TODO are technically not true.
+        # This implementation of run supports only the first format, but the second format is actually
+        # never received by this method. It's handled by the `run()` method of the `Pipeline` class
+        # defined in `haystack/pipeline.py`.
+        # As of now we're ok with this, but we'll need to merge those two classes at some point.
+        for component_name, component_inputs in data.items():
+            if component_name not in self.graph.nodes:
+                # This is not a component name, it must be the name of one or more input sockets.
+                # Those are handled in a different way, so we skip them here.
+                continue
+            instance = self.graph.nodes[component_name]["instance"]
+            for component_input, input_value in component_inputs.items():
+                # Handle mutable input data
+                data[component_name][component_input] = copy(input_value)
+                if instance.__canals_input__[component_input].is_variadic:
+                    # Components that have variadic inputs need to receive lists as input.
+                    # We don't want to force the user to always pass lists, so we convert single values to lists here.
+                    # If it's already a list we assume the component takes a variadic input of lists, so we
+                    # convert it in any case.
+                    data[component_name][component_input] = [input_value]
 
-        # *** PIPELINE EXECUTION LOOP ***
-        step = 0
-        while components_queue:  # pylint: disable=too-many-nested-blocks
-            step += 1
-            if debug:
-                self._record_pipeline_step(
-                    step, components_queue, mandatory_values_buffer, optional_values_buffer, pipeline_output
-                )
+        last_inputs: Dict[str, Dict[str, Any]] = {**data}
 
-            component_name = components_queue.pop(0)
-            logger.debug("> Queue at step %s: %s %s", step, component_name, components_queue)
-            self._check_max_loops(component_name)
+        # Take all components that have at least 1 input not connected or is variadic,
+        # and all components that have no inputs at all
+        to_run: List[Tuple[str, Component]] = []
+        for node_name in self.graph.nodes:
+            component = self.graph.nodes[node_name]["instance"]
 
-            # **** RUN THE NODE ****
-            if not self._ready_to_run(component_name, mandatory_values_buffer, components_queue):
+            if len(component.__canals_input__) == 0:
+                # Component has no input, can run right away
+                to_run.append((node_name, component))
                 continue
 
-            inputs = {
-                **self._extract_inputs_from_buffer(component_name, mandatory_values_buffer),
-                **self._extract_inputs_from_buffer(component_name, optional_values_buffer),
-            }
-            outputs = self._run_component(name=component_name, inputs=dict(inputs))
+            for socket in component.__canals_input__.values():
+                if not socket.senders or socket.is_variadic:
+                    # Component has at least one input not connected or is variadic, can run right away.
+                    to_run.append((node_name, component))
+                    break
 
-            # **** PROCESS THE OUTPUT ****
-            for socket_name, value in outputs.items():
-                targets = self._collect_targets(component_name, socket_name)
-                if not targets:
-                    pipeline_output[component_name][socket_name] = value
-                else:
-                    for target in targets:
-                        self._add_value_to_buffers(
-                            value, target, components_queue, mandatory_values_buffer, optional_values_buffer
-                        )
+        # These variables are used to detect when we're stuck in a loop.
+        # Stuck loops can happen when one or more components are waiting for input but
+        # no other component is going to run.
+        # This can happen when a whole branch of the graph is skipped for example.
+        # When we find that two consecutive iterations of the loop where the waiting_for_input list is the same,
+        # we know we're stuck in a loop and we can't make any progress.
+        before_last_waiting_for_input: Optional[Set[str]] = None
+        last_waiting_for_input: Optional[Set[str]] = None
 
-        if debug:
-            self._record_pipeline_step(
-                step + 1, components_queue, mandatory_values_buffer, optional_values_buffer, pipeline_output
-            )
-            os.makedirs(self._debug_path, exist_ok=True)
-            with open(self._debug_path / "data.json", "w", encoding="utf-8") as datafile:
-                json.dump(self._debug, datafile, indent=4, default=str)
-            pipeline_output["_debug"] = self._debug  # type: ignore
+        # The waiting_for_input list is used to keep track of components that are waiting for input.
+        waiting_for_input: List[Tuple[str, Component]] = []
 
-        logger.info("Pipeline executed successfully.")
-        return dict(pipeline_output)
+        # This is what we'll return at the end
+        final_outputs = {}
+        while len(to_run) > 0:
+            name, comp = to_run.pop(0)
+
+            if any(socket.is_variadic for socket in comp.__canals_input__.values()) and not getattr(  # type: ignore
+                comp, "is_greedy", False
+            ):
+                there_are_non_variadics = False
+                for _, other_comp in to_run:
+                    if not any(socket.is_variadic for socket in other_comp.__canals_input__.values()):  # type: ignore
+                        there_are_non_variadics = True
+                        break
+
+                if there_are_non_variadics:
+                    if (name, comp) not in waiting_for_input:
+                        waiting_for_input.append((name, comp))
+                    continue
+
+            if name in last_inputs and len(comp.__canals_input__) == len(last_inputs[name]):  # type: ignore
+                # This component has all the inputs it needs to run
+                res = comp.run(**last_inputs[name])
+
+                if not isinstance(res, Mapping):
+                    raise PipelineRuntimeError(
+                        f"Component '{name}' didn't return a dictionary. "
+                        "Components must always return dictionaries: check the the documentation."
+                    )
+
+                # Reset the waiting for input previous states, we managed to run a component
+                before_last_waiting_for_input = None
+                last_waiting_for_input = None
+
+                if (name, comp) in waiting_for_input:
+                    # We manage to run this component that was in the waiting list, we can remove it.
+                    # This happens when a component was put in the waiting list but we reached it from another edge.
+                    waiting_for_input.remove((name, comp))
+
+                # We keep track of which keys to remove from res at the end of the loop.
+                # This is done after the output has been distributed to the next components, so that
+                # we're sure all components that need this output have received it.
+                to_remove_from_res = set()
+                for sender_component_name, receiver_component_name, edge_data in self.graph.edges(data=True):
+                    if receiver_component_name == name and edge_data["to_socket"].is_variadic:
+                        # Delete variadic inputs that were already consumed
+                        last_inputs[name][edge_data["to_socket"].name] = []
+
+                    if name != sender_component_name:
+                        continue
+
+                    if edge_data["from_socket"].name not in res:
+                        # This output has not been produced by the component, skip it
+                        continue
+
+                    if receiver_component_name not in last_inputs:
+                        last_inputs[receiver_component_name] = {}
+                    to_remove_from_res.add(edge_data["from_socket"].name)
+                    value = res[edge_data["from_socket"].name]
+
+                    if edge_data["to_socket"].is_variadic:
+                        if edge_data["to_socket"].name not in last_inputs[receiver_component_name]:
+                            last_inputs[receiver_component_name][edge_data["to_socket"].name] = []
+                        # Add to the list of variadic inputs
+                        last_inputs[receiver_component_name][edge_data["to_socket"].name].append(value)
+                    else:
+                        last_inputs[receiver_component_name][edge_data["to_socket"].name] = value
+
+                    pair = (receiver_component_name, self.graph.nodes[receiver_component_name]["instance"])
+                    if pair not in waiting_for_input and pair not in to_run:
+                        to_run.append(pair)
+
+                res = {k: v for k, v in res.items() if k not in to_remove_from_res}
+
+                if len(res) > 0:
+                    final_outputs[name] = res
+            else:
+                # This component doesn't have enough inputs so we can't run it yet
+                if (name, comp) not in waiting_for_input:
+                    waiting_for_input.append((name, comp))
+
+            if len(to_run) == 0 and len(waiting_for_input) > 0:
+                # Check if we're stuck in a loop.
+                # It's important to check whether previous waitings are None as it could be that no
+                # Component has actually been run yet.
+                if (
+                    before_last_waiting_for_input is not None
+                    and last_waiting_for_input is not None
+                    and before_last_waiting_for_input == last_waiting_for_input
+                ):
+                    # Are we actually stuck or there's a lazy variadic waiting for input?
+                    # This is our last resort, if there's no lazy variadic waiting for input
+                    # we're stuck for real and we can't make any progress.
+                    for name, comp in waiting_for_input:
+                        is_variadic = any(socket.is_variadic for socket in comp.__canals_input__.values())  # type: ignore
+                        if is_variadic and not getattr(comp, "is_greedy", False):
+                            break
+                    else:
+                        # We're stuck in a loop for real, we can't make any progress.
+                        # BAIL!
+                        break
+
+                    if len(waiting_for_input) == 1:
+                        # We have a single component with variadic input waiting for input.
+                        # If we're at this point it means it has been waiting for input for at least 2 iterations.
+                        # This will never run.
+                        # BAIL!
+                        break
+
+                    # There was a lazy variadic waiting for input, we can run it
+                    waiting_for_input.remove((name, comp))
+                    to_run.append((name, comp))
+                    continue
+
+                before_last_waiting_for_input = (
+                    last_waiting_for_input.copy() if last_waiting_for_input is not None else None
+                )
+                last_waiting_for_input = {item[0] for item in waiting_for_input}
+
+                # Remove from waiting only if there is actually enough input to run
+                for name, comp in waiting_for_input:
+                    if name not in last_inputs:
+                        last_inputs[name] = {}
+
+                    # Lazy variadics must be removed only if there's nothing else to run at this stage
+                    is_variadic = any(socket.is_variadic for socket in comp.__canals_input__.values())  # type: ignore
+                    if is_variadic and not getattr(comp, "is_greedy", False):
+                        there_are_only_lazy_variadics = True
+                        for other_name, other_comp in waiting_for_input:
+                            if name == other_name:
+                                continue
+                            there_are_only_lazy_variadics &= any(
+                                socket.is_variadic for socket in other_comp.__canals_input__.values()  # type: ignore
+                            ) and not getattr(other_comp, "is_greedy", False)
+
+                        if not there_are_only_lazy_variadics:
+                            continue
+
+                    # Find the first component that has all the inputs it needs to run
+                    has_enough_inputs = True
+                    for input_socket in comp.__canals_input__.values():  # type: ignore
+                        if input_socket.is_mandatory and input_socket.name not in last_inputs[name]:
+                            has_enough_inputs = False
+                            break
+                        if input_socket.is_mandatory:
+                            continue
+
+                        if input_socket.name not in last_inputs[name]:
+                            last_inputs[name][input_socket.name] = input_socket.default_value
+                    if has_enough_inputs:
+                        break
+
+                waiting_for_input.remove((name, comp))
+                to_run.append((name, comp))
+
+        return final_outputs
 
     def _record_pipeline_step(
         self, step, components_queue, mandatory_values_buffer, optional_values_buffer, pipeline_output
