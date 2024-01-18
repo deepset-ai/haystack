@@ -110,7 +110,8 @@ class ExtractiveReader:
                 "The parameters `device` and `device_map` from `model_kwargs` cannot both be provided."
                 "Provide only one or the other."
             )
-        elif self.model_kwargs.get("device_map") and device is None:
+
+        if self.model_kwargs.get("device_map") and device is None:
             component_device = ComponentDevice.from_multiple(DeviceMap.from_hf(self.model_kwargs.get("device_map")))
         else:
             component_device = ComponentDevice.resolve_device(device)
