@@ -63,7 +63,12 @@ class OpenAPIServiceConnector:
         response_messages = []
         for method_invocation_descriptor in function_invocation_payloads:
             service_response = self._invoke_method(openapi_service, method_invocation_descriptor)
-            response_messages.append(ChatMessage.from_user(str(service_response)))
+            # openapi3 parses the JSON service response into a model object, which is not our focus at the moment.
+            # Instead, we require direct access to the raw JSON data of the response, rather than the model objects
+            # provided by the openapi3 library. This approach helps us avoid issues related to (de)serialization.
+            # By accessing the raw JSON response through `service_response._raw_data`, we can serialize this data
+            # into a string. Finally, we use this string to create a ChatMessage object.
+            response_messages.append(ChatMessage.from_user(json.dumps(service_response._raw_data)))
 
         return {"service_response": response_messages}
 
