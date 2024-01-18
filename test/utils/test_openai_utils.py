@@ -42,6 +42,13 @@ def test_openai_text_completion_tokenization_details_gpt3_5():
 
 
 @pytest.mark.unit
+def test_openai_text_completion_tokenization_details_gpt3_5_1106():
+    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-3.5-turbo-1106")
+    assert tokenizer_name == "cl100k_base"
+    assert max_tokens_limit == 16384
+
+
+@pytest.mark.unit
 def test_openai_text_completion_tokenization_details_gpt_4():
     tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-4")
     assert tokenizer_name == "cl100k_base"
