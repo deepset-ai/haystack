@@ -272,7 +272,7 @@ class HuggingFaceLocalChatGenerator:
         self,
         text: str,
         index: int,
-        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+        tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
         prompt: str,
         generation_kwargs: Dict[str, Any],
     ) -> ChatMessage:
