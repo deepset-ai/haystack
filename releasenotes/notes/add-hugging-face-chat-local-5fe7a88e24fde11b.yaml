@@ -12,9 +12,8 @@ features:
     from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
     from haystack.dataclasses import ChatMessage
 
-
-
-    generator = HuggingFaceLocalChatGenerator(model="mistralai/Mistral-7B-Instruct-v0.2", device="cuda:0")
+    generator = HuggingFaceLocalChatGenerator(model="HuggingFaceH4/zephyr-7b-beta")
+    generator.warm_up()
     messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
     print(generator.run(messages))
     ```

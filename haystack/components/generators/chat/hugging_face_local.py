@@ -18,6 +18,7 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
     from huggingface_hub import model_info
     from transformers import StoppingCriteriaList, pipeline, PreTrainedTokenizer, PreTrainedTokenizerFast
     from haystack.components.generators.hf_utils import StopWordsCriteria  # pylint: disable=ungrouped-imports
+    from haystack.utils.hf import serialize_hf_model_kwargs
 
 
 @component
@@ -34,10 +35,8 @@ class HuggingFaceLocalChatGenerator:
     from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
     from haystack.dataclasses import ChatMessage
 
-
-
-    generator = HuggingFaceLocalChatGenerator(model="HuggingFaceH4/zephyr-7b-beta",
-                                             huggingface_pipeline_kwargs={"device_map":"auto"})
+    generator = HuggingFaceLocalChatGenerator(model="HuggingFaceH4/zephyr-7b-beta")
+    generator.warm_up()
     messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
     print(generator.run(messages))
 
@@ -184,24 +183,8 @@ class HuggingFaceLocalChatGenerator:
         # we don't want to serialize valid tokens
         if isinstance(huggingface_pipeline_kwargs["token"], str):
             serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"].pop("token")
-        # convert torch.dtype to string for serialization
-        # 1. torch_dtype can be specified in huggingface_pipeline_kwargs
-        torch_dtype = huggingface_pipeline_kwargs.get("torch_dtype", None)
-        if isinstance(torch_dtype, torch.dtype):
-            serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["torch_dtype"] = str(torch_dtype)
-        # 2. torch_dtype and bnb_4bit_compute_dtype can be specified in model_kwargs
-        model_kwargs = huggingface_pipeline_kwargs.get("model_kwargs", {})
-        for key, value in model_kwargs.items():
-            if key in ["torch_dtype", "bnb_4bit_compute_dtype"] and isinstance(value, torch.dtype):
-                serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["model_kwargs"][key] = str(value)
-        # 3. bnb_4bit_compute_dtype can be specified in model_kwargs["quantization_config"]
-        quantization_config = model_kwargs.get("quantization_config", {})
-        bnb_4bit_compute_dtype = quantization_config.get("bnb_4bit_compute_dtype", None)
-        if isinstance(bnb_4bit_compute_dtype, torch.dtype):
-            serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]["model_kwargs"]["quantization_config"][
-                "bnb_4bit_compute_dtype"
-            ] = str(bnb_4bit_compute_dtype)
 
+        serialize_hf_model_kwargs(huggingface_pipeline_kwargs)
         return serialization_dict
 
     @classmethod
