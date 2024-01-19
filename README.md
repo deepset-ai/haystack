@@ -29,7 +29,7 @@ pip install haystack-ai
 
 ⚛️ **[Components](https://docs.haystack.deepset.ai/v2.0/docs/components):** Each Component achieves one thing. Such as preprocessing documents, retrieving documents, using specific language models to answer questions, and so on. Components can `.connect()` to each other to form a complete pipeline.
 
-🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/v2.0/docs/pipelines):** This is the standard Haystack structure that builds on top of your data to perform various NLP tasks such as retrieval augmented generation, question answering and more. Pipelines in Haystack are Directed Multigraphs composed of components. Components can receive inputs from other components and produce outputs that can be forwarded to other components. 
+🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/v2.0/docs/pipelines):** This is the standard Haystack structure that builds on top of your data to perform various NLP tasks such as retrieval augmented generation, question answering and more. Pipelines in Haystack are Directed Multigraphs composed of components. Components can receive inputs from other components and produce outputs that can be forwarded to other components.
 
 🗂️ **[DocumentStores](https://docs.haystack.deepset.ai/docs/document_store):** A DocumentStore is database where you store your text data for Haystack to access. Haystack DocumentStores are available with ElasticSearch, Opensearch, Weaviate, Pinecone, FAISS and more. For a full list of available DocumentStores, check out our [documentation](https://docs.haystack.deepset.ai/docs/document_store).
 
@@ -102,7 +102,7 @@ If you want to contribute to the Haystack repo, check our [Contributor Guideline
 
 ## 🔰Demos
 
-You can find some of our hosted demos with instructions to run them locally too on our [haystack-demos](https://github.com/deepset-ai/haystack-demos) repository
+You can find some of our hosted demos with instructions to run them locally too on our [haystack-demos](https://github.com/deepset-ai/haystack-demos) repository:
 
 :dizzy: **[Reduce Hallucinations with Retrieval Augmentation](https://huggingface.co/spaces/deepset/retrieval-augmentation-svb) - Generative QA with LLMs**
 
@@ -118,6 +118,11 @@ If you have a feature request or a bug report, feel free to open an [issue in Gi
 
 We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! You don't need to be a Haystack expert to provide meaningful improvements. To learn how to get started, check out our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first.
 
+## 📏 Telemetry
+
+Haystack collects **anonymous** usage statistics of pipeline components. We receive an event every time these components are initialized. This way, we know which components are most relevant to our community.
+
+Read more about telemetry in Haystack or how you can opt out in [Haystack docs](https://docs.haystack.deepset.ai/v2.0/docs/telemetry).
 
 ## Who Uses Haystack
 
