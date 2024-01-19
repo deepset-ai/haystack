@@ -1,11 +1,9 @@
 import logging
-import sys
+from typing import Optional
 
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.pipeline_utils import build_rag_pipeline, build_indexing_pipeline
 from haystack.pipeline_utils.indexing import download_files
-
-from typing import Optional
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)  # set to DEBUG for more info
@@ -47,16 +45,16 @@ SYSTEM_PROMPT: Optional[str] = None
 # We support many different databases. Here, we load a simple and lightweight in-memory database.
 # Use cosine for e5-base-v2 https://discord.com/channels/993534733298450452/1141635410024468491/1141761753772998787
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
-logger.info(f"Document store configured: {document_store}")
+logger.info("Document store configured: %s", document_store)
 logger.info("Document store attributes:")
 for attr, value in document_store.__dict__.items():
-    logger.info(f"  {attr}: {value}")
+    logger.info("  %s: %s", attr, value)
 
 # Download example files from web
 sources = ["http://www.paulgraham.com/superlinear.html"]
-logger.info(f"Downloading files from sources: {sources}")
+logger.info("Downloading files from sources: %s", sources)
 files = download_files(sources=sources)
-logger.info(f"Downloaded files: {files}")
+logger.info("Downloaded files: %s", files)
 
 # Pipelines are our main abstratcion.
 # Here we create a pipeline that can index TXT and HTML. You can also use your own private files.
@@ -67,7 +65,7 @@ indexing_pipeline = build_indexing_pipeline(
 )
 indexing_pipeline.run(files=files)  # you can also supply files=[path_to_directory], which is searched recursively
 
-logger.info(f"Building RAG Pipeline: {files}")
+logger.info("Building RAG Pipeline: %s", files)
 # RAG pipeline with vector-based retriever + LLM
 rag_pipeline = build_rag_pipeline(
     document_store=document_store,
