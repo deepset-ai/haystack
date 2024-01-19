@@ -1,0 +1,11 @@
+---
+enhancements:
+  - |
+    Allow passing in of API_BASE_URL, PROMPT_TEMPLATE, SYSTEM_PROMPT to underlying OpenAIGenerator
+    Fix sample - DocumentStore should use embedding_similarity_function="cosine" for embedding model intfloat/e5-base-v2
+    (see https://discord.com/channels/993534733298450452/1141635410024468491/1141761753772998787)    
+    Fix sample - Change Indexing to use HTMLToDocument(extractor_type="KeepEverythingExtractor"), otherwise Paul Graham article returns no content    
+    Improve logging - show more runtime info when running rag_custom_data sample.        
+fixes:
+  - |
+    Fixes #6760 (empty source file content when using DefaultExtractor).

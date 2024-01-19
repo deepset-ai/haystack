@@ -22,7 +22,7 @@ def build_rag_pipeline(
     llm_api_key: Optional[str] = None,
     api_base_url: Optional[str] = None,
     prompt_template: Optional[str] = None,
-    system_prompt: Optional[str] = None
+    system_prompt: Optional[str] = None,
 ):
     """
     Returns a prebuilt pipeline to perform retrieval augmented generation
@@ -128,10 +128,12 @@ def resolve_retriever(document_store, retriever_class: Optional[str] = None) -> 
     return retriever
 
 
-def resolve_generator(generation_model: str, 
-                      llm_api_key: Optional[str] = None,
-                      api_base_url: Optional[str] = None,
-                      system_prompt: Optional[str] = None) -> Optional[Any]:
+def resolve_generator(
+    generation_model: str,
+    llm_api_key: Optional[str] = None,
+    api_base_url: Optional[str] = None,
+    system_prompt: Optional[str] = None,
+) -> Optional[Any]:
     """
     Resolves the generator to use for the given generation model.
     :param generation_model: The generation model to use.
@@ -188,17 +190,14 @@ class _OpenAIResolved(_GeneratorResolver):
     Resolves the OpenAIGenerator.
     """
 
-    def resolve(self, 
-                model_key: str, 
-                api_key: str, 
-                api_base_url: Optional[str] = None,
-                system_prompt: Optional[str] = None) -> Any:
+    def resolve(
+        self, model_key: str, api_key: str, api_base_url: Optional[str] = None, system_prompt: Optional[str] = None
+    ) -> Any:
         # does the model_key match the pattern OpenAI GPT pattern?
         if re.match(r"^gpt-4-.*", model_key) or re.match(r"^gpt-3.5-.*", model_key):
-            openai_generator = OpenAIGenerator(model=model_key, 
-                                               api_key=api_key, 
-                                               api_base_url=api_base_url,
-                                               system_prompt=system_prompt)
+            openai_generator = OpenAIGenerator(
+                model=model_key, api_key=api_key, api_base_url=api_base_url, system_prompt=system_prompt
+            )
             return openai_generator
         return None
 

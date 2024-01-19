@@ -5,23 +5,28 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.pipeline_utils import build_rag_pipeline, build_indexing_pipeline
 from haystack.pipeline_utils.indexing import download_files
 
+from typing import Optional
+
 # Set up logging
-logging.basicConfig(level=logging.INFO) #set to DEBUG for more info
+logging.basicConfig(level=logging.INFO)  # set to DEBUG for more info
 logger = logging.getLogger(__name__)
 
-#If working on your own fork of haystack
-#Be sure to uninstall existing haystack: pip uninstall -y farm-haystack haystack-ai
-#Then deploy changes with pip install -e '.[all]'
-#sys.path.insert(0, '/home/hosermage/forked-projects/haystack')
+# If working on your own fork of haystack
+# Be sure to uninstall existing haystack: pip uninstall -y farm-haystack haystack-ai
+# Then deploy changes with pip install -e '.[all]'
+# sys.path.insert(0, '/home/hosermage/forked-projects/haystack')
 # print(f"System path: {sys.path}")
 
 
 # We are model agnostic :) In this getting started you can choose any OpenAI or Huggingface TGI generation model
 generation_model = "gpt-3.5-turbo"
 API_KEY = "sk-..."  # ADD YOUR KEY HERE
-# Adjust the below as needed.  If you want to connect to your own model, change the default 
+API_BASE_URL: Optional[str] = None
+PROMPT_TEMPLATE: Optional[str] = None
+SYSTEM_PROMPT: Optional[str] = None
+# Adjust the below as needed.  If you want to connect to your own model, change the default
 # prompt template or system prompt.
-# API_BASE_URL = "http://172.18.176.1:1234/v1" #Uncomment if running local model with LM Studio or similar
+# API_BASE_URL = "http://192.168.1.100:1234/v1" #Uncomment if running local model with LM Studio or similar
 # PROMPT_TEMPLATE = """
 #                 Given these documents, answer the question.
 
@@ -63,24 +68,16 @@ indexing_pipeline = build_indexing_pipeline(
 indexing_pipeline.run(files=files)  # you can also supply files=[path_to_directory], which is searched recursively
 
 logger.info(f"Building RAG Pipeline: {files}")
-rag_pipeline_kwargs = {
-    "document_store": document_store,
-    "embedding_model": "intfloat/e5-base-v2",
-    "generation_model": generation_model,
-    "llm_api_key": API_KEY, 
-}
-# Include api_base_url only if it's defined
-if 'API_BASE_URL' in locals() or 'API_BASE_URL' in globals():
-    rag_pipeline_kwargs['api_base_url'] = API_BASE_URL
-
-if 'PROMPT_TEMPLATE' in locals() or 'PROMPT_TEMPLATE' in globals():
-    rag_pipeline_kwargs['prompt_template'] = PROMPT_TEMPLATE
-
-if 'SYSTEM_PROMPT' in locals() or 'SYSTEM_PROMPT' in globals():
-    rag_pipeline_kwargs['system_prompt'] = SYSTEM_PROMPT
-
 # RAG pipeline with vector-based retriever + LLM
-rag_pipeline = build_rag_pipeline(**rag_pipeline_kwargs)
+rag_pipeline = build_rag_pipeline(
+    document_store=document_store,
+    embedding_model="intfloat/e5-base-v2",
+    generation_model=generation_model,
+    llm_api_key=API_KEY,
+    api_base_url=API_BASE_URL,
+    prompt_template=PROMPT_TEMPLATE,
+    system_prompt=SYSTEM_PROMPT,
+)
 
 # For details, like which documents were used to generate the answer, look into the result object
 result = rag_pipeline.run(query="What are superlinear returns and why are they important?")
