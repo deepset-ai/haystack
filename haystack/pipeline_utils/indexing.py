@@ -128,7 +128,7 @@ class _IndexingPipeline:
         if "text/html" in supported_mime_types:
             from haystack.components.converters import HTMLToDocument
 
-            html_to_document_converter = HTMLToDocument(extractor_type="KeepEverythingExtractor")
+            html_to_document_converter = HTMLToDocument(extractor_type="ArticleExtractor")
             html_to_document_converter.log_attributes()
             self.pipeline.add_component("html_file_converter", html_to_document_converter)
             self.pipeline.connect("file_type_router.text/html", "html_file_converter.sources")
