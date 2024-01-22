@@ -147,3 +147,5 @@ We clarify in the documentation how users can decide which Evaluation framework 
 - We see the integrated evaluation frameworks as a baseline. To what extent and when Haystack will have its own model-based metrics is out-of-scope for this proposal.
 - We envision an `Evaluator` component in Haystack's core with customizable model and prompt.
 - Terminology around existing `calculate_metrics`/`eval` functions and the `EvaluationResult` class need to be discussed (c.f https://github.com/deepset-ai/haystack/pull/6505).
+- Alternative take on the evaluation API - https://github.com/deepset-ai/haystack/pull/5794/
+  - The ideas proposed in the above should compatible with those of this proposal.
