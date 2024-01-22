@@ -7,36 +7,34 @@ from haystack.dataclasses import Document
 logger = logging.getLogger(__name__)
 
 
-@component
 class MetadataBuilder:
-    """
-    A component to add the output of a Generator to a list of Documents as metadata.
-    """
+    def __init__(self, meta_keys: List[str]):
+        self.meta_keys = meta_keys
 
     @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document], replies: List[str], meta: Optional[List[Dict[str, Any]]] = None):
+    def run(
+        self, documents: List[Document], data: Dict[str, Any], meta: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, List[Document]]:
         """
-        The MetadataBuilder component takes a list of Documents, the output of a Generator to which these Documents were passed,
-        and adds the output from the Generator as metadata to the Documents.
-        The Generator takes a list of Documents, and returns replies and metadata.
+        The MetadataBuilder component takes a list of Documents, the output of a component to which these Documents were passed,
+        and adds the output from the component as metadata to the Documents.
         The MetadataBuilder component takes these replies and metadata and adds them to the Documents.
         It does this by adding the replies and metadata to the metadata of the Document.
-
         :param documents: The documents used as input to the Generator. A list of `Document` objects.
-        :param replies: The output of the Generator. A list of strings.
-        :param metadata: The metadata returned by the Generator. An optional list of dictionaries. If not specified,
-                            the generated documents will contain no additional metadata.
+        :param data: The output of a component (Generator , TextEmbedder, EntityExtractor).
+        :param meta: The metadata returned by the component.
         """
         if not meta:
-            meta = [{}] * len(replies)
+            meta = [{}] * len(data)
 
-        if not len(documents) == len(replies) == len(meta):
+        if not len(documents) == len(data) == len(meta):
             raise ValueError(
-                f"Number of Documents ({len(documents)}), replies ({len(replies)}), and metadata ({len(meta)})"
-                " must match."
+                f"Number of Documents ({len(documents)}), data ({len(data)}), and metadata ({len(meta)})" " must match."
             )
 
-        for doc, reply, meta_val in zip(documents, replies, meta):
-            doc.meta.update({"reply": reply, **meta_val})
+        meta = {key: data[key] for key in self.meta_keys}
+
+        for i, doc in enumerate(documents):
+            doc.meta.update(meta)
 
         return {"documents": documents}
