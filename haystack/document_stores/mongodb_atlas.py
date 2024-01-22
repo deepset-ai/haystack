@@ -26,6 +26,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
         mongo_connection_string: Optional[str] = None,
         database_name: Optional[str] = None,
         collection_name: Optional[str] = None,
+        vector_search_index: Optional[str] = None,
         embedding_dim: int = 768,
         return_embedding: bool = False,
         similarity: str = "cosine",
@@ -41,6 +42,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
         :param mongo_connection_string: MongoDB Atlas connection string in the format: "mongodb+srv://{mongo_atlas_username}:{mongo_atlas_password}@{mongo_atlas_host}/?{mongo_atlas_params_string}".
         :param database_name: Name of the database to use.
         :param collection_name: Name of the collection to use.
+        :param vector_search_index: The name of the index to use for vector search. To use the search index it must have been created in the Atlas web UI before. None by default.
         :param embedding_dim: Dimensionality of embeddings, 768 by default.
         :param return_embedding: Whether to return document embeddings when returning documents.
         :param similarity: The similarity function to use for the embeddings. One of "euclidean", "cosine" or "dotProduct". "cosine" is the default.
@@ -67,6 +69,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
         self.index = collection_name
         self.return_embedding = return_embedding
         self.recreate_index = recreate_index
+        self.vector_search_index = vector_search_index
 
         if self.recreate_index:
             self.delete_index()
@@ -127,7 +130,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
 
     def delete_index(self, index=None):
         """
-        Deletes the collection named by index or the collection speicifed when the
+        Deletes the collection named by index or the collection specified when the
         driver was initialized.
         """
         self._get_collection(index).drop()
@@ -340,6 +343,10 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
+        if not self.vector_search_index:
+            raise ValueError(
+                "No vector_search_index is set for MongoDBAtlasDocumentStore. Create a vector_search_index in the Atlas web UI and specify it in the init parameters of MongoDBAtlasDocumentStore. https://www.mongodb.com/docs/atlas/atlas-vector-search/create-index/#std-label-avs-create-index"
+            )
         if headers:
             raise NotImplementedError("MongoDBAtlasDocumentStore does not support headers.")
 
@@ -357,9 +364,12 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
 
         pipeline = [
             {
-                "$search": {
-                    "index": self.collection_name,
-                    "knnBeta": {"vector": query_emb.tolist(), "path": "embedding", "k": top_k},
+                "$vectorSearch": {
+                    "index": self.vector_search_index,
+                    "queryVector": query_emb.tolist(),
+                    "path": "embedding",
+                    "numCandidates": 100,
+                    "limit": top_k,
                 }
             }
         ]
@@ -367,7 +377,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
             pipeline.append({"$match": mongo_filter_converter(filters)})
         if not return_embedding:
             pipeline.append({"$project": {"embedding": False}})
-        pipeline.append({"$set": {"score": {"$meta": "searchScore"}}})
+        pipeline.append({"$set": {"score": {"$meta": "vectorSearchScore"}}})
         documents = list(collection.aggregate(pipeline))
 
         if scale_score:
