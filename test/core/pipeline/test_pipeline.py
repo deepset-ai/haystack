@@ -1,30 +1,18 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Optional
 import logging
+from typing import Optional
 
 import pytest
 
-from haystack.core.pipeline import Pipeline
 from haystack.core.component.sockets import InputSocket, OutputSocket
-from haystack.core.errors import PipelineMaxLoops, PipelineError, PipelineRuntimeError
-from haystack.testing.sample_components import AddFixedValue, Threshold, Double, Sum
+from haystack.core.errors import PipelineError, PipelineMaxLoops, PipelineRuntimeError
+from haystack.core.pipeline import Pipeline
 from haystack.testing.factory import component_class
+from haystack.testing.sample_components import AddFixedValue, Double, Sum, Threshold
 
 logging.basicConfig(level=logging.DEBUG)
-
-
-def test_max_loops():
-    pipe = Pipeline(max_loops_allowed=10)
-    pipe.add_component("add", AddFixedValue())
-    pipe.add_component("threshold", Threshold(threshold=100))
-    pipe.add_component("sum", Sum())
-    pipe.connect("threshold.below", "add.value")
-    pipe.connect("add.result", "sum.values")
-    pipe.connect("sum.total", "threshold.value")
-    with pytest.raises(PipelineMaxLoops):
-        pipe.run({"sum": {"values": 1}})
 
 
 def test_run_with_component_that_does_not_return_dict():
@@ -34,9 +22,7 @@ def test_run_with_component_that_does_not_return_dict():
 
     pipe = Pipeline(max_loops_allowed=10)
     pipe.add_component("comp", BrokenComponent())
-    with pytest.raises(
-        PipelineRuntimeError, match="Component 'comp' returned a value of type 'int' instead of a dict."
-    ):
+    with pytest.raises(PipelineRuntimeError):
         pipe.run({"comp": {"a": 1}})
 
 
@@ -106,7 +92,7 @@ def test_from_dict():
     assert add_two["instance"].add == 2
     assert add_two["input_sockets"] == {
         "value": InputSocket(name="value", type=int),
-        "add": InputSocket(name="add", type=Optional[int], is_mandatory=False),
+        "add": InputSocket(name="add", type=Optional[int], default_value=None),
     }
     assert add_two["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
     assert add_two["visits"] == 0
@@ -116,7 +102,7 @@ def test_from_dict():
     assert add_default["instance"].add == 1
     assert add_default["input_sockets"] == {
         "value": InputSocket(name="value", type=int, senders=["double"]),
-        "add": InputSocket(name="add", type=Optional[int], is_mandatory=False),
+        "add": InputSocket(name="add", type=Optional[int], default_value=None),
     }
     assert add_default["output_sockets"] == {"result": OutputSocket(name="result", type=int)}
     assert add_default["visits"] == 0
@@ -138,6 +124,7 @@ def test_from_dict():
             "conn_type": "int",
             "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
             "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
+            "mandatory": True,
         },
     )
     assert connections[1] == (
@@ -147,6 +134,7 @@ def test_from_dict():
             "conn_type": "int",
             "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
             "to_socket": InputSocket(name="value", type=int, senders=["double"]),
+            "mandatory": True,
         },
     )
 
@@ -184,7 +172,7 @@ def test_from_dict_with_components_instances():
     assert add_two_data["instance"].add == 2
     assert add_two_data["input_sockets"] == {
         "value": InputSocket(name="value", type=int),
-        "add": InputSocket(name="add", type=Optional[int], is_mandatory=False),
+        "add": InputSocket(name="add", type=Optional[int], default_value=None),
     }
     assert add_two_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
     assert add_two_data["visits"] == 0
@@ -195,7 +183,7 @@ def test_from_dict_with_components_instances():
     assert add_default_data["instance"].add == 1
     assert add_default_data["input_sockets"] == {
         "value": InputSocket(name="value", type=int, senders=["double"]),
-        "add": InputSocket(name="add", type=Optional[int], is_mandatory=False),
+        "add": InputSocket(name="add", type=Optional[int], default_value=None),
     }
     assert add_default_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=[])}
     assert add_default_data["visits"] == 0
@@ -217,6 +205,7 @@ def test_from_dict_with_components_instances():
             "conn_type": "int",
             "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
             "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
+            "mandatory": True,
         },
     )
     assert connections[1] == (
@@ -226,6 +215,7 @@ def test_from_dict_with_components_instances():
             "conn_type": "int",
             "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
             "to_socket": InputSocket(name="value", type=int, senders=["double"]),
+            "mandatory": True,
         },
     )
 

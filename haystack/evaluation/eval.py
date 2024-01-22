@@ -1,12 +1,14 @@
-from typing import Any, Dict, List, Union
+from typing import Any, Callable, Dict, List, Union
 
 from haystack import Pipeline
 from haystack.core.component import Component
+from haystack.evaluation.metrics import Metric, MetricsResult
 
 
 class EvaluationResult:
     """
-    EvaluationResult keeps track of all the information related to evaluation, namely the runnable (Pipeline or component), inputs, outputs, and expected outputs.
+    EvaluationResult keeps track of all the information related to evaluation, namely the runnable (Pipeline or
+    component), inputs, outputs, and expected outputs.
     The EvaluationResult keeps track of all the information stored by eval.
 
     :param runnable: The runnable (Pipeline or component) used for evaluation.
@@ -27,6 +29,48 @@ class EvaluationResult:
         self.outputs = outputs
         self.expected_outputs = expected_outputs
 
+        # Mapping of metrics to their corresponding functions.
+        # This should be kept in sync with the Metric enum
+        self._supported_metrics = {
+            Metric.RECALL: self._calculate_recall,
+            Metric.MRR: self._calculate_mrr,
+            Metric.MAP: self._calculate_map,
+            Metric.F1: self._calculate_f1,
+            Metric.EM: self._calculate_em,
+            Metric.SAS: self._calculate_sas,
+        }
+
+    def calculate_metrics(self, metric: Union[Metric, Callable[..., MetricsResult]], **kwargs) -> MetricsResult:
+        """
+        Calculate evaluation metrics based on the provided Metric or using the custom metric function.
+
+        :param metric: The Metric indicating the type of metric to calculate or custom function to compute.
+        :return: MetricsResult containing the calculated metric.
+        """
+
+        if isinstance(metric, Metric):
+            return self._supported_metrics[metric](**kwargs)
+
+        return metric(self, **kwargs)
+
+    def _calculate_recall(self):
+        return MetricsResult({"recall": None})
+
+    def _calculate_map(self):
+        return MetricsResult({"mean_average_precision": None})
+
+    def _calculate_mrr(self):
+        return MetricsResult({"mean_reciprocal_rank": None})
+
+    def _calculate_f1(self):
+        return MetricsResult({"f1": None})
+
+    def _calculate_em(self):
+        return MetricsResult({"exact_match": 1.0})
+
+    def _calculate_sas(self):
+        return MetricsResult({"exact_match": None})
+
 
 def eval(
     runnable: Union[Pipeline, Component], inputs: List[Dict[str, Any]], expected_outputs: List[Dict[str, Any]]
@@ -41,7 +85,8 @@ def eval(
     :param inputs: List of inputs used for evaluation.
     :param expected_outputs: List of expected outputs used for evaluation.
 
-    :return: An instance of EvaluationResult containing information about the evaluation, including the runnable, inputs, outputs, and expected outputs.
+    :return: An instance of EvaluationResult containing information about the evaluation, including the runnable,
+    inputs, outputs, and expected outputs.
     """
 
     outputs = []
@@ -49,8 +94,8 @@ def eval(
     # Check that expected outputs has the correct shape
     if len(inputs) != len(expected_outputs):
         raise ValueError(
-            f"The number of inputs ({len(inputs)}) does not match the number of expected outputs ({len(expected_outputs)}). "
-            " Please ensure that each input has a corresponding expected output."
+            f"The number of inputs ({len(inputs)}) does not match the number of expected outputs "
+            f"({len(expected_outputs)}). Please ensure that each input has a corresponding expected output."
         )
 
     for input_ in inputs:

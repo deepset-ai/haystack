@@ -1,7 +1,7 @@
 loaders:
   - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/components/caching]
-    modules: ["url_cache_checker"]
+    modules: ["cache_checker"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -15,9 +15,9 @@ renderer:
   type: renderers.ReadmePreviewRenderer
   excerpt: Checks if any document coming from the given URL is already present in the store.
   category_slug: haystack-classes
-  title: UrlCacheChecker API
+  title: CacheChecker API
   slug: caching-api
-  order: 160
+  order: 7
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true

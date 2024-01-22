@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import List
 
-from haystack.core.pipeline import Pipeline
 from haystack.core.component import component
+from haystack.core.pipeline import Pipeline
 from haystack.testing.sample_components import StringListJoiner
 
 

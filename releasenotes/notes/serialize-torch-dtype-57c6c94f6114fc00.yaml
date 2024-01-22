@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Correctly handle the serialization and deserialization of torch.dtype.
+    This concerns the following components:
+    ExtractiveReader, HuggingFaceLocalGenerator, and TransformersSimilarityRanker.

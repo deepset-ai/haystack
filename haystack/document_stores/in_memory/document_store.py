@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 
 from haystack import default_from_dict, default_to_dict
 from haystack.dataclasses import Document
-from haystack.document_stores.protocol import DuplicatePolicy
+from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.filters import document_matches_filter, convert
 from haystack.document_stores.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.utils import expit
@@ -212,8 +212,11 @@ class InMemoryDocumentStore:
         return_documents = []
         for i in top_docs_positions:
             doc = all_documents[i]
+            score = docs_scores[i]
+            if score <= 0.0:
+                continue
             doc_fields = doc.to_dict()
-            doc_fields["score"] = docs_scores[i]
+            doc_fields["score"] = score
             return_document = Document.from_dict(doc_fields)
             return_documents.append(return_document)
         return return_documents

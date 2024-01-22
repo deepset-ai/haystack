@@ -2,6 +2,7 @@ import json
 import pytest
 from unittest.mock import MagicMock, Mock
 from openapi3 import OpenAPI
+from openapi3.schemas import Model
 from haystack.components.connectors import OpenAPIServiceConnector
 from haystack.dataclasses import ChatMessage
 
@@ -79,3 +80,11 @@ class TestOpenAPIServiceConnector:
         method_invocation_descriptor = {"name": "invalid_method", "arguments": {}}
         with pytest.raises(RuntimeError):
             connector._invoke_method(openapi_service_mock, method_invocation_descriptor)
+
+    def test_for_internal_raw_data_field(self):
+        # see https://github.com/deepset-ai/haystack/pull/6772 for details
+        model = Model(data={}, schema={})
+        assert hasattr(model, "_raw_data"), (
+            "openapi3 changed. Model should have a _raw_data field, we rely on it in OpenAPIServiceConnector"
+            " to get the raw data from the service response"
+        )
