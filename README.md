@@ -33,7 +33,7 @@ pip install haystack-ai
 
 🗂️ **[Document stores](https://docs.haystack.deepset.ai/docs/document_store):** A DocumentStore is a database where you store your text data for Haystack to access. Haystack DocumentStores are available with ElasticSearch, Opensearch, Weaviate, Pinecone, Chroma and more. For a full list of available DocumentStores, check out our [documentation](https://docs.haystack.deepset.ai/docs/document_store).
 
-🔌 **[Integrations](https://docs.haystack.deepset.ai/v2.0/docs/integrations):** The Haystack ecosystem integrates with many other technologies, such as vector databases, model providers and even custom components made by the community. You can find a list of available integrations on the [Haystack Integrations page](https://haystack.deepset.ai/integrations). The source code of the integrations maintained by deepset can be found in the [haystack-core-integration](https://github.com/deepset-ai/haystack-core-integrations) GitHub repository.
+🔌 **[Integrations](https://docs.haystack.deepset.ai/v2.0/docs/integrations):** The Haystack ecosystem integrates with many other technologies, such as vector databases, model providers and even custom components made by the community. You can find a list of available integrations on the [Haystack Integrations page](https://haystack.deepset.ai/integrations). The source code of the integrations maintained by deepset can be found in the [haystack-core-integrations](https://github.com/deepset-ai/haystack-core-integrations) GitHub repository.
 
 ## What to Build with Haystack
 
