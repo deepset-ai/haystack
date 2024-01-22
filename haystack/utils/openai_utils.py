@@ -82,6 +82,9 @@ def _openai_text_completion_tokenization_details(model_name: str):
         elif model_name.startswith("gpt-3.5-turbo-16k") or model_name.startswith("gpt-35-turbo-16k"):
             max_tokens_limit = 16384
             tokenizer_name = model_tokenizer
+        elif model_name.startswith("gpt-3.5-turbo-1106") or model_name.startswith("gpt-35-turbo-1106"):
+            max_tokens_limit = 16384
+            tokenizer_name = model_tokenizer
         elif model_name.startswith("gpt-3"):
             max_tokens_limit = 4096
             tokenizer_name = model_tokenizer
