@@ -1,5 +1,5 @@
 loaders:
-  - type: loaders.CustomPythonLoader
+  - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/generators]
     modules:
       [
@@ -22,7 +22,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Enables text generation using LLMs.
   category_slug: haystack-classes
   title: Generator API

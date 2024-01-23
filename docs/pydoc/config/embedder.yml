@@ -1,5 +1,5 @@
 loaders:
-  - type: loaders.CustomPythonLoader
+  - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/embedders]
     modules:
       [
@@ -22,7 +22,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Transforms queries into vectors to look for similar or relevant Documents.
   category_slug: haystack-classes
   title: Embedder API
