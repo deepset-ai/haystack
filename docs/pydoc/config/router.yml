@@ -1,5 +1,5 @@
 loaders:
-  - type: loaders.CustomPythonLoader
+  - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/routers]
     modules: ["conditional_router", "file_type_router", "metadata_router", "text_language_router"]
     ignore_when_discovered: ["__init__"]
@@ -12,7 +12,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Routes data to the right component based on its file type or metadata.
   category_slug: haystack-classes
   title: Router API

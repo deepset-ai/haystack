@@ -1,5 +1,5 @@
 loaders:
-  - type: loaders.CustomPythonLoader
+  - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/websearch]
     modules: ["serper_dev"]
     ignore_when_discovered: ["__init__"]
@@ -12,7 +12,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Web search engine for Haystack.
   category_slug: haystack-classes
   title: Websearch API
