@@ -42,7 +42,7 @@ def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]):
             deserialize_hf_model_kwargs(v)
 
 
-def resolve_hf_device_map(device_map: Union[str, dict]) -> ComponentDevice:
+def resolve_hf_device_map(device_map: Union[str, Dict]) -> ComponentDevice:
     """
     Convert a HuggingFace device_map into a ComponentDevice
     """
