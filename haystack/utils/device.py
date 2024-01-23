@@ -389,7 +389,7 @@ class ComponentDevice:
         return self._multiple_devices is not None
 
     @property
-    def first_device(self) -> Optional[Device]:
+    def first_device(self) -> Optional["ComponentDevice"]:
         """
         Return either the single device or the first device in the
         device map, if any.
@@ -400,10 +400,10 @@ class ComponentDevice:
         self._validate()
 
         if self._single_device is not None:
-            return self._single_device
+            return self.from_single(self._single_device)
 
         assert self._multiple_devices is not None
-        return self._multiple_devices.first_device
+        return self.from_single(self._multiple_devices.first_device)
 
     @staticmethod
     def resolve_device(device: Optional["ComponentDevice"] = None) -> "ComponentDevice":

@@ -212,7 +212,7 @@ class ExtractiveReader:
         )
 
         # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
-        first_device = str(self.device.first_device)
+        first_device = self.device.first_device.to_torch()
 
         input_ids = encodings_pt.input_ids.to(first_device)
         attention_mask = encodings_pt.attention_mask.to(first_device)

@@ -217,7 +217,7 @@ class TransformersSimilarityRanker:
         features = self.tokenizer(
             query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
         ).to(  # type: ignore
-            str(self.device.first_device)
+            self.device.first_device.to_torch()
         )
         with torch.inference_mode():
             similarity_scores = self.model(**features).logits.squeeze(dim=1)  # type: ignore
