@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r docs/pydoc/requirements.txt
+          pip install -U haystack-pydoc-tools
 
       - name: Generate API docs
         env:
