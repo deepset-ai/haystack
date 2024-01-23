@@ -1,7 +1,17 @@
 loaders:
   - type: loaders.CustomPythonLoader
     search_path: [../../../haystack/components/embedders]
-    modules: ["openai_document_embedder", "openai_text_embedder", "sentence_transformers_document_embedder", "sentence_transformers_text_embedder"]
+    modules:
+      [
+        "azure_document_embedder",
+        "azure_text_embedder",
+        "hugging_face_tei_document_embedder",
+        "hugging_face_tei_text_embedder",
+        "openai_document_embedder",
+        "openai_text_embedder",
+        "sentence_transformers_document_embedder",
+        "sentence_transformers_text_embedder"
+      ]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
