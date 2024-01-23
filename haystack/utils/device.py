@@ -403,6 +403,7 @@ class ComponentDevice:
             return self.from_single(self._single_device)
 
         assert self._multiple_devices is not None
+        assert self._multiple_devices.first_device is not None
         return self.from_single(self._multiple_devices.first_device)
 
     @staticmethod
