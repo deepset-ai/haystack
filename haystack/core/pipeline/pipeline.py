@@ -13,9 +13,8 @@ import networkx  # type:ignore
 from haystack.core.component import Component, InputSocket, OutputSocket, component
 from haystack.core.component.connection import Connection, parse_connect_string
 from haystack.core.errors import PipelineConnectError, PipelineError, PipelineRuntimeError, PipelineValidationError
-from haystack.core.pipeline.descriptions import find_pipeline_outputs
+from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
 from haystack.core.pipeline.draw.draw import RenderingEngines, _draw
-from haystack.core.pipeline.descriptions import find_pipeline_inputs
 from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name
 
