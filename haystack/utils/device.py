@@ -389,7 +389,7 @@ class ComponentDevice:
         return self._multiple_devices is not None
 
     @property
-    def first_device(self) -> Optional["ComponentDevice"]:
+    def first_device(self) -> "ComponentDevice":
         """
         Return either the single device or the first device in the
         device map, if any.
