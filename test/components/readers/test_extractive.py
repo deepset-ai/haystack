@@ -3,6 +3,7 @@ from typing import List
 from unittest.mock import Mock, patch
 
 import pytest
+import logging
 import torch
 from transformers import pipeline
 
@@ -104,7 +105,10 @@ def test_to_dict():
             "answers_per_seq": None,
             "no_answer": True,
             "calibration_factor": 0.1,
-            "model_kwargs": {"torch_dtype": "torch.float16"},  # torch_dtype is correctly serialized
+            "model_kwargs": {
+                "torch_dtype": "torch.float16",
+                "device_map": ComponentDevice.resolve_device(None).to_hf(),
+            },  # torch_dtype is correctly serialized
         },
     }
 
@@ -127,7 +131,7 @@ def test_to_dict_empty_model_kwargs():
             "answers_per_seq": None,
             "no_answer": True,
             "calibration_factor": 0.1,
-            "model_kwargs": {},
+            "model_kwargs": {"device_map": ComponentDevice.resolve_device(None).to_hf()},
         },
     }
 
@@ -164,7 +168,10 @@ def test_from_dict():
     assert component.no_answer
     assert component.calibration_factor == 0.1
     # torch_dtype is correctly deserialized
-    assert component.model_kwargs == {"torch_dtype": torch.float16}
+    assert component.model_kwargs == {
+        "torch_dtype": torch.float16,
+        "device_map": ComponentDevice.resolve_device(None).to_hf(),
+    }
 
 
 def test_output(mock_reader: ExtractiveReader):
@@ -330,10 +337,14 @@ def test_device_map_dict(mocked_automodel, mocked_autotokenizer):
     assert reader.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"layer_1": 1, "classifier": "cpu"}))
 
 
-def test_device_map_and_device_raises():
-    with pytest.raises(ValueError):
+def test_device_map_and_device_raises(caplog):
+    with caplog.at_level(logging.WARNING):
         _ = ExtractiveReader(
             "deepset/roberta-base-squad2", model_kwargs={"device_map": "cpu"}, device=ComponentDevice.from_str("cuda")
+        )
+        assert (
+            "The parameters `device` and `device_map` from `model_kwargs` are both be provided. Ignoring `device` and using `device_map`."
+            in caplog.text
         )
 
 

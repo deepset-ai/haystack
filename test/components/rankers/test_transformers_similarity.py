@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+import logging
 import torch
 from transformers.modeling_outputs import SequenceClassifierOutput
 
@@ -25,7 +26,7 @@ class TestSimilarityRanker:
                 "scale_score": True,
                 "calibration_factor": 1.0,
                 "score_threshold": None,
-                "model_kwargs": {},
+                "model_kwargs": {"device_map": ComponentDevice.resolve_device(None).to_hf()},
             },
         }
 
@@ -53,7 +54,10 @@ class TestSimilarityRanker:
                 "scale_score": False,
                 "calibration_factor": None,
                 "score_threshold": 0.01,
-                "model_kwargs": {"torch_dtype": "torch.float16"},  # torch_dtype is correctly serialized
+                "model_kwargs": {
+                    "torch_dtype": "torch.float16",
+                    "device_map": ComponentDevice.from_str("cuda:0").to_hf(),
+                },  # torch_dtype is correctly serialized
             },
         }
 
@@ -84,6 +88,7 @@ class TestSimilarityRanker:
                     "bnb_4bit_use_double_quant": True,
                     "bnb_4bit_quant_type": "nf4",
                     "bnb_4bit_compute_dtype": "torch.bfloat16",
+                    "device_map": ComponentDevice.resolve_device(None).to_hf(),
                 },
             },
         }
@@ -116,7 +121,10 @@ class TestSimilarityRanker:
         assert component.calibration_factor is None
         assert component.score_threshold == 0.01
         # torch_dtype is correctly deserialized
-        assert component.model_kwargs == {"torch_dtype": torch.float16}
+        assert component.model_kwargs == {
+            "torch_dtype": torch.float16,
+            "device_map": ComponentDevice.from_str("cuda:0").to_hf(),
+        }
 
     @patch("torch.sigmoid")
     @patch("torch.sort")
@@ -175,10 +183,14 @@ class TestSimilarityRanker:
         out = embedder.run(query="test", documents=documents)
         assert len(out["documents"]) == 1
 
-    def test_device_map_and_device_raises(self):
-        with pytest.raises(ValueError):
+    def test_device_map_and_device_raises(self, caplog):
+        with caplog.at_level(logging.WARNING):
             _ = TransformersSimilarityRanker(
                 "model", model_kwargs={"device_map": "cpu"}, device=ComponentDevice.from_str("cuda")
+            )
+            assert (
+                "The parameters `device` and `device_map` from `model_kwargs` are both be provided. Ignoring `device` and using `device_map`."
+                in caplog.text
             )
 
     @patch("haystack.components.rankers.transformers_similarity.AutoTokenizer.from_pretrained")

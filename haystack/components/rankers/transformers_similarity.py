@@ -83,22 +83,25 @@ class TransformersSimilarityRanker:
         self.scale_score = scale_score
         self.calibration_factor = calibration_factor
         self.score_threshold = score_threshold
-        self.model_kwargs = model_kwargs or {}
 
-        if self.model_kwargs.get("device_map") and device is not None:
-            raise ValueError(
-                "The parameters `device` and `device_map` from `model_kwargs` cannot both be provided."
-                "Provide only one or the other."
-            )
-
-        # Resolve device if device_map is provided in model_kwargs
-        if self.model_kwargs.get("device_map") and device is None:
-            device_map = self.model_kwargs.get("device_map")
+        model_kwargs = model_kwargs or {}
+        if model_kwargs.get("device_map"):
+            if device is not None:
+                logger.warning(
+                    "The parameters `device` and `device_map` from `model_kwargs` are both be provided. "
+                    "Ignoring `device` and using `device_map`."
+                )
+            # Resolve device if device_map is provided in model_kwargs
+            device_map = model_kwargs.get("device_map")
             assert device_map is not None
             component_device = resolve_hf_device_map(device_map)
         else:
             component_device = ComponentDevice.resolve_device(device)
         self.device = component_device
+        # Set up device_map which allows quantized loading and multi device inference
+        # requires accelerate which is always installed when using `pip install transformers[torch]`
+        model_kwargs["device_map"] = component_device.to_hf()
+        self.model_kwargs = model_kwargs
 
         # Parameter validation
         if self.scale_score and self.calibration_factor is None:
@@ -120,9 +123,6 @@ class TransformersSimilarityRanker:
         Warm up the model and tokenizer used for scoring the Documents.
         """
         if self.model is None:
-            # Set up device_map which allows quantized loading and multi device inference
-            # requires accelerate which is always installed when using `pip install transformers[torch]`
-            self.model_kwargs["device_map"] = self.device.to_hf()
             self.model = AutoModelForSequenceClassification.from_pretrained(
                 self.model_name_or_path, token=self.token, **self.model_kwargs
             )

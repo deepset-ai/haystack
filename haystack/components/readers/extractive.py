@@ -101,23 +101,26 @@ class ExtractiveReader:
         self.answers_per_seq = answers_per_seq
         self.no_answer = no_answer
         self.calibration_factor = calibration_factor
-        self.model_kwargs = model_kwargs or {}
         self.overlap_threshold = overlap_threshold
 
-        if self.model_kwargs.get("device_map") and device is not None:
-            raise ValueError(
-                "The parameters `device` and `device_map` from `model_kwargs` cannot both be provided."
-                "Provide only one or the other."
-            )
-
-        # Resolve device if device_map is provided in model_kwargs
-        if self.model_kwargs.get("device_map") and device is None:
-            device_map = self.model_kwargs.get("device_map")
+        model_kwargs = model_kwargs or {}
+        if model_kwargs.get("device_map"):
+            if device is not None:
+                logger.warning(
+                    "The parameters `device` and `device_map` from `model_kwargs` are both be provided. "
+                    "Ignoring `device` and using `device_map`."
+                )
+            # Resolve device if device_map is provided in model_kwargs
+            device_map = model_kwargs.get("device_map")
             assert device_map is not None
             component_device = resolve_hf_device_map(device_map)
         else:
             component_device = ComponentDevice.resolve_device(device)
+        # Set up device_map which allows quantized loading and multi device inference
+        # requires accelerate which is always installed when using `pip install transformers[torch]`
         self.device = component_device
+        model_kwargs["device_map"] = component_device.to_hf()
+        self.model_kwargs = model_kwargs
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -164,9 +167,6 @@ class ExtractiveReader:
         Loads model and tokenizer
         """
         if self.model is None:
-            # Set up device_map which allows quantized loading and multi device inference
-            # requires accelerate which is always installed when using `pip install transformers[torch]`
-            self.model_kwargs["device_map"] = self.device.to_hf()
             self.model = AutoModelForQuestionAnswering.from_pretrained(
                 self.model_name_or_path, token=self.token, **self.model_kwargs
             )
