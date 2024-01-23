@@ -122,10 +122,10 @@ jobs:
         include:
           - topic: document_stores
             os: ubuntu-latest
-            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,crawler,preprocessing,file-conversion,pdf,ocr,metrics,dev
+            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,mongodb,inference,crawler,preprocessing,file-conversion,pdf,ocr,metrics,dev
           - topic: document_stores
             os: windows-latest
-            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,crawler,preprocessing,file-conversion,pdf,ocr,metrics,dev
+            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,mongodb,inference,crawler,preprocessing,file-conversion,pdf,ocr,metrics,dev
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
