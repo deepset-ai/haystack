@@ -9,6 +9,7 @@ from haystack.utils import build_pipeline, add_example_data, print_answers
 
 logging.basicConfig(level=logging.DEBUG)
 
+
 def getting_started(provider, API_KEY, API_BASE: Optional[str] = None):
     """
     This getting_started example shows you how to use LLMs with your data with a technique called Retrieval Augmented Generation - RAG.
@@ -36,6 +37,7 @@ def getting_started(provider, API_KEY, API_BASE: Optional[str] = None):
     print_answers(result, details="medium")
     return result
 
-if __name__ == "__main__":    
+
+if __name__ == "__main__":
     # getting_started(provider="openai", API_KEY="NOT NEEDED", API_BASE="http://192.168.1.100:1234/v1")
     getting_started(provider="openai", API_KEY="ADD KEY HERE")
