@@ -110,11 +110,13 @@ class DataSilo:
         # loading dicts from file (default)
         if dicts is None:
             dicts = list(self.processor.file_to_dicts(filename))  # type: ignore
-            # shuffle list of dicts here if we later want to have a random dev set splitted from train set
-            if str(self.processor.train_filename) in str(filename):
-                if not self.processor.dev_filename:
-                    if self.processor.dev_split > 0.0:
-                        random.shuffle(dicts)
+            # shuffle list of dicts here if we later want to have a random dev set split from train set
+            if (
+                str(self.processor.train_filename) in str(filename)
+                and not self.processor.dev_filename
+                and self.processor.dev_split > 0.0
+            ):
+                random.shuffle(dicts)
 
         num_dicts = len(dicts)
         datasets = []
@@ -826,6 +828,7 @@ class DistillationDataSilo(DataSilo):
         if batch:
             data_as_list_of_lists = [list(item) for item in batch]
             self._pass_batches(data_as_list_of_lists, corresponding_chunks, teacher_outputs, tensor_names)
+
 
         # appending teacher outputs to original dataset
         for dataset, teacher_output in zip(concat_datasets.datasets, teacher_outputs):

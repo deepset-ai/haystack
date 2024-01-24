@@ -8,7 +8,6 @@ from copy import deepcopy
 
 import responses
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.nodes.answer_generator.openai import OpenAIAnswerGenerator
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.prompt.prompt_node import PromptNode
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
@@ -16,7 +15,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever
 from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.pipelines.base import Pipeline
-from haystack.pipelines import ExtractiveQAPipeline, GenerativeQAPipeline, SearchSummarizationPipeline
+from haystack.pipelines import ExtractiveQAPipeline, SearchSummarizationPipeline
 from haystack.pipelines.standard_pipelines import (
     DocumentSearchPipeline,
     FAQPipeline,
@@ -537,10 +536,10 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path, eval_labels):
 
     # all expected columns are part of the evaluation result dataframe
     assert sorted(expected_reader_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(reader_result.columns)
+        reader_result.columns
     )
     assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(retriever_result.columns)
+        retriever_result.columns
     )
 
     assert (
@@ -594,109 +593,6 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path, eval_labels):
     for node_metrics in metrics.values():
         for value in node_metrics.values():
             assert isinstance(value, float)
-
-
-@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-@responses.activate
-def test_generative_qa_eval(retriever_with_docs, tmp_path, eval_labels):
-    labels = eval_labels[:1]
-    responses.add(
-        responses.POST,
-        "https://api.openai.com/v1/completions",
-        json={"choices": [{"text": "test", "finish_reason": "stop"}, {"text": "test2", "finish_reason": "stop"}]},
-        status=200,
-    )
-    responses.add_passthru("https://openaipublic.blob.core.windows.net")
-    generator = OpenAIAnswerGenerator(api_key="dummy", top_k=2)
-    pipeline = GenerativeQAPipeline(generator=generator, retriever=retriever_with_docs)
-    eval_result = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
-
-    metrics = eval_result.calculate_metrics(document_scope="document_id")
-
-    generator_result = eval_result["Generator"]
-    retriever_result = eval_result["Retriever"]
-
-    expected_generator_result_columns = [
-        "answer",  # answer-specific
-        "exact_match",  # answer-specific
-        "f1",  # answer-specific
-        # "sas",  # answer-specific optional
-        "exact_match_context_scope",  # answer-specific
-        "f1_context_scope",  # answer-specific
-        # "sas_context_scope",  # answer-specific optional
-        "exact_match_document_id_scope",  # answer-specific
-        "f1_document_id_scope",  # answer-specific
-        # "sas_document_id_scope",  # answer-specific optional
-        "exact_match_document_id_and_context_scope",  # answer-specific
-        "f1_document_id_and_context_scope",  # answer-specific
-        # "sas_document_id_and_context_scope",  # answer-specific optional
-        "offsets_in_document",  # answer-specific
-        "gold_offsets_in_documents",  # answer-specific
-        "offsets_in_context",  # answer-specific
-        "gold_offsets_in_contexts",  # answer-specific
-        "gold_answers_exact_match",  # answer-specific
-        "gold_answers_f1",  # answer-specific
-        # "gold_answers_sas",  # answer-specific optional
-        "document_ids",  # answer-specific
-        "prompt",  # answer-specific
-    ]
-
-    expected_retriever_result_columns = [
-        "gold_id_match",  # doc-specific
-        "context_match",  # doc-specific
-        "answer_match",  # doc-specific
-        "gold_id_or_answer_match",  # doc-specific
-        "gold_id_and_answer_match",  # doc-specific
-        "gold_id_or_context_match",  # doc-specific
-        "gold_id_and_context_match",  # doc-specific
-        "gold_id_and_context_and_answer_match",  # doc-specific
-        "context_and_answer_match",  # doc-specific
-        "gold_answers_match",  # doc-specific,
-        "document_id",  # doc-specific
-    ]
-
-    expected_generic_result_columns = [
-        "multilabel_id",  # generic
-        "query",  # generic
-        "filters",  # generic
-        "context",  # generic
-        "gold_contexts",  # generic
-        "gold_documents_id_match",  # generic
-        "gold_contexts_similarity",  # generic
-        "type",  # generic
-        "node",  # generic
-        "eval_mode",  # generic
-        "rank",  # generic
-        "gold_document_ids",  # generic
-        "gold_answers",  # generic
-        # "custom_document_id",  # generic optional
-        # "gold_custom_document_ids",  # generic optional
-    ]
-
-    # all expected columns are part of the evaluation result dataframe
-    assert sorted(expected_generator_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(generator_result.columns)
-    )
-    assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(retriever_result.columns)
-    )
-
-    assert generator_result["prompt"].iloc[0] is not None
-
-    # assert metrics are floats
-    for node_metrics in metrics.values():
-        for value in node_metrics.values():
-            assert isinstance(value, float)
-
-    eval_result.save(tmp_path)
-    saved_eval_result = EvaluationResult.load(tmp_path)
-
-    for key, df in eval_result.node_results.items():
-        pd.testing.assert_frame_equal(df, saved_eval_result[key])
-
-    loaded_metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
-    assert metrics == loaded_metrics
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
@@ -777,10 +673,10 @@ def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path, eval_lab
 
     # all expected columns are part of the evaluation result dataframe
     assert sorted(expected_generator_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(generator_result.columns)
+        generator_result.columns
     )
     assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
-        list(retriever_result.columns)
+        retriever_result.columns
     )
 
     assert generator_result["prompt"].iloc[0] is not None
@@ -1353,24 +1249,24 @@ def test_extractive_qa_eval_answer_document_scope_combinations(reader, retriever
 
     # valid values for non default answer_scopes
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer", answer_scope="context")
-        metrics = eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_or_answer", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" not in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_and_context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_and_context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
     with caplog.at_level(logging.WARNING):
-        metrics = eval_result.calculate_metrics(document_scope="document_id_or_context", answer_scope="context")
+        eval_result.calculate_metrics(document_scope="document_id_or_context", answer_scope="context")
         assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
 

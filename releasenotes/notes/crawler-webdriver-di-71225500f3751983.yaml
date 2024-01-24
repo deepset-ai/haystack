@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add an optional `webdriver` parameter to Crawler.
+    This allows using a pre-configured custom webdriver instead of creating
+    the default Chrome webdriver.

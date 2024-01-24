@@ -23,12 +23,12 @@ def prompt_model(request, haystack_azure_conf):
         api_key = os.environ.get("OPENAI_API_KEY", "KEY_NOT_FOUND")
         if api_key is None or api_key == "":
             api_key = "KEY_NOT_FOUND"
-        return PromptModel("text-davinci-003", api_key=api_key)
+        return PromptModel("gpt-3.5-turbo-instruct", api_key=api_key)
     elif request.param == "azure":
         api_key = os.environ.get("AZURE_OPENAI_API_KEY", "KEY_NOT_FOUND")
         if api_key is None or api_key == "":
             api_key = "KEY_NOT_FOUND"
-        return PromptModel("text-davinci-003", api_key=api_key, model_kwargs=haystack_azure_conf)
+        return PromptModel("gpt-3.5-turbo-instruct", api_key=api_key, model_kwargs=haystack_azure_conf)
     else:
         return PromptModel("google/flan-t5-base", devices=["cpu"])
 

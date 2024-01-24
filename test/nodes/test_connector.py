@@ -1,14 +1,13 @@
-from typing import List
-
-import json
-from pathlib import Path
-import re
 import hashlib
+import json
 import os
-from unittest.mock import patch
+import re
+from pathlib import Path
+from typing import List
+from unittest.mock import Mock, patch
 
 import pytest
-
+from selenium.webdriver import Chrome
 from selenium.webdriver.common.by import By
 
 from haystack.nodes.connector.crawler import Crawler
@@ -54,8 +53,9 @@ def content_in_results(crawler: Crawler, url: str, results: List[Path], expected
 
 
 @pytest.mark.unit
-@patch("haystack.nodes.connector.crawler.webdriver")
-def test_crawler_url_none_exception(webdriver):
+@patch("haystack.nodes.connector.crawler.Service")
+@patch("haystack.nodes.connector.crawler.selenium_webdriver")
+def test_crawler_url_none_exception(service, webdriver):
     crawler = Crawler()
     with pytest.raises(ValueError):
         crawler.crawl()
@@ -258,3 +258,11 @@ def test_crawler_depth_2_multiple_urls(test_url, tmp_path):
     assert content_in_results(crawler, test_url + "/page1_subpage1.html", paths)
     assert content_in_results(crawler, test_url + "/page1_subpage2.html", paths)
     assert content_in_results(crawler, test_url + "/page2_subpage1.html", paths)
+
+
+@pytest.mark.unit
+def test_crawler_custom_webdriver():
+    webdriver = Mock(Chrome)
+    crawler = Crawler(webdriver=webdriver)
+
+    assert webdriver is crawler.driver

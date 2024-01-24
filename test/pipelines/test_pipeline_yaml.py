@@ -3,7 +3,6 @@ import logging
 from numpy import mat
 import pytest
 import json
-import logging
 import inspect
 import networkx as nx
 from enum import Enum
@@ -45,7 +44,7 @@ def mock_json_schema(request, monkeypatch, tmp_path):
     monkeypatch.setattr(haystack.nodes._json_schema, "JSON_SCHEMAS_PATH", tmp_path)
 
     # Generate mock schema in tmp_path
-    filename = f"haystack-pipeline-main.schema.json"
+    filename = "haystack-pipeline-main.schema.json"
     test_schema = _json_schema.get_json_schema(filename=filename, version="ignore")
 
     with open(tmp_path / filename, "w") as schema_file:
@@ -118,7 +117,7 @@ def test_load_and_save_from_yaml(tmp_path, samples_path):
 def test_load_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: retriever
@@ -146,7 +145,7 @@ def test_load_yaml_elasticsearch_not_responding(tmp_path):
     # Test if DocumentStoreError is raised if elasticsearch instance is not responding (due to wrong port)
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: ESRetriever
@@ -309,7 +308,7 @@ def test_load_yaml_incompatible_version_strict(tmp_path):
 def test_load_yaml_no_components(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             pipelines:
@@ -326,7 +325,7 @@ def test_load_yaml_no_components(tmp_path):
 def test_load_yaml_wrong_component(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: docstore
@@ -353,7 +352,7 @@ def test_load_yaml_custom_component(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -383,7 +382,7 @@ def test_load_yaml_custom_component_with_null_values(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -414,7 +413,7 @@ def test_load_yaml_custom_component_with_no_init(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -449,7 +448,7 @@ def test_load_yaml_custom_component_neednt_call_super(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -480,7 +479,7 @@ def test_load_yaml_custom_component_cant_be_abstract(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -505,7 +504,7 @@ def test_load_yaml_custom_component_name_can_include_base(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -530,7 +529,7 @@ def test_load_yaml_custom_component_must_subclass_basecomponent(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -563,7 +562,7 @@ def test_load_yaml_custom_component_referencing_other_node_in_init(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: other_node
@@ -611,7 +610,7 @@ def test_load_yaml_custom_component_with_helper_class_in_init(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -649,7 +648,7 @@ def test_load_yaml_custom_component_with_helper_class_in_yaml(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -689,7 +688,7 @@ def test_load_yaml_custom_component_with_enum_in_init(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -727,7 +726,7 @@ def test_load_yaml_custom_component_with_enum_in_yaml(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -762,7 +761,7 @@ def test_load_yaml_custom_component_with_external_constant(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -795,7 +794,7 @@ def test_load_yaml_custom_component_with_superclass(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -827,7 +826,7 @@ def test_load_yaml_custom_component_with_variadic_args(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -861,7 +860,7 @@ def test_load_yaml_custom_component_with_variadic_kwargs(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: custom_node
@@ -885,7 +884,7 @@ def test_load_yaml_custom_component_with_variadic_kwargs(tmp_path):
 def test_load_yaml_no_pipelines(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: docstore
@@ -902,7 +901,7 @@ def test_load_yaml_no_pipelines(tmp_path):
 def test_load_yaml_invalid_pipeline_name(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: docstore
@@ -924,7 +923,7 @@ def test_load_yaml_invalid_pipeline_name(tmp_path):
 def test_load_yaml_pipeline_with_wrong_nodes(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: docstore
@@ -946,7 +945,7 @@ def test_load_yaml_pipeline_with_wrong_nodes(tmp_path):
 def test_load_yaml_pipeline_not_acyclic_graph(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: retriever
@@ -974,7 +973,7 @@ def test_load_yaml_pipeline_not_acyclic_graph(tmp_path):
 def test_load_yaml_wrong_root(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: retriever
@@ -997,7 +996,7 @@ def test_load_yaml_wrong_root(tmp_path):
 def test_load_yaml_two_roots_invalid(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: retriever
@@ -1024,7 +1023,7 @@ def test_load_yaml_two_roots_invalid(tmp_path):
 def test_load_yaml_two_roots_valid(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: retriever
@@ -1049,7 +1048,7 @@ def test_load_yaml_two_roots_valid(tmp_path):
 def test_load_yaml_two_roots_in_separate_pipelines(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: node_1
@@ -1083,7 +1082,7 @@ def test_load_yaml_two_roots_in_separate_pipelines(tmp_path):
 def test_load_yaml_disconnected_component(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
-            f"""
+            """
             version: ignore
             components:
             - name: docstore
@@ -1122,7 +1121,7 @@ def test_load_yaml_unusual_chars_in_values(tmp_path):
 
     with open(tmp_path / "tmp_config.yml", "w", encoding="utf-8") as tmp_file:
         tmp_file.write(
-            f"""
+            r"""
             version: '1.9.0'
 
             components:
@@ -1178,7 +1177,5 @@ def test_save_yaml_overwrite(tmp_path):
 @pytest.mark.unit
 @pytest.mark.parametrize("pipeline_file", ["ray.simple.haystack-pipeline.yml", "ray.advanced.haystack-pipeline.yml"])
 def test_load_yaml_ray_args_in_pipeline(samples_path, pipeline_file):
-    with pytest.raises(PipelineConfigError) as e:
-        pipeline = Pipeline.load_from_yaml(
-            samples_path / "pipeline" / pipeline_file, pipeline_name="ray_query_pipeline"
-        )
+    with pytest.raises(PipelineConfigError):
+        Pipeline.load_from_yaml(samples_path / "pipeline" / pipeline_file, pipeline_name="ray_query_pipeline")

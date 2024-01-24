@@ -3,6 +3,7 @@ from haystack.nodes.file_converter.base import BaseConverter
 
 from haystack.nodes.file_converter.csv import CsvTextConverter
 from haystack.nodes.file_converter.docx import DocxToTextConverter
+from haystack.nodes.file_converter.pptx import PptxConverter
 from haystack.nodes.file_converter.json import JsonConverter
 from haystack.nodes.file_converter.tika import TikaConverter, TikaXHTMLParser
 from haystack.nodes.file_converter.txt import TextConverter

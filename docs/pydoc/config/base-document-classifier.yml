@@ -13,7 +13,7 @@ processors:
   - type: crossref
 renderer:
   type: renderers.ReadmeRenderer
-  excerpt: Abstract class for the Document Classifer.
+  excerpt: Abstract class for the Document Classifier.
   category_slug: haystack-classes
   title: Base Document Classifier API
   slug: base-document-classifier-api
@@ -25,4 +25,3 @@ renderer:
     add_method_class_prefix: true
     add_member_class_prefix: false
     filename: base_document_classifier_api.md
-

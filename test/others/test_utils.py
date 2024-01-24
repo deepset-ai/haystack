@@ -54,77 +54,72 @@ def noop():
 
 @pytest.mark.unit
 def test_deprecation_previous_major_and_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
-        with pytest.warns(match="This feature is marked for removal in v1.1"):
-            fail_at_version(1, 1)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"), pytest.warns(
+        match="This feature is marked for removal in v1.1"
+    ):
+        fail_at_version(1, 1)(noop)()
 
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
-        with pytest.raises(_pytest.outcomes.Failed):
-            fail_at_version(1, 1)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"), pytest.raises(_pytest.outcomes.Failed):
+        fail_at_version(1, 1)(noop)()
 
-    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
-        with pytest.raises(_pytest.outcomes.Failed):
-            fail_at_version(1, 1)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"), pytest.raises(_pytest.outcomes.Failed):
+        fail_at_version(1, 1)(noop)()
 
 
 @pytest.mark.unit
 def test_deprecation_previous_major_same_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
-        with pytest.warns(match="This feature is marked for removal in v1.2"):
-            fail_at_version(1, 2)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"), pytest.warns(
+        match="This feature is marked for removal in v1.2"
+    ):
+        fail_at_version(1, 2)(noop)()
 
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
-        with pytest.raises(_pytest.outcomes.Failed):
-            fail_at_version(1, 2)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"), pytest.raises(_pytest.outcomes.Failed):
+        fail_at_version(1, 2)(noop)()
 
-    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
-        with pytest.raises(_pytest.outcomes.Failed):
-            fail_at_version(1, 2)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"), pytest.raises(_pytest.outcomes.Failed):
+        fail_at_version(1, 2)(noop)()
 
 
 @pytest.mark.unit
 def test_deprecation_previous_major_later_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
-        with pytest.warns(match="This feature is marked for removal in v1.3"):
-            fail_at_version(1, 3)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"), pytest.warns(
+        match="This feature is marked for removal in v1.3"
+    ):
+        fail_at_version(1, 3)(noop)()
 
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
-        with pytest.raises(_pytest.outcomes.Failed):
-            fail_at_version(1, 3)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"), pytest.raises(_pytest.outcomes.Failed):
+        fail_at_version(1, 3)(noop)()
 
-    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
-        with pytest.raises(_pytest.outcomes.Failed):
-            fail_at_version(1, 3)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"), pytest.raises(_pytest.outcomes.Failed):
+        fail_at_version(1, 3)(noop)()
 
 
 @pytest.mark.unit
 def test_deprecation_same_major_previous_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
-        with pytest.warns(match="This feature is marked for removal in v2.1"):
-            fail_at_version(2, 1)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"), pytest.warns(
+        match="This feature is marked for removal in v2.1"
+    ):
+        fail_at_version(2, 1)(noop)()
 
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
-        with pytest.raises(_pytest.outcomes.Failed):
-            fail_at_version(2, 1)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"), pytest.raises(_pytest.outcomes.Failed):
+        fail_at_version(2, 1)(noop)()
 
-    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
-        with pytest.raises(_pytest.outcomes.Failed):
-            fail_at_version(2, 1)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"), pytest.raises(_pytest.outcomes.Failed):
+        fail_at_version(2, 1)(noop)()
 
 
 @pytest.mark.unit
 def test_deprecation_same_major_same_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
-        with pytest.warns(match="This feature is marked for removal in v2.2"):
-            fail_at_version(2, 2)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"), pytest.warns(
+        match="This feature is marked for removal in v2.2"
+    ):
+        fail_at_version(2, 2)(noop)()
 
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
-        with pytest.raises(_pytest.outcomes.Failed):
-            fail_at_version(2, 2)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"), pytest.raises(_pytest.outcomes.Failed):
+        fail_at_version(2, 2)(noop)()
 
-    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
-        with pytest.raises(_pytest.outcomes.Failed):
-            fail_at_version(2, 2)(noop)()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"), pytest.raises(_pytest.outcomes.Failed):
+        fail_at_version(2, 2)(noop)()
 
 
 @pytest.mark.unit
@@ -202,6 +197,32 @@ def test_convert_pdf_files_to_docs(samples_path):
 
 
 @pytest.mark.unit
+def test_convert_list_of_file_paths_to_docs(sample_txt_file_paths_list):
+    documents = convert_files_to_docs(
+        file_paths=sample_txt_file_paths_list, clean_func=clean_wiki_text, split_paragraphs=True
+    )
+    assert documents and len(documents) > 0
+
+
+@pytest.mark.unit
+def test_convert_dirpath_and_file_paths_list_to_docs(samples_path, sample_txt_file_paths_list):
+    docx_samples_path = samples_path / "docx"
+    documents = convert_files_to_docs(
+        dir_path=docx_samples_path,
+        file_paths=sample_txt_file_paths_list,
+        clean_func=clean_wiki_text,
+        split_paragraphs=True,
+    )
+    assert documents and len(documents) > 0
+
+
+@pytest.mark.unit
+def test_convert_with_no_dirpath_or_file_paths():
+    with pytest.raises(ValueError):
+        convert_files_to_docs()
+
+
+@pytest.mark.unit
 def test_get_filename_extension_from_url_without_params_zip():
     url = "http://www.mysite.com/resources/myfile.zip"
     file_name, extension = get_filename_extension_from_url(url)
@@ -228,6 +249,14 @@ def test_get_filename_extension_from_url_with_params_xz():
 @pytest.mark.tika
 def test_tika_convert_files_to_docs(samples_path):
     documents = tika_convert_files_to_docs(dir_path=samples_path, clean_func=clean_wiki_text, split_paragraphs=True)
+    assert documents and len(documents) > 0
+
+
+@pytest.mark.tika
+def test_tika_convert_list_of_file_paths_to_docs(sample_txt_file_paths_list):
+    documents = tika_convert_files_to_docs(
+        file_paths=sample_txt_file_paths_list, clean_func=clean_wiki_text, split_paragraphs=True
+    )
     assert documents and len(documents) > 0
 
 
@@ -482,9 +511,9 @@ def test_upload_file_to_deepset_cloud_file_fails(caplog, samples_path):
     metas = [{"file_id": "sample_docx.docx"}, {"file_id": "sample_pdf_1.pdf"}, {"file_id": "doc_1.txt"}]
     with caplog.at_level(logging.INFO):
         client.upload_files(file_paths=file_paths, metas=metas)
-        assert f"Successfully uploaded 2 files." in caplog.text
-        assert f"Error uploading file" in caplog.text
-        assert f"my-error" in caplog.text
+        assert "Successfully uploaded 2 files." in caplog.text
+        assert "Error uploading file" in caplog.text
+        assert "my-error" in caplog.text
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
@@ -546,7 +575,7 @@ def test_list_files_on_deepset_cloud():
         )
 
     client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
-    files = [f for f in client.list_files()]
+    files = list(client.list_files())
     assert len(files) == 2
     assert files[0]["name"] == "sample_pdf_1.pdf"
     assert files[1]["name"] == "sample_pdf_2.pdf"
@@ -1178,7 +1207,7 @@ def test_delete_eval_run():
     runs = client.get_eval_runs()
     assert len(runs) == 1
 
-    run = client.delete_eval_run("my-eval-run-1")
+    client.delete_eval_run("my-eval-run-1")
 
     runs = client.get_eval_runs()
     assert len(runs) == 0
@@ -1198,8 +1227,8 @@ def test_upload_eval_set(caplog, samples_path):
     client = DeepsetCloud.get_evaluation_set_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     with caplog.at_level(logging.INFO):
         client.upload_evaluation_set(file_path=samples_path / "dc/matching_test_1.csv")
-        assert f"Successfully uploaded evaluation set file" in caplog.text
-        assert f"You can access it now under evaluation set 'matching_test_1.csv'." in caplog.text
+        assert "Successfully uploaded evaluation set file" in caplog.text
+        assert "You can access it now under evaluation set 'matching_test_1.csv'." in caplog.text
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
@@ -1216,8 +1245,8 @@ def test_upload_existing_eval_set(caplog, samples_path):
     client = DeepsetCloud.get_evaluation_set_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     with caplog.at_level(logging.INFO):
         client.upload_evaluation_set(file_path=samples_path / "dc/matching_test_1.csv")
-        assert f"Successfully uploaded evaluation set file" not in caplog.text
-        assert f"You can access it now under evaluation set 'matching_test_1.csv'." not in caplog.text
+        assert "Successfully uploaded evaluation set file" not in caplog.text
+        assert "You can access it now under evaluation set 'matching_test_1.csv'." not in caplog.text
         assert "Evaluation set with the same name already exists." in caplog.text
 
 

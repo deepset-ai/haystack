@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix `Pipeline.load_from_deepset_cloud` to work with the latest version of deepset Cloud.

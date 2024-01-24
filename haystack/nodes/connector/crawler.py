@@ -6,15 +6,16 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 from urllib.parse import urlparse
 
+from haystack.lazy_imports import LazyImport
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install farm-haystack[crawler]'") as selenium_import:
-    from selenium import webdriver
+    from selenium import webdriver as selenium_webdriver
+    from selenium.webdriver.remote.webdriver import WebDriver
     from selenium.common.exceptions import StaleElementReferenceException
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
@@ -53,14 +54,17 @@ class Crawler(BaseComponent):
         file_path_meta_field_name: Optional[str] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         webdriver_options: Optional[List[str]] = None,
+        webdriver: Optional["WebDriver"] = None,
     ):
         """
         Init object with basic params for crawling (can be overwritten later).
 
         :param urls: List of http(s) address(es) (can also be supplied later when calling crawl())
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-            0: Only initial list of urls
-            1: Follow links found on the initial URLs (but no further)
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Can be any integer >= 0.
+                                For example:
+                                0: Only initial list of urls.
+                                1: Follow links found on the initial URLs (but no further).
+                                2: Additionally follow links found on the second-level URLs.
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
             All URLs not matching at least one of the regular expressions will be dropped.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
@@ -93,10 +97,27 @@ class Crawler(BaseComponent):
                  3) ["--remote-debugging-port=9222"]
                     This option enables remote debug over HTTP.
             See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
-            If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
+            If your crawler fails, raising a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
+        :param webdriver: A pre-configured Selenium WebDriver.
+            When webdriver_options is not sufficient, use this parameter to override the whole web driver. This lets you use different engines other than the default Chrome.
         """
         selenium_import.check()
         super().__init__()
+
+        self.urls = urls
+        self.crawler_depth = crawler_depth
+        self.filter_urls = filter_urls
+        self.overwrite_existing_files = overwrite_existing_files
+        self.id_hash_keys = id_hash_keys
+        self.extract_hidden_text = extract_hidden_text
+        self.loading_wait_time = loading_wait_time
+        self.crawler_naming_function = crawler_naming_function
+        self.output_dir = output_dir
+        self.file_path_meta_field_name = file_path_meta_field_name
+
+        if webdriver is not None:
+            self.driver = webdriver
+            return
 
         IN_COLAB = "google.colab" in sys.modules
         IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
@@ -117,17 +138,7 @@ class Crawler(BaseComponent):
         for option in set(webdriver_options):
             options.add_argument(option)
 
-        self.driver = webdriver.Chrome(service=Service(), options=options)
-        self.urls = urls
-        self.crawler_depth = crawler_depth
-        self.filter_urls = filter_urls
-        self.overwrite_existing_files = overwrite_existing_files
-        self.id_hash_keys = id_hash_keys
-        self.extract_hidden_text = extract_hidden_text
-        self.loading_wait_time = loading_wait_time
-        self.crawler_naming_function = crawler_naming_function
-        self.output_dir = output_dir
-        self.file_path_meta_field_name = file_path_meta_field_name
+        self.driver = selenium_webdriver.Chrome(service=Service(), options=options)
 
     def __del__(self):
         self.driver.quit()
@@ -153,9 +164,11 @@ class Crawler(BaseComponent):
         If no parameters are provided to this method, the instance attributes that were passed during __init__ will be used.
 
         :param urls: List of http addresses or single http address
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-                              0: Only initial list of urls
-                              1: Follow links found on the initial URLs (but no further)
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Can be any integer >= 0.
+                                For example:
+                                0: Only initial list of urls.
+                                1: Follow links found on the initial URLs (but no further).
+                                2: Additionally follow links found on the second-level URLs.
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
                            All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
@@ -333,6 +346,7 @@ class Crawler(BaseComponent):
             if loading_wait_time is not None:
                 time.sleep(loading_wait_time)
             el = self.driver.find_element(by=By.TAG_NAME, value="body")
+
             if extract_hidden_text:
                 text = el.get_attribute("textContent")
             else:
@@ -374,9 +388,11 @@ class Crawler(BaseComponent):
 
         :param output_dir: Path for the directory to store files
         :param urls: List of http addresses or single http address
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-                              0: Only initial list of urls
-                              1: Follow links found on the initial URLs (but no further)
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Can be any integer >= 0.
+                                For example:
+                                0: Only initial list of urls.
+                                1: Follow links found on the initial URLs (but no further).
+                                2: Additionally follow links found on the second-level URLs.
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
                            All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
@@ -463,9 +479,11 @@ class Crawler(BaseComponent):
         loading_wait_time: Optional[int] = None,
     ) -> Set[str]:
         self.driver.get(base_url)
+
         if loading_wait_time is not None:
             time.sleep(loading_wait_time)
         a_elements = self.driver.find_elements(by=By.XPATH, value="//a[@href]")
+
         sub_links = set()
 
         filter_pattern = re.compile("|".join(filter_urls)) if filter_urls is not None else None
@@ -479,14 +497,16 @@ class Crawler(BaseComponent):
                 )
                 continue
 
-            if sub_link and not (already_found_links and sub_link in already_found_links):
-                if self._is_internal_url(base_url=base_url, sub_link=sub_link) and (
-                    not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
-                ):
-                    if filter_pattern is not None:
-                        if filter_pattern.search(sub_link):
-                            sub_links.add(sub_link)
-                    else:
+            if (
+                sub_link
+                and not (already_found_links and sub_link in already_found_links)
+                and self._is_internal_url(base_url=base_url, sub_link=sub_link)
+                and (not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link))
+            ):
+                if filter_pattern is not None:
+                    if filter_pattern.search(sub_link):
                         sub_links.add(sub_link)
+                else:
+                    sub_links.add(sub_link)
 
         return sub_links

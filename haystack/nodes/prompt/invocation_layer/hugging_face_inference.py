@@ -247,14 +247,14 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             )
         except requests.HTTPError as err:
             res = err.response
-            if res.status_code == 429:
-                raise HuggingFaceInferenceLimitError(f"API rate limit exceeded: {res.text}")
-            if res.status_code == 401:
-                raise HuggingFaceInferenceUnauthorizedError(f"API key is invalid: {res.text}")
+            if res.status_code == 429:  # type: ignore[union-attr]
+                raise HuggingFaceInferenceLimitError(f"API rate limit exceeded: {res.text}")  # type: ignore[union-attr]
+            if res.status_code == 401:  # type: ignore[union-attr]
+                raise HuggingFaceInferenceUnauthorizedError(f"API key is invalid: {res.text}")  # type: ignore[union-attr]
 
             raise HuggingFaceInferenceError(
-                f"HuggingFace Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
-                status_code=res.status_code,
+                f"HuggingFace Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",  # type: ignore[union-attr]
+                status_code=res.status_code,  # type: ignore[union-attr]
             )
         return response
 

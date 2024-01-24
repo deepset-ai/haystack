@@ -13,3 +13,4 @@ from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.document_stores.pinecone import PineconeDocumentStore
 from haystack.document_stores.weaviate import WeaviateDocumentStore
+from haystack.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore

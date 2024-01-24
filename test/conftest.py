@@ -28,7 +28,6 @@ from haystack.document_stores import (
 from haystack.nodes import (
     BaseReader,
     BaseRetriever,
-    BaseGenerator,
     BaseSummarizer,
     BaseTranslator,
     DenseRetriever,
@@ -93,7 +92,7 @@ def fail_at_version(target_major, target_minor):
     of target_major and/or target_minor.
     If the current version has `rc0` set the test won't fail but only issue a warning, this
     is done because we use `rc0` to mark the development version in `main`. If we wouldn't
-    do this tests would continuosly fail in main.
+    do this tests would continuously fail in main.
 
     ```python
     from ..conftest import fail_at_version
@@ -321,11 +320,6 @@ class MockBaseRetriever(MockRetriever):
         return np.full((len(documents), 768), 0.5)
 
 
-class MockSeq2SegGenerator(BaseGenerator):
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int], max_tokens: Optional[int]) -> Dict:
-        pass
-
-
 class MockSummarizer(BaseSummarizer):
     def predict_batch(
         self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None
@@ -441,6 +435,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
             "date_field": "2019-10-01",
             "numeric_field": 5.0,
             "list_field": ["item0.1", "item0.2"],
+            "page_number": 1,
         },
         # "dict" format
         {
@@ -451,6 +446,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
                 "date_field": "2020-03-01",
                 "numeric_field": 5.5,
                 "list_field": ["item1.1", "item1.2"],
+                "page_number": 2,
             },
         },
         # Document object
@@ -462,6 +458,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
                 "date_field": "2018-10-01",
                 "numeric_field": 4.5,
                 "list_field": ["item2.1", "item2.2"],
+                "page_number": 3,
             },
         ),
         Document(
@@ -472,6 +469,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
                 "date_field": "2021-02-01",
                 "numeric_field": 3.0,
                 "list_field": ["item3.1", "item3.2"],
+                "page_number": 4,
             },
         ),
         Document(
@@ -482,6 +480,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
                 "date_field": "2019-01-01",
                 "numeric_field": 0.0,
                 "list_field": ["item4.1", "item4.2"],
+                "page_number": 5,
             },
         ),
     ]
@@ -645,6 +644,15 @@ def get_retriever(retriever_type, document_store):
             document_store=document_store,
             embedding_model="sentence-transformers/msmarco-distilbert-base-tas-b",
             model_format="sentence_transformers",
+            use_gpu=False,
+        )
+    elif retriever_type == "embedding_sbert_instructions":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="sentence-transformers/msmarco-distilbert-dot-v5",
+            model_format="sentence_transformers",
+            query_prompt="Embed this query for retrieval:",
+            passage_prompt="Embed this passage for retrieval:",
             use_gpu=False,
         )
     elif retriever_type == "retribert":
@@ -883,8 +891,8 @@ def samples_path():
 
 
 @pytest.fixture
-def preview_samples_path():
-    return Path(__file__).parent / "preview" / "test_files"
+def sample_txt_file_paths_list(samples_path):
+    return list((samples_path / "docs").glob("*.txt"))
 
 
 @pytest.fixture(autouse=True)

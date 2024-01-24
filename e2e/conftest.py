@@ -26,11 +26,6 @@ def samples_path():
 
 
 @pytest.fixture
-def preview_samples_path():
-    return Path(__file__).parent / "preview" / "test_files"
-
-
-@pytest.fixture
 def docs_all_formats():
     return [
         # metafield at the top level for backward compatibility

@@ -124,6 +124,114 @@ class SerpAPI(SearchEngine):
         return self.score_results(result_docs, len(answer_box) > 0)
 
 
+class SearchApi(SearchEngine):
+    """
+    SearchApi is a real-time search engine that provides an API to access search results from Google, Google Scholar, YouTube,
+    YouTube transcripts and more. See the [SearchApi website](https://www.searchapi.io/) for more details.
+    """
+
+    def __init__(
+        self,
+        api_key: str,
+        top_k: Optional[int] = 10,
+        allowed_domains: Optional[List[str]] = None,
+        engine: Optional[str] = "google",
+        search_engine_kwargs: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        :param api_key: API key for SearchApi.
+        :param top_k: Number of results to return.
+        :param allowed_domains: List of domains to limit the search to.
+        :param engine: Search engine to use, for example google, google_scholar, youtube, youtube_transcripts.
+        See the [SearchApi documentation](https://www.searchapi.io/docs/google) for the full list of supported engines.
+        :param search_engine_kwargs: Additional parameters passed to the SearchApi.
+        See the [SearchApi documentation](https://www.searchapi.io/docs/google) for the full list of supported parameters.
+        """
+        super().__init__()
+        self.params_dict: Dict[str, Union[str, int, float]] = {}
+        self.api_key = api_key
+        self.kwargs = search_engine_kwargs if search_engine_kwargs else {}
+        self.engine = engine
+        self.top_k = top_k
+        self.allowed_domains = allowed_domains
+
+    def search(self, query: str, **kwargs) -> List[Document]:
+        """
+        :param query: Query string.
+        :param kwargs: Additional parameters passed to the SearchApi. For example, you can set 'location' to 'New York,United States'
+        to localize search to the specific location.
+        :return: List[Document]
+        """
+        kwargs = {**self.kwargs, **kwargs}
+        top_k = kwargs.pop("top_k", self.top_k)
+        url = "https://www.searchapi.io/api/v1/search"
+
+        allowed_domains = kwargs.pop("allowed_domains", self.allowed_domains)
+        query_prepend = "OR ".join(f"site:{domain} " for domain in allowed_domains) if allowed_domains else ""
+        params = {"q": query_prepend + " " + query, **kwargs}
+        headers = {"Authorization": f"Bearer {self.api_key}", "X-SearchApi-Source": "Haystack"}
+
+        if self.engine:
+            params["engine"] = self.engine
+        response = requests.get(url, params=params, headers=headers, timeout=90)
+
+        if response.status_code != 200:
+            raise Exception(f"Error while querying {self.__class__.__name__}: {response.text}")
+
+        json_result = json.loads(response.text)
+
+        # organic results are the main results from the search engine
+        organic_results = []
+        if "organic_results" in json_result:
+            for result in json_result["organic_results"]:
+                organic_results.append(
+                    Document.from_dict({"title": result["title"], "content": result["snippet"], "link": result["link"]})
+                )
+
+        # answer box has a direct answer to the query
+        answer_box = []
+        if "answer_box" in json_result:
+            answer_box = [
+                Document.from_dict(
+                    {
+                        "title": json_result["answer_box"].get("title", ""),
+                        "content": json_result["answer_box"].get("answer", ""),
+                        "link": json_result["answer_box"].get("link", ""),
+                    }
+                )
+            ]
+
+        knowledge_graph = []
+        if "knowledge_graph" in json_result:
+            knowledge_graph = [
+                Document.from_dict(
+                    {
+                        "title": json_result["knowledge_graph"].get("title", ""),
+                        "content": json_result["knowledge_graph"].get("description", ""),
+                    }
+                )
+            ]
+
+        related_questions = []
+        if "related_questions" in json_result:
+            for result in json_result["related_questions"]:
+                related_questions.append(
+                    Document.from_dict(
+                        {
+                            "title": result["question"],
+                            "content": result["answer"] if result.get("answer") else result.get("answer_highlight", ""),
+                            "link": result.get("source", {}).get("link", ""),
+                        }
+                    )
+                )
+
+        documents = answer_box + knowledge_graph + organic_results + related_questions
+
+        logger.debug("SearchApi returned %s documents for the query '%s'", len(documents), query)
+        result_docs = documents[:top_k]
+        return self.score_results(result_docs, len(answer_box) > 0)
+
+
 class SerperDev(SearchEngine):
     """
     Search engine using SerperDev API. See the [Serper Dev website](https://serper.dev/) for more details.

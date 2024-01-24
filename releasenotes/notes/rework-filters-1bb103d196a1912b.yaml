@@ -1,0 +1,87 @@
+---
+prelude: >
+  With proposal [#6001](https://github.com/deepset-ai/haystack/pull/6001) we introduced a better specification to declare filters in Haystack 2.x.
+  The new syntax is a bit more verbose but less confusing and ambiguous as there are no implicit operators.
+  This will simplify conversion from this common syntax to a Document Store specific filtering logic, so it will ease
+  development of new Document Store.
+  Since everything must be declared explicitly it will also make it easier for user to understand the filters just
+  by reading them.
+
+  The full specification is as follow.
+
+  ---
+
+  Filters top level must be a dictionary.
+
+  There are two types of dictionaries:
+
+  - Comparison
+  - Logic
+
+  Top level can be either be a Comparison or Logic dictionary.
+
+  Comparison dictionaries must contain the keys:
+
+  - `field`
+  - `operator`
+  - `value`
+
+  Logic dictionaries must contain the keys:
+
+  - `operator`
+  - `conditions`
+
+  `conditions` key must be a list of dictionaries, either Comparison or Logic.
+
+  `operator` values in Comparison dictionaries must be:
+
+  - `==`
+  - `!=`
+  - `>`
+  - `>=`
+  - `<`
+  - `<=`
+  - `in`
+  - `not in`
+
+  `operator` values in Logic dictionaries must be:
+
+  - `NOT`
+  - `OR`
+  - `AND`
+
+  ---
+
+  A simple filter:
+
+  ```python
+  filters = {"field": "meta.type", "operator": "==", "value": "article"}
+  ```
+
+  A more complex filter:
+  ```python
+  filters = {
+      "operator": "AND",
+      "conditions": [
+          {"field": "meta.type", "operator": "==", "value": "article"},
+          {"field": "meta.date", "operator": ">=", "value": 1420066800},
+          {"field": "meta.date", "operator": "<", "value": 1609455600},
+          {"field": "meta.rating", "operator": ">=", "value": 3},
+          {
+              "operator": "OR",
+              "conditions": [
+                  {"field": "meta.genre", "operator": "in", "value": ["economy", "politics"]},
+                  {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
+              ],
+          },
+      ],
+  }
+  ```
+
+  ---
+
+  To avoid causing too much disruption for users using legacy filters we'll keep supporting them for the time being.
+  We also provide a utility `convert` function for developers implementing their Document Store to do the same.
+preview:
+  - |
+    Refactored `InMemoryDocumentStore` and `MetadataRouter` filtering logic to support new filters declaration.

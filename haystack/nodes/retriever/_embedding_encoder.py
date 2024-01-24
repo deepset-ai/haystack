@@ -16,7 +16,7 @@ from haystack.environment import (
     HAYSTACK_REMOTE_API_MAX_RETRIES,
     HAYSTACK_REMOTE_API_TIMEOUT_SEC,
 )
-from haystack.errors import CohereError, CohereUnauthorizedError
+from haystack.errors import AWSConfigurationError, CohereError, CohereUnauthorizedError
 from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 from haystack.schema import Document
 from haystack.telemetry import send_event
@@ -42,10 +42,23 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     from haystack.modeling.infer import Inferencer
     from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 
+with LazyImport(message="Run 'pip install boto3'") as boto3_import:
+    import boto3
+    from botocore.exceptions import BotoCoreError
 
 COHERE_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 COHERE_BACKOFF = int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
 COHERE_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
+COHERE_EMBEDDING_MODELS = [
+    "small",
+    "large",
+    "multilingual-22-12",
+    "embed-english-v2.0",
+    "embed-english-light-v2.0",
+    "embed-multilingual-v2.0",
+]
+
+BEDROCK_EMBEDDING_MODELS = ["amazon.titan-embed-text-v1", "cohere.embed-english-v3", "cohere.embed-multilingual-v3"]
 
 
 class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
@@ -364,7 +377,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
         torch_and_transformers_import.check()
 
-        # See https://docs.cohere.ai/embed-reference/ for more details
+        # See https://docs.cohere.com/reference/embed for more details
         # Cohere has a max seq length of 4096 tokens and a max batch size of 96
         self.max_seq_len = min(4096, retriever.max_seq_len)
         self.url = "https://api.cohere.ai/embed"
@@ -372,12 +385,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.batch_size = min(96, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
         self.model: str = next(
-            (
-                m
-                for m in ["small", "medium", "large", "multilingual-22-12", "finance-sentiment"]
-                if m in retriever.embedding_model
-            ),
-            "multilingual-22-12",
+            (m for m in COHERE_EMBEDDING_MODELS if m in retriever.embedding_model), "multilingual-22-12"
         )
 
     @retry(
@@ -394,7 +402,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
             raise CohereUnauthorizedError(f"Invalid Cohere API key. {response.text}")
         if response.status_code != 200:
             raise CohereError(response.text, status_code=response.status_code)
-        generated_embeddings = [e for e in res["embeddings"]]
+        generated_embeddings = list(res["embeddings"])
         return np.array(generated_embeddings)
 
     def embed_batch(self, text: List[str]) -> np.ndarray:
@@ -431,6 +439,107 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         raise NotImplementedError(f"Saving is not implemented for {self.__class__}")
 
 
+class _BedrockEmbeddingEncoder(_BaseEmbeddingEncoder):
+    def __init__(self, retriever: "EmbeddingRetriever"):
+        """Embedding Encoder for Bedrock models
+        See https://docs.aws.amazon.com/bedrock/latest/userguide/embeddings.html for more details.
+        The maximum input text is 8K tokens and the maximum output vector length is 1536.
+        Titan embeddings do not support batch operations.
+
+        :param retriever: EmbeddingRetriever object
+        """
+        boto3_import.check()
+        if retriever.embedding_model not in BEDROCK_EMBEDDING_MODELS:
+            raise ValueError("Model not supported by Bedrock Embedding Encoder")
+        self.model = retriever.embedding_model
+        self.client = self._initialize_boto3_session(retriever.aws_config).client("bedrock-runtime")
+
+    def _initialize_boto3_session(self, aws_config: Optional[Dict[str, Any]]):
+        if aws_config is None:
+            raise ValueError(
+                "`aws_config` is not set. To use Bedrock models, you should set `aws_config` when initializing the retriever."
+            )
+
+        aws_access_key_id = aws_config.get("aws_access_key_id", None)
+        aws_secret_access_key = aws_config.get("aws_secret_access_key", None)
+        aws_session_token = aws_config.get("aws_session_token", None)
+        region_name = aws_config.get("region_name", None)
+        profile_name = aws_config.get("profile_name", None)
+        try:
+            return boto3.Session(
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+                aws_session_token=aws_session_token,
+                region_name=region_name,
+                profile_name=profile_name,
+            )
+        except BotoCoreError as e:
+            raise AWSConfigurationError(
+                f"Failed to initialize the session with provided AWS credentials {aws_config}"
+            ) from e
+
+    def _embed_batch_cohere(
+        self, texts: List[str], input_type: Literal["search_query", "search_document"]
+    ) -> np.ndarray:
+        cohere_payload = {"texts": texts, "input_type": input_type, "truncate": "RIGHT"}
+        response = self._invoke_model(cohere_payload)
+        embeddings = np.array(response["embeddings"])
+        return embeddings
+
+    def _embed_titan(self, text: str) -> np.ndarray:
+        titan_payload = {"inputText": text}
+        response = self._invoke_model(titan_payload)
+        embeddings = np.array(response["embedding"])
+        return embeddings
+
+    def _invoke_model(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        body = json.dumps(payload)
+        response = self.client.invoke_model(
+            body=body, modelId=self.model, accept="application/json", contentType="application/json"
+        )
+        body = response.get("body").read().decode("utf-8")
+        response_body = json.loads(body)
+        return response_body
+
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        if self.model == "amazon.titan-embed-text-v1":
+            all_embeddings = []
+            for query in queries:
+                generated_embeddings = self._embed_titan(query)
+                all_embeddings.append(generated_embeddings)
+            return np.stack(all_embeddings)
+        else:
+            return self._embed_batch_cohere(queries, input_type="search_query")
+
+    def embed_documents(self, docs: List[Document]) -> np.ndarray:
+        if self.model == "amazon.titan-embed-text-v1":
+            all_embeddings = []
+            for doc in docs:
+                generated_embeddings = self._embed_titan(doc.content)
+                all_embeddings.append(generated_embeddings)
+            return np.stack(all_embeddings)
+        else:
+            contents = [d.content for d in docs]
+            return self._embed_batch_cohere(contents, input_type="search_document")
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: Optional[int] = None,
+        batch_size: int = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
+    ):
+        raise NotImplementedError(f"Training is not implemented for {self.__class__}")
+
+    def save(self, save_dir: Union[Path, str]):
+        raise NotImplementedError(f"Saving is not implemented for {self.__class__}")
+
+
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "farm": _DefaultEmbeddingEncoder,
     "transformers": _DefaultEmbeddingEncoder,
@@ -438,4 +547,5 @@ _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "retribert": _RetribertEmbeddingEncoder,
     "openai": _OpenAIEmbeddingEncoder,
     "cohere": _CohereEmbeddingEncoder,
+    "bedrock": _BedrockEmbeddingEncoder,
 }

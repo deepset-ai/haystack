@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Add CohereGenerator compatible with Cohere generate endpoint

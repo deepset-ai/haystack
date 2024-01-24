@@ -52,7 +52,7 @@ class WhisperTranscriber(BaseComponent):
 
         :param api_key: OpenAI API key. If None, a local installation of Whisper is used.
         :param model_name_or_path: Name of the model to use. If using a local installation of Whisper, set this to one of the following values: "tiny", "small", "medium", "large", "large-v2". If using
-        the API, set thsi value to: "whisper-1" (default).
+        the API, set this value to: "whisper-1" (default).
         :param device: Device to use for inference. Only used if you're using a local
         installation of Whisper. If None, the device is automatically selected.
         :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
@@ -89,6 +89,7 @@ class WhisperTranscriber(BaseComponent):
         :param return_segments: If True, returns the transcription for each segment of the audio file. Supported with
         local installation of whisper only.
         :param translate: If True, translates the transcription to English.
+        :return: A dictionary containing the transcription text and metadata like timings, segments etc.
 
         """
         transcript: Dict[str, Any] = {}
@@ -174,6 +175,8 @@ class WhisperTranscriber(BaseComponent):
         :param labels: Ignored
         :param documents: Ignored
         :param meta: Ignored
+        :return: A dictionary containing a list of Document objects, one for each input file.
+
         """
         transcribed_documents: List[Document] = []
         if file_paths:

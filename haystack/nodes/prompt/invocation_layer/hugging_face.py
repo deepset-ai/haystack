@@ -27,6 +27,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
     )
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
     from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler
+    from haystack.utils.torch_utils import resolve_torch_dtype
 
     class StopWordsCriteria(StoppingCriteria):
         """
@@ -177,13 +178,14 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         device_map = kwargs.get("device_map", None)
         device = kwargs.get("device") if device_map is None else None
         # prepare torch_dtype for pipeline invocation
-        torch_dtype = self._extract_torch_dtype(**kwargs)
+        torch_dtype = resolve_torch_dtype(kwargs.get("torch_dtype"))
         # and the model (prefer model instance over model_name_or_path str identifier)
         model = kwargs.get("model") or kwargs.get("model_name_or_path")
         trust_remote_code = kwargs.get("trust_remote_code", False)
         hub_kwargs = {
             "revision": kwargs.get("revision", None),
-            "use_auth_token": kwargs.get("use_auth_token", None),
+            # use_auth_token is no longer used in HuggingFace pipelines. We convert it to token
+            "token": kwargs.get("use_auth_token", None),
             "trust_remote_code": trust_remote_code,
         }
         model_kwargs = kwargs.get("model_kwargs", {})
@@ -193,7 +195,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # For models not yet supported by the transformers library, we must set `trust_remote_code=True` within
             # the underlying pipeline to ensure the model's successful loading. However, this does not guarantee the
             # tokenizer will be loaded alongside. Therefore, we need to add additional logic here to manually load the
-            # tokenizer and pass it to transformers' pipleine.
+            # tokenizer and pass it to transformers' pipeline.
             # Otherwise, calling `self.pipe.tokenizer.model_max_length` will return an error.
             tokenizer = self._prepare_tokenizer(model, hub_kwargs, model_kwargs)
 
@@ -208,6 +210,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             "torch_dtype": torch_dtype,
             "model_kwargs": model_kwargs,
             "pipeline_class": kwargs.get("pipeline_class", None),
+            "use_fast": kwargs.get("use_fast", True),
             **hub_kwargs,
         }
         return pipeline_kwargs
@@ -258,7 +261,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 gen_dict.pop("transformers_version", None)
                 model_input_kwargs.update(gen_dict)
 
-            is_text_generation = "text-generation" == self.task_name
+            is_text_generation = self.task_name == "text-generation"
             # Prefer return_full_text is False for text-generation (unless explicitly set)
             # Thus only generated text is returned (excluding prompt)
             if is_text_generation and "return_full_text" not in model_input_kwargs:

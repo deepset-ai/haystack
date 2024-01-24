@@ -7,6 +7,7 @@ loaders:
         "es8",
         "opensearch",
         "memory",
+        "mongodb_atlas",
         "sql",
         "faiss",
         "weaviate",

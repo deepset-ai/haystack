@@ -39,8 +39,37 @@ def test_web_search_with_site_keyword():
     assert len(result["documents"]) > 0
     assert isinstance(result["documents"][0], Document)
     assert all(
-        ["nasa" in doc.meta["link"] or "lifewire" in doc.meta["link"] for doc in result["documents"]]
+        "nasa" in doc.meta["link"] or "lifewire" in doc.meta["link"] for doc in result["documents"]
     ), "Some documents are not from the specified sites lifewire.com or nasa.gov."
+
+
+@pytest.mark.skipif(
+    not os.environ.get("SEARCHAPI_API_KEY", None),
+    reason="Please export an env var called SEARCHAPI_API_KEY containing the searchapi.io API key to run this test.",
+)
+@pytest.mark.integration
+def test_web_search_with_searchapi():
+    ws = WebSearch(api_key=os.environ.get("SEARCHAPI_API_KEY", None), search_engine_provider="SearchApi")
+    result, _ = ws.run(query="What is the hometown of the reigning men's U.S. Open champion?")
+    assert "documents" in result
+    assert len(result["documents"]) > 0
+    assert isinstance(result["documents"][0], Document)
+
+
+@pytest.mark.skipif(
+    not os.environ.get("SEARCHAPI_API_KEY", None),
+    reason="Please export an env var called SEARCHAPI_API_KEY containing the searchapi.io API key to run this test.",
+)
+@pytest.mark.integration
+def test_web_search_with_searchapi_with_site_keyword():
+    ws = WebSearch(api_key=os.environ.get("SEARCHAPI_API_KEY", None), search_engine_provider="SearchApi")
+    result, _ = ws.run(query='site:openai.com OR site:langchain.com "Agent types"')
+    assert "documents" in result
+    assert len(result["documents"]) > 0
+    assert isinstance(result["documents"][0], Document)
+    assert all(
+        "langchain" in doc.meta["link"] or "openai" in doc.meta["link"] for doc in result["documents"]
+    ), "Some documents are not from the specified sites openai.com or langchain.com."
 
 
 @pytest.mark.unit

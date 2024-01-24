@@ -41,7 +41,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         :param api_key: The Anthropic API key.
         :param kwargs: Additional keyword arguments passed to the underlying model. The list of Anthropic-relevant
         kwargs includes: stop_sequences, temperature, top_p, top_k, and stream. For more details about these kwargs,
-        see Anthropic's [documentation](https://console.anthropic.com/docs/api/reference).
+        see Anthropic's [documentation](https://docs.anthropic.com/claude/reference/complete_post).
         """
         super().__init__(model_name_or_path)
         if not isinstance(api_key, str) or len(api_key) == 0:
@@ -204,7 +204,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             status_codes_to_retry = [429]
 
         try:
-            res = request_with_retry(
+            response = request_with_retry(
                 attempts=attempts,
                 status_codes_to_retry=status_codes_to_retry,
                 method="POST",
@@ -220,17 +220,17 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             )
         except requests.HTTPError as err:
             res = err.response
-            if res.status_code == 429:
-                raise AnthropicRateLimitError(f"API rate limit exceeded: {res.text}")
-            if res.status_code == 401:
-                raise AnthropicUnauthorizedError(f"API key is invalid: {res.text}")
+            if res.status_code == 429:  # type: ignore[union-attr]
+                raise AnthropicRateLimitError(f"API rate limit exceeded: {res.text}")  # type: ignore[union-attr]
+            if res.status_code == 401:  # type: ignore[union-attr]
+                raise AnthropicUnauthorizedError(f"API key is invalid: {res.text}")  # type: ignore[union-attr]
 
             raise AnthropicError(
-                f"Anthropic returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
-                status_code=res.status_code,
+                f"Anthropic returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",  # type: ignore[union-attr]
+                status_code=res.status_code,  # type: ignore[union-attr]
             )
 
-        return res
+        return response
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:

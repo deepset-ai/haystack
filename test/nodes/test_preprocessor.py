@@ -1,12 +1,15 @@
 import sys
 from pathlib import Path
 from typing import Any, Optional, List
+from unittest import mock
 from unittest.mock import Mock
 
 import nltk.data
 import pytest
+import tiktoken
 from _pytest.monkeypatch import MonkeyPatch
 from _pytest.tmpdir import TempPathFactory
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from haystack import Document
 from haystack.nodes.file_converter.pdf import PDFToTextConverter
@@ -82,6 +85,44 @@ def patched_nltk_data_path(module_tmp_dir: Path, monkeypatch: MonkeyPatch, tmp_p
     monkeypatch.setattr(nltk, nltk.download.__name__, patched_download)
 
     return tmp_path
+
+
+@pytest.fixture
+def mock_huggingface_tokenizer():
+    class MockTokenizer(PreTrainedTokenizerBase):
+        """Simple Mock tokenizer splitting the text into 2-character chunks."""
+
+        @staticmethod
+        def tokenize(text, **kwargs):
+            return [text[i : i + 2] for i in range(0, len(text), 2)]
+
+        @staticmethod
+        def encode_plus(text, **kwargs):
+            return Mock(offset_mapping=[(i, min(len(text), i + 2)) for i in range(0, len(text), 2)])
+
+    mock_tokenizer_instance = MockTokenizer()
+
+    with mock.patch.object(AutoTokenizer, "from_pretrained", return_value=mock_tokenizer_instance):
+        yield mock_tokenizer_instance
+
+
+@pytest.fixture
+def mock_tiktoken_tokenizer():
+    class MockTokenizer:
+        """Simple Mock tokenizer "encoding" the text into a 0 for every 5-character chunk."""
+
+        @staticmethod
+        def encode(text, **kwargs):
+            return [0 for i in range(0, len(text), 5)]
+
+        @staticmethod
+        def decode_single_token_bytes(token):
+            return b"mock "
+
+    mock_tokenizer_instance = MockTokenizer()
+
+    with mock.patch.object(tiktoken, "get_encoding", return_value=mock_tokenizer_instance):
+        yield mock_tokenizer_instance
 
 
 @pytest.mark.unit
@@ -179,6 +220,75 @@ def test_preprocess_word_split():
 
 
 @pytest.mark.unit
+def test_preprocess_tiktoken_token_split(mock_tiktoken_tokenizer):
+    raw_docs = [
+        "This is a document. It has two sentences and eleven words.",
+        "This is a document with a long sentence (longer than my split length), it has seventeen words.",
+    ]
+    docs = [Document(content=content) for content in raw_docs]
+    split_length = 10
+    token_split_docs_not_respecting_sentences = PreProcessor(
+        split_by="token",
+        split_length=split_length,
+        split_respect_sentence_boundary=False,
+        split_overlap=0,
+        tokenizer="tiktoken",
+    ).process(docs)
+    assert len(token_split_docs_not_respecting_sentences) == 4
+    enc = tiktoken.get_encoding("cl100k_base")
+    split_documents_encoded = [
+        enc.encode(d.content, allowed_special="all", disallowed_special=())
+        for d in token_split_docs_not_respecting_sentences
+    ]
+    assert all([len(d) <= split_length for d in split_documents_encoded])
+    token_split_docs_respecting_sentences = PreProcessor(
+        split_by="token",
+        split_length=split_length,
+        split_respect_sentence_boundary=True,
+        split_overlap=0,
+        tokenizer="tiktoken",
+    ).process(docs)
+    assert len(token_split_docs_respecting_sentences) == 3  # should not be more than there are sentences
+
+
+@pytest.mark.unit
+def test_preprocess_huggingface_token_split(mock_huggingface_tokenizer):
+    raw_docs = [
+        "This is a document. It has two sentences and eleven words.",
+        "This is a document with a long sentence (longer than my split length), it has seventeen words.",
+    ]
+    docs = [Document(content=content) for content in raw_docs]
+    split_length = 10
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    token_split_docs_not_respecting_sentences = PreProcessor(
+        split_by="token",
+        split_length=split_length,
+        split_respect_sentence_boundary=False,
+        split_overlap=0,
+        tokenizer=tokenizer,
+    ).process(docs)
+    assert len(token_split_docs_not_respecting_sentences) == 8
+    split_documents_retokenized = [tokenizer.tokenize(d.content) for d in token_split_docs_not_respecting_sentences]
+    assert all([len(d) <= split_length for d in split_documents_retokenized])
+    token_split_docs_respecting_sentences = PreProcessor(
+        split_by="token",
+        split_length=split_length,
+        split_respect_sentence_boundary=True,
+        split_overlap=0,
+        tokenizer=tokenizer,
+    ).process(docs)
+    assert len(token_split_docs_respecting_sentences) == 3  # should not be more than there are sentences
+    token_split_docs_not_respecting_sentences_instantiate_by_name = PreProcessor(
+        split_by="token",
+        split_length=split_length,
+        split_respect_sentence_boundary=False,
+        split_overlap=0,
+        tokenizer="bert-base-uncased",
+    ).process(docs)
+    assert token_split_docs_not_respecting_sentences == token_split_docs_not_respecting_sentences_instantiate_by_name
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize("split_length_and_results", [(1, 3), (2, 2)])
 def test_preprocess_passage_split(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -237,7 +347,7 @@ def test_id_hash_keys_from_pipeline_params():
     preprocessor = PreProcessor(split_length=2, split_respect_sentence_boundary=False)
     output, _ = preprocessor.run(documents=[document_1, document_2], id_hash_keys=["content", "meta"])
     documents = output["documents"]
-    unique_ids = set(d.id for d in documents)
+    unique_ids = {d.id for d in documents}
 
     assert len(documents) == 4
     assert len(unique_ids) == 4
@@ -528,12 +638,12 @@ def test_preprocessor_very_long_document(caplog):
     preproc = PreProcessor(
         clean_empty_lines=False, clean_header_footer=False, clean_whitespace=False, split_by=None, max_chars_check=10
     )
-    documents = [Document(content=str(i) + (f"." * i)) for i in range(0, 30, 3)]
+    documents = [Document(content=str(i) + ("." * i)) for i in range(0, 30, 3)]
     results = preproc.process(documents)
     assert len(results) == 19
     assert any(d.content.startswith(".") for d in results)
     assert any(not d.content.startswith(".") for d in results)
-    assert f"characters long after preprocessing, where the maximum length should be 10." in caplog.text
+    assert "characters long after preprocessing, where the maximum length should be 10." in caplog.text
 
 
 @pytest.mark.unit

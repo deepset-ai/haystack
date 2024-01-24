@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed a bug that caused the EmbeddingRetriever to return no documents when used with a MongoDBAtlasDocumentStore. MongoDBAtlasDocumentStore now accepts a vector_search_index parameter, which needs to be created before in the MongoDB Atlas Web UI following [their documentation](https://www.mongodb.com/docs/atlas/atlas-vector-search/create-index/#std-label-avs-create-index).

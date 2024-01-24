@@ -1,5 +1,8 @@
 import pytest
+from unittest.mock import patch
+import logging
 
+import torch
 import haystack
 from haystack.utils.torch_utils import ListDataset
 from haystack.schema import Document
@@ -46,7 +49,7 @@ def test_summarization_no_docs(summarizer):
 
 
 @pytest.mark.unit
-def test_summarization_no_docs(summarizer):
+def test_summarization_no_docs_min_max(summarizer):
     summarizer.min_length = 10
     summarizer.max_length = 1
     with pytest.raises(ValueError, match="min_length cannot be greater than max_length"):
@@ -83,3 +86,26 @@ def test_summarization_batch_multiple_doc_lists(summarizer):
     assert len(summarized_docs[0]) == len(DOCS)
     for expected_summary, summary in zip(EXPECTED_SUMMARIES, summarized_docs[0]):
         assert expected_summary == summary.meta["summary"]
+
+
+@pytest.mark.unit
+def test_init_called_with():
+    with patch("haystack.nodes.TransformersSummarizer.__init__") as mock_summarizer_init:
+        mock_summarizer_init.return_value = None
+        _ = TransformersSummarizer(
+            model_name_or_path="fake_model", use_gpu=False, pipeline_kwargs={"torch_dtype": torch.float16}
+        )
+        mock_summarizer_init.assert_called_once_with(
+            model_name_or_path="fake_model", use_gpu=False, pipeline_kwargs={"torch_dtype": torch.float16}
+        )
+
+
+@pytest.mark.unit
+def test_summarization_device_warning(caplog, mock_models):
+    with caplog.at_level(logging.WARNING):
+        _ = TransformersSummarizer(
+            model_name_or_path="irrelevant/anyway",
+            use_gpu=True,
+            devices=[torch.device("cuda:0"), torch.device("cuda:1")],
+        )
+    assert "Multiple devices are not supported" in caplog.text

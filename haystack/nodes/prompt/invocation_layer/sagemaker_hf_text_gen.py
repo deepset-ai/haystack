@@ -88,7 +88,7 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
         """
         super().__init__(model_name_or_path, max_length=max_length, **kwargs)
         try:
-            session = SageMakerHFTextGenerationInvocationLayer.create_session(
+            session = self.get_aws_session(
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
                 aws_session_token=aws_session_token,
@@ -199,11 +199,11 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
             return generated_texts
         except requests.HTTPError as err:
             res = err.response
-            if res.status_code == 429:
-                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}") from err
+            if res.status_code == 429:  # type: ignore[union-attr]
+                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}") from err  # type: ignore[union-attr]
             raise SageMakerInferenceError(
-                f"SageMaker Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
-                status_code=res.status_code,
+                f"SageMaker Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",  # type: ignore[union-attr]
+                status_code=res.status_code,  # type: ignore[union-attr]
             ) from err
 
     @classmethod
@@ -214,7 +214,7 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
 
         As of June 23, Sagemaker endpoints support the JSON payload format from the
         https://github.com/huggingface/text-generation-inference project. At the time of writing this docstring,
-        only Falcon models were deployed using this format. See pyton client implementation from the
+        only Falcon models were deployed using this format. See python client implementation from the
         https://github.com/huggingface/text-generation-inference for more details.
 
         :return: A payload used for testing if the current endpoint is working.

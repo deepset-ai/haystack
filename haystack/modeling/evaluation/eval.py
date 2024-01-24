@@ -194,12 +194,15 @@ class Evaluator:
             logger.info("\n _________ %s _________", head["task_name"])
             for metric_name, metric_val in head.items():
                 # log with experiment tracking framework (e.g. Mlflow)
-                if logging:
-                    if not metric_name in ["preds", "labels"] and not metric_name.startswith("_"):
-                        if isinstance(metric_val, numbers.Number):
-                            tracker.track_metrics(
-                                metrics={f"{dataset_name}_{metric_name}_{head['task_name']}": metric_val}, step=steps
-                            )
+                if (
+                    logging
+                    and not metric_name in ["preds", "labels"]
+                    and not metric_name.startswith("_")
+                    and isinstance(metric_val, numbers.Number)
+                ):
+                    tracker.track_metrics(
+                        metrics={f"{dataset_name}_{metric_name}_{head['task_name']}": metric_val}, step=steps
+                    )
                 # print via standard python logger
                 if print:
                     if metric_name == "report":

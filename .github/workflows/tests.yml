@@ -22,8 +22,6 @@ on:
       - "!docs/**/*.py"
 
 env:
-  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-  SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
   PYTHON_VERSION: "3.8"
@@ -32,7 +30,7 @@ jobs:
   black:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -114,7 +112,6 @@ jobs:
           - nodes
           - agents
           - cli
-          - preview
           - prompt
           - pipelines
           - utils
@@ -125,13 +122,13 @@ jobs:
         include:
           - topic: document_stores
             os: ubuntu-latest
-            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
+            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,mongodb,inference,crawler,preprocessing,file-conversion,pdf,ocr,metrics,dev
           - topic: document_stores
             os: windows-latest
-            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
+            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,mongodb,inference,crawler,preprocessing,file-conversion,pdf,ocr,metrics,dev
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -142,16 +139,6 @@ jobs:
 
       - name: Run
         run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/${{ matrix.topic }}
-
-      - name: Coveralls Parallel
-        # We upload only coverage for ubuntu as handling both os
-        # complicates the workflow too much for little to no gain
-        if: matrix.os == 'ubuntu-latest'
-        uses: coverallsapp/github-action@v2
-        with:
-          path-to-lcov: coverage.xml
-          flag-name: ${{ matrix.topic }}
-          parallel: true
 
       - name: Calculate alert data
         id: calculator
@@ -184,15 +171,6 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  upload-coverage:
-    needs: unit-tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Coveralls Finished
-        uses: coverallsapp/github-action@v2
-        with:
-          parallel-finished: true
-
   integration-tests-elasticsearch7:
     name: Integration / Elasticsearch7 / ${{ matrix.os }}
     needs:
@@ -211,7 +189,7 @@ jobs:
         ports:
           - 9200:9200
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -266,7 +244,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     services:
       elasticsearch:
-        image: elasticsearch:8.8.0
+        image: elasticsearch:8.10.2
         env:
           discovery.type: "single-node"
           xpack.security.enabled: "false"
@@ -274,7 +252,7 @@ jobs:
         ports:
           - 9200:9200
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -283,9 +261,36 @@ jobs:
       - name: Install Haystack
         run: pip install .[elasticsearch8,dev,preprocessing,inference]
 
+      - name: Make elasticsearch comfortable with a disk almost full
+        run: |
+          curl -X PUT "localhost:9200/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+          {
+            "persistent": {
+              "cluster.routing.allocation.disk.watermark.low": "90%",
+              "cluster.routing.allocation.disk.watermark.low.max_headroom": "100GB",
+              "cluster.routing.allocation.disk.watermark.high": "95%",
+              "cluster.routing.allocation.disk.watermark.high.max_headroom": "20GB",
+              "cluster.routing.allocation.disk.watermark.flood_stage": "97%",
+              "cluster.routing.allocation.disk.watermark.flood_stage.max_headroom": "5GB",
+              "cluster.routing.allocation.disk.watermark.flood_stage.frozen": "97%",
+              "cluster.routing.allocation.disk.watermark.flood_stage.frozen.max_headroom": "5GB"
+            }
+          }
+          '
+          curl -X PUT "localhost:9200/*/_settings?expand_wildcards=all&pretty" -H 'Content-Type: application/json' -d'
+          {
+            "index.blocks.read_only_allow_delete": null
+          }
+          '
+
       - name: Run tests
         run: |
-          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_elasticsearch.py
+          pytest -x -m"document_store and integration" test/document_stores/test_elasticsearch.py
+
+      - name: logs
+        if: failure()
+        run: |
+          docker logs "${{ job.services.elasticsearch.id }}"
 
       - name: Calculate alert data
         id: calculator
@@ -328,7 +333,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -390,7 +395,7 @@ jobs:
         ports:
           - 9200:9200
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -444,7 +449,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -498,7 +503,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -562,7 +567,7 @@ jobs:
         ports:
           - 8080:8080
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -616,7 +621,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -672,7 +677,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -726,7 +731,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -780,7 +785,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
