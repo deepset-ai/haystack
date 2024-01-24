@@ -53,3 +53,9 @@ jobs:
       - name: Debug
         run: |
           cat relnotes.md
+
+      - uses: ncipollo/release-action@v1
+        with:
+          bodyFile: "relnotes.md"
+          prerelease: ${{ steps.version.outputs.current_pre_release }}
+          allowUpdates: true          
