@@ -222,21 +222,20 @@ class TestOpenAPIServiceToFunctions:
 
     def test_run_with_file_source_and_none_system_messages(self, json_serperdev_openapi_spec):
         service = OpenAPIServiceToFunctions()
-        # write the spec to NamedTemporaryFile and check that it is parsed correctly
-        with tempfile.NamedTemporaryFile() as tmp:
-            tmp.write(json_serperdev_openapi_spec.encode("utf-8"))
-            tmp.seek(0)
-            result = service.run(sources=[tmp.name])
-            assert len(result["documents"]) == 1
-            doc = result["documents"][0]
+        spec_stream = ByteStream.from_string(json_serperdev_openapi_spec)
 
-            # check that the content is as expected
-            assert (
-                doc.content
-                == '{"name": "search", "description": "Search the web with Google", "parameters": {"type": "object", '
-                '"properties": {"requestBody": {"type": "object", "properties": {"q": {"type": "string"}}}}}}'
-            )
+        # we now omit the system_messages argument
+        result = service.run(sources=[spec_stream])
+        assert len(result["documents"]) == 1
+        doc = result["documents"][0]
 
-            # check that the metadata is as expected
-            assert "system_message" not in doc.meta
-            assert doc.meta["spec"] == json.loads(json_serperdev_openapi_spec)
+        # check that the content is as expected
+        assert (
+            doc.content
+            == '{"name": "search", "description": "Search the web with Google", "parameters": {"type": "object", '
+            '"properties": {"requestBody": {"type": "object", "properties": {"q": {"type": "string"}}}}}}'
+        )
+
+        # check that the metadata is as expected, system_message should not be present
+        assert "system_message" not in doc.meta
+        assert doc.meta["spec"] == json.loads(json_serperdev_openapi_spec)
