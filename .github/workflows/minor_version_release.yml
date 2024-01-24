@@ -23,14 +23,11 @@ jobs:
           echo "current_release_minor=$(cut -d "." -f 1,2 < VERSION.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Create new version branch
-        # We tag the commit where we branch off as "<version>-rc0", so reno will know where to stop next
-        # time we generate release notes for "next minor".
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -m"v${{ steps.versions.outputs.current_release_minor }}.0-rc0" v${{ steps.versions.outputs.current_release_minor }}.0-rc0
           git checkout -b v${{ steps.versions.outputs.current_release_minor }}.x
-          git push -u origin v${{ steps.versions.outputs.current_release_minor }}.x --tags
+          git push -u origin v${{ steps.versions.outputs.current_release_minor }}.x
 
       - name: Bump version on v1.x
         shell: bash
@@ -43,6 +40,8 @@ jobs:
           cat VERSION.txt
           git add .
           git commit -m "Update unstable version to $NEW_VERSION"
+          # We tag the commit where we branch off as "<version>-rc0", so reno will know where to stop next
+          # time we generate release notes for "next minor".          
           VERSION_TAG="v$NEW_VERSION"
           git tag $VERSION_TAG -m"$VERSION_TAG"
           git push --atomic origin v1.x $VERSION_TAG
