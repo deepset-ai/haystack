@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Optional, Dict, Union, List, Any, Callable
+from typing import cast, Generator, Optional, Dict, Union, List, Any, Callable
 import logging
 
 import requests
@@ -190,8 +190,9 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         :param response: The response object from the server.
         :param stream_handler: The handler to invoke on each token.
         :param stop_words: The stop words to ignore.
-        """                
-        client = sseclient.SSEClient(response.iter_content(chunk_size=1))
+        """
+        byte_stream_generator = cast(Generator[bytes, None, None], response.iter_content(chunk_size=1))
+        client = sseclient.SSEClient(byte_stream_generator)
         tokens: List[str] = []
         try:
             for event in client.events():
