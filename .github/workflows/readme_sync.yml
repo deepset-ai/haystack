@@ -46,7 +46,7 @@ jobs:
         # Instead of putting more logic into the previous step, let's just assume that commits on `main`
         # will always be synced to the current `X.Y-unstable` version on Readme
         id: sync-main
-        if: github.ref_name == 'main' && github.event_name == 'push'
+        if: github.ref_name == 'v1.x' && github.event_name == 'push'
         uses: readmeio/rdme@8.3.1
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
