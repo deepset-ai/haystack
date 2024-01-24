@@ -2,14 +2,14 @@
 
 import math
 
-from typing import List, Optional, Dict, Union, Tuple
+from typing import Any, List, Optional, Dict, Union, Tuple
 import logging
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from haystack.nodes import BaseComponent, BaseRetriever, EmbeddingRetriever
 from haystack.document_stores import KeywordDocumentStore
-from haystack.schema import Document
+from haystack.schema import Document, MultiLabel
 
 
 logger = logging.getLogger(__name__)
@@ -77,15 +77,18 @@ class FileSimilarityRetriever(BaseComponent):
         self.use_existing_embedding = use_existing_embedding
         self.executor = ThreadPoolExecutor(max_workers=len(self.retrievers))
 
-    # pylint: disable=arguments-renamed
     def run(
         self,
-        query: str,
-        top_k: Optional[int] = None,
-        indices: Optional[Union[str, List[Union[str, None]]]] = None,
-        filters: Optional[Dict] = None,
-        file_index: Optional[str] = None,
-    ) -> Tuple[Dict, str]:
+        query: Union[str, List[str], None] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[Dict[Any, Any]] = None,
+        top_k: Optional[int] = None,  # Additional parameter with a default value
+        indices: Optional[Union[str, List[Union[str, None]]]] = None,  # Additional parameter with a default value
+        filters: Optional[Dict[Any, Any]] = None,  # Additional parameter with a default value
+        file_index: Optional[str] = None,  # Additional parameter with a default value
+    ) -> Tuple[Dict[Any, Any], str]:
         """
         Performs file similarity retrieval using all retrievers that this node was initialized with.
         The query should be the file aggregator value that will be used to get all relevant documents from the
@@ -97,23 +100,48 @@ class FileSimilarityRetriever(BaseComponent):
         :param file_index: The index that the query file should be retrieved from.
         :param filters: Filters that should be applied for each retriever.
         """
-        retrieved_docs = self.retrieve(
-            query=query, top_k=top_k, indices=indices, file_index=file_index, filters=filters
-        )
+        if isinstance(query, list):
+            # Handle the case where query is a list
+            # For example, take the first element or concatenate
+            query = query[0]  # or your own logic to handle a list
+
+        if isinstance(indices, list):
+            # Convert indices to the simpler type if necessary
+            indices = [index for index in indices if index is not None]  # Remove None values
+
+        if query is None:
+            raise ValueError("Query cannot be None.")
+
+        if query is not None:
+            retrieved_docs = self.retrieve(
+                query=query, top_k=top_k, indices=indices, file_index=file_index, filters=filters
+            )
 
         return {"documents": retrieved_docs}, "output_1"
 
-    # pylint: disable=arguments-differ
     def run_batch(
         self,
-        queries: List[str],
+        queries: Union[str, List[str], None] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        params: Optional[Dict[Any, Any]] = None,
+        debug: Optional[bool] = None,
+        # Additional parameters with default values
         top_k: Optional[int] = None,
         indices: Optional[Union[str, List[Union[str, None]]]] = None,
-        filters: Optional[Dict] = None,
+        filters: Optional[Dict[Any, Any]] = None,
         file_index: Optional[str] = None,
-    ) -> Tuple[Dict, str]:
+    ) -> Any:
+        # Convert complex types to simpler types
+        if queries is not None:
+            simple_queries = [
+                q[0] if isinstance(q, list) else q for q in queries
+            ]  # Assuming you want the first query if it's a list of lists
+
         results = []
-        for query in queries:
+        for query in simple_queries:
             results.append(
                 self.retrieve(query=query, top_k=top_k, indices=indices, filters=filters, file_index=file_index)
             )
@@ -210,8 +238,22 @@ class FileSimilarityRetriever(BaseComponent):
         filters: Optional[Dict] = None,
     ) -> List[List[Document]]:
         doc_store = retriever.document_store
+        if doc_store is None:
+            raise ValueError("Document store cannot be None")
+
         top_k = retriever.top_k
-        query_embs = [document.embedding for document in documents]
+
+        # Filter out documents where the embedding is None
+        valid_documents = [doc for doc in documents if doc.embedding is not None]
+        if not valid_documents:
+            raise ValueError("No valid document embeddings found for query.")
+
+        # Filter out documents where the embedding is None and create the query_embs list
+        # redundant check to pass mypy linter
+        query_embs = [doc.embedding for doc in valid_documents if doc.embedding is not None]
+        if not query_embs:
+            raise ValueError("All document embeddings are None")
+
         results: List[List[Document]] = doc_store.query_by_embedding_batch(
             query_embs=query_embs, filters=filters, index=index, top_k=top_k
         )

@@ -816,13 +816,16 @@ class DistillationDataSilo(DataSilo):
                 batch.append(x)
                 corresponding_chunks.append(i)
                 if len(batch) == self.teacher_batch_size:
+                    # Convert the list of tuples to a list of lists
+                    data_as_list_of_lists = [list(item) for item in batch]
                     self._pass_batches(
-                        batch, corresponding_chunks, teacher_outputs, tensor_names
+                        data_as_list_of_lists, corresponding_chunks, teacher_outputs, tensor_names
                     )  # doing forward pass on teacher model
                     batch = []
                     corresponding_chunks = []
         if batch:
-            self._pass_batches(batch, corresponding_chunks, teacher_outputs, tensor_names)
+            data_as_list_of_lists = [list(item) for item in batch]
+            self._pass_batches(data_as_list_of_lists, corresponding_chunks, teacher_outputs, tensor_names)
 
         # appending teacher outputs to original dataset
         for dataset, teacher_output in zip(concat_datasets.datasets, teacher_outputs):
