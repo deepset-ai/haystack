@@ -1,6 +1,5 @@
-from typing import Any, Dict, Union
+from typing import Any, Dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, DeviceMap
 
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_import:
