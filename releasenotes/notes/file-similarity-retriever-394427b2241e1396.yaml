@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Addition of FileSimilarityRetriever to haystack
