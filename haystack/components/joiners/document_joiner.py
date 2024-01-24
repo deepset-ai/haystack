@@ -142,10 +142,18 @@ class DocumentJoiner:
 
         scores_map = defaultdict(int)
         documents_map = {}
-        for documents in document_lists:
+        weights = self.weights if self.weights else [1 / len(document_lists)] * len(document_lists)
+
+        # Calculate weighted reciprocal rank fusion score
+        for documents, weight in zip(document_lists, weights):
             for rank, doc in enumerate(documents):
-                scores_map[doc.id] += 1 / (k + rank)
+                scores_map[doc.id] += (weight * len(document_lists)) / (k + rank)
                 documents_map[doc.id] = doc
+
+        # Normalize scores. Note: len(results) / k is the maximum possible score,
+        # achieved by being ranked first in all doc lists with non-zero weight.
+        for id in scores_map:
+            scores_map[id] /= len(document_lists) / k
 
         for doc in documents_map.values():
             doc.score = scores_map[doc.id]
