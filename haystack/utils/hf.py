@@ -40,16 +40,3 @@ def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]):
 
         if isinstance(v, dict):
             deserialize_hf_model_kwargs(v)
-
-
-def resolve_hf_device_map(device_map: Union[str, Dict]) -> ComponentDevice:
-    """
-    Convert a HuggingFace device_map into a ComponentDevice
-    """
-    # Resolve device if device_map is provided in model_kwargs
-    if isinstance(device_map, str):
-        component_device = ComponentDevice.from_str(device_map)
-    else:
-        assert isinstance(device_map, dict)
-        component_device = ComponentDevice.from_multiple(DeviceMap.from_hf(device_map))
-    return component_device

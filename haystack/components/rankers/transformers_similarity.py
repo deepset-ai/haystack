@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Union
 from haystack import ComponentError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, DeviceMap
-from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs, resolve_hf_device_map
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ class TransformersSimilarityRanker:
                     "Ignoring `device` and using `device_map`."
                 )
             # Resolve device if device_map is provided in model_kwargs
-            device_map = resolve_hf_device_map(model_kwargs["device_map"]).to_hf()
+            device_map = model_kwargs["device_map"]
         else:
             device_map = ComponentDevice.resolve_device(device).to_hf()
 
