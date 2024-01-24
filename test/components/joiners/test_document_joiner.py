@@ -126,3 +126,43 @@ class TestDocumentJoiner:
         documents_2 = [Document(content="d", score=0.2)]
         output = joiner.run([documents_1, documents_2])
         assert output["documents"] == documents_1 + documents_2
+
+    def test_test_score_norm_with_rrf(self):
+        """
+        Verifies reciprocal rank fusion (RRF) of the DocumentJoiner component with various weight configurations.
+        It creates a set of documents, forms them into two lists, and then applies multiple DocumentJoiner
+        instances with distinct weights to these lists. The test checks if the resulting
+        joined documents are correctly sorted in descending order by score, ensuring the RRF ranking works as
+        expected under different weighting scenarios.
+        """
+        num_docs = 6
+        docs = []
+
+        for i in range(num_docs):
+            docs.append(Document(content=f"doc{i}"))
+
+        docs_2 = [docs[0], docs[4], docs[2], docs[5], docs[1]]
+        document_lists = [docs, docs_2]
+
+        joiner_1 = DocumentJoiner(join_mode="reciprocal_rank_fusion", weights=[0.5, 0.5])
+
+        joiner_2 = DocumentJoiner(join_mode="reciprocal_rank_fusion", weights=[7, 7])
+
+        joiner_3 = DocumentJoiner(join_mode="reciprocal_rank_fusion", weights=[0.7, 0.3])
+
+        joiner_4 = DocumentJoiner(join_mode="reciprocal_rank_fusion", weights=[0.6, 0.4])
+
+        joiner_5 = DocumentJoiner(join_mode="reciprocal_rank_fusion", weights=[1, 0])
+
+        joiners = [joiner_1, joiner_2, joiner_3, joiner_4, joiner_5]
+
+        for index, joiner in enumerate(joiners):
+            join_results = joiner.run(documents=document_lists)
+            is_sorted = all(
+                join_results["documents"][i].score >= join_results["documents"][i + 1].score
+                for i in range(len(join_results["documents"]) - 1)
+            )
+
+            assert (
+                is_sorted
+            ), "Documents are not sorted in descending order by score, there is an issue with rff ranking"
