@@ -87,7 +87,7 @@ class FileSimilarityRetriever(BaseComponent):
         top_k: Optional[int] = None,  # Additional parameter with a default value
         indices: Optional[Union[str, List[Union[str, None]]]] = None,  # Additional parameter with a default value
         filters: Optional[Dict[Any, Any]] = None,  # Additional parameter with a default value
-        file_index: Optional[str] = None  # Additional parameter with a default value
+        file_index: Optional[str] = None,  # Additional parameter with a default value
     ) -> Tuple[Dict[Any, Any], str]:
         """
         Performs file similarity retrieval using all retrievers that this node was initialized with.
@@ -111,7 +111,7 @@ class FileSimilarityRetriever(BaseComponent):
 
         if query is None:
             raise ValueError("Query cannot be None.")
-        
+
         if query is not None:
             retrieved_docs = self.retrieve(
                 query=query, top_k=top_k, indices=indices, file_index=file_index, filters=filters
@@ -132,12 +132,14 @@ class FileSimilarityRetriever(BaseComponent):
         top_k: Optional[int] = None,
         indices: Optional[Union[str, List[Union[str, None]]]] = None,
         filters: Optional[Dict[Any, Any]] = None,
-        file_index: Optional[str] = None
-    ) -> Any:        
+        file_index: Optional[str] = None,
+    ) -> Any:
         # Convert complex types to simpler types
         if queries is not None:
-            simple_queries = [q[0] if isinstance(q, list) else q for q in queries]  # Assuming you want the first query if it's a list of lists
-        
+            simple_queries = [
+                q[0] if isinstance(q, list) else q for q in queries
+            ]  # Assuming you want the first query if it's a list of lists
+
         results = []
         for query in simple_queries:
             results.append(
