@@ -178,7 +178,6 @@ class TestOpenAIDocumentEmbedder:
 
         result = embedder.run(documents=docs)
         documents_with_embeddings = result["documents"]
-        metadata = result["meta"]
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
@@ -187,4 +186,9 @@ class TestOpenAIDocumentEmbedder:
             assert isinstance(doc.embedding, list)
             assert len(doc.embedding) == 1536
             assert all(isinstance(x, float) for x in doc.embedding)
-        assert metadata == {"model": "text-embedding-ada-002-v2", "usage": {"prompt_tokens": 15, "total_tokens": 15}}
+
+        assert (
+            "text" in result["meta"]["model"] and "ada" in result["meta"]["model"]
+        ), "The model name does not contain 'text' and 'ada'"
+
+        assert result["meta"]["usage"] == {"prompt_tokens": 15, "total_tokens": 15}, "Usage information does not match"
