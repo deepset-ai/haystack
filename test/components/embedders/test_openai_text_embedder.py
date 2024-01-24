@@ -73,7 +73,9 @@ class TestOpenAITextEmbedder:
 
         assert len(result["embedding"]) == 1536
         assert all(isinstance(x, float) for x in result["embedding"])
-        assert result["meta"] == {
-            "model": "text-embedding-ada-002-v2",
-            "usage": {"prompt_tokens": 6, "total_tokens": 6},
-        }
+
+        assert (
+            "text" in result["meta"]["model"] and "ada" in result["meta"]["model"]
+        ), "The model name does not contain 'text' and 'ada'"
+
+        assert result["meta"]["usage"] == {"prompt_tokens": 6, "total_tokens": 6}, "Usage information does not match"

@@ -1,11 +1,10 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from haystack.core.component import component
+import logging
+
 from haystack.core.pipeline import Pipeline
 from haystack.testing.sample_components import AddFixedValue, SelfLoop
-
-import logging
 
 logging.basicConfig(level=logging.DEBUG)
 

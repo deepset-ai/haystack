@@ -1,7 +1,17 @@
 loaders:
-  - type: loaders.CustomPythonLoader
+  - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/embedders]
-    modules: ["openai_document_embedder", "openai_text_embedder", "sentence_transformers_document_embedder", "sentence_transformers_text_embedder"]
+    modules:
+      [
+        "azure_document_embedder",
+        "azure_text_embedder",
+        "hugging_face_tei_document_embedder",
+        "hugging_face_tei_text_embedder",
+        "openai_document_embedder",
+        "openai_text_embedder",
+        "sentence_transformers_document_embedder",
+        "sentence_transformers_text_embedder"
+      ]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -12,7 +22,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Transforms queries into vectors to look for similar or relevant Documents.
   category_slug: haystack-classes
   title: Embedder API

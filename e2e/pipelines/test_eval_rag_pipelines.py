@@ -7,7 +7,7 @@ from haystack.components.embedders import SentenceTransformersDocumentEmbedder, 
 from haystack.components.generators import HuggingFaceLocalGenerator
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
-from haystack.dataclasses import Document
+from haystack.dataclasses import Document, GeneratedAnswer
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.evaluation.eval import eval
 from haystack.evaluation.metrics import Metric
@@ -59,9 +59,54 @@ def test_bm25_rag_pipeline(tmp_path):
     ]
 
     expected_outputs = [
-        {"llm": {"replies": ["Jean"]}},
-        {"llm": {"replies": ["Mark"]}},
-        {"llm": {"replies": ["Giorgio"]}},
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Jean",
+                        query="Who lives in Paris?",
+                        documents=[
+                            Document(content="My name is Jean and I live in Paris.", score=0.33144005810482535),
+                            Document(content="My name is Giorgio and I live in Rome.", score=-0.17938556566116537),
+                            Document(content="My name is Mark and I live in Berlin.", score=-0.17938556566116537),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Mark",
+                        query="Who lives in Berlin?",
+                        documents=[
+                            Document(content="My name is Mark and I live in Berlin.", score=0.33144005810482535),
+                            Document(content="My name is Giorgio and I live in Rome.", score=-0.17938556566116537),
+                            Document(content="My name is Jean and I live in Paris.", score=-0.17938556566116537),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Giorgio",
+                        query="Who lives in Rome?",
+                        documents=[
+                            Document(content="My name is Giorgio and I live in Rome.", score=0.33144005810482535),
+                            Document(content="My name is Mark and I live in Berlin.", score=-0.17938556566116537),
+                            Document(content="My name is Jean and I live in Paris.", score=-0.17938556566116537),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
     ]
 
     eval_result = eval(rag_pipeline, inputs=inputs, expected_outputs=expected_outputs)
@@ -71,13 +116,17 @@ def test_bm25_rag_pipeline(tmp_path):
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == rag_pipeline.to_dict()
 
-    metrics = eval_result.calculate_metrics(Metric.EM)
+    metrics_default = eval_result.calculate_metrics(Metric.EM, output_key="answers")
+    metrics_custom_parameters = eval_result.calculate_metrics(
+        Metric.EM, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+    )
     # Save metric results to json
-    metrics.save(tmp_path / "exact_match_score.json")
+    metrics_default.save(tmp_path / "exact_match_score.json")
 
-    assert metrics["exact_match"] == 1.0
+    assert metrics_default["exact_match"] == 1.0
+    assert metrics_custom_parameters["exact_match"] == 1.0
     with open(tmp_path / "exact_match_score.json", "r") as f:
-        assert metrics == json.load(f)
+        assert metrics_default == json.load(f)
 
 
 def test_embedding_retrieval_rag_pipeline(tmp_path):
@@ -142,9 +191,54 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     ]
 
     expected_outputs = [
-        {"llm": {"replies": ["Jean"]}},
-        {"llm": {"replies": ["Mark"]}},
-        {"llm": {"replies": ["Giorgio"]}},
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Jean",
+                        query="Who lives in Paris?",
+                        documents=[
+                            Document(content="My name is Jean and I live in Paris.", score=0.33144005810482535),
+                            Document(content="My name is Giorgio and I live in Rome.", score=-0.17938556566116537),
+                            Document(content="My name is Mark and I live in Berlin.", score=-0.17938556566116537),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Mark",
+                        query="Who lives in Berlin?",
+                        documents=[
+                            Document(content="My name is Mark and I live in Berlin.", score=0.33144005810482535),
+                            Document(content="My name is Giorgio and I live in Rome.", score=-0.17938556566116537),
+                            Document(content="My name is Jean and I live in Paris.", score=-0.17938556566116537),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Giorgio",
+                        query="Who lives in Rome?",
+                        documents=[
+                            Document(content="My name is Giorgio and I live in Rome.", score=0.33144005810482535),
+                            Document(content="My name is Mark and I live in Berlin.", score=-0.17938556566116537),
+                            Document(content="My name is Jean and I live in Paris.", score=-0.17938556566116537),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
     ]
 
     eval_result = eval(rag_pipeline, inputs=inputs, expected_outputs=expected_outputs)
@@ -154,10 +248,14 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == rag_pipeline.to_dict()
 
-    metrics = eval_result.calculate_metrics(Metric.EM)
+    metrics_default = eval_result.calculate_metrics(Metric.EM, output_key="answers")
+    metrics_custom_parameters = eval_result.calculate_metrics(
+        Metric.EM, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+    )
     # Save metric results to json
-    metrics.save(tmp_path / "exact_match_score.json")
+    metrics_default.save(tmp_path / "exact_match_score.json")
 
-    assert metrics["exact_match"] == 1.0
+    assert metrics_default["exact_match"] == 1.0
+    assert metrics_custom_parameters["exact_match"] == 1.0
     with open(tmp_path / "exact_match_score.json", "r") as f:
-        assert metrics == json.load(f)
+        assert metrics_default == json.load(f)
