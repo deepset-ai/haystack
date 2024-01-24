@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from haystack import ComponentError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice
+from haystack.utils import ComponentDevice, DeviceMap
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs, resolve_hf_device_map
 
 logger = logging.getLogger(__name__)
@@ -76,6 +76,7 @@ class TransformersSimilarityRanker:
         self.model_name_or_path = str(model)
         self.model = None
         self.tokenizer = None
+        self.device = None
         self.top_k = top_k
         self.token = token
         self.meta_fields_to_embed = meta_fields_to_embed or []
@@ -92,15 +93,13 @@ class TransformersSimilarityRanker:
                     "Ignoring `device` and using `device_map`."
                 )
             # Resolve device if device_map is provided in model_kwargs
-            device_map = model_kwargs.get("device_map")
-            assert device_map is not None
-            component_device = resolve_hf_device_map(device_map)
+            device_map = resolve_hf_device_map(model_kwargs["device_map"]).to_hf()
         else:
-            component_device = ComponentDevice.resolve_device(device)
-        self.device = component_device
+            device_map = ComponentDevice.resolve_device(device).to_hf()
+
         # Set up device_map which allows quantized loading and multi device inference
         # requires accelerate which is always installed when using `pip install transformers[torch]`
-        model_kwargs["device_map"] = component_device.to_hf()
+        model_kwargs["device_map"] = device_map
         self.model_kwargs = model_kwargs
 
         # Parameter validation
@@ -126,8 +125,8 @@ class TransformersSimilarityRanker:
             self.model = AutoModelForSequenceClassification.from_pretrained(
                 self.model_name_or_path, token=self.token, **self.model_kwargs
             )
-            self.model.eval()
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
+            self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -135,7 +134,7 @@ class TransformersSimilarityRanker:
         """
         serialization_dict = default_to_dict(
             self,
-            device=self.device.to_dict(),
+            device=None,
             model=self.model_name_or_path,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             top_k=self.top_k,
@@ -156,7 +155,8 @@ class TransformersSimilarityRanker:
         Deserialize this component from a dictionary.
         """
         init_params = data["init_parameters"]
-        init_params["device"] = ComponentDevice.from_dict(init_params["device"])
+        if init_params["device"] is not None:
+            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         deserialize_hf_model_kwargs(init_params["model_kwargs"])
 
         return default_from_dict(cls, data)

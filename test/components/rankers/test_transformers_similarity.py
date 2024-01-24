@@ -17,7 +17,7 @@ class TestSimilarityRanker:
         assert data == {
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
-                "device": ComponentDevice.resolve_device(None).to_dict(),
+                "device": None,
                 "top_k": 10,
                 "token": None,
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
@@ -45,7 +45,7 @@ class TestSimilarityRanker:
         assert data == {
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
-                "device": ComponentDevice.from_str("cuda:0").to_dict(),
+                "device": None,
                 "model": "my_model",
                 "token": None,  # we don't serialize valid tokens,
                 "top_k": 5,
@@ -74,7 +74,7 @@ class TestSimilarityRanker:
         assert data == {
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
-                "device": ComponentDevice.resolve_device(None).to_dict(),
+                "device": None,
                 "top_k": 10,
                 "token": None,
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
@@ -97,7 +97,7 @@ class TestSimilarityRanker:
         data = {
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
             "init_parameters": {
-                "device": ComponentDevice.from_str("cuda:0").to_dict(),
+                "device": None,
                 "model": "my_model",
                 "token": None,
                 "top_k": 5,
@@ -111,7 +111,7 @@ class TestSimilarityRanker:
         }
 
         component = TransformersSimilarityRanker.from_dict(data)
-        assert component.device == ComponentDevice.from_str("cuda:0")
+        assert component.device is None
         assert component.model_name_or_path == "my_model"
         assert component.token is None
         assert component.top_k == 5
@@ -123,7 +123,7 @@ class TestSimilarityRanker:
         # torch_dtype is correctly deserialized
         assert component.model_kwargs == {
             "torch_dtype": torch.float16,
-            "device_map": ComponentDevice.from_str("cuda:0").to_hf(),
+            "device_map": ComponentDevice.resolve_device(None).to_hf(),
         }
 
     @patch("torch.sigmoid")
@@ -136,6 +136,8 @@ class TestSimilarityRanker:
         )
         embedder.model = MagicMock()
         embedder.tokenizer = MagicMock()
+        embedder.device = MagicMock()
+        embedder.warm_up()
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
@@ -163,6 +165,7 @@ class TestSimilarityRanker:
             loss=None, logits=torch.FloatTensor([[-10.6859], [-8.9874]]), hidden_states=None, attentions=None
         )
         embedder.tokenizer = MagicMock()
+        embedder.device = MagicMock()
 
         documents = [Document(content="document number 0"), Document(content="document number 1")]
         out = embedder.run(query="test", documents=documents)
@@ -178,6 +181,7 @@ class TestSimilarityRanker:
             loss=None, logits=torch.FloatTensor([[0.955], [0.001]]), hidden_states=None, attentions=None
         )
         embedder.tokenizer = MagicMock()
+        embedder.device = MagicMock()
 
         documents = [Document(content="document number 0"), Document(content="document number 1")]
         out = embedder.run(query="test", documents=documents)
@@ -197,6 +201,12 @@ class TestSimilarityRanker:
     @patch("haystack.components.rankers.transformers_similarity.AutoModelForSequenceClassification.from_pretrained")
     def test_device_map_dict(self, mocked_automodel, mocked_autotokenizer):
         ranker = TransformersSimilarityRanker("model", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}})
+
+        class MockedModel:
+            def __init__(self):
+                self.hf_device_map = {"layer_1": 1, "classifier": "cpu"}
+
+        mocked_automodel.return_value = MockedModel()
         ranker.warm_up()
 
         mocked_automodel.assert_called_once_with("model", token=None, device_map={"layer_1": 1, "classifier": "cpu"})
