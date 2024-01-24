@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/writers]
-    modules: ["document_writer"]
+    search_path: [../../../haystack/components/extractors]
+    modules: ["named_entity_extractor"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Writes Documents to a DocumentStore.
+  excerpt: Extracts predefined entities out of a piece of text.
   category_slug: haystack-classes
-  title: DocumentWriter API
-  slug: writer-api
-  order: 50
+  title: Extractor API
+  slug: extractor-api
+  order: 65
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: writer_api.md
+    filename: extractor_api.md

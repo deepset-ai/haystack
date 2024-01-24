@@ -1,5 +1,5 @@
 loaders:
-  - type: loaders.CustomPythonLoader
+  - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/readers]
     modules: ["extractive"]
     ignore_when_discovered: ["__init__"]
@@ -12,7 +12,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Takes a query and a set of Documents as input and returns ExtractedAnswers by selecting a text span within the Documents.
   category_slug: haystack-classes
   title: Reader API
