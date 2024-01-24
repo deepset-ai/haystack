@@ -191,7 +191,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         :param stream_handler: The handler to invoke on each token.
         :param stop_words: The stop words to ignore.
         """
-        client = sseclient.SSEClient(response)
+        client = sseclient.SSEClient(response.iter_content())
         tokens: List[str] = []
         try:
             for event in client.events():
