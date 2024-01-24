@@ -212,6 +212,10 @@ class DeviceMap:
             elif isinstance(device, str):
                 device_type, device_id = _split_device_string(device)
                 mapping[key] = Device(DeviceType.from_str(device_type), device_id)
+            elif isinstance(device, torch.device):
+                device_type = device.type
+                device_id = device.index
+                mapping[key] = Device(DeviceType.from_str(device_type), device_id)
             else:
                 raise ValueError(
                     f"Couldn't convert HuggingFace device map - unexpected device '{str(device)}' for '{key}'"

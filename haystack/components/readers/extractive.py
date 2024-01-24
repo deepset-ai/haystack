@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from haystack import ComponentError, Document, ExtractedAnswer, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice
+from haystack.utils import ComponentDevice, DeviceMap
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs, resolve_hf_device_map
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
@@ -92,6 +92,7 @@ class ExtractiveReader:
         self.model_name_or_path = str(model)
         self.model = None
         self.tokenizer = None
+        self.device = None
         self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
@@ -111,15 +112,13 @@ class ExtractiveReader:
                     "Ignoring `device` and using `device_map`."
                 )
             # Resolve device if device_map is provided in model_kwargs
-            device_map = model_kwargs.get("device_map")
-            assert device_map is not None
-            component_device = resolve_hf_device_map(device_map)
+            device_map = resolve_hf_device_map(model_kwargs["device_map"]).to_hf()
         else:
-            component_device = ComponentDevice.resolve_device(device)
+            device_map = ComponentDevice.resolve_device(device).to_hf()
+
         # Set up device_map which allows quantized loading and multi device inference
         # requires accelerate which is always installed when using `pip install transformers[torch]`
-        self.device = component_device
-        model_kwargs["device_map"] = component_device.to_hf()
+        model_kwargs["device_map"] = device_map
         self.model_kwargs = model_kwargs
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -135,7 +134,7 @@ class ExtractiveReader:
         serialization_dict = default_to_dict(
             self,
             model=self.model_name_or_path,
-            device=self.device.to_dict(),
+            device=None,
             token=self.token if not isinstance(self.token, str) else None,
             max_seq_length=self.max_seq_length,
             top_k=self.top_k,
@@ -157,7 +156,8 @@ class ExtractiveReader:
         Deserialize this component from a dictionary.
         """
         init_params = data["init_parameters"]
-        init_params["device"] = ComponentDevice.from_dict(init_params["device"])
+        if init_params["device"] is not None:
+            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         deserialize_hf_model_kwargs(init_params["model_kwargs"])
 
         return default_from_dict(cls, data)
@@ -166,11 +166,13 @@ class ExtractiveReader:
         """
         Loads model and tokenizer
         """
+        # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
         if self.model is None:
             self.model = AutoModelForQuestionAnswering.from_pretrained(
                 self.model_name_or_path, token=self.token, **self.model_kwargs
             )
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
+            self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
     def _flatten_documents(
         self, queries: List[str], documents: List[List[Document]]

@@ -95,7 +95,7 @@ def test_to_dict():
         "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
             "model": "my-model",
-            "device": ComponentDevice.resolve_device(None).to_dict(),
+            "device": None,
             "token": None,  # don't serialize valid tokens
             "top_k": 20,
             "score_threshold": None,
@@ -121,7 +121,7 @@ def test_to_dict_empty_model_kwargs():
         "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
             "model": "my-model",
-            "device": ComponentDevice.resolve_device(None).to_dict(),
+            "device": None,
             "token": None,  # don't serialize valid tokens
             "top_k": 20,
             "score_threshold": None,
@@ -141,7 +141,7 @@ def test_from_dict():
         "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
             "model": "my-model",
-            "device": ComponentDevice.resolve_device(None).to_dict(),
+            "device": None,
             "token": None,
             "top_k": 20,
             "score_threshold": None,
@@ -157,7 +157,7 @@ def test_from_dict():
 
     component = ExtractiveReader.from_dict(data)
     assert component.model_name_or_path == "my-model"
-    assert component.device == ComponentDevice.resolve_device(None)
+    assert component.device is None
     assert component.token is None
     assert component.top_k == 20
     assert component.score_threshold is None
@@ -307,6 +307,12 @@ def test_nest_answers(mock_reader: ExtractiveReader):
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
 def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
     reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token", device=ComponentDevice.from_str("cpu"))
+
+    class MockedModel:
+        def __init__(self):
+            self.hf_device_map = {"": "cpu"}
+
+    mocked_automodel.return_value = MockedModel()
     reader.warm_up()
 
     mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token", device_map="cpu")
@@ -317,10 +323,16 @@ def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
 def test_device_map_str(mocked_automodel, mocked_autotokenizer):
     reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "cpu:0"})
+
+    class MockedModel:
+        def __init__(self):
+            self.hf_device_map = {"": "cpu:0"}
+
+    mocked_automodel.return_value = MockedModel()
     reader.warm_up()
 
     mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token=None, device_map="cpu:0")
-    assert reader.device == ComponentDevice.from_str("cpu:0")
+    assert reader.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"": "cpu:0"}))
 
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
@@ -329,6 +341,12 @@ def test_device_map_dict(mocked_automodel, mocked_autotokenizer):
     reader = ExtractiveReader(
         "deepset/roberta-base-squad2", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}}
     )
+
+    class MockedModel:
+        def __init__(self):
+            self.hf_device_map = {"layer_1": 1, "classifier": "cpu"}
+
+    mocked_automodel.return_value = MockedModel()
     reader.warm_up()
 
     mocked_automodel.assert_called_once_with(
