@@ -1,22 +1,20 @@
 ---
-prelude:
-  - |
-    Amazon Bedrock supports new embedding models ([#6406](https://github.com/deepset-ai/haystack/pull/6406))
-    You can now use Titan and Cohere embedding models in your pipelines via the Amazon Bedrock integration.
+prelude:  |
+    * Amazon Bedrock supports new embedding models ([#6406](https://github.com/deepset-ai/haystack/pull/6406))
+      You can now use Titan and Cohere embedding models in your pipelines via the Amazon Bedrock integration.
 
-    ```python
-    from haystack.nodes import EmbeddingRetriever
+      ```python
+      from haystack.nodes import EmbeddingRetriever
 
-    retriever = EmbeddingRetriever(
-        embedding_model="amazon.titan-embed-text-v1",
-        document_store=document_store,
-        aws_config = {"aws_access_key_id": "ACCESS_KEY",
-                      "aws_secret_access_key": "SECRET_KEY",
-                      "aws_session_token": "SESSION_TOKEN"}
-    )
-    ```
+      retriever = EmbeddingRetriever(
+          embedding_model="amazon.titan-embed-text-v1",
+          document_store=document_store,
+          aws_config = {"aws_access_key_id": "ACCESS_KEY",
+                        "aws_secret_access_key": "SECRET_KEY",
+                        "aws_session_token": "SESSION_TOKEN"}
+      )
+      ```
 
-  - |
-    Use any WebDriver you want in Crawler [#5465](https://github.com/deepset-ai/haystack/pull/5465)
-    The `WebDriver` that power's Haystack's crawler is no longer limited to Chrome.
-    Now you can configure it to use `WebDriver` you'd like.
+    * Use any WebDriver you want in Crawler [#5465](https://github.com/deepset-ai/haystack/pull/5465)
+      The `WebDriver` that power's Haystack's crawler is no longer limited to Chrome.
+      Now you can configure it to use `WebDriver` you'd like.
