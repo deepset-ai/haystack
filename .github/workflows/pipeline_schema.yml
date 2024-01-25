@@ -1,5 +1,5 @@
 name: YAML Schema
-run-name: Update schema for ref ${{ github.event.workflow_run.head_branch || inputs.ref || 'main' }}
+run-name: Update schema for ref ${{ github.event.workflow_run.head_branch || inputs.ref || 'v1.x' }}
 
 on:
   workflow_dispatch: # Activate this workflow manually
@@ -17,12 +17,12 @@ on:
       - completed
 
 env:
-  HAYSTACK_REF: ${{ github.event.workflow_run.head_branch || inputs.ref || 'main' }}
+  HAYSTACK_REF: ${{ github.event.workflow_run.head_branch || inputs.ref || 'v1.x' }}
 
 jobs:
 
   run:
-    name: Update schema for ref ${{ github.event.workflow_run.head_branch || inputs.ref || 'main' }}
+    name: Update schema for ref ${{ github.event.workflow_run.head_branch || inputs.ref || 'v1.x' }}
     if: ${{ !github.event.workflow_run || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
