@@ -1,7 +1,6 @@
 default_branch: main
 collapse_pre_releases: true
 pre_release_tag_re: (?P<pre_release>-(?:[ab]|rc)+\d*)$
-#prelude_section_name: ⭐ Highlights
 template: |
   ---
   prelude: >
@@ -39,6 +38,7 @@ template: |
 
 sections:
   # The prelude section is implicitly included.
+  - [prelude, ⭐ Highlights]
   - [upgrade, ⬆️ Upgrade Notes]
   - [features, 🚀 New Features]
   - [enhancements, ⚡️ Enhancement Notes]
