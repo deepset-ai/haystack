@@ -85,6 +85,7 @@ class TransformersSimilarityRanker:
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.top_k = top_k
+        self.device = ComponentDevice.resolve_device(device)
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.token = token

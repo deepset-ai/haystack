@@ -166,10 +166,8 @@ class TestSimilarityRanker:
         embedder = TransformersSimilarityRanker(
             model="model", query_prefix="query_instruction: ", document_prefix="document_instruction: "
         )
-        embedder.model = MagicMock()
+        embedder._model = MagicMock()
         embedder.tokenizer = MagicMock()
-        embedder.device = MagicMock()
-        embedder.warm_up()
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
