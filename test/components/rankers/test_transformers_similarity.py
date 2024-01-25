@@ -20,6 +20,8 @@ class TestSimilarityRanker:
                 "device": None,
                 "top_k": 10,
                 "token": None,
+                "query_prefix": "",
+                "document_prefix": "",
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
@@ -36,6 +38,8 @@ class TestSimilarityRanker:
             device=ComponentDevice.from_str("cuda:0"),
             token="my_token",
             top_k=5,
+            query_prefix="query_instruction: ",
+            document_prefix="document_instruction: ",
             scale_score=False,
             calibration_factor=None,
             score_threshold=0.01,
@@ -49,6 +53,8 @@ class TestSimilarityRanker:
                 "model": "my_model",
                 "token": None,  # we don't serialize valid tokens,
                 "top_k": 5,
+                "query_prefix": "query_instruction: ",
+                "document_prefix": "document_instruction: ",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
                 "scale_score": False,
@@ -76,6 +82,8 @@ class TestSimilarityRanker:
             "init_parameters": {
                 "device": None,
                 "top_k": 10,
+                "query_prefix": "",
+                "document_prefix": "",
                 "token": None,
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
@@ -101,6 +109,8 @@ class TestSimilarityRanker:
                 "model": "my_model",
                 "token": None,
                 "top_k": 5,
+                "query_prefix": "",
+                "document_prefix": "",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
                 "scale_score": False,
@@ -115,6 +125,8 @@ class TestSimilarityRanker:
         assert component.model_name_or_path == "my_model"
         assert component.token is None
         assert component.top_k == 5
+        assert component.query_prefix == ""
+        assert component.document_prefix == ""
         assert component.meta_fields_to_embed == []
         assert component.embedding_separator == "\n"
         assert not component.scale_score
@@ -150,6 +162,34 @@ class TestSimilarityRanker:
                 ["test", "meta_value 2\ndocument number 2"],
                 ["test", "meta_value 3\ndocument number 3"],
                 ["test", "meta_value 4\ndocument number 4"],
+            ],
+            padding=True,
+            truncation=True,
+            return_tensors="pt",
+        )
+
+    @patch("torch.sigmoid")
+    @patch("torch.sort")
+    def test_prefix(self, mocked_sort, mocked_sigmoid):
+        mocked_sort.return_value = (None, torch.tensor([0]))
+        mocked_sigmoid.return_value = torch.tensor([0])
+        embedder = TransformersSimilarityRanker(
+            model="model", query_prefix="query_instruction: ", document_prefix="document_instruction: "
+        )
+        embedder._model = MagicMock()
+        embedder.tokenizer = MagicMock()
+
+        documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
+
+        embedder.run(query="test", documents=documents)
+
+        embedder.tokenizer.assert_called_once_with(
+            [
+                ["query_instruction: test", "document_instruction: document number 0"],
+                ["query_instruction: test", "document_instruction: document number 1"],
+                ["query_instruction: test", "document_instruction: document number 2"],
+                ["query_instruction: test", "document_instruction: document number 3"],
+                ["query_instruction: test", "document_instruction: document number 4"],
             ],
             padding=True,
             truncation=True,
