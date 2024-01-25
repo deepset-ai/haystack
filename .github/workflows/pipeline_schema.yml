@@ -8,7 +8,7 @@ on:
         description: Tag or branch name of Haystack version
         required: true
         type: string
-        default: main
+        default: v1.x
 
   workflow_run:
     workflows:
