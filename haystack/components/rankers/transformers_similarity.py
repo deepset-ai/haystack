@@ -42,6 +42,8 @@ class TransformersSimilarityRanker:
         device: Optional[ComponentDevice] = None,
         token: Union[bool, str, None] = None,
         top_k: int = 10,
+        query_prefix: str = "",
+        document_prefix: str = "",
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
         scale_score: bool = True,
@@ -60,6 +62,12 @@ class TransformersSimilarityRanker:
             If this parameter is set to `True`, the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) is used.
         :param top_k: The maximum number of Documents to return per query.
+        :param query_prefix: A string to add to the beginning of the query text before ranking.
+            Can be used to prepend the text with an instruction, as required by some reranking models,
+            such as bge.
+        :param document_prefix: A string to add to the beginning of each Document text before ranking.
+            Can be used to prepend the text with an instruction, as required by some embedding models,
+            such as bge.
         :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document content.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document content.
         :param scale_score: Whether the raw logit predictions will be scaled using a Sigmoid activation function.
@@ -78,6 +86,8 @@ class TransformersSimilarityRanker:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.top_k = top_k
         self.device = ComponentDevice.resolve_device(device)
+        self.query_prefix = query_prefix
+        self.document_prefix = document_prefix
         self.token = token
         self._model = None
         self.tokenizer = None
@@ -124,6 +134,8 @@ class TransformersSimilarityRanker:
             model=self.model,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             top_k=self.top_k,
+            query_prefix=self.query_prefix,
+            document_prefix=self.document_prefix,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
             scale_score=self.scale_score,
@@ -199,7 +211,7 @@ class TransformersSimilarityRanker:
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
             text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
-            query_doc_pairs.append([query, text_to_embed])
+            query_doc_pairs.append([self.query_prefix + query, self.document_prefix + text_to_embed])
 
         features = self.tokenizer(
             query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
