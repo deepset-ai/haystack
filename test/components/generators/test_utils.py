@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.components.generators.utils import default_streaming_callback
+from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 
 
@@ -15,8 +15,8 @@ def test_callback_handler_serialization():
 
 
 def test_callback_handler_serialization_non_local():
-    result = serialize_callback_handler(default_streaming_callback)
-    assert result == "haystack.components.generators.utils.default_streaming_callback"
+    result = serialize_callback_handler(print_streaming_chunk)
+    assert result == "haystack.components.generators.utils.print_streaming_chunk"
 
 
 def test_callback_handler_deserialization():
@@ -27,7 +27,7 @@ def test_callback_handler_deserialization():
 
 
 def test_callback_handler_deserialization_non_local():
-    result = serialize_callback_handler(default_streaming_callback)
+    result = serialize_callback_handler(print_streaming_chunk)
     fn = deserialize_callback_handler(result)
 
-    assert fn is default_streaming_callback
+    assert fn is print_streaming_chunk
