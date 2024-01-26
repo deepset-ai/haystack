@@ -101,6 +101,36 @@ class TestSimilarityRanker:
             },
         }
 
+    @pytest.mark.parametrize(
+        "device_map,expected",
+        [
+            ("auto", "auto"),
+            ("cpu:0", ComponentDevice.from_str("cpu:0").to_hf()),
+            ({"": "cpu:0"}, ComponentDevice.from_multiple(DeviceMap.from_hf({"": "cpu:0"})).to_hf()),
+        ],
+    )
+    def test_to_dict_device_map(self, device_map, expected):
+        component = TransformersSimilarityRanker(model_kwargs={"device_map": device_map})
+        data = component.to_dict()
+
+        assert data == {
+            "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
+            "init_parameters": {
+                "device": None,
+                "top_k": 10,
+                "token": None,
+                "query_prefix": "",
+                "document_prefix": "",
+                "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+                "meta_fields_to_embed": [],
+                "embedding_separator": "\n",
+                "scale_score": True,
+                "calibration_factor": 1.0,
+                "score_threshold": None,
+                "model_kwargs": {"device_map": expected},
+            },
+        }
+
     def test_from_dict(self):
         data = {
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",

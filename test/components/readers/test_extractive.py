@@ -145,7 +145,7 @@ def test_to_dict_empty_model_kwargs():
     ],
 )
 def test_to_dict_device_map(device_map, expected):
-    component = ExtractiveReader("my-model", token="secret-token", model_kwargs={"device_map": device_map})
+    component = ExtractiveReader("my-model", model_kwargs={"device_map": device_map})
     data = component.to_dict()
 
     assert data == {
@@ -153,7 +153,7 @@ def test_to_dict_device_map(device_map, expected):
         "init_parameters": {
             "model": "my-model",
             "device": None,
-            "token": None,  # don't serialize valid tokens
+            "token": None,
             "top_k": 20,
             "score_threshold": None,
             "max_seq_length": 384,
