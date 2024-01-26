@@ -136,6 +136,37 @@ def test_to_dict_empty_model_kwargs():
     }
 
 
+@pytest.mark.parametrize(
+    "device_map,expected",
+    [
+        ("auto", "auto"),
+        ("cpu:0", ComponentDevice.from_str("cpu:0").to_hf()),
+        ({"": "cpu:0"}, ComponentDevice.from_multiple(DeviceMap.from_hf({"": "cpu:0"})).to_hf()),
+    ],
+)
+def test_to_dict_device_map(device_map, expected):
+    component = ExtractiveReader("my-model", token="secret-token", model_kwargs={"device_map": device_map})
+    data = component.to_dict()
+
+    assert data == {
+        "type": "haystack.components.readers.extractive.ExtractiveReader",
+        "init_parameters": {
+            "model": "my-model",
+            "device": None,
+            "token": None,  # don't serialize valid tokens
+            "top_k": 20,
+            "score_threshold": None,
+            "max_seq_length": 384,
+            "stride": 128,
+            "max_batch_size": None,
+            "answers_per_seq": None,
+            "no_answer": True,
+            "calibration_factor": 0.1,
+            "model_kwargs": {"device_map": expected},
+        },
+    }
+
+
 def test_from_dict():
     data = {
         "type": "haystack.components.readers.extractive.ExtractiveReader",
@@ -317,6 +348,23 @@ def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
 
     mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token", device_map="cpu")
     mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
+
+
+@patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
+@patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+def test_device_map_auto(mocked_automodel, mocked_autotokenizer):
+    reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "auto"})
+    auto_device = ComponentDevice.resolve_device(None)
+
+    class MockedModel:
+        def __init__(self):
+            self.hf_device_map = {"": auto_device.to_hf()}
+
+    mocked_automodel.return_value = MockedModel()
+    reader.warm_up()
+
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token=None, device_map="auto")
+    assert reader.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"": auto_device.to_hf()}))
 
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
