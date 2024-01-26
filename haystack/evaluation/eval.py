@@ -1,3 +1,4 @@
+import collections
 from typing import Any, Callable, Dict, List, Union
 
 import numpy as np
@@ -71,8 +72,68 @@ class EvaluationResult:
     def _calculate_mrr(self):
         return MetricsResult({"mean_reciprocal_rank": None})
 
-    def _calculate_f1(self):
-        return MetricsResult({"f1": None})
+    def _compute_f1_single(self, label_toks: List[str], pred_toks: List[str]) -> float:
+        """
+        Compute F1 score for a single sample.
+        """
+        common: collections.Counter = collections.Counter(label_toks) & collections.Counter(pred_toks)
+        num_same = sum(common.values())
+        if len(label_toks) == 0 or len(pred_toks) == 0:
+            # If either is no-answer, then F1 is 1 if they agree, 0 otherwise
+            return int(label_toks == pred_toks)
+        if num_same == 0:
+            return 0
+        precision = 1.0 * num_same / len(pred_toks)
+        recall = 1.0 * num_same / len(label_toks)
+        f1 = (2 * precision * recall) / (precision + recall)
+        return f1
+
+    def _calculate_f1(
+        self, output_key: str, regexes_to_ignore=None, ignore_case=False, ignore_punctuation=False, ignore_numbers=False
+    ) -> MetricsResult:
+        """
+        Calculates the F1 score between two lists of predictions and labels.
+        F1 score measures the word overlap between the predicted text and the corresponding ground truth label.
+
+        :param output_key: The key of the output to use for comparison.
+        :param regexes_to_ignore (list, optional): A list of regular expressions. If provided, it removes substrings
+            matching these regular expressions from both predictions and labels before comparison. Defaults to None.
+        :param ignore_case (bool, optional): If True, performs case-insensitive comparison. Defaults to False.
+        :param ignore_punctuation (bool, optional): If True, removes punctuation from both predictions and labels before
+            comparison. Defaults to False.
+        :param ignore_numbers (bool, optional): If True, removes numerical digits from both predictions and labels
+            before comparison. Defaults to False.
+        :return: A MetricsResult object containing the calculated Exact Match (EM) score.
+        """
+
+        predictions = get_answers_from_output(
+            outputs=self.outputs, output_key=output_key, runnable_type=self.runnable_type
+        )
+        labels = get_answers_from_output(
+            outputs=self.expected_outputs, output_key=output_key, runnable_type=self.runnable_type
+        )
+
+        if len(predictions) != len(labels):
+            raise ValueError("The number of predictions and labels must be the same.")
+        if len(predictions) == len(labels) == 0:
+            # Return F1 as 0 for no inputs
+            return MetricsResult({"f1": 0.0})
+
+        predictions = preprocess_text(predictions, regexes_to_ignore, ignore_case, ignore_punctuation, ignore_numbers)
+        labels = preprocess_text(labels, regexes_to_ignore, ignore_case, ignore_punctuation, ignore_numbers)
+
+        # Tokenize by splitting on spaces
+        tokenized_predictions = [pred.split() for pred in predictions]
+        tokenized_labels = [label.split() for label in labels]
+
+        f1_scores = [
+            self._compute_f1_single(label_toks, pred_toks)
+            for label_toks, pred_toks in zip(tokenized_labels, tokenized_predictions)
+        ]
+
+        f1 = np.mean(f1_scores)
+
+        return MetricsResult({"f1": f1})
 
     def _calculate_em(
         self, output_key: str, regexes_to_ignore=None, ignore_case=False, ignore_punctuation=False, ignore_numbers=False

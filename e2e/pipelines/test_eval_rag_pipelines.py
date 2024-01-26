@@ -116,17 +116,31 @@ def test_bm25_rag_pipeline(tmp_path):
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == rag_pipeline.to_dict()
 
-    metrics_default = eval_result.calculate_metrics(Metric.EM, output_key="answers")
-    metrics_custom_parameters = eval_result.calculate_metrics(
+    # Test Exact Match
+    em_default = eval_result.calculate_metrics(Metric.EM, output_key="answers")
+    em_custom_parameters = eval_result.calculate_metrics(
         Metric.EM, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
     )
-    # Save metric results to json
-    metrics_default.save(tmp_path / "exact_match_score.json")
+    # Save EM metric results to json
+    em_default.save(tmp_path / "exact_match_score.json")
 
-    assert metrics_default["exact_match"] == 1.0
-    assert metrics_custom_parameters["exact_match"] == 1.0
+    assert em_default["exact_match"] == 1.0
+    assert em_custom_parameters["exact_match"] == 1.0
     with open(tmp_path / "exact_match_score.json", "r") as f:
-        assert metrics_default == json.load(f)
+        assert em_default == json.load(f)
+
+    # Test F1
+    f1_default = eval_result.calculate_metrics(Metric.F1, output_key="answers")
+    f1_custom_parameters = eval_result.calculate_metrics(
+        Metric.F1, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+    )
+    # Save F1 metric results to json
+    f1_default.save(tmp_path / "f1_score.json")
+
+    assert f1_default["f1"] == 1.0
+    assert f1_custom_parameters["f1"] == 1.0
+    with open(tmp_path / "f1_score.json", "r") as f:
+        assert f1_default == json.load(f)
 
 
 def test_embedding_retrieval_rag_pipeline(tmp_path):
@@ -248,14 +262,28 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == rag_pipeline.to_dict()
 
-    metrics_default = eval_result.calculate_metrics(Metric.EM, output_key="answers")
-    metrics_custom_parameters = eval_result.calculate_metrics(
+    # Test Exact Match
+    em_default = eval_result.calculate_metrics(Metric.EM, output_key="answers")
+    em_custom_parameters = eval_result.calculate_metrics(
         Metric.EM, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
     )
-    # Save metric results to json
-    metrics_default.save(tmp_path / "exact_match_score.json")
+    # Save EM metric results to json
+    em_default.save(tmp_path / "exact_match_score.json")
 
-    assert metrics_default["exact_match"] == 1.0
-    assert metrics_custom_parameters["exact_match"] == 1.0
+    assert em_default["exact_match"] == 1.0
+    assert em_custom_parameters["exact_match"] == 1.0
     with open(tmp_path / "exact_match_score.json", "r") as f:
-        assert metrics_default == json.load(f)
+        assert em_default == json.load(f)
+
+    # Test F1
+    f1_default = eval_result.calculate_metrics(Metric.F1, output_key="answers")
+    f1_custom_parameters = eval_result.calculate_metrics(
+        Metric.F1, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+    )
+    # Save F1 metric results to json
+    f1_default.save(tmp_path / "f1_score.json")
+
+    assert f1_default["f1"] == 1.0
+    assert f1_custom_parameters["f1"] == 1.0
+    with open(tmp_path / "f1_score.json", "r") as f:
+        assert f1_default == json.load(f)
