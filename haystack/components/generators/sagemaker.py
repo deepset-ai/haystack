@@ -6,7 +6,7 @@ import json
 
 import requests
 from haystack.lazy_imports import LazyImport
-from haystack import component, default_from_dict, default_to_dict, ComponentError
+from haystack import component, ComponentError
 
 with LazyImport(message="Run 'pip install boto3'") as boto3_import:
     import boto3
