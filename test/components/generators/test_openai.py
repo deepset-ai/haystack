@@ -5,7 +5,7 @@ import pytest
 from openai import OpenAIError
 
 from haystack.components.generators import OpenAIGenerator
-from haystack.components.generators.utils import default_streaming_callback
+from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import StreamingChunk, ChatMessage
 
 
@@ -26,13 +26,13 @@ class TestOpenAIGenerator:
         component = OpenAIGenerator(
             api_key="test-api-key",
             model="gpt-4",
-            streaming_callback=default_streaming_callback,
+            streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.client.api_key == "test-api-key"
         assert component.model == "gpt-4"
-        assert component.streaming_callback is default_streaming_callback
+        assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
 
     def test_to_dict_default(self):
@@ -53,7 +53,7 @@ class TestOpenAIGenerator:
         component = OpenAIGenerator(
             api_key="test-api-key",
             model="gpt-4",
-            streaming_callback=default_streaming_callback,
+            streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
@@ -64,7 +64,7 @@ class TestOpenAIGenerator:
                 "model": "gpt-4",
                 "system_prompt": None,
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
@@ -97,13 +97,13 @@ class TestOpenAIGenerator:
                 "model": "gpt-4",
                 "system_prompt": None,
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
         component = OpenAIGenerator.from_dict(data)
         assert component.model == "gpt-4"
-        assert component.streaming_callback is default_streaming_callback
+        assert component.streaming_callback is print_streaming_chunk
         assert component.api_base_url == "test-base-url"
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
 
@@ -114,7 +114,7 @@ class TestOpenAIGenerator:
             "init_parameters": {
                 "model": "gpt-4",
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }

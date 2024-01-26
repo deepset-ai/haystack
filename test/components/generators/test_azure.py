@@ -4,7 +4,7 @@ import pytest
 from openai import OpenAIError
 
 from haystack.components.generators import AzureOpenAIGenerator
-from haystack.components.generators.utils import default_streaming_callback
+from haystack.components.generators.utils import print_streaming_chunk
 
 
 class TestAzureOpenAIGenerator:
@@ -25,12 +25,12 @@ class TestAzureOpenAIGenerator:
             api_key="test-api-key",
             azure_endpoint="some-non-existing-endpoint",
             azure_deployment="gpt-35-turbo",
-            streaming_callback=default_streaming_callback,
+            streaming_callback=print_streaming_chunk,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.client.api_key == "test-api-key"
         assert component.azure_deployment == "gpt-35-turbo"
-        assert component.streaming_callback is default_streaming_callback
+        assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
 
     def test_to_dict_default(self):
