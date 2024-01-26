@@ -306,7 +306,7 @@ class Pipeline:
             or not connection.sender
             or not connection.receiver
         ):
-            raise PipelineConnectError("Connection must have both sender and receiver: {connection}")
+            raise PipelineConnectError(f"Connection must have both sender and receiver: {connection}")
 
         # Create the connection
         logger.debug(
@@ -435,7 +435,7 @@ class Pipeline:
             instance = self.graph.nodes[component_name]["instance"]
             for socket_name, socket in instance.__canals_input__.items():
                 if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
-                    raise ValueError("Missing input for component {component_name}: {socket_name}")
+                    raise ValueError(f"Missing input for component {component_name}: {socket_name}")
             for input_name in component_inputs.keys():
                 if input_name not in instance.__canals_input__:
                     raise ValueError(f"Input {input_name} not found in component {component_name}.")
@@ -445,7 +445,7 @@ class Pipeline:
             for socket_name, socket in instance.__canals_input__.items():
                 component_inputs = data.get(component_name, {})
                 if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
-                    raise ValueError("Missing input for component {component_name}: {socket_name}")
+                    raise ValueError(f"Missing input for component {component_name}: {socket_name}")
                 if socket.senders and socket_name in component_inputs and not socket.is_variadic:
                     raise ValueError(
                         f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
