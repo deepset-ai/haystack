@@ -1,5 +1,4 @@
 ---
-prelude: >
 enhancements:
   - |
     Speed up import of Document dataclass.
