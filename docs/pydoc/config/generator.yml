@@ -10,7 +10,8 @@ loaders:
         "chat/azure",
         "chat/hugging_face_local",
         "chat/hugging_face_tgi",
-        "chat/openai"
+        "chat/openai",
+        "utils",
       ]
     ignore_when_discovered: ["__init__"]
 processors:
