@@ -21,7 +21,7 @@ def getting_started(provider, API_KEY, API_BASE: Optional[str] = None):
     document_store = InMemoryDocumentStore(use_bm25=True)
 
     # Pipelines are the main abstraction in Haystack, they connect components like LLMs and databases.
-    pipeline = build_pipeline(provider, API_KEY, document_store, API_BASE)
+    pipeline = build_pipeline(provider, API_KEY, API_BASE, document_store)
 
     # Download and add Game of Thrones TXT articles to Haystack's database.
     # You can also provide a folder with your local documents.
