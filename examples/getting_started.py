@@ -7,7 +7,7 @@ from typing import Optional
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.utils import build_pipeline, add_example_data, print_answers
 
-logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 def getting_started(provider, API_KEY, API_BASE: Optional[str] = None):
