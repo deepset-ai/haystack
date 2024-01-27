@@ -80,12 +80,14 @@ class PromptModel(BaseComponent):
     ) -> PromptModelInvocationLayer:
         kwargs = {
             "api_key": self.api_key,
-            "api_base": self.api_base,
             "timeout": self.timeout,
             "use_auth_token": self.use_auth_token,
             "use_gpu": self.use_gpu,
             "devices": self.devices,
         }
+        if self.api_base is not None:
+            kwargs["api_base"] = self.api_base
+
         all_kwargs = {**self.model_kwargs, **kwargs}
 
         if isinstance(invocation_layer_class, str):
