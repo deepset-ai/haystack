@@ -7,7 +7,7 @@ from haystack.utils import fetch_archive_from_http
 logger = logging.getLogger(__name__)
 
 
-def build_pipeline(provider, API_KEY, document_store, API_BASE):
+def build_pipeline(provider, API_KEY, API_BASE, document_store):
     # Importing top-level causes a circular import
     from haystack.nodes import AnswerParser, PromptNode, PromptTemplate, BM25Retriever
     from haystack.pipelines import Pipeline
