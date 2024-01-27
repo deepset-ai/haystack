@@ -35,7 +35,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         api_key: str,
         model_name_or_path: str = "gpt-3.5-turbo-instruct",
         max_length: Optional[int] = 100,
-        api_base: Optional[str] = "https://api.openai.com/v1",
+        api_base: str = "https://api.openai.com/v1",
         openai_organization: Optional[str] = None,
         timeout: Optional[float] = None,
         **kwargs,
