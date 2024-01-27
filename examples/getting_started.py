@@ -1,5 +1,3 @@
-# Disable pylint errors for logging basicConfig
-# pylint: disable=no-logging-basicconfig
 import logging
 
 from typing import Optional
