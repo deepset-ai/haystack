@@ -147,6 +147,12 @@ class ComponentMeta(type):
                 if run_signature.parameters[param].default != inspect.Parameter.empty:
                     socket_kwargs["default_value"] = run_signature.parameters[param].default
                 instance.__haystack_input__[param] = InputSocket(**socket_kwargs)
+
+        # Since a Component can't be used in multiple Pipelines at the same time
+        # we need to know if it's already owned by a Pipeline when adding it to one.
+        # We use this flag to check that.
+        instance.__haystack_pipeline_owned__ = False
+
         return instance
 
 
