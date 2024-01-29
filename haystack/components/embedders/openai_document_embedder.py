@@ -135,7 +135,7 @@ class OpenAIDocumentEmbedder:
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
             batch = texts_to_embed[i : i + batch_size]
-            if self.dimensions != None:
+            if self.dimensions is not None:
                 response = self.client.embeddings.create(model=self.model, dimensions=self.dimensions, input=batch)
             else:
                 response = self.client.embeddings.create(model=self.model, input=batch)

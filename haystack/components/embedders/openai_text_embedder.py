@@ -96,7 +96,7 @@ class OpenAITextEmbedder:
         # replace newlines, which can negatively affect performance.
         text_to_embed = text_to_embed.replace("\n", " ")
 
-        if self.dimensions != None:
+        if self.dimensions is not None:
             response = self.client.embeddings.create(model=self.model, dimensions=self.dimensions, input=text_to_embed)
         else:
             response = self.client.embeddings.create(model=self.model, input=text_to_embed)
