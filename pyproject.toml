@@ -49,7 +49,7 @@ dependencies = [
   "requests",
   "httpx",
   "pydantic<2",
-  "transformers==4.36.2",
+  "transformers==4.37.1",
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.3.0", # TF-IDF and metrics

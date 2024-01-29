@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Upgrade Transformers to the latest version 4.37.2.
+    This version adds support for the Phi-2 and Qwen2 models and improves support for quantization.
