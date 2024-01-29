@@ -3,9 +3,8 @@ from typing import Any, Optional
 
 import pytest
 
-from haystack.core.component import component
+from haystack.core.component import Component, InputSocket, OutputSocket, component
 from haystack.core.errors import ComponentError
-from haystack.core.component import InputSocket, OutputSocket, Component
 
 
 def test_correct_declaration():
@@ -106,7 +105,7 @@ def test_set_input_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.__canals_input__ == {"value": InputSocket("value", Any)}
+    assert comp.__haystack_input__ == {"value": InputSocket("value", Any)}
     assert comp.run() == {"value": 1}
 
 
@@ -127,7 +126,7 @@ def test_set_output_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.__canals_output__ == {"value": OutputSocket("value", int)}
+    assert comp.__haystack_output__ == {"value": OutputSocket("value", int)}
 
 
 def test_output_types_decorator_with_compatible_type():
@@ -145,7 +144,7 @@ def test_output_types_decorator_with_compatible_type():
             return cls()
 
     comp = MockComponent()
-    assert comp.__canals_output__ == {"value": OutputSocket("value", int)}
+    assert comp.__haystack_output__ == {"value": OutputSocket("value", int)}
 
 
 def test_component_decorator_set_it_as_component():
@@ -174,8 +173,8 @@ def test_input_has_default_value():
             return {"value": value}
 
     comp = MockComponent()
-    assert comp.__canals_input__["value"].default_value == 42
-    assert not comp.__canals_input__["value"].is_mandatory
+    assert comp.__haystack_input__["value"].default_value == 42
+    assert not comp.__haystack_input__["value"].is_mandatory
 
 
 def test_keyword_only_args():
@@ -188,5 +187,5 @@ def test_keyword_only_args():
             return {"value": arg}
 
     comp = MockComponent()
-    component_inputs = {name: {"type": socket.type} for name, socket in comp.__canals_input__.items()}
+    component_inputs = {name: {"type": socket.type} for name, socket in comp.__haystack_input__.items()}
     assert component_inputs == {"arg": {"type": int}}
