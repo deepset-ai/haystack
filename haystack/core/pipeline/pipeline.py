@@ -62,20 +62,9 @@ class Pipeline:
         Equal pipelines share every metadata, node and edge, but they're not required to use
         the same node instances: this allows pipeline saved and then loaded back to be equal to themselves.
         """
-        if (
-            not isinstance(other, type(self))
-            or not getattr(self, "metadata") == getattr(other, "metadata")
-            or not getattr(self, "max_loops_allowed") == getattr(other, "max_loops_allowed")
-            or not hasattr(self, "graph")
-            or not hasattr(other, "graph")
-        ):
+        if not isinstance(other, Pipeline):
             return False
-
-        return (
-            self.graph.adj == other.graph.adj
-            and self._comparable_nodes_list(self.graph) == self._comparable_nodes_list(other.graph)
-            and self.graph.graph == other.graph.graph
-        )
+        return self.to_dict() == other.to_dict()
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -171,18 +160,6 @@ class Pipeline:
             pipe.connect(connect_from=connection["sender"], connect_to=connection["receiver"])
 
         return pipe
-
-    def _comparable_nodes_list(self, graph: networkx.MultiDiGraph) -> List[Dict[str, Any]]:
-        """
-        Replaces instances of nodes with their class name in order to make sure they're comparable.
-        """
-        nodes = []
-        for node in graph.nodes:
-            comparable_node = graph.nodes[node]
-            comparable_node["instance"] = comparable_node["instance"].__class__
-            nodes.append(comparable_node)
-        nodes.sort()
-        return nodes
 
     def add_component(self, name: str, instance: Component) -> None:
         """
