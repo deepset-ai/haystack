@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from haystack import ComponentError, Document, ExtractedAnswer, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, DeviceMap
-from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs, resolve_hf_device_map
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     import torch
@@ -104,21 +104,7 @@ class ExtractiveReader:
         self.calibration_factor = calibration_factor
         self.overlap_threshold = overlap_threshold
 
-        model_kwargs = model_kwargs or {}
-        if model_kwargs.get("device_map"):
-            if device is not None:
-                logger.warning(
-                    "The parameters `device` and `device_map` from `model_kwargs` are both be provided. "
-                    "Ignoring `device` and using `device_map`."
-                )
-            # Resolve device if device_map is provided in model_kwargs
-            device_map = model_kwargs["device_map"]
-        else:
-            device_map = ComponentDevice.resolve_device(device).to_hf()
-
-        # Set up device_map which allows quantized loading and multi device inference
-        # requires accelerate which is always installed when using `pip install transformers[torch]`
-        model_kwargs["device_map"] = device_map
+        model_kwargs = resolve_hf_device_map(device=device, model_kwargs=model_kwargs)
         self.model_kwargs = model_kwargs
 
     def _get_telemetry_data(self) -> Dict[str, Any]:

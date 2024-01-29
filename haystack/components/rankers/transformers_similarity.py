@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Union
 from haystack import ComponentError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, DeviceMap
-from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs, resolve_hf_device_map
 
 logger = logging.getLogger(__name__)
 
@@ -95,21 +95,7 @@ class TransformersSimilarityRanker:
         self.calibration_factor = calibration_factor
         self.score_threshold = score_threshold
 
-        model_kwargs = model_kwargs or {}
-        if model_kwargs.get("device_map"):
-            if device is not None:
-                logger.warning(
-                    "The parameters `device` and `device_map` from `model_kwargs` are both be provided. "
-                    "Ignoring `device` and using `device_map`."
-                )
-            # Resolve device if device_map is provided in model_kwargs
-            device_map = model_kwargs["device_map"]
-        else:
-            device_map = ComponentDevice.resolve_device(device).to_hf()
-
-        # Set up device_map which allows quantized loading and multi device inference
-        # requires accelerate which is always installed when using `pip install transformers[torch]`
-        model_kwargs["device_map"] = device_map
+        model_kwargs = resolve_hf_device_map(device=device, model_kwargs=model_kwargs)
         self.model_kwargs = model_kwargs
 
         # Parameter validation
