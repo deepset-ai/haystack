@@ -1,17 +1,17 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import List, Set, Sequence, Tuple, Dict, Mapping, Literal, Union, Optional, Any
-from enum import Enum
 import re
+from enum import Enum
 from pathlib import Path
+from typing import Any, Dict, List, Literal, Mapping, Optional, Sequence, Set, Tuple, Union
 
 import pytest
 
-from haystack.core.pipeline import Pipeline
 from haystack.core.errors import PipelineConnectError
+from haystack.core.pipeline import Pipeline
+from haystack.core.pipeline.pipeline import parse_connect_string
 from haystack.testing import factory
-from haystack.core.component.connection import parse_connect_string
 from haystack.testing.sample_components import AddFixedValue
 
 
