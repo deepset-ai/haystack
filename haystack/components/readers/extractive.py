@@ -213,8 +213,11 @@ class ExtractiveReader:
             stride=stride,
         )
 
+        # To make mypy happy even though self.device is set in warm_up()
+        assert self.device is not None
+        assert self.device.first_device is not None
+
         # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
-        assert self.device is not None  # To make mypy happy even though self.device is set in warm_up()
         first_device = self.device.first_device.to_torch()
 
         input_ids = encodings_pt.input_ids.to(first_device)

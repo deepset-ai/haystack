@@ -196,7 +196,7 @@ class DeviceMap:
         return DeviceMap(mapping)
 
     @staticmethod
-    def from_hf(hf_device_map: Dict[str, Union[int, str]]) -> "DeviceMap":
+    def from_hf(hf_device_map: Dict[str, Union[int, str, "torch.device"]]) -> "DeviceMap":
         """
         Create a generic device map from a HuggingFace device map.
 
@@ -393,7 +393,7 @@ class ComponentDevice:
         return self._multiple_devices is not None
 
     @property
-    def first_device(self) -> "ComponentDevice":
+    def first_device(self) -> Optional["ComponentDevice"]:
         """
         Return either the single device or the first device in the
         device map, if any.
