@@ -33,6 +33,7 @@ class OpenAIDocumentEmbedder:
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "text-embedding-ada-002",
+        dimensions: Optional[int] = None,
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         prefix: str = "",
@@ -46,6 +47,7 @@ class OpenAIDocumentEmbedder:
         Create a OpenAIDocumentEmbedder component.
         :param api_key: The OpenAI API key.
         :param model: The name of the model to use.
+        :param dimensions: The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.
         :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
@@ -59,6 +61,7 @@ class OpenAIDocumentEmbedder:
         """
         self.api_key = api_key
         self.model = model
+        self.dimensions = dimensions
         self.api_base_url = api_base_url
         self.organization = organization
         self.prefix = prefix
@@ -84,6 +87,7 @@ class OpenAIDocumentEmbedder:
         return default_to_dict(
             self,
             model=self.model,
+            dimensions=self.dimensions,
             organization=self.organization,
             api_base_url=self.api_base_url,
             prefix=self.prefix,
@@ -131,7 +135,10 @@ class OpenAIDocumentEmbedder:
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
             batch = texts_to_embed[i : i + batch_size]
-            response = self.client.embeddings.create(model=self.model, input=batch)
+            if self.dimensions != None:
+                response = self.client.embeddings.create(model=self.model, dimensions=self.dimensions, input=batch)
+            else:
+                response = self.client.embeddings.create(model=self.model, input=batch)
             embeddings = [el.embedding for el in response.data]
             all_embeddings.extend(embeddings)
 
