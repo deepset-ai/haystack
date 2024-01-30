@@ -44,7 +44,8 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.batch_size = min(64, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
         model_class: str = next(
-            (m for m in ["3-large", "3-small", "ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model), "babbage"
+            (m for m in ["3-large", "3-small", "ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model),
+            "babbage",
         )
         tokenizer = self._setup_encoding_models(model_class, retriever.embedding_model, retriever.max_seq_len)
         self._tokenizer = load_openai_tokenizer(tokenizer_name=tokenizer)
