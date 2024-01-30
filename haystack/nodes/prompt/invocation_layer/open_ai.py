@@ -65,7 +65,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
             )
         self.api_key = api_key
-        self.api_base = "https://api.openai.com/v1" if api_base is None else api_base
+        self.api_base = api_base
         self.openai_organization = openai_organization
         self.timeout = timeout
 
