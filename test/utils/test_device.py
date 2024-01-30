@@ -79,7 +79,7 @@ def test_component_device_single():
     assert single.to_hf() == "cuda:1"
     assert single.update_hf_kwargs({}, overwrite=False) == {"device": "cuda:1"}
     assert single.update_hf_kwargs({"device": 0}, overwrite=True) == {"device": "cuda:1"}
-    assert single.first_device == single._single_device
+    assert single.first_device == ComponentDevice.from_single(single._single_device)
 
 
 def test_component_device_multiple():
@@ -108,7 +108,7 @@ def test_component_device_multiple():
     assert multiple.update_hf_kwargs({"device_map": {None: None}}, overwrite=True) == {
         "device_map": {"layer1": "cpu", "layer2": 1, "layer3": "disk"}
     }
-    assert multiple.first_device == Device.cpu()
+    assert multiple.first_device == ComponentDevice.from_single(Device.cpu())
 
 
 @patch("torch.backends.mps.is_available")

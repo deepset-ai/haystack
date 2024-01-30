@@ -196,7 +196,7 @@ class DeviceMap:
         return DeviceMap(mapping)
 
     @staticmethod
-    def from_hf(hf_device_map: Dict[str, Union[int, str]]) -> "DeviceMap":
+    def from_hf(hf_device_map: Dict[str, Union[int, str, "torch.device"]]) -> "DeviceMap":
         """
         Create a generic device map from a HuggingFace device map.
 
@@ -211,6 +211,10 @@ class DeviceMap:
                 mapping[key] = Device(DeviceType.GPU, device)
             elif isinstance(device, str):
                 device_type, device_id = _split_device_string(device)
+                mapping[key] = Device(DeviceType.from_str(device_type), device_id)
+            elif isinstance(device, torch.device):
+                device_type = device.type
+                device_id = device.index
                 mapping[key] = Device(DeviceType.from_str(device_type), device_id)
             else:
                 raise ValueError(
@@ -389,7 +393,7 @@ class ComponentDevice:
         return self._multiple_devices is not None
 
     @property
-    def first_device(self) -> Optional[Device]:
+    def first_device(self) -> Optional["ComponentDevice"]:
         """
         Return either the single device or the first device in the
         device map, if any.
@@ -400,10 +404,11 @@ class ComponentDevice:
         self._validate()
 
         if self._single_device is not None:
-            return self._single_device
+            return self.from_single(self._single_device)
 
         assert self._multiple_devices is not None
-        return self._multiple_devices.first_device
+        assert self._multiple_devices.first_device is not None
+        return self.from_single(self._multiple_devices.first_device)
 
     @staticmethod
     def resolve_device(device: Optional["ComponentDevice"] = None) -> "ComponentDevice":
