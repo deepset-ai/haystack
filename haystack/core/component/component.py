@@ -154,8 +154,8 @@ class ComponentMeta(type):
         # We use this flag to check that.
         instance.__haystack_added_to_pipeline__ = None
 
-        inputs = InputOutput(component=instance, sockets=instance.__haystack_input__)
-        outputs = InputOutput(component=instance, sockets=instance.__haystack_output__)
+        inputs = _InputOutput(component=instance, sockets=instance.__haystack_input__)
+        outputs = _InputOutput(component=instance, sockets=instance.__haystack_output__)
         setattr(instance, "inputs", inputs)
         setattr(instance, "outputs", outputs)
 
@@ -337,7 +337,7 @@ class _Component:
 component = _Component()
 
 
-class InputOutput:
+class _InputOutput:
     """
     This class is used to represent the inputs or outputs of a `Component`.
     Depending on the type of sockets passed to the constructor, it will represent either the inputs or the outputs of
