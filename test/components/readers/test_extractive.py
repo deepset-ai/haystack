@@ -403,13 +403,13 @@ def test_device_map_dict(mocked_automodel, mocked_autotokenizer):
     assert reader.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"layer_1": 1, "classifier": "cpu"}))
 
 
-def test_device_map_and_device_raises(caplog):
+def test_device_map_and_device_warning(caplog):
     with caplog.at_level(logging.WARNING):
         _ = ExtractiveReader(
             "deepset/roberta-base-squad2", model_kwargs={"device_map": "cpu"}, device=ComponentDevice.from_str("cuda")
         )
         assert (
-            "The parameters `device` and `device_map` from `model_kwargs` are both be provided. Ignoring `device` and using `device_map`."
+            "The parameters `device` and `device_map` from `model_kwargs` are both provided. Ignoring `device` and using `device_map`."
             in caplog.text
         )
 

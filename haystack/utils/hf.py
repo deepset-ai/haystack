@@ -65,7 +65,7 @@ def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optio
     if model_kwargs.get("device_map"):
         if device is not None:
             logger.warning(
-                "The parameters `device` and `device_map` from `model_kwargs` are both be provided. "
+                "The parameters `device` and `device_map` from `model_kwargs` are both provided. "
                 "Ignoring `device` and using `device_map`."
             )
         # Resolve device if device_map is provided in model_kwargs
