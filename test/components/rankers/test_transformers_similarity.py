@@ -265,7 +265,7 @@ class TestSimilarityRanker:
                 "model", model_kwargs={"device_map": "cpu"}, device=ComponentDevice.from_str("cuda")
             )
             assert (
-                "The parameters `device` and `device_map` from `model_kwargs` are both be provided. Ignoring `device` and using `device_map`."
+                "The parameters `device` and `device_map` from `model_kwargs` are both provided. Ignoring `device` and using `device_map`."
                 in caplog.text
             )
 
