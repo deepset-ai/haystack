@@ -7,12 +7,25 @@ from typing import Optional
 import pytest
 
 from haystack.core.component.sockets import InputSocket, OutputSocket
-from haystack.core.errors import PipelineError, PipelineMaxLoops, PipelineRuntimeError
+from haystack.core.errors import PipelineError, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
 from haystack.testing.factory import component_class
-from haystack.testing.sample_components import AddFixedValue, Double, Sum, Threshold
+from haystack.testing.sample_components import AddFixedValue, Double
 
 logging.basicConfig(level=logging.DEBUG)
+
+
+def test_add_component_to_different_pipelines():
+    first_pipe = Pipeline()
+    second_pipe = Pipeline()
+    some_component = component_class("Some")()
+
+    assert some_component.__haystack_added_to_pipeline__ is None
+    first_pipe.add_component("some", some_component)
+    assert some_component.__haystack_added_to_pipeline__ is first_pipe
+
+    with pytest.raises(PipelineError):
+        second_pipe.add_component("some", some_component)
 
 
 def test_run_with_component_that_does_not_return_dict():

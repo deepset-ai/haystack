@@ -24,8 +24,6 @@ def test_pipeline_equally_long_branches():
     pipeline.connect("add_two", "multiplexer.value")
     pipeline.connect("add_one", "multiplexer.value")
 
-    pipeline.draw(Path(__file__).parent / Path(__file__).name.replace(".py", ".png"))
-
     results = pipeline.run({"multiplexer": {"value": 0}})
     assert results == {"remainder": {"remainder_is_0": 0}}
 

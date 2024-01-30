@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from haystack import ComponentError, Document, ExtractedAnswer, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice
-from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils import ComponentDevice, DeviceMap
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs, resolve_hf_device_map
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     import torch
@@ -91,7 +91,8 @@ class ExtractiveReader:
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model)
         self.model = None
-        self.device = ComponentDevice.resolve_device(device)
+        self.tokenizer = None
+        self.device = None
         self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
@@ -101,11 +102,10 @@ class ExtractiveReader:
         self.answers_per_seq = answers_per_seq
         self.no_answer = no_answer
         self.calibration_factor = calibration_factor
-        self.model_kwargs = model_kwargs or {}
         self.overlap_threshold = overlap_threshold
 
-        if self.device.has_multiple_devices:
-            raise ValueError(f"{type(ExtractiveReader).__name__} currently only supports inference on single devices")
+        model_kwargs = resolve_hf_device_map(device=device, model_kwargs=model_kwargs)
+        self.model_kwargs = model_kwargs
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -120,7 +120,7 @@ class ExtractiveReader:
         serialization_dict = default_to_dict(
             self,
             model=self.model_name_or_path,
-            device=self.device.to_dict(),
+            device=None,
             token=self.token if not isinstance(self.token, str) else None,
             max_seq_length=self.max_seq_length,
             top_k=self.top_k,
@@ -142,7 +142,8 @@ class ExtractiveReader:
         Deserialize this component from a dictionary.
         """
         init_params = data["init_parameters"]
-        init_params["device"] = ComponentDevice.from_dict(init_params["device"])
+        if init_params["device"] is not None:
+            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         deserialize_hf_model_kwargs(init_params["model_kwargs"])
 
         return default_from_dict(cls, data)
@@ -151,11 +152,13 @@ class ExtractiveReader:
         """
         Loads model and tokenizer
         """
+        # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
         if self.model is None:
             self.model = AutoModelForQuestionAnswering.from_pretrained(
                 self.model_name_or_path, token=self.token, **self.model_kwargs
-            ).to(self.device.to_torch())
+            )
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
+            self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
     def _flatten_documents(
         self, queries: List[str], documents: List[List[Document]]
@@ -185,7 +188,7 @@ class ExtractiveReader:
                 continue
             texts.append(doc.content)
             document_ids.append(i)
-        encodings_pt = self.tokenizer(
+        encodings_pt = self.tokenizer(  # type: ignore
             queries,
             [document.content for document in documents],
             padding=True,
@@ -196,8 +199,15 @@ class ExtractiveReader:
             stride=stride,
         )
 
-        input_ids = encodings_pt.input_ids.to(self.device.to_torch())
-        attention_mask = encodings_pt.attention_mask.to(self.device.to_torch())
+        # To make mypy happy even though self.device is set in warm_up()
+        assert self.device is not None
+        assert self.device.first_device is not None
+
+        # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
+        first_device = self.device.first_device.to_torch()
+
+        input_ids = encodings_pt.input_ids.to(first_device)
+        attention_mask = encodings_pt.attention_mask.to(first_device)
 
         query_ids = [query_ids[index] for index in encodings_pt.overflow_to_sample_mapping]
         document_ids = [document_ids[sample_id] for sample_id in encodings_pt.overflow_to_sample_mapping]
@@ -205,7 +215,7 @@ class ExtractiveReader:
         encodings = encodings_pt.encodings
         sequence_ids = torch.tensor(
             [[id_ if id_ is not None else -1 for id_ in encoding.sequence_ids] for encoding in encodings]
-        ).to(self.device.to_torch())
+        ).to(first_device)
 
         return input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids
 
@@ -234,7 +244,7 @@ class ExtractiveReader:
 
         # The mask here onwards is the same for all instances in the batch
         # As such we do away with the batch dimension
-        mask = torch.ones(logits.shape[-2:], dtype=torch.bool, device=self.device.to_torch())
+        mask = torch.ones(logits.shape[-2:], dtype=torch.bool, device=logits.device)
         mask = torch.triu(mask)  # End shouldn't be before start
         masked_logits = torch.where(mask, logits, -torch.inf)
         probabilities = torch.sigmoid(masked_logits * self.calibration_factor)
