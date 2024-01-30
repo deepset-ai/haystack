@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
 
-class AuthPolicyType(Enum):
+class SecretType(Enum):
     TOKEN = "token"
     ENV_VAR = "env_var"
 
@@ -13,43 +13,43 @@ class AuthPolicyType(Enum):
         return self.value
 
     @staticmethod
-    def from_str(string: str) -> "AuthPolicyType":
-        map = {e.value: e for e in AuthPolicyType}
+    def from_str(string: str) -> "SecretType":
+        map = {e.value: e for e in SecretType}
         type = map.get(string)
         if type is None:
-            raise ValueError(f"Unknown authentication policy type '{string}'")
+            raise ValueError(f"Unknown secret type '{string}'")
         return type
 
 
 @dataclass
-class AuthPolicy(ABC):
+class Secret(ABC):
     """
-    Provides a common interface for authentication policies.
+    Encpasulates a secret used for authentication.
     """
 
-    _type: AuthPolicyType
+    _type: SecretType
 
-    def __init__(self, type: AuthPolicyType):
+    def __init__(self, type: SecretType):
         super().__init__()
         self._type = type
 
     @staticmethod
-    def from_token(token: str) -> "AuthPolicy":
+    def from_token(token: str) -> "Secret":
         """
-        Create a token authentication policy.
-        This policy cannot be serialized.
+        Create a token-based secret. Cannot be serialized.
 
         :param token:
             The token to use for authentication.
         """
-        return AuthPolicyToken(token)
+        return TokenSecret(token)
 
     @staticmethod
-    def from_env_var(env_vars: Union[str, List[str]], *, strict: bool = True) -> "AuthPolicy":
+    def from_env_var(env_vars: Union[str, List[str]], *, strict: bool = True) -> "Secret":
         """
-        Create an environment variable authentication policy.
-        Accepts one or more environment variables and fetches
-        a string token from the first one that is set.
+        Create an environment variable-based secret. Accepts
+        one or more environment variables. Upon resolution, it
+        returns a string token from the first environment variable
+        that is set.
 
         :param env_vars:
             A single environment variable or an ordered list of
@@ -60,11 +60,12 @@ class AuthPolicy(ABC):
         """
         if isinstance(env_vars, str):
             env_vars = [env_vars]
-        return AuthPolicyEnvVar(env_vars, strict=strict)
+        return EnvVarSecret(env_vars, strict=strict)
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Convert the policy to a JSON-serializable dictionary.
+        Convert the secret to a JSON-serializable dictionary.
+        Some secrets may not be serializable.
 
         :returns:
             The serialized policy.
@@ -76,27 +77,27 @@ class AuthPolicy(ABC):
         return out
 
     @staticmethod
-    def from_dict(dict: Dict[str, Any]) -> "AuthPolicy":
+    def from_dict(dict: Dict[str, Any]) -> "Secret":
         """
-        Create a policy from a JSON-serializable dictionary.
+        Create a secret from a JSON-serializable dictionary.
 
         :param dict:
-            The dictionary to create the policy from.
+            The dictionary with the serialized data.
         :returns:
-            The deserialized policy.
+            The deserialized secret.
         """
-        policy_map = {AuthPolicyType.TOKEN: AuthPolicyToken, AuthPolicyType.ENV_VAR: AuthPolicyEnvVar}
-        policy_type = AuthPolicyType.from_str(dict["type"])
-        return policy_map[policy_type]._from_dict(dict)  # type: ignore
+        secret_map = {SecretType.TOKEN: TokenSecret, SecretType.ENV_VAR: EnvVarSecret}
+        secret_type = SecretType.from_str(dict["type"])
+        return secret_map[secret_type]._from_dict(dict)  # type: ignore
 
     @abstractmethod
     def resolve_value(self) -> Optional[Any]:
         """
-        Resolve the policy to an atomic value. The semantics
-        of the value is policy-dependent.
+        Resolve the secret to an atomic value. The semantics
+        of the value is secret-dependent.
 
         :returns:
-            The value of the policy, if any.
+            The value of the secret, if any.
         """
         pass
 
@@ -106,27 +107,27 @@ class AuthPolicy(ABC):
 
     @staticmethod
     @abstractmethod
-    def _from_dict(dict: Dict[str, Any]) -> "AuthPolicy":
+    def _from_dict(dict: Dict[str, Any]) -> "Secret":
         pass
 
 
 @dataclass
-class AuthPolicyToken(AuthPolicy):
+class TokenSecret(Secret):
     """
-    An authentication policy that uses a string token/API key.
-    This policy cannot be serialized.
+    A secret that uses a string token/API key.
+    Cannot be serialized.
     """
 
     _token: str
 
     def __init__(self, token: str):
         """
-        Create a token authentication policy.
+        Create a token secret.
 
         :param token:
             The token to use for authentication.
         """
-        super().__init__(AuthPolicyType.TOKEN)
+        super().__init__(SecretType.TOKEN)
         self._token = token
 
         if len(token) == 0:
@@ -134,13 +135,13 @@ class AuthPolicyToken(AuthPolicy):
 
     def _to_dict(self) -> Dict[str, Any]:
         raise ValueError(
-            "Cannot serialize token authentication policy. Use an alternative policy like environment variables."
+            "Cannot serialize token-based secret. Use an alternative secret type like environment variables."
         )
 
     @staticmethod
-    def _from_dict(dict: Dict[str, Any]) -> "AuthPolicy":
+    def _from_dict(dict: Dict[str, Any]) -> "Secret":
         raise ValueError(
-            "Cannot deserialize token authentication policy. Use an alternative policy like environment variables."
+            "Cannot deserialize token-based secret. Use an alternative secret type like environment variables."
         )
 
     def resolve_value(self) -> Optional[Any]:
@@ -148,11 +149,11 @@ class AuthPolicyToken(AuthPolicy):
 
 
 @dataclass
-class AuthPolicyEnvVar(AuthPolicy):
+class EnvVarSecret(Secret):
     """
-    An authentication policy that accepts one or more
-    environment variables and fetches a string token from
-    the first one that is set.
+    A secret that accepts one or more environment variables.
+    Upon resolution, it returns a string token from the first
+    environment variable that is set. Can be serialized.
     """
 
     _env_vars: List[str]
@@ -160,7 +161,7 @@ class AuthPolicyEnvVar(AuthPolicy):
 
     def __init__(self, env_vars: List[str], *, strict: bool = True):
         """
-        Create an environment variable authentication policy.
+        Create an environment variable secret.
 
         :param env_vars:
             Ordered list of candidate environment variables.
@@ -168,19 +169,19 @@ class AuthPolicyEnvVar(AuthPolicy):
             Whether to raise an exception if none of the environment
             variables are set.
         """
-        super().__init__(AuthPolicyType.ENV_VAR)
+        super().__init__(SecretType.ENV_VAR)
         self._env_vars = list(env_vars)
         self._strict = strict
 
         if len(env_vars) == 0:
-            raise ValueError("One or more environment variables must be provided for the authentication policy.")
+            raise ValueError("One or more environment variables must be provided for the secret.")
 
     def _to_dict(self) -> Dict[str, Any]:
         return {"env_vars": self._env_vars, "strict": self._strict}
 
     @staticmethod
-    def _from_dict(dict: Dict[str, Any]) -> "AuthPolicy":
-        return AuthPolicyEnvVar(dict["env_vars"], strict=dict["strict"])
+    def _from_dict(dict: Dict[str, Any]) -> "Secret":
+        return EnvVarSecret(dict["env_vars"], strict=dict["strict"])
 
     def resolve_value(self) -> Optional[Any]:
         out = None
