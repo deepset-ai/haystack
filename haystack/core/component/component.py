@@ -156,6 +156,15 @@ class ComponentMeta(type):
 
         inputs = _InputOutput(component=instance, sockets=instance.__haystack_input__)
         outputs = _InputOutput(component=instance, sockets=instance.__haystack_output__)
+
+        if hasattr(instance, "inputs"):
+            msg = "Component already has an 'inputs' attribute, which is reserved for Haystack. Rename it."
+            raise ComponentError(msg)
+
+        if hasattr(instance, "outputs"):
+            msg = "Component already has an 'outputs' attribute, which is reserved for Haystack. Rename it."
+            raise ComponentError(msg)
+
         setattr(instance, "inputs", inputs)
         setattr(instance, "outputs", outputs)
 
