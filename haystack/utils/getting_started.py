@@ -7,7 +7,7 @@ from haystack.utils import fetch_archive_from_http
 logger = logging.getLogger(__name__)
 
 
-def build_pipeline(provider, API_KEY, document_store):
+def build_pipeline(provider, API_KEY, API_BASE, document_store):
     # Importing top-level causes a circular import
     from haystack.nodes import AnswerParser, PromptNode, PromptTemplate, BM25Retriever
     from haystack.pipelines import Pipeline
@@ -42,6 +42,7 @@ def build_pipeline(provider, API_KEY, document_store):
         prompt_node = PromptNode(
             model_name_or_path="gpt-3.5-turbo-0301",
             api_key=API_KEY,
+            api_base=API_BASE,
             default_prompt_template=question_answering_with_references,
         )
     else:
