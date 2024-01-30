@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add support for latest OpenAI embedding models `text-embedding-3-large` and `text-embedding-3-small`.
