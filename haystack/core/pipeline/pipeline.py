@@ -190,7 +190,7 @@ class Pipeline:
                 f"'{type(instance)}' doesn't seem to be a component. Is this class decorated with @component?"
             )
 
-        if getattr(instance, "__haystack_pipeline_owned__", False):
+        if getattr(instance, "__haystack_added_to_pipeline__", None):
             msg = (
                 "Component has already been added in another Pipeline. "
                 "Components can't be shared between Pipelines. Create a new instance instead."
@@ -201,7 +201,7 @@ class Pipeline:
         input_sockets = getattr(instance, "__haystack_input__", {})
         output_sockets = getattr(instance, "__haystack_output__", {})
 
-        setattr(instance, "__haystack_pipeline_owned__", True)
+        setattr(instance, "__haystack_added_to_pipeline__", self)
 
         # Add component to the graph, disconnected
         logger.debug("Adding component '%s' (%s)", name, instance)

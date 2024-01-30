@@ -151,7 +151,7 @@ class ComponentMeta(type):
         # Since a Component can't be used in multiple Pipelines at the same time
         # we need to know if it's already owned by a Pipeline when adding it to one.
         # We use this flag to check that.
-        instance.__haystack_pipeline_owned__ = False
+        instance.__haystack_added_to_pipeline__ = None
 
         return instance
 

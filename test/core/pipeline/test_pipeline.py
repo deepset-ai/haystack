@@ -20,9 +20,9 @@ def test_add_component_to_different_pipelines():
     second_pipe = Pipeline()
     some_component = component_class("Some")()
 
-    assert not some_component.__haystack_pipeline_owned__
+    assert some_component.__haystack_added_to_pipeline__ is None
     first_pipe.add_component("some", some_component)
-    assert some_component.__haystack_pipeline_owned__
+    assert some_component.__haystack_added_to_pipeline__ is first_pipe
 
     with pytest.raises(PipelineError):
         second_pipe.add_component("some", some_component)
