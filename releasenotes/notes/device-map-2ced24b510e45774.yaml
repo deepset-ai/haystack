@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Use `device_map` when loading a TransformersSimilarityRanker and ExtractiveReader.
+    This allows for multi-device inference and for loading quantized models (e.g. load_in_8bit=True)

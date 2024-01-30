@@ -4,8 +4,8 @@ from typing import Any, Dict, List, Optional, Union
 
 from haystack import ComponentError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice
-from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils import ComponentDevice, DeviceMap
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs, resolve_hf_device_map
 
 logger = logging.getLogger(__name__)
 
@@ -81,48 +81,48 @@ class TransformersSimilarityRanker:
         """
         torch_and_transformers_import.check()
 
-        self.model = model
-        if top_k <= 0:
-            raise ValueError(f"top_k must be > 0, but got {top_k}")
-        self.top_k = top_k
-        self.device = ComponentDevice.resolve_device(device)
+        self.model_name_or_path = str(model)
+        self.model = None
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
-        self.token = token
-        self._model = None
         self.tokenizer = None
+        self.device = None
+        self.top_k = top_k
+        self.token = token
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.scale_score = scale_score
         self.calibration_factor = calibration_factor
+        self.score_threshold = score_threshold
+
+        model_kwargs = resolve_hf_device_map(device=device, model_kwargs=model_kwargs)
+        self.model_kwargs = model_kwargs
+
+        # Parameter validation
         if self.scale_score and self.calibration_factor is None:
             raise ValueError(
                 f"scale_score is True so calibration_factor must be provided, but got {calibration_factor}"
             )
-        self.score_threshold = score_threshold
-        self.model_kwargs = model_kwargs or {}
 
-        if self.device.has_multiple_devices:
-            raise ValueError(
-                f"{type(TransformersSimilarityRanker).__name__} currently only supports inference on single devices"
-            )
+        if self.top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": str(self.model)}
+        return {"model": self.model_name_or_path}
 
     def warm_up(self):
         """
         Warm up the model and tokenizer used for scoring the Documents.
         """
-        if self._model is None:
-            self._model = AutoModelForSequenceClassification.from_pretrained(
-                self.model, token=self.token, **self.model_kwargs
-            ).to(self.device.to_torch())
-            self._model.eval()
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model, token=self.token)
+        if self.model is None:
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                self.model_name_or_path, token=self.token, **self.model_kwargs
+            )
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
+            self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -130,8 +130,8 @@ class TransformersSimilarityRanker:
         """
         serialization_dict = default_to_dict(
             self,
-            device=self.device.to_dict(),
-            model=self.model,
+            device=None,
+            model=self.model_name_or_path,
             token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
             top_k=self.top_k,
             query_prefix=self.query_prefix,
@@ -153,7 +153,8 @@ class TransformersSimilarityRanker:
         Deserialize this component from a dictionary.
         """
         init_params = data["init_parameters"]
-        init_params["device"] = ComponentDevice.from_dict(init_params["device"])
+        if init_params["device"] is not None:
+            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         deserialize_hf_model_kwargs(init_params["model_kwargs"])
 
         return default_from_dict(cls, data)
@@ -185,22 +186,20 @@ class TransformersSimilarityRanker:
             return {"documents": []}
 
         top_k = top_k or self.top_k
-        if top_k <= 0:
-            raise ValueError(f"top_k must be > 0, but got {top_k}")
-
         scale_score = scale_score or self.scale_score
         calibration_factor = calibration_factor or self.calibration_factor
+        score_threshold = score_threshold or self.score_threshold
+
+        if top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
 
         if scale_score and calibration_factor is None:
             raise ValueError(
                 f"scale_score is True so calibration_factor must be provided, but got {calibration_factor}"
             )
 
-        if score_threshold is None:
-            score_threshold = self.score_threshold
-
         # If a model path is provided but the model isn't loaded
-        if self.model and not self._model:
+        if self.model is None:
             raise ComponentError(
                 f"The component {self.__class__.__name__} wasn't warmed up. Run 'warm_up()' before calling 'run()'."
             )
@@ -216,10 +215,10 @@ class TransformersSimilarityRanker:
         features = self.tokenizer(
             query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
         ).to(  # type: ignore
-            self.device.to_torch()
+            self.device.first_device.to_torch()
         )
         with torch.inference_mode():
-            similarity_scores = self._model(**features).logits.squeeze(dim=1)  # type: ignore
+            similarity_scores = self.model(**features).logits.squeeze(dim=1)  # type: ignore
 
         if scale_score:
             similarity_scores = torch.sigmoid(similarity_scores * calibration_factor)
