@@ -6,7 +6,7 @@ import os
 import pynvml
 import psutil
 
-from pydantic import BaseModel, Field, validator
+from pydantic.v1 import BaseModel, Field, validator
 
 from fastapi import FastAPI, APIRouter
 

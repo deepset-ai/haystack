@@ -11,7 +11,7 @@ from string import Template
 
 import numpy as np
 from tqdm import tqdm
-from pydantic.error_wrappers import ValidationError
+from pydantic.v1.error_wrappers import ValidationError
 
 from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, FilterType, Label

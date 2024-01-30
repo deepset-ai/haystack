@@ -6,7 +6,7 @@ import json
 import inspect
 import networkx as nx
 from enum import Enum
-from pydantic.dataclasses import dataclass
+from pydantic.v1.dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import haystack

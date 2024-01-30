@@ -1,0 +1,4 @@
+---
+enhancements:
+  - /
+    Haystack now uses pydantic v2. However, in order to avoid a large change to the codebase, it is still using the v1 API, taking advantage of the v1 submodule that is included in pydantic v2.

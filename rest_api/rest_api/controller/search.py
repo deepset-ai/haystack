@@ -4,7 +4,7 @@ import logging
 import time
 import json
 
-from pydantic import BaseConfig
+from pydantic.v1 import BaseConfig
 from fastapi import FastAPI, APIRouter
 import haystack
 from haystack import Pipeline

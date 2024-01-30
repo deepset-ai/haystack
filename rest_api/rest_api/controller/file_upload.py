@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from haystack import Pipeline
 from haystack.nodes import BaseConverter, PreProcessor
 
