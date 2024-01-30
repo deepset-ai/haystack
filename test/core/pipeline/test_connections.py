@@ -338,11 +338,12 @@ def test_connect_receiver_socket_does_not_exist():
 def test_connect_many_outputs_to_the_same_input():
     add_1 = AddFixedValue()
     add_2 = AddFixedValue()
+    add_3 = AddFixedValue()
 
     pipe = Pipeline()
     pipe.add_component("first", add_1)
     pipe.add_component("second", add_2)
-    pipe.add_component("third", add_2)
+    pipe.add_component("third", add_3)
     pipe.connect("first.result", "second.value")
     with pytest.raises(PipelineConnectError, match=r"second.value is already connected to \['first'\]"):
         pipe.connect("third.result", "second.value")
