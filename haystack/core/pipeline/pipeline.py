@@ -381,6 +381,16 @@ class Pipeline:
         except KeyError as exc:
             raise ValueError(f"Component named {name} not found in the pipeline.") from exc
 
+    def get_component_name(self, instance: Component) -> str:
+        """
+        Returns the name of a Component instance. If the Component has not been added to this Pipeline,
+        returns an empty string.
+        """
+        for name, inst in self.graph.nodes(data="instance"):
+            if inst == instance:
+                return name
+        return ""
+
     def inputs(self) -> Dict[str, Dict[str, Any]]:
         """
         Returns a dictionary containing the inputs of a pipeline. Each key in the dictionary

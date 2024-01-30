@@ -28,6 +28,21 @@ def test_add_component_to_different_pipelines():
         second_pipe.add_component("some", some_component)
 
 
+def test_get_component_name():
+    pipe = Pipeline()
+    some_component = component_class("Some")()
+    pipe.add_component("some", some_component)
+
+    assert pipe.get_component_name(some_component) == "some"
+
+
+def test_get_component_name_not_added_to_pipeline():
+    pipe = Pipeline()
+    some_component = component_class("Some")()
+
+    assert pipe.get_component_name(some_component) == ""
+
+
 def test_run_with_component_that_does_not_return_dict():
     BrokenComponent = component_class(
         "BrokenComponent", input_types={"a": int}, output_types={"b": int}, output=1  # type:ignore
