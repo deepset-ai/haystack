@@ -1,0 +1,7 @@
+---
+upgrade:
+enhancements:
+  - |
+    The default in `default_streaming_callback` was confusing, this function was the go-to-helper
+    one would use to quickly print the generated tokens as they come, but it was not used by default.
+    The function was then renamed to `print_streaming_chunk.`

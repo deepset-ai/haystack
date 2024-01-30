@@ -1,12 +1,11 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import get_args, List, Type, Any
 import logging
 from dataclasses import dataclass, field
+from typing import Any, List, Type, get_args
 
-from haystack.core.component.types import CANALS_VARIADIC_ANNOTATION
-
+from haystack.core.component.types import HAYSTACK_VARIADIC_ANNOTATION
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ class InputSocket:
     def __post_init__(self):
         try:
             # __metadata__ is a tuple
-            self.is_variadic = self.type.__metadata__[0] == CANALS_VARIADIC_ANNOTATION
+            self.is_variadic = self.type.__metadata__[0] == HAYSTACK_VARIADIC_ANNOTATION
         except AttributeError:
             self.is_variadic = False
         if self.is_variadic:

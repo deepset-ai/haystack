@@ -68,11 +68,11 @@
 
 """
 
-import logging
 import inspect
-from typing import Protocol, runtime_checkable, Any
-from types import new_class
+import logging
 from copy import deepcopy
+from types import new_class
+from typing import Any, Protocol, runtime_checkable
 
 from haystack.core.component.sockets import InputSocket, OutputSocket, _empty
 from haystack.core.errors import ComponentError
@@ -123,20 +123,20 @@ class ComponentMeta(type):
         # Component instance, so we take the chance and set up the I/O sockets
 
         # If `component.set_output_types()` was called in the component constructor,
-        # `__canals_output__` is already populated, no need to do anything.
-        if not hasattr(instance, "__canals_output__"):
-            # If that's not the case, we need to populate `__canals_output__`
+        # `__haystack_output__` is already populated, no need to do anything.
+        if not hasattr(instance, "__haystack_output__"):
+            # If that's not the case, we need to populate `__haystack_output__`
             #
             # If the `run` method was decorated, it has a `_output_types_cache` field assigned
             # that stores the output specification.
             # We deepcopy the content of the cache to transfer ownership from the class method
             # to the actual instance, so that different instances of the same class won't share this data.
-            instance.__canals_output__ = deepcopy(getattr(instance.run, "_output_types_cache", {}))
+            instance.__haystack_output__ = deepcopy(getattr(instance.run, "_output_types_cache", {}))
 
         # Create the sockets if set_input_types() wasn't called in the constructor.
         # If it was called and there are some parameters also in the `run()` method, these take precedence.
-        if not hasattr(instance, "__canals_input__"):
-            instance.__canals_input__ = {}
+        if not hasattr(instance, "__haystack_input__"):
+            instance.__haystack_input__ = {}
         run_signature = inspect.signature(getattr(cls, "run"))
         for param in list(run_signature.parameters)[1:]:  # First is 'self' and it doesn't matter.
             if run_signature.parameters[param].kind not in (
@@ -146,7 +146,7 @@ class ComponentMeta(type):
                 socket_kwargs = {"name": param, "type": run_signature.parameters[param].annotation}
                 if run_signature.parameters[param].default != inspect.Parameter.empty:
                     socket_kwargs["default_value"] = run_signature.parameters[param].default
-                instance.__canals_input__[param] = InputSocket(**socket_kwargs)
+                instance.__haystack_input__[param] = InputSocket(**socket_kwargs)
         return instance
 
 
@@ -178,9 +178,9 @@ class _Component:
         :param type: type of the input socket.
         :param default: default value of the input socket, defaults to _empty
         """
-        if not hasattr(instance, "__canals_input__"):
-            instance.__canals_input__ = {}
-        instance.__canals_input__[name] = InputSocket(name=name, type=type, default_value=default)
+        if not hasattr(instance, "__haystack_input__"):
+            instance.__haystack_input__ = {}
+        instance.__haystack_input__[name] = InputSocket(name=name, type=type, default_value=default)
 
     def set_input_types(self, instance, **types):
         """
@@ -223,7 +223,7 @@ class _Component:
         parameter mandatory as specified in `set_input_types`.
 
         """
-        instance.__canals_input__ = {name: InputSocket(name=name, type=type_) for name, type_ in types.items()}
+        instance.__haystack_input__ = {name: InputSocket(name=name, type=type_) for name, type_ in types.items()}
 
     def set_output_types(self, instance, **types):
         """
@@ -245,7 +245,7 @@ class _Component:
                 return {"output_1": 1, "output_2": "2"}
         ```
         """
-        instance.__canals_output__ = {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()}
+        instance.__haystack_output__ = {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()}
 
     def output_types(self, **types):
         """
