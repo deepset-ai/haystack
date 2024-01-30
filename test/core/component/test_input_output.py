@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.core.component._input_output import InputOutput
+from haystack.core.component.component import InputOutput
 from haystack.core.pipeline import Pipeline
 from haystack.testing.factory import component_class
 
