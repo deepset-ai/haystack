@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Expose an `AuthPolicy` type to provide consistent API for any component that requires authentication.
+    Currently supports string tokens and environment variables. Token-based policies are automatically
+    prevented from being serialized to disk (to prevent accidental leakage of secrets).
