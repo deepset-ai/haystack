@@ -44,9 +44,8 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.batch_size = min(64, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
         model_class: str = next(
-            (m for m in ["ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model), "babbage"
+            (m for m in ["3-large", "3-small", "ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model), "babbage"
         )
-
         tokenizer = self._setup_encoding_models(model_class, retriever.embedding_model, retriever.max_seq_len)
         self._tokenizer = load_openai_tokenizer(tokenizer_name=tokenizer)
 
@@ -57,7 +56,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         tokenizer_name = "gpt2"
         # new generation of embedding models (December 2022), we need to specify the full name
-        if model_name.endswith("-002"):
+        if model_name.endswith("-002") or model_name in ["text-embedding-3-large", "text-embedding-3-small"]:
             self.query_encoder_model = model_name
             self.doc_encoder_model = model_name
             self.max_seq_len = min(8191, max_seq_len)
