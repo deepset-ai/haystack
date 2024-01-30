@@ -1,6 +1,6 @@
 import copy
 import logging
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 from haystack.lazy_imports import LazyImport
 from haystack.utils.device import ComponentDevice
 
