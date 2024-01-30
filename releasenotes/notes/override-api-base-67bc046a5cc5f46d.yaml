@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    API_BASE can now be passed as an optional parameter in the getting_started sample.  Only openai provider is supported in this set of changes.
+    PromptNode and PromptModel were enhanced to allow passing of this parameter.
+    This allows RAG against a local endpoint (e.g, http://localhost:1234/v1), so long as it is OpenAI compatible (such as LM Studio)
+
+    Logging in the getting started sample was made more verbose, to make it easier for people to see what was happening under the covers.

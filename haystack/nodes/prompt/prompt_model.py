@@ -37,6 +37,7 @@ class PromptModel(BaseComponent):
         model_name_or_path: str = "google/flan-t5-base",
         max_length: Optional[int] = 100,
         api_key: Optional[str] = None,
+        api_base: Optional[str] = None,
         timeout: Optional[float] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
@@ -65,6 +66,7 @@ class PromptModel(BaseComponent):
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
         self.api_key = api_key
+        self.api_base = api_base
         self.timeout = timeout
         self.use_auth_token = use_auth_token
         self.use_gpu = use_gpu
@@ -83,6 +85,9 @@ class PromptModel(BaseComponent):
             "use_gpu": self.use_gpu,
             "devices": self.devices,
         }
+        if self.api_base is not None:
+            kwargs["api_base"] = self.api_base
+
         all_kwargs = {**self.model_kwargs, **kwargs}
 
         if isinstance(invocation_layer_class, str):
