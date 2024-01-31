@@ -74,9 +74,10 @@ from copy import deepcopy
 from types import new_class
 from typing import Any, Dict, Protocol, Union, runtime_checkable
 
-from ..errors import ComponentError
-from ..type_utils import _type_name
-from .sockets import InputSocket, OutputSocket, _empty
+from haystack.core.errors import ComponentError
+from haystack.core.type_utils import _type_name
+
+from .types import InputSocket, OutputSocket, _empty
 
 logger = logging.getLogger(__name__)
 

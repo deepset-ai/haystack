@@ -6,7 +6,7 @@ from typing import Optional
 
 import pytest
 
-from haystack.core.component.sockets import InputSocket, OutputSocket
+from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.core.errors import PipelineError, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
 from haystack.testing.factory import component_class
