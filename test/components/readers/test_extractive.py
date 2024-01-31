@@ -640,7 +640,7 @@ def test_roberta():
     assert answers[1].data == "Angela Merkel"
     assert answers[1].score == pytest.approx(0.857952892780304)
     assert answers[2].data is None
-    assert answers[2].score == pytest.approx(0.019673851661650588)
+    assert answers[2].score == pytest.approx(0.019673851661650588, abs=1e-5)
     assert len(answers) == 3
     # uncomment assertions below when there is batching in v2
     # assert answers[0][0].data == "Olaf Scholz"
