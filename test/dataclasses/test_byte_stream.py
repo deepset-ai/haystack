@@ -1,8 +1,4 @@
-import io
-
 from haystack.dataclasses import ByteStream
-
-import pytest
 
 
 def test_from_file_path(tmp_path, request):
@@ -19,6 +15,10 @@ def test_from_file_path(tmp_path, request):
     assert b.data == test_bytes
     assert b.mime_type == "text/plain"
 
+    b = ByteStream.from_file_path(test_path, meta={"foo": "bar"})
+    assert b.data == test_bytes
+    assert b.meta == {"foo": "bar"}
+
 
 def test_from_string():
     test_string = "Hello, world!"
@@ -29,6 +29,10 @@ def test_from_string():
     b = ByteStream.from_string(test_string, mime_type="text/plain")
     assert b.data.decode() == test_string
     assert b.mime_type == "text/plain"
+
+    b = ByteStream.from_string(test_string, meta={"foo": "bar"})
+    assert b.data.decode() == test_string
+    assert b.meta == {"foo": "bar"}
 
 
 def test_to_file(tmp_path, request):
