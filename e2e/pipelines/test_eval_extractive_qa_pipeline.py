@@ -140,3 +140,24 @@ def test_extractive_qa_pipeline(tmp_path):
     assert f1_custom_parameters["f1"] == 1.0
     with open(tmp_path / "f1_score.json", "r") as f:
         assert f1_default == json.load(f)
+
+    # Test SAS
+    sas_default = eval_result.calculate_metrics(Metric.SAS, output_key="answers")
+    sas_custom_parameters = eval_result.calculate_metrics(
+        Metric.SAS,
+        output_key="answers",
+        ignore_case=True,
+        ignore_punctuation=True,
+        ignore_numbers=True,
+        model="cross-encoder/ms-marco-MiniLM-L-6-v2",
+    )
+    # Save SAS metric results to json
+    sas_default.save(tmp_path / "sas_score.json")
+
+    assert sas_default["sas"] == 1.0000000198682149
+    assert sas_default["scores"] == [1.0, 0.9999999403953552, 1.0000001192092896]
+    assert sas_custom_parameters["sas"] == 0.9996823867162069
+    assert sas_custom_parameters["scores"] == [0.9996718168258667, 0.9996079802513123, 0.9997673630714417]
+
+    with open(tmp_path / "sas_score.json", "r") as f:
+        assert sas_default == json.load(f)

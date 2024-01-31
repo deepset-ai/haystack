@@ -142,6 +142,27 @@ def test_bm25_rag_pipeline(tmp_path):
     with open(tmp_path / "f1_score.json", "r") as f:
         assert f1_default == json.load(f)
 
+    # Test SAS
+    sas_default = eval_result.calculate_metrics(Metric.SAS, output_key="answers")
+    sas_custom_parameters = eval_result.calculate_metrics(
+        Metric.SAS,
+        output_key="answers",
+        ignore_case=True,
+        ignore_punctuation=True,
+        ignore_numbers=True,
+        model="cross-encoder/ms-marco-MiniLM-L-6-v2",
+    )
+    # Save SAS metric results to json
+    sas_default.save(tmp_path / "sas_score.json")
+
+    assert sas_default["sas"] == 0.9999999403953552
+    assert sas_default["scores"] == [0.9999998807907104, 1.0, 0.9999999403953552]
+    assert sas_custom_parameters["sas"] == 0.9769593477249146
+    assert sas_custom_parameters["scores"] == [0.9758228063583374, 0.95721834897995, 0.9978368878364563]
+
+    with open(tmp_path / "sas_score.json", "r") as f:
+        assert sas_default == json.load(f)
+
 
 def test_embedding_retrieval_rag_pipeline(tmp_path):
     # Create the RAG pipeline
@@ -287,3 +308,24 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     assert f1_custom_parameters["f1"] == 1.0
     with open(tmp_path / "f1_score.json", "r") as f:
         assert f1_default == json.load(f)
+
+    # Test SAS
+    sas_default = eval_result.calculate_metrics(Metric.SAS, output_key="answers")
+    sas_custom_parameters = eval_result.calculate_metrics(
+        Metric.SAS,
+        output_key="answers",
+        ignore_case=True,
+        ignore_punctuation=True,
+        ignore_numbers=True,
+        model="cross-encoder/ms-marco-MiniLM-L-6-v2",
+    )
+    # Save SAS metric results to json
+    sas_default.save(tmp_path / "sas_score.json")
+
+    assert sas_default["sas"] == 0.9999999403953552
+    assert sas_default["scores"] == [0.9999998807907104, 1.0, 0.9999999403953552]
+    assert sas_custom_parameters["sas"] == 0.9769593477249146
+    assert sas_custom_parameters["scores"] == [0.9758228063583374, 0.95721834897995, 0.9978368878364563]
+
+    with open(tmp_path / "sas_score.json", "r") as f:
+        assert sas_default == json.load(f)
