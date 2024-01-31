@@ -49,7 +49,10 @@ class Sockets:
 
     # We're using a forward declaration here to avoid a circular import.
     def __init__(
-        self, component: "Component", sockets: Dict[str, SocketsType], sockets_type: SocketsType  # noqa: F821
+        self,
+        component: "Component",  # type: ignore[name-defined] # noqa: F821
+        sockets: Dict[str, SocketsType],
+        sockets_type: SocketsType,
     ):
         """
         Create a new Sockets object.

@@ -197,9 +197,9 @@ class Pipeline:
             )
             raise PipelineError(msg)
 
-        # Create the component's input and output sockets
-        input_sockets = instance.inputs._sockets
-        output_sockets = instance.outputs._sockets
+        # Get the sockets of the component, we're completely sure the fields exist so we ignore the type error
+        input_sockets = instance.inputs._sockets  # type: ignore[attr-defined]
+        output_sockets = instance.outputs._sockets  # type: ignore[attr-defined]
 
         setattr(instance, "__haystack_added_to_pipeline__", self)
 
