@@ -24,7 +24,7 @@ class SecretType(Enum):
 @dataclass
 class Secret(ABC):
     """
-    Encpasulates a secret used for authentication.
+    Encapsulates a secret used for authentication.
     """
 
     _type: SecretType
