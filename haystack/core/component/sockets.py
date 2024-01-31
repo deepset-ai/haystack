@@ -12,7 +12,7 @@ from .types import InputSocket, OutputSocket
 logger = logging.getLogger(__name__)
 
 
-class _InputOutput:
+class Sockets:
     """
     This class is used to represent the inputs or outputs of a `Component`.
     Depending on the type of sockets passed to the constructor, it will represent either the inputs or the outputs of
@@ -34,7 +34,7 @@ class _InputOutput:
 
     prompt_builder = PromptBuilder(template=prompt_template)
 
-    inputs = InputOutput(component=prompt_builder, sockets=prompt_builder.__haystack_input__)
+    inputs = Sockets(component=prompt_builder, sockets=prompt_builder.__haystack_input__)
     inputs
     >>> PromptBuilder inputs:
     >>>   - question: Any
@@ -63,21 +63,21 @@ class _InputOutput:
         self, component: "Component", sockets: Union[Dict[str, InputSocket], Dict[str, OutputSocket]]  # noqa: F821
     ):
         if sockets is None:
-            msg = f"InputOutput must be initialized with sockets. Got {sockets}"
+            msg = f"Sockets must be initialized with sockets. Got {sockets}"
             raise ValueError(msg)
 
         socket_type = {type(s) for s in sockets.values()}
         if len(socket_type) > 1:
-            msg = f"InputOutput must be initialized with sockets of the same type. Got {socket_type}"
+            msg = f"Sockets must be initialized with sockets of the same type. Got {socket_type}"
             raise ValueError(msg)
 
         self._sockets_type = socket_type.pop() if len(socket_type) == 1 else None
         if self._sockets_type not in (InputSocket, OutputSocket, None):
-            msg = f"InputOutput must be initialized with InputSocket or OutputSocket. Got {self._sockets_type}"
+            msg = f"Sockets must be initialized with InputSocket or OutputSocket. Got {self._sockets_type}"
             raise ValueError(msg)
 
         if not component:
-            msg = f"InputOutput must be initialized with a component. Got {component}"
+            msg = f"Sockets must be initialized with a component. Got {component}"
             raise ValueError(msg)
 
         self._component = component

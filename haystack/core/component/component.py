@@ -76,7 +76,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from haystack.core.errors import ComponentError
 
-from .socket import _InputOutput
+from .sockets import Sockets
 from .types import InputSocket, OutputSocket, _empty
 
 logger = logging.getLogger(__name__)
@@ -155,8 +155,8 @@ class ComponentMeta(type):
         # We use this flag to check that.
         instance.__haystack_added_to_pipeline__ = None
 
-        inputs = _InputOutput(component=instance, sockets=instance.__haystack_input__)
-        outputs = _InputOutput(component=instance, sockets=instance.__haystack_output__)
+        inputs = Sockets(component=instance, sockets=instance.__haystack_input__)
+        outputs = Sockets(component=instance, sockets=instance.__haystack_output__)
 
         if hasattr(instance, "inputs"):
             msg = "Component already has an 'inputs' attribute, which is reserved for Haystack. Rename it."
