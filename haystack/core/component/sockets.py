@@ -17,7 +17,7 @@ SocketsType = Union[Type[InputSocket], Type[OutputSocket]]
 class Sockets:
     """
     This class is used to represent the inputs or outputs of a `Component`.
-    Depending on the type of sockets passed to the constructor, it will represent either the inputs or the outputs of
+    Depending on the type passed to the constructor, it will represent either the inputs or the outputs of
     the `Component`.
 
     Usage:
@@ -35,28 +35,15 @@ class Sockets:
     \"""
 
     prompt_builder = PromptBuilder(template=prompt_template)
-
-    inputs = Sockets(component=prompt_builder, sockets=prompt_builder.__haystack_input__)
+    sockets = {"question": InputSocket("question", Any), "documents": InputSocket("documents", Any)}
+    inputs = Sockets(component=prompt_builder, sockets=sockets, sockets_type=InputSocket)
     inputs
     >>> PromptBuilder inputs:
     >>>   - question: Any
     >>>   - documents: Any
 
     inputs.question
-    >>> PromptBuilder.inputs.question
-    ```
-
-    The behaviour changes a bit if the `Component` has been added to a `Pipeline`.
-    In that case we get the name of the `Component` from the `Pipeline`. These ease creating connections with `Pipeline.connect()`.
-
-    ```
-    from haystack.core.pipeline import Pipeline
-
-    pipeline = Pipeline()
-    pipeline.add_component("my_prompt_builder", prompt_builder)
-
-    inputs.question
-    >>> my_prompt_builder.inputs.question
+    >>> InputSocket(name='question', type=typing.Any, default_value=<class 'haystack.core.component.types._empty'>, is_variadic=False, senders=[])
     ```
     """
 
@@ -64,12 +51,24 @@ class Sockets:
     def __init__(
         self, component: "Component", sockets: Dict[str, SocketsType], sockets_type: SocketsType  # noqa: F821
     ):
+        """
+        Create a new Sockets object.
+        We don't do any enforcement on the types of the sockets here, the `sockets_type` is only used for
+        the `__repr__` method.
+        We could do without it and use the type of a random value in the `sockets` dict, but that wouldn't
+        work for components that have no sockets at all. Either input or output.
+        """
         self._sockets_type = sockets_type
         self._component = component
         self._sockets = sockets
         self.__dict__.update(sockets)
 
     def __setitem__(self, key: str, socket: SocketsType):
+        """
+        Adds a new socket to this Sockets object.
+        This eases a bit updating the list of sockets after Sockets has been created.
+        That should happen only in the `component` decorator.
+        """
         self._sockets[key] = socket
         self.__dict__[key] = socket
 
