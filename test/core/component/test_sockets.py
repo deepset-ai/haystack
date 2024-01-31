@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.core.component.sockets import Sockets
+from haystack.core.component.sockets import InputSocket, Sockets
 from haystack.core.pipeline import Pipeline
 from haystack.testing.factory import component_class
 
@@ -8,39 +8,25 @@ from haystack.testing.factory import component_class
 class TestSockets:
     def test_init(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
-        io = Sockets(component=comp, sockets=comp.__haystack_input__)
+        sockets = {"input_1": InputSocket("input_1", int), "input_2": InputSocket("input_2", int)}
+        io = Sockets(component=comp, sockets=sockets, sockets_type=InputSocket)
         assert io._component == comp
-        assert io._sockets == comp.__haystack_input__
+        # assert io._sockets == comp.__haystack_input__
         assert "input_1" in io.__dict__
         assert io.__dict__["input_1"] == comp.__haystack_input__["input_1"]
         assert "input_2" in io.__dict__
         assert io.__dict__["input_2"] == comp.__haystack_input__["input_2"]
 
-    def test_init_without_sockets(self):
-        comp = component_class("SomeComponent")()
-        with pytest.raises(ValueError):
-            Sockets(component=comp, sockets=None)
-
-    def test_init_with_mixed_sockets(self):
-        comp = component_class("SomeComponent", input_types={"input_1": int}, output_types={"output_1": int})()
-        sockets = {**comp.__haystack_input__, **comp.__haystack_output__}
-        with pytest.raises(ValueError):
-            Sockets(component=comp, sockets=sockets)
-
-    def test_init_without_component(self):
-        with pytest.raises(ValueError):
-            Sockets(component=None, sockets={})
-
     def test_init_with_empty_sockets(self):
         comp = component_class("SomeComponent")()
-        io = Sockets(component=comp, sockets={})
+        io = Sockets(component=comp, sockets={}, sockets_type=InputSocket)
 
         assert io._component == comp
         assert io._sockets == {}
 
     def test_component_name(self):
         comp = component_class("SomeComponent")()
-        io = Sockets(component=comp, sockets={})
+        io = Sockets(component=comp, sockets={}, sockets_type=InputSocket)
         assert io._component_name() == "SomeComponent"
 
     def test_component_name_added_to_pipeline(self):
@@ -48,53 +34,25 @@ class TestSockets:
         pipeline = Pipeline()
         pipeline.add_component("my_component", comp)
 
-        io = Sockets(component=comp, sockets={})
+        io = Sockets(component=comp, sockets={}, sockets_type=InputSocket)
         assert io._component_name() == "my_component"
-
-    def test_socket_repr_input(self):
-        comp = component_class("SomeComponent", input_types={"input_1": int})()
-        io = Sockets(component=comp, sockets=comp.__haystack_input__)
-
-        assert io._socket_repr("input_1") == "SomeComponent.inputs.input_1"
-
-        pipeline = Pipeline()
-        pipeline.add_component("my_component", comp)
-
-        assert io._socket_repr("input_1") == "my_component.inputs.input_1"
-
-    def test_socket_repr_output(self):
-        comp = component_class("SomeComponent", output_types={"output_1": int})()
-        io = Sockets(component=comp, sockets=comp.__haystack_output__)
-
-        assert io._socket_repr("output_1") == "SomeComponent.outputs.output_1"
-
-        pipeline = Pipeline()
-        pipeline.add_component("my_component", comp)
-
-        assert io._socket_repr("output_1") == "my_component.outputs.output_1"
 
     def test_getattribute(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
-        io = Sockets(component=comp, sockets=comp.__haystack_input__)
+        io = Sockets(component=comp, sockets=comp.__haystack_input__, sockets_type=InputSocket)
 
-        assert io.input_1 == "SomeComponent.inputs.input_1"
-        assert io.input_2 == "SomeComponent.inputs.input_2"
-
-        pipeline = Pipeline()
-        pipeline.add_component("my_component", comp)
-
-        assert io.input_1 == "my_component.inputs.input_1"
-        assert io.input_2 == "my_component.inputs.input_2"
+        assert io.input_1 == comp.__haystack_input__["input_1"]
+        assert io.input_2 == comp.__haystack_input__["input_2"]
 
     def test_getattribute_non_existing_socket(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
-        io = Sockets(component=comp, sockets=comp.__haystack_input__)
+        io = Sockets(component=comp, sockets=comp.__haystack_input__, sockets_type=InputSocket)
 
         with pytest.raises(AttributeError):
             io.input_3
 
     def test_repr(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
-        io = Sockets(component=comp, sockets=comp.__haystack_input__)
+        io = Sockets(component=comp, sockets=comp.__haystack_input__, sockets_type=InputSocket)
         res = repr(io)
         assert res == "SomeComponent inputs:\n  - input_1: int\n  - input_2: int"

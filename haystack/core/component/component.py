@@ -155,8 +155,8 @@ class ComponentMeta(type):
         # We use this flag to check that.
         instance.__haystack_added_to_pipeline__ = None
 
-        inputs = Sockets(component=instance, sockets=instance.__haystack_input__)
-        outputs = Sockets(component=instance, sockets=instance.__haystack_output__)
+        inputs = Sockets(component=instance, sockets=instance.__haystack_input__, sockets_type=InputSocket)
+        outputs = Sockets(component=instance, sockets=instance.__haystack_output__, sockets_type=OutputSocket)
 
         if hasattr(instance, "inputs"):
             msg = "Component already has an 'inputs' attribute, which is reserved for Haystack. Rename it."

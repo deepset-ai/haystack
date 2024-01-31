@@ -3,13 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Dict, Union
+from typing import Dict, Type, Union
 
 from haystack.core.type_utils import _type_name
 
 from .types import InputSocket, OutputSocket
 
 logger = logging.getLogger(__name__)
+
+SocketsType = Union[Type[InputSocket], Type[OutputSocket]]
 
 
 class Sockets:
@@ -60,29 +62,16 @@ class Sockets:
 
     # We're using a forward declaration here to avoid a circular import.
     def __init__(
-        self, component: "Component", sockets: Union[Dict[str, InputSocket], Dict[str, OutputSocket]]  # noqa: F821
+        self, component: "Component", sockets: Dict[str, SocketsType], sockets_type: SocketsType  # noqa: F821
     ):
-        if sockets is None:
-            msg = f"Sockets must be initialized with sockets. Got {sockets}"
-            raise ValueError(msg)
-
-        socket_type = {type(s) for s in sockets.values()}
-        if len(socket_type) > 1:
-            msg = f"Sockets must be initialized with sockets of the same type. Got {socket_type}"
-            raise ValueError(msg)
-
-        self._sockets_type = socket_type.pop() if len(socket_type) == 1 else None
-        if self._sockets_type not in (InputSocket, OutputSocket, None):
-            msg = f"Sockets must be initialized with InputSocket or OutputSocket. Got {self._sockets_type}"
-            raise ValueError(msg)
-
-        if not component:
-            msg = f"Sockets must be initialized with a component. Got {component}"
-            raise ValueError(msg)
-
+        self._sockets_type = sockets_type
         self._component = component
         self._sockets = sockets
         self.__dict__.update(sockets)
+
+    def __setitem__(self, key: str, socket: SocketsType):
+        self._sockets[key] = socket
+        self.__dict__[key] = socket
 
     def _component_name(self) -> str:
         if pipeline := getattr(self._component, "__haystack_added_to_pipeline__"):
@@ -93,23 +82,11 @@ class Sockets:
         # Let's use the class name instead.
         return self._component.__class__.__name__
 
-    def _socket_repr(self, socket_name: str) -> str:
-        parts = [self._component_name()]
-
-        if self._sockets_type == InputSocket:
-            parts.append("inputs")
-        elif self._sockets_type == OutputSocket:
-            parts.append("outputs")
-
-        parts.append(socket_name)
-
-        return ".".join(parts)
-
     def __getattribute__(self, name):
         try:
             sockets = object.__getattribute__(self, "_sockets")
             if name in sockets:
-                return object.__getattribute__(self, "_socket_repr")(sockets[name].name)
+                return sockets[name]
         except AttributeError:
             pass
 
