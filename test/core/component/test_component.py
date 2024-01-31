@@ -88,6 +88,7 @@ def test_missing_run():
 
 
 def test_set_input_types():
+    @component
     class MockComponent:
         def __init__(self):
             component.set_input_types(self, value=Any)
@@ -104,7 +105,7 @@ def test_set_input_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.__haystack_input__ == {"value": InputSocket("value", Any)}
+    assert comp.inputs._sockets == {"value": InputSocket("value", Any)}
     assert comp.run() == {"value": 1}
 
 
@@ -125,7 +126,7 @@ def test_set_output_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.__haystack_output__ == {"value": OutputSocket("value", int)}
+    assert comp.outputs._sockets == {"value": OutputSocket("value", int)}
 
 
 def test_output_types_decorator_with_compatible_type():
@@ -143,7 +144,7 @@ def test_output_types_decorator_with_compatible_type():
             return cls()
 
     comp = MockComponent()
-    assert comp.__haystack_output__ == {"value": OutputSocket("value", int)}
+    assert comp.outputs._sockets == {"value": OutputSocket("value", int)}
 
 
 def test_component_decorator_set_it_as_component():
@@ -172,8 +173,8 @@ def test_input_has_default_value():
             return {"value": value}
 
     comp = MockComponent()
-    assert comp.__haystack_input__["value"].default_value == 42
-    assert not comp.__haystack_input__["value"].is_mandatory
+    assert comp.inputs._sockets["value"].default_value == 42
+    assert not comp.inputs._sockets["value"].is_mandatory
 
 
 def test_keyword_only_args():
@@ -186,45 +187,5 @@ def test_keyword_only_args():
             return {"value": arg}
 
     comp = MockComponent()
-    component_inputs = {name: {"type": socket.type} for name, socket in comp.__haystack_input__.items()}
+    component_inputs = {name: {"type": socket.type} for name, socket in comp.inputs._sockets.items()}
     assert component_inputs == {"arg": {"type": int}}
-
-
-def test_component_with_inputs_field():
-    @component
-    class MockComponent:
-        inputs = []
-
-        def to_dict(self):
-            return {}
-
-        @classmethod
-        def from_dict(cls, data):
-            return cls()
-
-        @component.output_types(output_value=int)
-        def run(self, input_value: int):
-            return {"output_value": input_value}
-
-    with pytest.raises(ComponentError):
-        MockComponent()
-
-
-def test_component_with_outputs_field():
-    @component
-    class MockComponent:
-        outputs = []
-
-        def to_dict(self):
-            return {}
-
-        @classmethod
-        def from_dict(cls, data):
-            return cls()
-
-        @component.output_types(output_value=int)
-        def run(self, input_value: int):
-            return {"output_value": input_value}
-
-    with pytest.raises(ComponentError):
-        MockComponent()

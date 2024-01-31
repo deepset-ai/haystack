@@ -198,8 +198,8 @@ class Pipeline:
             raise PipelineError(msg)
 
         # Create the component's input and output sockets
-        input_sockets = getattr(instance, "__haystack_input__", {})
-        output_sockets = getattr(instance, "__haystack_output__", {})
+        input_sockets = instance.inputs._sockets
+        output_sockets = instance.outputs._sockets
 
         setattr(instance, "__haystack_added_to_pipeline__", self)
 
@@ -475,16 +475,16 @@ class Pipeline:
             if component_name not in self.graph.nodes:
                 raise ValueError(f"Component named {component_name} not found in the pipeline.")
             instance = self.graph.nodes[component_name]["instance"]
-            for socket_name, socket in instance.__haystack_input__.items():
+            for socket_name, socket in instance.inputs._sockets.items():
                 if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
                     raise ValueError(f"Missing input for component {component_name}: {socket_name}")
             for input_name in component_inputs.keys():
-                if input_name not in instance.__haystack_input__:
+                if input_name not in instance.inputs._sockets:
                     raise ValueError(f"Input {input_name} not found in component {component_name}.")
 
         for component_name in self.graph.nodes:
             instance = self.graph.nodes[component_name]["instance"]
-            for socket_name, socket in instance.__haystack_input__.items():
+            for socket_name, socket in instance.inputs._sockets.items():
                 component_inputs = data.get(component_name, {})
                 if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
                     raise ValueError(f"Missing input for component {component_name}: {socket_name}")
@@ -528,7 +528,7 @@ class Pipeline:
             for component_input, input_value in component_inputs.items():
                 # Handle mutable input data
                 data[component_name][component_input] = copy(input_value)
-                if instance.__haystack_input__[component_input].is_variadic:
+                if instance.inputs._sockets[component_input].is_variadic:
                     # Components that have variadic inputs need to receive lists as input.
                     # We don't want to force the user to always pass lists, so we convert single values to lists here.
                     # If it's already a list we assume the component takes a variadic input of lists, so we
@@ -543,12 +543,12 @@ class Pipeline:
         for node_name in self.graph.nodes:
             component = self.graph.nodes[node_name]["instance"]
 
-            if len(component.__haystack_input__) == 0:
+            if len(component.inputs._sockets) == 0:
                 # Component has no input, can run right away
                 to_run.append((node_name, component))
                 continue
 
-            for socket in component.__haystack_input__.values():
+            for socket in component.inputs._sockets.values():
                 if not socket.senders or socket.is_variadic:
                     # Component has at least one input not connected or is variadic, can run right away.
                     to_run.append((node_name, component))
@@ -571,12 +571,12 @@ class Pipeline:
         while len(to_run) > 0:
             name, comp = to_run.pop(0)
 
-            if any(socket.is_variadic for socket in comp.__haystack_input__.values()) and not getattr(  # type: ignore
+            if any(socket.is_variadic for socket in comp.inputs._sockets.values()) and not getattr(  # type: ignore
                 comp, "is_greedy", False
             ):
                 there_are_non_variadics = False
                 for _, other_comp in to_run:
-                    if not any(socket.is_variadic for socket in other_comp.__haystack_input__.values()):  # type: ignore
+                    if not any(socket.is_variadic for socket in other_comp.inputs._sockets.values()):  # type: ignore
                         there_are_non_variadics = True
                         break
 
@@ -585,7 +585,7 @@ class Pipeline:
                         waiting_for_input.append((name, comp))
                     continue
 
-            if name in last_inputs and len(comp.__haystack_input__) == len(last_inputs[name]):  # type: ignore
+            if name in last_inputs and len(comp.inputs._sockets) == len(last_inputs[name]):  # type: ignore
                 # This component has all the inputs it needs to run
                 res = comp.run(**last_inputs[name])
 
@@ -659,7 +659,7 @@ class Pipeline:
                     # This is our last resort, if there's no lazy variadic waiting for input
                     # we're stuck for real and we can't make any progress.
                     for name, comp in waiting_for_input:
-                        is_variadic = any(socket.is_variadic for socket in comp.__haystack_input__.values())  # type: ignore
+                        is_variadic = any(socket.is_variadic for socket in comp.inputs._sockets.values())  # type: ignore
                         if is_variadic and not getattr(comp, "is_greedy", False):
                             break
                     else:
@@ -690,14 +690,14 @@ class Pipeline:
                         last_inputs[name] = {}
 
                     # Lazy variadics must be removed only if there's nothing else to run at this stage
-                    is_variadic = any(socket.is_variadic for socket in comp.__haystack_input__.values())  # type: ignore
+                    is_variadic = any(socket.is_variadic for socket in comp.inputs._sockets.values())  # type: ignore
                     if is_variadic and not getattr(comp, "is_greedy", False):
                         there_are_only_lazy_variadics = True
                         for other_name, other_comp in waiting_for_input:
                             if name == other_name:
                                 continue
                             there_are_only_lazy_variadics &= any(
-                                socket.is_variadic for socket in other_comp.__haystack_input__.values()  # type: ignore
+                                socket.is_variadic for socket in other_comp.inputs._sockets.values()  # type: ignore
                             ) and not getattr(other_comp, "is_greedy", False)
 
                         if not there_are_only_lazy_variadics:
@@ -705,7 +705,7 @@ class Pipeline:
 
                     # Find the first component that has all the inputs it needs to run
                     has_enough_inputs = True
-                    for input_socket in comp.__haystack_input__.values():  # type: ignore
+                    for input_socket in comp.inputs._sockets.values():  # type: ignore
                         if input_socket.is_mandatory and input_socket.name not in last_inputs[name]:
                             has_enough_inputs = False
                             break

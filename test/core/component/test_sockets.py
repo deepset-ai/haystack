@@ -11,11 +11,11 @@ class TestSockets:
         sockets = {"input_1": InputSocket("input_1", int), "input_2": InputSocket("input_2", int)}
         io = Sockets(component=comp, sockets=sockets, sockets_type=InputSocket)
         assert io._component == comp
-        # assert io._sockets == comp.__haystack_input__
+        # assert io._sockets == comp.inputs._sockets
         assert "input_1" in io.__dict__
-        assert io.__dict__["input_1"] == comp.__haystack_input__["input_1"]
+        assert io.__dict__["input_1"] == comp.inputs._sockets["input_1"]
         assert "input_2" in io.__dict__
-        assert io.__dict__["input_2"] == comp.__haystack_input__["input_2"]
+        assert io.__dict__["input_2"] == comp.inputs._sockets["input_2"]
 
     def test_init_with_empty_sockets(self):
         comp = component_class("SomeComponent")()
@@ -39,20 +39,20 @@ class TestSockets:
 
     def test_getattribute(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
-        io = Sockets(component=comp, sockets=comp.__haystack_input__, sockets_type=InputSocket)
+        io = Sockets(component=comp, sockets=comp.inputs._sockets, sockets_type=InputSocket)
 
-        assert io.input_1 == comp.__haystack_input__["input_1"]
-        assert io.input_2 == comp.__haystack_input__["input_2"]
+        assert io.input_1 == comp.inputs._sockets["input_1"]
+        assert io.input_2 == comp.inputs._sockets["input_2"]
 
     def test_getattribute_non_existing_socket(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
-        io = Sockets(component=comp, sockets=comp.__haystack_input__, sockets_type=InputSocket)
+        io = Sockets(component=comp, sockets=comp.inputs._sockets, sockets_type=InputSocket)
 
         with pytest.raises(AttributeError):
             io.input_3
 
     def test_repr(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
-        io = Sockets(component=comp, sockets=comp.__haystack_input__, sockets_type=InputSocket)
+        io = Sockets(component=comp, sockets=comp.inputs._sockets, sockets_type=InputSocket)
         res = repr(io)
         assert res == "SomeComponent inputs:\n  - input_1: int\n  - input_2: int"
