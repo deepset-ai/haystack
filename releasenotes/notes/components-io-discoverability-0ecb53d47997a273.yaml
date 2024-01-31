@@ -27,13 +27,10 @@ highlights: >
   >>>   - documents: Any
 
   prompt_builder.inputs.question
-  >>> PromptBuilder.inputs.question
+  >>> InputSocket(name='question', type=typing.Any, default_value=<class 'haystack.core.component.types._empty'>, is_variadic=False, senders=[])
   ```
 
-  The behaviour changes a bit when the `Component` has been added to a `Pipeline`. In that case we'll get
-  the name of that `Component` instance as it has been added to that `Pipeline`.
-
-  That way we can also use this fields when calling `Pipeline.connect()`.
+  We can also use this fields when calling `Pipeline.connect()`.
 
   ```python
   from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -64,4 +61,4 @@ highlights: >
   By typing `prompt_builder.inputs.` you'll get the name of all the inputs. Same thing for outputs.
 features:
   - |
-    Ease `Component`'s I/O discoverability.
+    Ease `Component`'s I/O discoverability and connection.
