@@ -1,26 +1,27 @@
 from typing import Optional
 
 from haystack.lazy_imports import LazyImport
+from haystack.utils.auth import Secret
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import HfApi
     from huggingface_hub.utils import RepositoryNotFoundError
 
 
-def check_valid_model(model_id: str, token: Optional[str]) -> None:
+def check_valid_model(model_id: str, token: Optional[Secret]) -> None:
     """
     Check if the provided model ID corresponds to a valid model on HuggingFace Hub.
     Also check if the model is a embedding model.
 
     :param model_id: A string representing the HuggingFace model ID.
-    :param token: An optional string representing the authentication token.
+    :param token: The optional authentication token.
     :raises ValueError: If the model is not found or is not a embedding model.
     """
     transformers_import.check()
 
     api = HfApi()
     try:
-        model_info = api.model_info(model_id, token=token)
+        model_info = api.model_info(model_id, token=token.resolve_value() if token else None)
     except RepositoryNotFoundError as e:
         raise ValueError(
             f"Model {model_id} not found on HuggingFace Hub. Please provide a valid HuggingFace model_id."

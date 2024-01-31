@@ -8,6 +8,7 @@ from haystack.components.generators.utils import serialize_callback_handler, des
 from haystack.dataclasses import StreamingChunk
 from haystack.components.generators.hf_utils import check_generation_params, check_valid_model
 from haystack.lazy_imports import LazyImport
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
@@ -29,7 +30,9 @@ class HuggingFaceTGIGenerator:
 
     ```python
     from haystack.components.generators import HuggingFaceTGIGenerator
-    client = HuggingFaceTGIGenerator(model="mistralai/Mistral-7B-v0.1", token="<your-token>")
+    from haystack.utils import Secret
+
+    client = HuggingFaceTGIGenerator(model="mistralai/Mistral-7B-v0.1", token=Secret.from_token("<your-api-key>"))
     client.warm_up()
     response = client.run("What's Natural Language Processing?", max_new_tokens=120)
     print(response)
@@ -42,7 +45,7 @@ class HuggingFaceTGIGenerator:
     from haystack.components.generators import HuggingFaceTGIGenerator
     client = HuggingFaceTGIGenerator(model="mistralai/Mistral-7B-v0.1",
                                      url="<your-tgi-endpoint-url>",
-                                     token="<your-token>")
+                                     token=Secret.from_token("<your-api-key>"))
     client.warm_up()
     response = client.run("What's Natural Language Processing?")
     print(response)
@@ -74,7 +77,7 @@ class HuggingFaceTGIGenerator:
         self,
         model: str = "mistralai/Mistral-7B-v0.1",
         url: Optional[str] = None,
-        token: Optional[str] = None,
+        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
@@ -113,7 +116,7 @@ class HuggingFaceTGIGenerator:
         self.url = url
         self.token = token
         self.generation_kwargs = generation_kwargs
-        self.client = InferenceClient(url or model, token=token)
+        self.client = InferenceClient(url or model, token=token.resolve_value() if token else None)
         self.streaming_callback = streaming_callback
         self.tokenizer = None
 
@@ -121,7 +124,9 @@ class HuggingFaceTGIGenerator:
         """
         Load the tokenizer
         """
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model, token=self.token)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.model, token=self.token.resolve_value() if self.token else None
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -134,7 +139,7 @@ class HuggingFaceTGIGenerator:
             self,
             model=self.model,
             url=self.url,
-            token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
+            token=self.token.to_dict() if self.token else None,
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
         )
@@ -144,6 +149,7 @@ class HuggingFaceTGIGenerator:
         """
         Deserialize this component from a dictionary.
         """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
