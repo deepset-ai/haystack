@@ -34,7 +34,7 @@ class ByteStream:
         :param meta: Additional metadata to be stored with the ByteStream.
         """
         with open(filepath, "rb") as fd:
-            return cls(data=fd.read(), mime_type=mime_type, meta=meta)
+            return cls(data=fd.read(), mime_type=mime_type, meta=meta or {})
 
     @classmethod
     def from_string(
@@ -48,4 +48,4 @@ class ByteStream:
         :param mime_type: The mime type of the file.
         :param meta: Additional metadata to be stored with the ByteStream.
         """
-        return cls(data=text.encode(encoding), mime_type=mime_type, meta=meta)
+        return cls(data=text.encode(encoding), mime_type=mime_type, meta=meta or {})
