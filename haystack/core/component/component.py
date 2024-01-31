@@ -133,9 +133,13 @@ class ComponentMeta(type):
             # that stores the output specification.
             # We deepcopy the content of the cache to transfer ownership from the class method
             # to the actual instance, so that different instances of the same class won't share this data.
-            instance.outputs = Sockets(
-                instance, deepcopy(getattr(instance.run, "_output_types_cache", {})), OutputSocket
-            )
+            sockets = {}
+            for name, socket in deepcopy(getattr(instance.run, "_output_types_cache", {})).items():
+                # We don't have access to the Component instance when setting the output sockets
+                # using the decorator, so we set it here.
+                socket.component = instance
+                sockets[name] = socket
+            instance.outputs = Sockets(instance, sockets, OutputSocket)
 
         # Create the sockets if set_input_types() wasn't called in the constructor.
         # If it was called and there are some parameters also in the `run()` method, these take precedence.
@@ -150,7 +154,7 @@ class ComponentMeta(type):
                 socket_kwargs = {"name": param, "type": run_signature.parameters[param].annotation}
                 if run_signature.parameters[param].default != inspect.Parameter.empty:
                     socket_kwargs["default_value"] = run_signature.parameters[param].default
-                instance.inputs[param] = InputSocket(**socket_kwargs)
+                instance.inputs[param] = InputSocket(**socket_kwargs, component=instance)
 
         # Since a Component can't be used in multiple Pipelines at the same time
         # we need to know if it's already owned by a Pipeline when adding it to one.
@@ -190,7 +194,7 @@ class _Component:
         """
         if not hasattr(instance, "inputs"):
             instance.inputs = Sockets(instance, {}, InputSocket)
-        instance.inputs[name] = InputSocket(name=name, type=type, default_value=default)
+        instance.inputs[name] = InputSocket(name=name, type=type, default_value=default, component=instance)
 
     def set_input_types(self, instance, **types):
         """
@@ -234,7 +238,9 @@ class _Component:
 
         """
         instance.inputs = Sockets(
-            instance, {name: InputSocket(name=name, type=type_) for name, type_ in types.items()}, InputSocket
+            instance,
+            {name: InputSocket(name=name, type=type_, component=instance) for name, type_ in types.items()},
+            InputSocket,
         )
 
     def set_output_types(self, instance, **types):
@@ -258,7 +264,9 @@ class _Component:
         ```
         """
         instance.outputs = Sockets(
-            instance, {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()}, OutputSocket
+            instance,
+            {name: OutputSocket(name=name, type=type_, component=instance) for name, type_ in types.items()},
+            OutputSocket,
         )
 
     def output_types(self, **types):

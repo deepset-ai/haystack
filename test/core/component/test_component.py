@@ -105,7 +105,7 @@ def test_set_input_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.inputs._sockets_dict == {"value": InputSocket("value", Any)}
+    assert comp.inputs._sockets_dict == {"value": InputSocket("value", Any, component=comp)}
     assert comp.run() == {"value": 1}
 
 
@@ -126,7 +126,7 @@ def test_set_output_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.outputs._sockets_dict == {"value": OutputSocket("value", int)}
+    assert comp.outputs._sockets_dict == {"value": OutputSocket("value", int, component=comp)}
 
 
 def test_output_types_decorator_with_compatible_type():
@@ -144,7 +144,7 @@ def test_output_types_decorator_with_compatible_type():
             return cls()
 
     comp = MockComponent()
-    assert comp.outputs._sockets_dict == {"value": OutputSocket("value", int)}
+    assert comp.outputs._sockets_dict == {"value": OutputSocket("value", int, component=comp)}
 
 
 def test_component_decorator_set_it_as_component():

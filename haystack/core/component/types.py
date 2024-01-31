@@ -27,6 +27,9 @@ class InputSocket:
     default_value: Any = _empty
     is_variadic: bool = field(init=False)
     senders: List[str] = field(default_factory=list)
+    # We can't import Component here because of a circular import, so we use a forward declaration
+    # but neither Ruff nor mypy like it. So we disable the check for this line.
+    component: "Component" = field(default=None, repr=False)  # type: ignore[name-defined] # noqa: F821
 
     @property
     def is_mandatory(self):
@@ -61,3 +64,6 @@ class OutputSocket:
     name: str
     type: type
     receivers: List[str] = field(default_factory=list)
+    # We can't import Component here because of a circular import, so we use a forward declaration
+    # but neither Ruff nor mypy like it. So we disable the check for this line.
+    component: "Component" = field(default=None, repr=False)  # type: ignore[name-defined] # noqa: F821
