@@ -1,4 +1,5 @@
 import json
+import pytest
 
 from haystack import Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
@@ -155,10 +156,14 @@ def test_bm25_rag_pipeline(tmp_path):
     # Save SAS metric results to json
     sas_default.save(tmp_path / "sas_score.json")
 
-    assert sas_default["sas"] == 0.9999999403953552
-    assert sas_default["scores"] == [0.9999998807907104, 1.0, 0.9999999403953552]
-    assert sas_custom_parameters["sas"] == 0.9769593477249146
-    assert sas_custom_parameters["scores"] == [0.9758228063583374, 0.95721834897995, 0.9978368878364563]
+    assert sas_default["sas"] == 1.0
+    assert sas_default["scores"] == [1.0, 1.0, 1.0]
+    assert sas_custom_parameters["sas"] == pytest.approx(0.9769593)
+    assert sas_custom_parameters["scores"] == [
+        pytest.approx(0.975823),
+        pytest.approx(0.957218),
+        pytest.approx(0.997837),
+    ]
 
     with open(tmp_path / "sas_score.json", "r") as f:
         assert sas_default == json.load(f)
@@ -322,10 +327,14 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     # Save SAS metric results to json
     sas_default.save(tmp_path / "sas_score.json")
 
-    assert sas_default["sas"] == 0.9999999403953552
-    assert sas_default["scores"] == [0.9999998807907104, 1.0, 0.9999999403953552]
-    assert sas_custom_parameters["sas"] == 0.9769593477249146
-    assert sas_custom_parameters["scores"] == [0.9758228063583374, 0.95721834897995, 0.9978368878364563]
+    assert sas_default["sas"] == 1.0
+    assert sas_default["scores"] == [1.0, 1.0, 1.0]
+    assert sas_custom_parameters["sas"] == pytest.approx(0.9769593)
+    assert sas_custom_parameters["scores"] == [
+        pytest.approx(0.975823),
+        pytest.approx(0.957218),
+        pytest.approx(0.997837),
+    ]
 
     with open(tmp_path / "sas_score.json", "r") as f:
         assert sas_default == json.load(f)

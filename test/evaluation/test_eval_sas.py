@@ -83,8 +83,8 @@ class TestSAS:
         evaluation_result = self.create_evaluation_result(predictions, labels)
         sas_result = evaluation_result._calculate_sas(output_key="answers")
 
-        assert sas_result["sas"] == 0.9999999205271403
-        assert sas_result["scores"] == [1.0, 0.9999999403953552, 0.9999998211860657]
+        assert sas_result["sas"] == 1.0
+        assert sas_result["scores"] == [1.0, 1.0, 1.0]
 
     @pytest.mark.integration
     def test_sas_single_word(self):
@@ -97,8 +97,8 @@ class TestSAS:
         evaluation_result = self.create_evaluation_result(predictions, labels)
         sas_result = evaluation_result._calculate_sas(output_key="answers")
 
-        assert sas_result["sas"] == 0.6890885233879089
-        assert sas_result["scores"] == [0.6890885233879089]
+        assert sas_result["sas"] == pytest.approx(0.689089)
+        assert sas_result["scores"] == [pytest.approx(0.689089)]
 
     @pytest.mark.integration
     def test_sas_negative_case(self):
@@ -119,8 +119,8 @@ class TestSAS:
         evaluation_result = self.create_evaluation_result(predictions, labels)
         sas_result = evaluation_result._calculate_sas(output_key="answers")
 
-        assert sas_result["sas"] == 0.8227188189824423
-        assert sas_result["scores"] == [0.6890887022018433, 0.8703888654708862, 0.9086788892745972]
+        assert sas_result["sas"] == pytest.approx(0.8227189)
+        assert sas_result["scores"] == [pytest.approx(0.689089), pytest.approx(0.870389), pytest.approx(0.908679)]
 
     @pytest.mark.integration
     def test_sas_ignore_case(self):
@@ -142,8 +142,8 @@ class TestSAS:
         # SAS after case ignoring
         sas_result = evaluation_result._calculate_sas(output_key="answers", ignore_case=True)
 
-        assert sas_result["sas"] == 1.00000003973643
-        assert sas_result["scores"] == [0.9999999403953552, 1.000000238418579, 0.9999999403953552]
+        assert sas_result["sas"] == 1.0
+        assert sas_result["scores"] == [1.0, 1.0, 1.0]
 
     @pytest.mark.integration
     def test_sas_ignore_punctuation(self):
@@ -165,8 +165,8 @@ class TestSAS:
         # SAS after ignoring punctuation
         sas_result = evaluation_result._calculate_sas(output_key="answers", ignore_punctuation=True)
 
-        assert sas_result["sas"] == 0.9999999602635702
-        assert sas_result["scores"] == [0.9999998807907104, 1.0, 1.0]
+        assert sas_result["sas"] == 1.0
+        assert sas_result["scores"] == [1.0, 1.0, 1.0]
 
     @pytest.mark.integration
     def test_sas_ignore_numbers(self):
@@ -188,8 +188,8 @@ class TestSAS:
         # SAS after ignoring numbers
         sas_result = evaluation_result._calculate_sas(output_key="answers", ignore_numbers=True)
 
-        assert sas_result["sas"] == 0.999999980131785
-        assert sas_result["scores"] == [0.9999998807907104, 0.9999999403953552, 1.0000001192092896]
+        assert sas_result["sas"] == 1.0
+        assert sas_result["scores"] == [1.0, 1.0, 1.0]
 
     @pytest.mark.integration
     def test_sas_regex_ignore(self):
@@ -212,8 +212,8 @@ class TestSAS:
         regex_to_ignore = [r"\d+"]
         sas_result = evaluation_result._calculate_sas(output_key="answers", regexes_to_ignore=regex_to_ignore)
 
-        assert sas_result["sas"] == 0.999999980131785
-        assert sas_result["scores"] == [0.9999998807907104, 0.9999999403953552, 1.0000001192092896]
+        assert sas_result["sas"] == 1.0
+        assert sas_result["scores"] == [1.0, 1.0, 1.0]
 
     @pytest.mark.integration
     def test_sas_multiple_ignore_regex(self):
@@ -266,8 +266,8 @@ class TestSAS:
             regexes_to_ignore=regex_to_ignore,
         )
 
-        assert sas_result["sas"] == 0.9999998807907104
-        assert sas_result["scores"] == [0.9999998807907104, 1.0, 0.9999997615814209]
+        assert sas_result["sas"] == 1.0
+        assert sas_result["scores"] == [1.0, 1.0, 1.0]
 
     @pytest.mark.integration
     def test_sas_bi_encoder(self):
@@ -289,8 +289,8 @@ class TestSAS:
             output_key="answers", model="sentence-transformers/all-mpnet-base-v2"
         )
 
-        assert sas_result["sas"] == 0.9999999602635702
-        assert sas_result["scores"] == [0.9999998807907104, 1.0, 1.0]
+        assert sas_result["sas"] == 1.0
+        assert sas_result["scores"] == [1.0, 1.0, 1.0]
 
     @pytest.mark.integration
     def test_sas_cross_encoder(self):
@@ -312,5 +312,9 @@ class TestSAS:
             output_key="answers", model="cross-encoder/ms-marco-MiniLM-L-6-v2"
         )
 
-        assert sas_result["sas"] == 0.9999673763910929
-        assert sas_result["scores"] == [0.9999765157699585, 0.999968409538269, 0.9999572038650513]
+        assert round(sas_result["sas"], 6) == pytest.approx(0.999967)
+        assert sas_result["scores"] == [
+            pytest.approx(0.9999765157699585),
+            pytest.approx(0.999968409538269),
+            pytest.approx(0.9999572038650513),
+        ]
