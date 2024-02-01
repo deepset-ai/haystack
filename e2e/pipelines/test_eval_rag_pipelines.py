@@ -144,7 +144,9 @@ def test_bm25_rag_pipeline(tmp_path):
         assert f1_default == json.load(f)
 
     # Test SAS
-    sas_default = eval_result.calculate_metrics(Metric.SAS, output_key="answers")
+    sas_default = eval_result.calculate_metrics(
+        Metric.SAS, output_key="answers", model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
     sas_custom_parameters = eval_result.calculate_metrics(
         Metric.SAS,
         output_key="answers",
@@ -156,14 +158,10 @@ def test_bm25_rag_pipeline(tmp_path):
     # Save SAS metric results to json
     sas_default.save(tmp_path / "sas_score.json")
 
-    assert sas_default["sas"] == 1.0
-    assert sas_default["scores"] == [1.0, 1.0, 1.0]
-    assert sas_custom_parameters["sas"] == pytest.approx(0.9769593)
-    assert sas_custom_parameters["scores"] == [
-        pytest.approx(0.975823),
-        pytest.approx(0.957218),
-        pytest.approx(0.997837),
-    ]
+    assert sas_default["sas"] == pytest.approx(1.0)
+    assert sas_default["scores"] == pytest.approx([1.0, 1.0, 1.0])
+    assert sas_custom_parameters["sas"] == pytest.approx(0.9769593, abs=1e-5)
+    assert sas_custom_parameters["scores"] == pytest.approx([0.975823, 0.957218, 0.997837], abs=1e-5)
 
     with open(tmp_path / "sas_score.json", "r") as f:
         assert sas_default == json.load(f)
@@ -315,7 +313,9 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
         assert f1_default == json.load(f)
 
     # Test SAS
-    sas_default = eval_result.calculate_metrics(Metric.SAS, output_key="answers")
+    sas_default = eval_result.calculate_metrics(
+        Metric.SAS, output_key="answers", model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
     sas_custom_parameters = eval_result.calculate_metrics(
         Metric.SAS,
         output_key="answers",
@@ -327,14 +327,10 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     # Save SAS metric results to json
     sas_default.save(tmp_path / "sas_score.json")
 
-    assert sas_default["sas"] == 1.0
-    assert sas_default["scores"] == [1.0, 1.0, 1.0]
-    assert sas_custom_parameters["sas"] == pytest.approx(0.9769593)
-    assert sas_custom_parameters["scores"] == [
-        pytest.approx(0.975823),
-        pytest.approx(0.957218),
-        pytest.approx(0.997837),
-    ]
+    assert sas_default["sas"] == pytest.approx(1.0)
+    assert sas_default["scores"] == pytest.approx([1.0, 1.0, 1.0])
+    assert sas_custom_parameters["sas"] == pytest.approx(0.9769593, abs=1e-5)
+    assert sas_custom_parameters["scores"] == pytest.approx([0.975823, 0.957218, 0.997837], abs=1e-5)
 
     with open(tmp_path / "sas_score.json", "r") as f:
         assert sas_default == json.load(f)

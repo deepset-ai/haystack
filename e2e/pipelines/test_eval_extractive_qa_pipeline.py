@@ -143,7 +143,9 @@ def test_extractive_qa_pipeline(tmp_path):
         assert f1_default == json.load(f)
 
     # Test SAS
-    sas_default = eval_result.calculate_metrics(Metric.SAS, output_key="answers")
+    sas_default = eval_result.calculate_metrics(
+        Metric.SAS, output_key="answers", model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
     sas_custom_parameters = eval_result.calculate_metrics(
         Metric.SAS,
         output_key="answers",
@@ -155,14 +157,10 @@ def test_extractive_qa_pipeline(tmp_path):
     # Save SAS metric results to json
     sas_default.save(tmp_path / "sas_score.json")
 
-    assert sas_default["sas"] == 1.0
-    assert sas_default["scores"] == [1.0, 1.0, 1.0]
-    assert sas_custom_parameters["sas"] == pytest.approx(0.9996823)
-    assert sas_custom_parameters["scores"] == [
-        pytest.approx(0.999672),
-        pytest.approx(0.999608),
-        pytest.approx(0.999767),
-    ]
+    assert sas_default["sas"] == pytest.approx(1.0)
+    assert sas_default["scores"] == pytest.approx([1.0, 1.0, 1.0])
+    assert sas_custom_parameters["sas"] == pytest.approx(0.9996823, abs=1e-5)
+    assert sas_custom_parameters["scores"] == pytest.approx([0.999672, 0.999608, 0.999767])
 
     with open(tmp_path / "sas_score.json", "r") as f:
         assert sas_default == json.load(f)

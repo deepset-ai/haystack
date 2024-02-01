@@ -263,9 +263,8 @@ class EvaluationResult:
             if (similarity_scores > 1).any():
                 similarity_scores = expit(similarity_scores)
 
-            # Convert scores to list of floats from numpy array and round to 6 decimal places
+            # Convert scores to list of floats from numpy array
             similarity_scores = similarity_scores.tolist()
-            similarity_scores = [round(score, 6) for score in similarity_scores]
 
         else:
             # For Bi-encoders we create embeddings separately for predictions and labels
@@ -278,8 +277,7 @@ class EvaluationResult:
 
             # cos_sim computes cosine similarity between all pairs of vectors in pred_embeddings and label_embeddings
             # It returns a matrix with shape (len(predictions), len(labels))
-            # Round values to 6 decimal places to account for precision consistency when converting from Tensor to Float
-            similarity_scores = [round(scores[i][i].item(), 6) for i in range(len(predictions))]
+            similarity_scores = [scores[i][i].item() for i in range(len(predictions))]
 
         sas_score = np.mean(similarity_scores)
 
