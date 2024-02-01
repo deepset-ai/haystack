@@ -49,7 +49,7 @@ def test_init_with_parameters():
     doc = Document(
         content="test text",
         dataframe=pd.DataFrame([0]),
-        blob=ByteStream(data=blob_data, mime_type="text/markdown"),
+        blob=ByteStream(data=blob_data, mime_type="text/markdown", meta={"test": 10}),
         meta={"text": "test text"},
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
@@ -60,6 +60,7 @@ def test_init_with_parameters():
     assert doc.dataframe.equals(pd.DataFrame([0]))
     assert doc.blob.data == blob_data
     assert doc.blob.mime_type == "text/markdown"
+    assert doc.blob.meta == {"test": 10}
     assert doc.meta == {"text": "test text"}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
@@ -141,7 +142,7 @@ def test_to_dict_with_custom_parameters():
     doc = Document(
         content="test text",
         dataframe=pd.DataFrame([10, 20, 30]),
-        blob=ByteStream(b"some bytes", mime_type="application/pdf"),
+        blob=ByteStream(b"some bytes", mime_type="application/pdf", meta={"test": 10}),
         meta={"some": "values", "test": 10},
         score=0.99,
         embedding=[10.0, 10.0],
@@ -151,7 +152,7 @@ def test_to_dict_with_custom_parameters():
         "id": doc.id,
         "content": "test text",
         "dataframe": pd.DataFrame([10, 20, 30]).to_json(),
-        "blob": {"data": list(b"some bytes"), "mime_type": "application/pdf"},
+        "blob": {"data": list(b"some bytes"), "mime_type": "application/pdf", "meta": {"test": 10}},
         "some": "values",
         "test": 10,
         "score": 0.99,
@@ -163,7 +164,7 @@ def test_to_dict_with_custom_parameters_without_flattening():
     doc = Document(
         content="test text",
         dataframe=pd.DataFrame([10, 20, 30]),
-        blob=ByteStream(b"some bytes", mime_type="application/pdf"),
+        blob=ByteStream(b"some bytes", mime_type="application/pdf", meta={"test": 10}),
         meta={"some": "values", "test": 10},
         score=0.99,
         embedding=[10.0, 10.0],
@@ -173,7 +174,7 @@ def test_to_dict_with_custom_parameters_without_flattening():
         "id": doc.id,
         "content": "test text",
         "dataframe": pd.DataFrame([10, 20, 30]).to_json(),
-        "blob": {"data": list(b"some bytes"), "mime_type": "application/pdf"},
+        "blob": {"data": list(b"some bytes"), "mime_type": "application/pdf", "meta": {"test": 10}},
         "meta": {"some": "values", "test": 10},
         "score": 0.99,
         "embedding": [10, 10],
@@ -190,7 +191,7 @@ def from_from_dict_with_parameters():
         {
             "content": "test text",
             "dataframe": pd.DataFrame([0]).to_json(),
-            "blob": {"data": list(blob_data), "mime_type": "text/markdown"},
+            "blob": {"data": list(blob_data), "mime_type": "text/markdown", "meta": {"test": 10}},
             "meta": {"text": "test text"},
             "score": 0.812,
             "embedding": [0.1, 0.2, 0.3],
@@ -198,7 +199,7 @@ def from_from_dict_with_parameters():
     ) == Document(
         content="test text",
         dataframe=pd.DataFrame([0]),
-        blob=ByteStream(blob_data, mime_type="text/markdown"),
+        blob=ByteStream(blob_data, mime_type="text/markdown", meta={"test": 10}),
         meta={"text": "test text"},
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
@@ -246,7 +247,7 @@ def test_from_dict_with_flat_meta():
         {
             "content": "test text",
             "dataframe": pd.DataFrame([0]).to_json(),
-            "blob": {"data": list(blob_data), "mime_type": "text/markdown"},
+            "blob": {"data": list(blob_data), "mime_type": "text/markdown", "meta": {"test": 10}},
             "score": 0.812,
             "embedding": [0.1, 0.2, 0.3],
             "date": "10-10-2023",
@@ -255,7 +256,7 @@ def test_from_dict_with_flat_meta():
     ) == Document(
         content="test text",
         dataframe=pd.DataFrame([0]),
-        blob=ByteStream(blob_data, mime_type="text/markdown"),
+        blob=ByteStream(blob_data, mime_type="text/markdown", meta={"test": 10}),
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
         meta={"date": "10-10-2023", "type": "article"},
@@ -268,7 +269,7 @@ def test_from_dict_with_flat_and_non_flat_meta():
             {
                 "content": "test text",
                 "dataframe": pd.DataFrame([0]).to_json(),
-                "blob": {"data": list(b"some bytes"), "mime_type": "text/markdown"},
+                "blob": {"data": list(b"some bytes"), "mime_type": "text/markdown", "meta": {"test": 10}},
                 "score": 0.812,
                 "meta": {"test": 10},
                 "embedding": [0.1, 0.2, 0.3],

@@ -126,7 +126,7 @@ class Document(metaclass=_BackwardCompatible):
         if (dataframe := data.get("dataframe")) is not None:
             data["dataframe"] = dataframe.to_json()
         if (blob := data.get("blob")) is not None:
-            data["blob"] = {"data": list(blob["data"]), "mime_type": blob["mime_type"]}
+            data["blob"] = {"data": list(blob["data"]), "mime_type": blob["mime_type"], "meta": blob["meta"]}
 
         if flatten:
             meta = data.pop("meta")
@@ -143,7 +143,7 @@ class Document(metaclass=_BackwardCompatible):
         if (dataframe := data.get("dataframe")) is not None:
             data["dataframe"] = read_json(io.StringIO(dataframe))
         if blob := data.get("blob"):
-            data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
+            data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"], meta=blob["meta"])
         # Store metadata for a moment while we try un-flattening allegedly flatten metadata.
         # We don't expect both a `meta=` keyword and flatten metadata keys so we'll raise a
         # ValueError later if this is the case.
