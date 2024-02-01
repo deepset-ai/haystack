@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/caching]
-    modules: ["cache_checker"]
+    search_path: [../../../haystack/components/samplers]
+    modules: ["top_p"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Checks if any document coming from the given URL is already present in the store.
-  category_slug: haystack-classes
-  title: CacheChecker API
-  slug: caching-api
-  order: 7
+  excerpt: Filters documents based on their similarity scores using top-p sampling.
+  category_slug: haystack-api
+  title: Samplers
+  slug: samplers-api
+  order: 150
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: caching_api.md
+    filename: samplers_api.md

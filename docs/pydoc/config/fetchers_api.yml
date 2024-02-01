@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/rankers]
-    modules: ["meta_field", "transformers_similarity"]
+    search_path: [../../../haystack/components/fetchers]
+    modules: ["link_content"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Reorders a set of Documents based on their relevance to the query.
-  category_slug: haystack-classes
-  title: Ranker API
-  slug: ranker-api
-  order: 110
+  excerpt: Fetches content from a list of URLs and returns a list of extracted content streams.
+  category_slug: haystack-api
+  title: Fetchers
+  slug: fetchers-api
+  order: 80
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: ranker_api.md
+    filename: fetchers_api.md

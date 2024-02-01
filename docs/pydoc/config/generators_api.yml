@@ -1,7 +1,18 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack]
-    modules: ["pipeline"]
+    search_path: [../../../haystack/components/generators]
+    modules:
+      [
+        "azure",
+        "hugging_face_local",
+        "hugging_face_tgi",
+        "openai",
+        "chat/azure",
+        "chat/hugging_face_local",
+        "chat/hugging_face_tgi",
+        "chat/openai",
+        "utils",
+      ]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +24,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Arranges components and integrations in flow.
-  category_slug: haystack-classes
-  title: Pipelines API
-  slug: pipelines-api
-  order: 90
+  excerpt: Enables text generation using LLMs.
+  category_slug: haystack-api
+  title: Generators
+  slug: generators-api
+  order: 70
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: pipelines_api.md
+    filename: generators_api.md

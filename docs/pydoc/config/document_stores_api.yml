@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/classifiers]
-    modules: ["document_language_classifier"]
+    search_path: [../../../haystack/document_stores/in_memory]
+    modules: ["document_store"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Detects the language of the Documents and routes them appropriately.
-  category_slug: haystack-classes
-  title: Classifier API
-  slug: classifier-api
-  order: 10
+  excerpt: Stores your texts and meta data and provides them to the Retriever at query time.
+  category_slug: haystack-api
+  title: Document Stores
+  slug: document-stores-api
+  order: 40
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: classifier_api.md
+    filename: document_stores_api.md

@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/dataclasses]
-    modules: ["answer", "byte_stream", "chat_message", "document", "streaming_chunk"]
+    search_path: [../../../haystack/components/classifiers]
+    modules: ["document_language_classifier"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Core classes that carry data through the system.
-  category_slug: haystack-classes
-  title: Data Classes API
-  slug: data-classes-api
-  order: 30
+  excerpt: Detects the language of the Documents and routes them appropriately.
+  category_slug: haystack-api
+  title: Classifiers
+  slug: classifiers-api
+  order: 10
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: data_classes_api.md
+    filename: classifiers_api.md
