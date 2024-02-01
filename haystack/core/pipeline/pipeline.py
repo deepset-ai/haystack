@@ -4,6 +4,7 @@
 import importlib
 import itertools
 import logging
+import warnings
 from copy import copy
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Type, TypeVar, Union
@@ -154,7 +155,7 @@ class Pipeline:
                 raise PipelineError(f"Missing sender in connection: {connection}")
             if "receiver" not in connection:
                 raise PipelineError(f"Missing receiver in connection: {connection}")
-            pipe.connect(connect_from=connection["sender"], connect_to=connection["receiver"])
+            pipe.connect(sender=connection["sender"], receiver=connection["receiver"])
 
         return pipe
 
@@ -210,7 +211,74 @@ class Pipeline:
             visits=0,
         )
 
-    def connect(self, connect_from: str, connect_to: str) -> None:
+    def connect(self, sender: Union[str, OutputSocket], receiver: Union[str, InputSocket]) -> None:
+        """
+        Connects two Components together using their OutputSocket and InputSocket.
+        All Components to connect must have been added in the pipeline.
+        Raises a PipelineConnectError if either Component has not been added to this Pipeline.
+
+        If the OutputSocket and InputSocket types are not compatible raises a PipelineConnectError.
+        If InputSocket is not Variadic and is already connected to another OutputSocket raises a PipelineConnectError.
+
+        Connection using strings is deprecated and will be removed in the future.
+
+        Return the Pipeline instance.
+
+        :param sender: OutputSocket of a Component added to this Pipeline.
+        :param receiver: InputSocket of a Component added to this Pipeline.
+        """
+        if isinstance(sender, str) or isinstance(receiver, str):
+            # If either sender or receiver is a string, we fallback to the old string based API
+            self._connect_strings(sender, receiver)
+            return
+
+        # Verify both sender and receiver are components in this pipeline
+        if getattr(sender.component, "__haystack_added_to_pipeline__", None) is not self:
+            msg = f"Component {sender.component} not found in the pipeline."
+            raise ValueError(msg)
+
+        if getattr(receiver.component, "__haystack_added_to_pipeline__", None) is not self:
+            msg = f"Component {receiver.component} not found in the pipeline."
+            raise ValueError(msg)
+
+        sender_name = self.get_component_name(sender.component)
+        receiver_name = self.get_component_name(receiver.component)
+
+        if not _types_are_compatible(sender.type, receiver.type):
+            msg = (
+                f"Cannot connect '{sender_name}.{sender.name}' with "
+                f"'{receiver_name}.{receiver.name}': their declared input and output types do not match."
+            )
+            raise PipelineConnectError(msg)
+
+        if receiver_name in sender.receivers and sender_name in receiver.senders:
+            # These are already connected, nothing to do
+            return
+
+        if receiver.senders and not receiver.is_variadic:
+            # Only variadic input sockets can receive from multiple senders
+            msg = (
+                f"Cannot connect '{sender_name}.{sender.name}' with '{receiver_name}.{receiver.name}': "
+                f"{receiver_name}.{receiver.name} is already connected to {receiver.senders}."
+            )
+            raise PipelineConnectError(msg)
+
+        # Update the sockets with the new connection
+        sender.receivers.append(receiver_name)
+        receiver.senders.append(sender_name)
+
+        # Create the new connection
+        self.graph.add_edge(
+            sender_name,
+            receiver_name,
+            key=f"{sender.name}/{receiver.name}",
+            conn_type=_type_name(receiver.type),
+            from_socket=sender,
+            to_socket=receiver,
+            mandatory=receiver.is_mandatory,
+        )
+
+    def _connect_strings(self, connect_from: Union[str, OutputSocket], connect_to: Union[str, InputSocket]) -> None:
         """
         Connects two components together. All components to connect must exist in the pipeline.
         If connecting to an component that has several output connections, specify the inputs and output names as
@@ -229,6 +297,27 @@ class Pipeline:
             PipelineConnectError: if the two components cannot be connected (for example if one of the components is
                 not present in the pipeline, or the connections don't match by type, and so on).
         """
+        msg = (
+            "Calling `Pipeline.connect()` with strings has been deprecated and will be removed in the future. "
+            "Use Components' OutputSocket and InputSocket instead."
+        )
+        warnings.warn(msg, category=DeprecationWarning)
+        # If either sender or receiver is not a string we convert the socket to a string.
+        # This ease the rest of the code, since we can assume both sender and receiver are strings.
+
+        # Verify both sender and receiver are components in this pipeline
+        if isinstance(connect_from, OutputSocket):
+            if getattr(connect_from.component, "__haystack_added_to_pipeline__", None) is not self:
+                msg = f"Component {connect_from.component} not found in the pipeline."
+                raise PipelineConnectError(msg)
+            connect_from = f"{self.get_component_name(connect_from.component)}.{connect_from.name}"
+
+        if isinstance(connect_to, InputSocket):
+            if getattr(connect_to.component, "__haystack_added_to_pipeline__", None) is not self:
+                msg = f"Component {connect_to.component} not found in the pipeline."
+                raise PipelineConnectError(msg)
+            connect_to = f"{self.get_component_name(connect_to.component)}.{connect_to.name}"
+
         # Edges may be named explicitly by passing 'node_name.edge_name' to connect().
         sender, sender_socket_name = parse_connect_string(connect_from)
         receiver, receiver_socket_name = parse_connect_string(connect_to)
@@ -754,6 +843,9 @@ def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:
     Returns component-connection pairs from a connect_to/from string
     """
     if "." in connection:
-        split_str = connection.split(".", maxsplit=1)
-        return (split_str[0], split_str[1])
+        split = connection.split(".")
+        # We always take the last part as the socket name since we support both
+        # `component_name.socket_name` and `component_name.inputs.socket_name`
+        # formats
+        return (split[0], split[-1])
     return connection, None
