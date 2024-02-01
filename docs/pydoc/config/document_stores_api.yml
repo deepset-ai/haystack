@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/writers]
-    modules: ["document_writer"]
+    search_path: [../../../haystack/document_stores/in_memory]
+    modules: ["document_store"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Writes Documents to a DocumentStore.
+  excerpt: Stores your texts and meta data and provides them to the Retriever at query time.
   category_slug: haystack-api-classes
-  title: Document Writers
-  slug: writers-api
-  order: 50
+  title: Document Stores
+  slug: document-stores-api
+  order: 40
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: writers_api.md
+    filename: document_stores_api.md
