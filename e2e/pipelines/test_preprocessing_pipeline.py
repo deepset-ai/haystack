@@ -1,10 +1,10 @@
 import json
 
 from haystack import Pipeline
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-from haystack.components.converters import TextFileToDocument
-from haystack.components.preprocessors import DocumentSplitter, DocumentCleaner
 from haystack.components.classifiers import DocumentLanguageClassifier
+from haystack.components.converters import TextFileToDocument
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.routers import FileTypeRouter, MetadataRouter
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -14,27 +14,29 @@ def test_preprocessing_pipeline(tmp_path):
     # Create the pipeline and its components
     document_store = InMemoryDocumentStore()
     preprocessing_pipeline = Pipeline()
-    preprocessing_pipeline.add_component(instance=FileTypeRouter(mime_types=["text/plain"]), name="file_type_router")
-    preprocessing_pipeline.add_component(instance=TextFileToDocument(), name="text_file_converter")
-    preprocessing_pipeline.add_component(instance=DocumentLanguageClassifier(), name="language_classifier")
-    preprocessing_pipeline.add_component(
-        instance=MetadataRouter(rules={"en": {"field": "language", "operator": "==", "value": "en"}}), name="router"
-    )
-    preprocessing_pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
-    preprocessing_pipeline.add_component(
-        instance=DocumentSplitter(split_by="sentence", split_length=1), name="splitter"
-    )
-    preprocessing_pipeline.add_component(
-        instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="embedder"
-    )
-    preprocessing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
-    preprocessing_pipeline.connect("file_type_router.text/plain", "text_file_converter.sources")
-    preprocessing_pipeline.connect("text_file_converter.documents", "language_classifier.documents")
-    preprocessing_pipeline.connect("language_classifier.documents", "router.documents")
-    preprocessing_pipeline.connect("router.en", "cleaner.documents")
-    preprocessing_pipeline.connect("cleaner.documents", "splitter.documents")
-    preprocessing_pipeline.connect("splitter.documents", "embedder.documents")
-    preprocessing_pipeline.connect("embedder.documents", "writer.documents")
+    file_type_router = FileTypeRouter(mime_types=["text/plain"])
+    text_file_converter = TextFileToDocument()
+    language_classifier = DocumentLanguageClassifier()
+    router = MetadataRouter(rules={"en": {"field": "language", "operator": "==", "value": "en"}})
+    cleaner = DocumentCleaner()
+    splitter = DocumentSplitter(split_by="sentence", split_length=1)
+    embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    writer = DocumentWriter(document_store=document_store)
+    preprocessing_pipeline.add_component(instance=file_type_router, name="file_type_router")
+    preprocessing_pipeline.add_component(instance=text_file_converter, name="text_file_converter")
+    preprocessing_pipeline.add_component(instance=language_classifier, name="language_classifier")
+    preprocessing_pipeline.add_component(instance=router, name="router")
+    preprocessing_pipeline.add_component(instance=cleaner, name="cleaner")
+    preprocessing_pipeline.add_component(instance=splitter, name="splitter")
+    preprocessing_pipeline.add_component(instance=embedder, name="embedder")
+    preprocessing_pipeline.add_component(instance=writer, name="writer")
+    preprocessing_pipeline.connect("file_type_router.text/plain", text_file_converter.inputs.sources)
+    preprocessing_pipeline.connect(text_file_converter.outputs.documents, language_classifier.inputs.documents)
+    preprocessing_pipeline.connect(language_classifier.outputs.documents, router.inputs.documents)
+    preprocessing_pipeline.connect(router.outputs.en, cleaner.inputs.documents)
+    preprocessing_pipeline.connect(cleaner.outputs.documents, splitter.inputs.documents)
+    preprocessing_pipeline.connect(splitter.outputs.documents, embedder.inputs.documents)
+    preprocessing_pipeline.connect(embedder.outputs.documents, writer.inputs.documents)
 
     # Draw the pipeline
     preprocessing_pipeline.draw(tmp_path / "test_preprocessing_pipeline.png")

@@ -62,8 +62,8 @@ def test_to_dict():
     pipe.add_component("add_two", add_two)
     pipe.add_component("add_default", add_default)
     pipe.add_component("double", double)
-    pipe.connect("add_two", "double")
-    pipe.connect("double", "add_default")
+    pipe.connect(add_two.outputs.result, double.inputs.value)
+    pipe.connect(double.outputs.value, add_default.inputs.value)
 
     res = pipe.to_dict()
     expected = {
@@ -321,51 +321,51 @@ def test_from_dict_without_connection_receiver():
 
 
 def test_falsy_connection():
-    A = component_class("A", input_types={"x": int}, output={"y": 0})
-    B = component_class("A", input_types={"x": int}, output={"y": 0})
+    a = component_class("A", input_types={"x": int}, output={"y": 0})()
+    b = component_class("B", input_types={"x": int}, output={"y": 0})()
     p = Pipeline()
-    p.add_component("a", A())
-    p.add_component("b", B())
-    p.connect("a.y", "b.x")
+    p.add_component("a", a)
+    p.add_component("b", b)
+    p.connect(a.outputs.y, b.inputs.x)
     assert p.run({"a": {"x": 10}})["b"]["y"] == 0
 
 
 def test_describe_input_only_no_inputs_components():
-    A = component_class("A", input_types={}, output={"x": 0})
-    B = component_class("B", input_types={}, output={"y": 0})
-    C = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})
+    a = component_class("A", input_types={}, output={"x": 0})()
+    b = component_class("B", input_types={}, output={"y": 0})()
+    c = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})()
     p = Pipeline()
-    p.add_component("a", A())
-    p.add_component("b", B())
-    p.add_component("c", C())
-    p.connect("a.x", "c.x")
-    p.connect("b.y", "c.y")
+    p.add_component("a", a)
+    p.add_component("b", b)
+    p.add_component("c", c)
+    p.connect(a.outputs.x, c.inputs.x)
+    p.connect(b.outputs.y, c.inputs.y)
     assert p.inputs() == {}
 
 
 def test_describe_input_some_components_with_no_inputs():
-    A = component_class("A", input_types={}, output={"x": 0})
-    B = component_class("B", input_types={"y": int}, output={"y": 0})
-    C = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})
+    a = component_class("A", input_types={}, output={"x": 0})()
+    b = component_class("B", input_types={"y": int}, output={"y": 0})()
+    c = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})()
     p = Pipeline()
-    p.add_component("a", A())
-    p.add_component("b", B())
-    p.add_component("c", C())
-    p.connect("a.x", "c.x")
-    p.connect("b.y", "c.y")
+    p.add_component("a", a)
+    p.add_component("b", b)
+    p.add_component("c", c)
+    p.connect(a.outputs.x, c.inputs.x)
+    p.connect(b.outputs.y, c.inputs.y)
     assert p.inputs() == {"b": {"y": {"type": int, "is_mandatory": True}}}
 
 
 def test_describe_input_all_components_have_inputs():
-    A = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})
-    B = component_class("B", input_types={"y": int}, output={"y": 0})
-    C = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})
+    a = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})()
+    b = component_class("B", input_types={"y": int}, output={"y": 0})()
+    c = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})()
     p = Pipeline()
-    p.add_component("a", A())
-    p.add_component("b", B())
-    p.add_component("c", C())
-    p.connect("a.x", "c.x")
-    p.connect("b.y", "c.y")
+    p.add_component("a", a)
+    p.add_component("b", b)
+    p.add_component("c", c)
+    p.connect(a.outputs.x, c.inputs.x)
+    p.connect(b.outputs.y, c.inputs.y)
     assert p.inputs() == {
         "a": {"x": {"type": Optional[int], "is_mandatory": True}},
         "b": {"y": {"type": int, "is_mandatory": True}},
@@ -377,13 +377,13 @@ def test_describe_output_multiple_possible():
     This pipeline has two outputs:
     {"b": {"output_b": {"type": str}}, "a": {"output_a": {"type": str}}}
     """
-    A = component_class("A", input_types={"input_a": str}, output={"output_a": "str", "output_b": "str"})
-    B = component_class("B", input_types={"input_b": str}, output={"output_b": "str"})
+    a = component_class("A", input_types={"input_a": str}, output={"output_a": "str", "output_b": "str"})()
+    b = component_class("B", input_types={"input_b": str}, output={"output_b": "str"})()
 
     pipe = Pipeline()
-    pipe.add_component("a", A())
-    pipe.add_component("b", B())
-    pipe.connect("a.output_b", "b.input_b")
+    pipe.add_component("a", a)
+    pipe.add_component("b", b)
+    pipe.connect(a.outputs.output_b, b.inputs.input_b)
 
     assert pipe.outputs() == {"b": {"output_b": {"type": str}}, "a": {"output_a": {"type": str}}}
 
@@ -393,15 +393,15 @@ def test_describe_output_single():
     This pipeline has one output:
     {"c": {"z": {"type": int}}}
     """
-    A = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})
-    B = component_class("B", input_types={"y": int}, output={"y": 0})
-    C = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})
+    a = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})()
+    b = component_class("B", input_types={"y": int}, output={"y": 0})()
+    c = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})()
     p = Pipeline()
-    p.add_component("a", A())
-    p.add_component("b", B())
-    p.add_component("c", C())
-    p.connect("a.x", "c.x")
-    p.connect("b.y", "c.y")
+    p.add_component("a", a)
+    p.add_component("b", b)
+    p.add_component("c", c)
+    p.connect(a.outputs.x, c.inputs.x)
+    p.connect(b.outputs.y, c.inputs.y)
 
     assert p.outputs() == {"c": {"z": {"type": int}}}
 
@@ -411,13 +411,13 @@ def test_describe_no_outputs():
     This pipeline sets up elaborate connections between three components but in fact it has no outputs:
     Check that p.outputs() == {}
     """
-    A = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})
-    B = component_class("B", input_types={"y": int}, output={"y": 0})
-    C = component_class("C", input_types={"x": int, "y": int}, output={})
+    a = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})()
+    b = component_class("B", input_types={"y": int}, output={"y": 0})()
+    c = component_class("C", input_types={"x": int, "y": int}, output={})()
     p = Pipeline()
-    p.add_component("a", A())
-    p.add_component("b", B())
-    p.add_component("c", C())
-    p.connect("a.x", "c.x")
-    p.connect("b.y", "c.y")
+    p.add_component("a", a)
+    p.add_component("b", b)
+    p.add_component("c", c)
+    p.connect(a.outputs.x, c.inputs.x)
+    p.connect(b.outputs.y, c.inputs.y)
     assert p.outputs() == {}

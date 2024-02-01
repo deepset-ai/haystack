@@ -1,26 +1,28 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-import os
 import filecmp
+import os
+from unittest.mock import MagicMock, patch
 
-from unittest.mock import patch, MagicMock
 import pytest
 import requests
 
-from haystack.core.pipeline import Pipeline
-from haystack.core.pipeline.draw.draw import _draw, _convert
 from haystack.core.errors import PipelineDrawingError
-from haystack.testing.sample_components import Double, AddFixedValue
+from haystack.core.pipeline import Pipeline
+from haystack.core.pipeline.draw.draw import _convert, _draw
+from haystack.testing.sample_components import AddFixedValue, Double
 
 
 @pytest.mark.integration
 def test_draw_mermaid_image(tmp_path, test_files):
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
-    pipe.connect("comp2", "comp1")
+    comp1 = Double()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
+    pipe.connect(comp2.outputs.value, comp1.inputs.value)
 
     _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="mermaid-image")
     assert os.path.exists(tmp_path / "test_pipe.jpg")
@@ -30,10 +32,12 @@ def test_draw_mermaid_image(tmp_path, test_files):
 @pytest.mark.integration
 def test_draw_mermaid_img_failing_request(tmp_path):
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
-    pipe.connect("comp2", "comp1")
+    comp1 = Double()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
+    pipe.connect(comp2.outputs.value, comp1.inputs.value)
 
     with patch("haystack.core.pipeline.draw.mermaid.requests.get") as mock_get:
 
@@ -53,10 +57,12 @@ def test_draw_mermaid_img_failing_request(tmp_path):
 @pytest.mark.integration
 def test_draw_mermaid_text(tmp_path):
     pipe = Pipeline()
-    pipe.add_component("comp1", AddFixedValue(add=3))
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1.result", "comp2.value")
-    pipe.connect("comp2.value", "comp1.value")
+    comp1 = AddFixedValue(add=3)
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.result, comp2.inputs.value)
+    pipe.connect(comp2.outputs.value, comp1.inputs.value)
 
     _draw(pipe.graph, tmp_path / "test_pipe.md", engine="mermaid-text")
     assert os.path.exists(tmp_path / "test_pipe.md")
@@ -77,10 +83,12 @@ classDef component text-align:center;
 
 def test_draw_unknown_engine(tmp_path):
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
-    pipe.connect("comp2", "comp1")
+    comp1 = Double()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
+    pipe.connect(comp2.outputs.value, comp1.inputs.value)
 
     with pytest.raises(ValueError, match="Unknown rendering engine 'unknown'"):
         _draw(pipe.graph, tmp_path / "test_pipe.jpg", engine="unknown")
@@ -88,10 +96,12 @@ def test_draw_unknown_engine(tmp_path):
 
 def test_convert_unknown_engine(tmp_path):
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
-    pipe.connect("comp2", "comp1")
+    comp1 = Double()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
+    pipe.connect(comp2.outputs.value, comp1.inputs.value)
 
     with pytest.raises(ValueError, match="Unknown rendering engine 'unknown'"):
         _convert(pipe.graph, engine="unknown")

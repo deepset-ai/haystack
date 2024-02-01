@@ -21,9 +21,11 @@ def pipeline():
 
 
 def test_pipeline_dumps(pipeline, test_files_path):
-    pipeline.add_component("Comp1", TestComponent("Foo"))
-    pipeline.add_component("Comp2", TestComponent())
-    pipeline.connect("Comp1.value", "Comp2.input_")
+    comp1 = TestComponent("Foo")
+    comp2 = TestComponent()
+    pipeline.add_component("Comp1", comp1)
+    pipeline.add_component("Comp2", comp2)
+    pipeline.connect(comp1.outputs.value, comp2.inputs.input_)
     pipeline.max_loops_allowed = 99
     result = pipeline.dumps()
     with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
@@ -39,9 +41,11 @@ def test_pipeline_loads(test_files_path):
 
 
 def test_pipeline_dump(pipeline, test_files_path, tmp_path):
-    pipeline.add_component("Comp1", TestComponent("Foo"))
-    pipeline.add_component("Comp2", TestComponent())
-    pipeline.connect("Comp1.value", "Comp2.input_")
+    comp1 = TestComponent("Foo")
+    comp2 = TestComponent()
+    pipeline.add_component("Comp1", comp1)
+    pipeline.add_component("Comp2", comp2)
+    pipeline.connect(comp1.outputs.value, comp2.inputs.input_)
     pipeline.max_loops_allowed = 99
     with open(tmp_path / "out.yaml", "w") as f:
         pipeline.dump(f)
@@ -71,10 +75,12 @@ def test_pipeline_resolution_simple_input():
             return {"output": f"Hello, {word}!"}
 
     pipeline = Pipeline()
-    pipeline.add_component("hello", Hello())
-    pipeline.add_component("hello2", Hello())
+    hello = Hello()
+    hello2 = Hello()
+    pipeline.add_component("hello", hello)
+    pipeline.add_component("hello2", hello2)
 
-    pipeline.connect("hello.output", "hello2.word")
+    pipeline.connect(hello.outputs.output, hello2.inputs.word)
     result = pipeline.run(data={"hello": {"word": "world"}})
     assert result == {"hello2": {"output": "Hello, Hello, world!!"}}
 
@@ -94,10 +100,12 @@ def test_pipeline_resolution_wrong_input_name(caplog):
             return {"output": f"Hello, {who}!"}
 
     pipeline = Pipeline()
-    pipeline.add_component("hello", Hello())
-    pipeline.add_component("hello2", Hello())
+    hello = Hello()
+    hello2 = Hello()
+    pipeline.add_component("hello", hello)
+    pipeline.add_component("hello2", hello2)
 
-    pipeline.connect("hello.output", "hello2.who")
+    pipeline.connect(hello.outputs.output, hello2.inputs.who)
 
     # test case with nested component inputs
     with pytest.raises(ValueError):
@@ -123,10 +131,12 @@ def test_pipeline_resolution_with_mixed_correct_and_incorrect_input_names(caplog
             return {"output": f"Hello, {who}!"}
 
     pipeline = Pipeline()
-    pipeline.add_component("hello", Hello())
-    pipeline.add_component("hello2", Hello())
+    hello = Hello()
+    hello2 = Hello()
+    pipeline.add_component("hello", hello)
+    pipeline.add_component("hello2", hello2)
 
-    pipeline.connect("hello.output", "hello2.who")
+    pipeline.connect(hello.outputs.output, hello2.inputs.who)
 
     # test case with nested component inputs
     # this will raise ValueError because hello component does not have an input named "non_existing_input"
@@ -152,10 +162,12 @@ def test_pipeline_resolution_duplicate_input_names_across_components():
             return {"output": f"Hello {who} {what}!"}
 
     pipe = Pipeline()
-    pipe.add_component("hello", Hello())
-    pipe.add_component("hello2", Hello())
+    hello = Hello()
+    hello2 = Hello()
+    pipe.add_component("hello", hello)
+    pipe.add_component("hello2", hello2)
 
-    pipe.connect("hello.output", "hello2.who")
+    pipe.connect(hello.outputs.output, hello2.inputs.who)
 
     result = pipe.run(data={"what": "Haystack", "who": "world"})
     assert result == {"hello2": {"output": "Hello Hello world Haystack! Haystack!"}}

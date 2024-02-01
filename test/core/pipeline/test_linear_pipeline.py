@@ -11,11 +11,14 @@ logging.basicConfig(level=logging.DEBUG)
 
 def test_pipeline():
     pipeline = Pipeline()
-    pipeline.add_component("first_addition", AddFixedValue(add=2))
-    pipeline.add_component("second_addition", AddFixedValue())
-    pipeline.add_component("double", Double())
-    pipeline.connect("first_addition", "double")
-    pipeline.connect("double", "second_addition")
+    first_addition = AddFixedValue(add=2)
+    second_addition = AddFixedValue()
+    double = Double()
+    pipeline.add_component("first_addition", first_addition)
+    pipeline.add_component("second_addition", second_addition)
+    pipeline.add_component("double", double)
+    pipeline.connect(first_addition.outputs.result, double.inputs.value)
+    pipeline.connect(double.outputs.value, second_addition.inputs.value)
 
     results = pipeline.run({"first_addition": {"value": 1}})
     assert results == {"second_addition": {"result": 7}}

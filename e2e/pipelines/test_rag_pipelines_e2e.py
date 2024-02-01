@@ -1,15 +1,16 @@
-import os
 import json
+import os
+
 import pytest
 
-from haystack import Pipeline, Document
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.writers import DocumentWriter
-from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
-from haystack.components.generators import OpenAIGenerator
+from haystack import Document, Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.generators import OpenAIGenerator
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 @pytest.mark.skipif(
@@ -28,15 +29,19 @@ def test_bm25_rag_pipeline(tmp_path):
     \nAnswer:
     """
     rag_pipeline = Pipeline()
-    rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
-    rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-    rag_pipeline.add_component(instance=OpenAIGenerator(api_key=os.environ.get("OPENAI_API_KEY")), name="llm")
-    rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
-    rag_pipeline.connect("retriever", "prompt_builder.documents")
-    rag_pipeline.connect("prompt_builder", "llm")
-    rag_pipeline.connect("llm.replies", "answer_builder.replies")
-    rag_pipeline.connect("llm.meta", "answer_builder.meta")
-    rag_pipeline.connect("retriever", "answer_builder.documents")
+    retriever = InMemoryBM25Retriever(document_store=InMemoryDocumentStore())
+    prompt_builder = PromptBuilder(template=prompt_template)
+    llm = OpenAIGenerator(api_key=os.environ.get("OPENAI_API_KEY"))
+    answer_builder = AnswerBuilder()
+    rag_pipeline.add_component(instance=retriever, name="retriever")
+    rag_pipeline.add_component(instance=prompt_builder, name="prompt_builder")
+    rag_pipeline.add_component(instance=llm, name="llm")
+    rag_pipeline.add_component(instance=answer_builder, name="answer_builder")
+    rag_pipeline.connect(retriever.outputs.documents, prompt_builder.inputs.documents)
+    rag_pipeline.connect(prompt_builder.outputs.prompt, llm.inputs.prompt)
+    rag_pipeline.connect(llm.outputs.replies, answer_builder.inputs.replies)
+    rag_pipeline.connect(llm.outputs.meta, answer_builder.inputs.meta)
+    rag_pipeline.connect(retriever.outputs.documents, answer_builder.inputs.documents)
 
     # Draw the pipeline
     rag_pipeline.draw(tmp_path / "test_bm25_rag_pipeline.png")

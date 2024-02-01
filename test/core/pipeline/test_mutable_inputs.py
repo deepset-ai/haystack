@@ -18,12 +18,16 @@ class InputMangler:
 
 def test_mutable_inputs():
     pipe = Pipeline()
-    pipe.add_component("mangler1", InputMangler())
-    pipe.add_component("mangler2", InputMangler())
-    pipe.add_component("concat1", StringListJoiner())
-    pipe.add_component("concat2", StringListJoiner())
-    pipe.connect("mangler1", "concat1")
-    pipe.connect("mangler2", "concat2")
+    mangler1 = InputMangler()
+    mangler2 = InputMangler()
+    concat1 = StringListJoiner()
+    concat2 = StringListJoiner()
+    pipe.add_component("mangler1", mangler1)
+    pipe.add_component("mangler2", mangler2)
+    pipe.add_component("concat1", concat1)
+    pipe.add_component("concat2", concat2)
+    pipe.connect(mangler1.outputs.mangled_list, concat1.inputs.inputs)
+    pipe.connect(mangler2.outputs.mangled_list, concat2.inputs.inputs)
 
     mylist = ["foo", "bar"]
 

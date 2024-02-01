@@ -13,10 +13,12 @@ from haystack.testing.sample_components import AddFixedValue, Double, Parity, Su
 
 def test_find_pipeline_input_no_input():
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
-    pipe.connect("comp2", "comp1")
+    comp1 = Double()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
+    pipe.connect(comp2.outputs.value, comp1.inputs.value)
 
     assert find_pipeline_inputs(pipe.graph) == {"comp1": [], "comp2": []}
 
@@ -24,9 +26,10 @@ def test_find_pipeline_input_no_input():
 def test_find_pipeline_input_one_input():
     pipe = Pipeline()
     comp1 = Double()
+    comp2 = Double()
     pipe.add_component("comp1", comp1)
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
 
     assert find_pipeline_inputs(pipe.graph) == {
         "comp1": [InputSocket(name="value", type=int, component=comp1)],
@@ -37,9 +40,10 @@ def test_find_pipeline_input_one_input():
 def test_find_pipeline_input_two_inputs_same_component():
     pipe = Pipeline()
     comp1 = AddFixedValue()
+    comp2 = Double()
     pipe.add_component("comp1", comp1)
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.result, comp2.inputs.value)
     assert find_pipeline_inputs(pipe.graph) == {
         "comp1": [
             InputSocket(name="value", type=int, component=comp1),
@@ -53,11 +57,12 @@ def test_find_pipeline_input_some_inputs_different_components():
     pipe = Pipeline()
     comp1 = AddFixedValue()
     comp2 = Double()
+    comp3 = AddFixedValue()
     pipe.add_component("comp1", comp1)
     pipe.add_component("comp2", comp2)
-    pipe.add_component("comp3", AddFixedValue())
-    pipe.connect("comp1.result", "comp3.value")
-    pipe.connect("comp2.value", "comp3.add")
+    pipe.add_component("comp3", comp3)
+    pipe.connect(comp1.outputs.result, comp3.inputs.value)
+    pipe.connect(comp2.outputs.value, comp3.inputs.add)
     assert find_pipeline_inputs(pipe.graph) == {
         "comp1": [
             InputSocket(name="value", type=int, component=comp1),
@@ -89,20 +94,23 @@ def test_find_pipeline_variable_input_nodes_in_the_pipeline():
 
 def test_find_pipeline_output_no_output():
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
-    pipe.connect("comp2", "comp1")
+    comp1 = Double()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
+    pipe.connect(comp2.outputs.value, comp1.inputs.value)
 
     assert find_pipeline_outputs(pipe.graph) == {"comp1": [], "comp2": []}
 
 
 def test_find_pipeline_output_one_output():
     pipe = Pipeline()
+    comp1 = Double()
     comp2 = Double()
-    pipe.add_component("comp1", Double())
+    pipe.add_component("comp1", comp1)
     pipe.add_component("comp2", comp2)
-    pipe.connect("comp1", "comp2")
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
 
     assert find_pipeline_outputs(pipe.graph) == {
         "comp1": [],
@@ -112,10 +120,11 @@ def test_find_pipeline_output_one_output():
 
 def test_find_pipeline_some_outputs_same_component():
     pipe = Pipeline()
+    comp1 = Double()
     comp2 = Parity()
-    pipe.add_component("comp1", Double())
+    pipe.add_component("comp1", comp1)
     pipe.add_component("comp2", comp2)
-    pipe.connect("comp1", "comp2")
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
 
     assert find_pipeline_outputs(pipe.graph) == {
         "comp1": [],
@@ -128,13 +137,14 @@ def test_find_pipeline_some_outputs_same_component():
 
 def test_find_pipeline_some_outputs_different_components():
     pipe = Pipeline()
+    comp1 = Double()
     comp2 = Parity()
     comp3 = Double()
-    pipe.add_component("comp1", Double())
+    pipe.add_component("comp1", comp1)
     pipe.add_component("comp2", comp2)
     pipe.add_component("comp3", comp3)
-    pipe.connect("comp1", "comp2")
-    pipe.connect("comp1", "comp3")
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
+    pipe.connect(comp1.outputs.value, comp3.inputs.value)
 
     assert find_pipeline_outputs(pipe.graph) == {
         "comp1": [],
@@ -148,37 +158,45 @@ def test_find_pipeline_some_outputs_different_components():
 
 def test_validate_pipeline_input_pipeline_with_no_inputs():
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
-    pipe.connect("comp2", "comp1")
+    comp1 = Double()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
+    pipe.connect(comp2.outputs.value, comp1.inputs.value)
     res = pipe.run({})
     assert res == {}
 
 
 def test_validate_pipeline_input_unknown_component():
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
+    comp1 = Double()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
     with pytest.raises(ValueError):
         pipe.run({"test_component": {"value": 1}})
 
 
 def test_validate_pipeline_input_all_necessary_input_is_present():
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
+    comp1 = Double()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
     with pytest.raises(ValueError):
         pipe.run({})
 
 
 def test_validate_pipeline_input_all_necessary_input_is_present_considering_defaults():
     pipe = Pipeline()
-    pipe.add_component("comp1", AddFixedValue())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
+    comp1 = AddFixedValue()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.result, comp2.inputs.value)
     pipe.run({"comp1": {"value": 1}})
     pipe.run({"comp1": {"value": 1, "add": 2}})
     with pytest.raises(ValueError):
@@ -187,18 +205,22 @@ def test_validate_pipeline_input_all_necessary_input_is_present_considering_defa
 
 def test_validate_pipeline_input_only_expected_input_is_present():
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
+    comp1 = Double()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
     with pytest.raises(ValueError):
         pipe.run({"comp1": {"value": 1}, "comp2": {"value": 2}})
 
 
 def test_validate_pipeline_input_only_expected_input_is_present_falsy():
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
+    comp1 = Double()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
     with pytest.raises(ValueError):
         pipe.run({"comp1": {"value": 1}, "comp2": {"value": 0}})
 
@@ -218,9 +240,11 @@ def test_validate_pipeline_falsy_input_missing():
 
 def test_validate_pipeline_input_only_expected_input_is_present_including_unknown_names():
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
+    comp1 = Double()
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.value, comp2.inputs.value)
 
     with pytest.raises(ValueError):
         pipe.run({"comp1": {"value": 1, "add": 2}})
@@ -228,7 +252,9 @@ def test_validate_pipeline_input_only_expected_input_is_present_including_unknow
 
 def test_validate_pipeline_input_only_expected_input_is_present_and_defaults_dont_interfere():
     pipe = Pipeline()
-    pipe.add_component("comp1", AddFixedValue(add=10))
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
+    comp1 = AddFixedValue(add=10)
+    comp2 = Double()
+    pipe.add_component("comp1", comp1)
+    pipe.add_component("comp2", comp2)
+    pipe.connect(comp1.outputs.result, comp2.inputs.value)
     assert pipe.run({"comp1": {"value": 1, "add": 5}}) == {"comp2": {"value": 12}}

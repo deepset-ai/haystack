@@ -12,9 +12,11 @@ from haystack.evaluation.metrics import Metric
 def test_extractive_qa_pipeline(tmp_path):
     # Create the pipeline
     qa_pipeline = Pipeline()
-    qa_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
-    qa_pipeline.add_component(instance=ExtractiveReader(model="deepset/tinyroberta-squad2"), name="reader")
-    qa_pipeline.connect("retriever", "reader")
+    retriever = InMemoryBM25Retriever(document_store=InMemoryDocumentStore())
+    reader = ExtractiveReader(model="deepset/tinyroberta-squad2")
+    qa_pipeline.add_component(instance=retriever, name="retriever")
+    qa_pipeline.add_component(instance=reader, name="reader")
+    qa_pipeline.connect(retriever.outputs.documents, reader.inputs.documents)
 
     # Populate the document store
     documents = [

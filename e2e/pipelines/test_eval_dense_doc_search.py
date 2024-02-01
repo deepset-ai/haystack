@@ -1,10 +1,10 @@
 from haystack import Pipeline
 from haystack.components.converters import PyPDFToDocument, TextFileToDocument
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.joiners import DocumentJoiner
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.components.routers import FileTypeRouter
-from haystack.components.joiners import DocumentJoiner
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -14,29 +14,31 @@ from haystack.evaluation.eval import eval
 def test_dense_doc_search_pipeline(samples_path):
     # Create the indexing pipeline
     indexing_pipeline = Pipeline()
-    indexing_pipeline.add_component(
-        instance=FileTypeRouter(mime_types=["text/plain", "application/pdf"]), name="file_type_router"
-    )
-    indexing_pipeline.add_component(instance=TextFileToDocument(), name="text_file_converter")
-    indexing_pipeline.add_component(instance=PyPDFToDocument(), name="pdf_file_converter")
-    indexing_pipeline.add_component(instance=DocumentJoiner(), name="joiner")
-    indexing_pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
-    indexing_pipeline.add_component(
-        instance=DocumentSplitter(split_by="sentence", split_length=250, split_overlap=30), name="splitter"
-    )
-    indexing_pipeline.add_component(
-        instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="embedder"
-    )
-    indexing_pipeline.add_component(instance=DocumentWriter(document_store=InMemoryDocumentStore()), name="writer")
+    file_type_router = FileTypeRouter(mime_types=["text/plain", "application/pdf"])
+    text_file_converter = TextFileToDocument()
+    pdf_file_converter = PyPDFToDocument()
+    joiner = DocumentJoiner()
+    cleaner = DocumentCleaner()
+    splitter = DocumentSplitter(split_by="sentence", split_length=250, split_overlap=30)
+    embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    writer = DocumentWriter(document_store=InMemoryDocumentStore())
+    indexing_pipeline.add_component(instance=file_type_router, name="file_type_router")
+    indexing_pipeline.add_component(instance=text_file_converter, name="text_file_converter")
+    indexing_pipeline.add_component(instance=pdf_file_converter, name="pdf_file_converter")
+    indexing_pipeline.add_component(instance=joiner, name="joiner")
+    indexing_pipeline.add_component(instance=cleaner, name="cleaner")
+    indexing_pipeline.add_component(instance=splitter, name="splitter")
+    indexing_pipeline.add_component(instance=embedder, name="embedder")
+    indexing_pipeline.add_component(instance=writer, name="writer")
 
-    indexing_pipeline.connect("file_type_router.text/plain", "text_file_converter.sources")
-    indexing_pipeline.connect("file_type_router.application/pdf", "pdf_file_converter.sources")
-    indexing_pipeline.connect("text_file_converter.documents", "joiner.documents")
-    indexing_pipeline.connect("pdf_file_converter.documents", "joiner.documents")
-    indexing_pipeline.connect("joiner.documents", "cleaner.documents")
-    indexing_pipeline.connect("cleaner.documents", "splitter.documents")
-    indexing_pipeline.connect("splitter.documents", "embedder.documents")
-    indexing_pipeline.connect("embedder.documents", "writer.documents")
+    indexing_pipeline.connect("file_type_router.outputs.text/plain", text_file_converter.inputs.sources)
+    indexing_pipeline.connect("file_type_router.outputs.application/pdf", pdf_file_converter.inputs.sources)
+    indexing_pipeline.connect(text_file_converter.outputs.documents, joiner.inputs.documents)
+    indexing_pipeline.connect(pdf_file_converter.outputs.documents, joiner.inputs.documents)
+    indexing_pipeline.connect(joiner.outputs.documents, cleaner.inputs.documents)
+    indexing_pipeline.connect(cleaner.outputs.documents, splitter.inputs.documents)
+    indexing_pipeline.connect(splitter.outputs.documents, embedder.inputs.documents)
+    indexing_pipeline.connect(embedder.outputs.documents, writer.inputs.documents)
 
     indexing_pipeline.run({"file_type_router": {"sources": list(samples_path.iterdir())}})
     filled_document_store = indexing_pipeline.get_component("writer").document_store

@@ -1,17 +1,19 @@
 import json
 
-from haystack import Pipeline, Document
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack import Document, Pipeline
 from haystack.components.readers import ExtractiveReader
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 def test_extractive_qa_pipeline(tmp_path):
     # Create the pipeline
     qa_pipeline = Pipeline()
-    qa_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
-    qa_pipeline.add_component(instance=ExtractiveReader(model="deepset/tinyroberta-squad2"), name="reader")
-    qa_pipeline.connect("retriever", "reader")
+    retriever = InMemoryBM25Retriever(document_store=InMemoryDocumentStore())
+    reader = ExtractiveReader(model="deepset/tinyroberta-squad2")
+    qa_pipeline.add_component(instance=retriever, name="retriever")
+    qa_pipeline.add_component(instance=reader, name="reader")
+    qa_pipeline.connect(retriever.outputs.documents, reader.inputs.documents)
 
     # Draw the pipeline
     qa_pipeline.draw(tmp_path / "test_extractive_qa_pipeline.png")

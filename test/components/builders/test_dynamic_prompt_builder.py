@@ -88,9 +88,10 @@ class TestDynamicPromptBuilder:
                 return {"documents": [Document(content=doc_input)]}
 
         pipe = Pipeline()
-        pipe.add_component("doc_producer", DocumentProducer())
+        doc_producer = DocumentProducer()
+        pipe.add_component("doc_producer", doc_producer)
         pipe.add_component("prompt_builder", prompt_builder)
-        pipe.connect("doc_producer.documents", "prompt_builder.documents")
+        pipe.connect(doc_producer.outputs.documents, prompt_builder.inputs.documents)
 
         template = "Here is the document: {{documents[0].content}} \\n Answer: {{query}}"
         result = pipe.run(

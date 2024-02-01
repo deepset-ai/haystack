@@ -24,21 +24,22 @@ def test_bm25_rag_pipeline(tmp_path):
     \nAnswer:
     """
     rag_pipeline = Pipeline()
-    rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
-    rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-    rag_pipeline.add_component(
-        instance=HuggingFaceLocalGenerator(
-            model="google/flan-t5-small",
-            task="text2text-generation",
-            generation_kwargs={"max_new_tokens": 100, "temperature": 0.5, "do_sample": True},
-        ),
-        name="llm",
+    retriever = InMemoryBM25Retriever(document_store=InMemoryDocumentStore())
+    prompt_builder = PromptBuilder(template=prompt_template)
+    llm = HuggingFaceLocalGenerator(
+        model="google/flan-t5-small",
+        task="text2text-generation",
+        generation_kwargs={"max_new_tokens": 100, "temperature": 0.5, "do_sample": True},
     )
-    rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
-    rag_pipeline.connect("retriever", "prompt_builder.documents")
-    rag_pipeline.connect("prompt_builder", "llm")
-    rag_pipeline.connect("llm.replies", "answer_builder.replies")
-    rag_pipeline.connect("retriever", "answer_builder.documents")
+    answer_builder = AnswerBuilder()
+    rag_pipeline.add_component(instance=retriever, name="retriever")
+    rag_pipeline.add_component(instance=prompt_builder, name="prompt_builder")
+    rag_pipeline.add_component(instance=llm, name="llm")
+    rag_pipeline.add_component(instance=answer_builder, name="answer_builder")
+    rag_pipeline.connect(retriever.outputs.documents, prompt_builder.inputs.documents)
+    rag_pipeline.connect(prompt_builder.outputs.prompt, llm.inputs.prompt)
+    rag_pipeline.connect(llm.outputs.replies, answer_builder.inputs.replies)
+    rag_pipeline.connect(retriever.outputs.documents, answer_builder.inputs.documents)
 
     # Populate the document store
     documents = [
@@ -155,28 +156,25 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     \nAnswer:
     """
     rag_pipeline = Pipeline()
-    rag_pipeline.add_component(
-        instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="text_embedder"
+    text_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    retriever = InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore())
+    prompt_builder = PromptBuilder(template=prompt_template)
+    llm = HuggingFaceLocalGenerator(
+        model="google/flan-t5-small",
+        task="text2text-generation",
+        generation_kwargs={"max_new_tokens": 100, "temperature": 0.5, "do_sample": True},
     )
-    rag_pipeline.add_component(
-        instance=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()), name="retriever"
-    )
-    rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-    rag_pipeline.add_component(
-        instance=HuggingFaceLocalGenerator(
-            model="google/flan-t5-small",
-            task="text2text-generation",
-            generation_kwargs={"max_new_tokens": 100, "temperature": 0.5, "do_sample": True},
-        ),
-        name="llm",
-    )
-    rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
-    rag_pipeline.connect("text_embedder", "retriever")
-    rag_pipeline.connect("retriever", "prompt_builder.documents")
-    rag_pipeline.connect("prompt_builder", "llm")
-    rag_pipeline.connect("llm.replies", "answer_builder.replies")
-    rag_pipeline.connect("retriever", "answer_builder.documents")
-
+    answer_builder = AnswerBuilder()
+    rag_pipeline.add_component(instance=text_embedder, name="text_embedder")
+    rag_pipeline.add_component(instance=retriever, name="retriever")
+    rag_pipeline.add_component(instance=prompt_builder, name="prompt_builder")
+    rag_pipeline.add_component(instance=llm, name="llm")
+    rag_pipeline.add_component(instance=answer_builder, name="answer_builder")
+    rag_pipeline.connect(text_embedder.outputs.embedding, retriever.inputs.query_embedding)
+    rag_pipeline.connect(retriever.outputs.documents, prompt_builder.inputs.documents)
+    rag_pipeline.connect(prompt_builder.outputs.prompt, llm.inputs.prompt)
+    rag_pipeline.connect(llm.outputs.replies, answer_builder.inputs.replies)
+    rag_pipeline.connect(retriever.outputs.documents, answer_builder.inputs.documents)
     # Populate the document store
     documents = [
         Document(content="My name is Jean and I live in Paris."),

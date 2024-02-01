@@ -1,32 +1,32 @@
 import json
 
-from haystack import Pipeline, Document
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
-from haystack.components.rankers import TransformersSimilarityRanker
+from haystack import Document, Pipeline
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
 from haystack.components.joiners.document_joiner import DocumentJoiner
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.document_stores.types import DuplicatePolicy
+from haystack.components.rankers import TransformersSimilarityRanker
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 def test_hybrid_doc_search_pipeline(tmp_path):
     # Create the pipeline
     document_store = InMemoryDocumentStore()
     hybrid_pipeline = Pipeline()
-    hybrid_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="bm25_retriever")
-    hybrid_pipeline.add_component(
-        instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="text_embedder"
-    )
-    hybrid_pipeline.add_component(
-        instance=InMemoryEmbeddingRetriever(document_store=document_store), name="embedding_retriever"
-    )
-    hybrid_pipeline.add_component(instance=DocumentJoiner(), name="joiner")
-    hybrid_pipeline.add_component(instance=TransformersSimilarityRanker(top_k=20), name="ranker")
+    bm25_retriever = InMemoryBM25Retriever(document_store=document_store)
+    text_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    embedding_retriever = InMemoryEmbeddingRetriever(document_store=document_store)
+    joiner = DocumentJoiner()
+    ranker = TransformersSimilarityRanker(top_k=20)
+    hybrid_pipeline.add_component(instance=bm25_retriever, name="bm25_retriever")
+    hybrid_pipeline.add_component(instance=text_embedder, name="text_embedder")
+    hybrid_pipeline.add_component(instance=embedding_retriever, name="embedding_retriever")
+    hybrid_pipeline.add_component(instance=joiner, name="joiner")
+    hybrid_pipeline.add_component(instance=ranker, name="ranker")
 
-    hybrid_pipeline.connect("bm25_retriever", "joiner")
-    hybrid_pipeline.connect("text_embedder", "embedding_retriever")
-    hybrid_pipeline.connect("embedding_retriever", "joiner")
-    hybrid_pipeline.connect("joiner", "ranker")
+    hybrid_pipeline.connect(bm25_retriever.outputs.documents, joiner.inputs.documents)
+    hybrid_pipeline.connect(text_embedder.outputs.embedding, embedding_retriever.inputs.query_embedding)
+    hybrid_pipeline.connect(embedding_retriever.outputs.documents, joiner.inputs.documents)
+    hybrid_pipeline.connect(joiner.outputs.documents, ranker.inputs.documents)
 
     # Draw the pipeline
     hybrid_pipeline.draw(tmp_path / "test_hybrid_doc_search_pipeline.png")

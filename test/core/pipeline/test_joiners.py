@@ -11,14 +11,18 @@ logging.basicConfig(level=logging.DEBUG)
 
 def test_joiner():
     pipeline = Pipeline()
-    pipeline.add_component("hello_one", Hello())
-    pipeline.add_component("hello_two", Hello())
-    pipeline.add_component("hello_three", Hello())
-    pipeline.add_component("joiner", StringJoiner())
+    hello_one = Hello()
+    hello_two = Hello()
+    hello_three = Hello()
+    joiner = StringJoiner()
+    pipeline.add_component("hello_one", hello_one)
+    pipeline.add_component("hello_two", hello_two)
+    pipeline.add_component("hello_three", hello_three)
+    pipeline.add_component("joiner", joiner)
 
-    pipeline.connect("hello_one", "hello_two")
-    pipeline.connect("hello_two", "joiner")
-    pipeline.connect("hello_three", "joiner")
+    pipeline.connect(hello_one.outputs.output, hello_two.inputs.word)
+    pipeline.connect(hello_two.outputs.output, joiner.inputs.input_str)
+    pipeline.connect(hello_three.outputs.output, joiner.inputs.input_str)
 
     results = pipeline.run({"hello_one": {"word": "world"}, "hello_three": {"word": "my friend"}})
     assert results == {"joiner": {"output": "Hello, my friend! Hello, Hello, world!!"}}
@@ -26,12 +30,15 @@ def test_joiner():
 
 def test_joiner_with_lists():
     pipeline = Pipeline()
-    pipeline.add_component("first", TextSplitter())
-    pipeline.add_component("second", TextSplitter())
-    pipeline.add_component("joiner", StringListJoiner())
+    first = TextSplitter()
+    second = TextSplitter()
+    joiner = StringListJoiner()
+    pipeline.add_component("first", first)
+    pipeline.add_component("second", second)
+    pipeline.add_component("joiner", joiner)
 
-    pipeline.connect("first", "joiner")
-    pipeline.connect("second", "joiner")
+    pipeline.connect(first.outputs.output, joiner.inputs.inputs)
+    pipeline.connect(second.outputs.output, joiner.inputs.inputs)
 
     results = pipeline.run({"first": {"sentence": "Hello world!"}, "second": {"sentence": "How are you?"}})
     assert results == {"joiner": {"output": ["Hello", "world!", "How", "are", "you?"]}}
@@ -39,9 +46,11 @@ def test_joiner_with_lists():
 
 def test_joiner_with_pipeline_run():
     pipeline = Pipeline()
-    pipeline.add_component("hello", Hello())
-    pipeline.add_component("joiner", StringJoiner())
-    pipeline.connect("hello", "joiner")
+    hello = Hello()
+    joiner = StringJoiner()
+    pipeline.add_component("hello", hello)
+    pipeline.add_component("joiner", joiner)
+    pipeline.connect(hello.outputs.output, joiner.inputs.input_str)
 
     results = pipeline.run({"hello": {"word": "world"}, "joiner": {"input_str": "another string!"}})
     assert results == {"joiner": {"output": "another string! Hello, world!"}}
