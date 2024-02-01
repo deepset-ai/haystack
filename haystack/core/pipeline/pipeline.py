@@ -155,7 +155,12 @@ class Pipeline:
                 raise PipelineError(f"Missing sender in connection: {connection}")
             if "receiver" not in connection:
                 raise PipelineError(f"Missing receiver in connection: {connection}")
-            pipe.connect(sender=connection["sender"], receiver=connection["receiver"])
+            sender_component_name, *_, sender_socket_name = connection["sender"].split(".")
+            receiver_component_name, *_, receiver_socket_name = connection["receiver"].split(".")
+            pipe.connect(
+                sender=pipe.get_component(sender_component_name).outputs._sockets_dict[sender_socket_name],
+                receiver=pipe.get_component(receiver_component_name).inputs._sockets_dict[receiver_socket_name],
+            )
 
         return pipe
 
