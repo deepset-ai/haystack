@@ -1,10 +1,7 @@
-import logging
 from dataclasses import dataclass, field
 from typing import Any, Iterable, List, Type, TypeVar, get_args
 
 from typing_extensions import Annotated, TypeAlias  # Python 3.8 compatibility
-
-logger = logging.getLogger(__name__)
 
 HAYSTACK_VARIADIC_ANNOTATION = "__haystack__variadic_t"
 
