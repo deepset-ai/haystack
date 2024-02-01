@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+from haystack_bm25 import rank_bm25
 
 from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
@@ -164,6 +165,39 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         # Same query, different scale, scores differ when not scaled
         results = document_store.bm25_retrieval(query="Python", top_k=1, scale_score=False)
         assert results[0].score != results1[0].score
+
+    def test_bm25_retrieval_with_non_scaled_BM25Okapi(self, document_store: InMemoryDocumentStore):
+        # Highly repetitive documents make BM25Okapi return negative scores, which should not be filtered if the
+        # scores are not scaled
+        docs = [
+            Document(
+                content="""Use pip to install a basic version of Haystack's latest release: pip install
+                farm-haystack. All the core Haystack components live in the haystack repo. But there's also the
+                haystack-extras repo which contains components that are not as widely used, and you need to
+                install them separately."""
+            ),
+            Document(
+                content="""Use pip to install a basic version of Haystack's latest release: pip install
+                farm-haystack[inference]. All the core Haystack components live in the haystack repo. But there's
+                also the haystack-extras repo which contains components that are not as widely used, and you need
+                to install them separately."""
+            ),
+            Document(
+                content="""Use pip to install only the Haystack 2.0 code: pip install haystack-ai. The haystack-ai
+                package is built on the main branch which is an unstable beta version, but it's useful if you want
+                to try the new features as soon as they are merged."""
+            ),
+        ]
+        document_store.write_documents(docs)
+
+        document_store.bm25_algorithm = rank_bm25.BM25Okapi
+        results1 = document_store.bm25_retrieval(query="Haystack installation", top_k=10, scale_score=False)
+        assert len(results1) == 3
+        assert all(res.score < 0.0 for res in results1)
+
+        results2 = document_store.bm25_retrieval(query="Haystack installation", top_k=10, scale_score=True)
+        assert len(results2) == 3
+        assert all(0.0 <= res.score <= 1.0 for res in results2)
 
     def test_bm25_retrieval_with_table_content(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method correctly returns a dataframe when the content_type is table.

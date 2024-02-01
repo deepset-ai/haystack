@@ -208,12 +208,15 @@ class InMemoryDocumentStore:
         # get the last top_k indexes and reverse them
         top_docs_positions = np.argsort(docs_scores)[-top_k:][::-1]
 
+        # Negative values are possible under these conditions and should not be filtered out
+        negatives_are_valid = "Okapi" in self.bm25_algorithm.__name__ and not scale_score
+
         # Create documents with the BM25 score to return them
         return_documents = []
         for i in top_docs_positions:
             doc = all_documents[i]
             score = docs_scores[i]
-            if score <= 0.0:
+            if not negatives_are_valid and score <= 0.0:
                 continue
             doc_fields = doc.to_dict()
             doc_fields["score"] = score
