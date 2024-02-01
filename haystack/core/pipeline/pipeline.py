@@ -197,16 +197,17 @@ class Pipeline:
             )
             raise PipelineError(msg)
 
-        # Get the sockets of the component, we're completely sure the fields exist so we ignore the type error
-        input_sockets = instance.inputs._sockets  # type: ignore[attr-defined]
-        output_sockets = instance.outputs._sockets  # type: ignore[attr-defined]
-
         setattr(instance, "__haystack_added_to_pipeline__", self)
 
         # Add component to the graph, disconnected
         logger.debug("Adding component '%s' (%s)", name, instance)
+        # We're completely sure the fields exist so we ignore the type error
         self.graph.add_node(
-            name, instance=instance, input_sockets=input_sockets, output_sockets=output_sockets, visits=0
+            name,
+            instance=instance,
+            input_sockets=instance.inputs._sockets,  # type: ignore[attr-defined]
+            output_sockets=instance.outputs._sockets,  # type: ignore[attr-defined]
+            visits=0,
         )
 
     def connect(self, connect_from: str, connect_to: str) -> None:
