@@ -15,7 +15,7 @@ renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Checks if any document coming from the given URL is already present in the store.
   category_slug: haystack-classes
-  title: CacheChecker API
+  title: Caching
   slug: caching-api
   order: 7
   markdown:

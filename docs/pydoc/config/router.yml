@@ -15,7 +15,7 @@ renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Routes data to the right component based on its file type or metadata.
   category_slug: haystack-classes
-  title: Router API
+  title: Routers
   slug: router-api
   order: 140
   markdown:

@@ -25,7 +25,7 @@ renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Transforms queries into vectors to look for similar or relevant Documents.
   category_slug: haystack-classes
-  title: Embedder API
+  title: Embedders
   slug: embedder-api
   order: 60
   markdown:

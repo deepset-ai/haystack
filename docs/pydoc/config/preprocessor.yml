@@ -15,7 +15,7 @@ renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Normalizes white spaces, gets rid of headers and footers, cleans empty lines in your Documents, or splits them into smaller pieces.
   category_slug: haystack-classes
-  title: PreProcessor API
+  title: PreProcessors
   slug: preprocessor-api
   order: 100
   markdown:

@@ -15,7 +15,7 @@ renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Web search engine for Haystack.
   category_slug: haystack-classes
-  title: Websearch API
+  title: Websearchs
   slug: websearch-api
   order: 170
   markdown:

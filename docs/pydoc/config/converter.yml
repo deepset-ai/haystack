@@ -15,7 +15,7 @@ renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Extracts text from files in different formats and converts it into a unified Document format.
   category_slug: haystack-classes
-  title: Converter API
+  title: Converters
   slug: converter-api
   order: 20
   markdown:

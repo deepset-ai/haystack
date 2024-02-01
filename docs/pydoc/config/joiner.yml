@@ -15,7 +15,7 @@ renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Routes data to the right component based on its file type or metadata.
   category_slug: haystack-classes
-  title: Joiner API
+  title: Joiners
   slug: joiner-api
   order: 75
   markdown:
