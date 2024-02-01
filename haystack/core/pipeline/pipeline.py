@@ -157,9 +157,10 @@ class Pipeline:
                 raise PipelineError(f"Missing receiver in connection: {connection}")
             sender_component_name, *_, sender_socket_name = connection["sender"].split(".")
             receiver_component_name, *_, receiver_socket_name = connection["receiver"].split(".")
+            # We're completely sure the fields exist so we ignore the type error
             pipe.connect(
-                sender=pipe.get_component(sender_component_name).outputs._sockets_dict[sender_socket_name],
-                receiver=pipe.get_component(receiver_component_name).inputs._sockets_dict[receiver_socket_name],
+                sender=pipe.get_component(sender_component_name).outputs._sockets_dict[sender_socket_name],  # type: ignore[attr-defined]
+                receiver=pipe.get_component(receiver_component_name).inputs._sockets_dict[receiver_socket_name],  # type: ignore[attr-defined]
             )
 
         return pipe
