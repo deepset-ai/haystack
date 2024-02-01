@@ -11,7 +11,7 @@ from .types import InputSocket, OutputSocket
 
 logger = logging.getLogger(__name__)
 
-SocketsType = Union[Type[InputSocket], Type[OutputSocket]]
+SocketsIOType = Union[Type[InputSocket], Type[OutputSocket]]
 
 
 class Sockets:
@@ -51,8 +51,8 @@ class Sockets:
     def __init__(
         self,
         component: "Component",  # type: ignore[name-defined] # noqa: F821
-        sockets: Dict[str, SocketsType],
-        sockets_type: SocketsType,
+        sockets: Dict[str, SocketsIOType],
+        sockets_io_type: SocketsIOType,
     ):
         """
         Create a new Sockets object.
@@ -61,12 +61,12 @@ class Sockets:
         We could do without it and use the type of a random value in the `sockets` dict, but that wouldn't
         work for components that have no sockets at all. Either input or output.
         """
-        self._sockets_type = sockets_type
+        self._sockets_io_type = sockets_io_type
         self._component = component
         self._sockets = sockets
         self.__dict__.update(sockets)
 
-    def __setitem__(self, key: str, socket: SocketsType):
+    def __setitem__(self, key: str, socket: SocketsIOType):
         """
         Adds a new socket to this Sockets object.
         This eases a bit updating the list of sockets after Sockets has been created.
@@ -96,9 +96,9 @@ class Sockets:
 
     def __repr__(self) -> str:
         result = self._component_name()
-        if self._sockets_type == InputSocket:
+        if self._sockets_io_type == InputSocket:
             result += " inputs:\n"
-        elif self._sockets_type == OutputSocket:
+        elif self._sockets_io_type == OutputSocket:
             result += " outputs:\n"
 
         result += "\n".join([f"  - {n}: {_type_name(s.type)}" for n, s in self._sockets.items()])
