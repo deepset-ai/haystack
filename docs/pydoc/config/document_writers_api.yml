@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/builders]
-    modules: ["answer_builder", "prompt_builder", "dynamic_prompt_builder", "dynamic_chat_prompt_builder"]
+    search_path: [../../../haystack/components/writers]
+    modules: ["document_writer"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Extract the output of a Generator to an Answer format, and build prompts.
-  category_slug: haystack-classes
-  title: Builder API
-  slug: builder-api
-  order: 5
+  excerpt: Writes Documents to a DocumentStore.
+  category_slug: haystack-api
+  title: Document Writers
+  slug: document-writers-api
+  order: 50
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: builder_api.md
+    filename: document_writers_api.md

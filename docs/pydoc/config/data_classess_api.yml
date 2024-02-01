@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/fetchers]
-    modules: ["link_content"]
+    search_path: [../../../haystack/dataclasses]
+    modules: ["answer", "byte_stream", "chat_message", "document", "streaming_chunk"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Fetches content from a list of URLs and returns a list of extracted content streams.
-  category_slug: haystack-classes
-  title: LinkContentFetcher API
-  slug: fetcher-api
-  order: 80
+  excerpt: Core classes that carry data through the system.
+  category_slug: haystack-api
+  title: Data Classes
+  slug: data-classes-api
+  order: 30
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: fetcher_api.md
+    filename: data_classess_api.md

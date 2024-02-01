@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/readers]
-    modules: ["extractive"]
+    search_path: [../../../haystack/components/audio]
+    modules: ["whisper_local", "whisper_remote"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Takes a query and a set of Documents as input and returns ExtractedAnswers by selecting a text span within the Documents.
-  category_slug: haystack-classes
-  title: Reader API
-  slug: reader-api
-  order: 120
+  excerpt: Transcribes audio files.
+  category_slug: haystack-api
+  title: Audio
+  slug: audio-api
+  order: 180
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: reader_api.md
+    filename: audio_api.md

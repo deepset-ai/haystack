@@ -41,4 +41,4 @@ jobs:
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:
-          rdme: docs ./docs/pydoc/temp --key="$README_API_KEY" --version=2.0
+          rdme: docs ./docs/pydoc/temp --key="$README_API_KEY" --version=v2.0
