@@ -14,13 +14,13 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Extracts predefined entities out of a piece of text.
-  category_slug: haystack-classes
+  category_slug: haystack-api-classes
   title: Extractors
-  slug: extractor-api
+  slug: extractors-api
   order: 65
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: extractor_api.md
+    filename: extractors_api.md

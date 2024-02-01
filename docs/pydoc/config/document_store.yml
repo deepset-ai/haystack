@@ -14,13 +14,13 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Stores your texts and meta data and provides them to the Retriever at query time.
-  category_slug: haystack-classes
+  category_slug: haystack-api-classes
   title: Document Stores
-  slug: document-store-api
+  slug: document-stores-api
   order: 40
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: document_store.md
+    filename: document_stores.md

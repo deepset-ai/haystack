@@ -14,7 +14,7 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Core classes that carry data through the system.
-  category_slug: haystack-classes
+  category_slug: haystack-api-classes
   title: Data Classes
   slug: data-classes-api
   order: 30
@@ -23,4 +23,4 @@ renderer:
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: data_classes_api.md
+    filename: data_classess_api.md

@@ -14,9 +14,9 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Other utility components for Haystack Pipelines.
-  category_slug: haystack-classes
+  category_slug: haystack-api-classes
   title: Other Components
-  slug: others
+  slug: others-api
   order: 85
   markdown:
     descriptive_class_title: false

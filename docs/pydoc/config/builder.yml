@@ -14,13 +14,13 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Extract the output of a Generator to an Answer format, and build prompts.
-  category_slug: haystack-classes
+  category_slug: haystack-api-classes
   title: Builders
-  slug: builder-api
+  slug: builders-api
   order: 5
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: builder_api.md
+    filename: builders_api.md

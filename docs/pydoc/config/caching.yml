@@ -14,7 +14,7 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Checks if any document coming from the given URL is already present in the store.
-  category_slug: haystack-classes
+  category_slug: haystack-api-classes
   title: Caching
   slug: caching-api
   order: 7
@@ -23,4 +23,4 @@ renderer:
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: caching_api.md
+    filename: cachings_api.md

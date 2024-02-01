@@ -14,13 +14,13 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Takes a query and a set of Documents as input and returns ExtractedAnswers by selecting a text span within the Documents.
-  category_slug: haystack-classes
+  category_slug: haystack-api-classes
   title: Readers
-  slug: reader-api
+  slug: readers-api
   order: 120
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: reader_api.md
+    filename: readers_api.md

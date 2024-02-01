@@ -14,13 +14,13 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Arranges components and integrations in flow.
-  category_slug: haystack-classes
+  category_slug: haystack-api-classes
   title: Pipeline
-  slug: pipelines-api
+  slug: pipeline-api
   order: 90
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: pipelines_api.md
+    filename: pipeline_api.md

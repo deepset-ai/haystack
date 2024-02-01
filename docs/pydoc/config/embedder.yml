@@ -24,13 +24,13 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Transforms queries into vectors to look for similar or relevant Documents.
-  category_slug: haystack-classes
+  category_slug: haystack-api-classes
   title: Embedders
-  slug: embedder-api
+  slug: embedders-api
   order: 60
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: embedder_api.md
+    filename: embedders_api.md

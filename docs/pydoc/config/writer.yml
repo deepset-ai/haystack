@@ -14,13 +14,13 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Writes Documents to a DocumentStore.
-  category_slug: haystack-classes
+  category_slug: haystack-api-classes
   title: Document Writers
-  slug: writer-api
+  slug: writers-api
   order: 50
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: writer_api.md
+    filename: writers_api.md

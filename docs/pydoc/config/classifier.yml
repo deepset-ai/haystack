@@ -14,13 +14,13 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Detects the language of the Documents and routes them appropriately.
-  category_slug: haystack-classes
+  category_slug: haystack-api-classes
   title: Classifiers
-  slug: classifier-api
+  slug: classifiers-api
   order: 10
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: classifier_api.md
+    filename: classifiers_api.md

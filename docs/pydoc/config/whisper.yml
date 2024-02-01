@@ -14,13 +14,13 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Transcribes audio files.
-  category_slug: haystack-classes
+  category_slug: haystack-api-classes
   title: Audio
-  slug: whisper-transcriber-api
+  slug: audio-api
   order: 180
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: whisper_transcriber_api.md
+    filename: audio_api.md
