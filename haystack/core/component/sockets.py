@@ -11,7 +11,7 @@ from .types import InputSocket, OutputSocket
 
 logger = logging.getLogger(__name__)
 
-SocketsDict = Union[Dict[str, InputSocket], Dict[str, OutputSocket]]
+SocketsDict = Dict[str, Union[InputSocket, OutputSocket]]
 SocketsIOType = Union[Type[InputSocket], Type[OutputSocket]]
 
 
@@ -67,7 +67,7 @@ class Sockets:
         self._sockets_dict = sockets_dict
         self.__dict__.update(sockets_dict)
 
-    def __setitem__(self, key: str, socket: SocketsIOType):
+    def __setitem__(self, key: str, socket: Union[InputSocket, OutputSocket]):
         """
         Adds a new socket to this Sockets object.
         This eases a bit updating the list of sockets after Sockets has been created.
