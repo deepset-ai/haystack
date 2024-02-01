@@ -15,7 +15,7 @@ renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Transcribes audio files.
   category_slug: haystack-classes
-  title: WhisperTranscribers
+  title: Audio
   slug: whisper-transcriber-api
   order: 180
   markdown:

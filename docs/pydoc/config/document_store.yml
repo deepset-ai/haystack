@@ -15,7 +15,7 @@ renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Stores your texts and meta data and provides them to the Retriever at query time.
   category_slug: haystack-classes
-  title: DocumentStores
+  title: Document Stores
   slug: document-store-api
   order: 40
   markdown:
