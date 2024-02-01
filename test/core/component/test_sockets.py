@@ -26,7 +26,7 @@ class TestSockets:
     def test_component_name(self):
         comp = component_class("SomeComponent")()
         io = Sockets(component=comp, sockets_dict={}, sockets_io_type=InputSocket)
-        assert io._component_name() == "SomeComponent"
+        assert io._component_name() == str(comp)
 
     def test_component_name_added_to_pipeline(self):
         comp = component_class("SomeComponent")()
