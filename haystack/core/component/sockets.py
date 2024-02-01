@@ -83,7 +83,7 @@ class Sockets:
 
         # This Component has not been added to a Pipeline yet, so we can't know its name.
         # Let's use the class name instead.
-        return self._component.__class__.__name__
+        return str(self._component)
 
     def __getattribute__(self, name):
         try:

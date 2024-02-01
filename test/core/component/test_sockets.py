@@ -54,4 +54,4 @@ class TestSockets:
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
         io = Sockets(component=comp, sockets_dict=comp.inputs._sockets_dict, sockets_io_type=InputSocket)
         res = repr(io)
-        assert res == "SomeComponent inputs:\n  - input_1: int\n  - input_2: int"
+        assert res == f"{comp} inputs:\n  - input_1: int\n  - input_2: int"
