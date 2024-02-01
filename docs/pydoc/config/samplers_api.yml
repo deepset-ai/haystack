@@ -14,7 +14,7 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Filters documents based on their similarity scores using top-p sampling.
-  category_slug: haystack-api-classes
+  category_slug: haystack-api
   title: Samplers
   slug: samplers-api
   order: 150

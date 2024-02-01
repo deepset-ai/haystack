@@ -14,7 +14,7 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Reorders a set of Documents based on their relevance to the query.
-  category_slug: haystack-api-classes
+  category_slug: haystack-api
   title: Rankers
   slug: rankers-api
   order: 110

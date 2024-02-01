@@ -14,7 +14,7 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Writes Documents to a DocumentStore.
-  category_slug: haystack-api-classes
+  category_slug: haystack-api
   title: Document Writers
   slug: document-writers-api
   order: 50

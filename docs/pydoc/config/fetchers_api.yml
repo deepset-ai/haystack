@@ -14,7 +14,7 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Fetches content from a list of URLs and returns a list of extracted content streams.
-  category_slug: haystack-api-classes
+  category_slug: haystack-api
   title: Fetchers
   slug: fetchers-api
   order: 80

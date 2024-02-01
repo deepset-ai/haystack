@@ -14,7 +14,7 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Sweeps through a Document Store and returns a set of candidate Documents that are relevant to the query.
-  category_slug: haystack-api-classes
+  category_slug: haystack-api
   title: Retrievers
   slug: retrievers-api
   order: 130

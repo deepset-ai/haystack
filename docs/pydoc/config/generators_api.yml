@@ -25,7 +25,7 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Enables text generation using LLMs.
-  category_slug: haystack-api-classes
+  category_slug: haystack-api
   title: Generators
   slug: generators-api
   order: 70

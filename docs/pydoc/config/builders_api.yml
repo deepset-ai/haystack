@@ -14,7 +14,7 @@ processors:
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
   excerpt: Extract the output of a Generator to an Answer format, and build prompts.
-  category_slug: haystack-api-classes
+  category_slug: haystack-api
   title: Builders
   slug: builders-api
   order: 5
