@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 
 
-@dataclass(frozen=True)
+@dataclass
 class ByteStream:
     """
     Base data class representing a binary object in the Haystack API.
