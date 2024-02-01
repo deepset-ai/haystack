@@ -11,6 +11,7 @@ from .types import InputSocket, OutputSocket
 
 logger = logging.getLogger(__name__)
 
+SocketsDict = Union[Dict[str, InputSocket], Dict[str, OutputSocket]]
 SocketsIOType = Union[Type[InputSocket], Type[OutputSocket]]
 
 
@@ -51,7 +52,7 @@ class Sockets:
     def __init__(
         self,
         component: "Component",  # type: ignore[name-defined] # noqa: F821
-        sockets: Dict[str, SocketsIOType],
+        sockets_dict: SocketsDict,
         sockets_io_type: SocketsIOType,
     ):
         """
@@ -63,8 +64,8 @@ class Sockets:
         """
         self._sockets_io_type = sockets_io_type
         self._component = component
-        self._sockets = sockets
-        self.__dict__.update(sockets)
+        self._sockets_dict = sockets_dict
+        self.__dict__.update(sockets_dict)
 
     def __setitem__(self, key: str, socket: SocketsIOType):
         """
@@ -72,7 +73,7 @@ class Sockets:
         This eases a bit updating the list of sockets after Sockets has been created.
         That should happen only in the `component` decorator.
         """
-        self._sockets[key] = socket
+        self._sockets_dict[key] = socket
         self.__dict__[key] = socket
 
     def _component_name(self) -> str:
@@ -101,6 +102,6 @@ class Sockets:
         elif self._sockets_io_type == OutputSocket:
             result += " outputs:\n"
 
-        result += "\n".join([f"  - {n}: {_type_name(s.type)}" for n, s in self._sockets.items()])
+        result += "\n".join([f"  - {n}: {_type_name(s.type)}" for n, s in self._sockets_dict.items()])
 
         return result

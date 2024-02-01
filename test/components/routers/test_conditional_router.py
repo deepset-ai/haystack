@@ -86,8 +86,8 @@ class TestRouter:
         router = ConditionalRouter(routes)
 
         assert router.routes == routes
-        assert set(router.inputs._sockets.keys()) == {"query", "streams"}
-        assert set(router.outputs._sockets.keys()) == {"query", "streams"}
+        assert set(router.inputs._sockets_dict.keys()) == {"query", "streams"}
+        assert set(router.outputs._sockets_dict.keys()) == {"query", "streams"}
 
     def test_router_evaluate_condition_expressions(self, router):
         # first route should be selected

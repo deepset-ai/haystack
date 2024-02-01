@@ -16,16 +16,16 @@ class TestDynamicPromptBuilder:
         # regardless of the chat mode
         # we have inputs that contain: prompt_source, template_variables + runtime_variables
         expected_keys = set(runtime_variables + ["prompt_source", "template_variables"])
-        assert set(builder.inputs._sockets.keys()) == expected_keys
+        assert set(builder.inputs._sockets_dict.keys()) == expected_keys
 
         # response is always prompt regardless of chat mode
-        assert set(builder.outputs._sockets.keys()) == {"prompt"}
+        assert set(builder.outputs._sockets_dict.keys()) == {"prompt"}
 
         # prompt_source is a list of ChatMessage or a string
-        assert builder.inputs._sockets["prompt_source"].type == str
+        assert builder.inputs._sockets_dict["prompt_source"].type == str
 
         # output is always prompt, but the type is different depending on the chat mode
-        assert builder.outputs._sockets["prompt"].type == str
+        assert builder.outputs._sockets_dict["prompt"].type == str
 
     def test_processing_a_simple_template_with_provided_variables(self):
         runtime_variables = ["var1", "var2", "var3"]
