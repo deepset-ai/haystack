@@ -27,7 +27,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": r"(?u)\b\w\w+\b",
-                "bm25_algorithm": "BM25Okapi",
+                "bm25_algorithm": "BM25L",
                 "bm25_parameters": {},
                 "embedding_similarity_function": "dot_product",
             },

@@ -34,7 +34,7 @@ class InMemoryDocumentStore:
     def __init__(
         self,
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
-        bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
+        bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
         bm25_parameters: Optional[Dict] = None,
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
     ):
@@ -222,6 +222,8 @@ class InMemoryDocumentStore:
             doc_fields["score"] = score
             return_document = Document.from_dict(doc_fields)
             return_documents.append(return_document)
+
+        print(return_documents)
         return return_documents
 
     def embedding_retrieval(
