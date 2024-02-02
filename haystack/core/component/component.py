@@ -307,7 +307,9 @@ class _Component:
                 namespace[key] = val
 
         # Recreate the decorated component class so it uses our metaclass
-        class_ = new_class(class_.__name__, class_.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace)
+        class_: class_.__name__ = new_class(
+            class_.__name__, class_.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace
+        )
 
         # Save the component in the class registry (for deserialization)
         class_path = f"{class_.__module__}.{class_.__name__}"
