@@ -96,7 +96,12 @@ class EvaluationResult:
         return f1
 
     def _calculate_f1(
-        self, output_key: str, regexes_to_ignore=None, ignore_case=False, ignore_punctuation=False, ignore_numbers=False
+        self,
+        output_key: str,
+        regexes_to_ignore: Optional[List[str]] = None,
+        ignore_case: bool = False,
+        ignore_punctuation: bool = False,
+        ignore_numbers: bool = False,
     ) -> MetricsResult:
         """
         Calculates the F1 score between two lists of predictions and labels.
@@ -143,7 +148,12 @@ class EvaluationResult:
         return MetricsResult({"f1": f1})
 
     def _calculate_em(
-        self, output_key: str, regexes_to_ignore=None, ignore_case=False, ignore_punctuation=False, ignore_numbers=False
+        self,
+        output_key: str,
+        regexes_to_ignore: Optional[List[str]] = None,
+        ignore_case: bool = False,
+        ignore_punctuation: bool = False,
+        ignore_numbers: bool = False,
     ) -> MetricsResult:
         """
         Calculates the Exact Match (EM) score between two lists of predictions and labels.
