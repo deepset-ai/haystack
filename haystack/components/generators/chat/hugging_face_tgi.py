@@ -161,7 +161,7 @@ class HuggingFaceTGIChatGenerator:
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.model, token=self.token.resolve_value() if self.token else None
         )
-        
+
         # mypy can't infer that chat_template attribute exists on the object returned by AutoTokenizer.from_pretrained
         chat_template = getattr(self.tokenizer, "chat_template", None)
         if not chat_template and not self.chat_template:
