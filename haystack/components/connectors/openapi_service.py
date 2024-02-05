@@ -26,16 +26,16 @@ class OpenAPIServiceConnector:
     This can be done using the OpenAPIServiceToFunctions component.
     """
 
-    def __init__(self, service_auths: Optional[Dict[str, Any]] = None):
+    def __init__(self):
         """
         Initializes the OpenAPIServiceConnector instance
-        :param service_auths: A dictionary containing the service name and token to be used for authentication.
         """
         openapi_imports.check()
-        self.service_authentications = service_auths or {}
 
     @component.output_types(service_response=Dict[str, Any])
-    def run(self, messages: List[ChatMessage], service_openapi_spec: Dict[str, Any]) -> Dict[str, List[ChatMessage]]:
+    def run(
+        self, messages: List[ChatMessage], service_openapi_spec: Dict[str, Any], service_credentials: Optional[Any]
+    ) -> Dict[str, List[ChatMessage]]:
         """
         Processes a list of chat messages to invoke a method on an OpenAPI service. It parses the last message in the
         list, expecting it to contain an OpenAI function calling descriptor (name & parameters) in JSON format.
@@ -46,6 +46,8 @@ class OpenAPIServiceConnector:
         :type service_openapi_spec: JSON object
         :return: A dictionary with a key `"service_response"`, containing the response from the OpenAPI service.
         :rtype: Dict[str, List[ChatMessage]]
+        :param service_credentials: The credentials to be used for authentication with the service.
+        :type service_credentials: Any
         :raises ValueError: If the last message is not from the assistant or if it does not contain the correct payload
         to invoke a method on the service.
         """
@@ -58,7 +60,7 @@ class OpenAPIServiceConnector:
 
         # instantiate the OpenAPI service for the given specification
         openapi_service = OpenAPI(service_openapi_spec)
-        self._authenticate_service(openapi_service)
+        self._authenticate_service(openapi_service, service_credentials)
 
         response_messages = []
         for method_invocation_descriptor in function_invocation_payloads:
@@ -101,7 +103,7 @@ class OpenAPIServiceConnector:
                 )
         return function_payloads
 
-    def _authenticate_service(self, openapi_service: OpenAPI):
+    def _authenticate_service(self, openapi_service: OpenAPI, credentials: Optional[Any] = None):
         """
         Authenticates with the OpenAPI service if required.
 
@@ -110,11 +112,11 @@ class OpenAPIServiceConnector:
         :raises ValueError: If authentication fails or is not found.
         """
         if openapi_service.components.securitySchemes:
+            if not credentials:
+                raise ValueError(f"Service {openapi_service.info.title} requires authentication.")
+
             auth_method = list(openapi_service.components.securitySchemes.keys())[0]
-            service_title = openapi_service.info.title
-            if service_title not in self.service_authentications:
-                raise ValueError(f"Service {service_title} not found in service_authentications.")
-            openapi_service.authenticate(auth_method, self.service_authentications[service_title])
+            openapi_service.authenticate(auth_method, credentials)
 
     def _invoke_method(self, openapi_service: OpenAPI, method_invocation_descriptor: Dict[str, Any]) -> Any:
         """
