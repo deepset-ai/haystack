@@ -5,8 +5,7 @@ from typing import Optional
 
 import pytest
 
-from haystack.core.component.sockets import InputSocket, OutputSocket
-from haystack.core.component.types import Variadic
+from haystack.core.component.types import InputSocket, OutputSocket, Variadic
 from haystack.core.errors import PipelineValidationError
 from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
