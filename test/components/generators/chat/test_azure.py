@@ -6,11 +6,13 @@ from openai import OpenAIError
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage
+from haystack.utils.auth import Secret
 
 
 class TestOpenAIChatGenerator:
-    def test_init_default(self):
-        component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint", api_key="test-api-key")
+    def test_init_default(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
         assert component.client.api_key == "test-api-key"
         assert component.azure_deployment == "gpt-35-turbo"
         assert component.streaming_callback is None
@@ -18,13 +20,14 @@ class TestOpenAIChatGenerator:
 
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("AZURE_OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("AZURE_OPENAI_AD_TOKEN", raising=False)
         with pytest.raises(OpenAIError):
             AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
 
     def test_init_with_parameters(self):
         component = AzureOpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
             azure_endpoint="some-non-existing-endpoint",
-            api_key="test-api-key",
             streaming_callback=print_streaming_chunk,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
@@ -33,12 +36,15 @@ class TestOpenAIChatGenerator:
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
 
-    def test_to_dict_default(self):
-        component = AzureOpenAIChatGenerator(api_key="test-api-key", azure_endpoint="some-non-existing-endpoint")
+    def test_to_dict_default(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.generators.chat.azure.AzureOpenAIChatGenerator",
             "init_parameters": {
+                "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
+                "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
                 "api_version": "2023-05-15",
                 "azure_endpoint": "some-non-existing-endpoint",
                 "azure_deployment": "gpt-35-turbo",
@@ -48,9 +54,11 @@ class TestOpenAIChatGenerator:
             },
         }
 
-    def test_to_dict_with_parameters(self):
+    def test_to_dict_with_parameters(self, monkeypatch):
+        monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = AzureOpenAIChatGenerator(
-            api_key="test-api-key",
+            api_key=Secret.from_env_var("ENV_VAR", strict=False),
+            azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=False),
             azure_endpoint="some-non-existing-endpoint",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
@@ -58,6 +66,8 @@ class TestOpenAIChatGenerator:
         assert data == {
             "type": "haystack.components.generators.chat.azure.AzureOpenAIChatGenerator",
             "init_parameters": {
+                "api_key": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
+                "azure_ad_token": {"env_vars": ["ENV_VAR1"], "strict": False, "type": "env_var"},
                 "api_version": "2023-05-15",
                 "azure_endpoint": "some-non-existing-endpoint",
                 "azure_deployment": "gpt-35-turbo",

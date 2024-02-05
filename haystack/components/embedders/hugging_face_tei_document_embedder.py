@@ -1,14 +1,14 @@
 import logging
-import os
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from tqdm import tqdm
 
-from haystack import component, default_to_dict
 from haystack.components.embedders.hf_utils import check_valid_model
 from haystack.dataclasses import Document
 from haystack.lazy_imports import LazyImport
+from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack import component, default_to_dict, default_from_dict
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
@@ -29,11 +29,12 @@ class HuggingFaceTEIDocumentEmbedder:
     ```python
     from haystack.dataclasses import Document
     from haystack.components.embedders import HuggingFaceTEIDocumentEmbedder
+    from haystack.utils import Secret
 
     doc = Document(content="I love pizza!")
 
     document_embedder = HuggingFaceTEIDocumentEmbedder(
-        model="BAAI/bge-small-en-v1.5", token="<your-token>"
+        model="BAAI/bge-small-en-v1.5", token=Secret.from_token("<your-api-key>")
     )
 
     result = document_embedder.run([doc])
@@ -52,7 +53,7 @@ class HuggingFaceTEIDocumentEmbedder:
     doc = Document(content="I love pizza!")
 
     document_embedder = HuggingFaceTEIDocumentEmbedder(
-        model="BAAI/bge-small-en-v1.5", url="<your-tei-endpoint-url>", token="<your-token>"
+        model="BAAI/bge-small-en-v1.5", url="<your-tei-endpoint-url>", token=Secret.from_token("<your-api-key>")
     )
 
     result = document_embedder.run([doc])
@@ -83,7 +84,7 @@ class HuggingFaceTEIDocumentEmbedder:
         self,
         model: str = "BAAI/bge-small-en-v1.5",
         url: Optional[str] = None,
-        token: Optional[str] = None,
+        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         prefix: str = "",
         suffix: str = "",
         batch_size: int = 32,
@@ -98,8 +99,7 @@ class HuggingFaceTEIDocumentEmbedder:
         :param url: The URL of your self-deployed Text-Embeddings-Inference service or the URL of your paid HF Inference
                     Endpoint.
         :param token: The HuggingFace Hub token. This is needed if you are using a paid HF Inference Endpoint or serving
-                      a private or gated model. It can be explicitly provided or automatically read from the environment
-                      variable HF_API_TOKEN (recommended).
+                      a private or gated model.
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         :param batch_size: Number of Documents to encode at once.
@@ -116,15 +116,12 @@ class HuggingFaceTEIDocumentEmbedder:
             if not is_valid_url:
                 raise ValueError(f"Invalid TEI endpoint URL provided: {url}")
 
-        # The user does not need to provide a token if it is a local server or free public HF Inference Endpoint.
-        token = token or os.environ.get("HF_API_TOKEN")
-
         check_valid_model(model, token)
 
         self.model = model
         self.url = url
         self.token = token
-        self.client = InferenceClient(url or model, token=token)
+        self.client = InferenceClient(url or model, token=token.resolve_value() if token else None)
         self.prefix = prefix
         self.suffix = suffix
         self.batch_size = batch_size
@@ -133,10 +130,6 @@ class HuggingFaceTEIDocumentEmbedder:
         self.embedding_separator = embedding_separator
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        This method overrides the default serializer in order to avoid leaking the `token` value passed
-        to the constructor.
-        """
         return default_to_dict(
             self,
             model=self.model,
@@ -147,7 +140,13 @@ class HuggingFaceTEIDocumentEmbedder:
             progress_bar=self.progress_bar,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
+            token=self.token.to_dict() if self.token else None,
         )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceTEIDocumentEmbedder":
+        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
+        return default_from_dict(cls, data)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """

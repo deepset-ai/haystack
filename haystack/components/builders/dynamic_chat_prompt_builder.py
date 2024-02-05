@@ -29,10 +29,11 @@ class DynamicChatPromptBuilder:
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack import Pipeline
+    from haystack.utils import Secret
 
     # no parameter init, we don't use any runtime template variables
     prompt_builder = DynamicChatPromptBuilder()
-    llm = OpenAIChatGenerator(api_key="<your-api-key>", model="gpt-3.5-turbo")
+    llm = OpenAIChatGenerator(api_key=Secret.from_token("<your-api-key>"), model="gpt-3.5-turbo")
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)

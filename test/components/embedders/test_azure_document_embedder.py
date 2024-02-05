@@ -19,14 +19,15 @@ class TestAzureOpenAIDocumentEmbedder:
         assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
 
-    def test_to_dict(self):
-        component = AzureOpenAIDocumentEmbedder(
-            api_key="fake-api-key", azure_endpoint="https://example-resource.azure.openai.com/"
-        )
+    def test_to_dict(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        component = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.embedders.azure_document_embedder.AzureOpenAIDocumentEmbedder",
             "init_parameters": {
+                "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
+                "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
                 "api_version": "2023-05-15",
                 "azure_deployment": "text-embedding-ada-002",
                 "azure_endpoint": "https://example-resource.azure.openai.com/",

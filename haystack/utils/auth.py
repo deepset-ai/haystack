@@ -1,6 +1,6 @@
 from enum import Enum
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
@@ -193,3 +193,21 @@ class EnvVarSecret(Secret):
         if out is None and self._strict:
             raise ValueError(f"None of the following authentication environment variables are set: {self._env_vars}")
         return out
+
+
+def deserialize_secrets_inplace(data: Dict[str, Any], keys: Iterable[str], *, recursive: bool = False):
+    """
+    Deserialize secrets in a dictionary inplace.
+
+    :param data:
+        The dictionary with the serialized data.
+    :param keys:
+        The keys of the secrets to deserialize.
+    :param recursive:
+        Whether to recursively deserialize nested dictionaries.
+    """
+    for k, v in data.items():
+        if isinstance(v, dict) and recursive:
+            deserialize_secrets_inplace(v, keys)
+        elif k in keys and v is not None:
+            data[k] = Secret.from_dict(v)

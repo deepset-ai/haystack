@@ -1,4 +1,5 @@
 from unittest.mock import patch, MagicMock, Mock
+from haystack.utils.auth import Secret
 
 import pytest
 from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, Token, StreamDetails, FinishReason
@@ -59,7 +60,10 @@ class TestHuggingFaceTGIGenerator:
     def test_to_dict(self, mock_check_valid_model):
         # Initialize the HuggingFaceRemoteGenerator object with valid parameters
         generator = HuggingFaceTGIGenerator(
-            token="token", generation_kwargs={"n": 5}, stop_words=["stop", "words"], streaming_callback=lambda x: x
+            token=Secret.from_env_var("ENV_VAR", strict=False),
+            generation_kwargs={"n": 5},
+            stop_words=["stop", "words"],
+            streaming_callback=lambda x: x,
         )
 
         # Call the to_dict method
@@ -68,7 +72,7 @@ class TestHuggingFaceTGIGenerator:
 
         # Assert that the init_params dictionary contains the expected keys and values
         assert init_params["model"] == "mistralai/Mistral-7B-v0.1"
-        assert not init_params["token"]
+        assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
 
     def test_from_dict(self, mock_check_valid_model):

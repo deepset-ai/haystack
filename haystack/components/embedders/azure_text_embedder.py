@@ -1,9 +1,10 @@
 import os
 from typing import List, Optional, Dict, Any
 
-from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
+from openai.lib.azure import AzureOpenAI
 
-from haystack import component, default_to_dict, Document
+from haystack import component, Document, default_to_dict, default_from_dict
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 
 @component
@@ -32,9 +33,8 @@ class AzureOpenAITextEmbedder:
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",
         azure_deployment: str = "text-embedding-ada-002",
-        api_key: Optional[str] = None,
-        azure_ad_token: Optional[str] = None,
-        azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
+        api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
+        azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
         organization: Optional[str] = None,
         prefix: str = "",
         suffix: str = "",
@@ -47,8 +47,6 @@ class AzureOpenAITextEmbedder:
         :param azure_deployment: The deployment of the model, usually the model name.
         :param api_key: The API key to use for authentication.
         :param azure_ad_token: Azure Active Directory token, see https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id
-        :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked
-        on every request.
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param prefix: A string to add to the beginning of each text.
@@ -62,6 +60,11 @@ class AzureOpenAITextEmbedder:
         if not azure_endpoint:
             raise ValueError("Please provide an Azure endpoint or set the environment variable AZURE_OPENAI_ENDPOINT.")
 
+        if api_key is None and azure_ad_token is None:
+            raise ValueError("Please provide an API key or an Azure Active Directory token.")
+
+        self.api_key = api_key
+        self.azure_ad_token = azure_ad_token
         self.api_version = api_version
         self.azure_endpoint = azure_endpoint
         self.azure_deployment = azure_deployment
@@ -73,9 +76,8 @@ class AzureOpenAITextEmbedder:
             api_version=api_version,
             azure_endpoint=azure_endpoint,
             azure_deployment=azure_deployment,
-            api_key=api_key,
-            azure_ad_token=azure_ad_token,
-            azure_ad_token_provider=azure_ad_token_provider,
+            api_key=api_key.resolve_value() if api_key is not None else None,
+            azure_ad_token=azure_ad_token.resolve_value() if azure_ad_token is not None else None,
             organization=organization,
         )
 
@@ -98,7 +100,14 @@ class AzureOpenAITextEmbedder:
             api_version=self.api_version,
             prefix=self.prefix,
             suffix=self.suffix,
+            api_key=self.api_key.to_dict() if self.api_key is not None else None,
+            azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
         )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAITextEmbedder":
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
+        return default_from_dict(cls, data)
 
     @component.output_types(embedding=List[float], meta=Dict[str, Any])
     def run(self, text: str):

@@ -9,6 +9,7 @@ from haystack.components.generators.utils import serialize_callback_handler, des
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ class HuggingFaceLocalChatGenerator:
         model: str = "HuggingFaceH4/zephyr-7b-beta",
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
         device: Optional[ComponentDevice] = None,
-        token: Optional[Union[str, bool]] = None,
+        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         chat_template: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
@@ -80,7 +81,6 @@ class HuggingFaceLocalChatGenerator:
         :param device: The device on which the model is loaded. If `None`, the default device is automatically
             selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
         :param token: The token to use as HTTP bearer authorization for remote files.
-            If True, will use the token generated when running huggingface-cli login (stored in ~/.huggingface).
             If the token is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
         :param chat_template: This optional parameter allows you to specify a Jinja template for formatting chat
             messages. While high-quality and well-supported chat models typically include their own chat templates
@@ -112,6 +112,9 @@ class HuggingFaceLocalChatGenerator:
 
         huggingface_pipeline_kwargs = huggingface_pipeline_kwargs or {}
         generation_kwargs = generation_kwargs or {}
+
+        self.token = token
+        token = token.resolve_value() if token else None
 
         # check if the huggingface_pipeline_kwargs contain the essential parameters
         # otherwise, populate them with values from other init parameters
@@ -178,12 +181,11 @@ class HuggingFaceLocalChatGenerator:
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
+            token=self.token.to_dict() if self.token else None,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
-        # we don't want to serialize valid tokens
-        if isinstance(huggingface_pipeline_kwargs["token"], str):
-            serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"].pop("token")
+        huggingface_pipeline_kwargs.pop("token", None)
 
         serialize_hf_model_kwargs(huggingface_pipeline_kwargs)
         return serialization_dict
@@ -194,7 +196,7 @@ class HuggingFaceLocalChatGenerator:
         Deserialize this component from a dictionary.
         """
         torch_and_transformers_import.check()  # leave this, cls method
-
+        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:

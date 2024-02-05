@@ -1,7 +1,7 @@
 import os
+from haystack.utils.auth import Secret
 
 import pytest
-from openai import OpenAIError
 
 from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
 
@@ -19,7 +19,11 @@ class TestOpenAITextEmbedder:
 
     def test_init_with_parameters(self):
         embedder = OpenAITextEmbedder(
-            api_key="fake-api-key", model="model", organization="fake-organization", prefix="prefix", suffix="suffix"
+            api_key=Secret.from_token("fake-api-key"),
+            model="model",
+            organization="fake-organization",
+            prefix="prefix",
+            suffix="suffix",
         )
         assert embedder.client.api_key == "fake-api-key"
         assert embedder.model == "model"
@@ -29,25 +33,38 @@ class TestOpenAITextEmbedder:
 
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(OpenAIError):
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             OpenAITextEmbedder()
 
-    def test_to_dict(self):
-        component = OpenAITextEmbedder(api_key="fake-api-key")
+    def test_to_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        component = OpenAITextEmbedder()
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder",
-            "init_parameters": {"model": "text-embedding-ada-002", "organization": None, "prefix": "", "suffix": ""},
+            "init_parameters": {
+                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "model": "text-embedding-ada-002",
+                "organization": None,
+                "prefix": "",
+                "suffix": "",
+            },
         }
 
-    def test_to_dict_with_custom_init_parameters(self):
+    def test_to_dict_with_custom_init_parameters(self, monkeypatch):
+        monkeypatch.setenv("ENV_VAR", "fake-api-key")
         component = OpenAITextEmbedder(
-            api_key="fake-api-key", model="model", organization="fake-organization", prefix="prefix", suffix="suffix"
+            api_key=Secret.from_env_var("ENV_VAR", strict=False),
+            model="model",
+            organization="fake-organization",
+            prefix="prefix",
+            suffix="suffix",
         )
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder",
             "init_parameters": {
+                "api_key": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "model": "model",
                 "organization": "fake-organization",
                 "prefix": "prefix",
@@ -56,7 +73,7 @@ class TestOpenAITextEmbedder:
         }
 
     def test_run_wrong_input_format(self):
-        embedder = OpenAITextEmbedder(api_key="fake-api-key")
+        embedder = OpenAITextEmbedder(api_key=Secret.from_token("fake-api-key"))
 
         list_integers_input = [1, 2, 3]
 
