@@ -3,9 +3,9 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from haystack import component, default_to_dict, default_from_dict
-from haystack.components.embedders.hf_utils import check_valid_model
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils.hf import check_valid_model, HFModelType
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
@@ -98,7 +98,7 @@ class HuggingFaceTEITextEmbedder:
             if not is_valid_url:
                 raise ValueError(f"Invalid TEI endpoint URL provided: {url}")
 
-        check_valid_model(model, token)
+        check_valid_model(model, HFModelType.EMBEDDING, token)
 
         self.model = model
         self.url = url
