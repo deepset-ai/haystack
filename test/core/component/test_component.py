@@ -105,7 +105,7 @@ def test_set_input_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.inputs._sockets_dict == {"value": InputSocket("value", Any)}
+    assert comp.__haystack_inputs__._sockets_dict == {"value": InputSocket("value", Any)}
     assert comp.run() == {"value": 1}
 
 
@@ -126,7 +126,7 @@ def test_set_output_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.outputs._sockets_dict == {"value": OutputSocket("value", int)}
+    assert comp.__haystack_outputs__._sockets_dict == {"value": OutputSocket("value", int)}
 
 
 def test_output_types_decorator_with_compatible_type():
@@ -144,7 +144,7 @@ def test_output_types_decorator_with_compatible_type():
             return cls()
 
     comp = MockComponent()
-    assert comp.outputs._sockets_dict == {"value": OutputSocket("value", int)}
+    assert comp.__haystack_outputs__._sockets_dict == {"value": OutputSocket("value", int)}
 
 
 def test_component_decorator_set_it_as_component():
@@ -173,8 +173,8 @@ def test_input_has_default_value():
             return {"value": value}
 
     comp = MockComponent()
-    assert comp.inputs._sockets_dict["value"].default_value == 42
-    assert not comp.inputs._sockets_dict["value"].is_mandatory
+    assert comp.__haystack_inputs__._sockets_dict["value"].default_value == 42
+    assert not comp.__haystack_inputs__._sockets_dict["value"].is_mandatory
 
 
 def test_keyword_only_args():
@@ -187,5 +187,5 @@ def test_keyword_only_args():
             return {"value": arg}
 
     comp = MockComponent()
-    component_inputs = {name: {"type": socket.type} for name, socket in comp.inputs._sockets_dict.items()}
+    component_inputs = {name: {"type": socket.type} for name, socket in comp.__haystack_inputs__._sockets_dict.items()}
     assert component_inputs == {"arg": {"type": int}}
