@@ -85,21 +85,6 @@ def inference_deployed_models(headers: Optional[Dict] = None) -> List[Dict[str, 
     return payload
 
 
-def is_inference_deployed_model(model_id: str, headers: Optional[Dict] = None) -> bool:
-    """
-    Check if a model is currently deployed with text-generation-inference-support
-
-    :param model_id: The model id to check (e.g. codellama/CodeLlama-13b-hf, HuggingFaceH4/zephyr-7b-alpha etc.)
-    :type model_id: str
-    :param headers: Optional dictionary of headers to include in the request
-    :type headers: Optional[Dict]
-    :raises Exception: If the request to the TGI API fails
-    :return: True if the model is currently deployed, False otherwise
-    """
-    deployed_models = inference_deployed_models(headers)
-    return model_id in [model["model_id"] for model in deployed_models]
-
-
 def list_inference_deployed_models(headers: Optional[Dict] = None) -> List[str]:
     """
     List all currently deployed models on HF TGI free tier
