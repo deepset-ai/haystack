@@ -14,8 +14,12 @@ logger = logging.getLogger(__name__)
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
     from huggingface_hub import model_info
     from transformers import StoppingCriteriaList, pipeline, PreTrainedTokenizer, PreTrainedTokenizerFast
-    from haystack.utils.hf import StopWordsCriteria, HFTokenStreamingHandler
-    from haystack.utils.hf import serialize_hf_model_kwargs, deserialize_hf_model_kwargs
+    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
+        StopWordsCriteria,
+        HFTokenStreamingHandler,
+        serialize_hf_model_kwargs,
+        deserialize_hf_model_kwargs,
+    )
 
 
 PIPELINE_SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
