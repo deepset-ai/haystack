@@ -41,7 +41,7 @@ class InputSocket:
         if self.is_variadic:
             # We need to "unpack" the type inside the Variadic annotation,
             # otherwise the pipeline connection api will try to match
-            # `Annotated[type, CANALS_VARIADIC_ANNOTATION]`.
+            # `Annotated[type, HAYSTACK_VARIADIC_ANNOTATION]`.
             #
             # Note1: Variadic is expressed as an annotation of one single type,
             # so the return value of get_args will always be a one-item tuple.
