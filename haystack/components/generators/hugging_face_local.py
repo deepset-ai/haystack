@@ -1,11 +1,12 @@
 import logging
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional
 
 from haystack import component, default_from_dict, default_to_dict
 
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ class HuggingFaceLocalGenerator:
         model: str = "google/flan-t5-base",
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
         device: Optional[ComponentDevice] = None,
-        token: Optional[Union[str, bool]] = None,
+        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         generation_kwargs: Optional[Dict[str, Any]] = None,
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
@@ -63,7 +64,6 @@ class HuggingFaceLocalGenerator:
         :param device: The device on which the model is loaded. If `None`, the default device is automatically
             selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
         :param token: The token to use as HTTP bearer authorization for remote files.
-            If True, will use the token generated when running huggingface-cli login (stored in ~/.huggingface).
             If the token is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
         :param generation_kwargs: A dictionary containing keyword arguments to customize text generation.
             Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
@@ -88,6 +88,9 @@ class HuggingFaceLocalGenerator:
 
         huggingface_pipeline_kwargs = huggingface_pipeline_kwargs or {}
         generation_kwargs = generation_kwargs or {}
+
+        self.token = token
+        token = token.resolve_value() if token else None
 
         # check if the huggingface_pipeline_kwargs contain the essential parameters
         # otherwise, populate them with values from other init parameters
@@ -156,12 +159,11 @@ class HuggingFaceLocalGenerator:
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
             generation_kwargs=self.generation_kwargs,
             stop_words=self.stop_words,
+            token=self.token.to_dict() if self.token else None,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
-        # we don't want to serialize valid tokens
-        if isinstance(huggingface_pipeline_kwargs["token"], str):
-            serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"].pop("token")
+        huggingface_pipeline_kwargs.pop("token", None)
 
         serialize_hf_model_kwargs(huggingface_pipeline_kwargs)
         return serialization_dict
@@ -171,6 +173,7 @@ class HuggingFaceLocalGenerator:
         """
         Deserialize this component from a dictionary.
         """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
 

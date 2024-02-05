@@ -1,11 +1,11 @@
 import logging
-import os
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from haystack import component, default_to_dict
+from haystack import component, default_to_dict, default_from_dict
 from haystack.components.embedders.hf_utils import check_valid_model
 from haystack.lazy_imports import LazyImport
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
@@ -23,11 +23,12 @@ class HuggingFaceTEITextEmbedder:
     Inference API tier:
     ```python
     from haystack.components.embedders import HuggingFaceTEITextEmbedder
+    from haystack.utils import Secret
 
     text_to_embed = "I love pizza!"
 
     text_embedder = HuggingFaceTEITextEmbedder(
-        model="BAAI/bge-small-en-v1.5", token="<your-token>"
+        model="BAAI/bge-small-en-v1.5", token=Secret.from_token("<your-api-key>")
     )
 
     print(text_embedder.run(text_to_embed))
@@ -44,7 +45,7 @@ class HuggingFaceTEITextEmbedder:
     text_to_embed = "I love pizza!"
 
     text_embedder = HuggingFaceTEITextEmbedder(
-        model="BAAI/bge-small-en-v1.5", url="<your-tei-endpoint-url>", token="<your-token>"
+        model="BAAI/bge-small-en-v1.5", url="<your-tei-endpoint-url>", token=Secret.from_token("<your-api-key>")
     )
 
     print(text_embedder.run(text_to_embed))
@@ -74,7 +75,7 @@ class HuggingFaceTEITextEmbedder:
         self,
         model: str = "BAAI/bge-small-en-v1.5",
         url: Optional[str] = None,
-        token: Optional[str] = None,
+        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         prefix: str = "",
         suffix: str = "",
     ):
@@ -85,8 +86,7 @@ class HuggingFaceTEITextEmbedder:
         :param url: The URL of your self-deployed Text-Embeddings-Inference service or the URL of your paid HF Inference
                     Endpoint.
         :param token: The HuggingFace Hub token. This is needed if you are using a paid HF Inference Endpoint or serving
-                      a private or gated model. It can be explicitly provided or automatically read from the environment
-                      variable HF_API_TOKEN (recommended).
+                      a private or gated model.
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         """
@@ -98,24 +98,29 @@ class HuggingFaceTEITextEmbedder:
             if not is_valid_url:
                 raise ValueError(f"Invalid TEI endpoint URL provided: {url}")
 
-        # The user does not need to provide a token if it is a local server or free public HF Inference Endpoint.
-        token = token or os.environ.get("HF_API_TOKEN")
-
         check_valid_model(model, token)
 
         self.model = model
         self.url = url
         self.token = token
-        self.client = InferenceClient(url or model, token=token)
+        self.client = InferenceClient(url or model, token=token.resolve_value() if token else None)
         self.prefix = prefix
         self.suffix = suffix
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        This method overrides the default serializer in order to avoid leaking the `token` value passed
-        to the constructor.
-        """
-        return default_to_dict(self, model=self.model, url=self.url, prefix=self.prefix, suffix=self.suffix)
+        return default_to_dict(
+            self,
+            model=self.model,
+            url=self.url,
+            prefix=self.prefix,
+            suffix=self.suffix,
+            token=self.token.to_dict() if self.token else None,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceTEITextEmbedder":
+        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
+        return default_from_dict(cls, data)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """

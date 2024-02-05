@@ -1,4 +1,5 @@
 from unittest.mock import patch, MagicMock, Mock
+from haystack.utils.auth import Secret
 
 import pytest
 from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, Token, StreamDetails, FinishReason
@@ -59,7 +60,7 @@ class TestHuggingFaceTGIChatGenerator:
         # Initialize the HuggingFaceTGIChatGenerator object with valid parameters
         generator = HuggingFaceTGIChatGenerator(
             model="NousResearch/Llama-2-7b-chat-hf",
-            token="token",
+            token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"n": 5},
             stop_words=["stop", "words"],
             streaming_callback=lambda x: x,
@@ -71,7 +72,7 @@ class TestHuggingFaceTGIChatGenerator:
 
         # Assert that the init_params dictionary contains the expected keys and values
         assert init_params["model"] == "NousResearch/Llama-2-7b-chat-hf"
-        assert init_params["token"] is None
+        assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
 
     def test_from_dict(self, mock_check_valid_model):

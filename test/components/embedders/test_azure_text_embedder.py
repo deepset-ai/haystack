@@ -16,14 +16,15 @@ class TestAzureOpenAITextEmbedder:
         assert embedder.prefix == ""
         assert embedder.suffix == ""
 
-    def test_to_dict(self):
-        component = AzureOpenAITextEmbedder(
-            api_key="fake-api-key", azure_endpoint="https://example-resource.azure.openai.com/"
-        )
+    def test_to_dict(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        component = AzureOpenAITextEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.embedders.azure_text_embedder.AzureOpenAITextEmbedder",
             "init_parameters": {
+                "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
+                "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
                 "azure_deployment": "text-embedding-ada-002",
                 "organization": None,
                 "azure_endpoint": "https://example-resource.azure.openai.com/",
