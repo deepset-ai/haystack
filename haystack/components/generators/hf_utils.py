@@ -1,6 +1,8 @@
 import inspect
 from typing import Any, Dict, List, Optional, Union, Callable
 
+import requests
+
 from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
 
@@ -58,6 +60,58 @@ def check_valid_model(model_id: str, token: Optional[str]) -> None:
     allowed_model = model_info.pipeline_tag in ["text-generation", "text2text-generation"]
     if not allowed_model:
         raise ValueError(f"Model {model_id} is not a text generation model. Please provide a text generation model.")
+
+
+def inference_deployed_models(headers: Optional[Dict] = None) -> List[Dict[str, Any]]:
+    """
+    Get all currently deployed models on HF TGI free tier
+
+    :param headers: Optional dictionary of headers to include in the request
+    :type headers: Optional[Dict]
+    :return: list of all currently deployed models
+    :raises Exception: If the request to the TGI API fails
+
+    """
+    resp = requests.get(
+        "https://api-inference.huggingface.co/framework/text-generation-inference", headers=headers, timeout=5
+    )
+
+    payload = resp.json()
+    if resp.status_code != 200:
+        message = payload["error"] if "error" in payload else "Unknown TGI error"
+        error_type = payload["error_type"] if "error_type" in payload else "Unknown TGI error type"
+        raise Exception(f"Failed to fetch TGI deployed models: {message}. Error type: {error_type}")
+    else:
+        return payload
+
+
+def is_inference_deployed_model(model_id: str, headers: Optional[Dict] = None) -> bool:
+    """
+    Check if a model is currently deployed with text-generation-inference-support
+
+    :param model_id: The model id to check (e.g. codellama/CodeLlama-13b-hf, HuggingFaceH4/zephyr-7b-alpha etc.)
+    :type model_id: str
+    :param headers: Optional dictionary of headers to include in the request
+    :type headers: Optional[Dict]
+    :raises Exception: If the request to the TGI API fails
+    :return: True if the model is currently deployed, False otherwise
+    """
+    deployed_models = inference_deployed_models(headers)
+    return model_id in [model["model_id"] for model in deployed_models]
+
+
+def list_inference_deployed_models(headers: Optional[Dict] = None) -> List[str]:
+    """
+    List all currently deployed models on HF TGI free tier
+
+    :param headers: Optional dictionary of headers to include in the request
+    :type headers: Optional[Dict]
+    :return: list of all currently deployed models
+    :raises Exception: If the request to the TGI API fails
+
+    """
+    deployed_models = inference_deployed_models(headers)
+    return [model["model_id"] for model in deployed_models]
 
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:

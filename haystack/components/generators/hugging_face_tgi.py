@@ -4,9 +4,13 @@ from typing import Any, Dict, List, Optional, Iterable, Callable
 from urllib.parse import urlparse
 
 from haystack import component, default_to_dict, default_from_dict
+from haystack.components.generators.hf_utils import (
+    check_generation_params,
+    check_valid_model,
+    list_inference_deployed_models,
+)
 from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import StreamingChunk
-from haystack.components.generators.hf_utils import check_generation_params, check_valid_model
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
@@ -119,8 +123,20 @@ class HuggingFaceTGIGenerator:
 
     def warm_up(self) -> None:
         """
+        If the url is not provided, check if the model is deployed on the free tier of the HF inference API.
         Load the tokenizer
         """
+        # is this user using HF free tier inference API?
+        if self.model and not self.url:
+            deployed_models = list_inference_deployed_models()
+            # Determine if the specified model is deployed in the free tier.
+            if self.model not in deployed_models:
+                raise ValueError(
+                    f"The model {self.model} is not deployed on the free tier of the HF inference API. "
+                    "To use free tier models provide the model ID and the token. Valid models are: "
+                    f"{deployed_models}"
+                )
+
         self.tokenizer = AutoTokenizer.from_pretrained(self.model, token=self.token)
 
     def to_dict(self) -> Dict[str, Any]:
