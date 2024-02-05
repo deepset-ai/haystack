@@ -1,9 +1,9 @@
 import os
-from haystack.utils.auth import Secret
 
 import pytest
 
 from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
+from haystack.utils.auth import Secret
 
 
 class TestOpenAITextEmbedder:
@@ -44,6 +44,7 @@ class TestOpenAITextEmbedder:
             "type": "haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "dimensions": None,
                 "model": "text-embedding-ada-002",
                 "organization": None,
                 "prefix": "",
@@ -66,6 +67,7 @@ class TestOpenAITextEmbedder:
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "model": "model",
+                "dimensions": None,
                 "organization": "fake-organization",
                 "prefix": "prefix",
                 "suffix": "suffix",

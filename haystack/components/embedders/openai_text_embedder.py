@@ -1,8 +1,8 @@
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from openai import OpenAI
 
-from haystack import component, default_to_dict, default_from_dict
+from haystack import component, default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 
@@ -31,6 +31,7 @@ class OpenAITextEmbedder:
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "text-embedding-ada-002",
+        dimensions: Optional[int] = None,
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         prefix: str = "",
@@ -42,6 +43,7 @@ class OpenAITextEmbedder:
         :param api_key: The OpenAI API key.
         :param model: The name of the OpenAI model to use. For more details on the available models,
             see [OpenAI documentation](https://platform.openai.com/docs/guides/embeddings/embedding-models).
+        :param dimensions: The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
@@ -49,6 +51,7 @@ class OpenAITextEmbedder:
         :param suffix: A string to add to the end of each text.
         """
         self.model = model
+        self.dimensions = dimensions
         self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
@@ -69,6 +72,7 @@ class OpenAITextEmbedder:
             organization=self.organization,
             prefix=self.prefix,
             suffix=self.suffix,
+            dimensions=self.dimensions,
             api_key=self.api_key.to_dict(),
         )
 
@@ -92,7 +96,11 @@ class OpenAITextEmbedder:
         # replace newlines, which can negatively affect performance.
         text_to_embed = text_to_embed.replace("\n", " ")
 
-        response = self.client.embeddings.create(model=self.model, input=text_to_embed)
+        if self.dimensions is not None:
+            response = self.client.embeddings.create(model=self.model, dimensions=self.dimensions, input=text_to_embed)
+        else:
+            response = self.client.embeddings.create(model=self.model, input=text_to_embed)
+
         meta = {"model": response.model, "usage": dict(response.usage)}
 
         return {"embedding": response.data[0].embedding, "meta": meta}
