@@ -3,12 +3,13 @@ import os
 from typing import Optional, Callable, Dict, Any
 
 # pylint: disable=import-error
-from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
+from openai.lib.azure import AzureOpenAI
 
 from haystack import default_to_dict, default_from_dict
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import StreamingChunk
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,9 @@ class AzureOpenAIGenerator(OpenAIGenerator):
 
     ```python
     from haystack.components.generators import AzureOpenAIGenerator
+    from haystack.utils import Secret
     client = AzureOpenAIGenerator(azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
-                            api_key="<you api key>",
+                                api_key=Secret.from_token("<your-api-key>"),
                             azure_deployment="<this a model name, e.g. gpt-35-turbo>")
     response = client.run("What's Natural Language Processing? Be brief.")
     print(response)
@@ -56,9 +58,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",
         azure_deployment: Optional[str] = "gpt-35-turbo",
-        api_key: Optional[str] = None,
-        azure_ad_token: Optional[str] = None,
-        azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
+        api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
+        azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
         organization: Optional[str] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         system_prompt: Optional[str] = None,
@@ -70,8 +71,6 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         :param azure_deployment: The deployment of the model, usually the model name.
         :param api_key: The API key to use for authentication.
         :param azure_ad_token: Azure Active Directory token, see https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id
-        :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked
-        on every request.
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
@@ -108,6 +107,13 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         if not azure_endpoint:
             raise ValueError("Please provide an Azure endpoint or set the environment variable AZURE_OPENAI_ENDPOINT.")
 
+        if api_key is None and azure_ad_token is None:
+            raise ValueError("Please provide an API key or an Azure Active Directory token.")
+
+        # The check above makes mypy incorrectly infer that api_key is never None,
+        # which propagates the incorrect type.
+        self.api_key = api_key  # type: ignore
+        self.azure_ad_token = azure_ad_token
         self.generation_kwargs = generation_kwargs or {}
         self.system_prompt = system_prompt
         self.streaming_callback = streaming_callback
@@ -121,9 +127,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             api_version=api_version,
             azure_endpoint=azure_endpoint,
             azure_deployment=azure_deployment,
-            api_key=api_key,
-            azure_ad_token=azure_ad_token,
-            azure_ad_token_provider=azure_ad_token_provider,
+            api_key=api_key.resolve_value() if api_key is not None else None,
+            azure_ad_token=azure_ad_token.resolve_value() if azure_ad_token is not None else None,
             organization=organization,
         )
 
@@ -142,6 +147,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             streaming_callback=callback_name,
             generation_kwargs=self.generation_kwargs,
             system_prompt=self.system_prompt,
+            api_key=self.api_key.to_dict() if self.api_key is not None else None,
+            azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
         )
 
     @classmethod
@@ -151,6 +158,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         :param data: The dictionary representation of this component.
         :return: The deserialized component instance.
         """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:

@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 from huggingface_hub.utils import RepositoryNotFoundError
+from haystack.utils.auth import Secret
 
 from haystack.components.embedders.hugging_face_tei_text_embedder import HuggingFaceTEITextEmbedder
 
@@ -27,7 +28,7 @@ class TestHuggingFaceTEITextEmbedder:
 
         assert embedder.model == "BAAI/bge-small-en-v1.5"
         assert embedder.url is None
-        assert embedder.token == "fake-api-token"
+        assert embedder.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
         assert embedder.prefix == ""
         assert embedder.suffix == ""
 
@@ -35,14 +36,14 @@ class TestHuggingFaceTEITextEmbedder:
         embedder = HuggingFaceTEITextEmbedder(
             model="sentence-transformers/all-mpnet-base-v2",
             url="https://some_embedding_model.com",
-            token="fake-api-token",
+            token=Secret.from_token("fake-api-token"),
             prefix="prefix",
             suffix="suffix",
         )
 
         assert embedder.model == "sentence-transformers/all-mpnet-base-v2"
         assert embedder.url == "https://some_embedding_model.com"
-        assert embedder.token == "fake-api-token"
+        assert embedder.token == Secret.from_token("fake-api-token")
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
 
@@ -62,14 +63,20 @@ class TestHuggingFaceTEITextEmbedder:
 
         assert data == {
             "type": "haystack.components.embedders.hugging_face_tei_text_embedder.HuggingFaceTEITextEmbedder",
-            "init_parameters": {"model": "BAAI/bge-small-en-v1.5", "url": None, "prefix": "", "suffix": ""},
+            "init_parameters": {
+                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "model": "BAAI/bge-small-en-v1.5",
+                "url": None,
+                "prefix": "",
+                "suffix": "",
+            },
         }
 
     def test_to_dict_with_custom_init_parameters(self, mock_check_valid_model):
         component = HuggingFaceTEITextEmbedder(
             model="sentence-transformers/all-mpnet-base-v2",
             url="https://some_embedding_model.com",
-            token="fake-api-token",
+            token=Secret.from_env_var("ENV_VAR", strict=False),
             prefix="prefix",
             suffix="suffix",
         )
@@ -79,6 +86,7 @@ class TestHuggingFaceTEITextEmbedder:
         assert data == {
             "type": "haystack.components.embedders.hugging_face_tei_text_embedder.HuggingFaceTEITextEmbedder",
             "init_parameters": {
+                "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "model": "sentence-transformers/all-mpnet-base-v2",
                 "url": "https://some_embedding_model.com",
                 "prefix": "prefix",
@@ -91,7 +99,10 @@ class TestHuggingFaceTEITextEmbedder:
             mock_embedding_patch.side_effect = mock_embedding_generation
 
             embedder = HuggingFaceTEITextEmbedder(
-                model="BAAI/bge-small-en-v1.5", token="fake-api-token", prefix="prefix ", suffix=" suffix"
+                model="BAAI/bge-small-en-v1.5",
+                token=Secret.from_token("fake-api-token"),
+                prefix="prefix ",
+                suffix=" suffix",
             )
 
             result = embedder.run(text="The food was delicious")
@@ -103,7 +114,9 @@ class TestHuggingFaceTEITextEmbedder:
 
     def test_run_wrong_input_format(self, mock_check_valid_model):
         embedder = HuggingFaceTEITextEmbedder(
-            model="BAAI/bge-small-en-v1.5", url="https://some_embedding_model.com", token="fake-api-token"
+            model="BAAI/bge-small-en-v1.5",
+            url="https://some_embedding_model.com",
+            token=Secret.from_token("fake-api-token"),
         )
 
         list_integers_input = [1, 2, 3]

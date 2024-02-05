@@ -1,12 +1,12 @@
 from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
 import logging
-import os
 
 from haystack.lazy_imports import LazyImport
-from haystack import component, Document, default_to_dict
+from haystack import component, Document, default_to_dict, default_from_dict
 from haystack.dataclasses import ByteStream
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,9 @@ class AzureOCRDocumentConverter:
     Usage example:
     ```python
     from haystack.components.converters.azure import AzureOCRDocumentConverter
+    from haystack.utils import Secret
 
-    converter = AzureOCRDocumentConverter()
+    converter = AzureOCRDocumentConverter(endpoint="<url>", api_key=Secret.from_token("<your-api-key>"))
     results = converter.run(sources=["image-based-document.pdf"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
@@ -38,33 +39,23 @@ class AzureOCRDocumentConverter:
     ```
     """
 
-    def __init__(self, endpoint: str, api_key: Optional[str] = None, model_id: str = "prebuilt-read"):
+    def __init__(
+        self, endpoint: str, api_key: Secret = Secret.from_env_var("AZURE_AI_API_KEY"), model_id: str = "prebuilt-read"
+    ):
         """
         Create an AzureOCRDocumentConverter component.
 
         :param endpoint: The endpoint of your Azure resource.
-        :param api_key: The key of your Azure resource. It can be
-        explicitly provided or automatically read from the
-        environment variable AZURE_AI_API_KEY (recommended).
+        :param api_key: The key of your Azure resource.
         :param model_id: The model ID of the model you want to use. Please refer to [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
             for a list of available models. Default: `"prebuilt-read"`.
         """
         azure_import.check()
 
-        api_key = api_key or os.environ.get("AZURE_AI_API_KEY")
-        # we check whether api_key is None or an empty string
-        if not api_key:
-            msg = (
-                "AzureOCRDocumentConverter expects an API key. "
-                "Set the AZURE_AI_API_KEY environment variable (recommended) or pass it explicitly."
-            )
-            raise ValueError(msg)
-
-        self.document_analysis_client = DocumentAnalysisClient(
-            endpoint=endpoint, credential=AzureKeyCredential(api_key)
-        )
+        self.document_analysis_client = DocumentAnalysisClient(endpoint=endpoint, credential=AzureKeyCredential(api_key.resolve_value()))  # type: ignore
         self.endpoint = endpoint
         self.model_id = model_id
+        self.api_key = api_key
 
     @component.output_types(documents=List[Document], raw_azure_response=List[Dict])
     def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
@@ -116,7 +107,15 @@ class AzureOCRDocumentConverter:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(self, endpoint=self.endpoint, model_id=self.model_id)
+        return default_to_dict(self, api_key=self.api_key.to_dict(), endpoint=self.endpoint, model_id=self.model_id)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AzureOCRDocumentConverter":
+        """
+        Deserialize this component from a dictionary.
+        """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+        return default_from_dict(cls, data)
 
     @staticmethod
     def _convert_azure_result_to_document(result: "AnalyzeResult", file_suffix: Optional[str] = None) -> Document:

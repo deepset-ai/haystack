@@ -21,9 +21,10 @@ class DynamicPromptBuilder:
     from haystack.components.builders import DynamicPromptBuilder
     from haystack.components.generators import OpenAIGenerator
     from haystack import Pipeline, component, Document
+    from haystack.utils import Secret
 
     prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"])
-    llm = OpenAIGenerator(api_key="<your-api-key>", model="gpt-3.5-turbo")
+    llm = OpenAIGenerator(api_key=Secret.from_token("<your-api-key>"), model="gpt-3.5-turbo")
 
 
     @component

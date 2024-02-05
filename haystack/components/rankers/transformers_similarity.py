@@ -6,6 +6,7 @@ from haystack import ComponentError, Document, component, default_from_dict, def
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, DeviceMap
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs, resolve_hf_device_map
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class TransformersSimilarityRanker:
         self,
         model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         device: Optional[ComponentDevice] = None,
-        token: Union[bool, str, None] = None,
+        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         top_k: int = 10,
         query_prefix: str = "",
         document_prefix: str = "",
@@ -119,9 +120,11 @@ class TransformersSimilarityRanker:
         """
         if self.model is None:
             self.model = AutoModelForSequenceClassification.from_pretrained(
-                self.model_name_or_path, token=self.token, **self.model_kwargs
+                self.model_name_or_path, token=self.token.resolve_value() if self.token else None, **self.model_kwargs
             )
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name_or_path, token=self.token.resolve_value() if self.token else None
+            )
             self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -132,7 +135,7 @@ class TransformersSimilarityRanker:
             self,
             device=None,
             model=self.model_name_or_path,
-            token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
+            token=self.token.to_dict() if self.token else None,
             top_k=self.top_k,
             query_prefix=self.query_prefix,
             document_prefix=self.document_prefix,
@@ -152,6 +155,7 @@ class TransformersSimilarityRanker:
         """
         Deserialize this component from a dictionary.
         """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         init_params = data["init_parameters"]
         if init_params["device"] is not None:
             init_params["device"] = ComponentDevice.from_dict(init_params["device"])

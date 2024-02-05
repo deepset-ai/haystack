@@ -2,7 +2,8 @@ from typing import List, Optional, Dict, Any
 
 from openai import OpenAI
 
-from haystack import component, default_to_dict
+from haystack import component, default_to_dict, default_from_dict
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 
 @component
@@ -28,7 +29,7 @@ class OpenAITextEmbedder:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "text-embedding-ada-002",
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
@@ -38,8 +39,7 @@ class OpenAITextEmbedder:
         """
         Create an OpenAITextEmbedder component.
 
-        :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
-            environment variable OPENAI_API_KEY (recommended).
+        :param api_key: The OpenAI API key.
         :param model: The name of the OpenAI model to use. For more details on the available models,
             see [OpenAI documentation](https://platform.openai.com/docs/guides/embeddings/embedding-models).
         :param organization: The Organization ID, defaults to `None`. See
@@ -52,8 +52,9 @@ class OpenAITextEmbedder:
         self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
+        self.api_key = api_key
 
-        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
+        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -62,14 +63,19 @@ class OpenAITextEmbedder:
         return {"model": self.model}
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        This method overrides the default serializer in order to avoid leaking the `api_key` value passed
-        to the constructor.
-        """
-
         return default_to_dict(
-            self, model=self.model, organization=self.organization, prefix=self.prefix, suffix=self.suffix
+            self,
+            model=self.model,
+            organization=self.organization,
+            prefix=self.prefix,
+            suffix=self.suffix,
+            api_key=self.api_key.to_dict(),
         )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "OpenAITextEmbedder":
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+        return default_from_dict(cls, data)
 
     @component.output_types(embedding=List[float], meta=Dict[str, Any])
     def run(self, text: str):

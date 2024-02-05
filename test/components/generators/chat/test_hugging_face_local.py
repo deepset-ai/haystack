@@ -1,4 +1,5 @@
 from unittest.mock import patch, Mock
+from haystack.utils.auth import Secret
 
 import pytest
 from transformers import PreTrainedTokenizer
@@ -56,7 +57,7 @@ class TestHuggingFaceLocalChatGenerator:
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2",
             task="text2text-generation",
-            token="test-token",
+            token=Secret.from_token("test-token"),
             device=ComponentDevice.from_str("cpu"),
         )
 
@@ -72,6 +73,7 @@ class TestHuggingFaceLocalChatGenerator:
             model="mistralai/Mistral-7B-Instruct-v0.2",
             task="text2text-generation",
             device=ComponentDevice.from_str("cpu"),
+            token=None,
         )
 
         assert generator.huggingface_pipeline_kwargs == {
@@ -82,7 +84,9 @@ class TestHuggingFaceLocalChatGenerator:
         }
 
     def test_init_task_parameter(self):
-        generator = HuggingFaceLocalChatGenerator(task="text2text-generation", device=ComponentDevice.from_str("cpu"))
+        generator = HuggingFaceLocalChatGenerator(
+            task="text2text-generation", device=ComponentDevice.from_str("cpu"), token=None
+        )
 
         assert generator.huggingface_pipeline_kwargs == {
             "model": "HuggingFaceH4/zephyr-7b-beta",
@@ -93,7 +97,9 @@ class TestHuggingFaceLocalChatGenerator:
 
     def test_init_task_in_huggingface_pipeline_kwargs(self):
         generator = HuggingFaceLocalChatGenerator(
-            huggingface_pipeline_kwargs={"task": "text2text-generation"}, device=ComponentDevice.from_str("cpu")
+            huggingface_pipeline_kwargs={"task": "text2text-generation"},
+            device=ComponentDevice.from_str("cpu"),
+            token=None,
         )
 
         assert generator.huggingface_pipeline_kwargs == {
@@ -105,7 +111,7 @@ class TestHuggingFaceLocalChatGenerator:
 
     def test_init_task_inferred_from_model_name(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
-            model="mistralai/Mistral-7B-Instruct-v0.2", device=ComponentDevice.from_str("cpu")
+            model="mistralai/Mistral-7B-Instruct-v0.2", device=ComponentDevice.from_str("cpu"), token=None
         )
 
         assert generator.huggingface_pipeline_kwargs == {
@@ -122,7 +128,7 @@ class TestHuggingFaceLocalChatGenerator:
     def test_to_dict(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
             model="NousResearch/Llama-2-7b-chat-hf",
-            token="token",
+            token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"n": 5},
             stop_words=["stop", "words"],
             streaming_callback=lambda x: x,
@@ -133,6 +139,7 @@ class TestHuggingFaceLocalChatGenerator:
         init_params = result["init_parameters"]
 
         # Assert that the init_params dictionary contains the expected keys and values
+        assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
         assert init_params["huggingface_pipeline_kwargs"]["model"] == "NousResearch/Llama-2-7b-chat-hf"
         assert "token" not in init_params["huggingface_pipeline_kwargs"]
         assert init_params["generation_kwargs"] == {"max_new_tokens": 512, "n": 5, "stop_sequences": ["stop", "words"]}

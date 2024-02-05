@@ -1,6 +1,7 @@
 from unittest.mock import patch, MagicMock
 import pytest
 import numpy as np
+from haystack.utils.auth import Secret
 
 from haystack import Document
 from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
@@ -11,7 +12,7 @@ class TestSentenceTransformersDocumentEmbedder:
         embedder = SentenceTransformersDocumentEmbedder(model="model")
         assert embedder.model == "model"
         assert embedder.device == "cpu"
-        assert embedder.token is None
+        assert embedder.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
         assert embedder.prefix == ""
         assert embedder.suffix == ""
         assert embedder.batch_size == 32
@@ -24,7 +25,7 @@ class TestSentenceTransformersDocumentEmbedder:
         embedder = SentenceTransformersDocumentEmbedder(
             model="model",
             device="cuda",
-            token=True,
+            token=Secret.from_token("fake-api-token"),
             prefix="prefix",
             suffix="suffix",
             batch_size=64,
@@ -35,7 +36,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
         assert embedder.model == "model"
         assert embedder.device == "cuda"
-        assert embedder.token is True
+        assert embedder.token == Secret.from_token("fake-api-token")
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
         assert embedder.batch_size == 64
@@ -52,7 +53,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "init_parameters": {
                 "model": "model",
                 "device": "cpu",
-                "token": None,
+                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
                 "prefix": "",
                 "suffix": "",
                 "batch_size": 32,
@@ -67,7 +68,7 @@ class TestSentenceTransformersDocumentEmbedder:
         component = SentenceTransformersDocumentEmbedder(
             model="model",
             device="cuda",
-            token="the-token",
+            token=Secret.from_env_var("ENV_VAR", strict=False),
             prefix="prefix",
             suffix="suffix",
             batch_size=64,
@@ -83,7 +84,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "init_parameters": {
                 "model": "model",
                 "device": "cuda",
-                "token": None,  # the token is not serialized
+                "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "prefix": "prefix",
                 "suffix": "suffix",
                 "batch_size": 64,
@@ -98,10 +99,10 @@ class TestSentenceTransformersDocumentEmbedder:
         "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup(self, mocked_factory):
-        embedder = SentenceTransformersDocumentEmbedder(model="model")
+        embedder = SentenceTransformersDocumentEmbedder(model="model", token=None)
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
-        mocked_factory.get_embedding_backend.assert_called_once_with(model="model", device="cpu", use_auth_token=None)
+        mocked_factory.get_embedding_backend.assert_called_once_with(model="model", device="cpu", auth_token=None)
 
     @patch(
         "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
