@@ -110,6 +110,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         if api_key is None and azure_ad_token is None:
             raise ValueError("Please provide an API key or an Azure Active Directory token.")
 
+        # The check above makes mypy incorrectly infer that api_key is never None,
+        # which propagates the incorrect type.
         self.api_key = api_key  # type: ignore
         self.azure_ad_token = azure_ad_token
         self.generation_kwargs = generation_kwargs or {}
