@@ -81,8 +81,8 @@ def inference_deployed_models(headers: Optional[Dict] = None) -> List[Dict[str, 
         message = payload["error"] if "error" in payload else "Unknown TGI error"
         error_type = payload["error_type"] if "error_type" in payload else "Unknown TGI error type"
         raise Exception(f"Failed to fetch TGI deployed models: {message}. Error type: {error_type}")
-    else:
-        return payload
+
+    return payload
 
 
 def is_inference_deployed_model(model_id: str, headers: Optional[Dict] = None) -> bool:
