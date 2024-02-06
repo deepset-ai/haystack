@@ -290,7 +290,10 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         preprocessed_docs = preprocessor.process(documents)
 
         ds.write_documents(preprocessed_docs)
-        assert ds.get_document_count() == 13
+
+        docs_from_weaviate = ds.get_all_documents()
+        for doc in docs_from_weaviate:
+            assert "_split_overlap" in doc.meta
 
     @pytest.mark.unit
     def test__get_auth_secret(self):
