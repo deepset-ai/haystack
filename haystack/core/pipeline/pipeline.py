@@ -210,7 +210,7 @@ class Pipeline:
             visits=0,
         )
 
-    def connect(self, connect_from: str, connect_to: str) -> None:
+    def connect(self, connect_from: str, connect_to: str) -> "Pipeline":
         """
         Connects two components together. All components to connect must exist in the pipeline.
         If connecting to an component that has several output connections, specify the inputs and output names as
@@ -223,7 +223,7 @@ class Pipeline:
                 in the format `component_name.connection_name` if the component has multiple inputs.
 
         Returns:
-            None
+            The Pipeline instance
 
         Raises:
             PipelineConnectError: if the two components cannot be connected (for example if one of the components is
@@ -339,7 +339,7 @@ class Pipeline:
 
         if receiver in sender_socket.receivers and sender in receiver_socket.senders:
             # This is already connected, nothing to do
-            return
+            return self
 
         if receiver_socket.senders and not receiver_socket.is_variadic:
             # Only variadic input sockets can receive from multiple senders
@@ -363,6 +363,7 @@ class Pipeline:
             to_socket=receiver_socket,
             mandatory=receiver_socket.is_mandatory,
         )
+        return self
 
     def get_component(self, name: str) -> Component:
         """
