@@ -35,7 +35,7 @@ class HuggingFaceTGIChatGenerator:
                 ChatMessage.from_user("What's Natural Language Processing?")]
 
 
-    client = HuggingFaceTGIChatGenerator(model="meta-llama/Llama-2-70b-chat-hf", token=Secret.from_token("<your-api-key>"))
+    client = HuggingFaceTGIChatGenerator(model="HuggingFaceH4/zephyr-7b-beta", token=Secret.from_token("<your-api-key>"))
     client.warm_up()
     response = client.run(messages, generation_kwargs={"max_new_tokens": 120})
     print(response)
@@ -51,7 +51,7 @@ class HuggingFaceTGIChatGenerator:
     messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
                 ChatMessage.from_user("What's Natural Language Processing?")]
 
-    client = HuggingFaceTGIChatGenerator(model="meta-llama/Llama-2-70b-chat-hf",
+    client = HuggingFaceTGIChatGenerator(model="HuggingFaceH4/zephyr-7b-beta",
                                          url="<your-tgi-endpoint-url>",
                                          token=Secret.from_token("<your-api-key>"))
     client.warm_up()
@@ -85,7 +85,7 @@ class HuggingFaceTGIChatGenerator:
 
     def __init__(
         self,
-        model: str = "meta-llama/Llama-2-13b-chat-hf",
+        model: str = "HuggingFaceH4/zephyr-7b-beta",
         url: Optional[str] = None,
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         chat_template: Optional[str] = None,
@@ -96,7 +96,7 @@ class HuggingFaceTGIChatGenerator:
         """
         Initialize the HuggingFaceTGIChatGenerator instance.
 
-        :param model: A string representing the model path or URL. Default is "meta-llama/Llama-2-13b-chat-hf".
+        :param model: A string representing the model path or URL. Default is "HuggingFaceH4/zephyr-7b-beta".
         :param url: An optional string representing the URL of the TGI endpoint.
         :param chat_template: This optional parameter allows you to specify a Jinja template for formatting chat
             messages. While high-quality and well-supported chat models typically include their own chat templates
