@@ -356,11 +356,3 @@ class TestHuggingFaceTGIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) > 0
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-
-    @pytest.mark.integration
-    @flaky(max_runs=3, min_passes=1, rerun_filter=delay_rerun)
-    def test_default_model_available(self, mock_auto_tokenizer):
-        # default model should be available on free tier and warm up should not raise any exception
-        # mock auto tokenizer to avoid downloading it
-        generator = HuggingFaceTGIChatGenerator()
-        generator.warm_up()

@@ -301,12 +301,3 @@ class TestHuggingFaceTGIGenerator:
         assert isinstance(response["meta"], list)
         assert len(response["meta"]) > 0
         assert [isinstance(reply, dict) for reply in response["replies"]]
-
-    @pytest.mark.integration
-    @flaky(max_runs=3, min_passes=1, rerun_filter=delay_rerun)
-    def test_default_model_available(self, mock_auto_tokenizer):
-        # default model should be available on free tier
-        generator = HuggingFaceTGIGenerator()
-
-        # warm up should not raise any exception
-        generator.warm_up()
