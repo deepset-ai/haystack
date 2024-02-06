@@ -4,15 +4,11 @@ from typing import Any, Dict, List, Optional, Iterable, Callable
 from urllib.parse import urlparse
 
 from haystack import component, default_to_dict, default_from_dict
-from haystack.components.generators.hf_utils import (
-    check_valid_model,
-    check_generation_params,
-    list_inference_deployed_models,
-)
 from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils.hf import check_valid_model, HFModelType, check_generation_params, list_inference_deployed_models
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
@@ -124,7 +120,7 @@ class HuggingFaceTGIChatGenerator:
             if not is_valid_url:
                 raise ValueError(f"Invalid TGI endpoint URL provided: {url}")
 
-        check_valid_model(model, token)
+        check_valid_model(model, HFModelType.GENERATION, token)
 
         # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}

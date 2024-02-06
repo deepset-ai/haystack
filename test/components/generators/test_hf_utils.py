@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.components.generators.hf_utils import check_generation_params, list_inference_deployed_models
+from haystack.utils.hf import check_generation_params, list_inference_deployed_models
 
 
 def test_empty_dictionary():

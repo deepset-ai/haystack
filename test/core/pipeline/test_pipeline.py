@@ -6,7 +6,7 @@ from typing import Optional
 
 import pytest
 
-from haystack.core.component.sockets import InputSocket, OutputSocket
+from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.core.errors import PipelineError, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
 from haystack.testing.factory import component_class
@@ -26,6 +26,21 @@ def test_add_component_to_different_pipelines():
 
     with pytest.raises(PipelineError):
         second_pipe.add_component("some", some_component)
+
+
+def test_get_component_name():
+    pipe = Pipeline()
+    some_component = component_class("Some")()
+    pipe.add_component("some", some_component)
+
+    assert pipe.get_component_name(some_component) == "some"
+
+
+def test_get_component_name_not_added_to_pipeline():
+    pipe = Pipeline()
+    some_component = component_class("Some")()
+
+    assert pipe.get_component_name(some_component) == ""
 
 
 def test_run_with_component_that_does_not_return_dict():
