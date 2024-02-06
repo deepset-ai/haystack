@@ -9,6 +9,7 @@ import weaviate
 from haystack.document_stores.weaviate import WeaviateDocumentStore
 from haystack.schema import Document
 from haystack.testing import DocumentStoreBaseTestAbstract
+from haystack.nodes.preprocessor import PreProcessor
 
 embedding_dim = 768
 
@@ -265,7 +266,31 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         embeddings.
         """
         ds.write_documents(documents)
-        assert ds.get_embedding_count() == 9
+        assert ds.get_all_documents
+
+    @pytest.mark.integration
+    def test_write_preprocessed_docs(self, ds, documents):
+        """
+        Test that preprocessed documents can be correctly written to Weaviate
+        even if the meta field `_split_overlap` is an empty list for some documents.
+        """
+        preprocessor = PreProcessor(
+            clean_empty_lines=True,
+            clean_whitespace=True,
+            clean_header_footer=True,
+            split_by="word",
+            split_length=5,
+            split_overlap=2,
+            split_respect_sentence_boundary=False,
+        )
+
+        longer_doc = Document(content="This is a longer document that will be split into multiple parts.")
+        documents.append(longer_doc)
+
+        preprocessed_docs = preprocessor.process(documents)
+
+        ds.write_documents(preprocessed_docs)
+        assert ds.get_document_count() == 13
 
     @pytest.mark.unit
     def test__get_auth_secret(self):

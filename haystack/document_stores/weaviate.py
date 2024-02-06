@@ -684,8 +684,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                             property_value = _doc[property]
                             if property in json_fields:
                                 property_value = doc.meta[property]
-                            self._update_schema(property, property_value, index)
-                            current_properties.append(property)
+                            if not isinstance(property_value, list) or len(property_value) > 0:
+                                self._update_schema(property, property_value, index)
+                                current_properties.append(property)
                         # update the date fields as there might be new ones
                         date_fields = self._get_date_properties(index)
 
