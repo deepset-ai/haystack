@@ -2,4 +2,4 @@
 enhancements:
   - |
     Code from different "hf_utils.py" modules spread across different packages was
-    merged into `haystack.core.utils.hf`.
+    merged into `haystack.utils.hf`.
