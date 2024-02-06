@@ -208,8 +208,10 @@ class InMemoryDocumentStore:
         # get the last top_k indexes and reverse them
         top_docs_positions = np.argsort(docs_scores)[-top_k:][::-1]
 
-        # Negative values are possible under these conditions and should not be filtered out
-        negatives_are_valid = "Okapi" in self.bm25_algorithm.__name__ and not scale_score
+        # BM25Okapi can return meaningful negative values, so they should not be filtered out when scale_score is False.
+        # It's the only algorithm supported by rank_bm25 at the time of writing (2024) that can return negative scores.
+        # see https://github.com/deepset-ai/haystack/pull/6889 for more context.
+        negatives_are_valid = self.bm25_algorithm is rank_bm25.BM25Okapi and not scale_score
 
         # Create documents with the BM25 score to return them
         return_documents = []
