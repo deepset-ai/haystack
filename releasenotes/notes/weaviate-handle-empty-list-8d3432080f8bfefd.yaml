@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed a bug that made it impossible to write Documents
+    to Weaviate when the some of the fields were empty lists
+    (e.g. `split_overlap` for preprocessed documents).
