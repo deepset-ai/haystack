@@ -222,8 +222,6 @@ class InMemoryDocumentStore:
             doc_fields["score"] = score
             return_document = Document.from_dict(doc_fields)
             return_documents.append(return_document)
-
-        print(return_documents)
         return return_documents
 
     def embedding_retrieval(
