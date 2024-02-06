@@ -63,9 +63,9 @@ def check_valid_model(model_id: str, token: Optional[Secret]) -> None:
         raise ValueError(f"Model {model_id} is not a text generation model. Please provide a text generation model.")
 
 
-def inference_deployed_models(headers: Optional[Dict] = None) -> List[Dict[str, Any]]:
+def list_inference_deployed_models(headers: Optional[Dict] = None) -> List[str]:
     """
-    Get all currently deployed models on HF TGI free tier
+    List all currently deployed models on HF TGI free tier
 
     :param headers: Optional dictionary of headers to include in the request
     :type headers: Optional[Dict]
@@ -82,22 +82,7 @@ def inference_deployed_models(headers: Optional[Dict] = None) -> List[Dict[str, 
         message = payload["error"] if "error" in payload else "Unknown TGI error"
         error_type = payload["error_type"] if "error_type" in payload else "Unknown TGI error type"
         raise Exception(f"Failed to fetch TGI deployed models: {message}. Error type: {error_type}")
-
-    return payload
-
-
-def list_inference_deployed_models(headers: Optional[Dict] = None) -> List[str]:
-    """
-    List all currently deployed models on HF TGI free tier
-
-    :param headers: Optional dictionary of headers to include in the request
-    :type headers: Optional[Dict]
-    :return: list of all currently deployed models
-    :raises Exception: If the request to the TGI API fails
-
-    """
-    deployed_models = inference_deployed_models(headers)
-    return [model["model_id"] for model in deployed_models]
+    return [model["model_id"] for model in payload]
 
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
