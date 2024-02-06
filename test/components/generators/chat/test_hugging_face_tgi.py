@@ -13,13 +13,13 @@ from haystack.dataclasses import StreamingChunk, ChatMessage
 @pytest.fixture
 def mock_list_inference_deployed_models():
     with patch(
-        "haystack.components.generators.hf_utils.inference_deployed_models",
+        "haystack.components.generators.chat.hugging_face_tgi.list_inference_deployed_models",
         MagicMock(
             return_value=[
-                {"model_id": "HuggingFaceH4/zephyr-7b-alpha"},
-                {"model_id": "HuggingFaceH4/zephyr-7b-alpha"},
-                {"model_id": "mistralai/Mistral-7B-v0.1"},
-                {"model_id": "meta-llama/Llama-2-13b-chat-hf"},
+                "HuggingFaceH4/zephyr-7b-alpha",
+                "HuggingFaceH4/zephyr-7b-alpha",
+                "mistralai/Mistral-7B-v0.1",
+                "meta-llama/Llama-2-13b-chat-hf",
             ]
         ),
     ) as mock:
