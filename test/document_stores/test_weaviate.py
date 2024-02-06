@@ -266,7 +266,7 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         embeddings.
         """
         ds.write_documents(documents)
-        assert ds.get_all_documents
+        assert ds.get_embedding_count() == 9
 
     @pytest.mark.integration
     def test_write_preprocessed_docs(self, ds, documents):
