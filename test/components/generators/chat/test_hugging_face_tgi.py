@@ -1,4 +1,7 @@
 from unittest.mock import patch, MagicMock, Mock
+
+from flaky import flaky
+
 from haystack.utils.auth import Secret
 
 import pytest
@@ -8,6 +11,7 @@ from huggingface_hub.utils import RepositoryNotFoundError
 from haystack.components.generators.chat import HuggingFaceTGIChatGenerator
 
 from haystack.dataclasses import StreamingChunk, ChatMessage
+from test.components.generators.test_hf_utils import delay_rerun
 
 
 @pytest.fixture
@@ -352,3 +356,11 @@ class TestHuggingFaceTGIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) > 0
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    @pytest.mark.integration
+    @flaky(max_runs=3, min_passes=1, rerun_filter=delay_rerun)
+    def test_default_model_available(self, mock_auto_tokenizer):
+        # default model should be available on free tier and warm up should not raise any exception
+        # mock auto tokenizer to avoid downloading it
+        generator = HuggingFaceTGIChatGenerator()
+        generator.warm_up()

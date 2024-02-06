@@ -1,12 +1,14 @@
 from unittest.mock import patch, MagicMock, Mock
-from haystack.utils.auth import Secret
 
 import pytest
+from flaky import flaky
 from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, Token, StreamDetails, FinishReason
 from huggingface_hub.utils import RepositoryNotFoundError
 
 from haystack.components.generators import HuggingFaceTGIGenerator
 from haystack.dataclasses import StreamingChunk
+from haystack.utils.auth import Secret
+from test.components.generators.test_hf_utils import delay_rerun
 
 
 @pytest.fixture
@@ -299,3 +301,12 @@ class TestHuggingFaceTGIGenerator:
         assert isinstance(response["meta"], list)
         assert len(response["meta"]) > 0
         assert [isinstance(reply, dict) for reply in response["replies"]]
+
+    @pytest.mark.integration
+    @flaky(max_runs=3, min_passes=1, rerun_filter=delay_rerun)
+    def test_default_model_available(self, mock_auto_tokenizer):
+        # default model should be available on free tier
+        generator = HuggingFaceTGIGenerator()
+
+        # warm up should not raise any exception
+        generator.warm_up()
