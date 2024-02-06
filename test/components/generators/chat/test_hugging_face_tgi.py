@@ -21,7 +21,7 @@ def mock_list_inference_deployed_models():
         MagicMock(
             return_value=[
                 "HuggingFaceH4/zephyr-7b-alpha",
-                "HuggingFaceH4/zephyr-7b-alpha",
+                "HuggingFaceH4/zephyr-7b-beta",
                 "mistralai/Mistral-7B-v0.1",
                 "meta-llama/Llama-2-13b-chat-hf",
             ]
