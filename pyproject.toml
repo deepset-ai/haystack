@@ -71,6 +71,7 @@ dev = [
   "pytest-cov",
   "pytest-custom_exit_code",  # used in the CI
   "pytest-asyncio",
+  "flaky",
   "responses",
   "tox",
   "coverage",
