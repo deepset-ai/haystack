@@ -202,7 +202,7 @@ def test_repr():
             return {"value": value}
 
     comp = MockComponent()
-    assert repr(comp) == f"MockComponent object at {hex(id(comp))}\nInputs:\n  - value: int\nOutputs:\n  - value: int"
+    assert repr(comp) == f"{object.__repr__(comp)}\nInputs:\n  - value: int\nOutputs:\n  - value: int"
 
 
 def test_repr_added_to_pipeline():
@@ -217,4 +217,4 @@ def test_repr_added_to_pipeline():
     pipe = Pipeline()
     comp = MockComponent()
     pipe.add_component("my_component", comp)
-    assert repr(comp) == "my_component\nInputs:\n  - value: int\nOutputs:\n  - value: int"
+    assert repr(comp) == f"{object.__repr__(comp)}\nmy_component\nInputs:\n  - value: int\nOutputs:\n  - value: int"

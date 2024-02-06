@@ -165,13 +165,12 @@ def _component_repr(component: Component) -> str:
     All Components override their __repr__ method with this one.
     It prints the component name and the input/output sockets.
     """
-    # This is similar to a default __repr__ method but doesn't include the full module
-    component_name = f"{component.__class__.__name__} object at {hex(id(component))}"
+    result = object.__repr__(component)
     if pipeline := getattr(component, "__haystack_added_to_pipeline__"):
         # This Component has been added in a Pipeline, let's get the name from there.
-        component_name = pipeline.get_component_name(component)
+        result += f"\n{pipeline.get_component_name(component)}"
 
-    return f"{component_name}\n{component.__haystack_input__}\n{component.__haystack_output__}"
+    return f"{result}\n{component.__haystack_input__}\n{component.__haystack_output__}"
 
 
 class _Component:
