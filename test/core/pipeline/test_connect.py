@@ -18,7 +18,7 @@ def test_connect():
     pipe = Pipeline()
     pipe.add_component("comp1", comp1)
     pipe.add_component("comp2", comp2)
-    pipe.connect("comp1.value", "comp2.value")
+    assert pipe.connect("comp1.value", "comp2.value") is pipe
 
     assert comp1.__haystack_output__.value.receivers == ["comp2"]
     assert comp2.__haystack_input__.value.senders == ["comp1"]
