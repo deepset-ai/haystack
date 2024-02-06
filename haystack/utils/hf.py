@@ -4,10 +4,12 @@ import logging
 from enum import Enum
 from typing import Any, Dict, Optional, List, Union, Callable
 
+import requests
+
 from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
-from haystack.utils.device import ComponentDevice
 from haystack.utils.auth import Secret
+from haystack.utils.device import ComponentDevice
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_import:
     import torch
@@ -90,6 +92,28 @@ def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optio
     model_kwargs["device_map"] = device_map
 
     return model_kwargs
+
+
+def list_inference_deployed_models(headers: Optional[Dict] = None) -> List[str]:
+    """
+    List all currently deployed models on HF TGI free tier
+
+    :param headers: Optional dictionary of headers to include in the request
+    :type headers: Optional[Dict]
+    :return: list of all currently deployed models
+    :raises Exception: If the request to the TGI API fails
+
+    """
+    resp = requests.get(
+        "https://api-inference.huggingface.co/framework/text-generation-inference", headers=headers, timeout=10
+    )
+
+    payload = resp.json()
+    if resp.status_code != 200:
+        message = payload["error"] if "error" in payload else "Unknown TGI error"
+        error_type = payload["error_type"] if "error_type" in payload else "Unknown TGI error type"
+        raise Exception(f"Failed to fetch TGI deployed models: {message}. Error type: {error_type}")
+    return [model["model_id"] for model in payload]
 
 
 def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Secret]) -> None:

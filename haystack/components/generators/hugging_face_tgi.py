@@ -8,7 +8,7 @@ from haystack.components.generators.utils import serialize_callback_handler, des
 from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils.hf import check_valid_model, HFModelType, check_generation_params
+from haystack.utils.hf import check_valid_model, HFModelType, check_generation_params, list_inference_deployed_models
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
@@ -122,8 +122,21 @@ class HuggingFaceTGIGenerator:
 
     def warm_up(self) -> None:
         """
+        If the url is not provided, check if the model is deployed on the free tier of the HF inference API.
         Load the tokenizer
         """
+
+        # is this user using HF free tier inference API?
+        if self.model and not self.url:
+            deployed_models = list_inference_deployed_models()
+            # Determine if the specified model is deployed in the free tier.
+            if self.model not in deployed_models:
+                raise ValueError(
+                    f"The model {self.model} is not deployed on the free tier of the HF inference API. "
+                    "To use free tier models provide the model ID and the token. Valid models are: "
+                    f"{deployed_models}"
+                )
+
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.model, token=self.token.resolve_value() if self.token else None
         )
