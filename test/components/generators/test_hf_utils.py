@@ -1,14 +1,6 @@
-import time
-
 import pytest
 
-from haystack.utils.hf import check_generation_params, list_inference_deployed_models
-
-
-def delay_rerun(*args):
-    # default delay is 3 seconds, used in flaky HF integration tests
-    time.sleep(3)
-    return True
+from haystack.utils.hf import check_generation_params
 
 
 def test_empty_dictionary():

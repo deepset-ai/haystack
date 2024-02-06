@@ -1,7 +1,5 @@
 from unittest.mock import patch, MagicMock, Mock
 
-from flaky import flaky
-
 from haystack.utils.auth import Secret
 
 import pytest
@@ -11,7 +9,6 @@ from huggingface_hub.utils import RepositoryNotFoundError
 from haystack.components.generators.chat import HuggingFaceTGIChatGenerator
 
 from haystack.dataclasses import StreamingChunk, ChatMessage
-from test.components.generators.test_hf_utils import delay_rerun
 
 
 @pytest.fixture

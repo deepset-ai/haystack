@@ -1,14 +1,12 @@
 from unittest.mock import patch, MagicMock, Mock
 
 import pytest
-from flaky import flaky
 from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, Token, StreamDetails, FinishReason
 from huggingface_hub.utils import RepositoryNotFoundError
 
 from haystack.components.generators import HuggingFaceTGIGenerator
 from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
-from test.components.generators.test_hf_utils import delay_rerun
 
 
 @pytest.fixture
