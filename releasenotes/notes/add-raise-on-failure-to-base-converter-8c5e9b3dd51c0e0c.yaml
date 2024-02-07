@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add `raise_on_failure` flag to BaseConverter class so that big processes can optionally continue without breaking from exceptions.
