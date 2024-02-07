@@ -423,6 +423,34 @@ def test_csv_to_document_with_wrong_qa_headers(tmp_path):
 
 
 @pytest.mark.unit
+def test_csv_to_document_with_wrong_qa_headers_raise_on_failure_true(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["wrong", "headers"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path, raise_on_failure=True)
+
+
+@pytest.mark.unit
+def test_csv_to_document_with_wrong_qa_headers_raise_on_failure_false(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["wrong", "headers"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    result, _ = node.run(file_paths=csv_path, raise_on_failure=False)
+    assert len(result) == 0
+
+
+@pytest.mark.unit
 def test_csv_to_document_with_one_wrong_qa_headers(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
