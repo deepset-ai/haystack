@@ -1,5 +1,7 @@
 import json
+from typing import List
 
+from haystack import component, Pipeline
 from haystack.components.validators import JsonSchemaValidator
 
 import pytest
@@ -171,3 +173,37 @@ class TestJsonSchemaValidator:
             "{'type': 'object'}\n"
         )
         assert recovery_message == expected_recovery_message
+
+    def test_schema_validator_in_pipeline_validated(self, json_schema_github_compare, genuine_fc_message):
+        @component
+        class ChatMessageProducer:
+            @component.output_types(messages=List[ChatMessage])
+            def run(self):
+                return {"messages": [ChatMessage.from_assistant(genuine_fc_message)]}
+
+        pipe = Pipeline()
+        pipe.add_component(name="schema_validator", instance=JsonSchemaValidator())
+        pipe.add_component(name="message_producer", instance=ChatMessageProducer())
+        pipe.connect("message_producer", "schema_validator")
+        result = pipe.run(data={"schema_validator": {"json_schema": json_schema_github_compare}})
+        assert "validated" in result["schema_validator"]
+        assert len(result["schema_validator"]["validated"]) == 1
+        assert result["schema_validator"]["validated"][0].content == genuine_fc_message
+
+    def test_schema_validator_in_pipeline_validation_error(self, json_schema_github_compare):
+        @component
+        class ChatMessageProducer:
+            @component.output_types(messages=List[ChatMessage])
+            def run(self):
+                # example json string that is not valid
+                simple_invalid_json = '{"key": "value"}'
+                return {"messages": [ChatMessage.from_assistant(simple_invalid_json)]}  # invalid message
+
+        pipe = Pipeline()
+        pipe.add_component(name="schema_validator", instance=JsonSchemaValidator())
+        pipe.add_component(name="message_producer", instance=ChatMessageProducer())
+        pipe.connect("message_producer", "schema_validator")
+        result = pipe.run(data={"schema_validator": {"json_schema": json_schema_github_compare}})
+        assert "validation_error" in result["schema_validator"]
+        assert len(result["schema_validator"]["validation_error"]) > 1
+        assert "Error details" in result["schema_validator"]["validation_error"][1].content
