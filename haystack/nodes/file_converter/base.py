@@ -226,8 +226,8 @@ class BaseConverter(BaseComponent):
                 if document.content is not None:
                     document.content = document.content.replace(ligature, letters)
 
-        if len(failed_paths):
-            logger.warning("Failed paths: %s", ",".join(failed_paths))
+        if failed_paths:
+            logger.warning("Conversion of the following file paths failed: %s", ",".join(failed_paths))
 
         result = {"documents": documents}
         return result, "output_1"
