@@ -460,6 +460,260 @@ class Pipeline:
         """
         _draw(graph=networkx.MultiDiGraph(self.graph), path=path, engine=engine)
 
+    def hierarchy_pos(self, G, root=None, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5):
+        """
+        From Joel's answer at https://stackoverflow.com/a/29597209/2966723.
+        Licensed under Creative Commons Attribution-Share Alike
+
+        If the graph is a tree this will return the positions to plot this in a
+        hierarchical layout.
+
+        G: the graph (must be a tree)
+
+        root: the root node of current branch
+        - if the tree is directed and this is not given,
+        the root will be found and used
+        - if the tree is directed and this is given, then
+        the positions will be just for the descendants of this node.
+        - if the tree is undirected and not given,
+        then a random choice will be used.
+
+        width: horizontal space allocated for this branch - avoids overlap with other branches
+
+        vert_gap: gap between levels of hierarchy
+
+        vert_loc: vertical location of root
+
+        xcenter: horizontal location of root
+        """
+        import random
+
+        # if not networkx.is_tree(G):
+        #     raise TypeError("cannot use hierarchy_pos on a graph that is not a tree")
+
+        if root is None:
+            if isinstance(G, networkx.DiGraph):
+                root = next(iter(networkx.topological_sort(G)))  # allows back compatibility with nx version 1.11
+            else:
+                root = random.choice(list(G.nodes))
+
+        def _hierarchy_pos(G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5, pos=None, parent=None):
+            """
+            see hierarchy_pos docstring for most arguments
+
+            pos: a dict saying where all nodes go if they have been assigned
+            parent: parent of this branch. - only affects it if non-directed
+
+            """
+
+            if pos is None:
+                pos = {root: (xcenter, vert_loc)}
+            else:
+                pos[root] = (xcenter, vert_loc)
+            children = list(G.neighbors(root))
+            if not isinstance(G, networkx.DiGraph) and parent is not None:
+                children.remove(parent)
+            if len(children) != 0:
+                dx = width / len(children)
+                nextx = xcenter - width / 2 - dx / 2
+                for child in children:
+                    nextx += dx
+                    pos = _hierarchy_pos(
+                        G,
+                        child,
+                        width=dx,
+                        vert_gap=vert_gap,
+                        vert_loc=vert_loc - vert_gap,
+                        xcenter=nextx,
+                        pos=pos,
+                        parent=root,
+                    )
+            return pos
+
+        return _hierarchy_pos(G, root, width, vert_gap, vert_loc, xcenter)
+
+    def draw_graph(self):
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        # from matplotlib import markers, path, text, transforms
+
+        # pos = networkx.spring_layout(self.graph)
+        # pos = networkx.planar_layout(self.graph)
+        # pos = networkx.kamada_kawai_layout(self.graph, scale=10)
+        # pos = networkx.bipartite_layout(self.graph, [])
+        for i, node in enumerate(self.graph.nodes):
+            self.graph.nodes[node]["subset"] = i
+        pos = networkx.multipartite_layout(self.graph, align="horizontal")
+        # pos = self.hierarchy_pos(self.graph, vert_gap=1)
+
+        node_sizes = [3 + 10 * i for i in range(len(self.graph))]
+        M = self.graph.number_of_edges()
+        edge_colors = range(2, M + 2)
+        edge_alphas = [(5 + i) / (M + 4) for i in range(M)]
+        color_map = mpl.colormaps["plasma"]
+        from matplotlib.axes import Axes
+
+        ax: Axes = plt.gca()
+        ax.figure.set_size_inches(10, 10)
+        ax.set_axis_off()
+        ax.invert_yaxis()
+
+        from .component_artist import ComponentArtist
+
+        component_artists: Dict[str, ComponentArtist] = {}
+        for node in list(self.graph.nodes):
+            x, y = pos[node]
+            artist = ComponentArtist(x, y, node, self.get_component(node).__class__.__name__)
+            ax.add_artist(artist)
+            component_artists[node] = artist
+
+        # node_collection = ax.scatter(
+        #     xy[:, 0],
+        #     xy[:, 1],
+        #     s=node_sizes,
+        #     c="indigo",
+        #     marker="o",
+        #     cmap=color_map,
+        #     # vmin=vmin,
+        #     # vmax=vmax,
+        #     # alpha=alpha,
+        #     # linewidths=linewidths,
+        #     # edgecolors=edgecolors,
+        #     label="test label",
+        # )
+        # ax.tick_params(axis="both", which="both", bottom=False, left=False, labelbottom=False, labelleft=False)
+        # node_collection.set_zorder(2)
+
+        # nodes = networkx.draw_networkx_nodes(self.graph, pos, node_size=node_sizes, node_color="indigo")
+        # edges = networkx.draw_networkx_edges(
+        #     self.graph,
+        #     pos,
+        #     node_size=node_sizes,
+        #     arrowstyle="->",
+        #     arrowsize=10,
+        #     edge_color=edge_colors,
+        #     edge_cmap=color_map,
+        #     width=2,
+        # )
+
+        from matplotlib.patches import FancyArrowPatch
+
+        def find_intersection(p1, p2, p3, p4):
+            x1, y1 = p1
+            x2, y2 = p2
+            x3, y3 = p3
+            x4, y4 = p4
+            denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1)
+            if denom == 0:  # parallel
+                return None
+            ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom
+            if ua < 0 or ua > 1:  # out of range
+                return None
+            ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom
+            if ub < 0 or ub > 1:  # out of range
+                return None
+            x = x1 + ua * (x2 - x1)
+            y = y1 + ua * (y2 - y1)
+            return (x, y)
+
+        def get_line_edges(bbox):
+            return [
+                [
+                    ax.transData.inverted().transform_point((bbox.x0, bbox.y0)),
+                    ax.transData.inverted().transform_point((bbox.x1, bbox.y0)),
+                ],
+                [
+                    ax.transData.inverted().transform_point((bbox.x0, bbox.y1)),
+                    ax.transData.inverted().transform_point((bbox.x0, bbox.y0)),
+                ],
+                [
+                    ax.transData.inverted().transform_point((bbox.x1, bbox.y1)),
+                    ax.transData.inverted().transform_point((bbox.x0, bbox.y1)),
+                ],
+                [
+                    ax.transData.inverted().transform_point((bbox.x1, bbox.y0)),
+                    ax.transData.inverted().transform_point((bbox.x1, bbox.y1)),
+                ],
+            ]
+
+        arrows_cache = []
+
+        def draw_arrows():
+            for arrow in arrows_cache:
+                arrow.remove()
+            arrows_cache.clear()
+            for sender, receiver in list(self.graph.edges()):
+                if sender == receiver:
+                    # TODO: This is a self loop, a special case that we must handle in a different way.
+                    # We need to get a point on the component edge and draw a loop from there.
+                    continue
+
+                sender_pos = pos[sender]
+                receiver_pos = pos[receiver]
+
+                # Move arrows to edges
+                sender_bbox = component_artists[sender].get_bbox()
+                for edge in get_line_edges(sender_bbox):
+                    intersection = find_intersection(edge[0], edge[1], sender_pos, receiver_pos)
+                    if intersection:
+                        sender_pos = intersection
+                        break
+
+                receiver_bbox = component_artists[receiver].get_bbox()
+                for edge in get_line_edges(receiver_bbox):
+                    intersection = find_intersection(edge[0], edge[1], sender_pos, receiver_pos)
+                    if intersection:
+                        receiver_pos = intersection
+                        break
+
+                arrow = FancyArrowPatch(
+                    sender_pos, receiver_pos, arrowstyle="->", connectionstyle="angle3", mutation_scale=15
+                )
+                ax.add_patch(arrow)
+                arrows_cache.append(arrow)
+
+        def on_draw(event):
+            # TODO: Let's call this only if the arrows overlap with the components
+            draw_arrows()
+
+        ax.figure.canvas.mpl_connect("draw_event", on_draw)
+
+        draw_arrows()
+
+        # Update view after drawing
+        # TODO: We need to to also take into account the width and height of the drawn boxes
+        minx = min(xy[0] for xy in pos.values())
+        maxx = max(xy[0] for xy in pos.values())
+        miny = min(xy[1] for xy in pos.values())
+        maxy = max(xy[1] for xy in pos.values())
+        w = maxx - minx
+        h = maxy - miny
+        padx, pady = 0.1 * w, 0.1 * h
+        corners = (minx - padx, miny - pady), (maxx + padx, maxy + pady)
+        ax.update_datalim(corners)
+        ax.autoscale_view()
+
+        # # set alpha value for each edge
+        # for i in range(M):
+        #     edges[i].set_alpha(edge_alphas[i])
+
+        # pc = mpl.collections.PatchCollection(edges, cmap=color_map)
+        # pc.set_array(edge_colors)
+
+        # ax = fig.gca()
+        # ax.set_axis_off()
+        # fig.colorbar(pc, ax=ax)
+        plt.show()
+
+    def new_draw(self, path=""):
+        # from IPython.core.display import Image
+
+        self.draw_graph()
+        # return data
+        # return Image(data=data)
+
     def warm_up(self):
         """
         Make sure all nodes are warm.
