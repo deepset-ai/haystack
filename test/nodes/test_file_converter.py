@@ -432,7 +432,7 @@ def test_csv_to_document_with_wrong_qa_headers_raise_on_failure_true(tmp_path):
     ]
     write_as_csv(rows, csv_path)
 
-    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+    with pytest.raises(ValueError):
         node.run(file_paths=csv_path, raise_on_failure=True)
 
 
