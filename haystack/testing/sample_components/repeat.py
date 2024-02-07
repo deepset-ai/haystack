@@ -9,11 +9,11 @@ from haystack.core.component import component
 @component
 class Repeat:
     def __init__(self, outputs: List[str]):
-        self.outputs = outputs
+        self._outputs = outputs
         component.set_output_types(self, **{k: int for k in outputs})
 
     def run(self, value: int):
         """
         :param value: the value to repeat.
         """
-        return {val: value for val in self.outputs}
+        return {val: value for val in self._outputs}

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix auto-complete never working for any Component

@@ -15,16 +15,16 @@ class TestDynamicChatPromptBuilder:
 
         # we have inputs that contain: prompt_source, template_variables + runtime_variables
         expected_keys = set(runtime_variables + ["prompt_source", "template_variables"])
-        assert set(builder.__haystack_input__.keys()) == expected_keys
+        assert set(builder.__haystack_input__._sockets_dict.keys()) == expected_keys
 
         # response is always prompt regardless of chat mode
-        assert set(builder.__haystack_output__.keys()) == {"prompt"}
+        assert set(builder.__haystack_output__._sockets_dict.keys()) == {"prompt"}
 
         # prompt_source is a list of ChatMessage
-        assert builder.__haystack_input__["prompt_source"].type == List[ChatMessage]
+        assert builder.__haystack_input__._sockets_dict["prompt_source"].type == List[ChatMessage]
 
         # output is always prompt, but the type is different depending on the chat mode
-        assert builder.__haystack_output__["prompt"].type == List[ChatMessage]
+        assert builder.__haystack_output__._sockets_dict["prompt"].type == List[ChatMessage]
 
     def test_non_empty_chat_messages(self):
         prompt_builder = DynamicChatPromptBuilder(runtime_variables=["documents"])

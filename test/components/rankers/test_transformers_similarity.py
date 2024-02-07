@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock, patch
+from haystack.utils.auth import Secret
 
 import pytest
 import logging
@@ -19,7 +20,7 @@ class TestSimilarityRanker:
             "init_parameters": {
                 "device": None,
                 "top_k": 10,
-                "token": None,
+                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
                 "query_prefix": "",
                 "document_prefix": "",
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
@@ -36,7 +37,7 @@ class TestSimilarityRanker:
         component = TransformersSimilarityRanker(
             model="my_model",
             device=ComponentDevice.from_str("cuda:0"),
-            token="my_token",
+            token=Secret.from_env_var("ENV_VAR", strict=False),
             top_k=5,
             query_prefix="query_instruction: ",
             document_prefix="document_instruction: ",
@@ -51,7 +52,7 @@ class TestSimilarityRanker:
             "init_parameters": {
                 "device": None,
                 "model": "my_model",
-                "token": None,  # we don't serialize valid tokens,
+                "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "top_k": 5,
                 "query_prefix": "query_instruction: ",
                 "document_prefix": "document_instruction: ",
@@ -84,7 +85,7 @@ class TestSimilarityRanker:
                 "top_k": 10,
                 "query_prefix": "",
                 "document_prefix": "",
-                "token": None,
+                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
@@ -110,7 +111,7 @@ class TestSimilarityRanker:
         ],
     )
     def test_to_dict_device_map(self, device_map, expected):
-        component = TransformersSimilarityRanker(model_kwargs={"device_map": device_map})
+        component = TransformersSimilarityRanker(model_kwargs={"device_map": device_map}, token=None)
         data = component.to_dict()
 
         assert data == {

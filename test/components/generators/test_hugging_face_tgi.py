@@ -6,6 +6,18 @@ from huggingface_hub.utils import RepositoryNotFoundError
 
 from haystack.components.generators import HuggingFaceTGIGenerator
 from haystack.dataclasses import StreamingChunk
+from haystack.utils.auth import Secret
+
+
+@pytest.fixture
+def mock_list_inference_deployed_models():
+    with patch(
+        "haystack.components.generators.hugging_face_tgi.list_inference_deployed_models",
+        MagicMock(
+            return_value=["HuggingFaceH4/zephyr-7b-alpha", "HuggingFaceH4/zephyr-7b-alpha", "mistralai/Mistral-7B-v0.1"]
+        ),
+    ) as mock:
+        yield mock
 
 
 @pytest.fixture
@@ -59,7 +71,10 @@ class TestHuggingFaceTGIGenerator:
     def test_to_dict(self, mock_check_valid_model):
         # Initialize the HuggingFaceRemoteGenerator object with valid parameters
         generator = HuggingFaceTGIGenerator(
-            token="token", generation_kwargs={"n": 5}, stop_words=["stop", "words"], streaming_callback=lambda x: x
+            token=Secret.from_env_var("ENV_VAR", strict=False),
+            generation_kwargs={"n": 5},
+            stop_words=["stop", "words"],
+            streaming_callback=lambda x: x,
         )
 
         # Call the to_dict method
@@ -68,7 +83,7 @@ class TestHuggingFaceTGIGenerator:
 
         # Assert that the init_params dictionary contains the expected keys and values
         assert init_params["model"] == "mistralai/Mistral-7B-v0.1"
-        assert not init_params["token"]
+        assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
 
     def test_from_dict(self, mock_check_valid_model):
@@ -98,7 +113,7 @@ class TestHuggingFaceTGIGenerator:
             HuggingFaceTGIGenerator(model="invalid_model_id", url="https://some_chat_model.com")
 
     def test_generate_text_response_with_valid_prompt_and_generation_parameters(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
+        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, mock_list_inference_deployed_models
     ):
         model = "mistralai/Mistral-7B-v0.1"
 
@@ -132,7 +147,7 @@ class TestHuggingFaceTGIGenerator:
         assert [isinstance(reply, str) for reply in response["replies"]]
 
     def test_generate_multiple_text_responses_with_valid_prompt_and_generation_parameters(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
+        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, mock_list_inference_deployed_models
     ):
         model = "mistralai/Mistral-7B-v0.1"
         generation_kwargs = {"n": 3}
@@ -182,7 +197,9 @@ class TestHuggingFaceTGIGenerator:
                 streaming_callback=streaming_callback,
             )
 
-    def test_generate_text_with_stop_words(self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation):
+    def test_generate_text_with_stop_words(
+        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, mock_list_inference_deployed_models
+    ):
         generator = HuggingFaceTGIGenerator()
         generator.warm_up()
 
@@ -206,7 +223,7 @@ class TestHuggingFaceTGIGenerator:
         assert [isinstance(reply, dict) for reply in response["replies"]]
 
     def test_generate_text_with_custom_generation_parameters(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
+        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, mock_list_inference_deployed_models
     ):
         generator = HuggingFaceTGIGenerator()
         generator.warm_up()
@@ -232,7 +249,7 @@ class TestHuggingFaceTGIGenerator:
         assert [isinstance(reply, str) for reply in response["replies"]]
 
     def test_generate_text_with_streaming_callback(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
+        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, mock_list_inference_deployed_models
     ):
         streaming_call_count = 0
 

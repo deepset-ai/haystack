@@ -74,8 +74,10 @@ from copy import deepcopy
 from types import new_class
 from typing import Any, Protocol, runtime_checkable
 
-from haystack.core.component.sockets import InputSocket, OutputSocket, _empty
 from haystack.core.errors import ComponentError
+
+from .sockets import Sockets
+from .types import InputSocket, OutputSocket, _empty
 
 logger = logging.getLogger(__name__)
 
@@ -131,12 +133,14 @@ class ComponentMeta(type):
             # that stores the output specification.
             # We deepcopy the content of the cache to transfer ownership from the class method
             # to the actual instance, so that different instances of the same class won't share this data.
-            instance.__haystack_output__ = deepcopy(getattr(instance.run, "_output_types_cache", {}))
+            instance.__haystack_output__ = Sockets(
+                instance, deepcopy(getattr(instance.run, "_output_types_cache", {})), OutputSocket
+            )
 
         # Create the sockets if set_input_types() wasn't called in the constructor.
         # If it was called and there are some parameters also in the `run()` method, these take precedence.
         if not hasattr(instance, "__haystack_input__"):
-            instance.__haystack_input__ = {}
+            instance.__haystack_input__ = Sockets(instance, {}, InputSocket)
         run_signature = inspect.signature(getattr(cls, "run"))
         for param in list(run_signature.parameters)[1:]:  # First is 'self' and it doesn't matter.
             if run_signature.parameters[param].kind not in (
@@ -185,7 +189,7 @@ class _Component:
         :param default: default value of the input socket, defaults to _empty
         """
         if not hasattr(instance, "__haystack_input__"):
-            instance.__haystack_input__ = {}
+            instance.__haystack_input__ = Sockets(instance, {}, InputSocket)
         instance.__haystack_input__[name] = InputSocket(name=name, type=type, default_value=default)
 
     def set_input_types(self, instance, **types):
@@ -229,7 +233,9 @@ class _Component:
         parameter mandatory as specified in `set_input_types`.
 
         """
-        instance.__haystack_input__ = {name: InputSocket(name=name, type=type_) for name, type_ in types.items()}
+        instance.__haystack_input__ = Sockets(
+            instance, {name: InputSocket(name=name, type=type_) for name, type_ in types.items()}, InputSocket
+        )
 
     def set_output_types(self, instance, **types):
         """
@@ -251,7 +257,9 @@ class _Component:
                 return {"output_1": 1, "output_2": "2"}
         ```
         """
-        instance.__haystack_output__ = {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()}
+        instance.__haystack_output__ = Sockets(
+            instance, {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()}, OutputSocket
+        )
 
     def output_types(self, **types):
         """
@@ -307,7 +315,9 @@ class _Component:
                 namespace[key] = val
 
         # Recreate the decorated component class so it uses our metaclass
-        class_ = new_class(class_.__name__, class_.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace)
+        class_: class_.__name__ = new_class(
+            class_.__name__, class_.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace
+        )
 
         # Save the component in the class registry (for deserialization)
         class_path = f"{class_.__module__}.{class_.__name__}"

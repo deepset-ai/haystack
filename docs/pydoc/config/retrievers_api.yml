@@ -1,0 +1,26 @@
+loaders:
+  - type: haystack_pydoc_tools.loaders.CustomPythonLoader
+    search_path: [../../../haystack/components/retrievers/in_memory]
+    modules: ["bm25_retriever", "embedding_retriever"]
+    ignore_when_discovered: ["__init__"]
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
+  excerpt: Sweeps through a Document Store and returns a set of candidate Documents that are relevant to the query.
+  category_slug: haystack-api
+  title: Retrievers
+  slug: retrievers-api
+  order: 130
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: retrievers_api.md

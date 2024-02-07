@@ -9,6 +9,7 @@ from openai.types.chat import ChatCompletionChunk, ChatCompletion
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import StreamingChunk, ChatMessage
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ class OpenAIGenerator:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-3.5-turbo",
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         api_base_url: Optional[str] = None,
@@ -62,8 +63,7 @@ class OpenAIGenerator:
         Creates an instance of OpenAIGenerator. Unless specified otherwise in the `model`, this is for OpenAI's
         GPT-3.5 model.
 
-        :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
-            environment variable OPENAI_API_KEY (recommended).
+        :param api_key: The OpenAI API key.
         :param model: The name of the model to use.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function accepts StreamingChunk as an argument.
@@ -92,6 +92,7 @@ class OpenAIGenerator:
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         """
+        self.api_key = api_key
         self.model = model
         self.generation_kwargs = generation_kwargs or {}
         self.system_prompt = system_prompt
@@ -99,7 +100,7 @@ class OpenAIGenerator:
 
         self.api_base_url = api_base_url
         self.organization = organization
-        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
+        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -120,6 +121,7 @@ class OpenAIGenerator:
             api_base_url=self.api_base_url,
             generation_kwargs=self.generation_kwargs,
             system_prompt=self.system_prompt,
+            api_key=self.api_key.to_dict(),
         )
 
     @classmethod
@@ -129,6 +131,7 @@ class OpenAIGenerator:
         :param data: The dictionary representation of this component.
         :return: The deserialized component instance.
         """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
@@ -279,7 +282,7 @@ class OpenAIGenerator:
 class GPTGenerator(OpenAIGenerator):
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-3.5-turbo",
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         api_base_url: Optional[str] = None,

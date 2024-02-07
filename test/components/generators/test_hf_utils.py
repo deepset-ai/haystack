@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.components.generators.hf_utils import check_generation_params
+from haystack.utils.hf import check_generation_params
 
 
 def test_empty_dictionary():

@@ -7,6 +7,7 @@ from openai import OpenAI
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class RemoteWhisperTranscriber:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "whisper-1",
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
@@ -61,6 +62,7 @@ class RemoteWhisperTranscriber:
         self.organization = organization
         self.model = model
         self.api_base_url = api_base_url
+        self.api_key = api_key
 
         # Only response_format = "json" is supported
         whisper_params = kwargs
@@ -71,7 +73,7 @@ class RemoteWhisperTranscriber:
             )
         whisper_params["response_format"] = "json"
         self.whisper_params = whisper_params
-        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
+        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -81,6 +83,7 @@ class RemoteWhisperTranscriber:
         """
         return default_to_dict(
             self,
+            api_key=self.api_key.to_dict(),
             model=self.model,
             organization=self.organization,
             api_base_url=self.api_base_url,
@@ -92,6 +95,7 @@ class RemoteWhisperTranscriber:
         """
         Deserialize this component from a dictionary.
         """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])

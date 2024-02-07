@@ -1,10 +1,14 @@
 import re
 import string
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 def preprocess_text(
-    texts: List[str], regexes_to_ignore=None, ignore_case=False, ignore_punctuation=False, ignore_numbers=False
+    texts: List[str],
+    regexes_to_ignore: Optional[List[str]] = None,
+    ignore_case: bool = False,
+    ignore_punctuation: bool = False,
+    ignore_numbers: bool = False,
 ) -> List[str]:
     """
     Preprocess the outputs of the runnable to remove unwanted characters.

@@ -6,8 +6,9 @@ from urllib.parse import urlparse
 from haystack import component, default_to_dict, default_from_dict
 from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import ChatMessage, StreamingChunk
-from haystack.components.generators.hf_utils import check_valid_model, check_generation_params
 from haystack.lazy_imports import LazyImport
+from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils.hf import check_valid_model, HFModelType, check_generation_params, list_inference_deployed_models
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
@@ -28,12 +29,13 @@ class HuggingFaceTGIChatGenerator:
     ```python
     from haystack.components.generators.chat import HuggingFaceTGIChatGenerator
     from haystack.dataclasses import ChatMessage
+    from haystack.utils import Secret
 
     messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
                 ChatMessage.from_user("What's Natural Language Processing?")]
 
 
-    client = HuggingFaceTGIChatGenerator(model="meta-llama/Llama-2-70b-chat-hf", token="<your-token>")
+    client = HuggingFaceTGIChatGenerator(model="HuggingFaceH4/zephyr-7b-beta", token=Secret.from_token("<your-api-key>"))
     client.warm_up()
     response = client.run(messages, generation_kwargs={"max_new_tokens": 120})
     print(response)
@@ -49,9 +51,9 @@ class HuggingFaceTGIChatGenerator:
     messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
                 ChatMessage.from_user("What's Natural Language Processing?")]
 
-    client = HuggingFaceTGIChatGenerator(model="meta-llama/Llama-2-70b-chat-hf",
+    client = HuggingFaceTGIChatGenerator(model="HuggingFaceH4/zephyr-7b-beta",
                                          url="<your-tgi-endpoint-url>",
-                                         token="<your-token>")
+                                         token=Secret.from_token("<your-api-key>"))
     client.warm_up()
     response = client.run(messages, generation_kwargs={"max_new_tokens": 120})
     print(response)
@@ -83,9 +85,9 @@ class HuggingFaceTGIChatGenerator:
 
     def __init__(
         self,
-        model: str = "meta-llama/Llama-2-13b-chat-hf",
+        model: str = "HuggingFaceH4/zephyr-7b-beta",
         url: Optional[str] = None,
-        token: Optional[str] = None,
+        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         chat_template: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
@@ -94,7 +96,7 @@ class HuggingFaceTGIChatGenerator:
         """
         Initialize the HuggingFaceTGIChatGenerator instance.
 
-        :param model: A string representing the model path or URL. Default is "meta-llama/Llama-2-13b-chat-hf".
+        :param model: A string representing the model path or URL. Default is "HuggingFaceH4/zephyr-7b-beta".
         :param url: An optional string representing the URL of the TGI endpoint.
         :param chat_template: This optional parameter allows you to specify a Jinja template for formatting chat
             messages. While high-quality and well-supported chat models typically include their own chat templates
@@ -118,7 +120,7 @@ class HuggingFaceTGIChatGenerator:
             if not is_valid_url:
                 raise ValueError(f"Invalid TGI endpoint URL provided: {url}")
 
-        check_valid_model(model, token)
+        check_valid_model(model, HFModelType.GENERATION, token)
 
         # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
@@ -131,15 +133,31 @@ class HuggingFaceTGIChatGenerator:
         self.chat_template = chat_template
         self.token = token
         self.generation_kwargs = generation_kwargs
-        self.client = InferenceClient(url or model, token=token)
+        self.client = InferenceClient(url or model, token=token.resolve_value() if token else None)
         self.streaming_callback = streaming_callback
         self.tokenizer = None
 
     def warm_up(self) -> None:
         """
-        Load the tokenizer.
+        If the url is not provided, check if the model is deployed on the free tier of the HF inference API.
+        Load the tokenizer
         """
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model, token=self.token)
+
+        # is this user using HF free tier inference API?
+        if self.model and not self.url:
+            deployed_models = list_inference_deployed_models()
+            # Determine if the specified model is deployed in the free tier.
+            if self.model not in deployed_models:
+                raise ValueError(
+                    f"The model {self.model} is not deployed on the free tier of the HF inference API. "
+                    "To use free tier models provide the model ID and the token. Valid models are: "
+                    f"{deployed_models}"
+                )
+
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.model, token=self.token.resolve_value() if self.token else None
+        )
+
         # mypy can't infer that chat_template attribute exists on the object returned by AutoTokenizer.from_pretrained
         chat_template = getattr(self.tokenizer, "chat_template", None)
         if not chat_template and not self.chat_template:
@@ -162,7 +180,7 @@ class HuggingFaceTGIChatGenerator:
             model=self.model,
             url=self.url,
             chat_template=self.chat_template,
-            token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
+            token=self.token.to_dict() if self.token else None,
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
         )
@@ -172,6 +190,7 @@ class HuggingFaceTGIChatGenerator:
         """
         Deserialize this component from a dictionary.
         """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
