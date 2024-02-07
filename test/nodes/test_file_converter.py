@@ -447,7 +447,7 @@ def test_csv_to_document_with_wrong_qa_headers_raise_on_failure_false(tmp_path):
     write_as_csv(rows, csv_path)
 
     result, _ = node.run(file_paths=csv_path, raise_on_failure=False)
-    assert len(result) == 0
+    assert len(result["documents"]) == 0
 
 
 @pytest.mark.unit
