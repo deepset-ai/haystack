@@ -5,6 +5,7 @@ from haystack.components.converters.pypdf import PyPDFToDocument
 from haystack.components.converters.html import HTMLToDocument
 from haystack.components.converters.markdown import MarkdownToDocument
 from haystack.components.converters.openapi_functions import OpenAPIServiceToFunctions
+from haystack.components.converters.output_adapter import OutputAdapter
 
 __all__ = [
     "TextFileToDocument",
@@ -14,4 +15,5 @@ __all__ = [
     "HTMLToDocument",
     "MarkdownToDocument",
     "OpenAPIServiceToFunctions",
+    "OutputAdapter",
 ]
