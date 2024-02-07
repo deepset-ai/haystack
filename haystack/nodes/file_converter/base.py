@@ -201,6 +201,7 @@ class BaseConverter(BaseComponent):
             meta = [meta] * len(file_paths)
 
         documents: list = []
+        failed_paths: list = []
         for file_path, file_meta in tqdm(
             zip(file_paths, meta), total=len(file_paths), disable=not self.progress_bar, desc="Converting files"
         ):
@@ -216,6 +217,7 @@ class BaseConverter(BaseComponent):
             except Exception as e:
                 if raise_on_failure:
                     raise e
+                failed_paths.append(file_path)
                 continue
 
         # Cleanup ligatures
@@ -223,6 +225,9 @@ class BaseConverter(BaseComponent):
             for ligature, letters in known_ligatures.items():
                 if document.content is not None:
                     document.content = document.content.replace(ligature, letters)
+
+        if len(failed_paths):
+            logger.warning("Failed paths: %s", ",".join(failed_paths))
 
         result = {"documents": documents}
         return result, "output_1"
