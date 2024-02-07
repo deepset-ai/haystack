@@ -158,7 +158,7 @@ class BaseConverter(BaseComponent):
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "UTF-8",
         id_hash_keys: Optional[List[str]] = None,
-        raise_on_failure: Optional[bool] = True,
+        raise_on_failure: bool = True,
     ):
         """
         Extract text from a file.
