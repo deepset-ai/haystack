@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Change the dummy vector used internally in the Pinecone Document Store.
+    A recent change to the Pinecone API does not allow to use vectors filled with zeros
+    as was the previous dummy vector.

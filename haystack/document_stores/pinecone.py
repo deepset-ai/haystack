@@ -178,8 +178,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         # Initialize dictionary to store temporary set of document IDs
         self.all_ids: dict = {}
 
-        # Dummy query to be used during searches
-        self.dummy_query = [0.0] * self.embedding_dim
+        # Dummy vector to be used during searches and as a placeholder for documents without embeddings
+        self.dummy_vector = [-10.0] * self.embedding_dim
 
         if pinecone_index:
             if not isinstance(pinecone_index, pinecone.Index):
@@ -384,9 +384,9 @@ class PineconeDocumentStore(BaseDocumentStore):
             return namespaces[namespace]["vector_count"] if namespace in namespaces else 0
 
         # Due to missing support for metadata filtering in `describe_index_stats()` method for `gcp-starter`,
-        # use dummy query for getting vector count
+        # use dummy query vector for getting vector count
         res = self.pinecone_indexes[index].query(
-            self.dummy_query,
+            self.dummy_vector,
             top_k=self.top_k_limit,
             include_values=False,
             include_metadata=False,
@@ -684,9 +684,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                         embeddings = [embed.tolist() if embed is not None else None for embed in embeddings_to_index]
                     else:
                         # Use dummy embeddings for all documents
-                        embeddings_to_index = np.zeros((len(document_chunk), self.embedding_dim), dtype="float32")
-                        # Convert embeddings to list objects
-                        embeddings = [embed.tolist() if embed is not None else None for embed in embeddings_to_index]
+                        embeddings = [self.dummy_vector] * len(document_chunk)
 
                     data_to_write_to_pinecone = list(zip(ids, embeddings, metadata))
                     # Store chunk by chunk (for regular upsert) or chunk by chunk (for async upsert) in vector store
@@ -1582,7 +1580,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         # Retrieve embeddings from Pinecone
         try:
             res = self.pinecone_indexes[index].query(
-                self.dummy_query,
+                self.dummy_vector,
                 top_k=batch_size,
                 include_values=False,
                 include_metadata=False,
@@ -1830,7 +1828,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self._index_connection_exists(index)
 
         i = 0
-        dummy_query = np.asarray(self.dummy_query)
+        dummy_query = np.asarray(self.dummy_vector)
 
         type_metadata = LABEL
 
