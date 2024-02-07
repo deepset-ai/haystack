@@ -14,6 +14,27 @@ logger = logging.getLogger(__name__)
 class FilterRetriever:
     """
     Retrieves documents that match the provided filters.
+
+    Usage example:
+    ```python
+    from haystack import Document
+    from haystack.components.retrievers import FilterRetriever
+    from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+    docs = [
+        Document(content="Python is a popular programming language", meta={"lang": "en"}),
+        Document(content="python ist eine beliebte Programmiersprache", meta={"lang": "de"}),
+    ]
+
+    doc_store = InMemoryDocumentStore()
+    doc_store.write_documents(docs)
+    retriever = FilterRetriever(doc_store, filters={"field": "lang", "operator": "==", "value": "en"})
+    result = retriever.run(filters={"field": "lang", "operator": "==", "value": "de"})
+
+    assert "documents" in result
+    assert len(result["documents"]) == 1
+    assert result["documents"][0].content == "python ist eine beliebte Programmiersprache"
+    ```
     """
 
     def __init__(self, document_store: DocumentStore, filters: Optional[Dict[str, Any]] = None):
@@ -68,7 +89,7 @@ class FilterRetriever:
         Run the FilterRetriever on the given input data.
 
         :param filters: A dictionary with filters to narrow down the search space.
-            If not specified, the value provided at initialization is used.
+            If not specified, the FilterRetriever uses the value provided at initialization.
         :return: The retrieved documents.
         """
         if filters is None:
