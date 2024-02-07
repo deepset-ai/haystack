@@ -217,7 +217,7 @@ class BaseConverter(BaseComponent):
             except Exception as e:
                 if raise_on_failure:
                     raise e
-                failed_paths.append(file_path)
+                failed_paths.append(str(file_path))
                 continue
 
         # Cleanup ligatures
