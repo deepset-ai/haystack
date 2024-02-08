@@ -126,6 +126,9 @@ class NamedEntityExtractor:
             raise ComponentError(f"Unknown NER backend '{type(backend).__name__}' for extractor")
 
     def warm_up(self):
+        """
+        Initialize the named entity extractor backend.
+        """
         try:
             self._backend.initialize()
         except Exception as e:
@@ -135,6 +138,16 @@ class NamedEntityExtractor:
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document], batch_size: int = 1) -> Dict[str, Any]:
+        """
+         Run the named-entity extractor.
+
+        :param documents:
+             Documents to process.
+         :param batch_size:
+             Batch size used for processing the documents.
+         :returns:
+             The processed documents.
+        """
         texts = [doc.content if doc.content is not None else "" for doc in documents]
         annotations = self._backend.annotate(texts, batch_size=batch_size)
 
@@ -150,6 +163,9 @@ class NamedEntityExtractor:
         return {"documents": documents}
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
         return default_to_dict(
             self,
             backend=self._backend.type,
@@ -160,6 +176,12 @@ class NamedEntityExtractor:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "NamedEntityExtractor":
+        """
+        Deserialize the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        """
         try:
             init_params = data["init_parameters"]
             init_params["device"] = ComponentDevice.from_dict(init_params["device"])
