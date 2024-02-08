@@ -52,7 +52,7 @@ def test_routedocuments_by_content_type_return_remaining(docs_diff_types):
 
 
 @pytest.mark.unit
-def test_routedocuments_by_metafield(docs):
+def test_routedocuments_by_metafield_str(docs):
     route_documents = RouteDocuments(split_by="meta_field", metadata_values=["test1", "test3", "test5"])
     assert route_documents.outgoing_edges == 3
     result, _ = route_documents.run(docs)
@@ -63,6 +63,40 @@ def test_routedocuments_by_metafield(docs):
     assert result["output_1"][0].meta["meta_field"] == "test1"
     assert result["output_2"][0].meta["meta_field"] == "test3"
     assert result["output_3"][0].meta["meta_field"] == "test5"
+
+
+@pytest.mark.unit
+def test_routedocuments_by_metafield_int():
+    docs = [
+        Document(content="doc 1", meta={"meta_field": 1}),
+        Document(content="doc 2", meta={"meta_field": 1}),
+        Document(content="doc 3", meta={"meta_field": 2}),
+    ]
+    route_documents = RouteDocuments(split_by="meta_field", metadata_values=[1, 2])
+    assert route_documents.outgoing_edges == 2
+    result, _ = route_documents.run(docs)
+    assert len(result["output_1"]) == 2
+    assert len(result["output_2"]) == 1
+    assert "output_4" not in result
+    assert result["output_1"][0].meta["meta_field"] == 1
+    assert result["output_2"][0].meta["meta_field"] == 2
+
+
+@pytest.mark.unit
+def test_routedocuments_by_metafield_bool():
+    docs = [
+        Document(content="doc 1", meta={"meta_field": True}),
+        Document(content="doc 2", meta={"meta_field": True}),
+        Document(content="doc 3", meta={"meta_field": False}),
+    ]
+    route_documents = RouteDocuments(split_by="meta_field", metadata_values=[True, False])
+    assert route_documents.outgoing_edges == 2
+    result, _ = route_documents.run(docs)
+    assert len(result["output_1"]) == 2
+    assert len(result["output_2"]) == 1
+    assert "output_4" not in result
+    assert result["output_1"][0].meta["meta_field"] == True
+    assert result["output_2"][0].meta["meta_field"] == False
 
 
 @pytest.mark.unit
