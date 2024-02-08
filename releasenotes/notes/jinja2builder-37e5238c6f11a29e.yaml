@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Introduces `Jinja2Builder`, functionally identical to `PromptBuilder` but with a different
+    output connection name (`string` instead of `prompt`).
