@@ -143,9 +143,9 @@ class NamedEntityExtractor:
 
         :param documents:
              Documents to process.
-         :param batch_size:
+        :param batch_size:
              Batch size used for processing the documents.
-         :returns:
+        :returns:
              The processed documents.
         """
         texts = [doc.content if doc.content is not None else "" for doc in documents]
