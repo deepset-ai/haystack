@@ -1,7 +1,12 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/retrievers/in_memory]
-    modules: ["bm25_retriever", "embedding_retriever"]
+    search_path: [../../../haystack/components/retrievers]
+    modules:
+      [
+        "in_memory/bm25_retriever",
+        "in_memory/embedding_retriever",
+        "filter_retriever",
+      ]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
