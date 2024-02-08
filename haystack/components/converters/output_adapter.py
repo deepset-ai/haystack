@@ -41,11 +41,29 @@ class OutputAdapter:
 
     Example pipeline setup:
 
+    ```python
+    from haystack import Pipeline, component
+    from haystack.components.converters import OutputAdapter
+
+    @component
+    class DocumentProducer:
+        @component.output_types(documents=dict)
+        def run(self):
+            return {"documents": [{"content": '{"framework": "Haystack"}'}]}
+
+    pipe = Pipeline()
+    pipe.add_component(
+        name="output_adapter",
+        instance=OutputAdapter(template="{{ documents[0].content | json_loads}}", output_type=str),
+    )
+    pipe.add_component(name="document_producer", instance=DocumentProducer())
+    pipe.connect("document_producer", "output_adapter")
+    result = pipe.run(data={})
+    assert result["output_adapter"]["output"] == {"framework": "Haystack"}
+    ```
     """
 
-    predefined_filters = {
-        "json_loads": lambda s: json.loads(s) if isinstance(s, str) else json.loads(str(s)),
-    }
+    predefined_filters = {"json_loads": lambda s: json.loads(s) if isinstance(s, str) else json.loads(str(s))}
 
     def __init__(self, template: str, output_type: Any, custom_filters: Optional[Dict[str, Callable]] = None):
         """
