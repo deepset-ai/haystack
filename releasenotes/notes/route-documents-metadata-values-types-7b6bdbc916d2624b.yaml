@@ -3,4 +3,4 @@ fixes:
   - |
     The types of meta data values accepted by RouteDocuments was unnecessarily restricted to string types.
     This causes validation errors (for example when loading from a yaml file) if a user tries to use a boolean type for example.
-    We add boolean and int types as valid types for metadata_values
+    We add boolean and int types as valid types for metadata_values.
