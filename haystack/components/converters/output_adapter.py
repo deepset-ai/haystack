@@ -1,9 +1,10 @@
 import json
-from typing import Optional, Dict, Any, Set, Callable, TypeAlias
+from typing import Optional, Dict, Any, Set, Callable
 
 import jinja2.runtime
 from jinja2 import TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
+from typing_extensions import TypeAlias
 
 from haystack import component, default_to_dict, default_from_dict
 from haystack.utils.type_serialization import serialize_type, deserialize_type
