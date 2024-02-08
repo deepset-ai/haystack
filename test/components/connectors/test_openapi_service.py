@@ -1,4 +1,3 @@
-import json
 import pytest
 from unittest.mock import MagicMock, Mock
 from openapi3 import OpenAPI
@@ -12,15 +11,10 @@ def openapi_service_mock():
     return MagicMock(spec=OpenAPI)
 
 
-@pytest.fixture
-def service_auths():
-    return {"TestService": "auth_token"}
-
-
 class TestOpenAPIServiceConnector:
     @pytest.fixture
-    def connector(self, service_auths):
-        return OpenAPIServiceConnector(service_auths)
+    def connector(self):
+        return OpenAPIServiceConnector()
 
     def test_parse_message_invalid_json(self, connector):
         # Test invalid JSON content
@@ -62,11 +56,16 @@ class TestOpenAPIServiceConnector:
         with pytest.raises(ValueError):
             connector._parse_message(ChatMessage.from_assistant('[{"function": {"name": "test_method"}}]'))
 
-    def test_authenticate_service_invalid(self, connector, openapi_service_mock):
-        # Test invalid or missing authentication
+    def test_authenticate_service_missing_authentication(self, connector, openapi_service_mock):
+        # Test missing authentication when it is required
         openapi_service_mock.components.securitySchemes = {"apiKey": {}}
         with pytest.raises(ValueError):
             connector._authenticate_service(openapi_service_mock)
+
+    def test_authenticate_service_having_authentication(self, connector, openapi_service_mock):
+        # Test authentication when it is required and provided
+        openapi_service_mock.components.securitySchemes = {"apiKey": {}}
+        connector._authenticate_service(openapi_service_mock, "some_token")
 
     def test_invoke_method_valid(self, connector, openapi_service_mock):
         # Test valid method invocation
