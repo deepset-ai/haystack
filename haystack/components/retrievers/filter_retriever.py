@@ -29,6 +29,8 @@ class FilterRetriever:
     doc_store = InMemoryDocumentStore()
     doc_store.write_documents(docs)
     retriever = FilterRetriever(doc_store, filters={"field": "lang", "operator": "==", "value": "en"})
+
+    # if passed in the run method, filters will override those provided at initialization
     result = retriever.run(filters={"field": "lang", "operator": "==", "value": "de"})
 
     assert "documents" in result
@@ -41,7 +43,7 @@ class FilterRetriever:
         """
         Create the FilterRetriever component.
 
-        :param document_store: An instance of InMemoryDocumentStore.
+        :param document_store: An instance of a DocumentStore.
         :param filters: A dictionary with filters to narrow down the search space. Defaults to `None`.
         """
         self.document_store = document_store
@@ -92,7 +94,4 @@ class FilterRetriever:
             If not specified, the FilterRetriever uses the value provided at initialization.
         :return: The retrieved documents.
         """
-        if filters is None:
-            filters = self.filters
-
-        return {"documents": self.document_store.filter_documents(filters=filters)}
+        return {"documents": self.document_store.filter_documents(filters=filters or self.filters)}
