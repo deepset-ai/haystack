@@ -1,16 +1,84 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-import logging
 import base64
+import logging
+from pathlib import Path
+from typing import Optional
 
-import requests
 import networkx  # type:ignore
+import requests
 
 from haystack.core.errors import PipelineDrawingError
+from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
 from haystack.core.type_utils import _type_name
 
 logger = logging.getLogger(__name__)
+
+
+def _draw(graph: networkx.MultiDiGraph, path: Optional[Path] = None) -> None:
+    """
+    Draw a pipeline graph using Mermaid and save it to a file.
+    If on a Jupyter notebook, it will also display the image inline.
+    """
+    image_data = _to_mermaid_image(_prepare_for_drawing(graph))
+
+    in_notebook = False
+    try:
+        from IPython.core.getipython import get_ipython
+        from IPython.display import Image, display
+
+        if "IPKernelApp" in get_ipython().config:
+            # We're in a notebook, let's display the image
+            display(Image(image_data))
+            in_notebook = True
+    except ImportError:
+        pass
+    except AttributeError:
+        pass
+
+    if not in_notebook and not path:
+        # We're not in a notebook and no path is given, the user must have forgot
+        # to specify the path. Raise an error.
+        msg = "No path specified to save the image to."
+        raise ValueError(msg)
+
+    if path:
+        # If we reached this point we're in a notebook and the user has specified a path.
+        # Let's save the image anyway even if it's been displayed in the notebook.
+        Path(path).write_bytes(image_data)
+
+
+def _prepare_for_drawing(graph: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
+    """
+    Add some extra nodes to show the inputs and outputs of the pipeline.
+    Also adds labels to edges.
+    """
+    # Label the edges
+    for inp, outp, key, data in graph.edges(keys=True, data=True):
+        data[
+            "label"
+        ] = f"{data['from_socket'].name} -> {data['to_socket'].name}{' (opt.)' if not data['mandatory'] else ''}"
+        graph.add_edge(inp, outp, key=key, **data)
+
+    # Add inputs fake node
+    graph.add_node("input")
+    for node, in_sockets in find_pipeline_inputs(graph).items():
+        for in_socket in in_sockets:
+            if not in_socket.senders and in_socket.is_mandatory:
+                # If this socket has no sender it could be a socket that receives input
+                # directly when running the Pipeline. We can't know that for sure, in doubt
+                # we draw it as receiving input directly.
+                graph.add_edge("input", node, label=in_socket.name, conn_type=_type_name(in_socket.type))
+
+    # Add outputs fake node
+    graph.add_node("output")
+    for node, out_sockets in find_pipeline_outputs(graph).items():
+        for out_socket in out_sockets:
+            graph.add_edge(node, "output", label=out_socket.name, conn_type=_type_name(out_socket.type))
+
+    return graph
+
 
 ARROWTAIL_MANDATORY = "--"
 ARROWTAIL_OPTIONAL = "-."

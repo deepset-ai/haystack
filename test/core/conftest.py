@@ -1,8 +1,7 @@
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
-
-from unittest.mock import patch, MagicMock
 
 
 @pytest.fixture
@@ -15,7 +14,7 @@ def mock_mermaid_request(test_files):
     """
     Prevents real requests to https://mermaid.ink/
     """
-    with patch("haystack.core.pipeline.draw.mermaid.requests.get") as mock_get:
+    with patch("haystack.core.pipeline.draw.requests.get") as mock_get:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = open(test_files / "mermaid_mock" / "test_response.png", "rb").read()

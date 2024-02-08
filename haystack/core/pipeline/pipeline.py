@@ -12,10 +12,11 @@ import networkx  # type:ignore
 
 from haystack.core.component import Component, InputSocket, OutputSocket, component
 from haystack.core.errors import PipelineConnectError, PipelineError, PipelineRuntimeError, PipelineValidationError
-from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
-from haystack.core.pipeline.draw.draw import RenderingEngines, _draw
 from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
+
+from .descriptions import find_pipeline_inputs, find_pipeline_outputs
+from .draw import _draw
 
 logger = logging.getLogger(__name__)
 
@@ -441,24 +442,17 @@ class Pipeline:
         }
         return outputs
 
-    def draw(self, path: Path, engine: RenderingEngines = "mermaid-image") -> None:
+    def draw(self, path: Optional[Path] = None) -> None:
         """
-        Draws the pipeline. Requires either `graphviz` as a system dependency, or an internet connection for Mermaid.
-        Run `pip install graphviz` or `pip install mermaid` to install missing dependencies.
+        Save a Pipeline image to `path`.
+        If `path` is `None` the image will be displayed inline in the Jupyter notebook.
+        If `path` is `None` and the code is not running in a Jupyter notebook, an error will be raised.
 
-        Args:
-            path: where to save the diagram.
-            engine: which format to save the graph as. Accepts 'graphviz', 'mermaid-text', 'mermaid-image'.
-                Default is 'mermaid-image'.
-
-        Returns:
-            None
-
-        Raises:
-            ImportError: if `engine='graphviz'` and `pygraphviz` is not installed.
-            HTTPConnectionError: (and similar) if the internet connection is down or other connection issues.
+        If `path` is given it will always be saved to file, whether it's a notebook or not.
         """
-        _draw(graph=networkx.MultiDiGraph(self.graph), path=path, engine=engine)
+        # Before drawing we edit a bit the graph, to avoid modifying the original that is
+        # used for running the pipeline we copy it.
+        _draw(graph=self.graph.copy(), path=path)
 
     def warm_up(self):
         """

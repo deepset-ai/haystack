@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    `Pipeline.draw()` will now show the generated image inline if run in a Jupyter notebook.
+    It can also be called without a path to save the image if in a notebook. In all other cases
+    it will raise a `ValueError`.
