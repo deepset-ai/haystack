@@ -1,5 +1,10 @@
+import json
+import os
+
 import pytest
 from unittest.mock import MagicMock, Mock
+
+import requests
 from openapi3 import OpenAPI
 from openapi3.schemas import Model
 from haystack.components.connectors import OpenAPIServiceConnector
@@ -9,6 +14,27 @@ from haystack.dataclasses import ChatMessage
 @pytest.fixture
 def openapi_service_mock():
     return MagicMock(spec=OpenAPI)
+
+
+@pytest.fixture
+def random_open_pull_request_head_branch() -> str:
+    token = os.getenv("GITHUB_TOKEN")
+    headers = {"Accept": "application/vnd.github.v3+json", "Authorization": f"token {token}"}
+    response = requests.get("https://api.github.com/repos/deepset-ai/haystack/pulls?state=open", headers=headers)
+
+    if response.status_code == 200:
+        pull_requests = response.json()
+        for pr in pull_requests:
+            if pr["base"]["ref"] == "main":
+                return pr["head"]["ref"]
+    else:
+        raise Exception(f"Failed to fetch pull requests. Status code: {response.status_code}")
+
+
+@pytest.fixture
+def genuine_fc_message(random_open_pull_request_head_branch):
+    basehead = "main..." + random_open_pull_request_head_branch
+    return f"""[{{"id": "call_NJr1NBz2Th7iUWJpRIJZoJIA", "function": {{"arguments": "{{\\n  \\"parameters\\": {{\\n    \\"basehead\\": \\"{basehead}\\",\\n    \\"owner\\": \\"deepset-ai\\",\\n    \\"repo\\": \\"haystack\\"\\n  }}\\n}}", "name": "compare_branches"}}, "type": "function"}}]"""
 
 
 class TestOpenAPIServiceConnector:
@@ -87,3 +113,19 @@ class TestOpenAPIServiceConnector:
             "openapi3 changed. Model should have a _raw_data field, we rely on it in OpenAPIServiceConnector"
             " to get the raw data from the service response"
         )
+
+    @pytest.mark.integration
+    def test_run(self, genuine_fc_message):
+        openapi_service = OpenAPIServiceConnector()
+        github_compare_schema = requests.get("https://bit.ly/github_compare").json()
+        messages = [ChatMessage.from_assistant(genuine_fc_message)]
+
+        # genuine call to the GitHub OpenAPI service
+        result = openapi_service.run(messages, github_compare_schema, os.getenv("GITHUB_TOKEN"))
+        assert result
+
+        # load json from the service response
+        service_payload = json.loads(result["service_response"][0].content)
+
+        # verify that the service response contains the expected fields
+        assert "url" in service_payload and "files" in service_payload
