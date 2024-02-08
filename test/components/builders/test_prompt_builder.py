@@ -5,7 +5,7 @@ from haystack.components.builders.prompt_builder import PromptBuilder
 
 def test_init():
     builder = PromptBuilder(template="This is a {{ variable }}")
-    assert builder._template_string == "This is a {{ variable }}"
+    assert builder.builder._template_string == "This is a {{ variable }}"
 
 
 def test_to_dict():

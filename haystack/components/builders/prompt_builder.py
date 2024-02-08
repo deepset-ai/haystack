@@ -1,8 +1,7 @@
-from typing import Any, Dict
-
-from jinja2 import Template, meta
+from typing import Dict, Any
 
 from haystack import component, default_to_dict
+from haystack.components.builders.jinja2_builder import Jinja2Builder
 
 
 @component
@@ -26,16 +25,11 @@ class PromptBuilder:
         :param template: Jinja2 template string, e.g. "Summarize this document: {documents}\\nSummary:"
         :type template: str
         """
-        self._template_string = template
-        self.template = Template(template)
-        ast = self.template.environment.parse(template)
-        template_variables = meta.find_undeclared_variables(ast)
-        for var in template_variables:
-            component.set_input_type(self, var, Any, "")
+        self.builder = Jinja2Builder(template=template)
 
     def to_dict(self) -> Dict[str, Any]:
-        return default_to_dict(self, template=self._template_string)
+        return default_to_dict(self, template=self.builder._template_string)
 
     @component.output_types(prompt=str)
     def run(self, **kwargs):
-        return {"prompt": self.template.render(kwargs)}
+        return {"prompt": self.builder.run(**kwargs)["string"]}
