@@ -45,7 +45,6 @@ class OutputAdapter:
 
     predefined_filters = {
         "json_loads": lambda s: json.loads(s) if isinstance(s, str) else json.loads(str(s)),
-        "json_dumps": json.dumps,
     }
 
     def __init__(self, template: str, output_type: Any, custom_filters: Optional[Dict[str, Callable]] = None):
