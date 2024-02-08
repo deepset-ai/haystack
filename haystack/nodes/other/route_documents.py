@@ -20,7 +20,7 @@ class RouteDocuments(BaseComponent):
     def __init__(
         self,
         split_by: str = "content_type",
-        metadata_values: Optional[Union[List[str], List[List[str]]]] = None,
+        metadata_values: Optional[Union[List[Union[str, bool, int]], List[List[Union[str, bool, int]]]]] = None,
         return_remaining: bool = False,
     ):
         """
