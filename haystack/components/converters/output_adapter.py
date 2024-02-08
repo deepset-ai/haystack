@@ -1,11 +1,12 @@
 import json
-from typing import Optional, Dict, Any, Set, Callable
+from typing import Optional, Dict, Any, Set, Callable, TypeAlias
 
 import jinja2.runtime
 from jinja2 import TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
-from haystack.utils.type_serialization import serialize_type, deserialize_type
+
 from haystack import component, default_to_dict, default_from_dict
+from haystack.utils.type_serialization import serialize_type, deserialize_type
 
 
 class OutputAdaptationException(Exception):
@@ -65,7 +66,7 @@ class OutputAdapter:
 
     predefined_filters = {"json_loads": lambda s: json.loads(s) if isinstance(s, str) else json.loads(str(s))}
 
-    def __init__(self, template: str, output_type: Any, custom_filters: Optional[Dict[str, Callable]] = None):
+    def __init__(self, template: str, output_type: TypeAlias, custom_filters: Optional[Dict[str, Callable]] = None):
         """
         Initializes the OutputAdapter with a set of adaptation rules.
         :param template: A Jinja2 template string that defines how to adapt the output data to the input of the
