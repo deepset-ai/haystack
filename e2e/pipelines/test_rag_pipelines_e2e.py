@@ -30,7 +30,7 @@ def test_bm25_rag_pipeline(tmp_path):
     rag_pipeline = Pipeline()
     rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
     rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-    rag_pipeline.add_component(instance=OpenAIGenerator(api_key=os.environ.get("OPENAI_API_KEY")), name="llm")
+    rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
     rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
     rag_pipeline.connect("retriever", "prompt_builder.documents")
     rag_pipeline.connect("prompt_builder", "llm")
@@ -101,7 +101,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
         instance=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()), name="retriever"
     )
     rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-    rag_pipeline.add_component(instance=OpenAIGenerator(api_key=os.environ.get("OPENAI_API_KEY")), name="llm")
+    rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
     rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
     rag_pipeline.connect("text_embedder", "retriever")
     rag_pipeline.connect("retriever", "prompt_builder.documents")
