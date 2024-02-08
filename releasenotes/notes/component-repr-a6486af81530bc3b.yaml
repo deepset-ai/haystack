@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Add `__repr__` to all Components to print their I/O.
+    This can also be useful in Jupyter notebooks as this will be shown as a cell output
+    if the it's the last expression in a cell.

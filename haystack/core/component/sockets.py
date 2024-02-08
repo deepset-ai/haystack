@@ -82,8 +82,9 @@ class Sockets:
             return pipeline.get_component_name(self._component)
 
         # This Component has not been added to a Pipeline yet, so we can't know its name.
-        # Let's use the class name instead.
-        return str(self._component)
+        # Let's use default __repr__. We don't call repr() directly as Components have a custom
+        # __repr__ method and that would lead to infinite recursion since we call Sockets.__repr__ in it.
+        return object.__repr__(self._component)
 
     def __getattribute__(self, name):
         try:
@@ -96,12 +97,10 @@ class Sockets:
         return object.__getattribute__(self, name)
 
     def __repr__(self) -> str:
-        result = self._component_name()
+        result = ""
         if self._sockets_io_type == InputSocket:
-            result += " inputs:\n"
+            result = "Inputs:\n"
         elif self._sockets_io_type == OutputSocket:
-            result += " outputs:\n"
+            result = "Outputs:\n"
 
-        result += "\n".join([f"  - {n}: {_type_name(s.type)}" for n, s in self._sockets_dict.items()])
-
-        return result
+        return result + "\n".join([f"  - {n}: {_type_name(s.type)}" for n, s in self._sockets_dict.items()])
