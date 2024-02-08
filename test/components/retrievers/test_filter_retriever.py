@@ -34,10 +34,10 @@ def sample_document_store(sample_docs):
 class TestFilterRetriever:
     @classmethod
     def _documents_equal(cls, docs1: List[Document], docs2: List[Document]) -> bool:
-        # Order doesn't matter; we sort before comparing
-        docs1 = sorted(docs1, key=lambda x: x.content)
-        docs2 = sorted(docs2, key=lambda x: x.content)
-        return all(d1 == d2 for d1, d2 in zip(docs1, docs2))
+        # # Order doesn't matter; we sort before comparing
+        docs1.sort(key=lambda x: x.id)
+        docs2.sort(key=lambda x: x.id)
+        return docs1 == docs2
 
     def test_init_default(self):
         retriever = FilterRetriever(InMemoryDocumentStore())
