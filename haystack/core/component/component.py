@@ -160,6 +160,21 @@ class ComponentMeta(type):
         return instance
 
 
+def _component_repr(component: Component) -> str:
+    """
+    All Components override their __repr__ method with this one.
+    It prints the component name and the input/output sockets.
+    """
+    result = object.__repr__(component)
+    if pipeline := getattr(component, "__haystack_added_to_pipeline__"):
+        # This Component has been added in a Pipeline, let's get the name from there.
+        result += f"\n{pipeline.get_component_name(component)}"
+
+    # We're explicitly ignoring the type here because we're sure that the component
+    # has the __haystack_input__ and __haystack_output__ attributes at this point
+    return f"{result}\n{component.__haystack_input__}\n{component.__haystack_output__}"  # type: ignore[attr-defined]
+
+
 class _Component:
     """
     See module's docstring.
@@ -331,6 +346,9 @@ class _Component:
             )
         self.registry[class_path] = class_
         logger.debug("Registered Component %s", class_)
+
+        # Override the __repr__ method with a default one
+        class_.__repr__ = _component_repr
 
         return class_
 

@@ -23,19 +23,6 @@ class TestSockets:
         assert io._component == comp
         assert io._sockets_dict == {}
 
-    def test_component_name(self):
-        comp = component_class("SomeComponent")()
-        io = Sockets(component=comp, sockets_dict={}, sockets_io_type=InputSocket)
-        assert io._component_name() == str(comp)
-
-    def test_component_name_added_to_pipeline(self):
-        comp = component_class("SomeComponent")()
-        pipeline = Pipeline()
-        pipeline.add_component("my_component", comp)
-
-        io = Sockets(component=comp, sockets_dict={}, sockets_io_type=InputSocket)
-        assert io._component_name() == "my_component"
-
     def test_getattribute(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
         io = Sockets(component=comp, sockets_dict=comp.__haystack_input__._sockets_dict, sockets_io_type=InputSocket)
@@ -54,4 +41,4 @@ class TestSockets:
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
         io = Sockets(component=comp, sockets_dict=comp.__haystack_input__._sockets_dict, sockets_io_type=InputSocket)
         res = repr(io)
-        assert res == f"{comp} inputs:\n  - input_1: int\n  - input_2: int"
+        assert res == "Inputs:\n  - input_1: int\n  - input_2: int"

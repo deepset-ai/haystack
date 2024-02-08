@@ -4,6 +4,7 @@ import pytest
 
 from haystack.core.component import Component, InputSocket, OutputSocket, component
 from haystack.core.errors import ComponentError
+from haystack.core.pipeline import Pipeline
 
 
 def test_correct_declaration():
@@ -189,3 +190,31 @@ def test_keyword_only_args():
     comp = MockComponent()
     component_inputs = {name: {"type": socket.type} for name, socket in comp.__haystack_input__._sockets_dict.items()}
     assert component_inputs == {"arg": {"type": int}}
+
+
+def test_repr():
+    @component
+    class MockComponent:
+        def __init__(self):
+            component.set_output_types(self, value=int)
+
+        def run(self, value: int):
+            return {"value": value}
+
+    comp = MockComponent()
+    assert repr(comp) == f"{object.__repr__(comp)}\nInputs:\n  - value: int\nOutputs:\n  - value: int"
+
+
+def test_repr_added_to_pipeline():
+    @component
+    class MockComponent:
+        def __init__(self):
+            component.set_output_types(self, value=int)
+
+        def run(self, value: int):
+            return {"value": value}
+
+    pipe = Pipeline()
+    comp = MockComponent()
+    pipe.add_component("my_component", comp)
+    assert repr(comp) == f"{object.__repr__(comp)}\nmy_component\nInputs:\n  - value: int\nOutputs:\n  - value: int"
