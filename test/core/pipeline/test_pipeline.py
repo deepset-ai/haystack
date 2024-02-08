@@ -79,6 +79,48 @@ def test_get_component_name_not_added_to_pipeline():
     assert pipe.get_component_name(some_component) == ""
 
 
+@patch.object(Pipeline, "draw")
+def test_repr(mock_draw):
+    # Simulate not being in a notebook
+    mock_draw.side_effect = ValueError
+
+    pipe = Pipeline(metadata={"test": "test"}, max_loops_allowed=42)
+    pipe.add_component("add_two", AddFixedValue(add=2))
+    pipe.add_component("add_default", AddFixedValue())
+    pipe.add_component("double", Double())
+    pipe.connect("add_two", "double")
+    pipe.connect("double", "add_default")
+
+    expected_repr = (
+        f"{object.__repr__(pipe)}\n"
+        "🧱 Metadata\n"
+        "  - test: test\n"
+        "🚅 Components\n"
+        "  - add_two: AddFixedValue\n"
+        "  - add_default: AddFixedValue\n"
+        "  - double: Double\n"
+        "🛤️ Connections\n"
+        "  - add_two.result -> double.value (int)\n"
+        "  - double.value -> add_default.value (int)\n"
+    )
+    assert repr(pipe) == expected_repr
+
+    mock_draw.assert_called_once_with()
+
+
+def test_repr_on_notebook():
+    pipe = Pipeline(metadata={"test": "test"}, max_loops_allowed=42)
+    pipe.add_component("add_two", AddFixedValue(add=2))
+    pipe.add_component("add_default", AddFixedValue())
+    pipe.add_component("double", Double())
+    pipe.connect("add_two", "double")
+    pipe.connect("double", "add_default")
+
+    with patch.object(Pipeline, "draw") as mock_draw:
+        assert repr(pipe) == ""
+        mock_draw.assert_called_once_with()
+
+
 def test_run_with_component_that_does_not_return_dict():
     BrokenComponent = component_class(
         "BrokenComponent", input_types={"a": int}, output_types={"b": int}, output=1  # type:ignore
