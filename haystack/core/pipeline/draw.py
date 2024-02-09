@@ -66,17 +66,18 @@ def _to_mermaid_image(
     graph: networkx.MultiDiGraph,
     show_component_names: bool = True,
     show_optional_inputs: bool = True,
+    show_connection_types: bool = True,
     direction: Literal["top-down", "left-right"] = "top-down",
 ):
     """
     Renders a pipeline using Mermaid (hosted version at 'https://mermaid.ink'). Requires Internet access.
     """
     # Copy the graph to avoid modifying the original
-    graph = _prepare_for_drawing(graph.copy())
     graph_styled = _to_mermaid_text(
-        graph=graph,
+        graph.copy(),
         show_component_names=show_component_names,
         show_optional_inputs=show_optional_inputs,
+        show_connection_types=show_connection_types,
         direction=direction,
     )
 
@@ -109,6 +110,7 @@ def _to_mermaid_text(
     graph: networkx.MultiDiGraph,
     show_component_names: bool = True,
     show_optional_inputs: bool = True,
+    show_connection_types: bool = True,
     direction: Literal["top-down", "left-right"] = "top-down",
 ) -> str:
     """
@@ -153,7 +155,8 @@ def _to_mermaid_text(
         if from_comp != "input" and to_comp != "output":
             arrowtail = ARROWTAIL_MANDATORY if conn_data["mandatory"] else ARROWTAIL_OPTIONAL
             arrowhead = ARROWHEAD_MANDATORY if conn_data["mandatory"] else ARROWHEAD_OPTIONAL
-            label = f'"{conn_data["label"]}<br><small><i>{conn_data["conn_type"]}</i></small>"'
+            conn_type = '<br><small><i>{conn_data["conn_type"]}</i></small>' if show_connection_types else ""
+            label = f'"{conn_data["label"]}{conn_type}'
             conn_string = f"{states[from_comp]} {arrowtail} {label} {arrowhead} {states[to_comp]}"
             connections_list.append(conn_string)
 

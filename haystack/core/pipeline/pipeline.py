@@ -497,6 +497,7 @@ class Pipeline:
         path: Path,
         show_component_names: bool = True,
         show_optional_inputs: bool = True,
+        show_connection_types: bool = True,
         direction: Literal["top-down", "left-right"] = "top-down",
     ) -> None:
         """
@@ -508,6 +509,7 @@ class Pipeline:
             self.graph,
             show_component_names=show_component_names,
             show_optional_inputs=show_optional_inputs,
+            show_connection_types=show_connection_types,
             direction=direction,
         )
         Path(path).write_bytes(image_data)
