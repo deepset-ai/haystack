@@ -132,9 +132,12 @@ class TestOpenAPIServiceConnector:
 
     @pytest.mark.integration
     @pytest.mark.skipif(not os.getenv("GITHUB_TOKEN"), reason="GITHUB_TOKEN is not set")
-    def test_run(self, genuine_fc_message):
+    def test_run(self, genuine_fc_message, test_files_path):
         openapi_service = OpenAPIServiceConnector()
-        github_compare_schema = requests.get("https://bit.ly/github_compare").json()
+
+        open_api_spec_path = test_files_path / "json" / "github_compare_branch_openapi_spec.json"
+        with open(open_api_spec_path, "r") as file:
+            github_compare_schema = json.load(file)
         messages = [ChatMessage.from_assistant(genuine_fc_message)]
 
         # genuine call to the GitHub OpenAPI service
