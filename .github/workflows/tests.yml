@@ -101,7 +101,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
   unit-tests:
     name: Unit / ${{ matrix.os }}
@@ -125,7 +125,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
       - name: Run
         run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integration" test
@@ -194,7 +194,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test
@@ -252,7 +252,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test -k 'not tika'
@@ -303,7 +303,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test -k 'not tika'
