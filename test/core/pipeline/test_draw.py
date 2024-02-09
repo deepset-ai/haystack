@@ -18,7 +18,6 @@ def test_to_mermaid_image(test_files):
     pipe.add_component("comp1", Double())
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
-    pipe.connect("comp2", "comp1")
 
     image_data = _to_mermaid_image(pipe.graph)
     test_image = test_files / "test_mermaid_graph.png"
