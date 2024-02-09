@@ -11,11 +11,19 @@ from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Type, TypeVar
 import networkx  # type:ignore
 
 from haystack.core.component import Component, InputSocket, OutputSocket, component
-from haystack.core.errors import PipelineConnectError, PipelineError, PipelineRuntimeError, PipelineValidationError
-from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
-from haystack.core.pipeline.draw.draw import RenderingEngines, _draw
+from haystack.core.errors import (
+    PipelineConnectError,
+    PipelineDrawingError,
+    PipelineError,
+    PipelineRuntimeError,
+    PipelineValidationError,
+)
 from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
+from haystack.utils import is_in_jupyter
+
+from .descriptions import find_pipeline_inputs, find_pipeline_outputs
+from .draw import _to_mermaid_image
 
 logger = logging.getLogger(__name__)
 
@@ -441,24 +449,29 @@ class Pipeline:
         }
         return outputs
 
-    def draw(self, path: Path, engine: RenderingEngines = "mermaid-image") -> None:
+    def show(self) -> None:
         """
-        Draws the pipeline. Requires either `graphviz` as a system dependency, or an internet connection for Mermaid.
-        Run `pip install graphviz` or `pip install mermaid` to install missing dependencies.
+        If running in a Jupyter notebook, display an image representing this `Pipeline`.
 
-        Args:
-            path: where to save the diagram.
-            engine: which format to save the graph as. Accepts 'graphviz', 'mermaid-text', 'mermaid-image'.
-                Default is 'mermaid-image'.
-
-        Returns:
-            None
-
-        Raises:
-            ImportError: if `engine='graphviz'` and `pygraphviz` is not installed.
-            HTTPConnectionError: (and similar) if the internet connection is down or other connection issues.
         """
-        _draw(graph=networkx.MultiDiGraph(self.graph), path=path, engine=engine)
+        if is_in_jupyter():
+            from IPython.display import Image, display
+
+            image_data = _to_mermaid_image(self.graph)
+
+            display(Image(image_data))
+        else:
+            msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
+            raise PipelineDrawingError(msg)
+
+    def draw(self, path: Path) -> None:
+        """
+        Save an image representing this `Pipeline` to `path`.
+        """
+        # Before drawing we edit a bit the graph, to avoid modifying the original that is
+        # used for running the pipeline we copy it.
+        image_data = _to_mermaid_image(self.graph)
+        Path(path).write_bytes(image_data)
 
     def warm_up(self):
         """

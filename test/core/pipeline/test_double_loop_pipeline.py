@@ -10,7 +10,7 @@ from haystack.testing.sample_components import Accumulate, AddFixedValue, Thresh
 logging.basicConfig(level=logging.DEBUG)
 
 
-def test_pipeline(tmp_path):
+def test_pipeline():
     accumulator = Accumulate()
 
     pipeline = Pipeline(max_loops_allowed=10)
@@ -30,8 +30,6 @@ def test_pipeline(tmp_path):
     pipeline.connect("below_5.below", "multiplexer")
     pipeline.connect("add_three.result", "multiplexer")
     pipeline.connect("below_10.above", "add_two.value")
-
-    pipeline.draw(tmp_path / "double_loop_pipeline.png")
 
     results = pipeline.run({"add_one": {"value": 3}})
 
