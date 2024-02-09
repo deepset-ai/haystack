@@ -477,7 +477,13 @@ class Pipeline:
         }
         return outputs
 
-    def show(self) -> None:
+    def show(
+        self,
+        show_component_names: bool = True,
+        show_optional_inputs: bool = True,
+        show_connection_types: bool = True,
+        direction: Literal["top-down", "left-right"] = "top-down",
+    ) -> None:
         """
         If running in a Jupyter notebook, display an image representing this `Pipeline`.
 
@@ -485,7 +491,13 @@ class Pipeline:
         if is_in_jupyter():
             from IPython.display import Image, display
 
-            image_data = _to_mermaid_image(self.graph)
+            image_data = _to_mermaid_image(
+                self.graph,
+                show_component_names=show_component_names,
+                show_optional_inputs=show_optional_inputs,
+                show_connection_types=show_connection_types,
+                direction=direction,
+            )
 
             display(Image(image_data))
         else:
