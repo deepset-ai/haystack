@@ -6,7 +6,7 @@ import itertools
 import logging
 from copy import copy
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Type, TypeVar, Union, Literal
 
 import networkx  # type:ignore
 
@@ -492,13 +492,24 @@ class Pipeline:
             msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
             raise PipelineDrawingError(msg)
 
-    def draw(self, path: Path) -> None:
+    def draw(
+        self,
+        path: Path,
+        show_component_names: bool = True,
+        show_optional_inputs: bool = True,
+        direction: Literal["top-down", "left-right"] = "top-down",
+    ) -> None:
         """
         Save an image representing this `Pipeline` to `path`.
         """
         # Before drawing we edit a bit the graph, to avoid modifying the original that is
         # used for running the pipeline we copy it.
-        image_data = _to_mermaid_image(self.graph)
+        image_data = _to_mermaid_image(
+            self.graph,
+            show_component_names=show_component_names,
+            show_optional_inputs=show_optional_inputs,
+            direction=direction,
+        )
         Path(path).write_bytes(image_data)
 
     def warm_up(self):

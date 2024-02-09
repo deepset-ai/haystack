@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+from typing import Literal
+
 import base64
 import logging
 
@@ -52,7 +54,7 @@ ARROWHEAD_OPTIONAL = ".->"
 MERMAID_STYLED_TEMPLATE = """
 %%{{ init: {{'theme': 'neutral' }} }}%%
 
-graph TD;
+graph {direction};
 
 {connections}
 
@@ -60,13 +62,23 @@ classDef component text-align:center;
 """
 
 
-def _to_mermaid_image(graph: networkx.MultiDiGraph):
+def _to_mermaid_image(
+    graph: networkx.MultiDiGraph,
+    show_component_names: bool = True,
+    show_optional_inputs: bool = True,
+    direction: Literal["top-down", "left-right"] = "top-down",
+):
     """
     Renders a pipeline using Mermaid (hosted version at 'https://mermaid.ink'). Requires Internet access.
     """
     # Copy the graph to avoid modifying the original
     graph = _prepare_for_drawing(graph.copy())
-    graph_styled = _to_mermaid_text(graph=graph)
+    graph_styled = _to_mermaid_text(
+        graph=graph,
+        show_component_names=show_component_names,
+        show_optional_inputs=show_optional_inputs,
+        direction=direction,
+    )
 
     graphbytes = graph_styled.encode("ascii")
     base64_bytes = base64.b64encode(graphbytes)
@@ -93,7 +105,12 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     return resp.content
 
 
-def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
+def _to_mermaid_text(
+    graph: networkx.MultiDiGraph,
+    show_component_names: bool = True,
+    show_optional_inputs: bool = True,
+    direction: Literal["top-down", "left-right"] = "top-down",
+) -> str:
     """
     Converts a Networkx graph into Mermaid syntax. The output of this function can be used in the documentation
     with `mermaid` codeblocks and it will be automatically rendered.
@@ -110,16 +127,26 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
         )
         for comp, data in graph.nodes(data=True)
     }
-    optional_inputs = {
-        comp: f"<br><br>Optional inputs:<ul style='text-align:left;'>{sockets}</ul>" if sockets else ""
-        for comp, sockets in sockets.items()
-    }
+    if show_optional_inputs:
+        optional_inputs = {
+            comp: f"<br><br>Optional inputs:<ul style='text-align:left;'>{sockets}</ul>" if sockets else ""
+            for comp, sockets in sockets.items()
+        }
+    else:
+        optional_inputs = {comp: "" for comp in sockets}
 
-    states = {
-        comp: f"{comp}[\"<b>{comp}</b><br><small><i>{type(data['instance']).__name__}{optional_inputs[comp]}</i></small>\"]:::component"
-        for comp, data in graph.nodes(data=True)
-        if comp not in ["input", "output"]
-    }
+    if show_component_names:
+        states = {
+            comp: f"{comp}[\"<b>{comp}</b><br><small><i>{type(data['instance']).__name__}{optional_inputs[comp]}</i></small>\"]:::component"
+            for comp, data in graph.nodes(data=True)
+            if comp not in ["input", "output"]
+        }
+    else:
+        states = {
+            comp: f"{comp}[\"{type(data['instance']).__name__}{optional_inputs[comp]}\"]:::component"
+            for comp, data in graph.nodes(data=True)
+            if comp not in ["input", "output"]
+        }
 
     connections_list = []
     for from_comp, to_comp, conn_data in graph.edges(data=True):
@@ -140,7 +167,9 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     ]
     connections = "\n".join(connections_list + input_connections + output_connections)
 
-    graph_styled = MERMAID_STYLED_TEMPLATE.format(connections=connections)
+    graph_styled = MERMAID_STYLED_TEMPLATE.format(
+        connections=connections, direction="TD" if direction == "top-down" else "LR"
+    )
     logger.debug("Mermaid diagram:\n%s", graph_styled)
 
     return graph_styled
