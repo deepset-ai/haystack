@@ -1,12 +1,11 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+import logging
 from pathlib import Path
 
 from haystack.core.component import component
 from haystack.core.pipeline import Pipeline
-
-import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -18,10 +17,9 @@ class WithDefault:
         return {"c": a + b}
 
 
-def test_pipeline(tmp_path):
+def test_pipeline():
     pipeline = Pipeline()
     pipeline.add_component("with_defaults", WithDefault())
-    pipeline.draw(tmp_path / "default_value.png")
 
     # Pass all the inputs
     results = pipeline.run({"with_defaults": {"a": 40, "b": 30}})
