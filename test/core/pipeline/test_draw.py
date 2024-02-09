@@ -1,8 +1,10 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+import time
 from unittest.mock import MagicMock, patch
 
+import flaky
 import pytest
 import requests
 
@@ -12,6 +14,7 @@ from haystack.core.pipeline.draw import _to_mermaid_image, _to_mermaid_text
 from haystack.testing.sample_components import AddFixedValue, Double
 
 
+@flaky.flaky(max_runs=5, rerun_filter=lambda *_: time.sleep(5))
 @pytest.mark.integration
 def test_to_mermaid_image(test_files):
     pipe = Pipeline()
