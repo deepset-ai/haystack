@@ -65,8 +65,7 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     Renders a pipeline using Mermaid (hosted version at 'https://mermaid.ink'). Requires Internet access.
     """
     # Copy the graph to avoid modifying the original
-    graph = _prepare_for_drawing(graph.copy())
-    graph_styled = _to_mermaid_text(graph=graph)
+    graph_styled = _to_mermaid_text(graph.copy())
 
     graphbytes = graph_styled.encode("ascii")
     base64_bytes = base64.b64encode(graphbytes)
