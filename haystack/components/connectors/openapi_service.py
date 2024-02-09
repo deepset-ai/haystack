@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 from haystack import component
 from haystack.dataclasses import ChatMessage, ChatRole
@@ -103,20 +103,59 @@ class OpenAPIServiceConnector:
                 )
         return function_payloads
 
-    def _authenticate_service(self, openapi_service: OpenAPI, credentials: Optional[Any] = None):
+    def _authenticate_service(self, openapi_service: OpenAPI, credentials: Optional[Union[dict, str]] = None):
         """
-        Authenticates with the OpenAPI service if required.
+        Authenticates with the OpenAPI service if required, supporting both single (str) and multiple
+        authentication methods (dict).
+
+        OpenAPI spec v3 supports the following security schemes:
+        http – for Basic, Bearer and other HTTP authentications schemes
+        apiKey – for API keys and cookie authentication
+        oauth2 – for OAuth 2
+        openIdConnect – for OpenID Connect Discovery
+
+        Currently, only the http and apiKey schemes are supported. Multiple security schemes can be defined in the
+        OpenAPI spec, and the credentials should be provided as a dictionary with keys matching the security scheme
+        names. If only one security scheme is defined, the credentials can be provided as a simple string.
 
         :param openapi_service: The OpenAPI service instance.
         :type openapi_service: OpenAPI
-        :raises ValueError: If authentication fails or is not found.
+        :param credentials: Credentials for authentication, which can be either a string (e.g. token) or a dictionary
+        with keys matching the authentication method names.
+        :type credentials: dict | str, optional
+        :raises ValueError: If authentication fails, is not found, or if appropriate credentials are missing.
         """
+        service_name = openapi_service.info.title
         if openapi_service.components.securitySchemes:
             if not credentials:
-                raise ValueError(f"Service {openapi_service.info.title} requires authentication.")
+                raise ValueError(f"Service {service_name} requires authentication but no credentials were provided.")
 
-            auth_method = list(openapi_service.components.securitySchemes.keys())[0]
-            openapi_service.authenticate(auth_method, credentials)
+            # a dictionary of security schemes defined in the OpenAPI spec
+            # each key is the name of the security scheme, and the value is the scheme definition
+            security_schemes = openapi_service.components.securitySchemes.raw_element
+            supported_schemes = ["http", "apiKey"]  # todo: add support for oauth2 and openIdConnect
+
+            authenticated = False
+            for scheme_name, scheme in security_schemes.items():
+                if scheme["type"] in supported_schemes:
+                    auth_credentials = None
+                    if isinstance(credentials, str):
+                        auth_credentials = credentials
+                    elif isinstance(credentials, dict) and scheme_name in credentials:
+                        auth_credentials = credentials[scheme_name]
+                    if auth_credentials:
+                        openapi_service.authenticate(scheme_name, auth_credentials)
+                        authenticated = True
+                    else:
+                        raise ValueError(
+                            f"Service {service_name} requires {scheme_name} security scheme but no "
+                            f"credentials were provided for it. Check the service configuration and credentials."
+                        )
+            if not authenticated:
+                raise ValueError(
+                    f"Service {service_name} requires authentication but no credentials were provided "
+                    f"for it. Check the service configuration and credentials."
+                )
 
     def _invoke_method(self, openapi_service: OpenAPI, method_invocation_descriptor: Dict[str, Any]) -> Any:
         """

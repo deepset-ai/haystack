@@ -82,16 +82,32 @@ class TestOpenAPIServiceConnector:
         with pytest.raises(ValueError):
             connector._parse_message(ChatMessage.from_assistant('[{"function": {"name": "test_method"}}]'))
 
-    def test_authenticate_service_missing_authentication(self, connector, openapi_service_mock):
-        # Test missing authentication when it is required
-        openapi_service_mock.components.securitySchemes = {"apiKey": {}}
+    def test_authenticate_service_missing_authentication_token(self, connector, openapi_service_mock):
+        securitySchemes_mock = MagicMock()
+        securitySchemes_mock.raw_element = {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}
         with pytest.raises(ValueError):
             connector._authenticate_service(openapi_service_mock)
 
-    def test_authenticate_service_having_authentication(self, connector, openapi_service_mock):
-        # Test authentication when it is required and provided
-        openapi_service_mock.components.securitySchemes = {"apiKey": {}}
-        connector._authenticate_service(openapi_service_mock, "some_token")
+    def test_authenticate_service_having_authentication_token(self, connector, openapi_service_mock):
+        securitySchemes_mock = MagicMock()
+        securitySchemes_mock.raw_element = {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}
+        openapi_service_mock.components.securitySchemes = securitySchemes_mock
+        connector._authenticate_service(openapi_service_mock, "some_fake_token")
+
+    def test_authenticate_service_having_authentication_dict(self, connector, openapi_service_mock):
+        securitySchemes_mock = MagicMock()
+        securitySchemes_mock.raw_element = {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}
+        openapi_service_mock.components.securitySchemes = securitySchemes_mock
+        connector._authenticate_service(openapi_service_mock, {"apiKey": "some_fake_token"})
+
+    def test_authenticate_service_having_authentication_dict_but_unsupported_auth(
+        self, connector, openapi_service_mock
+    ):
+        securitySchemes_mock = MagicMock()
+        securitySchemes_mock.raw_element = {"oauth2": {"type": "oauth2"}}
+        openapi_service_mock.components.securitySchemes = securitySchemes_mock
+        with pytest.raises(ValueError):
+            connector._authenticate_service(openapi_service_mock, {"apiKey": "some_fake_token"})
 
     def test_invoke_method_valid(self, connector, openapi_service_mock):
         # Test valid method invocation
@@ -115,6 +131,7 @@ class TestOpenAPIServiceConnector:
         )
 
     @pytest.mark.integration
+    @pytest.mark.skipif(not os.getenv("GITHUB_TOKEN"), reason="GITHUB_TOKEN is not set")
     def test_run(self, genuine_fc_message):
         openapi_service = OpenAPIServiceConnector()
         github_compare_schema = requests.get("https://bit.ly/github_compare").json()
