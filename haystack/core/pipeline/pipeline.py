@@ -76,29 +76,26 @@ class Pipeline:
         Returns a text representation of the Pipeline.
         If this runs in a Jupyter notebook, it will instead display the Pipeline image.
         """
-        res = ""
-        try:
-            # We call draw here so that if we're in a Jupyter notebook we can embed the Pipeline image.
-            # If it fails it's no a big deal, we just don't show the image. Also it probably means we're not in a
-            # Jupyter notebook.
-            self.draw()
-        except ValueError:
-            # Let's show the text repr only if we're not in a Jupyter notebook
-            res += f"{object.__repr__(self)}\n"
-            if self.metadata:
-                res += "🧱 Metadata\n"
-                for k, v in self.metadata.items():
-                    res += f"  - {k}: {v}\n"
+        if is_in_jupyter():
+            # If we're in a Jupyter notebook we want to display the image instead of the text repr.
+            self.show()
+            return ""
 
-            res += "🚅 Components\n"
-            for name, instance in self.graph.nodes(data="instance"):
-                res += f"  - {name}: {instance.__class__.__name__}\n"
+        res = f"{object.__repr__(self)}\n"
+        if self.metadata:
+            res += "🧱 Metadata\n"
+            for k, v in self.metadata.items():
+                res += f"  - {k}: {v}\n"
 
-            res += "🛤️ Connections\n"
-            for sender, receiver, edge_data in self.graph.edges(data=True):
-                sender_socket = edge_data["from_socket"].name
-                receiver_socket = edge_data["to_socket"].name
-                res += f"  - {sender}.{sender_socket} -> {receiver}.{receiver_socket} ({edge_data['conn_type']})\n"
+        res += "🚅 Components\n"
+        for name, instance in self.graph.nodes(data="instance"):
+            res += f"  - {name}: {instance.__class__.__name__}\n"
+
+        res += "🛤️ Connections\n"
+        for sender, receiver, edge_data in self.graph.edges(data=True):
+            sender_socket = edge_data["from_socket"].name
+            receiver_socket = edge_data["to_socket"].name
+            res += f"  - {sender}.{sender_socket} -> {receiver}.{receiver_socket} ({edge_data['conn_type']})\n"
 
         return res
 
