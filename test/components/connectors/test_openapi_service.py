@@ -34,7 +34,17 @@ def random_open_pull_request_head_branch() -> str:
 @pytest.fixture
 def genuine_fc_message(random_open_pull_request_head_branch):
     basehead = "main..." + random_open_pull_request_head_branch
-    return f"""[{{"id": "call_NJr1NBz2Th7iUWJpRIJZoJIA", "function": {{"arguments": "{{\\n  \\"parameters\\": {{\\n    \\"basehead\\": \\"{basehead}\\",\\n    \\"owner\\": \\"deepset-ai\\",\\n    \\"repo\\": \\"haystack\\"\\n  }}\\n}}", "name": "compare_branches"}}, "type": "function"}}]"""
+    # arguments, see below, are always passed as a string representation of a JSON object
+    params = '{"parameters": {"basehead": "' + basehead + '", "owner": "deepset-ai", "repo": "haystack"}}'
+    payload_json = [
+        {
+            "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
+            "function": {"arguments": params, "name": "compare_branches"},
+            "type": "function",
+        }
+    ]
+
+    return json.dumps(payload_json)
 
 
 class TestOpenAPIServiceConnector:
