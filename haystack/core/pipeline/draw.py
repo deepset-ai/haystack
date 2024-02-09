@@ -3,8 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import base64
 import logging
-from pathlib import Path
-from typing import Optional
 
 import networkx  # type:ignore
 import requests
@@ -14,39 +12,6 @@ from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipel
 from haystack.core.type_utils import _type_name
 
 logger = logging.getLogger(__name__)
-
-
-def _draw(graph: networkx.MultiDiGraph, path: Optional[Path] = None) -> None:
-    """
-    Draw a pipeline graph using Mermaid and save it to a file.
-    If on a Jupyter notebook, it will also display the image inline.
-    """
-    image_data = _to_mermaid_image(_prepare_for_drawing(graph))
-
-    in_notebook = False
-    try:
-        from IPython.core.getipython import get_ipython
-        from IPython.display import Image, display
-
-        if "IPKernelApp" in get_ipython().config:
-            # We're in a notebook, let's display the image
-            display(Image(image_data))
-            in_notebook = True
-    except ImportError:
-        pass
-    except AttributeError:
-        pass
-
-    if not in_notebook and not path:
-        # We're not in a notebook and no path is given, the user must have forgot
-        # to specify the path. Raise an error.
-        msg = "No path specified to save the image to."
-        raise ValueError(msg)
-
-    if path:
-        # If we reached this point we're in a notebook and the user has specified a path.
-        # Let's save the image anyway even if it's been displayed in the notebook.
-        Path(path).write_bytes(image_data)
 
 
 def _prepare_for_drawing(graph: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
@@ -99,6 +64,8 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     """
     Renders a pipeline using Mermaid (hosted version at 'https://mermaid.ink'). Requires Internet access.
     """
+    # Copy the graph to avoid modifying the original
+    graph = _prepare_for_drawing(graph.copy())
     graph_styled = _to_mermaid_text(graph=graph)
 
     graphbytes = graph_styled.encode("ascii")
@@ -131,6 +98,8 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     Converts a Networkx graph into Mermaid syntax. The output of this function can be used in the documentation
     with `mermaid` codeblocks and it will be automatically rendered.
     """
+    # Copy the graph to avoid modifying the original
+    graph = _prepare_for_drawing(graph.copy())
     sockets = {
         comp: "".join(
             [

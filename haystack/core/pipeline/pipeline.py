@@ -11,12 +11,19 @@ from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Type, TypeVar
 import networkx  # type:ignore
 
 from haystack.core.component import Component, InputSocket, OutputSocket, component
-from haystack.core.errors import PipelineConnectError, PipelineError, PipelineRuntimeError, PipelineValidationError
+from haystack.core.errors import (
+    PipelineConnectError,
+    PipelineDrawingError,
+    PipelineError,
+    PipelineRuntimeError,
+    PipelineValidationError,
+)
 from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
+from haystack.utils import is_in_jupyter
 
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
-from .draw import _draw
+from .draw import _to_mermaid_image
 
 logger = logging.getLogger(__name__)
 
@@ -442,17 +449,29 @@ class Pipeline:
         }
         return outputs
 
-    def draw(self, path: Optional[Path] = None) -> None:
+    def show(self) -> None:
         """
-        Save a Pipeline image to `path`.
-        If `path` is `None` the image will be displayed inline in the Jupyter notebook.
-        If `path` is `None` and the code is not running in a Jupyter notebook, an error will be raised.
+        If running in a Jupyter notebook, display an image representing this `Pipeline`.
 
-        If `path` is given it will always be saved to file, whether it's a notebook or not.
+        """
+        if is_in_jupyter():
+            from IPython.display import Image, display
+
+            image_data = _to_mermaid_image(self.graph)
+
+            display(Image(image_data))
+        else:
+            msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
+            raise PipelineDrawingError(msg)
+
+    def draw(self, path: Path) -> None:
+        """
+        Save an image representing this `Pipeline` to `path`.
         """
         # Before drawing we edit a bit the graph, to avoid modifying the original that is
         # used for running the pipeline we copy it.
-        _draw(graph=self.graph.copy(), path=path)
+        image_data = _to_mermaid_image(self.graph)
+        Path(path).write_bytes(image_data)
 
     def warm_up(self):
         """
