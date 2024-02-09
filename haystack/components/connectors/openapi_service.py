@@ -34,7 +34,10 @@ class OpenAPIServiceConnector:
 
     @component.output_types(service_response=Dict[str, Any])
     def run(
-        self, messages: List[ChatMessage], service_openapi_spec: Dict[str, Any], service_credentials: Optional[Any]
+        self,
+        messages: List[ChatMessage],
+        service_openapi_spec: Dict[str, Any],
+        service_credentials: Optional[Union[dict, str]] = None,
     ) -> Dict[str, List[ChatMessage]]:
         """
         Processes a list of chat messages to invoke a method on an OpenAPI service. It parses the last message in the
@@ -47,7 +50,8 @@ class OpenAPIServiceConnector:
         :return: A dictionary with a key `"service_response"`, containing the response from the OpenAPI service.
         :rtype: Dict[str, List[ChatMessage]]
         :param service_credentials: The credentials to be used for authentication with the service.
-        :type service_credentials: Any
+        Currently, only the http and apiKey schemes are supported. See _authenticate_service method for more details.
+        :type service_credentials: Optional[Union[dict, str]]
         :raises ValueError: If the last message is not from the assistant or if it does not contain the correct payload
         to invoke a method on the service.
         """
