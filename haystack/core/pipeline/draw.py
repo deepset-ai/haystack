@@ -1,16 +1,49 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-import logging
 import base64
+import logging
 
-import requests
 import networkx  # type:ignore
+import requests
 
 from haystack.core.errors import PipelineDrawingError
+from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
 from haystack.core.type_utils import _type_name
 
 logger = logging.getLogger(__name__)
+
+
+def _prepare_for_drawing(graph: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
+    """
+    Add some extra nodes to show the inputs and outputs of the pipeline.
+    Also adds labels to edges.
+    """
+    # Label the edges
+    for inp, outp, key, data in graph.edges(keys=True, data=True):
+        data[
+            "label"
+        ] = f"{data['from_socket'].name} -> {data['to_socket'].name}{' (opt.)' if not data['mandatory'] else ''}"
+        graph.add_edge(inp, outp, key=key, **data)
+
+    # Add inputs fake node
+    graph.add_node("input")
+    for node, in_sockets in find_pipeline_inputs(graph).items():
+        for in_socket in in_sockets:
+            if not in_socket.senders and in_socket.is_mandatory:
+                # If this socket has no sender it could be a socket that receives input
+                # directly when running the Pipeline. We can't know that for sure, in doubt
+                # we draw it as receiving input directly.
+                graph.add_edge("input", node, label=in_socket.name, conn_type=_type_name(in_socket.type))
+
+    # Add outputs fake node
+    graph.add_node("output")
+    for node, out_sockets in find_pipeline_outputs(graph).items():
+        for out_socket in out_sockets:
+            graph.add_edge(node, "output", label=out_socket.name, conn_type=_type_name(out_socket.type))
+
+    return graph
+
 
 ARROWTAIL_MANDATORY = "--"
 ARROWTAIL_OPTIONAL = "-."
@@ -31,6 +64,8 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     """
     Renders a pipeline using Mermaid (hosted version at 'https://mermaid.ink'). Requires Internet access.
     """
+    # Copy the graph to avoid modifying the original
+    graph = _prepare_for_drawing(graph.copy())
     graph_styled = _to_mermaid_text(graph=graph)
 
     graphbytes = graph_styled.encode("ascii")
@@ -63,6 +98,8 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     Converts a Networkx graph into Mermaid syntax. The output of this function can be used in the documentation
     with `mermaid` codeblocks and it will be automatically rendered.
     """
+    # Copy the graph to avoid modifying the original
+    graph = _prepare_for_drawing(graph.copy())
     sockets = {
         comp: "".join(
             [

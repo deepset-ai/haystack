@@ -3,16 +3,52 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
 from haystack.core.component.types import InputSocket, OutputSocket
-from haystack.core.errors import PipelineError, PipelineRuntimeError
+from haystack.core.errors import PipelineDrawingError, PipelineError, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double
 
 logging.basicConfig(level=logging.DEBUG)
+
+
+@patch("haystack.core.pipeline.pipeline._to_mermaid_image")
+@patch("haystack.core.pipeline.pipeline.is_in_jupyter")
+@patch("IPython.display.Image")
+@patch("IPython.display.display")
+def test_show_in_notebook(mock_ipython_display, mock_ipython_image, mock_is_in_jupyter, mock_to_mermaid_image):
+    pipe = Pipeline()
+
+    mock_to_mermaid_image.return_value = b"some_image_data"
+    mock_is_in_jupyter.return_value = True
+
+    pipe.show()
+    mock_ipython_image.assert_called_once_with(b"some_image_data")
+    mock_ipython_display.assert_called_once()
+
+
+@patch("haystack.core.pipeline.pipeline.is_in_jupyter")
+def test_show_not_in_notebook(mock_is_in_jupyter):
+    pipe = Pipeline()
+
+    mock_is_in_jupyter.return_value = False
+
+    with pytest.raises(PipelineDrawingError):
+        pipe.show()
+
+
+@patch("haystack.core.pipeline.pipeline._to_mermaid_image")
+def test_draw(mock_to_mermaid_image, tmp_path):
+    pipe = Pipeline()
+    mock_to_mermaid_image.return_value = b"some_image_data"
+
+    image_path = tmp_path / "test.png"
+    pipe.draw(path=image_path)
+    assert image_path.read_bytes() == mock_to_mermaid_image.return_value
 
 
 def test_add_component_to_different_pipelines():
@@ -41,6 +77,49 @@ def test_get_component_name_not_added_to_pipeline():
     some_component = component_class("Some")()
 
     assert pipe.get_component_name(some_component) == ""
+
+
+@patch("haystack.core.pipeline.pipeline.is_in_jupyter")
+def test_repr(mock_is_in_jupyter):
+    pipe = Pipeline(metadata={"test": "test"}, max_loops_allowed=42)
+    pipe.add_component("add_two", AddFixedValue(add=2))
+    pipe.add_component("add_default", AddFixedValue())
+    pipe.add_component("double", Double())
+    pipe.connect("add_two", "double")
+    pipe.connect("double", "add_default")
+
+    expected_repr = (
+        f"{object.__repr__(pipe)}\n"
+        "🧱 Metadata\n"
+        "  - test: test\n"
+        "🚅 Components\n"
+        "  - add_two: AddFixedValue\n"
+        "  - add_default: AddFixedValue\n"
+        "  - double: Double\n"
+        "🛤️ Connections\n"
+        "  - add_two.result -> double.value (int)\n"
+        "  - double.value -> add_default.value (int)\n"
+    )
+    # Simulate not being in a notebook
+    mock_is_in_jupyter.return_value = False
+    assert repr(pipe) == expected_repr
+
+
+@patch("haystack.core.pipeline.pipeline.is_in_jupyter")
+def test_repr_in_notebook(mock_is_in_jupyter):
+    pipe = Pipeline(metadata={"test": "test"}, max_loops_allowed=42)
+    pipe.add_component("add_two", AddFixedValue(add=2))
+    pipe.add_component("add_default", AddFixedValue())
+    pipe.add_component("double", Double())
+    pipe.connect("add_two", "double")
+    pipe.connect("double", "add_default")
+
+    # Simulate being in a notebook
+    mock_is_in_jupyter.return_value = True
+
+    with patch.object(Pipeline, "show") as mock_show:
+        assert repr(pipe) == ""
+        mock_show.assert_called_once_with()
 
 
 def test_run_with_component_that_does_not_return_dict():
