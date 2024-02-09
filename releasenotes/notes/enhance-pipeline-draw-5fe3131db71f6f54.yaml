@@ -1,6 +1,7 @@
 ---
 enhancements:
   - |
-    `Pipeline.draw()` will now show the generated image inline if run in a Jupyter notebook.
-    It can also be called without a path to save the image if in a notebook. In all other cases
-    it will raise a `ValueError`.
+    Add new `Pipeline.show()` method to generated image inline if run in a Jupyter notebook.
+    If called outside a notebook it will raise a `PipelineDrawingError`.
+    `Pipeline.draw()` has also been simplified and the `engine` argument has been removed.
+    Now all images will be generated using Mermaid.
