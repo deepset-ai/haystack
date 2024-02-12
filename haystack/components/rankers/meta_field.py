@@ -1,7 +1,7 @@
 from dateutil.parser import parse as date_parse
 import logging
 from collections import defaultdict
-from typing import List, Dict, Any, Optional, Literal
+from typing import List, Dict, Any, Optional, Literal, Callable
 
 from haystack import Document, component, default_to_dict
 
@@ -213,7 +213,7 @@ class MetaFieldRanker:
         # Sort the documents by self.meta_field
         reverse = sort_order == "descending"
         try:
-            sorted_by_meta = sorted(tuple_parsed_meta_and_docs, key=lambda x: x[0], reverse=reverse)
+            tuple_sorted_by_meta = sorted(tuple_parsed_meta_and_docs, key=lambda x: x[0], reverse=reverse)
         except TypeError as error:
             # Return original documents if mixed types that are not comparable are returned (e.g. int and list)
             logger.warning(
@@ -225,7 +225,7 @@ class MetaFieldRanker:
             return {"documents": documents[:top_k]}
 
         # Add the docs missing the meta_field back on the end
-        sorted_by_meta = [doc for meta, doc in sorted_by_meta]
+        sorted_by_meta = [doc for meta, doc in tuple_sorted_by_meta]
         sorted_documents = sorted_by_meta + docs_missing_meta_field
         sorted_documents = self._merge_rankings(documents, sorted_documents)
         return {"documents": sorted_documents[:top_k]}
@@ -251,6 +251,7 @@ class MetaFieldRanker:
             )
             return [d.meta[self.meta_field] for d in docs_with_meta_field]
 
+        parse_fn: Callable
         if meta_value_type == "float":
             parse_fn = float
         elif meta_value_type == "int":
