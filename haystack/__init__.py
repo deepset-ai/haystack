@@ -1,9 +1,8 @@
 from haystack.core.component import component
+from haystack.core.errors import ComponentError, DeserializationError
+from haystack.core.pipeline import Pipeline
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.core.errors import DeserializationError, ComponentError
-from haystack.pipeline import Pipeline
-from haystack.dataclasses import Document, Answer, GeneratedAnswer, ExtractedAnswer
-
+from haystack.dataclasses import Answer, Document, ExtractedAnswer, GeneratedAnswer
 
 __all__ = [
     "component",
