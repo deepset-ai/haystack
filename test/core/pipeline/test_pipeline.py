@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
+from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.core.errors import PipelineDrawingError, PipelineError, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
@@ -14,6 +15,56 @@ from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double
 
 logging.basicConfig(level=logging.DEBUG)
+
+
+@component
+class FakeComponent:
+    def __init__(self, an_init_param: Optional[str] = None):
+        pass
+
+    @component.output_types(value=str)
+    def run(self, input_: str):
+        return {"value": input_}
+
+
+def test_pipeline_dumps(test_files_path):
+    pipeline = Pipeline()
+    pipeline.add_component("Comp1", FakeComponent("Foo"))
+    pipeline.add_component("Comp2", FakeComponent())
+    pipeline.connect("Comp1.value", "Comp2.input_")
+    pipeline.max_loops_allowed = 99
+    result = pipeline.dumps()
+    with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
+        assert f.read() == result
+
+
+def test_pipeline_loads(test_files_path):
+    with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
+        pipeline = Pipeline.loads(f.read())
+        assert pipeline.max_loops_allowed == 99
+        assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
+        assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
+
+
+def test_pipeline_dump(test_files_path, tmp_path):
+    pipeline = Pipeline()
+    pipeline.add_component("Comp1", FakeComponent("Foo"))
+    pipeline.add_component("Comp2", FakeComponent())
+    pipeline.connect("Comp1.value", "Comp2.input_")
+    pipeline.max_loops_allowed = 99
+    with open(tmp_path / "out.yaml", "w") as f:
+        pipeline.dump(f)
+    # re-open and ensure it's the same data as the test file
+    with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as test_f, open(tmp_path / "out.yaml", "r") as f:
+        assert f.read() == test_f.read()
+
+
+def test_pipeline_load(test_files_path):
+    with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
+        pipeline = Pipeline.load(f)
+        assert pipeline.max_loops_allowed == 99
+        assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
+        assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
 
 
 @patch("haystack.core.pipeline.pipeline._to_mermaid_image")

@@ -6,7 +6,7 @@ import itertools
 import logging
 from copy import copy
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, List, Mapping, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
 
 import networkx  # type:ignore
 
@@ -20,11 +20,13 @@ from haystack.core.errors import (
 )
 from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
+from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.utils import is_in_jupyter
 
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
 from .draw import _to_mermaid_image
 
+DEFAULT_MARSHALLER = YamlMarshaller()
 logger = logging.getLogger(__name__)
 
 # We use a generic type to annotate the return value of classmethods,
@@ -193,6 +195,57 @@ class Pipeline:
             pipe.connect(sender=connection["sender"], receiver=connection["receiver"])
 
         return pipe
+
+    def dumps(self, marshaller: Marshaller = DEFAULT_MARSHALLER) -> str:
+        """
+        Returns the string representation of this pipeline according to the
+        format dictated by the `Marshaller` in use.
+
+        :params marshaller: The Marshaller used to create the string representation. Defaults to
+                            `YamlMarshaller`
+
+        :returns: A string representing the pipeline.
+        """
+        return marshaller.marshal(self.to_dict())
+
+    def dump(self, fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER):
+        """
+        Writes the string representation of this pipeline to the file-like object
+        passed in the `fp` argument.
+
+        :params fp: A file-like object ready to be written to.
+        :params marshaller: The Marshaller used to create the string representation. Defaults to
+                            `YamlMarshaller`.
+        """
+        fp.write(marshaller.marshal(self.to_dict()))
+
+    @classmethod
+    def loads(cls, data: Union[str, bytes, bytearray], marshaller: Marshaller = DEFAULT_MARSHALLER) -> "Pipeline":
+        """
+        Creates a `Pipeline` object from the string representation passed in the `data` argument.
+
+        :params data: The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
+        :params marshaller: the Marshaller used to create the string representation. Defaults to
+                            `YamlMarshaller`
+
+        :returns: A `Pipeline` object.
+        """
+        return cls.from_dict(marshaller.unmarshal(data))
+
+    @classmethod
+    def load(cls, fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER) -> "Pipeline":
+        """
+        Creates a `Pipeline` object from the string representation read from the file-like
+        object passed in the `fp` argument.
+
+        :params data: The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
+        :params fp: A file-like object ready to be read from.
+        :params marshaller: the Marshaller used to create the string representation. Defaults to
+                            `YamlMarshaller`
+
+        :returns: A `Pipeline` object.
+        """
+        return cls.from_dict(marshaller.unmarshal(fp.read()))
 
     def add_component(self, name: str, instance: Component) -> None:
         """
