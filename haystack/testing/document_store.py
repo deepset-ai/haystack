@@ -83,7 +83,7 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
         Test write_documents() default behaviour.
         """
         msg = (
-            "Default write_documents() behaviour depends on the Document Store implementantion, "
+            "Default write_documents() behaviour depends on the Document Store implementation, "
             "as we don't enforce a default behaviour when no policy is set. "
             "Override this test in your custom test class."
         )
