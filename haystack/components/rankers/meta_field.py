@@ -1,3 +1,4 @@
+from dateutil.parser import parse as date_parse
 import logging
 from collections import defaultdict
 from typing import List, Dict, Any, Optional, Literal
@@ -37,6 +38,7 @@ class MetaFieldRanker:
         top_k: Optional[int] = None,
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"] = "reciprocal_rank_fusion",
         sort_order: Literal["ascending", "descending"] = "descending",
+        meta_value_type: Optional[Literal["float", "int", "date"]] = None,
     ):
         """
         Creates an instance of MetaFieldRanker.
@@ -53,6 +55,9 @@ class MetaFieldRanker:
                 Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
         :param sort_order: Whether to sort the meta field by ascending or descending order.
                 Possible values are `descending` (default) and `ascending`.
+        :param meta_value_type: Parse the meta value into the data type specified if the meta value is a string.
+                For example, if we specified `meta_value_type="date"` then for the meta value `"date": "2015-02-01"`
+                we would parse the string into a datetime object.
         """
 
         self.meta_field = meta_field
@@ -61,8 +66,13 @@ class MetaFieldRanker:
         self.ranking_mode = ranking_mode
         self.sort_order = sort_order
         self._validate_params(
-            weight=self.weight, top_k=self.top_k, ranking_mode=self.ranking_mode, sort_order=self.sort_order
+            weight=self.weight,
+            top_k=self.top_k,
+            ranking_mode=self.ranking_mode,
+            sort_order=self.sort_order,
+            meta_value_type=meta_value_type,
         )
+        self.meta_value_type = meta_value_type
 
     def _validate_params(
         self,
@@ -70,6 +80,7 @@ class MetaFieldRanker:
         top_k: Optional[int],
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"],
         sort_order: Literal["ascending", "descending"],
+        meta_value_type: Optional[Literal["float", "int", "date"]],
     ):
         if top_k is not None and top_k <= 0:
             raise ValueError("top_k must be > 0, but got %s" % top_k)
@@ -96,6 +107,14 @@ class MetaFieldRanker:
                 "MetaFieldRanker." % sort_order
             )
 
+        if meta_value_type not in ["float", "int", "date", None]:
+            raise ValueError(
+                "The value of parameter <meta_value_type> must be 'float', 'int', 'date' or None but is "
+                "currently set to '%s'.\n"
+                "Change the <meta_value_type> value to 'float', 'int', 'date' or None when initializing the "
+                "MetaFieldRanker." % meta_value_type
+            )
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize object to a dictionary.
@@ -107,6 +126,7 @@ class MetaFieldRanker:
             top_k=self.top_k,
             ranking_mode=self.ranking_mode,
             sort_order=self.sort_order,
+            meta_value_type=self.meta_value_type,
         )
 
     @component.output_types(documents=List[Document])
@@ -117,6 +137,7 @@ class MetaFieldRanker:
         weight: Optional[float] = None,
         ranking_mode: Optional[Literal["reciprocal_rank_fusion", "linear_score"]] = None,
         sort_order: Optional[Literal["ascending", "descending"]] = None,
+        meta_value_type: Optional[Literal["float", "int", "date"]] = None,
     ):
         """
         Use this method to rank a list of Documents based on the selected meta field by:
@@ -139,6 +160,9 @@ class MetaFieldRanker:
         :param sort_order: Whether to sort the meta field by ascending or descending order.
                 Possible values are `descending` (default) and `ascending`.
                 If not provided, the sort_order provided at initialization time is used.
+        :param meta_value_type: Parse the meta value into the data type specified if the meta value is a string.
+                For example, if we specified `meta_value_type="date"` then for the meta value `"date": "2015-02-01"`
+                we would parse the string into a datetime object.
         """
         if not documents:
             return {"documents": []}
@@ -147,7 +171,14 @@ class MetaFieldRanker:
         weight = weight or self.weight
         ranking_mode = ranking_mode or self.ranking_mode
         sort_order = sort_order or self.sort_order
-        self._validate_params(weight=weight, top_k=top_k, ranking_mode=ranking_mode, sort_order=sort_order)
+        meta_value_type = meta_value_type or self.meta_value_type
+        self._validate_params(
+            weight=weight,
+            top_k=top_k,
+            ranking_mode=ranking_mode,
+            sort_order=sort_order,
+            meta_value_type=meta_value_type,
+        )
 
         # If the weight is 0 then ranking by meta field is disabled and the original documents should be returned
         if weight == 0:
@@ -175,10 +206,14 @@ class MetaFieldRanker:
                 ",".join([doc.id for doc in docs_missing_meta_field]),
             )
 
+        # If meta_value_type is provided try to parse the meta values
+        parsed_meta = self._parse_meta(docs_with_meta_field=docs_with_meta_field, meta_value_type=meta_value_type)
+        tuple_parsed_meta_and_docs = list(zip(parsed_meta, docs_with_meta_field))
+
         # Sort the documents by self.meta_field
         reverse = sort_order == "descending"
         try:
-            sorted_by_meta = sorted(docs_with_meta_field, key=lambda doc: doc.meta[self.meta_field], reverse=reverse)
+            sorted_by_meta = sorted(tuple_parsed_meta_and_docs, key=lambda x: x[0], reverse=reverse)
         except TypeError as error:
             # Return original documents if mixed types that are not comparable are returned (e.g. int and list)
             logger.warning(
@@ -190,9 +225,51 @@ class MetaFieldRanker:
             return {"documents": documents[:top_k]}
 
         # Add the docs missing the meta_field back on the end
+        sorted_by_meta = [doc for meta, doc in sorted_by_meta]
         sorted_documents = sorted_by_meta + docs_missing_meta_field
         sorted_documents = self._merge_rankings(documents, sorted_documents)
         return {"documents": sorted_documents[:top_k]}
+
+    def _parse_meta(
+        self, docs_with_meta_field: List[Document], meta_value_type: Optional[Literal["float", "int", "date"]]
+    ) -> List[Any]:
+        """
+        Parse the meta values stored under `self.meta_field` for the Documents provided in `docs_with_meta_field`.
+        """
+        if meta_value_type is None:
+            return [d.meta[self.meta_field] for d in docs_with_meta_field]
+
+        unique_meta_values = {doc.meta[self.meta_field] for doc in docs_with_meta_field}
+        if not all(isinstance(meta_value, str) for meta_value in unique_meta_values):
+            logger.warning(
+                "The parameter <meta_value_type> is currently set to %s, but not all of meta values in the "
+                "provided Documents with IDs %s are strings.\n"
+                "Skipping parsing of the meta values.\n"
+                "Set all meta values found under the <meta_field> parameter to strings to use <meta_value_type>.",
+                meta_value_type,
+                ",".join([doc.id for doc in docs_with_meta_field]),
+            )
+            return [d.meta[self.meta_field] for d in docs_with_meta_field]
+
+        if meta_value_type == "float":
+            parse_fn = float
+        elif meta_value_type == "int":
+            parse_fn = int
+        else:
+            parse_fn = date_parse
+
+        try:
+            meta_values = [parse_fn(d.meta[self.meta_field]) for d in docs_with_meta_field]
+        except ValueError as error:
+            logger.warning(
+                "Tried to parse the meta values of Documents with IDs %s, but got ValueError with the message: %s\n"
+                "Skipping parsing of the meta values.",
+                ",".join([doc.id for doc in docs_with_meta_field]),
+                error,
+            )
+            meta_values = [d.meta[self.meta_field] for d in docs_with_meta_field]
+
+        return meta_values
 
     def _merge_rankings(self, documents: List[Document], sorted_documents: List[Document]) -> List[Document]:
         """
