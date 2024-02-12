@@ -1,0 +1,9 @@
+---
+enhancements:
+  - |
+    Introduces a few parameters to make the pipeline diagram more readable when many components are involved:
+
+    - show_component_names: whether the name of the component should be shown
+    - show_optional_inputs: whether the optional inputs of the component should be shown
+    - show_connection_types: whether the type of the connection should be shown
+    - direction: whether the plot should be drawn top-down or left-right
