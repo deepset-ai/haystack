@@ -242,7 +242,7 @@ class MetaFieldRanker:
         unique_meta_values = {doc.meta[self.meta_field] for doc in docs_with_meta_field}
         if not all(isinstance(meta_value, str) for meta_value in unique_meta_values):
             logger.warning(
-                "The parameter <meta_value_type> is currently set to %s, but not all of meta values in the "
+                "The parameter <meta_value_type> is currently set to '%s', but not all of meta values in the "
                 "provided Documents with IDs %s are strings.\n"
                 "Skipping parsing of the meta values.\n"
                 "Set all meta values found under the <meta_field> parameter to strings to use <meta_value_type>.",

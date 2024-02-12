@@ -89,6 +89,15 @@ class TestMetaFieldRanker:
         sorted_scores = sorted([doc.meta["rating"] for doc in docs_after])
         assert [doc.meta["rating"] for doc in docs_after] == sorted_scores
 
+    def test_meta_value_type_float(self):
+        ranker = MetaFieldRanker(meta_field="rating", weight=1.0, meta_value_type="float")
+        docs_before = [Document(content="abc", meta={"rating": value}) for value in ["1.1", "10.5", "2.3"]]
+        output = ranker.run(documents=docs_before)
+        docs_after = output["documents"]
+        assert len(docs_after) == 3
+        sorted_scores = [str(x) for x in sorted([float(doc.meta["rating"]) for doc in docs_after], reverse=True)]
+        assert [doc.meta["rating"] for doc in docs_after] == sorted_scores
+
     def test_returns_empty_list_if_no_documents_are_provided(self):
         ranker = MetaFieldRanker(meta_field="rating")
         output = ranker.run(documents=[])
@@ -142,6 +151,21 @@ class TestMetaFieldRanker:
             assert len(output["documents"]) == 3
             assert (
                 "Tried to parse the meta values of Documents with IDs 1,2,3, but got ValueError with the message:"
+                in caplog.text
+            )
+
+    def test_warning_meta_value_type_not_all_strings(self, caplog):
+        ranker = MetaFieldRanker(meta_field="rating", meta_value_type="float")
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": "1.3"}),
+            Document(id="2", content="abc", meta={"rating": "1.2"}),
+            Document(id="3", content="abc", meta={"rating": 2.1}),
+        ]
+        with caplog.at_level(logging.WARNING):
+            output = ranker.run(documents=docs_before)
+            assert len(output["documents"]) == 3
+            assert (
+                "The parameter <meta_value_type> is currently set to 'float', but not all of meta values in the provided Documents with IDs 1,2,3 are strings."
                 in caplog.text
             )
 
