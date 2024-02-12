@@ -1,6 +1,6 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack]
+    search_path: [../../../haystack/core/pipeline]
     modules: ["pipeline"]
     ignore_when_discovered: ["__init__"]
 processors:

@@ -2,11 +2,11 @@ components:
   Comp1:
     init_parameters:
       an_init_param: null
-    type: test.test_pipeline.TestComponent
+    type: test.core.pipeline.test_pipeline.FakeComponent
   Comp2:
     init_parameters:
       an_init_param: null
-    type: test.test_pipeline.TestComponent
+    type: test.core.pipeline.test_pipeline.FakeComponent
 connections:
 - receiver: Comp2.input_
   sender: Comp1.value
