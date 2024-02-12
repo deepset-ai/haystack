@@ -1,11 +1,9 @@
-import datetime
 import logging
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
 from haystack.core.pipeline import Pipeline as _pipeline
-from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +25,6 @@ class Pipeline(_pipeline):
             max_loops_allowed: how many times the pipeline can run the same node before throwing an exception.
             debug_path: when debug is enabled in `run()`, where to save the debug data.
         """
-        self._telemetry_runs = 0
-        self._last_telemetry_sent: Optional[datetime.datetime] = None
         super().__init__(metadata=metadata, max_loops_allowed=max_loops_allowed, debug_path=debug_path)
 
     def run(self, data: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
@@ -104,7 +100,6 @@ class Pipeline(_pipeline):
 
         :raises PipelineRuntimeError: if any of the components fail or return unexpected output.
         """
-        pipeline_running(self)
         return super().run(data=data, debug=debug)
 
     def _prepare_component_input_data(self, data: Dict[str, Any]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:

@@ -5,6 +5,7 @@ import importlib
 import itertools
 import logging
 from copy import copy
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
 
@@ -21,6 +22,7 @@ from haystack.core.errors import (
 from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
+from haystack.telemetry import pipeline_running
 from haystack.utils import is_in_jupyter
 
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
@@ -58,6 +60,8 @@ class Pipeline:
             max_loops_allowed: how many times the pipeline can run the same node before throwing an exception.
             debug_path: when debug is enabled in `run()`, where to save the debug data.
         """
+        self._telemetry_runs = 0
+        self._last_telemetry_sent: Optional[datetime] = None
         self.metadata = metadata or {}
         self.max_loops_allowed = max_loops_allowed
         self.graph = networkx.MultiDiGraph()
@@ -602,6 +606,7 @@ class Pipeline:
     def run(  # noqa: C901, PLR0912 pylint: disable=too-many-branches
         self, data: Dict[str, Any], debug: bool = False
     ) -> Dict[str, Any]:
+        pipeline_running(self)
         # NOTE: We're assuming data is formatted like so as of now
         # data = {
         #     "comp1": {"input1": 1, "input2": 2},
@@ -618,7 +623,6 @@ class Pipeline:
 
         # Raise if input is malformed in some way
         self._validate_input(data)
-
         # NOTE: The above NOTE and TODO are technically not true.
         # This implementation of run supports only the first format, but the second format is actually
         # never received by this method. It's handled by the `run()` method of the `Pipeline` class
