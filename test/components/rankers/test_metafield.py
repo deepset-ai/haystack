@@ -17,12 +17,18 @@ class TestMetaFieldRanker:
                 "top_k": None,
                 "ranking_mode": "reciprocal_rank_fusion",
                 "sort_order": "descending",
+                "meta_value_type": None,
             },
         }
 
     def test_to_dict_with_custom_init_parameters(self):
         component = MetaFieldRanker(
-            meta_field="rating", weight=0.5, top_k=5, ranking_mode="linear_score", sort_order="ascending"
+            meta_field="rating",
+            weight=0.5,
+            top_k=5,
+            ranking_mode="linear_score",
+            sort_order="ascending",
+            meta_value_type="date",
         )
         data = component.to_dict()
         assert data == {
@@ -33,6 +39,7 @@ class TestMetaFieldRanker:
                 "top_k": 5,
                 "ranking_mode": "linear_score",
                 "sort_order": "ascending",
+                "meta_value_type": "date",
             },
         }
 
@@ -123,6 +130,21 @@ class TestMetaFieldRanker:
             assert len(output["documents"]) == 3
             assert "Tried to sort Documents with IDs 1,2,3, but got TypeError with the message:" in caplog.text
 
+    def test_warning_if_meta_value_parsing_error(self, caplog):
+        ranker = MetaFieldRanker(meta_field="rating", meta_value_type="float")
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": "1.3"}),
+            Document(id="2", content="abc", meta={"rating": "1.2"}),
+            Document(id="3", content="abc", meta={"rating": "not a float"}),
+        ]
+        with caplog.at_level(logging.WARNING):
+            output = ranker.run(documents=docs_before)
+            assert len(output["documents"]) == 3
+            assert (
+                "Tried to parse the meta values of Documents with IDs 1,2,3, but got ValueError with the message:"
+                in caplog.text
+            )
+
     def test_raises_value_error_if_wrong_ranking_mode(self):
         with pytest.raises(ValueError):
             MetaFieldRanker(meta_field="rating", ranking_mode="wrong_mode")
@@ -139,6 +161,10 @@ class TestMetaFieldRanker:
     def test_raises_value_error_if_wrong_sort_order(self):
         with pytest.raises(ValueError):
             MetaFieldRanker(meta_field="rating", sort_order="wrong_order")
+
+    def test_raises_value_error_if_wrong_meta_value_type(self):
+        with pytest.raises(ValueError):
+            MetaFieldRanker(meta_field="rating", meta_value_type="wrong_type")
 
     def test_linear_score(self):
         ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
