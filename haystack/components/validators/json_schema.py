@@ -60,7 +60,7 @@ class JsonSchemaValidator:
         # we need complete json to validate it against schema
         last_message_json = self.recursive_json_to_object(last_message_content)
         using_openai_schema: bool = self.is_openai_function_calling_schema(json_schema)
-        if self.is_openai_function_calling_schema(json_schema):
+        if using_openai_schema:
             validation_schema = json_schema["parameters"]
         else:
             validation_schema = json_schema
