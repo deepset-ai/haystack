@@ -155,8 +155,8 @@ def _to_mermaid_text(
         if from_comp != "input" and to_comp != "output":
             arrowtail = ARROWTAIL_MANDATORY if conn_data["mandatory"] else ARROWTAIL_OPTIONAL
             arrowhead = ARROWHEAD_MANDATORY if conn_data["mandatory"] else ARROWHEAD_OPTIONAL
-            conn_type = '<br><small><i>{conn_data["conn_type"]}</i></small>' if show_connection_types else ""
-            label = f'"{conn_data["label"]}{conn_type}'
+            conn_type = f'<br><small><i>{conn_data["conn_type"]}</i></small>' if show_connection_types else ""
+            label = f'"{conn_data["label"]}{conn_type}"'
             conn_string = f"{states[from_comp]} {arrowtail} {label} {arrowhead} {states[to_comp]}"
             connections_list.append(conn_string)
 
