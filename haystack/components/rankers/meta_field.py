@@ -1,7 +1,8 @@
-from dateutil.parser import parse as date_parse
 import logging
 from collections import defaultdict
 from typing import List, Dict, Any, Optional, Literal, Callable
+from dateutil.parser import parse as date_parse
+
 
 from haystack import Document, component, default_to_dict
 
