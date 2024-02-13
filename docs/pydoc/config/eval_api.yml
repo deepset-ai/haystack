@@ -17,7 +17,7 @@ renderer:
   category_slug: haystack-api
   title: Evaluation
   slug: eval-api
-  order: 180
+  order: 63
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
