@@ -56,13 +56,15 @@ class MetaFieldRanker:
                 Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
         :param sort_order: Whether to sort the meta field by ascending or descending order.
                 Possible values are `descending` (default) and `ascending`.
-        :param meta_value_type: Parse the meta value into the data type specified only if all meta values are strings.
-                'float' will try to parse the meta values into floats.
-                'int' will try to parse the meta values into ints.
-                'date' will try to parse the meta values into datetime objects.
-                'None' (default) will do no parsing.
+        :param meta_value_type: Parse the meta value into the data type specified before sorting.
+                This will only work if all meta values stored under `meta_field` in the provided documents are strings.
                 For example, if we specified `meta_value_type="date"` then for the meta value `"date": "2015-02-01"`
-                we would parse the string into a datetime object.
+                we would parse the string into a datetime object and then sort the documents by date.
+                The available options are:
+                -'float' will parse the meta values into floats.
+                -'int' will parse the meta values into integers.
+                -'date' will parse the meta values into datetime objects.
+                -'None' (default) will do no parsing.
         """
 
         self.meta_field = meta_field
@@ -165,13 +167,15 @@ class MetaFieldRanker:
         :param sort_order: Whether to sort the meta field by ascending or descending order.
                 Possible values are `descending` (default) and `ascending`.
                 If not provided, the sort_order provided at initialization time is used.
-        :param meta_value_type: Parse the meta value into the data type specified only if all meta values are strings.
-                'float' will try to parse the meta values into floats.
-                'int' will try to parse the meta values into ints.
-                'date' will try to parse the meta values into datetime objects.
-                'None' (default) will do no parsing.
+        :param meta_value_type: Parse the meta value into the data type specified before sorting.
+                This will only work if all meta values stored under `meta_field` in the provided documents are strings.
                 For example, if we specified `meta_value_type="date"` then for the meta value `"date": "2015-02-01"`
-                we would parse the string into a datetime object.
+                we would parse the string into a datetime object and then sort the documents by date.
+                The available options are:
+                -'float' will parse the meta values into floats.
+                -'int' will parse the meta values into integers.
+                -'date' will parse the meta values into datetime objects.
+                -'None' (default) will do no parsing.
         """
         if not documents:
             return {"documents": []}
