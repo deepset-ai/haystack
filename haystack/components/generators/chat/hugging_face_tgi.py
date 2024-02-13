@@ -4,10 +4,10 @@ from typing import Any, Dict, List, Optional, Iterable, Callable
 from urllib.parse import urlparse
 
 from haystack import component, default_to_dict, default_from_dict
-from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
 from haystack.utils.hf import check_valid_model, HFModelType, check_generation_params, list_inference_deployed_models
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
@@ -174,7 +174,7 @@ class HuggingFaceTGIChatGenerator:
 
         :return: A dictionary containing the serialized component.
         """
-        callback_name = serialize_callback_handler(self.streaming_callback) if self.streaming_callback else None
+        callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
             model=self.model,
@@ -194,7 +194,7 @@ class HuggingFaceTGIChatGenerator:
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
-            data["init_parameters"]["streaming_callback"] = deserialize_callback_handler(serialized_callback_handler)
+            data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
