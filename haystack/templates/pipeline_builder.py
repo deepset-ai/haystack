@@ -32,7 +32,7 @@ class PipelineTemplateBuilder:
     @classmethod
     def for_type(cls, pipeline_type: str):
         # perhaps try a few loading options here like this default relative path template file resolution
-        template_path = f"{Path(__file__).resolve().parent}/{pipeline_type}.yaml"
+        template_path = f"{Path(__file__).resolve().parent}/{pipeline_type}.yaml.jinja2"
         return cls(template_path)
 
     def with_component(self, component_name: str, component_instance):
