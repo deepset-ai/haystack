@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Dict, Any, Set
 
@@ -12,28 +13,44 @@ from haystack.core.component import Component
 
 
 class PipelineTemplateBuilder:
-    def __init__(self, template_path: str):
-        if not Path(template_path).exists():
-            raise ValueError(f"Pipeline template '{template_path}' not found.")
-        self.template_path = template_path
+    template_file_extension = ".yaml.jinja2"
 
-        with open(template_path, "r") as file:
-            self.template_text = file.read()
+    def __init__(self, pipeline_template: str):
+        if not pipeline_template:
+            raise ValueError(
+                "pipeline_name is required and has to be either:\n"
+                "a) predefined pipeline type (e.g. 'rag', 'indexing', etc.)\n"
+                "b) custom jinja2 template defining the pipeline itself.\n"
+                f"Available pipeline types are: {self.list_templates()}"
+            )
+        available_templates = self.list_templates()
+        if pipeline_template not in available_templates and not self.contains_jinja2_syntax(pipeline_template):
+            raise ValueError(
+                f"Pipeline template '{pipeline_template}' not found. Available pipeline types are: {available_templates}.\n"
+                "Users can also provide a custom jinja2 template defining the pipeline itself."
+            )
+        if pipeline_template in available_templates:
+            template_path = f"{Path(__file__).resolve().parent}/{pipeline_template}{self.template_file_extension}"
+            if not Path(template_path).exists():
+                raise ValueError(f"Pipeline template '{template_path}' not found.")
+            self.template_path = template_path
+
+            with open(template_path, "r") as file:
+                self.template_text = file.read()
+        else:
+            self.template_path = None
+            self.template_text = pipeline_template
 
         env = NativeEnvironment()
         try:
             env.parse(self.template_text)
             self.template = Template(self.template_text)
         except TemplateSyntaxError as e:
-            raise ValueError(f"Invalid pipeline template '{template_path}': {e}") from e
+            raise ValueError(
+                f"Invalid pipeline template '{(self.template_path if self.template_path else self.template_text)}': {e}"
+            ) from e
         self.templated_components = self._extract_variables(env)
         self.components = {}
-
-    @classmethod
-    def for_type(cls, pipeline_type: str):
-        # perhaps try a few loading options here like this default relative path template file resolution
-        template_path = f"{Path(__file__).resolve().parent}/{pipeline_type}.yaml.jinja2"
-        return cls(template_path)
 
     def with_component(self, component_name: str, component_instance):
         # check if the component_name is allowed in the template
@@ -68,3 +85,16 @@ class PipelineTemplateBuilder:
         ast = env.parse(self.template_text)
         variables.update(meta.find_undeclared_variables(ast))
         return variables
+
+    def list_templates(self):
+        directory = Path(__file__).resolve().parent
+        jinja_files = [f for f in directory.iterdir() if f.is_file() and f.name.endswith(self.template_file_extension)]
+        correct_template_names = [f.name.rsplit(self.template_file_extension, 1)[0] for f in jinja_files]
+        return correct_template_names
+
+    @staticmethod
+    def contains_jinja2_syntax(s):
+        # Patterns to look for: {{ var }}, {% block %}, {# comment #}
+        patterns = [r"\{\{.*?\}\}", r"\{%.*?%\}", r"\{#.*?#\}"]
+        combined_pattern = re.compile("|".join(patterns))
+        return bool(combined_pattern.search(s))
