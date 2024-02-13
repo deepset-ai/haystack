@@ -14,7 +14,6 @@ class Metric(Enum):
     MAP = "Mean Average Precision"
     F1 = "F1"
     EM = "Exact Match"
-    SAS = "Semantic Answer Similarity"
 
 
 class MetricsResult(dict):
