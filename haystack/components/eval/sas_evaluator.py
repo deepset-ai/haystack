@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-import numpy as np
+from numpy import mean as np_mean
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
@@ -151,6 +151,6 @@ class SASEvaluator:
             # It returns a matrix with shape (len(predictions), len(labels))
             similarity_scores = [scores[i][i].item() for i in range(len(predictions))]
 
-        sas_score = np.mean(similarity_scores)
+        sas_score = np_mean(similarity_scores)
 
         return {"sas": sas_score, "scores": similarity_scores}
