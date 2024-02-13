@@ -14,17 +14,19 @@ from .preprocess import _preprocess_text
 @component
 class StatisticalEvaluator:
     """
-    TODO
+    StatisticalEvaluator is a component that evaluates the performance of a model based on statistical metrics.
+    It's usually used in QA and Retrieval Augmented Generation (RAG) pipelines to evaluate the quality of the generated answers.
+
+    The supported metrics are:
+    - F1: Measures word overlap between predictions and labels.
+    - Exact Match: Measures the proportion of cases where prediction is identical to the expected label.
     """
 
     class Metric(Enum):
         """
-        Metrics supported by the StatisticalEvaluator.
+        Supported metrics
         """
 
-        # RECALL = "Recall"
-        # MRR = "Mean Reciprocal Rank"
-        # MAP = "Mean Average Precision"
         F1 = "F1"
         EM = "Exact Match"
 
@@ -37,6 +39,19 @@ class StatisticalEvaluator:
         ignore_punctuation: bool = False,
         ignore_numbers: bool = False,
     ):
+        """
+        Creates a new instance of StatisticalEvaluator.
+
+        :param labels: The list of expected answers.
+        :param metric: Metric to use for evaluation in this component. Supported metrics are F1 and Exact Match.
+        :param regexes_to_ignore: A list of regular expressions. If provided, it removes substrings
+            matching these regular expressions from both predictions and labels before comparison. Defaults to None.
+        :param ignore_case: If True, performs case-insensitive comparison. Defaults to False.
+        :param ignore_punctuation: If True, removes punctuation from both predictions and labels before
+            comparison. Defaults to False.
+        :param ignore_numbers: If True, removes numerical digits from both predictions and labels
+            before comparison. Defaults to False.
+        """
         self._labels = labels
         self._metric = metric
         self._regexes_to_ignore = regexes_to_ignore
