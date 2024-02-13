@@ -59,7 +59,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: bool = False,
         clean_empty_lines: bool = True,
         remove_substrings: Optional[List[str]] = None,
-        split_by: Optional[Literal["token", "word", "sentence", "passage"]] = "word",
+        split_by: Optional[Literal["token", "word", "sentence", "passage", "page"]] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
@@ -79,7 +79,7 @@ class PreProcessor(BasePreProcessor):
         :param clean_whitespace: Strip whitespaces before or after each line in the text.
         :param clean_empty_lines: Remove more than two empty lines in the text.
         :param remove_substrings: Remove specified substrings from the text. If no value is provided an empty list is created by default.
-        :param split_by: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
+        :param split_by: Unit for splitting the document. Can be "token", "word", "sentence", "passage", or "page". Set to None to disable splitting.
         :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
                            "sentence", then each output document will have 10 sentences.
         :param split_overlap: Word overlap between two adjacent documents after a split.
@@ -148,7 +148,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
         remove_substrings: Optional[List[str]] = None,
-        split_by: Optional[Literal["token", "word", "sentence", "passage"]] = None,
+        split_by: Optional[Literal["token", "word", "sentence", "passage", "page"]] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
@@ -230,7 +230,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
         remove_substrings: Optional[List[str]] = None,
-        split_by: Optional[Literal["token", "word", "sentence", "passage"]] = None,
+        split_by: Optional[Literal["token", "word", "sentence", "passage", "page"]] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
@@ -347,7 +347,7 @@ class PreProcessor(BasePreProcessor):
     def split(
         self,
         document: Union[dict, Document],
-        split_by: Optional[Literal["token", "word", "sentence", "passage"]],
+        split_by: Optional[Literal["token", "word", "sentence", "passage", "page"]],
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
@@ -588,7 +588,9 @@ class PreProcessor(BasePreProcessor):
 
         return processed_sents, next_slice, word_count_slice
 
-    def _split_into_units(self, text: str, split_by: str, tokenizer: Any) -> Tuple[List[str], str]:
+    def _split_into_units(
+        self, text: str, split_by: Literal["token", "word", "sentence", "passage", "page"], tokenizer: Any
+    ) -> Tuple[List[str], str]:
         if split_by == "passage":
             elements = text.split("\n\n")
             split_at = "\n\n"
@@ -601,9 +603,12 @@ class PreProcessor(BasePreProcessor):
         elif split_by == "token":
             elements = self._split_tokens(text, tokenizer)
             split_at = ""
+        elif split_by == "page":
+            elements = text.split("\f")
+            split_at = "\f"
         else:
             raise NotImplementedError(
-                "PreProcessor only supports 'passage', 'sentence', 'word' or 'token' split_by options."
+                "PreProcessor only supports 'passage', 'sentence', 'word', 'token' or 'page' split_by options."
             )
 
         return elements, split_at
@@ -631,7 +636,10 @@ class PreProcessor(BasePreProcessor):
                 processed_units = current_units[: split_length - split_overlap]
                 cur_start_idx += len((split_at_len * " ").join(processed_units)) + split_at_len
                 if self.add_page_number:
-                    num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
+                    if split_at != "\f":
+                        num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
+                    else:
+                        num_page_breaks = len(processed_units)
                     cur_page += num_page_breaks
 
         return text_splits, splits_pages, splits_start_idxs
