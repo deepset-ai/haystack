@@ -1,4 +1,3 @@
-import json
 from typing import Optional, Dict, Any, Set, Callable
 
 import jinja2.runtime
@@ -65,8 +64,6 @@ class OutputAdapter:
     ```
     """
 
-    predefined_filters = {"json_loads": lambda s: json.loads(s) if isinstance(s, str) else json.loads(str(s))}
-
     def __init__(self, template: str, output_type: TypeAlias, custom_filters: Optional[Dict[str, Callable]] = None):
         """
         Initializes the OutputAdapter with a set of adaptation rules.
@@ -75,7 +72,7 @@ class OutputAdapter:
         :param output_type: The type of the output data (e.g., str, List[int]).
         :param custom_filters: A dictionary of custom Jinja2 filters to be used in the template.
         """
-        self.custom_filters = {**(custom_filters or {}), **self.predefined_filters}
+        self.custom_filters = {**(custom_filters or {})}
         input_types: Set[str] = set()
 
         # Create a Jinja native environment, we need it to:
