@@ -7,9 +7,9 @@ from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletionChunk, ChatCompletion
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import StreamingChunk, ChatMessage
 from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ class OpenAIGenerator:
         Serialize this component to a dictionary.
         :return: The serialized component as a dictionary.
         """
-        callback_name = serialize_callback_handler(self.streaming_callback) if self.streaming_callback else None
+        callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
             model=self.model,
@@ -135,7 +135,7 @@ class OpenAIGenerator:
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
-            data["init_parameters"]["streaming_callback"] = deserialize_callback_handler(serialized_callback_handler)
+            data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
 
     @component.output_types(replies=List[str], meta=List[Dict[str, Any]])
