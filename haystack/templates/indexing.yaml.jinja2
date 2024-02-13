@@ -1,0 +1,95 @@
+components:
+  cleaner: {{ cleaner | default({
+    "init_parameters": {
+      "remove_empty_lines": true,
+      "remove_extra_whitespaces": true,
+      "remove_regex": None,
+      "remove_repeated_substrings": false,
+      "remove_substrings": None
+    },
+    "type": "haystack.components.preprocessors.document_cleaner.DocumentCleaner"
+  }, true) | tojson }}
+  embedder: {{ embedder | default({
+    "init_parameters": {
+      "batch_size": 32,
+      "device": "cpu",
+      "embedding_separator": "\\n",
+      "model": "sentence-transformers/all-MiniLM-L6-v2",
+      "normalize_embeddings": false,
+      "prefix": "",
+      "progress_bar": true,
+      "suffix": "",
+      "token": None
+    },
+    "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder"
+  }, true) | tojson }}
+  file_type_router: {{ file_type_router | default({
+    "init_parameters": {
+      "mime_types": mime_types | default(["text/plain"]) + (use_pdf_file_converter | default(false) | ternary(["application/pdf"], [])),
+    },
+    "type": "haystack.components.routers.file_type_router.FileTypeRouter"
+  }, true) | tojson }}
+  doc_joiner: {{ doc_joiner | default({
+    "init_parameters": {
+      "join_mode": "concatenate"
+    },
+    "type": "haystack.components.joiners.document_joiner.DocumentJoiner"
+  }, true) | tojson }}
+  splitter: {{ splitter | default({
+    "init_parameters": {
+      "split_by": "sentence",
+      "split_length": 250,
+      "split_overlap": 30
+    },
+    "type": "haystack.components.preprocessors.document_splitter.DocumentSplitter"
+  }, true) | tojson }}
+  {% if use_pdf_file_converter %}
+  pdf_file_converter: {{ pdf_file_converter | default({
+    "init_parameters": {
+      "converter_name": "default"
+    },
+    "type": "haystack.components.converters.pypdf.PyPDFToDocument"
+  }, true) | tojson }}
+  {% endif %}
+  text_file_converter: {{ text_file_converter | default({
+    "init_parameters": {
+      "encoding": "utf-8"
+    },
+    "type": "haystack.components.converters.txt.TextFileToDocument"
+  }, true) | tojson }}
+  writer: {{ writer | default({
+    "init_parameters": {
+      "document_store": {
+        "init_parameters": {
+          "bm25_algorithm": "BM25Okapi",
+          "bm25_parameters": {},
+          "bm25_tokenization_regex": "(?u)\\b\\w\\w+\\b",
+          "embedding_similarity_function": "dot_product"
+        },
+        "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore"
+      },
+      "policy": "FAIL"
+    },
+    "type": "haystack.components.writers.document_writer.DocumentWriter"
+  }, true) | tojson }}
+connections:
+- receiver: text_file_converter.sources
+  sender: file_type_router.text/plain
+- receiver: doc_joiner.documents
+  sender: text_file_converter.documents
+  {% if use_pdf_file_converter %}
+- receiver: pdf_file_converter.sources
+  sender: file_type_router.application/pdf
+- receiver: doc_joiner.documents
+  sender: pdf_file_converter.documents
+  {% endif %}
+- receiver: cleaner.documents
+  sender: doc_joiner.documents
+- receiver: splitter.documents
+  sender: cleaner.documents
+- receiver: embedder.documents
+  sender: splitter.documents
+- receiver: writer.documents
+  sender: embedder.documents
+max_loops_allowed: 5
+metadata: {}
