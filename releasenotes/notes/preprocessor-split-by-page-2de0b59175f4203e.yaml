@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added new option split_by="page" to the preprocessor so we can chunk documents by page break.
