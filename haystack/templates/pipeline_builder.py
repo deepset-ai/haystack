@@ -3,13 +3,16 @@ from pathlib import Path
 from typing import Dict, Any, Set
 
 import yaml
+from jinja2 import meta, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 
 from haystack import default_to_dict, Pipeline
-from haystack.core.errors import PipelineValidationError
-from jinja2 import Template, meta, TemplateSyntaxError
-
 from haystack.core.component import Component
+from haystack.core.errors import PipelineValidationError
+
+
+def ternary_filter(condition, true_val, false_val):
+    return true_val if condition else false_val
 
 
 class PipelineTemplateBuilder:
@@ -42,15 +45,16 @@ class PipelineTemplateBuilder:
             self.template_text = pipeline_template
 
         env = NativeEnvironment()
+        env.filters["ternary"] = ternary_filter
         try:
-            env.parse(self.template_text)
-            self.template = Template(self.template_text)
+            self.template = env.from_string(self.template_text)
         except TemplateSyntaxError as e:
             raise ValueError(
                 f"Invalid pipeline template '{(self.template_path if self.template_path else self.template_text)}': {e}"
             ) from e
         self.templated_components = self._extract_variables(env)
         self.components = {}
+        self.user_kwargs = {}
 
     def with_component(self, component_name: str, component_instance):
         # check if the component_name is allowed in the template
@@ -70,8 +74,12 @@ class PipelineTemplateBuilder:
         self.components[component_name] = component_dict
         return self
 
+    def with_kwargs(self, **kwargs):
+        self.user_kwargs = kwargs or {}
+        return self
+
     def build(self):
-        rendered_yaml = self.template.render(**self.components)
+        rendered_yaml = self.template.render(**self.components, **self.user_kwargs)
         pipeline_yaml = yaml.safe_load(rendered_yaml)
         return Pipeline.from_dict(pipeline_yaml)
 
