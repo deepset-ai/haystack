@@ -6,6 +6,7 @@ from jinja2.nativetypes import NativeEnvironment
 from typing_extensions import TypeAlias
 
 from haystack import component, default_to_dict, default_from_dict
+from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
 from haystack.utils.type_serialization import serialize_type, deserialize_type
 
 
@@ -124,13 +125,17 @@ class OutputAdapter:
         return adapted_outputs
 
     def to_dict(self) -> Dict[str, Any]:
-        # todo should we serialize the custom filters? And if so, can we do the same as for callback handlers?
-        return default_to_dict(self, template=self.template, output_type=serialize_type(self.output_type))
+        se_filters = {name: serialize_callable(filter_func) for name, filter_func in self.custom_filters.items()}
+        return default_to_dict(
+            self, template=self.template, output_type=serialize_type(self.output_type), custom_filters=se_filters
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "OutputAdapter":
         init_params = data.get("init_parameters", {})
         init_params["output_type"] = deserialize_type(init_params["output_type"])
+        for name, filter_func in init_params.get("custom_filters", {}).items():
+            init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
         return default_from_dict(cls, data)
 
     def _extract_variables(self, env: NativeEnvironment) -> Set[str]:
