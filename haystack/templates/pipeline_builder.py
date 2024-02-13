@@ -13,9 +13,13 @@ from haystack.core.component import Component
 
 class PipelineTemplateBuilder:
     def __init__(self, template_path: str):
-        self.components = {}
+        if not Path(template_path).exists():
+            raise ValueError(f"Pipeline template '{template_path}' not found.")
+        self.template_path = template_path
+
         with open(template_path, "r") as file:
             self.template_text = file.read()
+
         env = NativeEnvironment()
         try:
             env.parse(self.template_text)
@@ -23,6 +27,7 @@ class PipelineTemplateBuilder:
         except TemplateSyntaxError as e:
             raise ValueError(f"Invalid pipeline template '{template_path}': {e}") from e
         self.templated_components = self._extract_variables(env)
+        self.components = {}
 
     @classmethod
     def for_type(cls, pipeline_type: str):
@@ -34,7 +39,7 @@ class PipelineTemplateBuilder:
         # check if the component_name is allowed in the template
         if component_name not in self.templated_components:
             raise PipelineValidationError(
-                f"Component '{component_name}' is not allowed in the template '{self.template}'."
+                f"Component '{component_name}' is not defined in the pipeline template '{self.template_path}'."
             )
         if not isinstance(component_instance, Component):
             raise PipelineValidationError(
