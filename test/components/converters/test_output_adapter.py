@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from haystack import Pipeline, component
@@ -26,9 +28,13 @@ class TestOutputAdapter:
 
         assert adapter.run(**input_data) == expected_output
 
-    #  OutputAdapter can handle predefined filters like 'json_loads' and 'json_dumps'.
+    #  OutputAdapter can add filter 'json_loads' and use it
     def test_predefined_filters(self):
-        adapter = OutputAdapter(template="{{ documents[0].content|json_loads }}", output_type=dict)
+        adapter = OutputAdapter(
+            template="{{ documents[0].content|json_loads }}",
+            output_type=dict,
+            custom_filters={"json_loads": lambda s: json.loads(str(s))},
+        )
 
         input_data = {"documents": [{"content": '{"key": "value"}'}]}
         expected_output = {"output": {"key": "value"}}
@@ -88,7 +94,11 @@ class TestOutputAdapter:
         pipe = Pipeline()
         pipe.add_component(
             name="output_adapter",
-            instance=OutputAdapter(template="{{ documents[0].content | json_loads}}", output_type=str),
+            instance=OutputAdapter(
+                template="{{ documents[0].content | json_loads}}",
+                output_type=str,
+                custom_filters={"json_loads": lambda s: json.loads(str(s))},
+            ),
         )
         pipe.add_component(name="document_producer", instance=DocumentProducer())
         pipe.connect("document_producer", "output_adapter")
