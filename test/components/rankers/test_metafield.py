@@ -92,11 +92,23 @@ class TestMetaFieldRanker:
     def test_meta_value_type_float(self):
         ranker = MetaFieldRanker(meta_field="rating", weight=1.0, meta_value_type="float")
         docs_before = [Document(content="abc", meta={"rating": value}) for value in ["1.1", "10.5", "2.3"]]
-        output = ranker.run(documents=docs_before)
-        docs_after = output["documents"]
+        docs_after = ranker.run(documents=docs_before)["documents"]
         assert len(docs_after) == 3
-        sorted_scores = [str(x) for x in sorted([float(doc.meta["rating"]) for doc in docs_after], reverse=True)]
-        assert [doc.meta["rating"] for doc in docs_after] == sorted_scores
+        assert [doc.meta["rating"] for doc in docs_after] == ["10.5", "2.3", "1.1"]
+
+    def test_meta_value_type_int(self):
+        ranker = MetaFieldRanker(meta_field="rating", weight=1.0, meta_value_type="int")
+        docs_before = [Document(content="abc", meta={"rating": value}) for value in ["1", "10", "2"]]
+        docs_after = ranker.run(documents=docs_before)["documents"]
+        assert len(docs_after) == 3
+        assert [doc.meta["rating"] for doc in docs_after] == ["10", "2", "1"]
+
+    def test_meta_value_type_date(self):
+        ranker = MetaFieldRanker(meta_field="rating", weight=1.0, meta_value_type="date")
+        docs_before = [Document(content="abc", meta={"rating": value}) for value in ["2022-10", "2023-01", "2022-11"]]
+        docs_after = ranker.run(documents=docs_before)["documents"]
+        assert len(docs_after) == 3
+        assert [doc.meta["rating"] for doc in docs_after] == ["2023-01", "2022-11", "2022-10"]
 
     def test_returns_empty_list_if_no_documents_are_provided(self):
         ranker = MetaFieldRanker(meta_field="rating")
