@@ -18,6 +18,52 @@ class JsonSchemaValidator:
     If the JSON content does not conform to the schema, the message is passed along the "validation_error" output.
     In the latter case, the error message is constructed using the provided error_template or a default template.
     These error ChatMessages can be used by LLMs in Haystack 2.x recovery loops.
+
+    Here is a small example of how to use this component in a pipeline implementing schema validation recovery loop:
+
+    ```python
+    from typing import List
+
+    from haystack import Pipeline
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.others import Multiplexer
+    from haystack.components.validators import JsonSchemaValidator
+    from haystack import component
+    from haystack.dataclasses import ChatMessage
+
+
+    @component
+    class MessageProducer:
+
+        @component.output_types(messages=List[ChatMessage])
+        def run(self, messages: List[ChatMessage]) -> dict:
+            return {"messages": messages}
+
+
+    p = Pipeline()
+    p.add_component("llm", OpenAIChatGenerator(model="gpt-4-1106-preview",
+                                               generation_kwargs={"response_format": {"type": "json_object"}}))
+    p.add_component("schema_validator", JsonSchemaValidator())
+    p.add_component("mx_for_llm", Multiplexer(List[ChatMessage]))
+    p.add_component("message_producer", MessageProducer())
+
+    p.connect("message_producer.messages", "mx_for_llm")
+    p.connect("mx_for_llm", "llm")
+    p.connect("llm.replies", "schema_validator.messages")
+    p.connect("schema_validator.validation_error", "mx_for_llm")
+
+
+
+    result = p.run(
+        data={"message_producer": {"messages":[ChatMessage.from_user("Generate JSON for person with name 'John' and age 30")]},
+              "schema_validator": {"json_schema": {"type": "object",
+                                                   "properties": {"name": {"type": "string"},
+                                                                  "age": {"type": "integer"}}}}})
+    print(result)
+    >> {'schema_validator': {'validated': [ChatMessage(content='\n{\n  "name": "John",\n  "age": 30\n}',
+    role=<ChatRole.ASSISTANT: 'assistant'>, name=None, meta={'model': 'gpt-4-1106-preview', 'index': 0,
+    'finish_reason': 'stop', 'usage': {'completion_tokens': 17, 'prompt_tokens': 20, 'total_tokens': 37}})]}}
+    ```
     """
 
     # Default error description template
@@ -31,30 +77,45 @@ class JsonSchemaValidator:
         "and provide the corrected JSON content ONLY."
     )
 
-    def __init__(self):
+    def __init__(self, json_schema: Optional[Dict[str, Any]] = None, error_template: Optional[str] = None):
+        """
+        Initializes a new JsonSchemaValidator instance.
+
+        :param json_schema: A dictionary representing the JSON schema against which the messages' content is validated.
+        :param error_template: A custom template string for formatting the error message in case of validation failure.
+        """
         jsonschema_import.check()
+        self.json_schema = json_schema
+        self.error_template = error_template
 
     @component.output_types(validated=List[ChatMessage], validation_error=List[ChatMessage])
     def run(
         self,
         messages: List[ChatMessage],
-        json_schema: Dict[str, Any],
+        json_schema: Optional[Dict[str, Any]] = None,
         previous_messages: Optional[List[ChatMessage]] = None,
         error_template: Optional[str] = None,
     ):
         """
-        Checks if the last message and its content field conforms to json_schema.
+        Checks if the last message and its content field conforms to json_schema. If it does, the message is passed
+        along the "validated" output. If it does not, the message is passed along the "validation_error" output.
 
         :param messages: A list of ChatMessage instances to be validated. The last message in this list is the one
         that is validated.
         :param previous_messages: A list of previous ChatMessage instances, by default None. These are not validated
         but are returned in the case of an error.
-        :param json_schema:A dictionary representing the JSON schema against which the messages' content is validated.
+        :param json_schema: A dictionary representing the JSON schema against which the messages' content is validated.
         :param error_template: A custom template string for formatting the error message in case of validation
         failure, by default None.
         """
         last_message = messages[-1]
         last_message_content = json.loads(last_message.content)
+
+        json_schema = json_schema or self.json_schema
+        error_template = error_template or self.error_template or self.default_error_template
+
+        if not json_schema:
+            raise ValueError("Provide a JSON schema for validation either in the run method or in the component init.")
 
         # fc payload is json object but subtree `parameters` is string - we need to convert to json object
         # we need complete json to validate it against schema
@@ -67,8 +128,6 @@ class JsonSchemaValidator:
         try:
             last_message_json = [last_message_json] if not isinstance(last_message_json, list) else last_message_json
             for content in last_message_json:
-                if not self.is_function_calling_payload(content):
-                    raise ValidationError(f"{content} is not a valid OpenAI function calling payload.")
                 if using_openai_schema:
                     validate(instance=content["function"]["arguments"]["parameters"], schema=validation_schema)
                 else:
@@ -123,20 +182,6 @@ class JsonSchemaValidator:
         :return: True if the schema is a valid OpenAI function calling schema; otherwise, False.
         """
         return all(key in json_schema for key in ["name", "description", "parameters"])
-
-    def is_function_calling_payload(self, content: Dict[str, Any]) -> bool:
-        """
-        Checks if the provided content is a valid OpenAI function calling payload.
-
-        :param content: The content to check
-        :return: True if the content is a valid OpenAI function calling payload; otherwise, False.
-        """
-        function = content.get("function")
-        if isinstance(function, dict):
-            arguments = function.get("arguments")
-            if isinstance(arguments, dict):
-                return "parameters" in arguments
-        return False
 
     def recursive_json_to_object(self, data: Any) -> Any:
         """
