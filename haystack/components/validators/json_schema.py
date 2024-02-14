@@ -93,7 +93,6 @@ class JsonSchemaValidator:
         self,
         messages: List[ChatMessage],
         json_schema: Optional[Dict[str, Any]] = None,
-        previous_messages: Optional[List[ChatMessage]] = None,
         error_template: Optional[str] = None,
     ):
         """
@@ -102,8 +101,6 @@ class JsonSchemaValidator:
 
         :param messages: A list of ChatMessage instances to be validated. The last message in this list is the one
         that is validated.
-        :param previous_messages: A list of previous ChatMessage instances, by default None. These are not validated
-        but are returned in the case of an error.
         :param json_schema: A dictionary representing the JSON schema against which the messages' content is validated.
         :param error_template: A custom template string for formatting the error message in case of validation
         failure, by default None.
@@ -143,9 +140,7 @@ class JsonSchemaValidator:
             recovery_prompt = self.construct_error_recovery_message(
                 error_template, str(e), error_path, error_schema_path, validation_schema
             )
-            previous_messages = previous_messages or []
-            complete_message_list = previous_messages + messages + [ChatMessage.from_user(recovery_prompt)]
-
+            complete_message_list = messages + [ChatMessage.from_user(recovery_prompt)]
             return {"validation_error": complete_message_list}
 
     def construct_error_recovery_message(
