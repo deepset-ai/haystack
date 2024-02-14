@@ -11,12 +11,12 @@ from haystack.core.component import Component
 from haystack.core.errors import PipelineValidationError
 
 
-class PipelineTemplateBuilder:
+class PipelineTemplate:
     """
-    The PipelineTemplateBuilder class enables the straightforward creation of flexible and configurable pipelines using
+    The PipelineTemplate class enables the straightforward creation of flexible and configurable pipelines using
     Jinja2 templated YAML files. Specifically designed to simplify the setup of complex data processing pipelines for
     a range of NLP tasks—including question answering, retriever augmented generation (RAG), document indexing, among
-    others - PipelineTemplateBuilder empowers users to dynamically generate pipeline configurations from templates and
+    others - PipelineTemplate empowers users to dynamically generate pipeline configurations from templates and
     customize components as necessary. Its design philosophy centers on providing an accessible, yet powerful, tool
     for constructing pipelines that accommodate both common use cases and specialized requirements with ease.
 
@@ -31,10 +31,10 @@ class PipelineTemplateBuilder:
 
     - **Default Build**: Instantiating a pipeline with default settings for a "question answering" (qa) task.
       ```python
-      from haystack.templates import PipelineTemplateBuilder
+      from haystack.templates import PipelineTemplate
 
       # Create a pipeline with default components for a QA task
-      pipe = PipelineTemplateBuilder("qa").build()
+      pipe = PipelineTemplate("qa").build()
       print(pipe.run(data={"question": "What's the capital of Bosnia and Herzegovina? Be brief"}))
       ```
 
@@ -43,10 +43,10 @@ class PipelineTemplateBuilder:
       ```python
       from haystack.components.generators import OpenAIGenerator
       from haystack.components.generators.utils import print_streaming_chunk
-      from haystack.templates import PipelineTemplateBuilder
+      from haystack.templates import PipelineTemplate
 
       # Customize the pipeline with a streaming-capable generator
-      streaming_pipe = PipelineTemplateBuilder("qa").override("generator",
+      streaming_pipe = PipelineTemplate("qa").override("generator",
                                                                OpenAIGenerator(
                                                                    streaming_callback=print_streaming_chunk)).build()
       streaming_pipe.run(data={"question": "What's the capital of Germany? Tell me about it"})
@@ -56,10 +56,10 @@ class PipelineTemplateBuilder:
     to the task.
       ```python
       from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-      from haystack.templates import PipelineTemplateBuilder
+      from haystack.templates import PipelineTemplate
 
       # Customize the pipeline for document indexing with specific components, include PDF file converter
-      ptb = PipelineTemplateBuilder("indexing", template_params={"use_pdf_file_converter": True})
+      ptb = PipelineTemplate("indexing", template_params={"use_pdf_file_converter": True})
       ptb.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True))
       pipe = ptb.build()
 
@@ -68,7 +68,7 @@ class PipelineTemplateBuilder:
       print(result)
       ```
 
-    The `PipelineTemplateBuilder` is designed to offer both ease of use for common pipeline configurations and the
+    The `PipelineTemplate` is designed to offer both ease of use for common pipeline configurations and the
     flexibility to customize and extend pipelines as required by advanced users and specific use cases.
 
     :param pipeline_template: The name of a predefined pipeline template or a custom Jinja2 template string. This
@@ -85,7 +85,7 @@ class PipelineTemplateBuilder:
 
     def __init__(self, pipeline_template: str, template_params: Optional[Dict[str, Any]] = None):
         """
-        Initialize a PipelineTemplateBuilder.
+        Initialize a PipelineTemplate.
 
         :param pipeline_template: The pipeline template to use. This can be either a predefined pipeline type
         (e.g. 'rag', 'indexing', etc.) or a custom jinja2 template string defining the pipeline itself.
@@ -135,7 +135,7 @@ class PipelineTemplateBuilder:
         :param component_instance: The instance of the component to use as an override. Must be an instance
         of a class annotated with `@component`.
 
-        :return: The instance of `PipelineTemplateBuilder` to allow for method chaining.
+        :return: The instance of `PipelineTemplate` to allow for method chaining.
 
         :raises PipelineValidationError: If the `component_name` does not exist in the template or if
         `component_instance` is not a valid component.

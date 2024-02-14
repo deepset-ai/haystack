@@ -1,3 +1,3 @@
-from haystack.templates.pipeline_builder import PipelineTemplateBuilder
+from haystack.templates.pipelines import PipelineTemplate
 
-__all__ = ["PipelineTemplateBuilder"]
+__all__ = ["PipelineTemplate"]
