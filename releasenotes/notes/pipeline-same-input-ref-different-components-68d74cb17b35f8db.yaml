@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Previously, when using the same input reference in different components, the Pipeline run logic had an
+    unexpected behavior. This has been fixed by deepcopying the inputs before passing them to the components.
