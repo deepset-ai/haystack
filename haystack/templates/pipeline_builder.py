@@ -11,10 +11,6 @@ from haystack.core.component import Component
 from haystack.core.errors import PipelineValidationError
 
 
-def ternary_filter(condition, true_val, false_val):
-    return true_val if condition else false_val
-
-
 class PipelineTemplateBuilder:
     template_file_extension = ".yaml.jinja2"
 
@@ -45,7 +41,6 @@ class PipelineTemplateBuilder:
             self.template_text = pipeline_template
 
         env = NativeEnvironment()
-        env.filters["ternary"] = ternary_filter
         try:
             self.template = env.from_string(self.template_text)
         except TemplateSyntaxError as e:
