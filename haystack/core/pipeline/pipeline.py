@@ -5,7 +5,7 @@ import importlib
 import itertools
 import logging
 from collections import defaultdict
-from copy import copy
+from copy import copy, deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
@@ -686,6 +686,12 @@ class Pipeline:
         # never received by this method. It's handled by the `run()` method of the `Pipeline` class
         # defined in `haystack/pipeline.py`.
         # As of now we're ok with this, but we'll need to merge those two classes at some point.
+
+        # deepcopying the inputs prevents the Pipeline run logic from being altered unexpectedly
+        # when the same input reference is passed to multiple components.
+        for component_name, component_inputs in data.items():
+            data[component_name] = {k: deepcopy(v) for k, v in component_inputs.items()}
+
         for component_name, component_inputs in data.items():
             if component_name not in self.graph.nodes:
                 # This is not a component name, it must be the name of one or more input sockets.
