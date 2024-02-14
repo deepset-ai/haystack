@@ -1,10 +1,8 @@
 from typing import List
 
-from haystack.components.builders import DynamicChatPromptBuilder
 from haystack import Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack import component
-from unittest.mock import MagicMock
 
 
 class MethodTracker:
@@ -18,6 +16,14 @@ class MethodTracker:
         self.call_count += 1
         self.called_with = (args, kwargs)
         return self.method(*args, **kwargs)
+
+
+@component
+class PassThroughPromptBuilder:
+    # This is a pass-through component that returns the same input
+    @component.output_types(prompt=List[ChatMessage])
+    def run(self, prompt_source: List[ChatMessage]):
+        return {"prompt": prompt_source}
 
 
 @component
@@ -41,7 +47,7 @@ def test_same_input_different_components():
     does not alter the correct Pipeline run logic.
     """
 
-    prompt_builder = DynamicChatPromptBuilder()
+    prompt_builder = PassThroughPromptBuilder()
     llm = FakeGenerator()
     mm1 = MessageMerger()
     mm2 = MessageMerger()
@@ -62,20 +68,13 @@ def test_same_input_different_components():
     pipe.connect("prompt_builder.prompt", "mm1")
     pipe.connect("llm.replies", "mm2")
 
-    location = "Berlin"
     messages = [
         ChatMessage.from_system("Always respond in English even if some input data is in other languages."),
-        ChatMessage.from_user("Tell me about {{location}}"),
+        ChatMessage.from_user("Tell me about Berlin"),
     ]
     params = {"metadata": {"metadata_key": "metadata_value", "meta2": "value2"}}
 
-    pipe.run(
-        data={
-            "prompt_builder": {"template_variables": {"location": location}, "prompt_source": messages},
-            "mm1": params,
-            "mm2": params,
-        }
-    )
+    pipe.run(data={"prompt_builder": {"prompt_source": messages}, "mm1": params, "mm2": params})
 
     assert mm1_tracked_run.call_count == 1
     assert mm1_tracked_run.called_with[1]["metadata"] == params["metadata"]
