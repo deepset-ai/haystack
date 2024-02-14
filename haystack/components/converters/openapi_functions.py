@@ -86,11 +86,12 @@ class OpenAPIServiceToFunctions:
                 try:
                     service_openapi_spec = self._parse_openapi_spec(openapi_spec_content)
                     functions: List[Dict[str, Any]] = self._openapi_to_functions(service_openapi_spec)
-                    meta_dict: Dict[str, Any] = {"spec": service_openapi_spec}
-                    if system_message:
-                        meta_dict["system_message"] = system_message
-                    docs = [Document(content=json.dumps(function), meta=meta_dict) for function in functions]
-                    documents.extend(docs)
+                    for function in functions:
+                        meta: Dict[str, Any] = {"spec": service_openapi_spec}
+                        if system_message:
+                            meta["system_message"] = system_message
+                        doc = Document(content=json.dumps(function), meta=meta)
+                        documents.append(doc)
                 except Exception as e:
                     logger.error("Error processing OpenAPI specification from source %s: %s", source, e)
 
