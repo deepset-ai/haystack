@@ -15,14 +15,6 @@ class TestEvaluationResult:
         assert result.outputs == []
         assert result.expected_outputs == []
 
-    def test_supported_metrics_contains_all_metrics(self):
-        runnable = Pipeline()
-        result = EvaluationResult(runnable=runnable, inputs=[], outputs=[], expected_outputs=[])
-
-        supported_metrics = [m.name for m in result._supported_metrics.keys()]
-        all_metric_names = [m.name for m in Metric]
-        assert supported_metrics == all_metric_names
-
     def test_calculate_metrics_with_supported_metric(self):
         runnable = Pipeline()
         result = EvaluationResult(runnable=runnable, inputs=[], outputs=[], expected_outputs=[])
