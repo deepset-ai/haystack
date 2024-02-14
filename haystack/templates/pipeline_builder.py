@@ -54,7 +54,7 @@ class PipelineTemplateBuilder:
             ) from e
         self.templated_components = self._extract_variables(env)
         self.components = {}
-        self.user_kwargs = {}
+        self.template_params = {}
 
     def with_component(self, component_name: str, component_instance):
         # check if the component_name is allowed in the template
@@ -74,12 +74,12 @@ class PipelineTemplateBuilder:
         self.components[component_name] = component_dict
         return self
 
-    def with_kwargs(self, **kwargs):
-        self.user_kwargs = kwargs or {}
+    def with_parameters(self, **params):
+        self.template_params = {**self.template_params, **params}
         return self
 
     def build(self):
-        rendered_yaml = self.template.render(**self.components, **self.user_kwargs)
+        rendered_yaml = self.template.render(**self.components, **self.template_params)
         pipeline_yaml = yaml.safe_load(rendered_yaml)
         return Pipeline.from_dict(pipeline_yaml)
 
