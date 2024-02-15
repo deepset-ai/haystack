@@ -18,8 +18,12 @@ class StatisticalMetric(Enum):
     EM = "exact_match"
 
     @classmethod
-    def from_string(cls, metric: str) -> "StatisticalMetric":
-        return {"f1": cls.F1, "exact_match": cls.EM}[metric]
+    def from_str(cls, metric: str) -> "StatisticalMetric":
+        map = {e.value: e for e in StatisticalMetric}
+        metric = map.get(string)
+        if metric is None:
+            raise ValueError(f"Unknown statistical metric '{metric}'")
+        return metric
 
 
 @component
@@ -40,7 +44,7 @@ class StatisticalEvaluator:
         :param metric: Metric to use for evaluation in this component. Supported metrics are F1 and Exact Match.
         """
         if isinstance(metric, str):
-            metric = StatisticalMetric.from_string(metric)
+            metric = StatisticalMetric.from_str(metric)
         self._metric = metric
 
         self._metric_function = {StatisticalMetric.F1: self._f1, StatisticalMetric.EM: self._exact_match}[self._metric]
