@@ -1,6 +1,6 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/eval]
+    search_path: [../../../haystack/components/evaluators]
     modules: ["sas_evaluator", "statistical_evaluator"]
     ignore_when_discovered: ["__init__"]
 processors:
