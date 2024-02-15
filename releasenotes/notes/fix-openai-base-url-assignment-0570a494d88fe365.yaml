@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Adds `api_base_url` to the self assignments of `OpenAITExtEmbedder` to resolve the base url for serialized embedders.
