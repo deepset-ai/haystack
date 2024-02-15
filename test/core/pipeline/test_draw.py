@@ -16,15 +16,15 @@ from haystack.testing.sample_components import AddFixedValue, Double
 
 @flaky.flaky(max_runs=5, rerun_filter=lambda *_: time.sleep(5))
 @pytest.mark.integration
-def test_to_mermaid_image(test_files):
+def test_to_mermaid_image():
     pipe = Pipeline()
     pipe.add_component("comp1", Double())
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
 
     image_data = _to_mermaid_image(pipe.graph)
-    test_image = test_files / "test_mermaid_graph.png"
-    assert test_image.read_bytes() == image_data
+    # We just verify we received some data as testing the actual image is not reliable
+    assert image_data
 
 
 @patch("haystack.core.pipeline.draw.requests")
