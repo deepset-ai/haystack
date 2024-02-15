@@ -3,13 +3,13 @@ from pathlib import Path
 from typing import Dict, Any, Set, Optional
 
 import yaml
-from haystack.core.serialization import component_to_dict
 from jinja2 import meta, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 
-from haystack import default_to_dict, Pipeline
+from haystack import Pipeline
 from haystack.core.component import Component
 from haystack.core.errors import PipelineValidationError
+from haystack.core.serialization import component_to_dict
 
 
 class PipelineTemplate:
@@ -114,7 +114,7 @@ class PipelineTemplate:
             with open(template_path, "r") as file:
                 self.template_text = file.read()
         else:
-            self.template_path = None
+            self.template_path = ""
             self.template_text = pipeline_template
 
         env = NativeEnvironment()
@@ -125,7 +125,7 @@ class PipelineTemplate:
                 f"Invalid pipeline template '{(self.template_path if self.template_path else self.template_text)}': {e}"
             ) from e
         self.templated_variables = self._extract_variables(env)
-        self.components = {}
+        self.components: Dict[str, Any] = {}
         self.template_params = template_params or {}
 
     def override(self, component_name: str, component_instance):
