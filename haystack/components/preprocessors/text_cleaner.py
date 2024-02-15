@@ -25,37 +25,50 @@ class TextCleaner:
 
         :param remove_regexps: A list of regular expressions. If provided, it removes substrings
             matching these regular expressions from the text. Defaults to None.
-        :type remove_regexps: Optional[List[str]], optional
         :param convert_to_lowercase: If True, converts all characters to lowercase. Defaults to False.
-        :type convert_to_lowercase: bool, optional
         :param remove_punctuation: If True, removes punctuation from the text. Defaults to False.
-        :type remove_punctuation: bool, optional
         :param remove_numbers: If True, removes numerical digits from the text. Defaults to False.
-        :type remove_numbers: bool, optional
         """
         self._remove_regexps = remove_regexps
         self._convert_to_lowercase = convert_to_lowercase
         self._remove_punctuation = remove_punctuation
         self._remove_numbers = remove_numbers
 
+        self._regex = None
+        if remove_regexps:
+            self._regex = re.compile("|".join(remove_regexps), flags=re.IGNORECASE)
+        to_remove = ""
+        if remove_punctuation:
+            to_remove = string.punctuation
+        if remove_numbers:
+            to_remove += string.digits
+
+        self._translator = str.maketrans("", "", to_remove) if to_remove else None
+
     @component.output_types(texts=List[str])
     def run(self, texts: List[str]) -> Dict[str, Any]:
-        """
+        r"""
         Run the TextCleaner on the given list of strings.
+
+        Example usage:
+        ```python
+            cleaner = TextCleaner(
+                remove_regexps=[r"\d+", r"[^\w\s]"],
+                convert_to_lowercase=True,
+                remove_punctuation=True,
+                remove_numbers=True,
+            )
+            result = cleaner.run(texts=["Open%123. !$Source", "Haystack.AI##"])
+            assert result["texts"] == ["open source", "haystackai"]
+        ```
         """
-        if self._remove_regexps:
-            combined_regex = "|".join(self._remove_regexps)
-            texts = [re.sub(combined_regex, "", text, flags=re.IGNORECASE) for text in texts]
+        if self._regex:
+            texts = [self._regex.sub("", text) for text in texts]
 
         if self._convert_to_lowercase:
             texts = [text.lower() for text in texts]
 
-        if self._remove_punctuation:
-            translator = str.maketrans("", "", string.punctuation)
-            texts = [text.translate(translator) for text in texts]
-
-        if self._remove_numbers:
-            translator = str.maketrans("", "", string.digits)
-            texts = [text.translate(translator) for text in texts]
+        if self._translator:
+            texts = [text.translate(self._translator) for text in texts]
 
         return {"texts": texts}

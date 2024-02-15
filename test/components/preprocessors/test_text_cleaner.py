@@ -7,6 +7,8 @@ def test_init_default():
     assert not cleaner._convert_to_lowercase
     assert not cleaner._remove_punctuation
     assert not cleaner._remove_numbers
+    assert cleaner._regex is None
+    assert cleaner._translator is None
 
 
 def test_run():
