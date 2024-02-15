@@ -7,6 +7,7 @@ from pathlib import Path
 from haystack import component, Document, default_to_dict, ComponentError
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
+from haystack.utils import ComponentDevice, DeviceMap
 
 with LazyImport(
     "Run 'pip install transformers[torch]' to install torch and "
@@ -33,13 +34,14 @@ class LocalWhisperTranscriber:
     def __init__(
         self,
         model: WhisperLocalModel = "large",
-        device: Optional[str] = None,
+        device: Optional[ComponentDevice] = None,
         whisper_params: Optional[Dict[str, Any]] = None,
     ):
         """
         :param model: Name of the model to use. Set it to one of the following values:
         :type model: Literal["tiny", "small", "medium", "large", "large-v2"]
-        :param device: Name of the torch device to use for inference. If None, CPU is used.
+        :param device: The device on which the model is loaded. If `None`, the default device is automatically
+            selected.
         :type device: Optional[str]
         """
         whisper_import.check()
