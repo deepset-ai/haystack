@@ -1,15 +1,14 @@
 default_branch: main
 collapse_pre_releases: true
 pre_release_tag_re: (?P<pre_release>-(?:[ab]|rc)+\d*)$
-prelude_section_name: ⭐ Highlights
+prelude_section_name: highlights
 template: |
   ---
-  prelude: >
+  highlights: >
       Replace this text with content to appear at the top of the section for this
-      release. This is equivalent to the "Highlights" section we used before.
-      The prelude might repeat some details that are also present in other notes
-      from the same release, that's ok. Not every release note requires a prelude,
-      use it only to describe major features or notable changes.
+      release. The highlights might repeat some details that are also present in other notes
+      from the same release, that's ok. Not every release note requires highlights,
+      use this section only to describe major features or notable changes.
   upgrade:
     - |
       List upgrade notes here, or remove this section.

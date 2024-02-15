@@ -23,7 +23,7 @@ class TestDocumentSplitter:
         assert res == {"documents": []}
 
     def test_unsupported_split_by(self):
-        with pytest.raises(ValueError, match="split_by must be one of 'word', 'sentence' or 'passage'."):
+        with pytest.raises(ValueError, match="split_by must be one of 'word', 'sentence', 'page' or 'passage'."):
             DocumentSplitter(split_by="unsupported")
 
     def test_unsupported_split_length(self):
@@ -92,6 +92,20 @@ class TestDocumentSplitter:
         assert len(result["documents"]) == 3
         assert result["documents"][0].content == "This is a text with some words. There is a second sentence.\n\n"
         assert result["documents"][1].content == "And there is a third sentence.\n\n"
+        assert result["documents"][2].content == " And another passage."
+
+    def test_split_by_page(self):
+        splitter = DocumentSplitter(split_by="page", split_length=1)
+        result = splitter.run(
+            documents=[
+                Document(
+                    content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+                )
+            ]
+        )
+        assert len(result["documents"]) == 3
+        assert result["documents"][0].content == "This is a text with some words. There is a second sentence.\x0c"
+        assert result["documents"][1].content == " And there is a third sentence.\x0c"
         assert result["documents"][2].content == " And another passage."
 
     def test_split_by_word_with_overlap(self):

@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, Literal
 from boilerpy3 import extractors
 
-from haystack import Document, component
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 
@@ -49,8 +49,19 @@ class HTMLToDocument:
         """
         self.extractor_type = extractor_type
 
+    def to_dict(self) -> Dict[str, Any]:
+        return default_to_dict(self, extractor_type=self.extractor_type)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "HTMLToDocument":
+        return default_from_dict(cls, data)
+
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
+    def run(
+        self,
+        sources: List[Union[str, Path, ByteStream]],
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+    ):
         """
         Converts a list of HTML files to Documents.
 

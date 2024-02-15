@@ -1,16 +1,20 @@
+import json
+import pytest
+
 from haystack import Pipeline
 from haystack.components.readers import ExtractiveReader
-from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.dataclasses import Document, ExtractedAnswer
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.evaluation.eval import eval
+from haystack.evaluation.metrics import Metric
 
 
-def test_extractive_qa_pipeline():
+def test_extractive_qa_pipeline(tmp_path):
     # Create the pipeline
     qa_pipeline = Pipeline()
     qa_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
-    qa_pipeline.add_component(instance=ExtractiveReader(model_name_or_path="deepset/tinyroberta-squad2"), name="reader")
+    qa_pipeline.add_component(instance=ExtractiveReader(model="deepset/tinyroberta-squad2"), name="reader")
     qa_pipeline.connect("retriever", "reader")
 
     # Populate the document store
@@ -32,11 +36,7 @@ def test_extractive_qa_pipeline():
                         query="Who lives in Paris?",
                         score=0.7713339924812317,
                         data="Jean and I",
-                        document=Document(
-                            id="6c90b78ad94e4e634e2a067b5fe2d26d4ce95405ec222cbaefaeb09ab4dce81e",
-                            content="My name is Jean and I live in Paris.",
-                            score=0.33144005810482535,
-                        ),
+                        document=Document(content="My name is Jean and I live in Paris.", score=0.33144005810482535),
                         context=None,
                         document_offset=ExtractedAnswer.Span(start=11, end=21),
                         context_offset=None,
@@ -62,11 +62,7 @@ def test_extractive_qa_pipeline():
                         query="Who lives in Berlin?",
                         score=0.7047999501228333,
                         data="Mark and I",
-                        document=Document(
-                            id="10a183e965c2e107e20507c717f16559c58a8ba4bc7c577ea8dc32a8d6ca7a20",
-                            content="My name is Mark and I live in Berlin.",
-                            score=0.33144005810482535,
-                        ),
+                        document=Document(content="My name is Mark and I live in Berlin.", score=0.33144005810482535),
                         context=None,
                         document_offset=ExtractedAnswer.Span(start=11, end=21),
                         context_offset=None,
@@ -92,11 +88,7 @@ def test_extractive_qa_pipeline():
                         query="Who lives in Rome?",
                         score=0.7661304473876953,
                         data="Giorgio and I",
-                        document=Document(
-                            id="fb0f1efe94b3c78aa1c4e5a17a5ef8270f70e89d36a3665c8362675e8a769a27",
-                            content="My name is Giorgio and I live in Rome.",
-                            score=0.33144005810482535,
-                        ),
+                        document=Document(content="My name is Giorgio and I live in Rome.", score=0.33144005810482535),
                         context=None,
                         document_offset=ExtractedAnswer.Span(start=11, end=24),
                         context_offset=None,
@@ -123,3 +115,52 @@ def test_extractive_qa_pipeline():
     assert eval_result.expected_outputs == expected_outputs
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == qa_pipeline.to_dict()
+
+    # Test Exact Match
+    em_default = eval_result.calculate_metrics(Metric.EM, output_key="answers")
+    em_custom_parameters = eval_result.calculate_metrics(
+        Metric.EM, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+    )
+    # Save EM metric results to json
+    em_default.save(tmp_path / "exact_match_score.json")
+
+    assert em_default["exact_match"] == 1.0
+    assert em_custom_parameters["exact_match"] == 1.0
+    with open(tmp_path / "exact_match_score.json", "r") as f:
+        assert em_default == json.load(f)
+
+    # Test F1
+    f1_default = eval_result.calculate_metrics(Metric.F1, output_key="answers")
+    f1_custom_parameters = eval_result.calculate_metrics(
+        Metric.F1, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+    )
+    # Save F1 metric results to json
+    f1_default.save(tmp_path / "f1_score.json")
+
+    assert f1_default["f1"] == 1.0
+    assert f1_custom_parameters["f1"] == 1.0
+    with open(tmp_path / "f1_score.json", "r") as f:
+        assert f1_default == json.load(f)
+
+    # Test SAS
+    sas_default = eval_result.calculate_metrics(
+        Metric.SAS, output_key="answers", model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
+    sas_custom_parameters = eval_result.calculate_metrics(
+        Metric.SAS,
+        output_key="answers",
+        ignore_case=True,
+        ignore_punctuation=True,
+        ignore_numbers=True,
+        model="cross-encoder/ms-marco-MiniLM-L-6-v2",
+    )
+    # Save SAS metric results to json
+    sas_default.save(tmp_path / "sas_score.json")
+
+    assert sas_default["sas"] == pytest.approx(1.0)
+    assert sas_default["scores"] == pytest.approx([1.0, 1.0, 1.0])
+    assert sas_custom_parameters["sas"] == pytest.approx(0.9996823, abs=1e-5)
+    assert sas_custom_parameters["scores"] == pytest.approx([0.999672, 0.999608, 0.999767])
+
+    with open(tmp_path / "sas_score.json", "r") as f:
+        assert sas_default == json.load(f)

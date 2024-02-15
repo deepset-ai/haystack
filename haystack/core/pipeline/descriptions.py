@@ -1,14 +1,13 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import List, Dict
 import logging
+from typing import Dict, List
 
 import networkx  # type:ignore
 
+from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.core.type_utils import _type_name
-from haystack.core.component.sockets import InputSocket, OutputSocket
-
 
 logger = logging.getLogger(__name__)
 

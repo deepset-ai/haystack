@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 
 from haystack import default_from_dict, default_to_dict
 from haystack.dataclasses import Document
-from haystack.document_stores.protocol import DuplicatePolicy
+from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.filters import document_matches_filter, convert
 from haystack.document_stores.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.utils import expit
@@ -34,7 +34,7 @@ class InMemoryDocumentStore:
     def __init__(
         self,
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
-        bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
+        bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
         bm25_parameters: Optional[Dict] = None,
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
     ):
@@ -208,12 +208,20 @@ class InMemoryDocumentStore:
         # get the last top_k indexes and reverse them
         top_docs_positions = np.argsort(docs_scores)[-top_k:][::-1]
 
+        # BM25Okapi can return meaningful negative values, so they should not be filtered out when scale_score is False.
+        # It's the only algorithm supported by rank_bm25 at the time of writing (2024) that can return negative scores.
+        # see https://github.com/deepset-ai/haystack/pull/6889 for more context.
+        negatives_are_valid = self.bm25_algorithm is rank_bm25.BM25Okapi and not scale_score
+
         # Create documents with the BM25 score to return them
         return_documents = []
         for i in top_docs_positions:
             doc = all_documents[i]
+            score = docs_scores[i]
+            if not negatives_are_valid and score <= 0.0:
+                continue
             doc_fields = doc.to_dict()
-            doc_fields["score"] = docs_scores[i]
+            doc_fields["score"] = score
             return_document = Document.from_dict(doc_fields)
             return_documents.append(return_document)
         return return_documents

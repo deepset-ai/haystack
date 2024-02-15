@@ -219,3 +219,23 @@ class TestOpenAPIServiceToFunctions:
             # check that the metadata is as expected
             assert doc.meta["system_message"] == "Some system message we don't care about here"
             assert doc.meta["spec"] == json.loads(json_serperdev_openapi_spec)
+
+    def test_run_with_file_source_and_none_system_messages(self, json_serperdev_openapi_spec):
+        service = OpenAPIServiceToFunctions()
+        spec_stream = ByteStream.from_string(json_serperdev_openapi_spec)
+
+        # we now omit the system_messages argument
+        result = service.run(sources=[spec_stream])
+        assert len(result["documents"]) == 1
+        doc = result["documents"][0]
+
+        # check that the content is as expected
+        assert (
+            doc.content
+            == '{"name": "search", "description": "Search the web with Google", "parameters": {"type": "object", '
+            '"properties": {"requestBody": {"type": "object", "properties": {"q": {"type": "string"}}}}}}'
+        )
+
+        # check that the metadata is as expected, system_message should not be present
+        assert "system_message" not in doc.meta
+        assert doc.meta["spec"] == json.loads(json_serperdev_openapi_spec)

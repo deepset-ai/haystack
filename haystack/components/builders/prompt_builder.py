@@ -1,9 +1,8 @@
-from typing import Dict, Any
+from typing import Any, Dict
 
 from jinja2 import Template, meta
 
-from haystack import component
-from haystack import default_to_dict
+from haystack import component, default_to_dict
 
 
 @component
@@ -31,7 +30,8 @@ class PromptBuilder:
         self.template = Template(template)
         ast = self.template.environment.parse(template)
         template_variables = meta.find_undeclared_variables(ast)
-        component.set_input_types(self, **{var: Any for var in template_variables})
+        for var in template_variables:
+            component.set_input_type(self, var, Any, "")
 
     def to_dict(self) -> Dict[str, Any]:
         return default_to_dict(self, template=self._template_string)

@@ -1,8 +1,9 @@
+import os
 from typing import List
+from haystack.utils.auth import Secret
 
 import numpy as np
 import pytest
-from openai import OpenAIError
 
 from haystack import Document
 from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
@@ -25,7 +26,7 @@ class TestOpenAIDocumentEmbedder:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAIDocumentEmbedder()
-        assert embedder.model_name == "text-embedding-ada-002"
+        assert embedder.model == "text-embedding-ada-002"
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
@@ -36,8 +37,8 @@ class TestOpenAIDocumentEmbedder:
 
     def test_init_with_parameters(self):
         embedder = OpenAIDocumentEmbedder(
-            api_key="fake-api-key",
-            model_name="model",
+            api_key=Secret.from_token("fake-api-key"),
+            model="model",
             organization="my-org",
             prefix="prefix",
             suffix="suffix",
@@ -47,7 +48,7 @@ class TestOpenAIDocumentEmbedder:
             embedding_separator=" | ",
         )
         assert embedder.organization == "my-org"
-        assert embedder.model_name == "model"
+        assert embedder.model == "model"
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
         assert embedder.batch_size == 64
@@ -57,17 +58,20 @@ class TestOpenAIDocumentEmbedder:
 
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(OpenAIError):
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             OpenAIDocumentEmbedder()
 
-    def test_to_dict(self):
-        component = OpenAIDocumentEmbedder(api_key="fake-api-key")
+    def test_to_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        component = OpenAIDocumentEmbedder()
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
             "init_parameters": {
+                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "api_base_url": None,
-                "model_name": "text-embedding-ada-002",
+                "model": "text-embedding-ada-002",
+                "dimensions": None,
                 "organization": None,
                 "prefix": "",
                 "suffix": "",
@@ -78,10 +82,11 @@ class TestOpenAIDocumentEmbedder:
             },
         }
 
-    def test_to_dict_with_custom_init_parameters(self):
+    def test_to_dict_with_custom_init_parameters(self, monkeypatch):
+        monkeypatch.setenv("ENV_VAR", "fake-api-key")
         component = OpenAIDocumentEmbedder(
-            api_key="fake-api-key",
-            model_name="model",
+            api_key=Secret.from_env_var("ENV_VAR", strict=False),
+            model="model",
             organization="my-org",
             prefix="prefix",
             suffix="suffix",
@@ -94,8 +99,10 @@ class TestOpenAIDocumentEmbedder:
         assert data == {
             "type": "haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder",
             "init_parameters": {
+                "api_key": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "api_base_url": None,
-                "model_name": "model",
+                "model": "model",
+                "dimensions": None,
                 "organization": "my-org",
                 "prefix": "prefix",
                 "suffix": "suffix",
@@ -112,7 +119,7 @@ class TestOpenAIDocumentEmbedder:
         ]
 
         embedder = OpenAIDocumentEmbedder(
-            api_key="fake-api-key", meta_fields_to_embed=["meta_field"], embedding_separator=" | "
+            api_key=Secret.from_token("fake-api-key"), meta_fields_to_embed=["meta_field"], embedding_separator=" | "
         )
 
         prepared_texts = embedder._prepare_texts_to_embed(documents)
@@ -129,7 +136,9 @@ class TestOpenAIDocumentEmbedder:
     def test_prepare_texts_to_embed_w_suffix(self):
         documents = [Document(content=f"document number {i}") for i in range(5)]
 
-        embedder = OpenAIDocumentEmbedder(api_key="fake-api-key", prefix="my_prefix ", suffix=" my_suffix")
+        embedder = OpenAIDocumentEmbedder(
+            api_key=Secret.from_token("fake-api-key"), prefix="my_prefix ", suffix=" my_suffix"
+        )
 
         prepared_texts = embedder._prepare_texts_to_embed(documents)
 
@@ -142,7 +151,7 @@ class TestOpenAIDocumentEmbedder:
         ]
 
     def test_run_wrong_input_format(self):
-        embedder = OpenAIDocumentEmbedder(api_key="fake-api-key")
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"))
 
         # wrong formats
         string_input = "text"
@@ -155,7 +164,7 @@ class TestOpenAIDocumentEmbedder:
             embedder.run(documents=list_integers_input)
 
     def test_run_on_empty_list(self):
-        embedder = OpenAIDocumentEmbedder(api_key="fake-api-key")
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"))
 
         empty_list_input = []
         result = embedder.run(documents=empty_list_input)
@@ -163,6 +172,7 @@ class TestOpenAIDocumentEmbedder:
         assert result["documents"] is not None
         assert not result["documents"]  # empty list
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     def test_run(self):
         docs = [
@@ -170,19 +180,23 @@ class TestOpenAIDocumentEmbedder:
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
-        model = "text-similarity-ada-001"
+        model = "text-embedding-ada-002"
 
-        embedder = OpenAIDocumentEmbedder(model_name=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
+        embedder = OpenAIDocumentEmbedder(model=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
 
         result = embedder.run(documents=docs)
         documents_with_embeddings = result["documents"]
-        metadata = result["meta"]
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
         for doc in documents_with_embeddings:
             assert isinstance(doc, Document)
             assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 1024
+            assert len(doc.embedding) == 1536
             assert all(isinstance(x, float) for x in doc.embedding)
-        assert metadata == {"model": "text-similarity-ada:001", "usage": {"prompt_tokens": 15, "total_tokens": 15}}
+
+        assert (
+            "text" in result["meta"]["model"] and "ada" in result["meta"]["model"]
+        ), "The model name does not contain 'text' and 'ada'"
+
+        assert result["meta"]["usage"] == {"prompt_tokens": 15, "total_tokens": 15}, "Usage information does not match"

@@ -1,6 +1,9 @@
+from typing import List
+
 import pytest
 from jinja2 import TemplateSyntaxError
 
+from haystack import Document, Pipeline, component
 from haystack.components.builders import DynamicPromptBuilder
 
 
@@ -13,16 +16,16 @@ class TestDynamicPromptBuilder:
         # regardless of the chat mode
         # we have inputs that contain: prompt_source, template_variables + runtime_variables
         expected_keys = set(runtime_variables + ["prompt_source", "template_variables"])
-        assert set(builder.__canals_input__.keys()) == expected_keys
+        assert set(builder.__haystack_input__._sockets_dict.keys()) == expected_keys
 
         # response is always prompt regardless of chat mode
-        assert set(builder.__canals_output__.keys()) == {"prompt"}
+        assert set(builder.__haystack_output__._sockets_dict.keys()) == {"prompt"}
 
         # prompt_source is a list of ChatMessage or a string
-        assert builder.__canals_input__["prompt_source"].type == str
+        assert builder.__haystack_input__._sockets_dict["prompt_source"].type == str
 
         # output is always prompt, but the type is different depending on the chat mode
-        assert builder.__canals_output__["prompt"].type == str
+        assert builder.__haystack_output__._sockets_dict["prompt"].type == str
 
     def test_processing_a_simple_template_with_provided_variables(self):
         runtime_variables = ["var1", "var2", "var3"]
@@ -74,3 +77,34 @@ class TestDynamicPromptBuilder:
 
         # provided variables are a superset of the required variables
         prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name", "city", "age"})
+
+    def test_example_in_pipeline(self):
+        prompt_builder = DynamicPromptBuilder(runtime_variables=["documents"])
+
+        @component
+        class DocumentProducer:
+            @component.output_types(documents=List[Document])
+            def run(self, doc_input: str):
+                return {"documents": [Document(content=doc_input)]}
+
+        pipe = Pipeline()
+        pipe.add_component("doc_producer", DocumentProducer())
+        pipe.add_component("prompt_builder", prompt_builder)
+        pipe.connect("doc_producer.documents", "prompt_builder.documents")
+
+        template = "Here is the document: {{documents[0].content}} \\n Answer: {{query}}"
+        result = pipe.run(
+            data={
+                "doc_producer": {"doc_input": "Hello world, I live in Berlin"},
+                "prompt_builder": {
+                    "prompt_source": template,
+                    "template_variables": {"query": "Where does the speaker live?"},
+                },
+            }
+        )
+
+        assert result == {
+            "prompt_builder": {
+                "prompt": "Here is the document: Hello world, I live in Berlin \\n Answer: Where does the speaker live?"
+            }
+        }

@@ -1,12 +1,12 @@
 from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
-import os
 import logging
 
 from haystack.lazy_imports import LazyImport
-from haystack import component, Document, default_to_dict
+from haystack import component, Document, default_to_dict, default_from_dict
 from haystack.dataclasses import ByteStream
-from haystack.components.converters.utils import get_bytestream_from_source
+from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -29,43 +29,33 @@ class AzureOCRDocumentConverter:
     Usage example:
     ```python
     from haystack.components.converters.azure import AzureOCRDocumentConverter
+    from haystack.utils import Secret
 
-    converter = AzureOCRDocumentConverter()
-    results = converter.run(sources=["image-based-document.pdf"])
+    converter = AzureOCRDocumentConverter(endpoint="<url>", api_key=Secret.from_token("<your-api-key>"))
+    results = converter.run(sources=["image-based-document.pdf"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
     # 'This is a text from the PDF file.'
     ```
     """
 
-    def __init__(self, endpoint: str, api_key: Optional[str] = None, model_id: str = "prebuilt-read"):
+    def __init__(
+        self, endpoint: str, api_key: Secret = Secret.from_env_var("AZURE_AI_API_KEY"), model_id: str = "prebuilt-read"
+    ):
         """
         Create an AzureOCRDocumentConverter component.
 
         :param endpoint: The endpoint of your Azure resource.
-        :param api_key: The key of your Azure resource. It can be
-        explicitly provided or automatically read from the
-        environment variable AZURE_AI_API_KEY (recommended).
+        :param api_key: The key of your Azure resource.
         :param model_id: The model ID of the model you want to use. Please refer to [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
             for a list of available models. Default: `"prebuilt-read"`.
         """
         azure_import.check()
 
-        if api_key is None:
-            try:
-                api_key = os.environ["AZURE_AI_API_KEY"]
-            except KeyError as e:
-                raise ValueError(
-                    "AzureOCRDocumentConverter expects an Azure Credential key. "
-                    "Set the AZURE_AI_API_KEY environment variable (recommended) or pass it explicitly."
-                ) from e
-
-        self.api_key = api_key
-        self.document_analysis_client = DocumentAnalysisClient(
-            endpoint=endpoint, credential=AzureKeyCredential(api_key)
-        )
+        self.document_analysis_client = DocumentAnalysisClient(endpoint=endpoint, credential=AzureKeyCredential(api_key.resolve_value()))  # type: ignore
         self.endpoint = endpoint
         self.model_id = model_id
+        self.api_key = api_key
 
     @component.output_types(documents=List[Document], raw_azure_response=List[Dict])
     def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
@@ -77,20 +67,19 @@ class AzureOCRDocumentConverter:
         the raw responses from Azure's Document Intelligence service.
 
         :param sources: List of file paths or ByteStream objects.
-        :param meta: Optional list of metadata to attach to the Documents.
-          The length of the list must match the number of sources. Defaults to `None`.
+        :param meta: Optional metadata to attach to the Documents.
+          This value can be either a list of dictionaries or a single dictionary.
+          If it's a single dictionary, its content is added to the metadata of all produced Documents.
+          If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+          Defaults to `None`.
         :return: A dictionary containing a list of Document objects under the 'documents' key
           and the raw Azure response under the 'raw_azure_response' key.
         """
         documents = []
         azure_output = []
+        meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        if meta is None:
-            meta = [{}] * len(sources)
-        elif len(sources) != len(meta):
-            raise ValueError("The length of the metadata list must match the number of sources.")
-
-        for source, metadata in zip(sources, meta):
+        for source, metadata in zip(sources, meta_list):
             try:
                 bytestream = get_bytestream_from_source(source=source)
             except Exception as e:
@@ -118,7 +107,15 @@ class AzureOCRDocumentConverter:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(self, endpoint=self.endpoint, model_id=self.model_id)
+        return default_to_dict(self, api_key=self.api_key.to_dict(), endpoint=self.endpoint, model_id=self.model_id)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AzureOCRDocumentConverter":
+        """
+        Deserialize this component from a dictionary.
+        """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+        return default_from_dict(cls, data)
 
     @staticmethod
     def _convert_azure_result_to_document(result: "AnalyzeResult", file_suffix: Optional[str] = None) -> Document:

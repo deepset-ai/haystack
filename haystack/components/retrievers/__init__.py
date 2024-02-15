@@ -1,4 +1,3 @@
-from haystack.components.retrievers.in_memory_bm25_retriever import InMemoryBM25Retriever
-from haystack.components.retrievers.in_memory_embedding_retriever import InMemoryEmbeddingRetriever
+from haystack.components.retrievers.filter_retriever import FilterRetriever
 
-__all__ = ["InMemoryBM25Retriever", "InMemoryEmbeddingRetriever"]
+__all__ = ["FilterRetriever"]

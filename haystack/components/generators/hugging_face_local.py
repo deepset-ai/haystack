@@ -1,60 +1,21 @@
 import logging
-from typing import Any, Dict, List, Literal, Optional, Union
-from copy import deepcopy
+from typing import Any, Dict, List, Literal, Optional
 
-from haystack import component, default_to_dict
+from haystack import component, default_from_dict, default_to_dict
+
 from haystack.lazy_imports import LazyImport
+from haystack.utils import ComponentDevice
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
 SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 
-with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
-    import torch
+with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
     from huggingface_hub import model_info
-    from transformers import (
-        pipeline,
-        StoppingCriteriaList,
-        StoppingCriteria,
-        PreTrainedTokenizer,
-        PreTrainedTokenizerFast,
-    )
-
-    class StopWordsCriteria(StoppingCriteria):
-        """
-        Stops text generation if any one of the stop words is generated.
-
-        Note: When a stop word is encountered, the generation of new text is stopped.
-        However, if the stop word is in the prompt itself, it can stop generating new text
-        prematurely after the first token. This is particularly important for LLMs designed
-        for dialogue generation. For these models, like for example mosaicml/mpt-7b-chat,
-        the output includes both the new text and the original prompt. Therefore, it's important
-        to make sure your prompt has no stop words.
-        """
-
-        def __init__(
-            self,
-            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
-            stop_words: List[str],
-            device: Union[str, "torch.device"] = "cpu",
-        ):
-            super().__init__()
-            encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
-            self.stop_ids = encoded_stop_words.input_ids.to(device)
-
-        def __call__(self, input_ids: "torch.LongTensor", scores: "torch.FloatTensor", **kwargs) -> bool:
-            for stop_id in self.stop_ids:
-                found_stop_word = self.is_stop_word_found(input_ids, stop_id)
-                if found_stop_word:
-                    return True
-            return False
-
-        def is_stop_word_found(self, generated_text_ids: "torch.Tensor", stop_id: "torch.Tensor") -> bool:
-            generated_text_ids = generated_text_ids[-1]
-            len_generated_text_ids = generated_text_ids.size(0)
-            len_stop_id = stop_id.size(0)
-            result = all(generated_text_ids[len_generated_text_ids - len_stop_id :].eq(stop_id))
-            return result
+    from transformers import StoppingCriteriaList, pipeline
+    from haystack.utils.hf import StopWordsCriteria  # pylint: disable=ungrouped-imports
 
 
 @component
@@ -67,7 +28,7 @@ class HuggingFaceLocalGenerator:
     ```python
     from haystack.components.generators import HuggingFaceLocalGenerator
 
-    generator = HuggingFaceLocalGenerator(model_name_or_path="google/flan-t5-large",
+    generator = HuggingFaceLocalGenerator(model="google/flan-t5-large",
                                           task="text2text-generation",
                                           generation_kwargs={
                                             "max_new_tokens": 100,
@@ -81,16 +42,16 @@ class HuggingFaceLocalGenerator:
 
     def __init__(
         self,
-        model_name_or_path: str = "google/flan-t5-base",
+        model: str = "google/flan-t5-base",
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
-        device: Optional[str] = None,
-        token: Optional[Union[str, bool]] = None,
+        device: Optional[ComponentDevice] = None,
+        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         generation_kwargs: Optional[Dict[str, Any]] = None,
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
     ):
         """
-        :param model_name_or_path: The name or path of a Hugging Face model for text generation,
+        :param model: The name or path of a Hugging Face model for text generation,
             for example, "google/flan-t5-large".
             If the model is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
         :param task: The task for the Hugging Face pipeline.
@@ -100,11 +61,9 @@ class HuggingFaceLocalGenerator:
             If the task is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
             If not specified, the component will attempt to infer the task from the model name,
             calling the Hugging Face Hub API.
-        :param device: The device on which the model is loaded. (e.g., "cpu", "cuda:0").
-            If `device` or `device_map` is specified in the `huggingface_pipeline_kwargs`,
-            this parameter will be ignored.
+        :param device: The device on which the model is loaded. If `None`, the default device is automatically
+            selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
         :param token: The token to use as HTTP bearer authorization for remote files.
-            If True, will use the token generated when running huggingface-cli login (stored in ~/.huggingface).
             If the token is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
         :param generation_kwargs: A dictionary containing keyword arguments to customize text generation.
             Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
@@ -114,7 +73,7 @@ class HuggingFaceLocalGenerator:
         :param huggingface_pipeline_kwargs: Dictionary containing keyword arguments used to initialize the
             Hugging Face pipeline for text generation.
             These keyword arguments provide fine-grained control over the Hugging Face pipeline.
-            In case of duplication, these kwargs override `model_name_or_path`, `task`, `device`, and `token` init parameters.
+            In case of duplication, these kwargs override `model`, `task`, `device`, and `token` init parameters.
             See Hugging Face's [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task)
             for more information on the available kwargs.
             In this dictionary, you can also include `model_kwargs` to specify the kwargs
@@ -125,21 +84,21 @@ class HuggingFaceLocalGenerator:
             For some chat models, the output includes both the new text and the original prompt.
             In these cases, it's important to make sure your prompt has no stop words.
         """
-        torch_and_transformers_import.check()
+        transformers_import.check()
 
         huggingface_pipeline_kwargs = huggingface_pipeline_kwargs or {}
         generation_kwargs = generation_kwargs or {}
 
+        self.token = token
+        token = token.resolve_value() if token else None
+
         # check if the huggingface_pipeline_kwargs contain the essential parameters
         # otherwise, populate them with values from other init parameters
-        huggingface_pipeline_kwargs.setdefault("model", model_name_or_path)
+        huggingface_pipeline_kwargs.setdefault("model", model)
         huggingface_pipeline_kwargs.setdefault("token", token)
-        if (
-            device is not None
-            and "device" not in huggingface_pipeline_kwargs
-            and "device_map" not in huggingface_pipeline_kwargs
-        ):
-            huggingface_pipeline_kwargs["device"] = device
+
+        device = ComponentDevice.resolve_device(device)
+        device.update_hf_kwargs(huggingface_pipeline_kwargs, overwrite=False)
 
         # task identification and validation
         if task is None:
@@ -195,18 +154,28 @@ class HuggingFaceLocalGenerator:
         """
         Serialize this component to a dictionary.
         """
-        pipeline_kwargs_to_serialize = deepcopy(self.huggingface_pipeline_kwargs)
-
-        # we don't want to serialize valid tokens
-        if isinstance(pipeline_kwargs_to_serialize["token"], str):
-            pipeline_kwargs_to_serialize["token"] = None
-
-        return default_to_dict(
+        serialization_dict = default_to_dict(
             self,
-            huggingface_pipeline_kwargs=pipeline_kwargs_to_serialize,
+            huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
             generation_kwargs=self.generation_kwargs,
             stop_words=self.stop_words,
+            token=self.token.to_dict() if self.token else None,
         )
+
+        huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
+        huggingface_pipeline_kwargs.pop("token", None)
+
+        serialize_hf_model_kwargs(huggingface_pipeline_kwargs)
+        return serialization_dict
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceLocalGenerator":
+        """
+        Deserialize this component from a dictionary.
+        """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
+        deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
+        return default_from_dict(cls, data)
 
     @component.output_types(replies=List[str])
     def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):

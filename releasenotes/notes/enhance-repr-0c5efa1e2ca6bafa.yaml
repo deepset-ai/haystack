@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Customize `Pipeline.__repr__()` to return a nice text representation of it.
+    If run on a Jupyter notebook it will instead have the same behaviour as `Pipeline.show()`.

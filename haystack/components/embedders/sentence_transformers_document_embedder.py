@@ -1,9 +1,10 @@
-from typing import List, Optional, Union, Dict, Any
+from typing import List, Optional, Dict, Any
 
-from haystack import component, Document, default_to_dict
+from haystack import component, Document, default_to_dict, default_from_dict
 from haystack.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 
 @component
@@ -29,9 +30,9 @@ class SentenceTransformersDocumentEmbedder:
 
     def __init__(
         self,
-        model_name_or_path: str = "sentence-transformers/all-mpnet-base-v2",
+        model: str = "sentence-transformers/all-mpnet-base-v2",
         device: Optional[str] = None,
-        token: Union[bool, str, None] = None,
+        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         prefix: str = "",
         suffix: str = "",
         batch_size: int = 32,
@@ -43,13 +44,11 @@ class SentenceTransformersDocumentEmbedder:
         """
         Create a SentenceTransformersDocumentEmbedder component.
 
-        :param model_name_or_path: Local path or name of the model in Hugging Face's model hub,
+        :param model: Local path or name of the model in Hugging Face's model hub,
             such as ``'sentence-transformers/all-mpnet-base-v2'``.
         :param device: Device (like 'cuda' / 'cpu') that should be used for computation.
             Defaults to CPU.
         :param token: The API token used to download private models from Hugging Face.
-            If this parameter is set to `True`, then the token generated when running
-            `transformers-cli login` (stored in ~/.huggingface) will be used.
         :param prefix: A string to add to the beginning of each Document text before embedding.
             Can be used to prepend the text with an instruction, as required by some embedding models,
             such as E5 and bge.
@@ -61,7 +60,7 @@ class SentenceTransformersDocumentEmbedder:
         :param embedding_separator: Separator used to concatenate the meta fields to the Document content.
         """
 
-        self.model_name_or_path = model_name_or_path
+        self.model = model
         # TODO: remove device parameter and use Haystack's device management once migrated
         self.device = device or "cpu"
         self.token = token
@@ -77,7 +76,7 @@ class SentenceTransformersDocumentEmbedder:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": self.model_name_or_path}
+        return {"model": self.model}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -85,9 +84,9 @@ class SentenceTransformersDocumentEmbedder:
         """
         return default_to_dict(
             self,
-            model_name_or_path=self.model_name_or_path,
+            model=self.model,
             device=self.device,
-            token=self.token if not isinstance(self.token, str) else None,  # don't serialize valid tokens
+            token=self.token.to_dict() if self.token else None,
             prefix=self.prefix,
             suffix=self.suffix,
             batch_size=self.batch_size,
@@ -97,13 +96,18 @@ class SentenceTransformersDocumentEmbedder:
             embedding_separator=self.embedding_separator,
         )
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersDocumentEmbedder":
+        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
+        return default_from_dict(cls, data)
+
     def warm_up(self):
         """
         Load the embedding backend.
         """
         if not hasattr(self, "embedding_backend"):
             self.embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
-                model_name_or_path=self.model_name_or_path, device=self.device, use_auth_token=self.token
+                model=self.model, device=self.device, auth_token=self.token
             )
 
     @component.output_types(documents=List[Document])

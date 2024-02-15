@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional, Tuple, Type, List, Union
 
 from haystack.dataclasses import Document
-from haystack.document_stores import DocumentStore, DuplicatePolicy
+from haystack.document_stores.types import DocumentStore, DuplicatePolicy
 from haystack.core.component import component, Component
 from haystack.core.serialization import default_to_dict, default_from_dict
 

@@ -7,7 +7,7 @@ from haystack.components.preprocessors import DocumentSplitter, DocumentCleaner
 from haystack.components.classifiers import DocumentLanguageClassifier
 from haystack.components.routers import FileTypeRouter, MetadataRouter
 from haystack.components.writers import DocumentWriter
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 def test_preprocessing_pipeline(tmp_path):
@@ -25,8 +25,7 @@ def test_preprocessing_pipeline(tmp_path):
         instance=DocumentSplitter(split_by="sentence", split_length=1), name="splitter"
     )
     preprocessing_pipeline.add_component(
-        instance=SentenceTransformersDocumentEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
-        name="embedder",
+        instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="embedder"
     )
     preprocessing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
     preprocessing_pipeline.connect("file_type_router.text/plain", "text_file_converter.sources")
@@ -40,14 +39,13 @@ def test_preprocessing_pipeline(tmp_path):
     # Draw the pipeline
     preprocessing_pipeline.draw(tmp_path / "test_preprocessing_pipeline.png")
 
-    # Serialize the pipeline to JSON
-    with open(tmp_path / "test_preprocessing_pipeline.json", "w") as f:
-        print(json.dumps(preprocessing_pipeline.to_dict(), indent=4))
-        json.dump(preprocessing_pipeline.to_dict(), f)
+    # Serialize the pipeline to YAML
+    with open(tmp_path / "test_preprocessing_pipeline.yaml", "w") as f:
+        preprocessing_pipeline.dump(f)
 
     # Load the pipeline back
-    with open(tmp_path / "test_preprocessing_pipeline.json", "r") as f:
-        preprocessing_pipeline = Pipeline.from_dict(json.load(f))
+    with open(tmp_path / "test_preprocessing_pipeline.yaml", "r") as f:
+        preprocessing_pipeline = Pipeline.load(f)
 
     # Write a txt file
     with open(tmp_path / "test_file_english.txt", "w") as f:

@@ -1,11 +1,11 @@
 import json
-import os
 import logging
 from typing import Dict, List, Optional, Any
 
 import requests
 
-from haystack import Document, component, default_to_dict, ComponentError
+from haystack import Document, component, default_to_dict, ComponentError, default_from_dict
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -27,41 +27,47 @@ class SearchApiWebSearch:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: Secret = Secret.from_env_var("SEARCHAPI_API_KEY"),
         top_k: Optional[int] = 10,
         allowed_domains: Optional[List[str]] = None,
         search_params: Optional[Dict[str, Any]] = None,
     ):
         """
-        :param api_key: API key for the SearchApi API.  It can be
-        explicitly provided or automatically read from the
-        environment variable SEARCHAPI_API_KEY (recommended).
+        :param api_key: API key for the SearchApi API
         :param top_k: Number of documents to return.
         :param allowed_domains: List of domains to limit the search to.
         :param search_params: Additional parameters passed to the SearchApi API.
         For example, you can set 'num' to 100 to increase the number of search results.
         See the [SearchApi website](https://www.searchapi.io/) for more details.
         """
-        if api_key is None:
-            try:
-                api_key = os.environ["SEARCHAPI_API_KEY"]
-            except KeyError as e:
-                raise ValueError(
-                    "SearchApiWebSearch expects an API key. "
-                    "Set the SEARCHAPI_API_KEY environment variable (recommended) or pass it explicitly."
-                ) from e
+
         self.api_key = api_key
         self.top_k = top_k
         self.allowed_domains = allowed_domains
         self.search_params = search_params or {}
+
+        # Ensure that the API key is resolved.
+        _ = self.api_key.resolve_value()
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
         """
         return default_to_dict(
-            self, top_k=self.top_k, allowed_domains=self.allowed_domains, search_params=self.search_params
+            self,
+            top_k=self.top_k,
+            allowed_domains=self.allowed_domains,
+            search_params=self.search_params,
+            api_key=self.api_key.to_dict(),
         )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SearchApiWebSearch":
+        """
+        Deserialize this component from a dictionary.
+        """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document], links=List[str])
     def run(self, query: str):
@@ -73,7 +79,7 @@ class SearchApiWebSearch:
         query_prepend = "OR ".join(f"site:{domain} " for domain in self.allowed_domains) if self.allowed_domains else ""
 
         payload = json.dumps({"q": query_prepend + " " + query, **self.search_params})
-        headers = {"Authorization": f"Bearer {self.api_key}", "X-SearchApi-Source": "Haystack"}
+        headers = {"Authorization": f"Bearer {self.api_key.resolve_value()}", "X-SearchApi-Source": "Haystack"}
 
         try:
             response = requests.get(SEARCHAPI_BASE_URL, headers=headers, params=payload, timeout=90)

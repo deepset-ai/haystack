@@ -1,12 +1,10 @@
-import typing
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 
-from haystack.core.component import component
-from haystack.core.component.descriptions import find_component_inputs, find_component_outputs
+from haystack.core.component import Component, InputSocket, OutputSocket, component
 from haystack.core.errors import ComponentError
-from haystack.core.component import InputSocket, OutputSocket, Component
+from haystack.core.pipeline import Pipeline
 
 
 def test_correct_declaration():
@@ -91,6 +89,7 @@ def test_missing_run():
 
 
 def test_set_input_types():
+    @component
     class MockComponent:
         def __init__(self):
             component.set_input_types(self, value=Any)
@@ -107,7 +106,7 @@ def test_set_input_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.__canals_input__ == {"value": InputSocket("value", Any)}
+    assert comp.__haystack_input__._sockets_dict == {"value": InputSocket("value", Any)}
     assert comp.run() == {"value": 1}
 
 
@@ -128,7 +127,7 @@ def test_set_output_types():
             return {"value": 1}
 
     comp = MockComponent()
-    assert comp.__canals_output__ == {"value": OutputSocket("value", int)}
+    assert comp.__haystack_output__._sockets_dict == {"value": OutputSocket("value", int)}
 
 
 def test_output_types_decorator_with_compatible_type():
@@ -146,7 +145,7 @@ def test_output_types_decorator_with_compatible_type():
             return cls()
 
     comp = MockComponent()
-    assert comp.__canals_output__ == {"value": OutputSocket("value", int)}
+    assert comp.__haystack_output__._sockets_dict == {"value": OutputSocket("value", int)}
 
 
 def test_component_decorator_set_it_as_component():
@@ -167,131 +166,55 @@ def test_component_decorator_set_it_as_component():
     assert isinstance(comp, Component)
 
 
-def test_inputs_method_no_inputs():
-    @component
-    class MockComponent:
-        def run(self):
-            return {"value": 1}
-
-    comp = MockComponent()
-    assert find_component_inputs(comp) == {}
-
-
-def test_inputs_method_one_input():
-    @component
-    class MockComponent:
-        def run(self, value: int):
-            return {"value": 1}
-
-    comp = MockComponent()
-    assert find_component_inputs(comp) == {"value": {"is_mandatory": True, "is_variadic": False, "type": int}}
-
-
-def test_inputs_method_multiple_inputs():
-    @component
-    class MockComponent:
-        def run(self, value1: int, value2: str):
-            return {"value": 1}
-
-    comp = MockComponent()
-    assert find_component_inputs(comp) == {
-        "value1": {"is_mandatory": True, "is_variadic": False, "type": int},
-        "value2": {"is_mandatory": True, "is_variadic": False, "type": str},
-    }
-
-
-def test_inputs_method_multiple_inputs_optional():
-    @component
-    class MockComponent:
-        def run(self, value1: int, value2: Optional[str]):
-            return {"value": 1}
-
-    comp = MockComponent()
-    assert find_component_inputs(comp) == {
-        "value1": {"is_mandatory": True, "is_variadic": False, "type": int},
-        "value2": {"is_mandatory": True, "is_variadic": False, "type": typing.Optional[str]},
-    }
-
-
-def test_inputs_method_variadic_positional_args():
-    @component
-    class MockComponent:
-        def __init__(self):
-            component.set_input_types(self, value=Any)
-
-        def run(self, *args):
-            return {"value": 1}
-
-    comp = MockComponent()
-    assert find_component_inputs(comp) == {"value": {"is_mandatory": True, "is_variadic": False, "type": typing.Any}}
-
-
-def test_inputs_method_variadic_keyword_positional_args():
-    @component
-    class MockComponent:
-        def __init__(self):
-            component.set_input_types(self, value=Any)
-
-        def run(self, **kwargs):
-            return {"value": 1}
-
-    comp = MockComponent()
-    assert find_component_inputs(comp) == {"value": {"is_mandatory": True, "is_variadic": False, "type": typing.Any}}
-
-
-def test_inputs_dynamic_from_init():
-    @component
-    class MockComponent:
-        def __init__(self):
-            component.set_input_types(self, value=int)
-
-        def run(self, value: int, **kwargs):
-            return {"value": 1}
-
-    comp = MockComponent()
-    assert find_component_inputs(comp) == {"value": {"is_mandatory": True, "is_variadic": False, "type": int}}
-
-
-def test_outputs_method_no_outputs():
-    @component
-    class MockComponent:
-        def run(self):
-            return {}
-
-    comp = MockComponent()
-    assert find_component_outputs(comp) == {}
-
-
-def test_outputs_method_one_output():
+def test_input_has_default_value():
     @component
     class MockComponent:
         @component.output_types(value=int)
-        def run(self):
-            return {"value": 1}
+        def run(self, value: int = 42):
+            return {"value": value}
 
     comp = MockComponent()
-    assert find_component_outputs(comp) == {"value": {"type": int}}
+    assert comp.__haystack_input__._sockets_dict["value"].default_value == 42
+    assert not comp.__haystack_input__._sockets_dict["value"].is_mandatory
 
 
-def test_outputs_method_multiple_outputs():
-    @component
-    class MockComponent:
-        @component.output_types(value1=int, value2=str)
-        def run(self):
-            return {"value1": 1, "value2": "test"}
-
-    comp = MockComponent()
-    assert find_component_outputs(comp) == {"value1": {"type": int}, "value2": {"type": str}}
-
-
-def test_outputs_dynamic_from_init():
+def test_keyword_only_args():
     @component
     class MockComponent:
         def __init__(self):
             component.set_output_types(self, value=int)
 
-        def run(self):
-            return {"value": 1}
+        def run(self, *, arg: int):
+            return {"value": arg}
 
     comp = MockComponent()
-    assert find_component_outputs(comp) == {"value": {"type": int}}
+    component_inputs = {name: {"type": socket.type} for name, socket in comp.__haystack_input__._sockets_dict.items()}
+    assert component_inputs == {"arg": {"type": int}}
+
+
+def test_repr():
+    @component
+    class MockComponent:
+        def __init__(self):
+            component.set_output_types(self, value=int)
+
+        def run(self, value: int):
+            return {"value": value}
+
+    comp = MockComponent()
+    assert repr(comp) == f"{object.__repr__(comp)}\nInputs:\n  - value: int\nOutputs:\n  - value: int"
+
+
+def test_repr_added_to_pipeline():
+    @component
+    class MockComponent:
+        def __init__(self):
+            component.set_output_types(self, value=int)
+
+        def run(self, value: int):
+            return {"value": value}
+
+    pipe = Pipeline()
+    comp = MockComponent()
+    pipe.add_component("my_component", comp)
+    assert repr(comp) == f"{object.__repr__(comp)}\nmy_component\nInputs:\n  - value: int\nOutputs:\n  - value: int"

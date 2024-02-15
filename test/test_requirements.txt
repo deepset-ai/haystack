@@ -2,7 +2,10 @@
 
 # Package                                        Components
 
-transformers[torch,sentencepiece]==4.36.2       # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
+transformers[torch,sentencepiece]==4.37.2       # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
+spacy>=3.7,<3.8                                 # NamedEntityExtractor
+spacy-curated-transformers>=0.2,<=0.3           # NamedEntityExtractor
+https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl # NamedEntityExtractor
 
 # Converters
 pypdf                                           # PyPDFConverter

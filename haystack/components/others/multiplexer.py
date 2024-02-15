@@ -1,10 +1,10 @@
-import sys
 import logging
+import sys
 from typing import Any, Dict
 
+from haystack import component, default_from_dict, default_to_dict
+from haystack.components.routers.conditional_router import deserialize_type, serialize_type
 from haystack.core.component.types import Variadic
-from haystack import component, default_to_dict, default_from_dict
-from haystack.components.routers.conditional_router import serialize_type, deserialize_type
 
 if sys.version_info < (3, 10):
     from typing_extensions import TypeAlias
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 @component
 class Multiplexer:
+    is_greedy = True
     """
     This component is used to distribute a single value to many components that may need it.
     It can take such value from different sources (the user's input, or another component), so

@@ -1,50 +1,106 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import get_args, List, Type
+
 import logging
-from dataclasses import dataclass, field
+from typing import Dict, Type, Union
 
-from haystack.core.component.types import CANALS_VARIADIC_ANNOTATION
+from haystack.core.type_utils import _type_name
 
+from .types import InputSocket, OutputSocket
 
 logger = logging.getLogger(__name__)
 
+SocketsDict = Dict[str, Union[InputSocket, OutputSocket]]
+SocketsIOType = Union[Type[InputSocket], Type[OutputSocket]]
 
-@dataclass
-class InputSocket:
-    name: str
-    type: Type
-    is_mandatory: bool = True
-    is_variadic: bool = field(init=False)
-    senders: List[str] = field(default_factory=list)
 
-    def __post_init__(self):
+class Sockets:
+    """
+    This class is used to represent the inputs or outputs of a `Component`.
+    Depending on the type passed to the constructor, it will represent either the inputs or the outputs of
+    the `Component`.
+
+    Usage:
+    ```python
+    from haystack.components.builders.prompt_builder import PromptBuilder
+
+    prompt_template = \"""
+    Given these documents, answer the question.\nDocuments:
+    {% for doc in documents %}
+        {{ doc.content }}
+    {% endfor %}
+
+    \nQuestion: {{question}}
+    \nAnswer:
+    \"""
+
+    prompt_builder = PromptBuilder(template=prompt_template)
+    sockets = {"question": InputSocket("question", Any), "documents": InputSocket("documents", Any)}
+    inputs = Sockets(component=prompt_builder, sockets=sockets, sockets_type=InputSocket)
+    inputs
+    >>> PromptBuilder inputs:
+    >>>   - question: Any
+    >>>   - documents: Any
+
+    inputs.question
+    >>> InputSocket(name='question', type=typing.Any, default_value=<class 'haystack.core.component.types._empty'>, is_variadic=False, senders=[])
+    ```
+    """
+
+    # We're using a forward declaration here to avoid a circular import.
+    def __init__(
+        self,
+        component: "Component",  # type: ignore[name-defined] # noqa: F821
+        sockets_dict: SocketsDict,
+        sockets_io_type: SocketsIOType,
+    ):
+        """
+        Create a new Sockets object.
+        We don't do any enforcement on the types of the sockets here, the `sockets_type` is only used for
+        the `__repr__` method.
+        We could do without it and use the type of a random value in the `sockets` dict, but that wouldn't
+        work for components that have no sockets at all. Either input or output.
+        """
+        self._sockets_io_type = sockets_io_type
+        self._component = component
+        self._sockets_dict = sockets_dict
+        self.__dict__.update(sockets_dict)
+
+    def __setitem__(self, key: str, socket: Union[InputSocket, OutputSocket]):
+        """
+        Adds a new socket to this Sockets object.
+        This eases a bit updating the list of sockets after Sockets has been created.
+        That should happen only in the `component` decorator.
+        """
+        self._sockets_dict[key] = socket
+        self.__dict__[key] = socket
+
+    def _component_name(self) -> str:
+        if pipeline := getattr(self._component, "__haystack_added_to_pipeline__"):
+            # This Component has been added in a Pipeline, let's get the name from there.
+            return pipeline.get_component_name(self._component)
+
+        # This Component has not been added to a Pipeline yet, so we can't know its name.
+        # Let's use default __repr__. We don't call repr() directly as Components have a custom
+        # __repr__ method and that would lead to infinite recursion since we call Sockets.__repr__ in it.
+        return object.__repr__(self._component)
+
+    def __getattribute__(self, name):
         try:
-            # __metadata__ is a tuple
-            self.is_variadic = self.type.__metadata__[0] == CANALS_VARIADIC_ANNOTATION
+            sockets = object.__getattribute__(self, "_sockets")
+            if name in sockets:
+                return sockets[name]
         except AttributeError:
-            self.is_variadic = False
-        if self.is_variadic:
-            # We need to "unpack" the type inside the Variadic annotation,
-            # otherwise the pipeline connection api will try to match
-            # `Annotated[type, CANALS_VARIADIC_ANNOTATION]`.
-            #
-            # Note1: Variadic is expressed as an annotation of one single type,
-            # so the return value of get_args will always be a one-item tuple.
-            #
-            # Note2: a pipeline always passes a list of items when a component
-            # input is declared as Variadic, so the type itself always wraps
-            # an iterable of the declared type. For example, Variadic[int]
-            # is eventually an alias for Iterable[int]. Since we're interested
-            # in getting the inner type `int`, we call `get_args` twice: the
-            # first time to get `List[int]` out of `Variadic`, the second time
-            # to get `int` out of `List[int]`.
-            self.type = get_args(get_args(self.type)[0])[0]
+            pass
 
+        return object.__getattribute__(self, name)
 
-@dataclass
-class OutputSocket:
-    name: str
-    type: type
-    receivers: List[str] = field(default_factory=list)
+    def __repr__(self) -> str:
+        result = ""
+        if self._sockets_io_type == InputSocket:
+            result = "Inputs:\n"
+        elif self._sockets_io_type == OutputSocket:
+            result = "Outputs:\n"
+
+        return result + "\n".join([f"  - {n}: {_type_name(s.type)}" for n, s in self._sockets_dict.items()])

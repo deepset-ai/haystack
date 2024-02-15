@@ -3,7 +3,8 @@ from typing import List, Optional, Dict, Any, Tuple
 from openai import OpenAI
 from tqdm import tqdm
 
-from haystack import component, Document, default_to_dict
+from haystack import component, Document, default_to_dict, default_from_dict
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 
 @component
@@ -30,8 +31,9 @@ class OpenAIDocumentEmbedder:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        model_name: str = "text-embedding-ada-002",
+        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        model: str = "text-embedding-ada-002",
+        dimensions: Optional[int] = None,
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         prefix: str = "",
@@ -43,9 +45,9 @@ class OpenAIDocumentEmbedder:
     ):
         """
         Create a OpenAIDocumentEmbedder component.
-        :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
-                        environment variable OPENAI_API_KEY (recommended).
-        :param model_name: The name of the model to use.
+        :param api_key: The OpenAI API key.
+        :param model: The name of the model to use.
+        :param dimensions: The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.
         :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
@@ -57,7 +59,9 @@ class OpenAIDocumentEmbedder:
         :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document text.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
         """
-        self.model_name = model_name
+        self.api_key = api_key
+        self.model = model
+        self.dimensions = dimensions
         self.api_base_url = api_base_url
         self.organization = organization
         self.prefix = prefix
@@ -67,13 +71,13 @@ class OpenAIDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
-        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
+        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": self.model_name}
+        return {"model": self.model}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -82,7 +86,8 @@ class OpenAIDocumentEmbedder:
         """
         return default_to_dict(
             self,
-            model_name=self.model_name,
+            model=self.model,
+            dimensions=self.dimensions,
             organization=self.organization,
             api_base_url=self.api_base_url,
             prefix=self.prefix,
@@ -91,7 +96,13 @@ class OpenAIDocumentEmbedder:
             progress_bar=self.progress_bar,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
+            api_key=self.api_key.to_dict(),
         )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIDocumentEmbedder":
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+        return default_from_dict(cls, data)
 
     def _prepare_texts_to_embed(self, documents: List[Document]) -> List[str]:
         """
@@ -124,7 +135,10 @@ class OpenAIDocumentEmbedder:
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
             batch = texts_to_embed[i : i + batch_size]
-            response = self.client.embeddings.create(model=self.model_name, input=batch)
+            if self.dimensions is not None:
+                response = self.client.embeddings.create(model=self.model, dimensions=self.dimensions, input=batch)
+            else:
+                response = self.client.embeddings.create(model=self.model, input=batch)
             embeddings = [el.embedding for el in response.data]
             all_embeddings.extend(embeddings)
 

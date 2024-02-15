@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add `SASEvaluator`, this Component can be used to calculate the Semantic Answer Similarity of answers returned by LLMs.

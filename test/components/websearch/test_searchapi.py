@@ -1,5 +1,6 @@
 import os
 from unittest.mock import Mock, patch
+from haystack.utils.auth import Secret
 
 import pytest
 from requests import Timeout, RequestException, HTTPError
@@ -369,17 +370,19 @@ def mock_searchapi_search_result():
 class TestSearchApiSearchAPI:
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("SEARCHAPI_API_KEY", raising=False)
-        with pytest.raises(ValueError, match="SearchApiWebSearch expects an API key"):
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             SearchApiWebSearch()
 
-    def test_to_dict(self):
+    def test_to_dict(self, monkeypatch):
+        monkeypatch.setenv("SEARCHAPI_API_KEY", "test-api-key")
         component = SearchApiWebSearch(
-            api_key="api_key", top_k=10, allowed_domains=["testdomain.com"], search_params={"param": "test params"}
+            top_k=10, allowed_domains=["testdomain.com"], search_params={"param": "test params"}
         )
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.websearch.searchapi.SearchApiWebSearch",
             "init_parameters": {
+                "api_key": {"env_vars": ["SEARCHAPI_API_KEY"], "strict": True, "type": "env_var"},
                 "top_k": 10,
                 "allowed_domains": ["testdomain.com"],
                 "search_params": {"param": "test params"},
@@ -388,7 +391,7 @@ class TestSearchApiSearchAPI:
 
     @pytest.mark.parametrize("top_k", [1, 5, 7])
     def test_web_search_top_k(self, mock_searchapi_search_result, top_k: int):
-        ws = SearchApiWebSearch(api_key="api_key", top_k=top_k)
+        ws = SearchApiWebSearch(api_key=Secret.from_token("test-api-key"), top_k=top_k)
         results = ws.run(query="Who is CEO of Microsoft?")
         documents = results["documents"]
         links = results["links"]
@@ -400,7 +403,7 @@ class TestSearchApiSearchAPI:
     @patch("requests.get")
     def test_timeout_error(self, mock_get):
         mock_get.side_effect = Timeout
-        ws = SearchApiWebSearch(api_key="api_key")
+        ws = SearchApiWebSearch(api_key=Secret.from_token("test-api-key"))
 
         with pytest.raises(TimeoutError):
             ws.run(query="Who is CEO of Microsoft?")
@@ -408,7 +411,7 @@ class TestSearchApiSearchAPI:
     @patch("requests.get")
     def test_request_exception(self, mock_get):
         mock_get.side_effect = RequestException
-        ws = SearchApiWebSearch(api_key="api_key")
+        ws = SearchApiWebSearch(api_key=Secret.from_token("test-api-key"))
 
         with pytest.raises(SearchApiError):
             ws.run(query="Who is CEO of Microsoft?")
@@ -418,7 +421,7 @@ class TestSearchApiSearchAPI:
         mock_response = mock_get.return_value
         mock_response.status_code = 404
         mock_response.raise_for_status.side_effect = HTTPError
-        ws = SearchApiWebSearch(api_key="api_key")
+        ws = SearchApiWebSearch(api_key=Secret.from_token("test-api-key"))
 
         with pytest.raises(SearchApiError):
             ws.run(query="Who is CEO of Microsoft?")
@@ -429,7 +432,7 @@ class TestSearchApiSearchAPI:
     )
     @pytest.mark.integration
     def test_web_search(self):
-        ws = SearchApiWebSearch(api_key=os.environ.get("SEARCHAPI_API_KEY", None), top_k=10)
+        ws = SearchApiWebSearch(top_k=10)
         results = ws.run(query="Who is CEO of Microsoft?")
         documents = results["documents"]
         links = results["links"]

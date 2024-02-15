@@ -1,8 +1,8 @@
 import json
 
 from haystack import Pipeline, Document
-from haystack.document_stores import InMemoryDocumentStore
-from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.readers import ExtractiveReader
 
 
@@ -10,20 +10,19 @@ def test_extractive_qa_pipeline(tmp_path):
     # Create the pipeline
     qa_pipeline = Pipeline()
     qa_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
-    qa_pipeline.add_component(instance=ExtractiveReader(model_name_or_path="deepset/tinyroberta-squad2"), name="reader")
+    qa_pipeline.add_component(instance=ExtractiveReader(model="deepset/tinyroberta-squad2"), name="reader")
     qa_pipeline.connect("retriever", "reader")
 
     # Draw the pipeline
     qa_pipeline.draw(tmp_path / "test_extractive_qa_pipeline.png")
 
-    # Serialize the pipeline to JSON
-    with open(tmp_path / "test_bm25_rag_pipeline.json", "w") as f:
-        print(json.dumps(qa_pipeline.to_dict(), indent=4))
-        json.dump(qa_pipeline.to_dict(), f)
+    # Serialize the pipeline to YAML
+    with open(tmp_path / "test_bm25_rag_pipeline.yaml", "w") as f:
+        qa_pipeline.dump(f)
 
     # Load the pipeline back
-    with open(tmp_path / "test_bm25_rag_pipeline.json", "r") as f:
-        qa_pipeline = Pipeline.from_dict(json.load(f))
+    with open(tmp_path / "test_bm25_rag_pipeline.yaml", "r") as f:
+        qa_pipeline = Pipeline.load(f)
 
     # Populate the document store
     documents = [

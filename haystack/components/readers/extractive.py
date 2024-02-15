@@ -1,17 +1,18 @@
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+import logging
 import math
 import warnings
-import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from haystack import component, default_to_dict, ComponentError, Document, ExtractedAnswer
+from haystack import ComponentError, Document, ExtractedAnswer, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import get_device
+from haystack.utils import ComponentDevice, DeviceMap
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs, resolve_hf_device_map
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    from transformers import AutoModelForQuestionAnswering, AutoTokenizer
-    from tokenizers import Encoding
     import torch
+    from tokenizers import Encoding
+    from transformers import AutoModelForQuestionAnswering, AutoTokenizer
 
 
 logger = logging.getLogger(__name__)
@@ -38,8 +39,8 @@ class ExtractiveReader:
 
     def __init__(
         self,
-        model_name_or_path: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
-        device: Optional[str] = None,
+        model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
+        device: Optional[ComponentDevice] = None,
         token: Union[bool, str, None] = None,
         top_k: int = 20,
         score_threshold: Optional[float] = None,
@@ -54,10 +55,11 @@ class ExtractiveReader:
     ) -> None:
         """
         Creates an ExtractiveReader
-        :param model_name_or_path: A Hugging Face transformers question answering model.
+        :param model: A Hugging Face transformers question answering model.
             Can either be a path to a folder containing the model files or an identifier for the Hugging Face hub.
             Default: `'deepset/roberta-base-squad2-distilled'`
-        :param device: Pytorch device string. Uses GPU by default, if available.
+        :param device: The device on which the model is loaded. If `None`, the default device is automatically
+            selected.
         :param token: The API token used to download private models from Hugging Face.
             If this parameter is set to `True`, then the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) is used.
@@ -83,13 +85,14 @@ class ExtractiveReader:
             both of these answers could be kept if this variable is set to 0.24 or lower.
             If None is provided then all answers are kept.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
-            when loading the model specified in `model_name_or_path`. For details on what kwargs you can pass,
+            when loading the model specified in `model`. For details on what kwargs you can pass,
             see the model's documentation.
         """
         torch_and_transformers_import.check()
-        self.model_name_or_path = str(model_name_or_path)
+        self.model_name_or_path = str(model)
         self.model = None
-        self.device = device
+        self.tokenizer = None
+        self.device = None
         self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
@@ -99,8 +102,10 @@ class ExtractiveReader:
         self.answers_per_seq = answers_per_seq
         self.no_answer = no_answer
         self.calibration_factor = calibration_factor
-        self.model_kwargs = model_kwargs or {}
         self.overlap_threshold = overlap_threshold
+
+        model_kwargs = resolve_hf_device_map(device=device, model_kwargs=model_kwargs)
+        self.model_kwargs = model_kwargs
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -112,10 +117,10 @@ class ExtractiveReader:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(
+        serialization_dict = default_to_dict(
             self,
-            model_name_or_path=self.model_name_or_path,
-            device=self.device,
+            model=self.model_name_or_path,
+            device=None,
             token=self.token if not isinstance(self.token, str) else None,
             max_seq_length=self.max_seq_length,
             top_k=self.top_k,
@@ -128,17 +133,32 @@ class ExtractiveReader:
             model_kwargs=self.model_kwargs,
         )
 
+        serialize_hf_model_kwargs(serialization_dict["init_parameters"]["model_kwargs"])
+        return serialization_dict
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ExtractiveReader":
+        """
+        Deserialize this component from a dictionary.
+        """
+        init_params = data["init_parameters"]
+        if init_params["device"] is not None:
+            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
+        deserialize_hf_model_kwargs(init_params["model_kwargs"])
+
+        return default_from_dict(cls, data)
+
     def warm_up(self):
         """
         Loads model and tokenizer
         """
+        # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
         if self.model is None:
-            if self.device is None:
-                self.device = get_device()
             self.model = AutoModelForQuestionAnswering.from_pretrained(
                 self.model_name_or_path, token=self.token, **self.model_kwargs
-            ).to(self.device)
+            )
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
+            self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
     def _flatten_documents(
         self, queries: List[str], documents: List[List[Document]]
@@ -168,7 +188,7 @@ class ExtractiveReader:
                 continue
             texts.append(doc.content)
             document_ids.append(i)
-        encodings_pt = self.tokenizer(
+        encodings_pt = self.tokenizer(  # type: ignore
             queries,
             [document.content for document in documents],
             padding=True,
@@ -179,8 +199,15 @@ class ExtractiveReader:
             stride=stride,
         )
 
-        input_ids = encodings_pt.input_ids.to(self.device)
-        attention_mask = encodings_pt.attention_mask.to(self.device)
+        # To make mypy happy even though self.device is set in warm_up()
+        assert self.device is not None
+        assert self.device.first_device is not None
+
+        # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
+        first_device = self.device.first_device.to_torch()
+
+        input_ids = encodings_pt.input_ids.to(first_device)
+        attention_mask = encodings_pt.attention_mask.to(first_device)
 
         query_ids = [query_ids[index] for index in encodings_pt.overflow_to_sample_mapping]
         document_ids = [document_ids[sample_id] for sample_id in encodings_pt.overflow_to_sample_mapping]
@@ -188,7 +215,7 @@ class ExtractiveReader:
         encodings = encodings_pt.encodings
         sequence_ids = torch.tensor(
             [[id_ if id_ is not None else -1 for id_ in encoding.sequence_ids] for encoding in encodings]
-        ).to(self.device)
+        ).to(first_device)
 
         return input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids
 
@@ -217,7 +244,7 @@ class ExtractiveReader:
 
         # The mask here onwards is the same for all instances in the batch
         # As such we do away with the batch dimension
-        mask = torch.ones(logits.shape[-2:], dtype=torch.bool, device=self.device)
+        mask = torch.ones(logits.shape[-2:], dtype=torch.bool, device=logits.device)
         mask = torch.triu(mask)  # End shouldn't be before start
         masked_logits = torch.where(mask, logits, -torch.inf)
         probabilities = torch.sigmoid(masked_logits * self.calibration_factor)

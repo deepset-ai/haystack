@@ -1,13 +1,15 @@
 from math import ceil, exp
 from typing import List
-from unittest.mock import patch, Mock
-import pytest
+from unittest.mock import Mock, patch
 
+import pytest
+import logging
 import torch
 from transformers import pipeline
 
-from haystack.components.readers import ExtractiveReader
 from haystack import Document, ExtractedAnswer
+from haystack.components.readers import ExtractiveReader
+from haystack.utils.device import ComponentDevice, DeviceMap
 
 
 @pytest.fixture
@@ -51,15 +53,13 @@ def mock_tokenizer():
 @pytest.fixture()
 def mock_reader(mock_tokenizer):
     class MockModel(torch.nn.Module):
-        def to(self, device):
-            assert device == "cpu:0"
-            self.device_set = True
-            return self
+        def __init__(self):
+            super().__init__()
+            self.hf_device_map = {"": "cpu:0"}
 
         def forward(self, input_ids, attention_mask, *args, **kwargs):
             assert input_ids.device == torch.device("cpu")
             assert attention_mask.device == torch.device("cpu")
-            assert self.device_set
             start = torch.zeros(input_ids.shape[:2])
             end = torch.zeros(input_ids.shape[:2])
             start[:, 27] = 1
@@ -72,7 +72,7 @@ def mock_reader(mock_tokenizer):
 
     with patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained") as model:
         model.return_value = MockModel()
-        reader = ExtractiveReader(model_name_or_path="mock-model", device="cpu:0")
+        reader = ExtractiveReader(model="mock-model", device=ComponentDevice.from_str("cpu"))
         reader.warm_up()
         return reader
 
@@ -88,13 +88,13 @@ example_documents = [
 
 
 def test_to_dict():
-    component = ExtractiveReader("my-model", token="secret-token", model_kwargs={"torch_dtype": "auto"})
+    component = ExtractiveReader("my-model", token="secret-token", model_kwargs={"torch_dtype": torch.float16})
     data = component.to_dict()
 
     assert data == {
         "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
-            "model_name_or_path": "my-model",
+            "model": "my-model",
             "device": None,
             "token": None,  # don't serialize valid tokens
             "top_k": 20,
@@ -105,7 +105,10 @@ def test_to_dict():
             "answers_per_seq": None,
             "no_answer": True,
             "calibration_factor": 0.1,
-            "model_kwargs": {"torch_dtype": "auto"},
+            "model_kwargs": {
+                "torch_dtype": "torch.float16",
+                "device_map": ComponentDevice.resolve_device(None).to_hf(),
+            },  # torch_dtype is correctly serialized
         },
     }
 
@@ -117,7 +120,7 @@ def test_to_dict_empty_model_kwargs():
     assert data == {
         "type": "haystack.components.readers.extractive.ExtractiveReader",
         "init_parameters": {
-            "model_name_or_path": "my-model",
+            "model": "my-model",
             "device": None,
             "token": None,  # don't serialize valid tokens
             "top_k": 20,
@@ -128,8 +131,77 @@ def test_to_dict_empty_model_kwargs():
             "answers_per_seq": None,
             "no_answer": True,
             "calibration_factor": 0.1,
-            "model_kwargs": {},
+            "model_kwargs": {"device_map": ComponentDevice.resolve_device(None).to_hf()},
         },
+    }
+
+
+@pytest.mark.parametrize(
+    "device_map,expected",
+    [
+        ("auto", "auto"),
+        ("cpu:0", ComponentDevice.from_str("cpu:0").to_hf()),
+        ({"": "cpu:0"}, ComponentDevice.from_multiple(DeviceMap.from_hf({"": "cpu:0"})).to_hf()),
+    ],
+)
+def test_to_dict_device_map(device_map, expected):
+    component = ExtractiveReader("my-model", model_kwargs={"device_map": device_map})
+    data = component.to_dict()
+
+    assert data == {
+        "type": "haystack.components.readers.extractive.ExtractiveReader",
+        "init_parameters": {
+            "model": "my-model",
+            "device": None,
+            "token": None,
+            "top_k": 20,
+            "score_threshold": None,
+            "max_seq_length": 384,
+            "stride": 128,
+            "max_batch_size": None,
+            "answers_per_seq": None,
+            "no_answer": True,
+            "calibration_factor": 0.1,
+            "model_kwargs": {"device_map": expected},
+        },
+    }
+
+
+def test_from_dict():
+    data = {
+        "type": "haystack.components.readers.extractive.ExtractiveReader",
+        "init_parameters": {
+            "model": "my-model",
+            "device": None,
+            "token": None,
+            "top_k": 20,
+            "score_threshold": None,
+            "max_seq_length": 384,
+            "stride": 128,
+            "max_batch_size": None,
+            "answers_per_seq": None,
+            "no_answer": True,
+            "calibration_factor": 0.1,
+            "model_kwargs": {"torch_dtype": "torch.float16"},
+        },
+    }
+
+    component = ExtractiveReader.from_dict(data)
+    assert component.model_name_or_path == "my-model"
+    assert component.device is None
+    assert component.token is None
+    assert component.top_k == 20
+    assert component.score_threshold is None
+    assert component.max_seq_length == 384
+    assert component.stride == 128
+    assert component.max_batch_size is None
+    assert component.answers_per_seq is None
+    assert component.no_answer
+    assert component.calibration_factor == 0.1
+    # torch_dtype is correctly deserialized
+    assert component.model_kwargs == {
+        "torch_dtype": torch.float16,
+        "device_map": ComponentDevice.resolve_device(None).to_hf(),
     }
 
 
@@ -265,11 +337,81 @@ def test_nest_answers(mock_reader: ExtractiveReader):
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
 def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
-    reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token")
+    reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token", device=ComponentDevice.from_str("cpu"))
+
+    class MockedModel:
+        def __init__(self):
+            self.hf_device_map = {"": "cpu"}
+
+    mocked_automodel.return_value = MockedModel()
     reader.warm_up()
 
-    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token", device_map="cpu")
     mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
+
+
+@patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
+@patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+def test_device_map_auto(mocked_automodel, mocked_autotokenizer):
+    reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "auto"})
+    auto_device = ComponentDevice.resolve_device(None)
+
+    class MockedModel:
+        def __init__(self):
+            self.hf_device_map = {"": auto_device.to_hf()}
+
+    mocked_automodel.return_value = MockedModel()
+    reader.warm_up()
+
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token=None, device_map="auto")
+    assert reader.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"": auto_device.to_hf()}))
+
+
+@patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
+@patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+def test_device_map_str(mocked_automodel, mocked_autotokenizer):
+    reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "cpu:0"})
+
+    class MockedModel:
+        def __init__(self):
+            self.hf_device_map = {"": "cpu:0"}
+
+    mocked_automodel.return_value = MockedModel()
+    reader.warm_up()
+
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token=None, device_map="cpu:0")
+    assert reader.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"": "cpu:0"}))
+
+
+@patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
+@patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+def test_device_map_dict(mocked_automodel, mocked_autotokenizer):
+    reader = ExtractiveReader(
+        "deepset/roberta-base-squad2", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}}
+    )
+
+    class MockedModel:
+        def __init__(self):
+            self.hf_device_map = {"layer_1": 1, "classifier": "cpu"}
+
+    mocked_automodel.return_value = MockedModel()
+    reader.warm_up()
+
+    mocked_automodel.assert_called_once_with(
+        "deepset/roberta-base-squad2", token=None, device_map={"layer_1": 1, "classifier": "cpu"}
+    )
+    assert reader.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"layer_1": 1, "classifier": "cpu"}))
+
+
+def test_device_map_and_device_warning(caplog):
+    with caplog.at_level(logging.WARNING):
+        _ = ExtractiveReader(
+            "deepset/roberta-base-squad2", model_kwargs={"device_map": "cpu"}, device=ComponentDevice.from_str("cuda")
+        )
+        assert (
+            "The parameters `device` and `device_map` from `model_kwargs` are both provided. Ignoring `device` and using `device_map`."
+            in caplog.text
+        )
 
 
 class TestDeduplication:
@@ -464,17 +606,17 @@ class TestDeduplication:
 
 @pytest.mark.integration
 def test_t5():
-    reader = ExtractiveReader("TARUNBHATT/flan-t5-small-finetuned-squad")
+    reader = ExtractiveReader("sjrhuschlee/flan-t5-base-squad2")
     reader.warm_up()
     answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
         "answers"
     ]  # remove indices when batching support is reintroduced
-    assert answers[0].data == "Angela Merkel"
-    assert answers[0].score == pytest.approx(0.7764519453048706)
-    assert answers[1].data == "Olaf Scholz"
-    assert answers[1].score == pytest.approx(0.7703777551651001)
+    assert answers[0].data == "Olaf Scholz"
+    assert answers[0].score == pytest.approx(0.8085031509399414, abs=1e-5)
+    assert answers[1].data == "Angela Merkel"
+    assert answers[1].score == pytest.approx(0.8021242618560791, abs=1e-5)
     assert answers[2].data is None
-    assert answers[2].score == pytest.approx(0.051331606147570596)
+    assert answers[2].score == pytest.approx(0.0378925803599941, abs=1e-5)
     assert len(answers) == 3
     # Uncomment assertions below when batching is reintroduced
     # assert answers[0][2].score == pytest.approx(0.051331606147570596)
@@ -498,7 +640,7 @@ def test_roberta():
     assert answers[1].data == "Angela Merkel"
     assert answers[1].score == pytest.approx(0.857952892780304)
     assert answers[2].data is None
-    assert answers[2].score == pytest.approx(0.019673851661650588)
+    assert answers[2].score == pytest.approx(0.019673851661650588, abs=1e-5)
     assert len(answers) == 3
     # uncomment assertions below when there is batching in v2
     # assert answers[0][0].data == "Olaf Scholz"
@@ -517,7 +659,9 @@ def test_roberta():
 
 @pytest.mark.integration
 def test_matches_hf_pipeline():
-    reader = ExtractiveReader("deepset/tinyroberta-squad2", device="cpu", overlap_threshold=None)
+    reader = ExtractiveReader(
+        "deepset/tinyroberta-squad2", device=ComponentDevice.from_str("cpu"), overlap_threshold=None
+    )
     reader.warm_up()
     answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
         "answers"

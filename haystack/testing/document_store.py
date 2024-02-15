@@ -7,7 +7,7 @@ import pytest
 import pandas as pd
 
 from haystack.dataclasses import Document
-from haystack.document_stores import DocumentStore, DuplicatePolicy
+from haystack.document_stores.types import DocumentStore, DuplicatePolicy
 from haystack.document_stores.errors import DuplicateDocumentError
 from haystack.errors import FilterError
 
@@ -83,7 +83,7 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
         Test write_documents() default behaviour.
         """
         msg = (
-            "Default write_documents() behaviour depends on the Document Store implementantion, "
+            "Default write_documents() behaviour depends on the Document Store implementation, "
             "as we don't enforce a default behaviour when no policy is set. "
             "Override this test in your custom test class."
         )

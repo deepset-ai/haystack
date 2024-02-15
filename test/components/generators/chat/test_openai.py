@@ -2,9 +2,10 @@ import os
 
 import pytest
 from openai import OpenAIError
+from haystack.utils.auth import Secret
 
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.generators.utils import default_streaming_callback
+from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, StreamingChunk
 
 
@@ -17,38 +18,41 @@ def chat_messages():
 
 
 class TestOpenAIChatGenerator:
-    def test_init_default(self):
-        component = OpenAIChatGenerator(api_key="test-api-key")
+    def test_init_default(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = OpenAIChatGenerator()
         assert component.client.api_key == "test-api-key"
-        assert component.model_name == "gpt-3.5-turbo"
+        assert component.model == "gpt-3.5-turbo"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
 
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(OpenAIError):
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             OpenAIChatGenerator()
 
     def test_init_with_parameters(self):
         component = OpenAIChatGenerator(
-            api_key="test-api-key",
-            model_name="gpt-4",
-            streaming_callback=default_streaming_callback,
+            api_key=Secret.from_token("test-api-key"),
+            model="gpt-4",
+            streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.client.api_key == "test-api-key"
-        assert component.model_name == "gpt-4"
-        assert component.streaming_callback is default_streaming_callback
+        assert component.model == "gpt-4"
+        assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
 
-    def test_to_dict_default(self):
-        component = OpenAIChatGenerator(api_key="test-api-key")
+    def test_to_dict_default(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = OpenAIChatGenerator()
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
-                "model_name": "gpt-3.5-turbo",
+                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "model": "gpt-3.5-turbo",
                 "organization": None,
                 "streaming_callback": None,
                 "api_base_url": None,
@@ -56,11 +60,12 @@ class TestOpenAIChatGenerator:
             },
         }
 
-    def test_to_dict_with_parameters(self):
+    def test_to_dict_with_parameters(self, monkeypatch):
+        monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = OpenAIChatGenerator(
-            api_key="test-api-key",
-            model_name="gpt-4",
-            streaming_callback=default_streaming_callback,
+            api_key=Secret.from_env_var("ENV_VAR"),
+            model="gpt-4",
+            streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
@@ -68,18 +73,19 @@ class TestOpenAIChatGenerator:
         assert data == {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
-                "model_name": "gpt-4",
+                "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
+                "model": "gpt-4",
                 "organization": None,
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
 
-    def test_to_dict_with_lambda_streaming_callback(self):
+    def test_to_dict_with_lambda_streaming_callback(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator(
-            api_key="test-api-key",
-            model_name="gpt-4",
+            model="gpt-4",
             streaming_callback=lambda x: x,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
@@ -88,7 +94,8 @@ class TestOpenAIChatGenerator:
         assert data == {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
-                "model_name": "gpt-4",
+                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "model": "gpt-4",
                 "organization": None,
                 "api_base_url": "test-base-url",
                 "streaming_callback": "chat.test_openai.<lambda>",
@@ -96,39 +103,43 @@ class TestOpenAIChatGenerator:
             },
         }
 
-    def test_from_dict(self):
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
-                "model_name": "gpt-4",
+                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "model": "gpt-4",
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
         component = OpenAIChatGenerator.from_dict(data)
-        assert component.model_name == "gpt-4"
-        assert component.streaming_callback is default_streaming_callback
+        assert component.model == "gpt-4"
+        assert component.streaming_callback is print_streaming_chunk
         assert component.api_base_url == "test-base-url"
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
 
     def test_from_dict_fail_wo_env_var(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         data = {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
-                "model_name": "gpt-4",
+                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "model": "gpt-4",
                 "organization": None,
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.components.generators.utils.default_streaming_callback",
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
-        with pytest.raises(OpenAIError):
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             OpenAIChatGenerator.from_dict(data)
 
     def test_run(self, chat_messages, mock_chat_completion):
-        component = OpenAIChatGenerator()
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         response = component.run(chat_messages)
 
         # check that the component returns the correct ChatMessage response
@@ -139,7 +150,9 @@ class TestOpenAIChatGenerator:
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
     def test_run_with_params(self, chat_messages, mock_chat_completion):
-        component = OpenAIChatGenerator(generation_kwargs={"max_tokens": 10, "temperature": 0.5})
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_tokens": 10, "temperature": 0.5}
+        )
         response = component.run(chat_messages)
 
         # check that the component calls the OpenAI API with the correct parameters
@@ -161,7 +174,9 @@ class TestOpenAIChatGenerator:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 
-        component = OpenAIChatGenerator(streaming_callback=streaming_callback)
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"), streaming_callback=streaming_callback
+        )
         response = component.run(chat_messages)
 
         # check we called the streaming callback
@@ -176,7 +191,7 @@ class TestOpenAIChatGenerator:
         assert "Hello" in response["replies"][0].content  # see mock_chat_completion_chunk
 
     def test_check_abnormal_completions(self, caplog):
-        component = OpenAIChatGenerator(api_key="test-api-key")
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         messages = [
             ChatMessage.from_assistant(
                 "", meta={"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
@@ -208,7 +223,7 @@ class TestOpenAIChatGenerator:
     @pytest.mark.integration
     def test_live_run(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = OpenAIChatGenerator(api_key=os.environ.get("OPENAI_API_KEY"), generation_kwargs={"n": 1})
+        component = OpenAIChatGenerator(generation_kwargs={"n": 1})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -222,9 +237,7 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_wrong_model(self, chat_messages):
-        component = OpenAIChatGenerator(
-            model_name="something-obviously-wrong", api_key=os.environ.get("OPENAI_API_KEY")
-        )
+        component = OpenAIChatGenerator(model="something-obviously-wrong")
         with pytest.raises(OpenAIError):
             component.run(chat_messages)
 

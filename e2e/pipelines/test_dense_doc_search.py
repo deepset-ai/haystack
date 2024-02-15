@@ -4,10 +4,11 @@ from haystack import Pipeline
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
 from haystack.components.converters import PyPDFToDocument, TextFileToDocument
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
-from haystack.components.routers import FileTypeRouter, DocumentJoiner
+from haystack.components.routers import FileTypeRouter
+from haystack.components.joiners import DocumentJoiner
 from haystack.components.writers import DocumentWriter
-from haystack.document_stores import InMemoryDocumentStore
-from haystack.components.retrievers import InMemoryEmbeddingRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 
 def test_dense_doc_search_pipeline(tmp_path, samples_path):
@@ -24,8 +25,7 @@ def test_dense_doc_search_pipeline(tmp_path, samples_path):
         instance=DocumentSplitter(split_by="sentence", split_length=250, split_overlap=30), name="splitter"
     )
     indexing_pipeline.add_component(
-        instance=SentenceTransformersDocumentEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
-        name="embedder",
+        instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="embedder"
     )
     indexing_pipeline.add_component(instance=DocumentWriter(document_store=InMemoryDocumentStore()), name="writer")
 
@@ -41,14 +41,13 @@ def test_dense_doc_search_pipeline(tmp_path, samples_path):
     # Draw the indexing pipeline
     indexing_pipeline.draw(tmp_path / "test_dense_doc_search_indexing_pipeline.png")
 
-    # Serialize the indexing pipeline to JSON
-    with open(tmp_path / "test_dense_doc_search_indexing_pipeline.json", "w") as f:
-        print(json.dumps(indexing_pipeline.to_dict(), indent=4))
-        json.dump(indexing_pipeline.to_dict(), f)
+    # Serialize the indexing pipeline to YAML.
+    with open(tmp_path / "test_dense_doc_search_indexing_pipeline.yaml", "w") as f:
+        indexing_pipeline.dump(f)
 
     # Load the indexing pipeline back
-    with open(tmp_path / "test_dense_doc_search_indexing_pipeline.json", "r") as f:
-        indexing_pipeline = Pipeline.from_dict(json.load(f))
+    with open(tmp_path / "test_dense_doc_search_indexing_pipeline.yaml", "r") as f:
+        indexing_pipeline = Pipeline.load(f)
 
     indexing_result = indexing_pipeline.run({"file_type_router": {"sources": list(samples_path.iterdir())}})
     filled_document_store = indexing_pipeline.get_component("writer").document_store
@@ -59,8 +58,7 @@ def test_dense_doc_search_pipeline(tmp_path, samples_path):
     # Create the querying pipeline
     query_pipeline = Pipeline()
     query_pipeline.add_component(
-        instance=SentenceTransformersTextEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
-        name="text_embedder",
+        instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="text_embedder"
     )
     query_pipeline.add_component(
         instance=InMemoryEmbeddingRetriever(document_store=filled_document_store, top_k=20), name="embedding_retriever"

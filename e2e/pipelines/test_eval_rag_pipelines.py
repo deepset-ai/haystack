@@ -1,16 +1,20 @@
+import json
+import pytest
+
 from haystack import Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
 from haystack.components.generators import HuggingFaceLocalGenerator
-from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
-from haystack.dataclasses import Document
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.dataclasses import Document, GeneratedAnswer
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.evaluation.eval import eval
+from haystack.evaluation.metrics import Metric
 
 
-def test_bm25_rag_pipeline():
+def test_bm25_rag_pipeline(tmp_path):
     prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
@@ -25,7 +29,7 @@ def test_bm25_rag_pipeline():
     rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
     rag_pipeline.add_component(
         instance=HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-small",
+            model="google/flan-t5-small",
             task="text2text-generation",
             generation_kwargs={"max_new_tokens": 100, "temperature": 0.5, "do_sample": True},
         ),
@@ -56,9 +60,54 @@ def test_bm25_rag_pipeline():
     ]
 
     expected_outputs = [
-        {"llm": {"replies": ["Jean"]}},
-        {"llm": {"replies": ["Mark"]}},
-        {"llm": {"replies": ["Giorgio"]}},
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Jean",
+                        query="Who lives in Paris?",
+                        documents=[
+                            Document(content="My name is Jean and I live in Paris.", score=0.33144005810482535),
+                            Document(content="My name is Giorgio and I live in Rome.", score=-0.17938556566116537),
+                            Document(content="My name is Mark and I live in Berlin.", score=-0.17938556566116537),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Mark",
+                        query="Who lives in Berlin?",
+                        documents=[
+                            Document(content="My name is Mark and I live in Berlin.", score=0.33144005810482535),
+                            Document(content="My name is Giorgio and I live in Rome.", score=-0.17938556566116537),
+                            Document(content="My name is Jean and I live in Paris.", score=-0.17938556566116537),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Giorgio",
+                        query="Who lives in Rome?",
+                        documents=[
+                            Document(content="My name is Giorgio and I live in Rome.", score=0.33144005810482535),
+                            Document(content="My name is Mark and I live in Berlin.", score=-0.17938556566116537),
+                            Document(content="My name is Jean and I live in Paris.", score=-0.17938556566116537),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
     ]
 
     eval_result = eval(rag_pipeline, inputs=inputs, expected_outputs=expected_outputs)
@@ -68,8 +117,57 @@ def test_bm25_rag_pipeline():
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == rag_pipeline.to_dict()
 
+    # Test Exact Match
+    em_default = eval_result.calculate_metrics(Metric.EM, output_key="answers")
+    em_custom_parameters = eval_result.calculate_metrics(
+        Metric.EM, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+    )
+    # Save EM metric results to json
+    em_default.save(tmp_path / "exact_match_score.json")
 
-def test_embedding_retrieval_rag_pipeline():
+    assert em_default["exact_match"] == 1.0
+    assert em_custom_parameters["exact_match"] == 1.0
+    with open(tmp_path / "exact_match_score.json", "r") as f:
+        assert em_default == json.load(f)
+
+    # Test F1
+    f1_default = eval_result.calculate_metrics(Metric.F1, output_key="answers")
+    f1_custom_parameters = eval_result.calculate_metrics(
+        Metric.F1, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+    )
+    # Save F1 metric results to json
+    f1_default.save(tmp_path / "f1_score.json")
+
+    assert f1_default["f1"] == 1.0
+    assert f1_custom_parameters["f1"] == 1.0
+    with open(tmp_path / "f1_score.json", "r") as f:
+        assert f1_default == json.load(f)
+
+    # Test SAS
+    sas_default = eval_result.calculate_metrics(
+        Metric.SAS, output_key="answers", model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
+    sas_custom_parameters = eval_result.calculate_metrics(
+        Metric.SAS,
+        output_key="answers",
+        ignore_case=True,
+        ignore_punctuation=True,
+        ignore_numbers=True,
+        model="cross-encoder/ms-marco-MiniLM-L-6-v2",
+    )
+    # Save SAS metric results to json
+    sas_default.save(tmp_path / "sas_score.json")
+
+    assert sas_default["sas"] == pytest.approx(1.0)
+    assert sas_default["scores"] == pytest.approx([1.0, 1.0, 1.0])
+    assert sas_custom_parameters["sas"] == pytest.approx(0.9769593, abs=1e-5)
+    assert sas_custom_parameters["scores"] == pytest.approx([0.975823, 0.957218, 0.997837], abs=1e-5)
+
+    with open(tmp_path / "sas_score.json", "r") as f:
+        assert sas_default == json.load(f)
+
+
+def test_embedding_retrieval_rag_pipeline(tmp_path):
     # Create the RAG pipeline
     prompt_template = """
     Given these documents, answer the question.\nDocuments:
@@ -82,8 +180,7 @@ def test_embedding_retrieval_rag_pipeline():
     """
     rag_pipeline = Pipeline()
     rag_pipeline.add_component(
-        instance=SentenceTransformersTextEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
-        name="text_embedder",
+        instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="text_embedder"
     )
     rag_pipeline.add_component(
         instance=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()), name="retriever"
@@ -91,7 +188,7 @@ def test_embedding_retrieval_rag_pipeline():
     rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
     rag_pipeline.add_component(
         instance=HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-small",
+            model="google/flan-t5-small",
             task="text2text-generation",
             generation_kwargs={"max_new_tokens": 100, "temperature": 0.5, "do_sample": True},
         ),
@@ -113,7 +210,7 @@ def test_embedding_retrieval_rag_pipeline():
     document_store = rag_pipeline.get_component("retriever").document_store
     indexing_pipeline = Pipeline()
     indexing_pipeline.add_component(
-        instance=SentenceTransformersDocumentEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
+        instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
         name="document_embedder",
     )
     indexing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="document_writer")
@@ -132,9 +229,54 @@ def test_embedding_retrieval_rag_pipeline():
     ]
 
     expected_outputs = [
-        {"llm": {"replies": ["Jean"]}},
-        {"llm": {"replies": ["Mark"]}},
-        {"llm": {"replies": ["Giorgio"]}},
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Jean",
+                        query="Who lives in Paris?",
+                        documents=[
+                            Document(content="My name is Jean and I live in Paris.", score=0.33144005810482535),
+                            Document(content="My name is Giorgio and I live in Rome.", score=-0.17938556566116537),
+                            Document(content="My name is Mark and I live in Berlin.", score=-0.17938556566116537),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Mark",
+                        query="Who lives in Berlin?",
+                        documents=[
+                            Document(content="My name is Mark and I live in Berlin.", score=0.33144005810482535),
+                            Document(content="My name is Giorgio and I live in Rome.", score=-0.17938556566116537),
+                            Document(content="My name is Jean and I live in Paris.", score=-0.17938556566116537),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Giorgio",
+                        query="Who lives in Rome?",
+                        documents=[
+                            Document(content="My name is Giorgio and I live in Rome.", score=0.33144005810482535),
+                            Document(content="My name is Mark and I live in Berlin.", score=-0.17938556566116537),
+                            Document(content="My name is Jean and I live in Paris.", score=-0.17938556566116537),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
     ]
 
     eval_result = eval(rag_pipeline, inputs=inputs, expected_outputs=expected_outputs)
@@ -143,3 +285,52 @@ def test_embedding_retrieval_rag_pipeline():
     assert eval_result.expected_outputs == expected_outputs
     assert len(eval_result.outputs) == len(expected_outputs) == len(inputs)
     assert eval_result.runnable.to_dict() == rag_pipeline.to_dict()
+
+    # Test Exact Match
+    em_default = eval_result.calculate_metrics(Metric.EM, output_key="answers")
+    em_custom_parameters = eval_result.calculate_metrics(
+        Metric.EM, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+    )
+    # Save EM metric results to json
+    em_default.save(tmp_path / "exact_match_score.json")
+
+    assert em_default["exact_match"] == 1.0
+    assert em_custom_parameters["exact_match"] == 1.0
+    with open(tmp_path / "exact_match_score.json", "r") as f:
+        assert em_default == json.load(f)
+
+    # Test F1
+    f1_default = eval_result.calculate_metrics(Metric.F1, output_key="answers")
+    f1_custom_parameters = eval_result.calculate_metrics(
+        Metric.F1, output_key="answers", ignore_case=True, ignore_punctuation=True, ignore_numbers=True
+    )
+    # Save F1 metric results to json
+    f1_default.save(tmp_path / "f1_score.json")
+
+    assert f1_default["f1"] == 1.0
+    assert f1_custom_parameters["f1"] == 1.0
+    with open(tmp_path / "f1_score.json", "r") as f:
+        assert f1_default == json.load(f)
+
+    # Test SAS
+    sas_default = eval_result.calculate_metrics(
+        Metric.SAS, output_key="answers", model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
+    sas_custom_parameters = eval_result.calculate_metrics(
+        Metric.SAS,
+        output_key="answers",
+        ignore_case=True,
+        ignore_punctuation=True,
+        ignore_numbers=True,
+        model="cross-encoder/ms-marco-MiniLM-L-6-v2",
+    )
+    # Save SAS metric results to json
+    sas_default.save(tmp_path / "sas_score.json")
+
+    assert sas_default["sas"] == pytest.approx(1.0)
+    assert sas_default["scores"] == pytest.approx([1.0, 1.0, 1.0])
+    assert sas_custom_parameters["sas"] == pytest.approx(0.9769593, abs=1e-5)
+    assert sas_custom_parameters["scores"] == pytest.approx([0.975823, 0.957218, 0.997837], abs=1e-5)
+
+    with open(tmp_path / "sas_score.json", "r") as f:
+        assert sas_default == json.load(f)

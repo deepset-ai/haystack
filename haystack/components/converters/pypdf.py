@@ -31,7 +31,7 @@ class DefaultConverter:
 
     def convert(self, reader: "PdfReader") -> Document:
         """Extract text from the PDF and return a Document object with the text content."""
-        text = "".join(page.extract_text() for page in reader.pages if page.extract_text())
+        text = "\f".join(page.extract_text() for page in reader.pages)
         return Document(content=text)
 
 
@@ -82,7 +82,11 @@ class PyPDFToDocument:
         return default_to_dict(self, converter_name=self.converter_name)
 
     @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
+    def run(
+        self,
+        sources: List[Union[str, Path, ByteStream]],
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+    ):
         """
         Converts a list of PDF sources into Document objects using the configured converter.
 

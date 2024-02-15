@@ -7,6 +7,7 @@ from openai import OpenAI
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 class RemoteWhisperTranscriber:
     """
     Transcribes audio files using OpenAI's Whisper using OpenAI API. Requires an API key. See the
-    [OpenAI blog post](https://beta.openai.com/docs/api-reference/whisper for more details.
+    [OpenAI blog post](https://beta.openai.com/docs/api-reference/whisper) for more details.
     You can get one by signing up for an [OpenAI account](https://beta.openai.com/).
 
     For the supported audio formats, languages, and other parameters, see the
@@ -24,8 +25,8 @@ class RemoteWhisperTranscriber:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        model_name: str = "whisper-1",
+        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        model: str = "whisper-1",
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         **kwargs,
@@ -34,7 +35,7 @@ class RemoteWhisperTranscriber:
         Transcribes a list of audio files into a list of Documents.
 
         :param api_key: OpenAI API key.
-        :param model_name: Name of the model to use. It now accepts only `whisper-1`.
+        :param model: Name of the model to use. It now accepts only `whisper-1`.
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param api_base: An optional URL to use as the API base. Defaults to `None`. See OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
@@ -59,8 +60,9 @@ class RemoteWhisperTranscriber:
         """
 
         self.organization = organization
-        self.model_name = model_name
+        self.model = model
         self.api_base_url = api_base_url
+        self.api_key = api_key
 
         # Only response_format = "json" is supported
         whisper_params = kwargs
@@ -71,7 +73,7 @@ class RemoteWhisperTranscriber:
             )
         whisper_params["response_format"] = "json"
         self.whisper_params = whisper_params
-        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
+        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -81,7 +83,8 @@ class RemoteWhisperTranscriber:
         """
         return default_to_dict(
             self,
-            model_name=self.model_name,
+            api_key=self.api_key.to_dict(),
+            model=self.model,
             organization=self.organization,
             api_base_url=self.api_base_url,
             **self.whisper_params,
@@ -92,6 +95,7 @@ class RemoteWhisperTranscriber:
         """
         Deserialize this component from a dictionary.
         """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
@@ -100,7 +104,7 @@ class RemoteWhisperTranscriber:
         Transcribe the audio files into a list of Documents, one for each input file.
 
         :param sources: A list of file paths or ByteStreams containing the audio files to transcribe.
-        :returns: a list of Documents, one for each file. The content of the document is the transcription text.
+        :returns: A list of Documents, one for each file. The content of the document is the transcription text.
         """
         documents = []
 
@@ -113,7 +117,7 @@ class RemoteWhisperTranscriber:
             file = io.BytesIO(source.data)
             file.name = str(source.meta["file_path"]) if "file_path" in source.meta else "__fallback__.wav"
 
-            content = self.client.audio.transcriptions.create(file=file, model=self.model_name, **self.whisper_params)
+            content = self.client.audio.transcriptions.create(file=file, model=self.model, **self.whisper_params)
             doc = Document(content=content.text, meta=source.meta)
             documents.append(doc)
 

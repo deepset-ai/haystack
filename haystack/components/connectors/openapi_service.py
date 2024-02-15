@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 from haystack import component
 from haystack.dataclasses import ChatMessage, ChatRole
@@ -26,16 +26,19 @@ class OpenAPIServiceConnector:
     This can be done using the OpenAPIServiceToFunctions component.
     """
 
-    def __init__(self, service_auths: Optional[Dict[str, Any]] = None):
+    def __init__(self):
         """
         Initializes the OpenAPIServiceConnector instance
-        :param service_auths: A dictionary containing the service name and token to be used for authentication.
         """
         openapi_imports.check()
-        self.service_authentications = service_auths or {}
 
     @component.output_types(service_response=Dict[str, Any])
-    def run(self, messages: List[ChatMessage], service_openapi_spec: Dict[str, Any]) -> Dict[str, List[ChatMessage]]:
+    def run(
+        self,
+        messages: List[ChatMessage],
+        service_openapi_spec: Dict[str, Any],
+        service_credentials: Optional[Union[dict, str]] = None,
+    ) -> Dict[str, List[ChatMessage]]:
         """
         Processes a list of chat messages to invoke a method on an OpenAPI service. It parses the last message in the
         list, expecting it to contain an OpenAI function calling descriptor (name & parameters) in JSON format.
@@ -46,6 +49,9 @@ class OpenAPIServiceConnector:
         :type service_openapi_spec: JSON object
         :return: A dictionary with a key `"service_response"`, containing the response from the OpenAPI service.
         :rtype: Dict[str, List[ChatMessage]]
+        :param service_credentials: The credentials to be used for authentication with the service.
+        Currently, only the http and apiKey schemes are supported. See _authenticate_service method for more details.
+        :type service_credentials: Optional[Union[dict, str]]
         :raises ValueError: If the last message is not from the assistant or if it does not contain the correct payload
         to invoke a method on the service.
         """
@@ -58,12 +64,17 @@ class OpenAPIServiceConnector:
 
         # instantiate the OpenAPI service for the given specification
         openapi_service = OpenAPI(service_openapi_spec)
-        self._authenticate_service(openapi_service)
+        self._authenticate_service(openapi_service, service_credentials)
 
         response_messages = []
         for method_invocation_descriptor in function_invocation_payloads:
             service_response = self._invoke_method(openapi_service, method_invocation_descriptor)
-            response_messages.append(ChatMessage.from_user(str(service_response)))
+            # openapi3 parses the JSON service response into a model object, which is not our focus at the moment.
+            # Instead, we require direct access to the raw JSON data of the response, rather than the model objects
+            # provided by the openapi3 library. This approach helps us avoid issues related to (de)serialization.
+            # By accessing the raw JSON response through `service_response._raw_data`, we can serialize this data
+            # into a string. Finally, we use this string to create a ChatMessage object.
+            response_messages.append(ChatMessage.from_user(json.dumps(service_response._raw_data)))
 
         return {"service_response": response_messages}
 
@@ -96,20 +107,59 @@ class OpenAPIServiceConnector:
                 )
         return function_payloads
 
-    def _authenticate_service(self, openapi_service: OpenAPI):
+    def _authenticate_service(self, openapi_service: OpenAPI, credentials: Optional[Union[dict, str]] = None):
         """
-        Authenticates with the OpenAPI service if required.
+        Authenticates with the OpenAPI service if required, supporting both single (str) and multiple
+        authentication methods (dict).
+
+        OpenAPI spec v3 supports the following security schemes:
+        http – for Basic, Bearer and other HTTP authentications schemes
+        apiKey – for API keys and cookie authentication
+        oauth2 – for OAuth 2
+        openIdConnect – for OpenID Connect Discovery
+
+        Currently, only the http and apiKey schemes are supported. Multiple security schemes can be defined in the
+        OpenAPI spec, and the credentials should be provided as a dictionary with keys matching the security scheme
+        names. If only one security scheme is defined, the credentials can be provided as a simple string.
 
         :param openapi_service: The OpenAPI service instance.
         :type openapi_service: OpenAPI
-        :raises ValueError: If authentication fails or is not found.
+        :param credentials: Credentials for authentication, which can be either a string (e.g. token) or a dictionary
+        with keys matching the authentication method names.
+        :type credentials: dict | str, optional
+        :raises ValueError: If authentication fails, is not found, or if appropriate credentials are missing.
         """
+        service_name = openapi_service.info.title
         if openapi_service.components.securitySchemes:
-            auth_method = list(openapi_service.components.securitySchemes.keys())[0]
-            service_title = openapi_service.info.title
-            if service_title not in self.service_authentications:
-                raise ValueError(f"Service {service_title} not found in service_authentications.")
-            openapi_service.authenticate(auth_method, self.service_authentications[service_title])
+            if not credentials:
+                raise ValueError(f"Service {service_name} requires authentication but no credentials were provided.")
+
+            # a dictionary of security schemes defined in the OpenAPI spec
+            # each key is the name of the security scheme, and the value is the scheme definition
+            security_schemes = openapi_service.components.securitySchemes.raw_element
+            supported_schemes = ["http", "apiKey"]  # todo: add support for oauth2 and openIdConnect
+
+            authenticated = False
+            for scheme_name, scheme in security_schemes.items():
+                if scheme["type"] in supported_schemes:
+                    auth_credentials = None
+                    if isinstance(credentials, str):
+                        auth_credentials = credentials
+                    elif isinstance(credentials, dict) and scheme_name in credentials:
+                        auth_credentials = credentials[scheme_name]
+                    if auth_credentials:
+                        openapi_service.authenticate(scheme_name, auth_credentials)
+                        authenticated = True
+                    else:
+                        raise ValueError(
+                            f"Service {service_name} requires {scheme_name} security scheme but no "
+                            f"credentials were provided for it. Check the service configuration and credentials."
+                        )
+            if not authenticated:
+                raise ValueError(
+                    f"Service {service_name} requires authentication but no credentials were provided "
+                    f"for it. Check the service configuration and credentials."
+                )
 
     def _invoke_method(self, openapi_service: OpenAPI, method_invocation_descriptor: Dict[str, Any]) -> Any:
         """

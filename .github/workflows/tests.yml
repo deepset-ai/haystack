@@ -18,12 +18,14 @@ on:
       - "haystack/**/*.py"
       - "test/**/*.py"
       - "test/test_requirements.txt"
-      - "!haystack/core/**/*.py"
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   CORE_AZURE_CS_ENDPOINT: ${{ secrets.CORE_AZURE_CS_ENDPOINT }}
   CORE_AZURE_CS_API_KEY: ${{ secrets.CORE_AZURE_CS_API_KEY }}
+  AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+  AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PYTHON_VERSION: "3.8"
 
 jobs:
@@ -97,10 +99,10 @@ jobs:
       - name: Install Haystack and the dependencies needed for tests
         run: pip install -r test/test_requirements.txt
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
   unit-tests:
     name: Unit / ${{ matrix.os }}
@@ -121,13 +123,21 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Restore Python dependencies
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
       - name: Run
-        run: pytest -m "not integration" test
+        run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integration" test
+
+      - name: Coveralls
+        # We upload only coverage for ubuntu as handling both os
+        # complicates the workflow too much for little to no gain
+        if: matrix.os == 'ubuntu-latest'
+        uses: coverallsapp/github-action@v2
+        with:
+          path-to-lcov: coverage.xml
 
       - name: Calculate alert data
         id: calculator
@@ -182,10 +192,10 @@ jobs:
           sudo apt install ffmpeg  # for local Whisper tests
 
       - name: Restore Python dependencies
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test
@@ -240,10 +250,10 @@ jobs:
           brew install ffmpeg  # for local Whisper tests
 
       - name: Restore Python dependencies
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test -k 'not tika'
@@ -291,10 +301,10 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Restore Python dependencies
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
       - name: Run
         run: pytest --maxfail=5 -m "integration" test -k 'not tika'

@@ -3,27 +3,24 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 
+from haystack.components.others import Multiplexer
 from haystack.core.pipeline import Pipeline
 from haystack.testing.sample_components import (
     Accumulate,
     AddFixedValue,
+    Double,
     Greet,
     Parity,
-    Threshold,
-    Double,
-    Sum,
     Repeat,
     Subtract,
-    MergeLoop,
+    Sum,
+    Threshold,
 )
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 def test_complex_pipeline():
-    loop_merger = MergeLoop(expected_type=int, inputs=["in_1", "in_2"])
-    summer = Sum()
-
     pipeline = Pipeline(max_loops_allowed=2)
     pipeline.add_component("greet_first", Greet(message="Hello, the value is {value}."))
     pipeline.add_component("accumulate_1", Accumulate())
@@ -32,12 +29,12 @@ def test_complex_pipeline():
     pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("accumulate_2", Accumulate())
 
-    pipeline.add_component("loop_merger", loop_merger)
+    pipeline.add_component("multiplexer", Multiplexer(type_=int))
     pipeline.add_component("below_10", Threshold(threshold=10))
     pipeline.add_component("double", Double())
 
     pipeline.add_component("greet_again", Greet(message="Hello again, now the value is {value}."))
-    pipeline.add_component("sum", summer)
+    pipeline.add_component("sum", Sum())
 
     pipeline.add_component("greet_enumerator", Greet(message="Hello from enumerator, here the value became {value}."))
     pipeline.add_component("enumerate", Repeat(outputs=["first", "second"]))
@@ -64,11 +61,11 @@ def test_complex_pipeline():
     pipeline.connect("add_four", "accumulate_3")
 
     pipeline.connect("parity.odd", "add_one.value")
-    pipeline.connect("add_one", "loop_merger.in_1")
-    pipeline.connect("loop_merger", "below_10")
+    pipeline.connect("add_one", "multiplexer.value")
+    pipeline.connect("multiplexer", "below_10")
 
     pipeline.connect("below_10.below", "double")
-    pipeline.connect("double", "loop_merger.in_2")
+    pipeline.connect("double", "multiplexer.value")
 
     pipeline.connect("below_10.above", "accumulate_2")
     pipeline.connect("accumulate_2", "diff.second_value")

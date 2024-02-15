@@ -1,38 +1,38 @@
 import os
 import pytest
-from openai import OpenAIError
 
 from haystack.components.audio.whisper_remote import RemoteWhisperTranscriber
 from haystack.dataclasses import ByteStream
+from haystack.utils import Secret
 
 
 class TestRemoteWhisperTranscriber:
     def test_init_no_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(OpenAIError):
-            RemoteWhisperTranscriber(api_key=None)
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
+            RemoteWhisperTranscriber()
 
     def test_init_key_env_var(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
-        t = RemoteWhisperTranscriber(api_key=None)
+        t = RemoteWhisperTranscriber()
         assert t.client.api_key == "test_api_key"
 
     def test_init_key_module_env_and_global_var(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test_api_key_2")
-        t = RemoteWhisperTranscriber(api_key=None)
+        t = RemoteWhisperTranscriber()
         assert t.client.api_key == "test_api_key_2"
 
     def test_init_default(self):
-        transcriber = RemoteWhisperTranscriber(api_key="test_api_key")
+        transcriber = RemoteWhisperTranscriber(api_key=Secret.from_token("test_api_key"))
         assert transcriber.client.api_key == "test_api_key"
-        assert transcriber.model_name == "whisper-1"
+        assert transcriber.model == "whisper-1"
         assert transcriber.organization is None
         assert transcriber.whisper_params == {"response_format": "json"}
 
     def test_init_custom_parameters(self):
         transcriber = RemoteWhisperTranscriber(
-            api_key="test_api_key",
-            model_name="whisper-1",
+            api_key=Secret.from_token("test_api_key"),
+            model="whisper-1",
             organization="test-org",
             api_base_url="test_api_url",
             language="en",
@@ -41,7 +41,8 @@ class TestRemoteWhisperTranscriber:
             temperature="0.5",
         )
 
-        assert transcriber.model_name == "whisper-1"
+        assert transcriber.model == "whisper-1"
+        assert transcriber.api_key == Secret.from_token("test_api_key")
         assert transcriber.organization == "test-org"
         assert transcriber.api_base_url == "test_api_url"
         assert transcriber.whisper_params == {
@@ -51,23 +52,26 @@ class TestRemoteWhisperTranscriber:
             "temperature": "0.5",
         }
 
-    def test_to_dict_default_parameters(self):
-        transcriber = RemoteWhisperTranscriber(api_key="test_api_key")
+    def test_to_dict_default_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
+        transcriber = RemoteWhisperTranscriber()
         data = transcriber.to_dict()
         assert data == {
             "type": "haystack.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
-                "model_name": "whisper-1",
+                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "model": "whisper-1",
                 "api_base_url": None,
                 "organization": None,
                 "response_format": "json",
             },
         }
 
-    def test_to_dict_with_custom_init_parameters(self):
+    def test_to_dict_with_custom_init_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
         transcriber = RemoteWhisperTranscriber(
-            api_key="test_api_key",
-            model_name="whisper-1",
+            api_key=Secret.from_env_var("ENV_VAR", strict=False),
+            model="whisper-1",
             organization="test-org",
             api_base_url="test_api_url",
             language="en",
@@ -79,7 +83,8 @@ class TestRemoteWhisperTranscriber:
         assert data == {
             "type": "haystack.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
-                "model_name": "whisper-1",
+                "api_key": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
+                "model": "whisper-1",
                 "organization": "test-org",
                 "api_base_url": "test_api_url",
                 "language": "en",
@@ -95,7 +100,7 @@ class TestRemoteWhisperTranscriber:
         data = {
             "type": "haystack.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
-                "model_name": "whisper-1",
+                "model": "whisper-1",
                 "api_base_url": "https://api.openai.com/v1",
                 "organization": None,
                 "response_format": "json",
@@ -104,7 +109,7 @@ class TestRemoteWhisperTranscriber:
 
         transcriber = RemoteWhisperTranscriber.from_dict(data)
 
-        assert transcriber.model_name == "whisper-1"
+        assert transcriber.model == "whisper-1"
         assert transcriber.organization is None
         assert transcriber.api_base_url == "https://api.openai.com/v1"
         assert transcriber.whisper_params == {"response_format": "json"}
@@ -115,7 +120,7 @@ class TestRemoteWhisperTranscriber:
         data = {
             "type": "haystack.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
-                "model_name": "whisper-1",
+                "model": "whisper-1",
                 "organization": "test-org",
                 "api_base_url": "test_api_url",
                 "language": "en",
@@ -126,7 +131,7 @@ class TestRemoteWhisperTranscriber:
         }
         transcriber = RemoteWhisperTranscriber.from_dict(data)
 
-        assert transcriber.model_name == "whisper-1"
+        assert transcriber.model == "whisper-1"
         assert transcriber.organization == "test-org"
         assert transcriber.api_base_url == "test_api_url"
         assert transcriber.whisper_params == {
@@ -142,14 +147,15 @@ class TestRemoteWhisperTranscriber:
         data = {
             "type": "haystack.components.audio.whisper_remote.RemoteWhisperTranscriber",
             "init_parameters": {
-                "model_name": "whisper-1",
+                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "model": "whisper-1",
                 "api_base_url": "https://api.openai.com/v1",
                 "organization": None,
                 "response_format": "json",
             },
         }
 
-        with pytest.raises(OpenAIError):
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             RemoteWhisperTranscriber.from_dict(data)
 
     @pytest.mark.skipif(

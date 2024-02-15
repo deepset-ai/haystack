@@ -11,8 +11,9 @@ from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.components.generators.utils import serialize_callback_handler, deserialize_callback_handler
 from haystack.dataclasses import StreamingChunk, ChatMessage
+from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
 
 logger = logging.getLogger(__name__)
 
@@ -62,20 +63,19 @@ class OpenAIChatGenerator:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        model_name: str = "gpt-3.5-turbo",
+        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        model: str = "gpt-3.5-turbo",
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates an instance of OpenAIChatGenerator. Unless specified otherwise in the `model_name`, this is for OpenAI's
+        Creates an instance of OpenAIChatGenerator. Unless specified otherwise in the `model`, this is for OpenAI's
         GPT-3.5 model.
 
-        :param api_key: The OpenAI API key. It can be explicitly provided or automatically read from the
-            environment variable OPENAI_API_KEY (recommended).
-        :param model_name: The name of the model to use.
+        :param api_key: The OpenAI API key.
+        :param model: The name of the model to use.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function accepts StreamingChunk as an argument.
         :param api_base_url: An optional base URL.
@@ -101,32 +101,34 @@ class OpenAIChatGenerator:
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         """
-        self.model_name = model_name
+        self.api_key = api_key
+        self.model = model
         self.generation_kwargs = generation_kwargs or {}
         self.streaming_callback = streaming_callback
         self.api_base_url = api_base_url
         self.organization = organization
-        self.client = OpenAI(api_key=api_key, organization=organization, base_url=api_base_url)
+        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": self.model_name}
+        return {"model": self.model}
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
         :return: The serialized component as a dictionary.
         """
-        callback_name = serialize_callback_handler(self.streaming_callback) if self.streaming_callback else None
+        callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
-            model_name=self.model_name,
+            model=self.model,
             streaming_callback=callback_name,
             api_base_url=self.api_base_url,
             organization=self.organization,
             generation_kwargs=self.generation_kwargs,
+            api_key=self.api_key.to_dict(),
         )
 
     @classmethod
@@ -136,10 +138,11 @@ class OpenAIChatGenerator:
         :param data: The dictionary representation of this component.
         :return: The deserialized component instance.
         """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
-            data["init_parameters"]["streaming_callback"] = deserialize_callback_handler(serialized_callback_handler)
+            data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
 
     @component.output_types(replies=List[ChatMessage])
@@ -162,7 +165,7 @@ class OpenAIChatGenerator:
         openai_formatted_messages = self._convert_to_openai_format(messages)
 
         chat_completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
-            model=self.model_name,
+            model=self.model,
             messages=openai_formatted_messages,  # type: ignore # openai expects list of specific message types
             stream=self.streaming_callback is not None,
             **generation_kwargs,
@@ -334,8 +337,8 @@ class OpenAIChatGenerator:
 class GPTChatGenerator(OpenAIChatGenerator):
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        model_name: str = "gpt-3.5-turbo",
+        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        model: str = "gpt-3.5-turbo",
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
@@ -349,7 +352,7 @@ class GPTChatGenerator(OpenAIChatGenerator):
         )
         super().__init__(
             api_key=api_key,
-            model_name=model_name,
+            model=model,
             streaming_callback=streaming_callback,
             api_base_url=api_base_url,
             organization=organization,

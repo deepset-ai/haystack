@@ -3,11 +3,11 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+from haystack_bm25 import rank_bm25
 
 from haystack import Document
-from haystack.document_stores import InMemoryDocumentStore, DocumentStoreError, DuplicatePolicy, DuplicateDocumentError
-
-
+from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.document_store import DocumentStoreBaseTests
 
 
@@ -18,7 +18,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
 
     @pytest.fixture
     def document_store(self) -> InMemoryDocumentStore:
-        return InMemoryDocumentStore()
+        return InMemoryDocumentStore(bm25_algorithm="BM25L")
 
     def test_to_dict(self):
         store = InMemoryDocumentStore()
@@ -27,7 +27,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
                 "bm25_tokenization_regex": r"(?u)\b\w\w+\b",
-                "bm25_algorithm": "BM25Okapi",
+                "bm25_algorithm": "BM25L",
                 "bm25_parameters": {},
                 "embedding_similarity_function": "dot_product",
             },
@@ -74,7 +74,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             document_store.write_documents(docs)
 
     def test_bm25_retrieval(self, document_store: InMemoryDocumentStore):
-        document_store = InMemoryDocumentStore()
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
         document_store.write_documents(docs)
@@ -107,7 +106,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         document_store.write_documents(docs)
 
         # top_k = 2
-        results = document_store.bm25_retrieval(query="languages", top_k=2)
+        results = document_store.bm25_retrieval(query="language", top_k=2)
         assert len(results) == 2
 
         # top_k = 3
@@ -142,7 +141,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         document_store.write_documents(docs)
 
         results = document_store.bm25_retrieval(query="Python", top_k=1)
-        assert len(results) == 1
+        assert len(results) == 0
 
         document_store.write_documents([Document(content="Python is a popular programming language")])
         results = document_store.bm25_retrieval(query="Python", top_k=1)
@@ -166,6 +165,39 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         # Same query, different scale, scores differ when not scaled
         results = document_store.bm25_retrieval(query="Python", top_k=1, scale_score=False)
         assert results[0].score != results1[0].score
+
+    def test_bm25_retrieval_with_non_scaled_BM25Okapi(self, document_store: InMemoryDocumentStore):
+        # Highly repetitive documents make BM25Okapi return negative scores, which should not be filtered if the
+        # scores are not scaled
+        docs = [
+            Document(
+                content="""Use pip to install a basic version of Haystack's latest release: pip install
+                farm-haystack. All the core Haystack components live in the haystack repo. But there's also the
+                haystack-extras repo which contains components that are not as widely used, and you need to
+                install them separately."""
+            ),
+            Document(
+                content="""Use pip to install a basic version of Haystack's latest release: pip install
+                farm-haystack[inference]. All the core Haystack components live in the haystack repo. But there's
+                also the haystack-extras repo which contains components that are not as widely used, and you need
+                to install them separately."""
+            ),
+            Document(
+                content="""Use pip to install only the Haystack 2.0 code: pip install haystack-ai. The haystack-ai
+                package is built on the main branch which is an unstable beta version, but it's useful if you want
+                to try the new features as soon as they are merged."""
+            ),
+        ]
+        document_store.write_documents(docs)
+
+        document_store.bm25_algorithm = rank_bm25.BM25Okapi
+        results1 = document_store.bm25_retrieval(query="Haystack installation", top_k=10, scale_score=False)
+        assert len(results1) == 3
+        assert all(res.score < 0.0 for res in results1)
+
+        results2 = document_store.bm25_retrieval(query="Haystack installation", top_k=10, scale_score=True)
+        assert len(results2) == 3
+        assert all(0.0 <= res.score <= 1.0 for res in results2)
 
     def test_bm25_retrieval_with_table_content(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method correctly returns a dataframe when the content_type is table.
@@ -200,10 +232,10 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         docs = [Document(), Document(content="Gardening"), Document(content="Bird watching")]
         document_store.write_documents(docs)
         results = document_store.bm25_retrieval(query="doesn't matter, top_k is 10", top_k=10)
-        assert len(results) == 2
+        assert len(results) == 0
 
     def test_bm25_retrieval_with_filters(self, document_store: InMemoryDocumentStore):
-        selected_document = Document(content="Gardening", meta={"selected": True})
+        selected_document = Document(content="Java is, well...", meta={"selected": True})
         docs = [Document(), selected_document, Document(content="Bird watching")]
         document_store.write_documents(docs)
         results = document_store.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
@@ -225,10 +257,10 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert results[0].id == document.id
 
     def test_bm25_retrieval_with_documents_with_mixed_content(self, document_store: InMemoryDocumentStore):
-        double_document = Document(content="Gardening", embedding=[1.0, 2.0, 3.0])
+        double_document = Document(content="Gardening is a hobby", embedding=[1.0, 2.0, 3.0])
         docs = [Document(embedding=[1.0, 2.0, 3.0]), double_document, Document(content="Bird watching")]
         document_store.write_documents(docs)
-        results = document_store.bm25_retrieval(query="Java", top_k=10, filters={"embedding": {"$not": None}})
+        results = document_store.bm25_retrieval(query="Gardening", top_k=10, filters={"embedding": {"$not": None}})
         assert len(results) == 1
         assert results[0].id == double_document.id
 

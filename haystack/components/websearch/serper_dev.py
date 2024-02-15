@@ -1,11 +1,11 @@
 import json
-import os
 import logging
 from typing import Dict, List, Optional, Any
 
 import requests
 
-from haystack import Document, component, default_to_dict, ComponentError
+from haystack import Document, component, default_to_dict, ComponentError, default_from_dict
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -27,42 +27,46 @@ class SerperDevWebSearch:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: Secret = Secret.from_env_var("SERPERDEV_API_KEY"),
         top_k: Optional[int] = 10,
         allowed_domains: Optional[List[str]] = None,
         search_params: Optional[Dict[str, Any]] = None,
     ):
         """
-        :param api_key: API key for the SerperDev API.  It can be
-        explicitly provided or automatically read from the
-        environment variable SERPERDEV_API_KEY (recommended).
+        :param api_key: API key for the SerperDev API.
         :param top_k: Number of documents to return.
         :param allowed_domains: List of domains to limit the search to.
         :param search_params: Additional parameters passed to the SerperDev API.
         For example, you can set 'num' to 20 to increase the number of search results.
         See the [Serper Dev website](https://serper.dev/) for more details.
         """
-        if api_key is None:
-            try:
-                api_key = os.environ["SERPERDEV_API_KEY"]
-            except KeyError as e:
-                raise ValueError(
-                    "SerperDevWebSearch expects an API key. "
-                    "Set the SERPERDEV_API_KEY environment variable (recommended) or pass it explicitly."
-                ) from e
-            raise ValueError("API key for SerperDev API must be set.")
         self.api_key = api_key
         self.top_k = top_k
         self.allowed_domains = allowed_domains
         self.search_params = search_params or {}
+
+        # Ensure that the API key is resolved.
+        _ = self.api_key.resolve_value()
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
         """
         return default_to_dict(
-            self, top_k=self.top_k, allowed_domains=self.allowed_domains, search_params=self.search_params
+            self,
+            top_k=self.top_k,
+            allowed_domains=self.allowed_domains,
+            search_params=self.search_params,
+            api_key=self.api_key.to_dict(),
         )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SerperDevWebSearch":
+        """
+        Deserialize this component from a dictionary.
+        """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document], links=List[str])
     def run(self, query: str):
@@ -76,10 +80,10 @@ class SerperDevWebSearch:
         payload = json.dumps(
             {"q": query_prepend + query, "gl": "us", "hl": "en", "autocorrect": True, **self.search_params}
         )
-        headers = {"X-API-KEY": self.api_key, "Content-Type": "application/json"}
+        headers = {"X-API-KEY": self.api_key.resolve_value(), "Content-Type": "application/json"}
 
         try:
-            response = requests.post(SERPERDEV_BASE_URL, headers=headers, data=payload, timeout=30)
+            response = requests.post(SERPERDEV_BASE_URL, headers=headers, data=payload, timeout=30)  # type: ignore
             response.raise_for_status()  # Will raise an HTTPError for bad responses
         except requests.Timeout:
             raise TimeoutError(f"Request to {self.__class__.__name__} timed out.")

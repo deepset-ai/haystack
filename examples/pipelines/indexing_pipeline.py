@@ -4,9 +4,10 @@ from haystack import Pipeline
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 from haystack.components.converters import PyPDFToDocument, TextFileToDocument
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
-from haystack.components.routers import FileTypeRouter, DocumentJoiner
+from haystack.components.routers import FileTypeRouter
+from haystack.components.joiners import DocumentJoiner
 from haystack.components.writers import DocumentWriter
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 # Create components and an indexing pipeline that converts txt and pdf files to documents, cleans and splits them, and
@@ -19,8 +20,7 @@ p.add_component(instance=DocumentJoiner(), name="joiner")
 p.add_component(instance=DocumentCleaner(), name="cleaner")
 p.add_component(instance=DocumentSplitter(split_by="sentence", split_length=250, split_overlap=30), name="splitter")
 p.add_component(
-    instance=SentenceTransformersDocumentEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
-    name="embedder",
+    instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="embedder"
 )
 p.add_component(instance=DocumentWriter(document_store=InMemoryDocumentStore()), name="writer")
 

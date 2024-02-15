@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from haystack.core.pipeline import Pipeline
-from haystack.testing.sample_components import StringJoiner, StringListJoiner, Hello, TextSplitter
-
 import logging
+
+from haystack.core.pipeline import Pipeline
+from haystack.testing.sample_components import Hello, StringJoiner, StringListJoiner, TextSplitter
 
 logging.basicConfig(level=logging.DEBUG)
 
