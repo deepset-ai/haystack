@@ -1,12 +1,14 @@
 import json
 import os
-
-import pytest
+import time
 from unittest.mock import MagicMock, Mock
 
+import flaky
+import pytest
 import requests
 from openapi3 import OpenAPI
 from openapi3.schemas import Model
+
 from haystack.components.connectors import OpenAPIServiceConnector
 from haystack.dataclasses import ChatMessage
 
@@ -140,6 +142,7 @@ class TestOpenAPIServiceConnector:
             " to get the raw data from the service response"
         )
 
+    @flaky.flaky(max_runs=5, rerun_filter=lambda *_: time.sleep(5))
     @pytest.mark.integration
     @pytest.mark.skipif(not os.getenv("GITHUB_TOKEN"), reason="GITHUB_TOKEN is not set")
     def test_run(self, genuine_fc_message, test_files_path):
