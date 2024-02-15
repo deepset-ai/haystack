@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.components.eval import StatisticalEvaluator, StatisticalMetric
+from haystack.components.evaluators import StatisticalEvaluator, StatisticalMetric
 
 
 class TestStatisticalEvaluator:
@@ -16,7 +16,7 @@ class TestStatisticalEvaluator:
         evaluator = StatisticalEvaluator(metric=StatisticalMetric.F1)
 
         expected_dict = {
-            "type": "haystack.components.eval.statistical_evaluator.StatisticalEvaluator",
+            "type": "haystack.components.evaluators.statistical_evaluator.StatisticalEvaluator",
             "init_parameters": {"metric": "f1"},
         }
         assert evaluator.to_dict() == expected_dict
@@ -24,7 +24,7 @@ class TestStatisticalEvaluator:
     def test_from_dict(self):
         evaluator = StatisticalEvaluator.from_dict(
             {
-                "type": "haystack.components.eval.statistical_evaluator.StatisticalEvaluator",
+                "type": "haystack.components.evaluators.statistical_evaluator.StatisticalEvaluator",
                 "init_parameters": {"metric": "f1"},
             }
         )
