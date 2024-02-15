@@ -1,0 +1,37 @@
+---
+highlights:
+ - |
+   Introducing a flexible and dynamic approach to creating NLP pipelines with Haystack's new PipelineTemplate class!
+   This innovative feature utilizes Jinja2 templated YAML files, allowing users to effortlessly construct and customize
+   complex data processing pipelines for various NLP tasks. From question answering and document indexing to custom
+   pipeline requirements, the PipelineTemplate simplifies configuration and enhances adaptability. Users can now easily
+   override default components or integrate custom settings with simple, straightforward code.
+
+   For example, the following pipeline template can be used to create an indexing pipeline:
+   ```python
+   from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+   from haystack.templates import PipelineTemplate
+
+   pt = PipelineTemplate("indexing", template_params={"use_pdf_file_converter": True})
+   pt.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True))
+   pipe = ptb.build()
+
+   result = pipe.run(data={"sources": ["some_local_dir/and_text_file.txt", "some_other_local_dir/and_pdf_file.pdf"]})
+   print(result)
+   ```
+
+   In the above example, the pipeline template "indexing" is used to create a pipeline with a custom instance of
+   SentenceTransformersDocumentEmbedder and the PDF file converter enabled. The pipeline is then run on a list of
+   local files and the result is printed (number of indexed documents).
+
+   We could have of course used the same PipelineTemplate class to create any other pre-defined pipeline or even a
+   custom pipeline with custom components and settings.
+
+   On the other hand, the following pipeline template can be used to create a pre-defined RAG pipeline:
+   ```python
+   from haystack.templates import PipelineTemplate
+
+   pipe = PipelineTemplate("rag").build()
+   result = pipe.run(query="What's the meaning of life?")
+   print(result)
+   ```
