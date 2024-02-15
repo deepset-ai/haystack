@@ -70,6 +70,7 @@ class OpenAITextEmbedder:
         return default_to_dict(
             self,
             model=self.model,
+            api_base_url=self.api_base_url,
             organization=self.organization,
             prefix=self.prefix,
             suffix=self.suffix,
