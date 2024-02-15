@@ -1,12 +1,25 @@
 import collections
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 from numpy import array as np_array
 from numpy import mean as np_mean
 
 from haystack import default_from_dict, default_to_dict
 from haystack.core.component import component
+
+
+class StatisticalMetric(Enum):
+    """
+    Metrics supported by the StatisticalEvaluator.
+    """
+
+    F1 = "f1"
+    EM = "exact_match"
+
+    @classmethod
+    def from_string(cls, metric: str) -> "StatisticalMetric":
+        return {"f1": cls.F1, "exact_match": cls.EM}[metric]
 
 
 @component
@@ -20,34 +33,24 @@ class StatisticalEvaluator:
     - Exact Match: Measures the proportion of cases where prediction is identical to the expected label.
     """
 
-    class Metric(Enum):
-        """
-        Supported metrics
-        """
-
-        F1 = "F1"
-        EM = "Exact Match"
-
-    def __init__(self, metric: Metric):
+    def __init__(self, metric: Union[str, StatisticalMetric]):
         """
         Creates a new instance of StatisticalEvaluator.
 
         :param metric: Metric to use for evaluation in this component. Supported metrics are F1 and Exact Match.
-        :type metric: Metric
         """
+        if isinstance(metric, str):
+            metric = StatisticalMetric.from_string(metric)
         self._metric = metric
 
-        self._metric_function = {
-            StatisticalEvaluator.Metric.F1: self._f1,
-            StatisticalEvaluator.Metric.EM: self._exact_match,
-        }[self._metric]
+        self._metric_function = {StatisticalMetric.F1: self._f1, StatisticalMetric.EM: self._exact_match}[self._metric]
 
     def to_dict(self) -> Dict[str, Any]:
         return default_to_dict(self, metric=self._metric.value)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "StatisticalEvaluator":
-        data["init_parameters"]["metric"] = StatisticalEvaluator.Metric(data["init_parameters"]["metric"])
+        data["init_parameters"]["metric"] = StatisticalMetric(data["init_parameters"]["metric"])
         return default_from_dict(cls, data)
 
     @component.output_types(result=float)
@@ -55,14 +58,19 @@ class StatisticalEvaluator:
         """
         Run the StatisticalEvaluator to compute the metric between a list of predictions and a list of labels.
         Both must be list of strings of same length.
-        Returns a dictionary containing the result of the chosen metric.
+
+        :param predictions: List of predictions.
+        :param labels: List of labels against which the predictions are compared.
+        :returns: A dictionary with the following outputs:
+                    * `result` - Calculated result of the chosen metric.
         """
         if len(labels) != len(predictions):
             raise ValueError("The number of predictions and labels must be the same.")
 
         return {"result": self._metric_function(labels, predictions)}
 
-    def _f1(self, labels: List[str], predictions: List[str]):
+    @staticmethod
+    def _f1(labels: List[str], predictions: List[str]):
         """
         Measure word overlap between predictions and labels.
         """
@@ -88,7 +96,8 @@ class StatisticalEvaluator:
 
         return np_mean(scores)
 
-    def _exact_match(self, labels: List[str], predictions: List[str]) -> float:
+    @staticmethod
+    def _exact_match(labels: List[str], predictions: List[str]) -> float:
         """
         Measure the proportion of cases where predictiond is identical to the the expected label.
         """

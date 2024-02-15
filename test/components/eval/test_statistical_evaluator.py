@@ -1,19 +1,23 @@
 import pytest
 
-from haystack.components.eval import StatisticalEvaluator
+from haystack.components.eval import StatisticalEvaluator, StatisticalMetric
 
 
 class TestStatisticalEvaluator:
     def test_init_default(self):
-        evaluator = StatisticalEvaluator(metric=StatisticalEvaluator.Metric.F1)
-        assert evaluator._metric == StatisticalEvaluator.Metric.F1
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.F1)
+        assert evaluator._metric == StatisticalMetric.F1
+
+    def test_init_with_string(self):
+        evaluator = StatisticalEvaluator(metric="exact_match")
+        assert evaluator._metric == StatisticalMetric.EM
 
     def test_to_dict(self):
-        evaluator = StatisticalEvaluator(metric=StatisticalEvaluator.Metric.F1)
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.F1)
 
         expected_dict = {
             "type": "haystack.components.eval.statistical_evaluator.StatisticalEvaluator",
-            "init_parameters": {"metric": "F1"},
+            "init_parameters": {"metric": "f1"},
         }
         assert evaluator.to_dict() == expected_dict
 
@@ -21,22 +25,22 @@ class TestStatisticalEvaluator:
         evaluator = StatisticalEvaluator.from_dict(
             {
                 "type": "haystack.components.eval.statistical_evaluator.StatisticalEvaluator",
-                "init_parameters": {"metric": "F1"},
+                "init_parameters": {"metric": "f1"},
             }
         )
 
-        assert evaluator._metric == StatisticalEvaluator.Metric.F1
+        assert evaluator._metric == StatisticalMetric.F1
 
 
 class TestStatisticalEvaluatorF1:
     def test_run_with_empty_inputs(self):
-        evaluator = StatisticalEvaluator(metric=StatisticalEvaluator.Metric.F1)
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.F1)
         result = evaluator.run(labels=[], predictions=[])
         assert len(result) == 1
         assert result["result"] == 0.0
 
     def test_run_with_different_lengths(self):
-        evaluator = StatisticalEvaluator(metric=StatisticalEvaluator.Metric.F1)
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.F1)
         labels = [
             "A construction budget of US $2.3 billion",
             "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
@@ -50,7 +54,7 @@ class TestStatisticalEvaluatorF1:
             evaluator.run(labels=labels, predictions=predictions)
 
     def test_run_with_matching_predictions(self):
-        evaluator = StatisticalEvaluator(metric=StatisticalEvaluator.Metric.F1)
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.F1)
         labels = ["OpenSource", "HaystackAI", "LLMs"]
         predictions = ["OpenSource", "HaystackAI", "LLMs"]
         result = evaluator.run(labels=labels, predictions=predictions)
@@ -59,7 +63,7 @@ class TestStatisticalEvaluatorF1:
         assert result["result"] == 1.0
 
     def test_run_with_single_prediction(self):
-        evaluator = StatisticalEvaluator(metric=StatisticalEvaluator.Metric.F1)
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.F1)
 
         result = evaluator.run(labels=["Source"], predictions=["Open Source"])
         assert len(result) == 1
@@ -67,7 +71,7 @@ class TestStatisticalEvaluatorF1:
 
     def test_run_with_mismatched_predictions(self):
         labels = ["Source", "HaystackAI"]
-        evaluator = StatisticalEvaluator(metric=StatisticalEvaluator.Metric.F1)
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.F1)
         predictions = ["Open Source", "HaystackAI"]
         result = evaluator.run(labels=labels, predictions=predictions)
         assert len(result) == 1
@@ -76,13 +80,13 @@ class TestStatisticalEvaluatorF1:
 
 class TestStatisticalEvaluatorExactMatch:
     def test_run_with_empty_inputs(self):
-        evaluator = StatisticalEvaluator(metric=StatisticalEvaluator.Metric.EM)
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.EM)
         result = evaluator.run(predictions=[], labels=[])
         assert len(result) == 1
         assert result["result"] == 0.0
 
     def test_run_with_different_lengths(self):
-        evaluator = StatisticalEvaluator(metric=StatisticalEvaluator.Metric.EM)
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.EM)
         labels = [
             "A construction budget of US $2.3 billion",
             "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
@@ -97,7 +101,7 @@ class TestStatisticalEvaluatorExactMatch:
 
     def test_run_with_matching_predictions(self):
         labels = ["OpenSource", "HaystackAI", "LLMs"]
-        evaluator = StatisticalEvaluator(metric=StatisticalEvaluator.Metric.EM)
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.EM)
         predictions = ["OpenSource", "HaystackAI", "LLMs"]
         result = evaluator.run(labels=labels, predictions=predictions)
 
@@ -105,13 +109,13 @@ class TestStatisticalEvaluatorExactMatch:
         assert result["result"] == 1.0
 
     def test_run_with_single_prediction(self):
-        evaluator = StatisticalEvaluator(metric=StatisticalEvaluator.Metric.EM)
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.EM)
         result = evaluator.run(labels=["OpenSource"], predictions=["OpenSource"])
         assert len(result) == 1
         assert result["result"] == 1.0
 
     def test_run_with_mismatched_predictions(self):
-        evaluator = StatisticalEvaluator(metric=StatisticalEvaluator.Metric.EM)
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.EM)
         labels = ["Source", "HaystackAI", "LLMs"]
         predictions = ["OpenSource", "HaystackAI", "LLMs"]
         result = evaluator.run(labels=labels, predictions=predictions)
