@@ -1,14 +1,12 @@
 import collections
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from numpy import array as np_array
 from numpy import mean as np_mean
 
 from haystack import default_from_dict, default_to_dict
 from haystack.core.component import component
-
-from .preprocess import _preprocess_text
 
 
 @component
@@ -30,34 +28,14 @@ class StatisticalEvaluator:
         F1 = "F1"
         EM = "Exact Match"
 
-    def __init__(
-        self,
-        labels: List[str],
-        metric: Metric,
-        regexes_to_ignore: Optional[List[str]] = None,
-        ignore_case: bool = False,
-        ignore_punctuation: bool = False,
-        ignore_numbers: bool = False,
-    ):
+    def __init__(self, metric: Metric):
         """
         Creates a new instance of StatisticalEvaluator.
 
-        :param labels: The list of expected answers.
         :param metric: Metric to use for evaluation in this component. Supported metrics are F1 and Exact Match.
-        :param regexes_to_ignore: A list of regular expressions. If provided, it removes substrings
-            matching these regular expressions from both predictions and labels before comparison. Defaults to None.
-        :param ignore_case: If True, performs case-insensitive comparison. Defaults to False.
-        :param ignore_punctuation: If True, removes punctuation from both predictions and labels before
-            comparison. Defaults to False.
-        :param ignore_numbers: If True, removes numerical digits from both predictions and labels
-            before comparison. Defaults to False.
+        :type metric: Metric
         """
-        self._labels = labels
         self._metric = metric
-        self._regexes_to_ignore = regexes_to_ignore
-        self._ignore_case = ignore_case
-        self._ignore_punctuation = ignore_punctuation
-        self._ignore_numbers = ignore_numbers
 
         self._metric_function = {
             StatisticalEvaluator.Metric.F1: self._f1,
@@ -65,15 +43,7 @@ class StatisticalEvaluator:
         }[self._metric]
 
     def to_dict(self) -> Dict[str, Any]:
-        return default_to_dict(
-            self,
-            labels=self._labels,
-            metric=self._metric.value,
-            regexes_to_ignore=self._regexes_to_ignore,
-            ignore_case=self._ignore_case,
-            ignore_punctuation=self._ignore_punctuation,
-            ignore_numbers=self._ignore_numbers,
-        )
+        return default_to_dict(self, metric=self._metric.value)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "StatisticalEvaluator":
@@ -81,16 +51,14 @@ class StatisticalEvaluator:
         return default_from_dict(cls, data)
 
     @component.output_types(result=float)
-    def run(self, predictions: List[str]) -> Dict[str, Any]:
-        if len(predictions) != len(self._labels):
+    def run(self, labels: List[str], predictions: List[str]) -> Dict[str, Any]:
+        """
+        Run the StatisticalEvaluator to compute the metric between a list of predictions and a list of labels.
+        Both must be list of strings of same length.
+        Returns a dictionary containing the result of the chosen metric.
+        """
+        if len(labels) != len(predictions):
             raise ValueError("The number of predictions and labels must be the same.")
-
-        predictions = _preprocess_text(
-            predictions, self._regexes_to_ignore, self._ignore_case, self._ignore_punctuation, self._ignore_numbers
-        )
-        labels = _preprocess_text(
-            self._labels, self._regexes_to_ignore, self._ignore_case, self._ignore_punctuation, self._ignore_numbers
-        )
 
         return {"result": self._metric_function(labels, predictions)}
 
