@@ -50,18 +50,11 @@ class TextCleaner:
         r"""
         Run the TextCleaner on the given list of strings.
 
-        Example usage:
-        ```python
-            cleaner = TextCleaner(
-                remove_regexps=[r"\d+", r"[^\w\s]"],
-                convert_to_lowercase=True,
-                remove_punctuation=True,
-                remove_numbers=True,
-            )
-            result = cleaner.run(texts=["Open%123. !$Source", "Haystack.AI##"])
-            assert result["texts"] == ["open source", "haystackai"]
-        ```
+        :param texts: List of strings to clean.
+        :returns: A dictionary with the following outputs:
+                * `texts` - The cleaned list of strings.
         """
+
         if self._regex:
             texts = [self._regex.sub("", text) for text in texts]
 
