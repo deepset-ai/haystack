@@ -5,9 +5,10 @@ from haystack.components.builders import AnswerBuilder, PromptBuilder
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
 from haystack.components.generators import HuggingFaceLocalGenerator
 from haystack.components.rankers.lost_in_the_middle import LostInTheMiddleRanker
-from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.components.retrievers.in_memory.bm25_retriever import InMemoryBM25Retriever
+from haystack.components.retrievers.in_memory.embedding_retriever import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores.in_memory.document_store import InMemoryDocumentStore
 
 
 @pytest.mark.unit
@@ -194,7 +195,7 @@ def test_rag_pipeline():
     rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
     rag_pipeline.add_component(
         instance=HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-small",
+            model="google/flan-t5-small",
             task="text2text-generation",
             generation_kwargs={"max_new_tokens": 100, "temperature": 0.5, "do_sample": True},
         ),
@@ -254,8 +255,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     """
     rag_pipeline = Pipeline()
     rag_pipeline.add_component(
-        instance=SentenceTransformersTextEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
-        name="text_embedder",
+        instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="text_embedder"
     )
     rag_pipeline.add_component(
         instance=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()), name="retriever"
@@ -263,7 +263,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
     rag_pipeline.add_component(
         instance=HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-small",
+            model="google/flan-t5-small",
             task="text2text-generation",
             generation_kwargs={"max_new_tokens": 100, "temperature": 0.5, "do_sample": True},
         ),
@@ -287,7 +287,7 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     document_store = rag_pipeline.get_component("retriever").document_store
     indexing_pipeline = Pipeline()
     indexing_pipeline.add_component(
-        instance=SentenceTransformersDocumentEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
+        instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
         name="document_embedder",
     )
     indexing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="document_writer")
@@ -335,7 +335,7 @@ def test_rag_pipeline_wikipedia():
     # Populate the document store
     indexing_pipeline = Pipeline()
     indexing_pipeline.add_component(
-        instance=SentenceTransformersDocumentEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
+        instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
         name="document_embedder",
     )
     indexing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="document_writer")
@@ -353,14 +353,13 @@ def test_rag_pipeline_wikipedia():
 
     rag_pipeline = Pipeline()
     rag_pipeline.add_component(
-        instance=SentenceTransformersTextEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"),
-        name="text_embedder",
+        instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="text_embedder"
     )
     rag_pipeline.add_component(instance=InMemoryEmbeddingRetriever(document_store=document_store), name="retriever")
     rag_pipeline.add_component(instance=PromptBuilder(template=template), name="prompt_builder")
     rag_pipeline.add_component(
         instance=HuggingFaceLocalGenerator(
-            model_name_or_path="google/flan-t5-small",
+            model="google/flan-t5-small",
             task="text2text-generation",
             generation_kwargs={"max_new_tokens": 512, "temperature": 0.5, "do_sample": True},
         ),
