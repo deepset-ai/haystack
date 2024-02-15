@@ -20,7 +20,6 @@ class SASEvaluator:
 
     The SAS is computed using a pre-trained model from the Hugging Face model hub. The model can be either a
     Bi-Encoder or a Cross-Encoder. The choice of the model is based on the `model` parameter.
-    The default model is `sentence-transformers/paraphrase-multilingual-mpnet-base-v2`.
     """
 
     def __init__(
@@ -35,15 +34,11 @@ class SASEvaluator:
 
         :param model: SentenceTransformers semantic textual similarity model, should be path or string pointing to
             a downloadable model.
-        :type model: str, optional
         :param batch_size: Number of prediction-label pairs to encode at once.
-        :type batch_size: int, optional
         :param device: The device on which the model is loaded. If `None`, the default device is automatically
             selected.
-        :type device: Optional[ComponentDevice], optional
         :param token: The Hugging Face token for HTTP bearer authorization.
             You can find your HF token at https://huggingface.co/settings/tokens.
-        :type token: Secret, optional
         """
         sas_import.check()
 
@@ -96,7 +91,12 @@ class SASEvaluator:
         """
         Run the SASEvaluator to compute the Semantic Answer Similarity (SAS) between a list of predictions and a list of
         labels. Both must be list of strings of same length.
-        Returns a dictionary containing the SAS score and a list of similarity scores for each prediction-label pair.
+
+        :param predictions: List of predictions.
+        :param labels: List of labels against which the predictions are compared.
+        :returns: A dictionary with the following outputs:
+                * `sas` - Cumulative SAS score for the entire dataset.
+                * `scores` - A list of similarity scores for each prediction-label pair.
         """
         if len(labels) != len(predictions):
             raise ValueError("The number of predictions and labels must be the same.")
