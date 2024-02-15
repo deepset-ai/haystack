@@ -220,6 +220,52 @@ def test_preprocess_word_split():
 
 
 @pytest.mark.unit
+def test_preprocess_page_split():
+    doc = Document(
+        content="This is a document on page 1.\fThis is a document on page 2.\fThis is a document on page 3."
+    )
+    output = PreProcessor(
+        split_by="page", split_length=1, split_respect_sentence_boundary=False, split_overlap=0, add_page_number=True
+    ).run([doc])[0]["documents"]
+    assert len(output) == 3
+    assert output[0] == Document(content="This is a document on page 1.", meta={"_split_id": 0, "page": 1})
+    assert output[1] == Document(content="This is a document on page 2.", meta={"_split_id": 1, "page": 2})
+    assert output[2] == Document(content="This is a document on page 3.", meta={"_split_id": 2, "page": 3})
+
+
+@pytest.mark.unit
+def test_preprocess_page_split_and_split_length():
+    doc = Document(
+        content="This is a document on page 1.\fThis is a document on page 2.\fThis is a document on page 3."
+    )
+    output = PreProcessor(
+        split_by="page", split_length=2, split_respect_sentence_boundary=False, split_overlap=0, add_page_number=True
+    ).run([doc])[0]["documents"]
+    assert len(output) == 2
+    assert output[0] == Document(
+        content="This is a document on page 1.\fThis is a document on page 2.", meta={"_split_id": 0, "page": 1}
+    )
+    assert output[1] == Document(content="This is a document on page 3.", meta={"_split_id": 1, "page": 3})
+
+
+@pytest.mark.unit
+def test_preprocess_page_split_and_split_overlap():
+    doc = Document(
+        content="This is a document on page 1.\fThis is a document on page 2.\fThis is a document on page 3."
+    )
+    output = PreProcessor(
+        split_by="page", split_length=2, split_respect_sentence_boundary=False, split_overlap=1, add_page_number=True
+    ).run([doc])[0]["documents"]
+    assert len(output) == 2
+    assert output[0].content == "This is a document on page 1.\fThis is a document on page 2."
+    assert output[0].meta["_split_id"] == 0
+    assert output[0].meta["page"] == 1
+    assert output[1].content == "This is a document on page 2.\fThis is a document on page 3."
+    assert output[1].meta["_split_id"] == 1
+    assert output[1].meta["page"] == 2
+
+
+@pytest.mark.unit
 def test_preprocess_tiktoken_token_split(mock_tiktoken_tokenizer):
     raw_docs = [
         "This is a document. It has two sentences and eleven words.",
@@ -240,7 +286,7 @@ def test_preprocess_tiktoken_token_split(mock_tiktoken_tokenizer):
         enc.encode(d.content, allowed_special="all", disallowed_special=())
         for d in token_split_docs_not_respecting_sentences
     ]
-    assert all([len(d) <= split_length for d in split_documents_encoded])
+    assert all(len(d) <= split_length for d in split_documents_encoded)
     token_split_docs_respecting_sentences = PreProcessor(
         split_by="token",
         split_length=split_length,
@@ -269,7 +315,7 @@ def test_preprocess_huggingface_token_split(mock_huggingface_tokenizer):
     ).process(docs)
     assert len(token_split_docs_not_respecting_sentences) == 8
     split_documents_retokenized = [tokenizer.tokenize(d.content) for d in token_split_docs_not_respecting_sentences]
-    assert all([len(d) <= split_length for d in split_documents_retokenized])
+    assert all(len(d) <= split_length for d in split_documents_retokenized)
     token_split_docs_respecting_sentences = PreProcessor(
         split_by="token",
         split_length=split_length,
