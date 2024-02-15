@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.components.eval import SASEvaluator
+from haystack.components.evaluators import SASEvaluator
 from haystack.utils.device import ComponentDevice
 
 
@@ -20,7 +20,7 @@ class TestSASEvaluator:
         evaluator = SASEvaluator(device=ComponentDevice.from_str("cuda:0"))
 
         expected_dict = {
-            "type": "haystack.components.eval.sas_evaluator.SASEvaluator",
+            "type": "haystack.components.evaluators.sas_evaluator.SASEvaluator",
             "init_parameters": {
                 "model": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
                 "batch_size": 32,
@@ -34,7 +34,7 @@ class TestSASEvaluator:
         monkeypatch.setenv("HF_API_TOKEN", "fake-token")
         evaluator = SASEvaluator.from_dict(
             {
-                "type": "haystack.components.eval.sas_evaluator.SASEvaluator",
+                "type": "haystack.components.evaluators.sas_evaluator.SASEvaluator",
                 "init_parameters": {
                     "model": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
                     "batch_size": 32,
