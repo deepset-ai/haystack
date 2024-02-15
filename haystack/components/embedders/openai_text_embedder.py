@@ -52,6 +52,7 @@ class OpenAITextEmbedder:
         """
         self.model = model
         self.dimensions = dimensions
+        self.api_base_url = api_base_url
         self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
@@ -69,6 +70,7 @@ class OpenAITextEmbedder:
         return default_to_dict(
             self,
             model=self.model,
+            api_base_url=self.api_base_url,
             organization=self.organization,
             prefix=self.prefix,
             suffix=self.suffix,
