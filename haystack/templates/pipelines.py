@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, Any, Set, Optional
 
 import yaml
+from haystack.core.serialization import component_to_dict
 from jinja2 import meta, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 
@@ -149,12 +150,7 @@ class PipelineTemplate:
             raise PipelineValidationError(
                 f"'{type(component_instance)}' doesn't seem to be a component. Is this class decorated with @component?"
             )
-        component_dict: Dict[str, Any]
-        if hasattr(component_instance, "to_dict"):
-            component_dict = component_instance.to_dict()
-        else:
-            component_dict = default_to_dict(component_instance)
-        self.components[component_name] = component_dict
+        self.components[component_name] = component_to_dict(component_instance)
         return self
 
     def build(self):
