@@ -20,10 +20,10 @@ class StatisticalMetric(Enum):
     @classmethod
     def from_str(cls, metric: str) -> "StatisticalMetric":
         map = {e.value: e for e in StatisticalMetric}
-        metric = map.get(string)
-        if metric is None:
+        metric_ = map.get(metric)
+        if metric_ is None:
             raise ValueError(f"Unknown statistical metric '{metric}'")
-        return metric
+        return metric_
 
 
 @component
