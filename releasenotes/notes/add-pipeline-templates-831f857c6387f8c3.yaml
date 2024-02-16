@@ -10,9 +10,10 @@ highlights:
    For example, the following pipeline template can be used to create an indexing pipeline:
    ```python
    from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-   from haystack.templates import PipelineTemplate
+   from haystack.templates import PipelineTemplate, TemplateSource, PredefinedTemplate
 
-   pt = PipelineTemplate("indexing", template_params={"use_pdf_file_converter": True})
+   ts = TemplateSource.from_predefined(PredefinedTemplate.INDEXING)
+   pt = PipelineTemplate(ts, template_params={"use_pdf_file_converter": True})
    pt.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True))
    pipe = ptb.build()
 
@@ -20,7 +21,7 @@ highlights:
    print(result)
    ```
 
-   In the above example, the pipeline template "indexing" is used to create a pipeline with a custom instance of
+   In the above example, a PredefinedTemplate.INDEXING enum is used to create a pipeline with a custom instance of
    SentenceTransformersDocumentEmbedder and the PDF file converter enabled. The pipeline is then run on a list of
    local files and the result is printed (number of indexed documents).
 
@@ -29,9 +30,13 @@ highlights:
 
    On the other hand, the following pipeline template can be used to create a pre-defined RAG pipeline:
    ```python
-   from haystack.templates import PipelineTemplate
+   from haystack.templates import PipelineTemplate, TemplateSource, PredefinedTemplate
 
-   pipe = PipelineTemplate("rag").build()
+   ts = TemplateSource.from_predefined(PredefinedTemplate.RAG)
+   pipe = PipelineTemplate(ts).build()
    result = pipe.run(query="What's the meaning of life?")
    print(result)
    ```
+
+   TemplateSource loads template content from various inputs, including strings, files, predefined templates, and URLs.
+   The class provides mechanisms to load templates dynamically and ensure they contain valid Jinja2 syntax.
