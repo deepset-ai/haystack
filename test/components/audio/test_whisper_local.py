@@ -7,7 +7,7 @@ import torch
 
 from haystack.dataclasses import Document, ByteStream
 from haystack.components.audio import LocalWhisperTranscriber
-from haystack.utils.device import ComponentDevice
+from haystack.utils.device import ComponentDevice, Device
 
 
 SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
@@ -53,6 +53,21 @@ class TestLocalWhisperTranscriber:
                 "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
             },
         }
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.audio.whisper_local.LocalWhisperTranscriber",
+            "init_parameters": {
+                "model": "tiny",
+                "device": ComponentDevice.from_single(Device.cpu()).to_dict(),
+                "whisper_params": {},
+            },
+        }
+        transcriber = LocalWhisperTranscriber.from_dict(data)
+        assert transcriber.model == "tiny"
+        assert transcriber.device == ComponentDevice.from_single(Device.cpu())
+        assert transcriber.whisper_params == {}
+        assert transcriber._model is None
 
     def test_warmup(self):
         with patch("haystack.components.audio.whisper_local.whisper") as mocked_whisper:

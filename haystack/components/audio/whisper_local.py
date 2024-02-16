@@ -9,11 +9,7 @@ from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice
 
-with LazyImport(
-    "Run 'pip install transformers[torch]' to install torch and "
-    "'pip install \"openai-whisper>=20231106\"' to install whisper."
-) as whisper_import:
-    import torch
+with LazyImport("Run 'pip install \"openai-whisper>=20231106\"' to install whisper.") as whisper_import:
     import whisper
 
 
@@ -72,9 +68,8 @@ class LocalWhisperTranscriber:
         """
         Create a `LocalWhisperTranscriber` instance from a dictionary.
         """
-        init_params = data.get("init_parameters", {})
-        serialized_device = init_params.get("device", {})
-        init_params["device"] = ComponentDevice.from_dict(serialized_device)
+        serialized_device = data["init_parameters"]["device"]
+        data["init_parameters"]["device"] = ComponentDevice.from_dict(serialized_device)
 
         return default_from_dict(cls, data)
 
