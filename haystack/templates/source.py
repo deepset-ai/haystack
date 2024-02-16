@@ -84,13 +84,13 @@ class TemplateSource:
             return cls.from_str(file.read())
 
     @classmethod
-    def from_predefined(cls, predefined_template_name: PredefinedTemplate) -> "TemplateSource":
+    def from_predefined(cls, predefined_template: PredefinedTemplate) -> "TemplateSource":
         """
         Create a TemplateSource from a predefined template. See `PredefinedTemplate` for available options.
-        :param predefined_template_name: The name of the predefined template to use.
+        :param predefined_template: The name of the predefined template to use.
         :return: An instance of `TemplateSource`.
         """
-        template_path = f"{Path(__file__).resolve().parent}/{predefined_template_name.value}{template_file_extension}"
+        template_path = f"{Path(__file__).resolve().parent}/{predefined_template.value}{template_file_extension}"
         return cls.from_file(template_path)
 
     @classmethod
