@@ -46,7 +46,7 @@ def test_to_string():
 def test_to_string_encoding():
     test_string = "Hello, world!"
     b = ByteStream.from_string(test_string)
-    assert b.to_string("utf-8") == test_string
+    assert b.to_string("ISO-8859-1") == test_string
 
 
 def test_to_string_encoding_error():
