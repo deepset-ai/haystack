@@ -8,7 +8,7 @@ from haystack import Pipeline
 from haystack.core.component import Component
 from haystack.core.errors import PipelineValidationError
 from haystack.core.serialization import component_to_dict
-from .source import TemplateSource
+from haystack.templates.source import TemplateSource
 
 
 class PipelineTemplate:
