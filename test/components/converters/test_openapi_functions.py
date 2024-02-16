@@ -187,7 +187,7 @@ class TestOpenAPIServiceToFunctions:
         assert (
             doc.content
             == '{"name": "search", "description": "Search the web with Google", "parameters": {"type": "object", '
-            '"properties": {"requestBody": {"type": "object", "properties": {"q": {"type": "string"}}}}}}'
+            '"properties": {"q": {"type": "string"}}}}'
         )
 
         # check that the metadata is as expected
@@ -213,7 +213,7 @@ class TestOpenAPIServiceToFunctions:
             assert (
                 doc.content
                 == '{"name": "search", "description": "Search the web with Google", "parameters": {"type": "object", '
-                '"properties": {"requestBody": {"type": "object", "properties": {"q": {"type": "string"}}}}}}'
+                '"properties": {"q": {"type": "string"}}}}'
             )
 
             # check that the metadata is as expected
@@ -233,9 +233,57 @@ class TestOpenAPIServiceToFunctions:
         assert (
             doc.content
             == '{"name": "search", "description": "Search the web with Google", "parameters": {"type": "object", '
-            '"properties": {"requestBody": {"type": "object", "properties": {"q": {"type": "string"}}}}}}'
+            '"properties": {"q": {"type": "string"}}}}'
         )
 
         # check that the metadata is as expected, system_message should not be present
         assert "system_message" not in doc.meta
         assert doc.meta["spec"] == json.loads(json_serperdev_openapi_spec)
+
+    def test_greet_oas_to_openai_function(self, test_files_path):
+        service = OpenAPIServiceToFunctions()
+        result = service.run(sources=[test_files_path / "yaml" / "openapi_greeting_service.yml"])
+        assert len(result["documents"]) == 3
+        mix_doc = result["documents"][0]
+
+        correct_openai_fc_schema = {
+            "name": "greet",
+            "description": "Greet a person with a message (Mixed params and body)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message": {"type": "string", "description": "Custom message to send"},
+                    "name": {"type": "string", "description": "Name of the person to greet"},
+                },
+                "required": ["name"],
+            },
+        }
+        assert mix_doc.content == json.dumps(correct_openai_fc_schema)
+
+        params_doc = result["documents"][1]
+        correct_openai_fc_schema = {
+            "name": "greetParams",
+            "description": "Greet a person using URL parameter",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Name of the person to greet using URL parameter"}
+                },
+                "required": ["name"],
+            },
+        }
+        assert params_doc.content == json.dumps(correct_openai_fc_schema)
+
+        body_doc = result["documents"][2]
+        correct_openai_fc_schema = {
+            "name": "greetBody",
+            "description": "Greet a person with a message using JSON body only",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Name of the person to greet"},
+                    "message": {"type": "string", "description": "Custom message to send (optional)"},
+                },
+            },
+        }
+        assert body_doc.content == json.dumps(correct_openai_fc_schema)

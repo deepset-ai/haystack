@@ -1,0 +1,89 @@
+openapi: 3.0.0
+info:
+  title: Simple Greeting Service
+  version: 1.0.0
+  description: API for performing greetings
+servers:
+  - url: http://localhost:8080
+paths:
+  /greet/{name}:
+    post:
+      operationId: greet
+      summary: Greet a person with a message (Mixed params and body)
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: Name of the person to greet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: Custom message to send
+      responses:
+        '200':
+          description: Greeting delivered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  greeting:
+                    type: string
+  /greet-params/{name}: # Params only
+    get:
+      operationId: greetParams
+      summary: Greet a person using URL parameter
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: Name of the person to greet using URL parameter
+      responses:
+        '200':
+          description: Greeting delivered using URL parameter
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  greeting:
+                    type: string
+  /greet-body: # Body only
+    post:
+      operationId: greetBody
+      summary: Greet a person with a message using JSON body only
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Name of the person to greet
+                message:
+                  type: string
+                  description: Custom message to send (optional)
+      responses:
+        '200':
+          description: Greeting delivered using JSON body
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  greeting:
+                    type: string

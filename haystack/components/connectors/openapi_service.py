@@ -1,5 +1,7 @@
 import json
 import logging
+from collections import defaultdict
+from copy import copy
 from typing import List, Dict, Any, Optional, Union
 
 from haystack import component
@@ -10,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 with LazyImport("Run 'pip install openapi3'") as openapi_imports:
     from openapi3 import OpenAPI
+    from openapi3.paths import Operation
 
 
 @component
@@ -129,8 +132,8 @@ class OpenAPIServiceConnector:
         :type credentials: dict | str, optional
         :raises ValueError: If authentication fails, is not found, or if appropriate credentials are missing.
         """
-        service_name = openapi_service.info.title
-        if openapi_service.components.securitySchemes:
+        if self._has_security_schemes(openapi_service):
+            service_name = openapi_service.info.title
             if not credentials:
                 raise ValueError(f"Service {service_name} requires authentication but no credentials were provided.")
 
@@ -163,28 +166,109 @@ class OpenAPIServiceConnector:
 
     def _invoke_method(self, openapi_service: OpenAPI, method_invocation_descriptor: Dict[str, Any]) -> Any:
         """
-        Invokes the specified method on the OpenAPI service.
+        Invokes the specified method on the OpenAPI service. The method name and arguments are passed in the
+        method_invocation_descriptor.
 
         :param openapi_service: The OpenAPI service instance.
         :type openapi_service: OpenAPI
-        :param method_invocation_descriptor: The method name and arguments.
+        :param method_invocation_descriptor: The method name and arguments to be passed to the method. The payload
+        should contain the method name (key: "name") and the arguments (key: "arguments"). The name is a string, and
+        the arguments are a dictionary of key-value pairs.
         :type method_invocation_descriptor: Dict[str, Any]
         :return: A service JSON response.
         :rtype: Any
         :raises RuntimeError: If the method is not found or invocation fails.
         """
-        name = method_invocation_descriptor["name"]
-        # a bit convoluted, but we need to pass parameters, data, or both to the method
-        # depending on the openapi operation specification, can't use None as a default value
-        method_call_params = {}
-        if (parameters := method_invocation_descriptor["arguments"].get("parameters")) is not None:
-            method_call_params["parameters"] = parameters
-        if (arguments := method_invocation_descriptor["arguments"].get("requestBody")) is not None:
-            method_call_params["data"] = arguments
+        name = method_invocation_descriptor.get("name", None)
+        invocation_arguments = copy(method_invocation_descriptor.get("arguments", {}))
+        if not name or not invocation_arguments:
+            raise ValueError(
+                f"Invalid function calling descriptor: {method_invocation_descriptor} . It should contain "
+                f"a method name and arguments."
+            )
 
+        # openapi3 specific method to call the operation, do we have it?
         method_to_call = getattr(openapi_service, f"call_{name}", None)
         if not callable(method_to_call):
             raise RuntimeError(f"Operation {name} not found in OpenAPI specification {openapi_service.info.title}")
 
-        # this will call the underlying service REST API
+        # get the operation reference from the method_to_call
+        operation = method_to_call.operation.__self__
+
+        # Pack URL/query parameters under "parameters" key
+        method_call_params: Dict[str, Dict[str, Any]] = defaultdict(dict)
+        for param_name in self._parameter_names(operation):
+            method_call_params["parameters"][param_name] = invocation_arguments.pop(param_name, "")
+
+        # Pack request body parameters under "data" key
+        if self._has_request_body(operation):
+            for param_name in self._body_request_parameter_names(operation):
+                method_call_params["data"][param_name] = invocation_arguments.pop(param_name, "")
+
+        # call the underlying service REST API with the parameters
         return method_to_call(**method_call_params)
+
+    def _has_security_schemes(self, openapi_service: OpenAPI) -> bool:
+        """
+        Checks if the OpenAPI service has security schemes defined.
+
+        :param openapi_service: The OpenAPI service instance.
+        :type openapi_service: OpenAPI
+        :return: True if the service has security schemes defined, False otherwise.
+        :rtype: bool
+        """
+        return bool(self._safe_get_nested_keys(openapi_service.raw_element, ["components", "securitySchemes"]))
+
+    def _has_parameters(self, openapi_op: Operation) -> bool:
+        """
+        Checks if the OpenAPI operation has parameters defined.
+
+        :param openapi_op: The OpenAPI operation instance.
+        :type openapi_op: Operation
+        :return: True if the operation has parameters defined, False otherwise.
+        :rtype: bool
+        """
+        return bool(openapi_op.raw_element.get("parameters"))
+
+    def _has_request_body(self, openapi_op: Operation) -> bool:
+        """
+        Checks if the OpenAPI operation has a request body defined.
+
+        :param openapi_op: The OpenAPI operation instance.
+        :type openapi_op: Operation
+        :return: True if the operation has a request body defined, False otherwise.
+        :rtype: bool
+        """
+        return bool(openapi_op.raw_element.get("requestBody"))
+
+    def _parameter_names(self, openapi_op: Operation) -> List[str]:
+        """
+        Extracts the parameter names from the OpenAPI operation.
+        :param openapi_op: The OpenAPI operation instance.
+        :type openapi_op: Operation
+        :return: A list of parameter names.
+
+        """
+        return [param.get("name", "") for param in openapi_op.raw_element.get("parameters", [])]
+
+    def _body_request_parameter_names(self, openapi_op: Operation) -> List[str]:
+        """
+        Extracts the parameter names from the request body of the OpenAPI operation.
+        """
+        keys_path = ["requestBody", "content", "application/json", "schema", "properties"]
+        return self._safe_get_nested_keys(openapi_op.raw_element, keys_path)
+
+    def _safe_get_nested_keys(self, d, keys):
+        """
+        Safely get nested keys from a dictionary
+
+        :param d: The dictionary from which to fetch the value.
+        :param keys: A list of keys representing the path to the desired value.
+        :return: The keys of the nested dictionary if present, otherwise an empty list.
+        """
+        for key in keys:
+            if isinstance(d, dict) and key in d:
+                d = d[key]
+            else:
+                return []
+        return list(d.keys()) if isinstance(d, dict) else []
