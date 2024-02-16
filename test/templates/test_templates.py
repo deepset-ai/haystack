@@ -1,35 +1,83 @@
-from haystack.components.builders import PromptBuilder
-from haystack.core.errors import PipelineValidationError
-
-from haystack import Pipeline
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-from haystack.components.generators import HuggingFaceTGIGenerator
-from haystack.templates.pipelines import PipelineTemplate, PredefinedTemplate
+import tempfile
 
 import pytest
 
+from haystack import Pipeline
+from haystack.components.builders import PromptBuilder
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.components.generators import HuggingFaceTGIGenerator
+from haystack.core.errors import PipelineValidationError
+from haystack.templates import PipelineTemplate, TemplateSource, PredefinedTemplate
+
+
+@pytest.fixture
+def random_valid_template():
+    template = """components:
+  generator: {{ generator | tojson }}
+  prompt_builder: {{prompt_builder}}
+
+connections:
+- receiver: generator.prompt
+  sender: prompt_builder.prompt
+max_loops_allowed: 2
+metadata: {}
+"""
+    return template
+
 
 class TestPipelineTemplate:
-    #  Raises ValueError if the specified `pipeline_template` is invalid or if no Jinja2 template syntax detected.
-    def test_invalid_pipeline_template(self):
+    # test_PredefinedTemplate
+    def test_list_predefined_templates(self):
+        all_predefined = PredefinedTemplate.list_all()
+
+        assert len(all_predefined) > 0, "The list of predefined templates should not be empty."
+
+        for template in PredefinedTemplate:
+            assert template in all_predefined, (
+                f"{template} should be in the list of predefined templates. "
+                f"Make sure to add it to the list of predefined templates in the PredefinedTemplate enum.",
+            )
+
+    # test_TemplateSource
+    #  If the provided template does not contain Jinja2 syntax.
+    def test_from_str(self):
         with pytest.raises(ValueError):
-            PipelineTemplate.from_string("invalid_template")
+            TemplateSource.from_str("invalid_template")
+
+    #  If the provided template contains Jinja2 syntax.
+    def test_from_str_valid(self):
+        ts = TemplateSource.from_str("{{ valid_template }}")
+        assert ts.template() == "{{ valid_template }}"
+
+    #  If the provided file path does not exist.
+    def test_from_file_invalid_path(self):
+        with pytest.raises(FileNotFoundError):
+            TemplateSource.from_file("invalid_path")
+
+    #  If the provided file path exists.
+    def test_from_file_valid_path(self, random_valid_template):
+        temp_file = tempfile.NamedTemporaryFile(mode="w")
+        temp_file.write(random_valid_template)
+        temp_file.flush()
+        ts = TemplateSource.from_file(temp_file.name)
+        assert ts.template() == random_valid_template
+
+    # Use predefined template
+    def test_from_predefined_invalid_template(self):
+        ts = TemplateSource.from_predefined(PredefinedTemplate.INDEXING)
+        assert len(ts.template()) > 0
 
     #  Raises PipelineValidationError when attempting to override a non-existent component
     def test_override_nonexistent_component(self):
-        pipeline = PipelineTemplate.from_predefined(PredefinedTemplate.INDEXING)
+        ts = TemplateSource.from_predefined(PredefinedTemplate.INDEXING)
 
         with pytest.raises(PipelineValidationError):
-            pipeline.override("nonexistent_component", SentenceTransformersDocumentEmbedder())
-
-    #  If pipeline_template is not provided.
-    def test_missing_pipeline_template(self):
-        with pytest.raises(ValueError):
-            PipelineTemplate.from_string("")
+            PipelineTemplate(ts).override("nonexistent_component", SentenceTransformersDocumentEmbedder())
 
     #  Building a pipeline directly using all default components specified in a predefined or custom template.
     def test_build_pipeline_with_default_components(self):
-        pipeline = PipelineTemplate.from_predefined(PredefinedTemplate.INDEXING).build()
+        ts = TemplateSource.from_predefined(PredefinedTemplate.INDEXING)
+        pipeline = PipelineTemplate(ts).build()
         assert isinstance(pipeline, Pipeline)
 
         # pipeline has components
@@ -43,7 +91,8 @@ class TestPipelineTemplate:
 
     # Customizing pipelines by overriding default components with custom component settings
     def test_customize_pipeline_with_overrides(self):
-        pt = PipelineTemplate.from_predefined(PredefinedTemplate.INDEXING)
+        ts = TemplateSource.from_predefined(PredefinedTemplate.INDEXING)
+        pt = PipelineTemplate(ts)
 
         pt.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True, batch_size=64))
         pipe = pt.build()
@@ -60,7 +109,7 @@ class TestPipelineTemplate:
     def test_override_component(self):
         # integration because we'll fetch the tokenizer
         pipe = (
-            PipelineTemplate.from_predefined(PredefinedTemplate.QA)
+            PipelineTemplate(TemplateSource.from_predefined(PredefinedTemplate.QA))
             .override("generator", HuggingFaceTGIGenerator())
             .build()
         )
@@ -70,18 +119,8 @@ class TestPipelineTemplate:
 
     #  Building a pipeline with a custom template that uses Jinja2 syntax to specify components and their connections
     @pytest.mark.integration
-    def test_building_pipeline_with_direct_template(self):
-        template = """components:
-  generator: {{ generator | tojson }}
-  prompt_builder: {{prompt_builder}}
-
-connections:
-- receiver: generator.prompt
-  sender: prompt_builder.prompt
-max_loops_allowed: 2
-metadata: {}
-"""
-        pt = PipelineTemplate.from_string(template)
+    def test_building_pipeline_with_direct_template(self, random_valid_template):
+        pt = PipelineTemplate(TemplateSource.from_str(random_valid_template))
         pt.override("generator", HuggingFaceTGIGenerator())
         pt.override("prompt_builder", PromptBuilder("Some fake prompt"))
         pipe = pt.build()

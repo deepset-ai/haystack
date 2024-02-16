@@ -1,6 +1,3 @@
-import re
-from enum import Enum
-from pathlib import Path
 from typing import Dict, Any, Set, Optional
 
 import yaml
@@ -11,17 +8,7 @@ from haystack import Pipeline
 from haystack.core.component import Component
 from haystack.core.errors import PipelineValidationError
 from haystack.core.serialization import component_to_dict
-
-
-class PredefinedTemplate(Enum):
-    """
-    Enumeration of predefined pipeline templates available for use with `PipelineTemplate`.
-    """
-
-    # maintain 1-to-1 mapping between the enum name and the template file name in templates directory
-    QA = "qa"
-    RAG = "rag"
-    INDEXING = "indexing"
+from .source import TemplateSource
 
 
 class PipelineTemplate:
@@ -44,10 +31,11 @@ class PipelineTemplate:
 
     - **Default Build**: Instantiating a pipeline with default settings for a "question answering" (qa) task.
       ```python
-      from haystack.templates import PipelineTemplate
+      from haystack.templates import PipelineTemplate, TemplateSource, PredefinedTemplate
 
       # Create a pipeline with default components for a QA task
-      pipe = PipelineTemplate("qa").build()
+      ts = TemplateSource.from_predefined(PredefinedTemplate.QA)
+      pipe = PipelineTemplate(ts).build()
       print(pipe.run(data={"question": "What's the capital of Bosnia and Herzegovina? Be brief"}))
       ```
 
@@ -56,10 +44,11 @@ class PipelineTemplate:
       ```python
       from haystack.components.generators import OpenAIGenerator
       from haystack.components.generators.utils import print_streaming_chunk
-      from haystack.templates import PipelineTemplate
+      from haystack.templates import PipelineTemplate, TemplateSource, PredefinedTemplate
 
       # Customize the pipeline with a streaming-capable generator
-      streaming_pipe = PipelineTemplate("qa").override("generator",
+      ts = TemplateSource.from_predefined(PredefinedTemplate.QA)
+      streaming_pipe = PipelineTemplate(ts).override("generator",
                                                                OpenAIGenerator(
                                                                    streaming_callback=print_streaming_chunk)).build()
       streaming_pipe.run(data={"question": "What's the capital of Germany? Tell me about it"})
@@ -69,10 +58,11 @@ class PipelineTemplate:
     to the task.
       ```python
       from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-      from haystack.templates import PipelineTemplate
+      from haystack.templates import PipelineTemplate, TemplateSource, PredefinedTemplate
 
       # Customize the pipeline for document indexing with specific components, include PDF file converter
-      ptb = PipelineTemplate("indexing", template_params={"use_pdf_file_converter": True})
+      ts = TemplateSource.from_predefined(PredefinedTemplate.INDEXING)
+      ptb = PipelineTemplate(ts, template_params={"use_pdf_file_converter": True})
       ptb.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True))
       pipe = ptb.build()
 
@@ -83,86 +73,32 @@ class PipelineTemplate:
 
     The `PipelineTemplate` is designed to offer both ease of use for common pipeline configurations and the
     flexibility to customize and extend pipelines as required by advanced users and specific use cases.
-
-    :param pipeline_template: The name of a predefined pipeline template or a custom Jinja2 template string. This
-    parameter is crucial for determining the structure and components of the pipeline to be built and connected.
-    :param template_params: An optional dictionary for passing additional parameters to the Jinja2 template, allowing
-    for further customization of the pipeline configuration.
-
-    :raises ValueError: If the specified `pipeline_template` is invalid or if Jinja2 template syntax errors are detected
-    :raises PipelineValidationError: When attempting to override a non-existent component or if the component instance
-    provided does not meet the expected specifications.
     """
 
     template_file_extension = ".yaml.jinja2"
 
-    def __init__(self, pipeline_template: str, template_params: Optional[Dict[str, Any]] = None):
+    def __init__(self, pipeline_template: TemplateSource, template_params: Optional[Dict[str, Any]] = None):
         """
         Initialize a PipelineTemplate.
 
-        :param pipeline_template: The pipeline template to use. This can be either a predefined pipeline type
-        (e.g. 'rag', 'indexing', etc.) or a custom jinja2 template string defining the pipeline itself.
+        :param pipeline_template: The template source to use. See `TemplateSource` for available methods to load
+        templates.
         :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
         """
         if not pipeline_template:
             raise ValueError(
-                "pipeline_name is required and has to be either:\n"
-                "a) predefined pipeline type (e.g. 'rag', 'indexing', etc.)\n"
-                "b) custom jinja2 template defining the pipeline itself.\n"
-                f"Available pipeline types are: {self._list_templates()}"
+                "Pipeline template must be provided. See TemplateSource for available methods to load templates."
             )
-        available_templates = self._list_templates()
-        if pipeline_template not in available_templates and not self._contains_jinja2_syntax(pipeline_template):
-            raise ValueError(
-                f"Pipeline template '{pipeline_template}' not found. Available pipeline types are: {available_templates}.\n"
-                "Users can also provide a custom jinja2 template defining the pipeline itself."
-            )
-        if pipeline_template in available_templates:
-            template_path = f"{Path(__file__).resolve().parent}/{pipeline_template}{self.template_file_extension}"
-            if not Path(template_path).exists():
-                raise ValueError(f"Pipeline template '{template_path}' not found.")
-            self.template_path = template_path
 
-            with open(template_path, "r") as file:
-                self.template_text = file.read()
-        else:
-            self.template_path = ""
-            self.template_text = pipeline_template
-
+        self.template_text = pipeline_template.template()
         env = NativeEnvironment()
         try:
             self.template = env.from_string(self.template_text)
         except TemplateSyntaxError as e:
-            raise ValueError(
-                f"Invalid pipeline template '{(self.template_path if self.template_path else self.template_text)}': {e}"
-            ) from e
+            raise ValueError(f"Invalid pipeline template provided by '{pipeline_template}: {e}") from e
         self.templated_variables = self._extract_variables(env)
         self.components: Dict[str, Any] = {}
         self.template_params = template_params or {}
-
-    @classmethod
-    def from_predefined(cls, template: PredefinedTemplate, template_params: Optional[Dict[str, Any]] = None):
-        """
-        Construct a `PipelineTemplate` instance from a predefined template.
-
-        :param template: The predefined template to use.
-        :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
-
-        :return: An instance of `PipelineTemplate` constructed from the predefined template.
-        """
-        return cls(template.value, template_params)
-
-    @classmethod
-    def from_string(cls, template: str, template_params: Optional[Dict[str, Any]] = None):
-        """
-        Construct a `PipelineTemplate` instance from a custom Jinja2 template string.
-
-        :param template: The custom Jinja2 template string to use.
-        :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
-
-        :return: An instance of `PipelineTemplate` constructed from the custom Jinja2 template string.
-        """
-        return cls(template, template_params)
 
     def override(self, component_name: str, component_instance):
         """
@@ -179,9 +115,7 @@ class PipelineTemplate:
         """
         # check if the component_name is allowed in the template
         if component_name not in self.templated_variables:
-            raise PipelineValidationError(
-                f"Component '{component_name}' is not defined in the pipeline template '{self.template_path}'."
-            )
+            raise PipelineValidationError(f"Component '{component_name}' is not defined in the pipeline template")
         if not isinstance(component_instance, Component):
             raise PipelineValidationError(
                 f"'{type(component_instance)}' doesn't seem to be a component. Is this class decorated with @component?"
@@ -218,28 +152,3 @@ class PipelineTemplate:
         ast = env.parse(self.template_text)
         variables.update(meta.find_undeclared_variables(ast))
         return variables
-
-    def _list_templates(self):
-        """
-        Lists all available pipeline templates by scanning the directory for files with the template file extension.
-
-        :return: A list of strings representing the names of available pipeline templates, excluding the file extension.
-        """
-        directory = Path(__file__).resolve().parent
-        jinja_files = [f for f in directory.iterdir() if f.is_file() and f.name.endswith(self.template_file_extension)]
-        correct_template_names = [f.name.rsplit(self.template_file_extension, 1)[0] for f in jinja_files]
-        return correct_template_names
-
-    @staticmethod
-    def _contains_jinja2_syntax(potential_jinja_template: str):
-        """
-        Determines if a given string contains Jinja2 templating syntax.
-
-        :param potential_jinja_template: The string to check for Jinja2 syntax.
-
-        :return: `True` if Jinja2 syntax is found, otherwise `False`.
-        """
-        # Patterns to look for: {{ var }}, {% block %}, {# comment #}
-        patterns = [r"\{\{.*?\}\}", r"\{%.*?%\}", r"\{#.*?#\}"]
-        combined_pattern = re.compile("|".join(patterns))
-        return bool(combined_pattern.search(potential_jinja_template))
