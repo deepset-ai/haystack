@@ -11,7 +11,7 @@ template_file_extension = ".yaml.jinja2"
 class PredefinedTemplate(Enum):
     """
     Enumeration of predefined pipeline templates that can be used to create a `PipelineTemplate` using `TemplateSource`.
-    See TemplateSource.from_predefined for usage.
+    See `TemplateSource.from_predefined` for usage.
     """
 
     # maintain 1-to-1 mapping between the enum name and the template file name in templates directory
