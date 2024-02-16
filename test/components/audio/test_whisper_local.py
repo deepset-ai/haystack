@@ -7,6 +7,7 @@ import torch
 
 from haystack.dataclasses import Document, ByteStream
 from haystack.components.audio import LocalWhisperTranscriber
+from haystack.utils.device import ComponentDevice, Device
 
 
 SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
@@ -18,7 +19,7 @@ class TestLocalWhisperTranscriber:
             model="large-v2"
         )  # Doesn't matter if it's huge, the model is not loaded in init.
         assert transcriber.model == "large-v2"
-        assert transcriber.device == torch.device("cpu")
+        assert transcriber.device == ComponentDevice.resolve_device(None)
         assert transcriber._model is None
 
     def test_init_wrong_model(self):
@@ -30,22 +31,43 @@ class TestLocalWhisperTranscriber:
         data = transcriber.to_dict()
         assert data == {
             "type": "haystack.components.audio.whisper_local.LocalWhisperTranscriber",
-            "init_parameters": {"model": "large", "device": "cpu", "whisper_params": {}},
+            "init_parameters": {
+                "model": "large",
+                "device": ComponentDevice.resolve_device(None).to_dict(),
+                "whisper_params": {},
+            },
         }
 
     def test_to_dict_with_custom_init_parameters(self):
         transcriber = LocalWhisperTranscriber(
-            model="tiny", device="cuda", whisper_params={"return_segments": True, "temperature": [0.1, 0.6, 0.8]}
+            model="tiny",
+            device=ComponentDevice.from_str("cuda:0"),
+            whisper_params={"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
         )
         data = transcriber.to_dict()
         assert data == {
             "type": "haystack.components.audio.whisper_local.LocalWhisperTranscriber",
             "init_parameters": {
                 "model": "tiny",
-                "device": "cuda",
+                "device": ComponentDevice.from_str("cuda:0").to_dict(),
                 "whisper_params": {"return_segments": True, "temperature": [0.1, 0.6, 0.8]},
             },
         }
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.audio.whisper_local.LocalWhisperTranscriber",
+            "init_parameters": {
+                "model": "tiny",
+                "device": ComponentDevice.from_single(Device.cpu()).to_dict(),
+                "whisper_params": {},
+            },
+        }
+        transcriber = LocalWhisperTranscriber.from_dict(data)
+        assert transcriber.model == "tiny"
+        assert transcriber.device == ComponentDevice.from_single(Device.cpu())
+        assert transcriber.whisper_params == {}
+        assert transcriber._model is None
 
     def test_warmup(self):
         with patch("haystack.components.audio.whisper_local.whisper") as mocked_whisper:

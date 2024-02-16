@@ -1,4 +1,5 @@
-from haystack.components.preprocessors.document_cleaner import DocumentCleaner
-from haystack.components.preprocessors.document_splitter import DocumentSplitter
+from .document_cleaner import DocumentCleaner
+from .document_splitter import DocumentSplitter
+from .text_cleaner import TextCleaner
 
-__all__ = ["DocumentSplitter", "DocumentCleaner"]
+__all__ = ["DocumentSplitter", "DocumentCleaner", "TextCleaner"]
