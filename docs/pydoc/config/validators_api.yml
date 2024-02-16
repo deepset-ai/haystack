@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/core/pipeline]
-    modules: ["pipeline"]
+    search_path: [../../../haystack/components/validators]
+    modules: ["json_schema"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Arranges components and integrations in flow.
+  excerpt: Validators validate LLM outputs
   category_slug: haystack-api
-  title: Pipeline
-  slug: pipeline-api
-  order: 90
+  title: Validators
+  slug: validators-api
+  order: 155
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: pipeline_api.md
+    filename: validators_api.md

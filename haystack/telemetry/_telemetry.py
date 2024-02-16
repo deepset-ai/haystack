@@ -1,17 +1,18 @@
-from typing import Any, Dict, Optional, TYPE_CHECKING, List, Tuple
-import os
-from pathlib import Path
-from collections import defaultdict
 import datetime
 import logging
+import os
 import uuid
-import yaml
+from collections import defaultdict
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
 import posthog
+import yaml
 
 from haystack.telemetry._environment import collect_system_specs
 
 if TYPE_CHECKING:
-    from haystack.pipeline import Pipeline
+    from haystack.core.pipeline import Pipeline
 
 
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
