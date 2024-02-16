@@ -38,7 +38,6 @@ class LocalWhisperTranscriber:
         :type model: Literal["tiny", "small", "medium", "large", "large-v2"]
         :param device: The device on which the model is loaded. If `None`, the default device is automatically
             selected.
-        :type device: Optional[str]
         """
         whisper_import.check()
         if model not in get_args(WhisperLocalModel):
