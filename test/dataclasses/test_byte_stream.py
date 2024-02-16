@@ -52,7 +52,7 @@ def test_to_string_encoding():
 def test_to_string_encoding_error():
     # test that it raises ValueError if the encoding is not valid
     b = ByteStream.from_string("Hello, world!")
-    with pytest.raises(ValueError):
+    with pytest.raises(UnicodeDecodeError):
         b.to_string("utf-16")
 
 
