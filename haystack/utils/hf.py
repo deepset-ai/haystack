@@ -15,6 +15,7 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_import
     import torch
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
+    from huggingface_hub import model_info
     from huggingface_hub.utils import RepositoryNotFoundError
     from huggingface_hub import InferenceClient, HfApi
 
@@ -92,6 +93,50 @@ def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optio
     model_kwargs["device_map"] = device_map
 
     return model_kwargs
+
+
+def resolve_hf_pipeline_kwargs(
+    huggingface_pipeline_kwargs: Dict[str, Any],
+    model: str,
+    task: Optional[str],
+    supported_tasks: List[str],
+    device: Optional[ComponentDevice],
+    token: Optional[Secret],
+) -> Dict[str, Any]:
+    """
+    Resolve the HuggingFace pipeline keyword arguments based on explicit user inputs.
+
+    :param huggingface_pipeline_kwargs: Dictionary containing keyword arguments used to initialize a
+        Hugging Face pipeline.
+    :param model: The name or path of a Hugging Face model for on the HuggingFace Hub.
+    :param task: The task for the Hugging Face pipeline.
+    :param supported_tasks: The list of supported tasks to check the task of the model against. If the task of the model
+        is not present within this list then a ValueError is thrown.
+    :param device: The device on which the model is loaded. If `None`, the default device is automatically
+        selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
+    :param token: The token to use as HTTP bearer authorization for remote files.
+        If the token is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
+    """
+    transformers_import.check()
+
+    token = token.resolve_value() if token else None
+    # check if the huggingface_pipeline_kwargs contain the essential parameters
+    # otherwise, populate them with values from other init parameters
+    huggingface_pipeline_kwargs.setdefault("model", model)
+    huggingface_pipeline_kwargs.setdefault("token", token)
+
+    device = ComponentDevice.resolve_device(device)
+    device.update_hf_kwargs(huggingface_pipeline_kwargs, overwrite=False)
+
+    # task identification and validation
+    task = task or huggingface_pipeline_kwargs.get("task")
+    if task is None and isinstance(huggingface_pipeline_kwargs["model"], str):
+        task = model_info(huggingface_pipeline_kwargs["model"], token=huggingface_pipeline_kwargs["token"]).pipeline_tag
+
+    if task not in supported_tasks:
+        raise ValueError(f"Task '{task}' is not supported. " f"The supported tasks are: {', '.join(supported_tasks)}.")
+    huggingface_pipeline_kwargs["task"] = task
+    return huggingface_pipeline_kwargs
 
 
 def list_inference_deployed_models(headers: Optional[Dict] = None) -> List[str]:

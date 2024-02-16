@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Any, List, Dict, Optional, Union
 
-from haystack import component
+from haystack import component, default_to_dict, default_from_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice
 from haystack.utils import Secret, deserialize_secrets_inplace
@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 SUPPORTED_TASKS = ["zero-shot-classification"]
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    from huggingface_hub import model_info
     from transformers import pipeline
+    from haystack.utils.hf import resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs, deserialize_hf_model_kwargs
 
 
 @component
@@ -39,7 +39,7 @@ class TransformersTextRouter:
     def __init__(
         self,
         labels: List[str],
-        model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        model: Union[str, Path] = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         pipeline_kwargs: Optional[Dict[str, Any]] = None,
@@ -50,34 +50,19 @@ class TransformersTextRouter:
             Hugging Face pipeline for zero shot text classification.
         """
         torch_and_transformers_import.check()
+
         self.token = token
         self.labels = labels
         component.set_output_types(self, **{label: str for label in labels})
 
-        token = token.resolve_value() if token else None
-
-        # check if the pipeline_kwargs contain the essential parameters
-        # otherwise, populate them with values from other init parameters
-        pipeline_kwargs.setdefault("model", model)
-        pipeline_kwargs.setdefault("token", token)
-
-        device = ComponentDevice.resolve_device(device)
-        device.update_hf_kwargs(pipeline_kwargs, overwrite=False)
-
-        # task identification and validation
-        task = "zero-shot-classification"
-        if task is None:
-            if "task" in pipeline_kwargs:
-                task = pipeline_kwargs["task"]
-            elif isinstance(pipeline_kwargs["model"], str):
-                task = model_info(pipeline_kwargs["model"], token=pipeline_kwargs["token"]).pipeline_tag
-
-        if task not in SUPPORTED_TASKS:
-            raise ValueError(
-                f"Task '{task}' is not supported. " f"The supported tasks are: {', '.join(SUPPORTED_TASKS)}."
-            )
-        pipeline_kwargs["task"] = task
-
+        pipeline_kwargs = resolve_hf_pipeline_kwargs(
+            huggingface_pipeline_kwargs=pipeline_kwargs,
+            model=model,
+            task="zero-shot-classification",
+            supported_tasks=SUPPORTED_TASKS,
+            device=device,
+            token=token,
+        )
         self.pipeline_kwargs = pipeline_kwargs
         self.pipeline = None
 
@@ -92,6 +77,29 @@ class TransformersTextRouter:
     def warm_up(self):
         if self.pipeline is None:
             self.pipeline = pipeline(**self.pipeline_kwargs)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+        """
+        serialization_dict = default_to_dict(
+            self, pipeline_kwargs=self.pipeline_kwargs, token=self.token.to_dict() if self.token else None
+        )
+
+        pipeline_kwargs = serialization_dict["init_parameters"]["pipeline_kwargs"]
+        pipeline_kwargs.pop("token", None)
+
+        serialize_hf_model_kwargs(pipeline_kwargs)
+        return serialization_dict
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "TransformersTextRouter":
+        """
+        Deserialize this component from a dictionary.
+        """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
+        deserialize_hf_model_kwargs(data["init_parameters"]["pipeline_kwargs"])
+        return default_from_dict(cls, data)
 
     def run(self, text: str) -> Dict[str, str]:
         """
