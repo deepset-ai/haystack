@@ -1,4 +1,5 @@
 import re
+from enum import Enum
 from pathlib import Path
 from typing import Dict, Any, Set, Optional
 
@@ -10,6 +11,17 @@ from haystack import Pipeline
 from haystack.core.component import Component
 from haystack.core.errors import PipelineValidationError
 from haystack.core.serialization import component_to_dict
+
+
+class PredefinedTemplate(Enum):
+    """
+    Enumeration of predefined pipeline templates available for use with `PipelineTemplate`.
+    """
+
+    # maintain 1-to-1 mapping between the enum name and the template file name in templates directory
+    QA = "qa"
+    RAG = "rag"
+    INDEXING = "indexing"
 
 
 class PipelineTemplate:
@@ -127,6 +139,30 @@ class PipelineTemplate:
         self.templated_variables = self._extract_variables(env)
         self.components: Dict[str, Any] = {}
         self.template_params = template_params or {}
+
+    @classmethod
+    def from_predefined(cls, template: PredefinedTemplate, template_params: Optional[Dict[str, Any]] = None):
+        """
+        Construct a `PipelineTemplate` instance from a predefined template.
+
+        :param template: The predefined template to use.
+        :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
+
+        :return: An instance of `PipelineTemplate` constructed from the predefined template.
+        """
+        return cls(template.value, template_params)
+
+    @classmethod
+    def from_string(cls, template: str, template_params: Optional[Dict[str, Any]] = None):
+        """
+        Construct a `PipelineTemplate` instance from a custom Jinja2 template string.
+
+        :param template: The custom Jinja2 template string to use.
+        :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
+
+        :return: An instance of `PipelineTemplate` constructed from the custom Jinja2 template string.
+        """
+        return cls(template, template_params)
 
     def override(self, component_name: str, component_instance):
         """

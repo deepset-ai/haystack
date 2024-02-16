@@ -4,7 +4,7 @@ from haystack.core.errors import PipelineValidationError
 from haystack import Pipeline
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 from haystack.components.generators import HuggingFaceTGIGenerator
-from haystack.templates.pipelines import PipelineTemplate
+from haystack.templates.pipelines import PipelineTemplate, PredefinedTemplate
 
 import pytest
 
@@ -13,11 +13,11 @@ class TestPipelineTemplate:
     #  Raises ValueError if the specified `pipeline_template` is invalid or if no Jinja2 template syntax detected.
     def test_invalid_pipeline_template(self):
         with pytest.raises(ValueError):
-            PipelineTemplate("invalid_template")
+            PipelineTemplate.from_string("invalid_template")
 
     #  Raises PipelineValidationError when attempting to override a non-existent component
     def test_override_nonexistent_component(self):
-        pipeline = PipelineTemplate("indexing")
+        pipeline = PipelineTemplate.from_predefined(PredefinedTemplate.INDEXING)
 
         with pytest.raises(PipelineValidationError):
             pipeline.override("nonexistent_component", SentenceTransformersDocumentEmbedder())
@@ -25,11 +25,11 @@ class TestPipelineTemplate:
     #  If pipeline_template is not provided.
     def test_missing_pipeline_template(self):
         with pytest.raises(ValueError):
-            PipelineTemplate("")
+            PipelineTemplate.from_string("")
 
     #  Building a pipeline directly using all default components specified in a predefined or custom template.
     def test_build_pipeline_with_default_components(self):
-        pipeline = PipelineTemplate("indexing").build()
+        pipeline = PipelineTemplate.from_predefined(PredefinedTemplate.INDEXING).build()
         assert isinstance(pipeline, Pipeline)
 
         # pipeline has components
@@ -43,7 +43,7 @@ class TestPipelineTemplate:
 
     # Customizing pipelines by overriding default components with custom component settings
     def test_customize_pipeline_with_overrides(self):
-        pt = PipelineTemplate("indexing")
+        pt = PipelineTemplate.from_predefined(PredefinedTemplate.INDEXING)
 
         pt.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True, batch_size=64))
         pipe = pt.build()
@@ -59,7 +59,11 @@ class TestPipelineTemplate:
     @pytest.mark.integration
     def test_override_component(self):
         # integration because we'll fetch the tokenizer
-        pipe = PipelineTemplate("qa").override("generator", HuggingFaceTGIGenerator()).build()
+        pipe = (
+            PipelineTemplate.from_predefined(PredefinedTemplate.QA)
+            .override("generator", HuggingFaceTGIGenerator())
+            .build()
+        )
         assert isinstance(pipe, Pipeline)
         assert pipe.get_component("generator")
         assert isinstance(pipe.get_component("generator"), HuggingFaceTGIGenerator)
@@ -77,7 +81,7 @@ connections:
 max_loops_allowed: 2
 metadata: {}
 """
-        pt = PipelineTemplate(template)
+        pt = PipelineTemplate.from_string(template)
         pt.override("generator", HuggingFaceTGIGenerator())
         pt.override("prompt_builder", PromptBuilder("Some fake prompt"))
         pipe = pt.build()
