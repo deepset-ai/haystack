@@ -90,8 +90,13 @@ class LostInTheMiddleRanker:
         """
         return default_to_dict(self, word_count_threshold=self.word_count_threshold, top_k=self.top_k)
 
-    @component.output_types(documents=List[Document])
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
+    def run(
+        self,
+        documents: List[Document],
+        query: str = None,
+        top_k: Optional[int] = None,
+        word_count_threshold: Optional[int] = None,
+    ) -> Dict[str, List[Document]]:
         """
         Reranks documents based on the "lost in the middle" order.
         Returns a list of Documents reordered based on the input query.
