@@ -100,7 +100,7 @@ class TemplateSource:
         :param url: The URL to fetch the template from. Must contain valid Jinja2 syntax.
         :return: An instance of `TemplateSource`.
         """
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
         return cls.from_str(response.text)
 
