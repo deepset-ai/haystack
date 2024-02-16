@@ -71,7 +71,7 @@ class TestLocalWhisperTranscriber:
 
     def test_warmup(self):
         with patch("haystack.components.audio.whisper_local.whisper") as mocked_whisper:
-            transcriber = LocalWhisperTranscriber(model="large-v2")
+            transcriber = LocalWhisperTranscriber(model="large-v2", device=ComponentDevice.from_str("cpu"))
             mocked_whisper.load_model.assert_not_called()
             transcriber.warm_up()
             mocked_whisper.load_model.assert_called_once_with("large-v2", device=torch.device(type="cpu"))
