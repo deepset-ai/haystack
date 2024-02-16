@@ -100,7 +100,7 @@ class PipelineTemplate:
         self.components: Dict[str, Any] = {}
         self.template_params = template_params or {}
 
-    def override(self, component_name: str, component_instance):
+    def override(self, component_name: str, component_instance: Component) -> "PipelineTemplate":
         """
         Overrides a component specified in the pipeline template with a custom component instance.
 
