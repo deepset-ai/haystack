@@ -4,15 +4,12 @@ import logging
 import tempfile
 from pathlib import Path
 
-from haystack import component, Document, default_to_dict, ComponentError
+from haystack import component, Document, default_to_dict, ComponentError, default_from_dict
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
+from haystack.utils import ComponentDevice
 
-with LazyImport(
-    "Run 'pip install transformers[torch]' to install torch and "
-    "'pip install \"openai-whisper>=20231106\"' to install whisper."
-) as whisper_import:
-    import torch
+with LazyImport("Run 'pip install \"openai-whisper>=20231106\"' to install whisper.") as whisper_import:
     import whisper
 
 
@@ -33,14 +30,14 @@ class LocalWhisperTranscriber:
     def __init__(
         self,
         model: WhisperLocalModel = "large",
-        device: Optional[str] = None,
+        device: Optional[ComponentDevice] = None,
         whisper_params: Optional[Dict[str, Any]] = None,
     ):
         """
         :param model: Name of the model to use. Set it to one of the following values:
         :type model: Literal["tiny", "small", "medium", "large", "large-v2"]
-        :param device: Name of the torch device to use for inference. If None, CPU is used.
-        :type device: Optional[str]
+        :param device: The device on which the model is loaded. If `None`, the default device is automatically
+            selected.
         """
         whisper_import.check()
         if model not in get_args(WhisperLocalModel):
@@ -49,7 +46,7 @@ class LocalWhisperTranscriber:
             )
         self.model = model
         self.whisper_params = whisper_params or {}
-        self.device = torch.device(device) if device else torch.device("cpu")
+        self.device = ComponentDevice.resolve_device(device)
         self._model = None
 
     def warm_up(self) -> None:
@@ -57,13 +54,23 @@ class LocalWhisperTranscriber:
         Loads the model.
         """
         if not self._model:
-            self._model = whisper.load_model(self.model, device=self.device)
+            self._model = whisper.load_model(self.model, device=self.device.to_torch())
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
         """
-        return default_to_dict(self, model=self.model, device=str(self.device), whisper_params=self.whisper_params)
+        return default_to_dict(self, model=self.model, device=self.device.to_dict(), whisper_params=self.whisper_params)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "LocalWhisperTranscriber":
+        """
+        Create a `LocalWhisperTranscriber` instance from a dictionary.
+        """
+        serialized_device = data["init_parameters"]["device"]
+        data["init_parameters"]["device"] = ComponentDevice.from_dict(serialized_device)
+
+        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
     def run(self, sources: List[Union[str, Path, ByteStream]], whisper_params: Optional[Dict[str, Any]] = None):
