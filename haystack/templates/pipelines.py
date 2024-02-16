@@ -189,6 +189,14 @@ class PipelineTemplate:
         self.components[component_name] = component_to_dict(component_instance)
         return self
 
+    def list_variables(self) -> Set[str]:
+        """
+        Lists all templated variables in the pipeline template.
+
+        :return: a list of strings representing the names of templated variables in the pipeline template.
+        """
+        return self.templated_variables
+
     def build(self):
         """
         Constructs a `Pipeline` instance based on the template and any overridden components.
