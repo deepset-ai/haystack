@@ -1,0 +1,23 @@
+---
+upgrade:
+  - |
+    Adopt the new framework-agnostic device management in Local Whisper Transcriber.
+
+    Before this change:
+    ```python
+    from haystack.components.audio import LocalWhisperTranscriber
+
+    transcriber = LocalWhisperTranscriber(device="cuda:0")
+    ```
+
+    After this change:
+    ```python
+    from haystack.utils.device import ComponentDevice, Device
+    from haystack.components.audio import LocalWhisperTranscriber
+
+    device = ComponentDevice.from_single(Device.gpu(id=0))
+    # or
+    # device = ComponentDevice.from_str("cuda:0")
+
+    transcriber = LocalWhisperTranscriber(device=device)
+    ```
