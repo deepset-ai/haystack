@@ -1,17 +1,184 @@
 import json
+from typing import Dict, Any
 from unittest.mock import MagicMock, Mock, patch
+from urllib.parse import urlparse
 
 import pytest
+import requests
+from flask import Flask, request, jsonify
+from flask.testing import FlaskClient
 from openapi3 import OpenAPI
 from openapi3.schemas import Model
+from requests import Response
+from requests.adapters import HTTPAdapter
 
+from haystack import Pipeline
 from haystack.components.connectors import OpenAPIServiceConnector
+from haystack.components.converters import OpenAPIServiceToFunctions, OutputAdapter
 from haystack.dataclasses import ChatMessage
 
 
 @pytest.fixture
 def openapi_service_mock():
     return MagicMock(spec=OpenAPI)
+
+
+"""
+In OpenAPI Spec, REST parameters are defined either as URL parameters (path and query) under the parameters section
+or as JSON payload in the requestBody section of the spec. URL parameters include path parameters, defined within curly
+braces in the URL path (in: path), and query parameters, appended after a ? (in: query). JSON payload, suitable
+for complex data, is specified in the requestBody for methods like POST, PUT, PATCH, or DELETE. OAS also
+supports mixed parameters, allowing both URL parameters and JSON payload in a single request.
+
+Let's prepare three Flask apps for testing the OpenAPI service connector with different types of parameters:
+
+- greet_mix_params_body: a Flask app with a single POST endpoint /greet/<name> that accepts a JSON payload with a message
+    and returns a greeting message with the name from the URL path and the message from the JSON payload.
+
+- greet_params_only: a Flask app with a single GET endpoint /greet-params/<name> that accepts a URL parameter and returns
+    a greeting message with the name from the URL path.
+
+- greet_request_body_only: a Flask app with a single POST endpoint /greet-body that accepts a JSON payload with a name
+    and a message and returns a greeting message with the name and the message from the JSON payload.
+
+
+The corresponding OpenAPI specs for these endpoints are defined in openapi_greeting_service.yml in this directory.
+"""
+
+
+def greet_mix_params_body():
+    app = Flask(__name__)
+
+    @app.route("/greet/<name>", methods=["POST"])
+    def greet(name):
+        data = request.get_json()
+        message = data.get("message")
+        greeting = f"{message}, {name} from mix_params_body!"
+        return jsonify(greeting=greeting)
+
+    return app
+
+
+def greet_params_only():
+    app = Flask(__name__)
+
+    @app.route("/greet-params/<name>", methods=["GET"])
+    def greet_params(name):
+        # Use the URL parameter for the greeting
+        greeting = f"Hello, {name} from params_only!"
+        return jsonify(greeting=greeting)
+
+    return app
+
+
+def greet_request_body_only():
+    app = Flask(__name__)
+
+    @app.route("/greet-body", methods=["POST"])
+    def greet_request_body():
+        data = request.get_json()
+        name = data.get("name")
+        message = data.get("message")
+        greeting = f"{message}, {name} from request_body_only!"
+        return jsonify(greeting=greeting)
+
+    return app
+
+
+@pytest.fixture
+def flask_client(request):
+    app_factory = request.param
+    app = app_factory()
+    app.config.update(TESTING=True)
+    with app.test_client() as client:
+        yield client
+
+
+class FlaskTestClientAdapter(HTTPAdapter):
+    """
+    This class is a custom adapter for the requests library that allows us to use the Flask test client
+    to simulate HTTP requests. Requests made with this adapter will be handled by the Flask test client
+    and sent to the Flask application, instead of being sent over the network.
+    """
+
+    def __init__(self, flask_test_client, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.flask_test_client = flask_test_client
+
+    def send(self, request, **kwargs):
+        url_details = urlparse(request.url)
+        path = url_details.path
+        if url_details.query:
+            path += "?" + url_details.query
+
+        # Determine the method (GET, POST, etc.) and perform the request with the Flask test client
+        method = request.method.lower()
+        content_type = request.headers.get("Content-Type", "")
+
+        body = None
+        if "application/json" in content_type and request.body:
+            body = json.loads(request.body)
+
+        # Now we invoke Flask test client instead of the actual HTTP request
+        if body is not None:
+            response = getattr(self.flask_test_client, method)(path, json=body)
+        else:
+            response = getattr(self.flask_test_client, method)(path, data=request.body)
+
+        # Copy Flask test client response in requests.Response object
+        req_response = Response()
+        req_response.status_code = response.status_code
+        req_response.headers = response.headers
+
+        # Handle JSON content specifically, otherwise, transfer the data as-is
+        content_type = response.headers.get("Content-Type", "")
+        if "application/json" in content_type:
+            req_response._content = json.dumps(response.get_json()).encode("utf-8")
+        else:
+            req_response._content = response.data
+
+        return req_response
+
+
+@pytest.fixture
+def patched_requests_session(flask_client):
+    session_with_adapter = requests.Session()
+    session_with_adapter.mount("http://localhost", FlaskTestClientAdapter(flask_test_client=flask_client))
+
+    # Patch requests.Session to return the custom session
+    with patch("requests.Session", return_value=session_with_adapter) as mock_session:
+        yield mock_session
+
+
+@pytest.fixture
+def pipeline_with_openapi_service():
+    cf = {"json_loads": lambda s: json.loads(s) if isinstance(s, str) else json.loads(str(s))}
+
+    pipe = Pipeline()
+    pipe.add_component("spec_to_functions", OpenAPIServiceToFunctions())
+    pipe.add_component("openapi_container", OpenAPIServiceConnector())
+    pipe.add_component("a1", OutputAdapter("{{documents[0].content | json_loads}}", Dict[str, Any], cf))
+    pipe.add_component("a2", OutputAdapter("{{documents[0].meta['spec']}}", Dict[str, Any], cf))
+
+    pipe.connect("spec_to_functions.documents", "a1")
+    pipe.connect("spec_to_functions.documents", "a2")
+    pipe.connect("a2", "openapi_container.service_openapi_spec")
+
+    return pipe
+
+
+@pytest.fixture
+def openapi_fc_message(request):
+    function_name = request.param
+    msg = [
+        {
+            "id": "call_UOEigRO94Kryftz3MQJ9CWF2",
+            "function": {"arguments": json.dumps({"message": "Hello", "name": "John"}), "name": function_name},
+            "type": "function",
+            "role": "assistant",
+        }
+    ]
+    return msg
 
 
 class TestOpenAPIServiceConnector:
@@ -60,44 +227,42 @@ class TestOpenAPIServiceConnector:
             connector._parse_message(ChatMessage.from_assistant('[{"function": {"name": "test_method"}}]'))
 
     def test_authenticate_service_missing_authentication_token(self, connector, openapi_service_mock):
-        securitySchemes_mock = MagicMock()
-        securitySchemes_mock.raw_element = {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}
+        security_schemes_dict = {
+            "components": {"securitySchemes": {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}}
+        }
+        openapi_service_mock.raw_element = security_schemes_dict
+
         with pytest.raises(ValueError):
             connector._authenticate_service(openapi_service_mock)
 
     def test_authenticate_service_having_authentication_token(self, connector, openapi_service_mock):
-        securitySchemes_mock = MagicMock()
-        securitySchemes_mock.raw_element = {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}
-        openapi_service_mock.components.securitySchemes = securitySchemes_mock
+        security_schemes_dict = {
+            "components": {"securitySchemes": {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}}
+        }
+        openapi_service_mock.raw_element = security_schemes_dict
+        openapi_service_mock.components.securitySchemes.raw_element = {
+            "apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}
+        }
         connector._authenticate_service(openapi_service_mock, "some_fake_token")
 
     def test_authenticate_service_having_authentication_dict(self, connector, openapi_service_mock):
-        securitySchemes_mock = MagicMock()
-        securitySchemes_mock.raw_element = {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}
-        openapi_service_mock.components.securitySchemes = securitySchemes_mock
+        security_schemes_dict = {
+            "components": {"securitySchemes": {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}}
+        }
+        openapi_service_mock.raw_element = security_schemes_dict
+        openapi_service_mock.components.securitySchemes.raw_element = {
+            "apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}
+        }
         connector._authenticate_service(openapi_service_mock, {"apiKey": "some_fake_token"})
 
     def test_authenticate_service_having_authentication_dict_but_unsupported_auth(
         self, connector, openapi_service_mock
     ):
-        securitySchemes_mock = MagicMock()
-        securitySchemes_mock.raw_element = {"oauth2": {"type": "oauth2"}}
-        openapi_service_mock.components.securitySchemes = securitySchemes_mock
+        security_schemes_dict = {"components": {"securitySchemes": {"oauth2": {"type": "oauth2"}}}}
+        openapi_service_mock.raw_element = security_schemes_dict
+        openapi_service_mock.components.securitySchemes.raw_element = {"oauth2": {"type": "oauth2"}}
         with pytest.raises(ValueError):
             connector._authenticate_service(openapi_service_mock, {"apiKey": "some_fake_token"})
-
-    def test_invoke_method_valid(self, connector, openapi_service_mock):
-        # Test valid method invocation
-        method_invocation_descriptor = {"name": "test_method", "arguments": {}}
-        openapi_service_mock.call_test_method = Mock(return_value="response")
-        result = connector._invoke_method(openapi_service_mock, method_invocation_descriptor)
-        assert result == "response"
-
-    def test_invoke_method_invalid(self, connector, openapi_service_mock):
-        # Test invalid method invocation
-        method_invocation_descriptor = {"name": "invalid_method", "arguments": {}}
-        with pytest.raises(RuntimeError):
-            connector._invoke_method(openapi_service_mock, method_invocation_descriptor)
 
     def test_for_internal_raw_data_field(self):
         # see https://github.com/deepset-ai/haystack/pull/6772 for details
@@ -107,8 +272,7 @@ class TestOpenAPIServiceConnector:
             " to get the raw data from the service response"
         )
 
-    @patch("haystack.components.connectors.openapi_service.OpenAPI")
-    def test_run(self, openapi_mock, test_files_path):
+    def test_run(self, test_files_path):
         connector = OpenAPIServiceConnector()
         spec_path = test_files_path / "json" / "github_compare_branch_openapi_spec.json"
         spec = json.loads((spec_path).read_text())
@@ -126,19 +290,84 @@ class TestOpenAPIServiceConnector:
             ]
         )
         messages = [ChatMessage.from_assistant(mock_message)]
+        mock_return_value = Mock(_raw_data={"commits": 1, "files": 2, "lines": 3})
+        with patch.object(OpenAPIServiceConnector, "_invoke_method", return_value=mock_return_value) as mock_invoke:
+            result = connector.run(messages=messages, service_openapi_spec=spec, service_credentials="fake_key")
+            assert result["service_response"][0].content == '{"commits": 1, "files": 2, "lines": 3}'
 
-        mock_service = Mock(
-            call_compare_branches=Mock(return_value=Mock(_raw_data="some_data")),
-            components=Mock(securitySchemes=Mock(raw_element={"apikey": {"type": "apiKey"}})),
+        fc_arg = {
+            "arguments": {"parameters": {"basehead": "main...some_branch", "owner": "deepset-ai", "repo": "haystack"}},
+            "name": "compare_branches",
+        }
+        args, kwargs = mock_invoke.call_args
+
+        assert args[1] == fc_arg
+
+    @pytest.mark.parametrize("flask_client", [greet_mix_params_body], indirect=True)
+    @pytest.mark.parametrize("openapi_fc_message", ["greet"], indirect=True)
+    def test_mix_body_params(
+        self,
+        flask_client: FlaskClient,
+        patched_requests_session,
+        pipeline_with_openapi_service,
+        openapi_fc_message,
+        test_files_path,
+    ):
+        # We pretend FC message openapi_fc_message was generated by LLM, we just need to set the function
+        # name to greet using fixture openapi_fc_message
+        # do a real invoke into the Flask app via the pipeline
+        result = pipeline_with_openapi_service.run(
+            data={
+                "openapi_container": {"messages": [ChatMessage.from_assistant(json.dumps(openapi_fc_message))]},
+                "spec_to_functions": {"sources": [test_files_path / "yaml" / "openapi_greeting_service.yml"]},
+            }
         )
-        openapi_mock.return_value = mock_service
 
-        result = connector.run(messages=messages, service_openapi_spec=spec, service_credentials="fake_key")
+        response = json.loads(result["openapi_container"]["service_response"][0].content)
+        assert response["greeting"] == "Hello, John from mix_params_body!"
 
-        openapi_mock.assert_called_once_with(spec)
-        mock_service.authenticate.assert_called_once_with("apikey", "fake_key")
-        mock_service.call_compare_branches.assert_called_once_with(
-            parameters={"basehead": "main...some_branch", "owner": "deepset-ai", "repo": "haystack"}
+    @pytest.mark.parametrize("flask_client", [greet_params_only], indirect=True)
+    @pytest.mark.parametrize("openapi_fc_message", ["greetParams"], indirect=True)
+    def test_params(
+        self,
+        flask_client: FlaskClient,
+        patched_requests_session,
+        pipeline_with_openapi_service,
+        openapi_fc_message,
+        test_files_path,
+    ):
+        # We pretend FC message openapi_fc_message was generated by LLM, we just need to set the function
+        # name to greetParams using fixture openapi_fc_message
+        # do a real invoke into the Flask app via the pipeline
+        result = pipeline_with_openapi_service.run(
+            data={
+                "openapi_container": {"messages": [ChatMessage.from_assistant(json.dumps(openapi_fc_message))]},
+                "spec_to_functions": {"sources": [test_files_path / "yaml" / "openapi_greeting_service.yml"]},
+            }
         )
 
-        assert result == {"service_response": [ChatMessage.from_user('"some_data"')]}
+        response = json.loads(result["openapi_container"]["service_response"][0].content)
+        assert response["greeting"] == "Hello, John from params_only!"
+
+    @pytest.mark.parametrize("flask_client", [greet_request_body_only], indirect=True)
+    @pytest.mark.parametrize("openapi_fc_message", ["greetBody"], indirect=True)
+    def test_request_body(
+        self,
+        flask_client: FlaskClient,
+        patched_requests_session,
+        pipeline_with_openapi_service,
+        openapi_fc_message,
+        test_files_path,
+    ):
+        # We pretend FC message openapi_fc_message was generated by LLM, we just need to set the function
+        # name to greetBody using fixture openapi_fc_message
+        # do a real invoke into the Flask app via the pipeline
+        result = pipeline_with_openapi_service.run(
+            data={
+                "openapi_container": {"messages": [ChatMessage.from_assistant(json.dumps(openapi_fc_message))]},
+                "spec_to_functions": {"sources": [test_files_path / "yaml" / "openapi_greeting_service.yml"]},
+            }
+        )
+
+        response = json.loads(result["openapi_container"]["service_response"][0].content)
+        assert response["greeting"] == "Hello, John from request_body_only!"
