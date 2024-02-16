@@ -43,10 +43,15 @@ def test_to_string():
     assert b.to_string() == test_string
 
 
-def test_to_string_encoding():
-    test_string = "Hello, world!"
-    b = ByteStream.from_string(test_string)
-    assert b.to_string("ISO-8859-1") == test_string
+def test_to_from_string_encoding():
+    test_string = "Hello Baščaršija!"
+    with pytest.raises(UnicodeEncodeError):
+        ByteStream.from_string(test_string, encoding="ISO-8859-1")
+
+    bs = ByteStream.from_string(test_string)  # default encoding is utf-8
+
+    assert bs.to_string(encoding="ISO-8859-1") != test_string
+    assert bs.to_string(encoding="utf-8") == test_string
 
 
 def test_to_string_encoding_error():
