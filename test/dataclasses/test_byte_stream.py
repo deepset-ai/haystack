@@ -1,3 +1,5 @@
+import pytest
+
 from haystack.dataclasses import ByteStream
 
 
@@ -33,6 +35,25 @@ def test_from_string():
     b = ByteStream.from_string(test_string, meta={"foo": "bar"})
     assert b.data.decode() == test_string
     assert b.meta == {"foo": "bar"}
+
+
+def test_to_string():
+    test_string = "Hello, world!"
+    b = ByteStream.from_string(test_string)
+    assert b.to_string() == test_string
+
+
+def test_to_string_encoding():
+    test_string = "Hello, world!"
+    b = ByteStream.from_string(test_string)
+    assert b.to_string("utf-8") == test_string
+
+
+def test_to_string_encoding_error():
+    # test that it raises ValueError if the encoding is not valid
+    b = ByteStream.from_string("Hello, world!")
+    with pytest.raises(ValueError):
+        b.to_string("utf-16")
 
 
 def test_to_file(tmp_path, request):
