@@ -39,7 +39,7 @@ class TransformersTextRouter:
     def __init__(
         self,
         labels: List[str],
-        model: Union[str, Path] = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
+        model: str = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         pipeline_kwargs: Optional[Dict[str, Any]] = None,
