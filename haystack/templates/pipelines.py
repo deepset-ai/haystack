@@ -85,17 +85,12 @@ class PipelineTemplate:
         templates.
         :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
         """
-        if not pipeline_template:
-            raise ValueError(
-                "Pipeline template must be provided. See TemplateSource for available methods to load templates."
-            )
-
-        self.template_text = pipeline_template.template()
+        self.template_text = pipeline_template.template
         env = NativeEnvironment()
         try:
             self.template = env.from_string(self.template_text)
         except TemplateSyntaxError as e:
-            raise ValueError(f"Invalid pipeline template provided by '{pipeline_template}: {e}") from e
+            raise ValueError(f"Invalid pipeline template, template syntax error: {e.message}") from e
         self.templated_variables = self._extract_variables(env)
         self.components: Dict[str, Any] = {}
         self.template_params = template_params or {}

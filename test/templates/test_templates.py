@@ -27,18 +27,6 @@ metadata: {}
 
 
 class TestPipelineTemplate:
-    # test_PredefinedTemplate
-    def test_list_predefined_templates(self):
-        all_predefined = PredefinedTemplate.list_all()
-
-        assert len(all_predefined) > 0, "The list of predefined templates should not be empty."
-
-        for template in PredefinedTemplate:
-            assert template in all_predefined, (
-                f"{template} should be in the list of predefined templates. "
-                f"Make sure to add it to the list of predefined templates in the PredefinedTemplate enum.",
-            )
-
     # test_TemplateSource
     #  If the provided template does not contain Jinja2 syntax.
     def test_from_str(self):
@@ -48,7 +36,7 @@ class TestPipelineTemplate:
     #  If the provided template contains Jinja2 syntax.
     def test_from_str_valid(self):
         ts = TemplateSource.from_str("{{ valid_template }}")
-        assert ts.template() == "{{ valid_template }}"
+        assert ts.template == "{{ valid_template }}"
 
     #  If the provided file path does not exist.
     def test_from_file_invalid_path(self):
@@ -62,12 +50,12 @@ class TestPipelineTemplate:
         temp_file.write(random_valid_template)
         temp_file.flush()
         ts = TemplateSource.from_file(temp_file.name)
-        assert ts.template() == random_valid_template
+        assert ts.template == random_valid_template
 
     # Use predefined template
     def test_from_predefined_invalid_template(self):
         ts = TemplateSource.from_predefined(PredefinedTemplate.INDEXING)
-        assert len(ts.template()) > 0
+        assert len(ts.template) > 0
 
     #  Raises PipelineValidationError when attempting to override a non-existent component
     def test_override_nonexistent_component(self):

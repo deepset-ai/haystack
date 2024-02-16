@@ -5,7 +5,8 @@ from typing import Union, List
 
 import requests
 
-template_file_extension = ".yaml.jinja2"
+TEMPLATE_FILE_EXTENSION = ".yaml.jinja2"
+TEMPLATE_HOME_DIR = Path(__file__).resolve().parent
 
 
 class PredefinedTemplate(Enum):
@@ -18,21 +19,6 @@ class PredefinedTemplate(Enum):
     QA = "qa"
     RAG = "rag"
     INDEXING = "indexing"
-
-    @classmethod
-    def list_all(cls) -> List["PredefinedTemplate"]:
-        """
-        Lists all available pipeline templates by scanning the directory for files with the template file extension.
-
-        :return: A list of strings representing the names of available pipeline templates, excluding the file extension.
-        """
-        directory = Path(__file__).resolve().parent
-        jinja_files = [f for f in directory.iterdir() if f.is_file() and f.name.endswith(template_file_extension)]
-        correct_template_names = [f.name.rsplit(template_file_extension, 1)[0] for f in jinja_files]
-
-        # Map to enums
-        enum_instances = [cls[name.upper()] for name in correct_template_names if name.upper() in cls.__members__]
-        return enum_instances
 
 
 class TemplateSource:
@@ -90,7 +76,7 @@ class TemplateSource:
         :param predefined_template: The name of the predefined template to use.
         :return: An instance of `TemplateSource`.
         """
-        template_path = f"{Path(__file__).resolve().parent}/{predefined_template.value}{template_file_extension}"
+        template_path = f"{TEMPLATE_HOME_DIR}/{predefined_template.value}{TEMPLATE_FILE_EXTENSION}"
         return cls.from_file(template_path)
 
     @classmethod
@@ -104,9 +90,10 @@ class TemplateSource:
         response.raise_for_status()
         return cls.from_str(response.text)
 
+    @property
     def template(self) -> str:
         """
-        Returns the raw template string.
+        Returns the raw template string as a read-only property.
         """
         return self._template
 
