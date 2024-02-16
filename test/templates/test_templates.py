@@ -1,3 +1,4 @@
+import sys
 import tempfile
 
 import pytest
@@ -55,6 +56,7 @@ class TestPipelineTemplate:
             TemplateSource.from_file("invalid_path")
 
     #  If the provided file path exists.
+    @pytest.mark.skipif(sys.platform == "win32", reason="Fails on Windows CI with permission denied")
     def test_from_file_valid_path(self, random_valid_template):
         temp_file = tempfile.NamedTemporaryFile(mode="w")
         temp_file.write(random_valid_template)
