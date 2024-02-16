@@ -1,7 +1,7 @@
 import re
 from enum import Enum
 from pathlib import Path
-from typing import Union, List
+from typing import Union
 
 import requests
 
