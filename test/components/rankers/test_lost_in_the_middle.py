@@ -1,5 +1,4 @@
 import pytest
-from datasets import load_dataset
 from haystack import Document, Pipeline
 from haystack.components.builders import AnswerBuilder, PromptBuilder
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
