@@ -13,6 +13,7 @@ class TestOpenAITextEmbedder:
 
         assert embedder.client.api_key == "fake-api-key"
         assert embedder.model == "text-embedding-ada-002"
+        assert embedder.api_base_url == None
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
@@ -21,12 +22,14 @@ class TestOpenAITextEmbedder:
         embedder = OpenAITextEmbedder(
             api_key=Secret.from_token("fake-api-key"),
             model="model",
+            api_base_url="https://my-custom-base-url.com",
             organization="fake-organization",
             prefix="prefix",
             suffix="suffix",
         )
         assert embedder.client.api_key == "fake-api-key"
         assert embedder.model == "model"
+        assert embedder.api_base_url == "https://my-custom-base-url.com"
         assert embedder.organization == "fake-organization"
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
@@ -44,6 +47,7 @@ class TestOpenAITextEmbedder:
             "type": "haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "api_base_url": None,
                 "dimensions": None,
                 "model": "text-embedding-ada-002",
                 "organization": None,
@@ -57,6 +61,7 @@ class TestOpenAITextEmbedder:
         component = OpenAITextEmbedder(
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
             model="model",
+            api_base_url="https://my-custom-base-url.com",
             organization="fake-organization",
             prefix="prefix",
             suffix="suffix",
@@ -66,6 +71,7 @@ class TestOpenAITextEmbedder:
             "type": "haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder",
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
+                "api_base_url": "https://my-custom-base-url.com",
                 "model": "model",
                 "dimensions": None,
                 "organization": "fake-organization",
