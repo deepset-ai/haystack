@@ -49,3 +49,13 @@ class ByteStream:
         :param meta: Additional metadata to be stored with the ByteStream.
         """
         return cls(data=text.encode(encoding), mime_type=mime_type, meta=meta or {})
+
+    def to_string(self, encoding: str = "utf-8") -> str:
+        """
+        Convert the ByteStream to a string, metadata will not be included.
+
+        :param encoding: The encoding used to convert the bytes to a string. Defaults to "utf-8".
+        :return: The string representation of the ByteStream.
+        :raises UnicodeDecodeError: If the ByteStream data cannot be decoded with the specified encoding.
+        """
+        return self.data.decode(encoding)
