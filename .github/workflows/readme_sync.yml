@@ -37,7 +37,7 @@ jobs:
       - name: Sync docs with 2.0
         # Sync the docs to the `2.0` version on Readme
         id: sync-main
-        if: github.ref_name == 'main' && github.event_name == 'push'
+        if: github.event_name == 'push'
         uses: readmeio/rdme@v8
         with:
           rdme: docs ./docs/pydoc/temp --key=${{ secrets.README_API_KEY }} --version=v2.0
