@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - main
+      - update-readme-sync
 
 jobs:
   sync:
@@ -33,12 +34,10 @@ jobs:
           README_API_KEY: ${{ secrets.README_API_KEY }}
         run: ./.github/utils/pydoc-markdown.sh
 
-      - name: Sync preview docs with 2.0
-        # Sync the preview docs to the `2.0` version on Readme
+      - name: Sync docs with 2.0
+        # Sync the docs to the `2.0` version on Readme
         id: sync-main
         if: github.ref_name == 'main' && github.event_name == 'push'
-        uses: readmeio/rdme@8.3.1
-        env:
-          README_API_KEY: ${{ secrets.README_API_KEY }}
+        uses: readmeio/rdme@v8
         with:
-          rdme: docs ./docs/pydoc/temp --key="$README_API_KEY" --version=v2.0
+          rdme: docs ./docs/pydoc/temp --key=${{ secrets.README_API_KEY }} --version=v2.0
