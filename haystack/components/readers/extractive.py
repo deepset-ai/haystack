@@ -13,6 +13,7 @@ with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_
     import torch
     from tokenizers import Encoding
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
+    import accelerate  # pylint: disable=unused-import # the library is used but not imported directly
 
 
 logger = logging.getLogger(__name__)
