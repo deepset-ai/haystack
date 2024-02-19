@@ -4,7 +4,7 @@ from haystack import component, Document, default_to_dict, default_from_dict
 from haystack.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret, deserialize_secrets_inplace, ComponentDevice
 
 
 @component
@@ -31,7 +31,7 @@ class SentenceTransformersDocumentEmbedder:
     def __init__(
         self,
         model: str = "sentence-transformers/all-mpnet-base-v2",
-        device: Optional[str] = None,
+        device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         prefix: str = "",
         suffix: str = "",
@@ -46,8 +46,8 @@ class SentenceTransformersDocumentEmbedder:
 
         :param model: Local path or name of the model in Hugging Face's model hub,
             such as ``'sentence-transformers/all-mpnet-base-v2'``.
-        :param device: Device (like 'cuda' / 'cpu') that should be used for computation.
-            Defaults to CPU.
+        :param device: The device on which the model is loaded. If `None`, the default device is automatically
+            selected.
         :param token: The API token used to download private models from Hugging Face.
         :param prefix: A string to add to the beginning of each Document text before embedding.
             Can be used to prepend the text with an instruction, as required by some embedding models,
@@ -61,8 +61,7 @@ class SentenceTransformersDocumentEmbedder:
         """
 
         self.model = model
-        # TODO: remove device parameter and use Haystack's device management once migrated
-        self.device = device or "cpu"
+        self.device = ComponentDevice.resolve_device(device)
         self.token = token
         self.prefix = prefix
         self.suffix = suffix
@@ -85,7 +84,7 @@ class SentenceTransformersDocumentEmbedder:
         return default_to_dict(
             self,
             model=self.model,
-            device=self.device,
+            device=self.device.to_dict(),
             token=self.token.to_dict() if self.token else None,
             prefix=self.prefix,
             suffix=self.suffix,
@@ -98,6 +97,9 @@ class SentenceTransformersDocumentEmbedder:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersDocumentEmbedder":
+        serialized_device = data["init_parameters"]["device"]
+        data["init_parameters"]["device"] = ComponentDevice.from_dict(serialized_device)
+
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         return default_from_dict(cls, data)
 
@@ -107,7 +109,7 @@ class SentenceTransformersDocumentEmbedder:
         """
         if not hasattr(self, "embedding_backend"):
             self.embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
-                model=self.model, device=self.device, auth_token=self.token
+                model=self.model, device=self.device.to_torch_str(), auth_token=self.token
             )
 
     @component.output_types(documents=List[Document])
