@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Add `is_greedy` argument to `@component` decorator.
+    This flag will change the behaviour of `Component`s with inputs that have a `Variadic` type
+    when running inside a `Pipeline`.
+
+    Variadic `Component`s that are marked as greedy will run as soon as they receive their first input.
+    If not marked as greedy instead they'll wait as long as possible before running to make sure they
+    receive as many inputs as possible from their senders.
+
+    It will be ignored for all other `Component`s even if set explicitly.

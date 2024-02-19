@@ -842,7 +842,7 @@ class Pipeline:
                     # we're stuck for real and we can't make any progress.
                     for name, comp in waiting_for_input:
                         is_variadic = any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values())  # type: ignore
-                        if is_variadic and not getattr(comp, "is_greedy", False):
+                        if is_variadic and not comp.__haystack_is_greedy__:  # type: ignore[attr-defined]
                             break
                     else:
                         # We're stuck in a loop for real, we can't make any progress.
@@ -873,14 +873,17 @@ class Pipeline:
 
                     # Lazy variadics must be removed only if there's nothing else to run at this stage
                     is_variadic = any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values())  # type: ignore
-                    if is_variadic and not getattr(comp, "is_greedy", False):
+                    if is_variadic and not comp.__haystack_is_greedy__:  # type: ignore[attr-defined]
                         there_are_only_lazy_variadics = True
                         for other_name, other_comp in waiting_for_input:
                             if name == other_name:
                                 continue
-                            there_are_only_lazy_variadics &= any(
-                                socket.is_variadic for socket in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
-                            ) and not getattr(other_comp, "is_greedy", False)
+                            there_are_only_lazy_variadics &= (
+                                any(
+                                    socket.is_variadic for socket in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                                )
+                                and not other_comp.__haystack_is_greedy__  # type: ignore[attr-defined]
+                            )
 
                         if not there_are_only_lazy_variadics:
                             continue
