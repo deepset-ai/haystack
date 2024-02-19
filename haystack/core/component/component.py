@@ -162,7 +162,11 @@ class ComponentMeta(type):
         # We can have this information only at instance creation time, so we do it here.
         is_variadic = any(socket.is_variadic for socket in instance.__haystack_input__._sockets_dict.values())
         if not is_variadic and cls.__haystack_is_greedy__:
-            cls.__haystack_is_greedy__ = False
+            logging.warning(
+                "Component '%s' has no variadic input, but it's marked as greedy. "
+                "This is not supported and can lead to unexpected behavior.",
+                cls.__name__,
+            )
 
         return instance
 

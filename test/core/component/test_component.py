@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 import pytest
@@ -228,6 +229,7 @@ def test_is_greedy_default_with_variadic_input():
         def run(self, value: Variadic[int]):
             return {"value": value}
 
+    assert not MockComponent.__haystack_is_greedy__
     assert not MockComponent().__haystack_is_greedy__
 
 
@@ -238,6 +240,7 @@ def test_is_greedy_default_without_variadic_input():
         def run(self, value: int):
             return {"value": value}
 
+    assert not MockComponent.__haystack_is_greedy__
     assert not MockComponent().__haystack_is_greedy__
 
 
@@ -248,10 +251,13 @@ def test_is_greedy_flag_with_variadic_input():
         def run(self, value: Variadic[int]):
             return {"value": value}
 
+    assert MockComponent.__haystack_is_greedy__
     assert MockComponent().__haystack_is_greedy__
 
 
-def test_is_greedy_flag_without_variadic_input():
+def test_is_greedy_flag_without_variadic_input(caplog):
+    caplog.set_level(logging.WARNING)
+
     @component(is_greedy=True)
     class MockComponent:
         @component.output_types(value=int)
@@ -259,4 +265,10 @@ def test_is_greedy_flag_without_variadic_input():
             return {"value": value}
 
     assert MockComponent.__haystack_is_greedy__
-    assert not MockComponent().__haystack_is_greedy__
+    assert caplog.text == ""
+    assert MockComponent().__haystack_is_greedy__
+    assert (
+        caplog.text
+        == "WARNING  root:component.py:165 Component 'MockComponent' has no variadic input, but it's marked as greedy."
+        " This is not supported and can lead to unexpected behavior.\n"
+    )
