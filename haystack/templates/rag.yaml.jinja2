@@ -35,7 +35,7 @@ components:
   text_embedder: {{ text_embedder | default({
     "init_parameters": {
       "batch_size": 32,
-      "device": "cpu",
+      "device": {'type': 'single', 'device': 'cpu'},
       "model": "sentence-transformers/all-mpnet-base-v2",
       "normalize_embeddings": false,
       "prefix": "",

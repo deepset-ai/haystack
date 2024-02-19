@@ -12,7 +12,7 @@ components:
   embedder: {{ embedder | default({
     "init_parameters": {
       "batch_size": 32,
-      "device": "cpu",
+      "device": {'type': 'single', 'device': 'cpu'},
       "embedding_separator": "\\n",
       "model": "sentence-transformers/all-MiniLM-L6-v2",
       "normalize_embeddings": false,
