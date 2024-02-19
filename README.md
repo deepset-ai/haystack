@@ -10,7 +10,7 @@
 </div>
 
 > [!WARNING]
-> You are currently looking at the readme of Haystack 2.0-Beta, an unstable version of what will eventually become Haystack 2.0. We are still maintaining Haystack 1.x which is the version of Haystack you should use in production. [Switch to Haystack 1.x here](https://github.com/deepset-ai/haystack/tree/v1.x).
+> **You are currently looking at the readme of Haystack 2.0-Beta**, an unstable version of what will eventually become Haystack 2.0. We are still maintaining Haystack 1.x which is the version of Haystack you should use in production. [Switch to Haystack 1.x here](https://github.com/deepset-ai/haystack/tree/v1.x).
 
 [Haystack](https://haystack.deepset.ai/) is an end-to-end LLM framework that enables you to build applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform retrieval-augmented generation (RAG), documentation search, question answering or answer generation, you can use state-of-the-art embedding models and LLMs with Haystack to build end-to-end NLP applications to solve your use case.
 
@@ -44,6 +44,17 @@ pip install haystack-ai
 -   Build applications that can make complex decisions making to answer complex queries: such as systems that can resolve complex customer queries, do knowledge search on many disconnected resources and so on.
 -   Use **off-the-shelf models** or **fine-tune** them to your data.
 -   Use **user feedback** to evaluate, benchmark, and continuously improve your models.
+
+> [!NOTE]
+> #### 💙 Contributing to Haystack
+>
+> There are several ways you can contribute to Haystack:
+> - Contribute to the main Haystack project
+> - Contribute an integration on [haystack-core-integrations](https://github.com/deepset-ai/haystack-core-integrations)
+>   
+>👉 **[Check out the full list of issues that are open to contributions](https://github.com/orgs/deepset-ai/projects/14)**
+> 
+> We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! You don't need to be a Haystack expert to provide meaningful improvements. To learn how to get started, check out our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first.
 
 > [!TIP]
 ><img src="docs/img/deepset-cloud-logo-lightblue.png"  width=30% height=30%>
@@ -122,10 +133,6 @@ You can find some of our hosted demos with instructions to run them locally too 
 ### 🖖 Community
 
 If you have a feature request or a bug report, feel free to open an [issue in Github](https://github.com/deepset-ai/haystack/issues). We regularly check these and you can expect a quick response. If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project, you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://discord.gg/haystack). We also check [𝕏 (Twitter)](https://twitter.com/haystack_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
-
-### 💙 Contributing
-
-We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! You don't need to be a Haystack expert to provide meaningful improvements. To learn how to get started, check out our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first.
 
 ## 📏 Telemetry
 
