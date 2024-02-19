@@ -93,7 +93,7 @@ class LostInTheMiddleRanker:
     def run(
         self,
         documents: List[Document],
-        query: str = None,
+        query: Optional[str] = None,
         top_k: Optional[int] = None,
         word_count_threshold: Optional[int] = None,
     ) -> Dict[str, List[Document]]:
