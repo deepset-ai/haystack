@@ -9,7 +9,7 @@ import pytest
 
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket
-from haystack.core.errors import PipelineDrawingError, PipelineError, PipelineRuntimeError
+from haystack.core.errors import PipelineDrawingError, PipelineError, PipelineMaxLoops, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double
@@ -278,6 +278,22 @@ def test_repr_in_notebook(mock_is_in_jupyter):
     with patch.object(Pipeline, "show") as mock_show:
         assert repr(pipe) == ""
         mock_show.assert_called_once_with()
+
+
+def test_run_raises_if_max_visits_reached():
+    def custom_init(self):
+        component.set_input_type(self, "x", int)
+        component.set_input_type(self, "y", int, 1)
+        component.set_output_types(self, a=int, b=int)
+
+    FakeComponent = component_class("FakeComponent", output={"a": 1, "b": 1}, extra_fields={"__init__": custom_init})
+    pipe = Pipeline(max_loops_allowed=1)
+    pipe.add_component("first", FakeComponent())
+    pipe.add_component("second", FakeComponent())
+    pipe.connect("first.a", "second.x")
+    pipe.connect("second.b", "first.y")
+    with pytest.raises(PipelineMaxLoops):
+        pipe.run({"first": {"x": 1}})
 
 
 def test_run_with_component_that_does_not_return_dict():

@@ -17,6 +17,7 @@ from haystack.core.errors import (
     PipelineConnectError,
     PipelineDrawingError,
     PipelineError,
+    PipelineMaxLoops,
     PipelineRuntimeError,
     PipelineValidationError,
 )
@@ -661,6 +662,10 @@ class Pipeline:
         #     "input1": 1, "input2": 2,
         # }
 
+        # Reset the visits count for each component
+        for node in self.graph.nodes:
+            self.graph.nodes[node]["visits"] = 0
+
         # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
         # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
         self.warm_up()
@@ -759,8 +764,12 @@ class Pipeline:
                     continue
 
             if name in last_inputs and len(comp.__haystack_input__._sockets_dict) == len(last_inputs[name]):  # type: ignore
+                if self.graph.nodes[name]["visits"] > self.max_loops_allowed:
+                    msg = f"Maximum loops count ({self.max_loops_allowed}) exceeded for component '{name}'"
+                    raise PipelineMaxLoops(msg)
                 # This component has all the inputs it needs to run
                 res = comp.run(**last_inputs[name])
+                self.graph.nodes[name]["visits"] += 1
 
                 if not isinstance(res, Mapping):
                     raise PipelineRuntimeError(
