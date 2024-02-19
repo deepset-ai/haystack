@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock
 import pytest
-from haystack.utils.auth import Secret
+from haystack.utils import Secret, ComponentDevice
 
 import numpy as np
 
@@ -11,7 +11,7 @@ class TestSentenceTransformersTextEmbedder:
     def test_init_default(self):
         embedder = SentenceTransformersTextEmbedder(model="model")
         assert embedder.model == "model"
-        assert embedder.device == "cpu"
+        assert embedder.device == ComponentDevice.resolve_device(None)
         assert embedder.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
         assert embedder.prefix == ""
         assert embedder.suffix == ""
@@ -22,7 +22,7 @@ class TestSentenceTransformersTextEmbedder:
     def test_init_with_parameters(self):
         embedder = SentenceTransformersTextEmbedder(
             model="model",
-            device="cuda",
+            device=ComponentDevice.from_str("cuda:0"),
             token=Secret.from_token("fake-api-token"),
             prefix="prefix",
             suffix="suffix",
@@ -31,7 +31,7 @@ class TestSentenceTransformersTextEmbedder:
             normalize_embeddings=True,
         )
         assert embedder.model == "model"
-        assert embedder.device == "cuda"
+        assert embedder.device == ComponentDevice.from_str("cuda:0")
         assert embedder.token == Secret.from_token("fake-api-token")
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
@@ -40,14 +40,14 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.normalize_embeddings is True
 
     def test_to_dict(self):
-        component = SentenceTransformersTextEmbedder(model="model")
+        component = SentenceTransformersTextEmbedder(model="model", device=ComponentDevice.from_str("cpu"))
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
             "init_parameters": {
                 "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
-                "device": "cpu",
+                "device": ComponentDevice.from_str("cpu").to_dict(),
                 "prefix": "",
                 "suffix": "",
                 "batch_size": 32,
@@ -59,7 +59,7 @@ class TestSentenceTransformersTextEmbedder:
     def test_to_dict_with_custom_init_parameters(self):
         component = SentenceTransformersTextEmbedder(
             model="model",
-            device="cuda",
+            device=ComponentDevice.from_str("cuda:0"),
             token=Secret.from_env_var("ENV_VAR", strict=False),
             prefix="prefix",
             suffix="suffix",
@@ -73,7 +73,7 @@ class TestSentenceTransformersTextEmbedder:
             "init_parameters": {
                 "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "model": "model",
-                "device": "cuda",
+                "device": ComponentDevice.from_str("cuda:0").to_dict(),
                 "prefix": "prefix",
                 "suffix": "suffix",
                 "batch_size": 64,
@@ -87,11 +87,35 @@ class TestSentenceTransformersTextEmbedder:
         with pytest.raises(ValueError, match="Cannot serialize token-based secret"):
             component.to_dict()
 
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
+            "init_parameters": {
+                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "model": "model",
+                "device": ComponentDevice.from_str("cpu").to_dict(),
+                "prefix": "",
+                "suffix": "",
+                "batch_size": 32,
+                "progress_bar": True,
+                "normalize_embeddings": False,
+            },
+        }
+        component = SentenceTransformersTextEmbedder.from_dict(data)
+        assert component.model == "model"
+        assert component.device == ComponentDevice.from_str("cpu")
+        assert component.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+        assert component.prefix == ""
+        assert component.suffix == ""
+        assert component.batch_size == 32
+        assert component.progress_bar is True
+        assert component.normalize_embeddings is False
+
     @patch(
         "haystack.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup(self, mocked_factory):
-        embedder = SentenceTransformersTextEmbedder(model="model", token=None)
+        embedder = SentenceTransformersTextEmbedder(model="model", token=None, device=ComponentDevice.from_str("cpu"))
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
         mocked_factory.get_embedding_backend.assert_called_once_with(model="model", device="cpu", auth_token=None)
