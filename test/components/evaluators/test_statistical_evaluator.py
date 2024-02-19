@@ -121,3 +121,71 @@ class TestStatisticalEvaluatorExactMatch:
         result = evaluator.run(labels=labels, predictions=predictions)
         assert len(result) == 1
         assert result["result"] == 2 / 3
+
+
+class TestStatisticalEvaluatorRecallSingleHit:
+    def test_run(self):
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.RECALL_SINGLE_HIT)
+        labels = ["Eiffel Tower", "Louvre Museum", "Colosseum", "Trajan's Column"]
+        predictions = [
+            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
+            "The Eiffel Tower max height is 330 meters.",
+            "Louvre Museum is the world's largest art museum and a historic monument in Paris, France.",
+            "The Leaning Tower of Pisa is the campanile, or freestanding bell tower, of Pisa Cathedral.",
+        ]
+        result = evaluator.run(labels=labels, predictions=predictions)
+        assert len(result) == 1
+        assert result["result"] == 2 / 4
+
+    def test_run_with_empty_labels(self):
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.RECALL_SINGLE_HIT)
+        predictions = [
+            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
+            "The Eiffel Tower max height is 330 meters.",
+            "Louvre Museum is the world's largest art museum and a historic monument in Paris, France.",
+            "The Leaning Tower of Pisa is the campanile, or freestanding bell tower, of Pisa Cathedral.",
+        ]
+        result = evaluator.run(labels=[], predictions=predictions)
+        assert len(result) == 1
+        assert result["result"] == 0.0
+
+    def test_run_with_empty_predictions(self):
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.RECALL_SINGLE_HIT)
+        labels = ["Eiffel Tower", "Louvre Museum", "Colosseum", "Trajan's Column"]
+        result = evaluator.run(labels=labels, predictions=[])
+        assert len(result) == 1
+        assert result["result"] == 0.0
+
+
+class TestStatisticalEvaluatorRecallMultiHit:
+    def test_run(self):
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.RECALL_MULTI_HIT)
+        labels = ["Eiffel Tower", "Louvre Museum", "Colosseum", "Trajan's Column"]
+        predictions = [
+            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
+            "The Eiffel Tower max height is 330 meters.",
+            "Louvre Museum is the world's largest art museum and a historic monument in Paris, France.",
+            "The Leaning Tower of Pisa is the campanile, or freestanding bell tower, of Pisa Cathedral.",
+        ]
+        result = evaluator.run(labels=labels, predictions=predictions)
+        assert len(result) == 1
+        assert result["result"] == 0.75
+
+    def test_run_with_empty_labels(self):
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.RECALL_MULTI_HIT)
+        predictions = [
+            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
+            "The Eiffel Tower max height is 330 meters.",
+            "Louvre Museum is the world's largest art museum and a historic monument in Paris, France.",
+            "The Leaning Tower of Pisa is the campanile, or freestanding bell tower, of Pisa Cathedral.",
+        ]
+        result = evaluator.run(labels=[], predictions=predictions)
+        assert len(result) == 1
+        assert result["result"] == 0.0
+
+    def test_run_with_empty_predictions(self):
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.RECALL_MULTI_HIT)
+        labels = ["Eiffel Tower", "Louvre Museum", "Colosseum", "Trajan's Column"]
+        result = evaluator.run(labels=labels, predictions=[])
+        assert len(result) == 1
+        assert result["result"] == 0.0
