@@ -72,7 +72,7 @@ import inspect
 import logging
 from copy import deepcopy
 from types import new_class
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Optional, Protocol, runtime_checkable
 
 from haystack.core.errors import ComponentError
 
@@ -156,6 +156,17 @@ class ComponentMeta(type):
         # we need to know if it's already owned by a Pipeline when adding it to one.
         # We use this flag to check that.
         instance.__haystack_added_to_pipeline__ = None
+
+        # Only Components with variadic inputs can be greedy. If the user set the greedy flag
+        # to True, but the component doesn't have a variadic input, we set it to False.
+        # We can have this information only at instance creation time, so we do it here.
+        is_variadic = any(socket.is_variadic for socket in instance.__haystack_input__._sockets_dict.values())
+        if not is_variadic and cls.__haystack_is_greedy__:
+            logging.warning(
+                "Component '%s' has no variadic input, but it's marked as greedy. "
+                "This is not supported and can lead to unexpected behavior.",
+                cls.__name__,
+            )
 
         return instance
 
@@ -307,15 +318,15 @@ class _Component:
 
         return output_types_decorator
 
-    def _component(self, class_):
+    def _component(self, cls, is_greedy: bool = False):
         """
         Decorator validating the structure of the component and registering it in the components registry.
         """
-        logger.debug("Registering %s as a component", class_)
+        logger.debug("Registering %s as a component", cls)
 
         # Check for required methods and fail as soon as possible
-        if not hasattr(class_, "run"):
-            raise ComponentError(f"{class_.__name__} must have a 'run()' method. See the docs for more information.")
+        if not hasattr(cls, "run"):
+            raise ComponentError(f"{cls.__name__} must have a 'run()' method. See the docs for more information.")
 
         def copy_class_namespace(namespace):
             """
@@ -323,37 +334,54 @@ class _Component:
             to populate the newly created class. We just copy
             the whole namespace from the decorated class.
             """
-            for key, val in dict(class_.__dict__).items():
+            for key, val in dict(cls.__dict__).items():
                 # __dict__ and __weakref__ are class-bound, we should let Python recreate them.
                 if key in ("__dict__", "__weakref__"):
                     continue
                 namespace[key] = val
 
-        # Recreate the decorated component class so it uses our metaclass
-        class_: class_.__name__ = new_class(
-            class_.__name__, class_.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace
-        )
+        # Recreate the decorated component class so it uses our metaclass.
+        # We must explicitly redefine the type of the class to make sure language servers
+        # and type checkers understand that the class is of the correct type.
+        # mypy doesn't like that we do this though so we explicitly ignore the type check.
+        cls: cls.__name__ = new_class(cls.__name__, cls.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace)  # type: ignore[no-redef]
 
         # Save the component in the class registry (for deserialization)
-        class_path = f"{class_.__module__}.{class_.__name__}"
+        class_path = f"{cls.__module__}.{cls.__name__}"
         if class_path in self.registry:
             # Corner case, but it may occur easily in notebooks when re-running cells.
             logger.debug(
                 "Component %s is already registered. Previous imported from '%s', new imported from '%s'",
                 class_path,
                 self.registry[class_path],
-                class_,
+                cls,
             )
-        self.registry[class_path] = class_
-        logger.debug("Registered Component %s", class_)
+        self.registry[class_path] = cls
+        logger.debug("Registered Component %s", cls)
 
         # Override the __repr__ method with a default one
-        class_.__repr__ = _component_repr
+        cls.__repr__ = _component_repr
 
-        return class_
+        # The greedy flag can be True only if the component has a variadic input.
+        # At this point of the lifetime of the component, we can't reliably know if it has a variadic input.
+        # So we set it to whatever the user specified, during the instance creation we'll change it if needed
+        # since we'll have access to the input sockets and check if any of them is variadic.
+        setattr(cls, "__haystack_is_greedy__", is_greedy)
 
-    def __call__(self, class_):
-        return self._component(class_)
+        return cls
+
+    def __call__(self, cls: Optional[type] = None, is_greedy: bool = False):
+        # We must wrap the call to the decorator in a function for it to work
+        # correctly with or without parens
+        def wrap(cls):
+            return self._component(cls, is_greedy=is_greedy)
+
+        if cls:
+            # Decorator is called without parens
+            return wrap(cls)
+
+        # Decorator is called with parens
+        return wrap
 
 
 component = _Component()

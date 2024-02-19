@@ -15,9 +15,8 @@ else:
 logger = logging.getLogger(__name__)
 
 
-@component
+@component(is_greedy=True)
 class Multiplexer:
-    is_greedy = True
     """
     This component is used to distribute a single value to many components that may need it.
     It can take such value from different sources (the user's input, or another component), so
