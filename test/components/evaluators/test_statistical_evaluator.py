@@ -203,7 +203,7 @@ class TestStatisticalEvaluatorMRR:
         ]
         result = evaluator.run(labels=labels, predictions=predictions)
         assert len(result) == 1
-        assert result["result"] == 0.25
+        assert result["result"] == 1 / 3
 
     def test_run_with_empty_labels(self):
         evaluator = StatisticalEvaluator(metric=StatisticalMetric.MRR)

@@ -162,9 +162,10 @@ class StatisticalEvaluator:
             return 0.0
 
         mrr_sum = 0.0
-        for label, prediction in zip(labels, predictions):
-            if label in prediction:
-                mrr_sum += 1 / (predictions.index(prediction) + 1)
-                break
+        for label in labels:
+            for rank, prediction in enumerate(predictions):
+                if label in prediction:
+                    mrr_sum += 1 / (rank + 1)
+                    break
 
         return mrr_sum / len(labels)
