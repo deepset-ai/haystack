@@ -19,6 +19,7 @@ class StatisticalMetric(Enum):
     EM = "exact_match"
     RECALL_SINGLE_HIT = "recall_single_hit"
     RECALL_MULTI_HIT = "recall_multi_hit"
+    MRR = "mean_reciprocal_rank"
 
     @classmethod
     def from_str(cls, metric: str) -> "StatisticalMetric":
@@ -55,6 +56,7 @@ class StatisticalEvaluator:
             StatisticalMetric.EM: self._exact_match,
             StatisticalMetric.RECALL_SINGLE_HIT: self._recall_single_hit,
             StatisticalMetric.RECALL_MULTI_HIT: self._recall_multi_hit,
+            StatisticalMetric.MRR: self._mrr,
         }[self._metric]
 
     def to_dict(self) -> Dict[str, Any]:
@@ -111,7 +113,7 @@ class StatisticalEvaluator:
     @staticmethod
     def _exact_match(labels: List[str], predictions: List[str]) -> float:
         """
-        Measure the proportion of cases where predictiond is identical to the the expected label.
+        Measure the proportion of cases where prediction is identical to the the expected label.
         """
         if len(labels) != len(predictions):
             raise ValueError("The number of predictions and labels must be the same.")
@@ -150,3 +152,20 @@ class StatisticalEvaluator:
                 correct_retrievals += 1
 
         return correct_retrievals / len(labels)
+
+    @staticmethod
+    def _mrr(labels: List[str], predictions: List[str]) -> float:
+        """
+        Measures the mean reciprocal rank of times a label is present in at least one or more predictions.
+        """
+        if len(labels) == 0:
+            return 0.0
+
+        mrr_sum = 0.0
+        for label in labels:
+            for rank, prediction in enumerate(predictions):
+                if label in prediction:
+                    mrr_sum += 1 / (rank + 1)
+                    break
+
+        return mrr_sum / len(labels)
