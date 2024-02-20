@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
+    import accelerate  # pylint: disable=unused-import # the library is used but not directly referenced
 
 
 @component
