@@ -29,6 +29,7 @@ from haystack.utils import is_in_jupyter
 
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
 from .draw import _to_mermaid_image
+from ... import tracing
 
 DEFAULT_MARSHALLER = YamlMarshaller()
 logger = logging.getLogger(__name__)
@@ -744,168 +745,191 @@ class Pipeline:
         # The waiting_for_input list is used to keep track of components that are waiting for input.
         waiting_for_input: List[Tuple[str, Component]] = []
 
-        # This is what we'll return at the end
-        final_outputs = {}
-        while len(to_run) > 0:
-            name, comp = to_run.pop(0)
+        with tracing.get_tracer().trace(
+            "haystack.pipeline.run",
+            tags={
+                "haystack.pipeline.debug": debug,
+                "haystack.pipeline.metadata": self.metadata,
+                "haystack.pipeline.max_loops_allowed": self.max_loops_allowed,
+            },
+        ):
+            # This is what we'll return at the end
+            final_outputs = {}
+            while len(to_run) > 0:
+                name, comp = to_run.pop(0)
 
-            if any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values()) and not getattr(  # type: ignore
-                comp, "is_greedy", False
-            ):
-                there_are_non_variadics = False
-                for _, other_comp in to_run:
-                    if not any(socket.is_variadic for socket in other_comp.__haystack_input__._sockets_dict.values()):  # type: ignore
-                        there_are_non_variadics = True
-                        break
+                if any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values()) and not getattr(  # type: ignore
+                    comp, "is_greedy", False
+                ):
+                    there_are_non_variadics = False
+                    for _, other_comp in to_run:
+                        if not any(socket.is_variadic for socket in other_comp.__haystack_input__._sockets_dict.values()):  # type: ignore
+                            there_are_non_variadics = True
+                            break
 
-                if there_are_non_variadics:
+                    if there_are_non_variadics:
+                        if (name, comp) not in waiting_for_input:
+                            waiting_for_input.append((name, comp))
+                        continue
+
+                if name in last_inputs and len(comp.__haystack_input__._sockets_dict) == len(last_inputs[name]):  # type: ignore
+                    if self.graph.nodes[name]["visits"] > self.max_loops_allowed:
+                        msg = f"Maximum loops count ({self.max_loops_allowed}) exceeded for component '{name}'"
+                        raise PipelineMaxLoops(msg)
+                    # This component has all the inputs it needs to run
+                    with tracing.get_tracer().trace(
+                        "haystack.component.run",
+                        tags={
+                            "haystack.component.name": name,
+                            "haystack.component.type": comp.__class__.__name__,
+                            "haystack.component.inputs": {k: type(v).__name__ for k, v in last_inputs[name].items()},
+                        },
+                    ) as span:
+                        res = comp.run(**last_inputs[name])
+                        self.graph.nodes[name]["visits"] += 1
+
+                        span.set_tags(
+                            tags={
+                                "haystack.component.outputs": {k: type(v).__name__ for k, v in res.items()},
+                                "haystack.component.visits": self.graph.nodes[name]["visits"],
+                            }
+                        )
+
+                    if not isinstance(res, Mapping):
+                        raise PipelineRuntimeError(
+                            f"Component '{name}' didn't return a dictionary. "
+                            "Components must always return dictionaries: check the the documentation."
+                        )
+
+                    # Reset the waiting for input previous states, we managed to run a component
+                    before_last_waiting_for_input = None
+                    last_waiting_for_input = None
+
+                    if (name, comp) in waiting_for_input:
+                        # We manage to run this component that was in the waiting list, we can remove it.
+                        # This happens when a component was put in the waiting list but we reached it from another edge.
+                        waiting_for_input.remove((name, comp))
+
+                    # We keep track of which keys to remove from res at the end of the loop.
+                    # This is done after the output has been distributed to the next components, so that
+                    # we're sure all components that need this output have received it.
+                    to_remove_from_res = set()
+                    for sender_component_name, receiver_component_name, edge_data in self.graph.edges(data=True):
+                        if receiver_component_name == name and edge_data["to_socket"].is_variadic:
+                            # Delete variadic inputs that were already consumed
+                            last_inputs[name][edge_data["to_socket"].name] = []
+
+                        if name != sender_component_name:
+                            continue
+
+                        if edge_data["from_socket"].name not in res:
+                            # This output has not been produced by the component, skip it
+                            continue
+
+                        if receiver_component_name not in last_inputs:
+                            last_inputs[receiver_component_name] = {}
+                        to_remove_from_res.add(edge_data["from_socket"].name)
+                        value = res[edge_data["from_socket"].name]
+
+                        if edge_data["to_socket"].is_variadic:
+                            if edge_data["to_socket"].name not in last_inputs[receiver_component_name]:
+                                last_inputs[receiver_component_name][edge_data["to_socket"].name] = []
+                            # Add to the list of variadic inputs
+                            last_inputs[receiver_component_name][edge_data["to_socket"].name].append(value)
+                        else:
+                            last_inputs[receiver_component_name][edge_data["to_socket"].name] = value
+
+                        pair = (receiver_component_name, self.graph.nodes[receiver_component_name]["instance"])
+                        if pair not in waiting_for_input and pair not in to_run:
+                            to_run.append(pair)
+
+                    res = {k: v for k, v in res.items() if k not in to_remove_from_res}
+
+                    if len(res) > 0:
+                        final_outputs[name] = res
+                else:
+                    # This component doesn't have enough inputs so we can't run it yet
                     if (name, comp) not in waiting_for_input:
                         waiting_for_input.append((name, comp))
-                    continue
 
-            if name in last_inputs and len(comp.__haystack_input__._sockets_dict) == len(last_inputs[name]):  # type: ignore
-                if self.graph.nodes[name]["visits"] > self.max_loops_allowed:
-                    msg = f"Maximum loops count ({self.max_loops_allowed}) exceeded for component '{name}'"
-                    raise PipelineMaxLoops(msg)
-                # This component has all the inputs it needs to run
-                res = comp.run(**last_inputs[name])
-                self.graph.nodes[name]["visits"] += 1
+                if len(to_run) == 0 and len(waiting_for_input) > 0:
+                    # Check if we're stuck in a loop.
+                    # It's important to check whether previous waitings are None as it could be that no
+                    # Component has actually been run yet.
+                    if (
+                        before_last_waiting_for_input is not None
+                        and last_waiting_for_input is not None
+                        and before_last_waiting_for_input == last_waiting_for_input
+                    ):
+                        # Are we actually stuck or there's a lazy variadic waiting for input?
+                        # This is our last resort, if there's no lazy variadic waiting for input
+                        # we're stuck for real and we can't make any progress.
+                        for name, comp in waiting_for_input:
+                            is_variadic = any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values())  # type: ignore
+                            if is_variadic and not comp.__haystack_is_greedy__:  # type: ignore[attr-defined]
+                                break
+                        else:
+                            # We're stuck in a loop for real, we can't make any progress.
+                            # BAIL!
+                            break
 
-                if not isinstance(res, Mapping):
-                    raise PipelineRuntimeError(
-                        f"Component '{name}' didn't return a dictionary. "
-                        "Components must always return dictionaries: check the the documentation."
+                        if len(waiting_for_input) == 1:
+                            # We have a single component with variadic input waiting for input.
+                            # If we're at this point it means it has been waiting for input for at least 2 iterations.
+                            # This will never run.
+                            # BAIL!
+                            break
+
+                        # There was a lazy variadic waiting for input, we can run it
+                        waiting_for_input.remove((name, comp))
+                        to_run.append((name, comp))
+                        continue
+
+                    before_last_waiting_for_input = (
+                        last_waiting_for_input.copy() if last_waiting_for_input is not None else None
                     )
+                    last_waiting_for_input = {item[0] for item in waiting_for_input}
 
-                # Reset the waiting for input previous states, we managed to run a component
-                before_last_waiting_for_input = None
-                last_waiting_for_input = None
-
-                if (name, comp) in waiting_for_input:
-                    # We manage to run this component that was in the waiting list, we can remove it.
-                    # This happens when a component was put in the waiting list but we reached it from another edge.
-                    waiting_for_input.remove((name, comp))
-
-                # We keep track of which keys to remove from res at the end of the loop.
-                # This is done after the output has been distributed to the next components, so that
-                # we're sure all components that need this output have received it.
-                to_remove_from_res = set()
-                for sender_component_name, receiver_component_name, edge_data in self.graph.edges(data=True):
-                    if receiver_component_name == name and edge_data["to_socket"].is_variadic:
-                        # Delete variadic inputs that were already consumed
-                        last_inputs[name][edge_data["to_socket"].name] = []
-
-                    if name != sender_component_name:
-                        continue
-
-                    if edge_data["from_socket"].name not in res:
-                        # This output has not been produced by the component, skip it
-                        continue
-
-                    if receiver_component_name not in last_inputs:
-                        last_inputs[receiver_component_name] = {}
-                    to_remove_from_res.add(edge_data["from_socket"].name)
-                    value = res[edge_data["from_socket"].name]
-
-                    if edge_data["to_socket"].is_variadic:
-                        if edge_data["to_socket"].name not in last_inputs[receiver_component_name]:
-                            last_inputs[receiver_component_name][edge_data["to_socket"].name] = []
-                        # Add to the list of variadic inputs
-                        last_inputs[receiver_component_name][edge_data["to_socket"].name].append(value)
-                    else:
-                        last_inputs[receiver_component_name][edge_data["to_socket"].name] = value
-
-                    pair = (receiver_component_name, self.graph.nodes[receiver_component_name]["instance"])
-                    if pair not in waiting_for_input and pair not in to_run:
-                        to_run.append(pair)
-
-                res = {k: v for k, v in res.items() if k not in to_remove_from_res}
-
-                if len(res) > 0:
-                    final_outputs[name] = res
-            else:
-                # This component doesn't have enough inputs so we can't run it yet
-                if (name, comp) not in waiting_for_input:
-                    waiting_for_input.append((name, comp))
-
-            if len(to_run) == 0 and len(waiting_for_input) > 0:
-                # Check if we're stuck in a loop.
-                # It's important to check whether previous waitings are None as it could be that no
-                # Component has actually been run yet.
-                if (
-                    before_last_waiting_for_input is not None
-                    and last_waiting_for_input is not None
-                    and before_last_waiting_for_input == last_waiting_for_input
-                ):
-                    # Are we actually stuck or there's a lazy variadic waiting for input?
-                    # This is our last resort, if there's no lazy variadic waiting for input
-                    # we're stuck for real and we can't make any progress.
+                    # Remove from waiting only if there is actually enough input to run
                     for name, comp in waiting_for_input:
+                        if name not in last_inputs:
+                            last_inputs[name] = {}
+
+                        # Lazy variadics must be removed only if there's nothing else to run at this stage
                         is_variadic = any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values())  # type: ignore
                         if is_variadic and not comp.__haystack_is_greedy__:  # type: ignore[attr-defined]
+                            there_are_only_lazy_variadics = True
+                            for other_name, other_comp in waiting_for_input:
+                                if name == other_name:
+                                    continue
+                                there_are_only_lazy_variadics &= (
+                                    any(
+                                        socket.is_variadic for socket in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                                    )
+                                    and not other_comp.__haystack_is_greedy__  # type: ignore[attr-defined]
+                                )
+
+                            if not there_are_only_lazy_variadics:
+                                continue
+
+                        # Find the first component that has all the inputs it needs to run
+                        has_enough_inputs = True
+                        for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
+                            if input_socket.is_mandatory and input_socket.name not in last_inputs[name]:
+                                has_enough_inputs = False
+                                break
+                            if input_socket.is_mandatory:
+                                continue
+
+                            if input_socket.name not in last_inputs[name]:
+                                last_inputs[name][input_socket.name] = input_socket.default_value
+                        if has_enough_inputs:
                             break
-                    else:
-                        # We're stuck in a loop for real, we can't make any progress.
-                        # BAIL!
-                        break
 
-                    if len(waiting_for_input) == 1:
-                        # We have a single component with variadic input waiting for input.
-                        # If we're at this point it means it has been waiting for input for at least 2 iterations.
-                        # This will never run.
-                        # BAIL!
-                        break
-
-                    # There was a lazy variadic waiting for input, we can run it
                     waiting_for_input.remove((name, comp))
                     to_run.append((name, comp))
-                    continue
 
-                before_last_waiting_for_input = (
-                    last_waiting_for_input.copy() if last_waiting_for_input is not None else None
-                )
-                last_waiting_for_input = {item[0] for item in waiting_for_input}
-
-                # Remove from waiting only if there is actually enough input to run
-                for name, comp in waiting_for_input:
-                    if name not in last_inputs:
-                        last_inputs[name] = {}
-
-                    # Lazy variadics must be removed only if there's nothing else to run at this stage
-                    is_variadic = any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values())  # type: ignore
-                    if is_variadic and not comp.__haystack_is_greedy__:  # type: ignore[attr-defined]
-                        there_are_only_lazy_variadics = True
-                        for other_name, other_comp in waiting_for_input:
-                            if name == other_name:
-                                continue
-                            there_are_only_lazy_variadics &= (
-                                any(
-                                    socket.is_variadic for socket in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
-                                )
-                                and not other_comp.__haystack_is_greedy__  # type: ignore[attr-defined]
-                            )
-
-                        if not there_are_only_lazy_variadics:
-                            continue
-
-                    # Find the first component that has all the inputs it needs to run
-                    has_enough_inputs = True
-                    for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
-                        if input_socket.is_mandatory and input_socket.name not in last_inputs[name]:
-                            has_enough_inputs = False
-                            break
-                        if input_socket.is_mandatory:
-                            continue
-
-                        if input_socket.name not in last_inputs[name]:
-                            last_inputs[name][input_socket.name] = input_socket.default_value
-                    if has_enough_inputs:
-                        break
-
-                waiting_for_input.remove((name, comp))
-                to_run.append((name, comp))
-
-        return final_outputs
+            return final_outputs
 
     def _prepare_component_input_data(self, data: Dict[str, Any]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:
         """
