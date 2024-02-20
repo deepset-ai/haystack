@@ -151,11 +151,11 @@ class OpenAPIServiceConnector:
                         openapi_service.authenticate(scheme_name, auth_credentials)
                         authenticated = True
                         break
-                    else:
-                        raise ValueError(
-                            f"Service {service_name} requires {scheme_name} security scheme but no "
-                            f"credentials were provided for it. Check the service configuration and credentials."
-                        )
+
+                    raise ValueError(
+                        f"Service {service_name} requires {scheme_name} security scheme but no "
+                        f"credentials were provided for it. Check the service configuration and credentials."
+                    )
             if not authenticated:
                 raise ValueError(
                     f"Service {service_name} requires authentication but no credentials were provided "
