@@ -20,6 +20,7 @@ class StatisticalMetric(Enum):
     RECALL_SINGLE_HIT = "recall_single_hit"
     RECALL_MULTI_HIT = "recall_multi_hit"
     MRR = "mean_reciprocal_rank"
+    MAP = "mean_average_precision"
 
     @classmethod
     def from_str(cls, metric: str) -> "StatisticalMetric":
@@ -56,7 +57,8 @@ class StatisticalEvaluator:
             StatisticalMetric.EM: self._exact_match,
             StatisticalMetric.RECALL_SINGLE_HIT: self._recall_single_hit,
             StatisticalMetric.RECALL_MULTI_HIT: self._recall_multi_hit,
-            StatisticalMetric.MRR: self._mrr,
+            StatisticalMetric.MRR: self._mean_reciprocal_rank,
+            StatisticalMetric.MAP: self._mean_average_precision,
         }[self._metric]
 
     def to_dict(self) -> Dict[str, Any]:
@@ -154,9 +156,9 @@ class StatisticalEvaluator:
         return correct_retrievals / len(labels)
 
     @staticmethod
-    def _mrr(labels: List[str], predictions: List[str]) -> float:
+    def _mean_reciprocal_rank(labels: List[str], predictions: List[str]) -> float:
         """
-        Measures the mean reciprocal rank of times a label is present in at least one or more predictions.
+        Measures the mean reciprocal rank by checking if each label is present in at least one prediction.
         """
         if len(labels) == 0:
             return 0.0
@@ -169,3 +171,27 @@ class StatisticalEvaluator:
                     break
 
         return mrr_sum / len(labels)
+
+    @staticmethod
+    def _mean_average_precision(labels: List[str], predictions: List[str]) -> float:
+        """
+        Measures the mean average by checking if each label is present in one or more predictions.
+        Each time the label is found we increment the average precision by the number of relevant predictions at that point.
+        For each label we then divide the average precision by the number of relevant predictions.
+        In the end the sum of all average precisions is divided by the number of labels.
+        """
+        if len(labels) == 0:
+            return 0.0
+
+        total_average_precision = 0.0
+        for label in labels:
+            average_precision = 0.0
+            relevant_predictions = 0
+            for rank, prediction in enumerate(predictions):
+                if label in prediction:
+                    relevant_predictions += 1
+                    average_precision += relevant_predictions / (rank + 1)
+            if relevant_predictions > 0:
+                total_average_precision += average_precision / relevant_predictions
+
+        return total_average_precision / len(labels)

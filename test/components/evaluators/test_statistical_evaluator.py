@@ -223,3 +223,37 @@ class TestStatisticalEvaluatorMRR:
         result = evaluator.run(labels=labels, predictions=[])
         assert len(result) == 1
         assert result["result"] == 0.0
+
+
+class TestStatisticalEvaluatorMAP:
+    def test_run(self):
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.MAP)
+        labels = ["Eiffel Tower", "Louvre Museum", "Colosseum", "Trajan's Column"]
+        predictions = [
+            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
+            "The Eiffel Tower max height is 330 meters.",
+            "Louvre Museum is the world's largest art museum and a historic monument in Paris, France.",
+            "The Leaning Tower of Pisa is the campanile, or freestanding bell tower, of Pisa Cathedral.",
+        ]
+        result = evaluator.run(labels=labels, predictions=predictions)
+        assert len(result) == 1
+        assert result["result"] == 1 / 3
+
+    def test_run_with_empty_labels(self):
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.MAP)
+        predictions = [
+            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
+            "The Eiffel Tower max height is 330 meters.",
+            "Louvre Museum is the world's largest art museum and a historic monument in Paris, France.",
+            "The Leaning Tower of Pisa is the campanile, or freestanding bell tower, of Pisa Cathedral.",
+        ]
+        result = evaluator.run(labels=[], predictions=predictions)
+        assert len(result) == 1
+        assert result["result"] == 0.0
+
+    def test_run_with_empty_predictions(self):
+        evaluator = StatisticalEvaluator(metric=StatisticalMetric.MAP)
+        labels = ["Eiffel Tower", "Louvre Museum", "Colosseum", "Trajan's Column"]
+        result = evaluator.run(labels=labels, predictions=[])
+        assert len(result) == 1
+        assert result["result"] == 0.0
