@@ -57,8 +57,8 @@ class LostInTheMiddleRanker:
         document_index = list(range(len(documents)))
         lost_in_the_middle_indices = [0]
 
-        # If word count threshold is set, calculate word count for the first document
-        if self.word_count_threshold:
+        # If word count threshold is set and the first document has content, calculate word count for the first document
+        if self.word_count_threshold and documents[0].content:
             word_count = len(documents[0].content.split())
 
             # If the first document already meets the word count threshold, return it
@@ -73,9 +73,9 @@ class LostInTheMiddleRanker:
             # Insert the document index at the calculated position
             lost_in_the_middle_indices.insert(insertion_index, doc_idx)
 
-            # If word count threshold is set, calculate the total word count
-            if self.word_count_threshold:
-                word_count += len(documents[doc_idx].content.split())
+            # If word count threshold is set and the document has content, calculate the total word count
+            if self.word_count_threshold and documents[doc_idx].content:
+                word_count += len(documents[doc_idx].content.split())  # type: ignore[union-attr]
 
                 # If the total word count meets the threshold, stop processing further documents
                 if word_count >= self.word_count_threshold:
