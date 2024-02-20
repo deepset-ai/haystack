@@ -1,11 +1,7 @@
 import json
-import os
-import time
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
-import flaky
 import pytest
-import requests
 from openapi3 import OpenAPI
 from openapi3.schemas import Model
 
@@ -16,37 +12,6 @@ from haystack.dataclasses import ChatMessage
 @pytest.fixture
 def openapi_service_mock():
     return MagicMock(spec=OpenAPI)
-
-
-@pytest.fixture
-def random_open_pull_request_head_branch() -> str:
-    token = os.getenv("GITHUB_TOKEN")
-    headers = {"Accept": "application/vnd.github.v3+json", "Authorization": f"token {token}"}
-    response = requests.get("https://api.github.com/repos/deepset-ai/haystack/pulls?state=open", headers=headers)
-
-    if response.status_code == 200:
-        pull_requests = response.json()
-        for pr in pull_requests:
-            if pr["base"]["ref"] == "main":
-                return pr["head"]["ref"]
-    else:
-        raise Exception(f"Failed to fetch pull requests. Status code: {response.status_code}")
-
-
-@pytest.fixture
-def genuine_fc_message(random_open_pull_request_head_branch):
-    basehead = "main..." + random_open_pull_request_head_branch
-    # arguments, see below, are always passed as a string representation of a JSON object
-    params = '{"parameters": {"basehead": "' + basehead + '", "owner": "deepset-ai", "repo": "haystack"}}'
-    payload_json = [
-        {
-            "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
-            "function": {"arguments": params, "name": "compare_branches"},
-            "type": "function",
-        }
-    ]
-
-    return json.dumps(payload_json)
 
 
 class TestOpenAPIServiceConnector:
@@ -142,23 +107,38 @@ class TestOpenAPIServiceConnector:
             " to get the raw data from the service response"
         )
 
-    @flaky.flaky(max_runs=5, rerun_filter=lambda *_: time.sleep(5))
-    @pytest.mark.integration
-    @pytest.mark.skipif(not os.getenv("GITHUB_TOKEN"), reason="GITHUB_TOKEN is not set")
-    def test_run(self, genuine_fc_message, test_files_path):
-        openapi_service = OpenAPIServiceConnector()
+    @patch("haystack.components.connectors.openapi_service.OpenAPI")
+    def test_run(self, openapi_mock, test_files_path):
+        connector = OpenAPIServiceConnector()
+        spec_path = test_files_path / "json" / "github_compare_branch_openapi_spec.json"
+        spec = json.loads((spec_path).read_text())
 
-        open_api_spec_path = test_files_path / "json" / "github_compare_branch_openapi_spec.json"
-        with open(open_api_spec_path, "r") as file:
-            github_compare_schema = json.load(file)
-        messages = [ChatMessage.from_assistant(genuine_fc_message)]
+        mock_message = json.dumps(
+            [
+                {
+                    "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
+                    "function": {
+                        "arguments": '{"parameters": {"basehead": "main...some_branch", "owner": "deepset-ai", "repo": "haystack"}}',
+                        "name": "compare_branches",
+                    },
+                    "type": "function",
+                }
+            ]
+        )
+        messages = [ChatMessage.from_assistant(mock_message)]
 
-        # genuine call to the GitHub OpenAPI service
-        result = openapi_service.run(messages, github_compare_schema, os.getenv("GITHUB_TOKEN"))
-        assert result
+        mock_service = Mock(
+            call_compare_branches=Mock(return_value=Mock(_raw_data="some_data")),
+            components=Mock(securitySchemes=Mock(raw_element={"apikey": {"type": "apiKey"}})),
+        )
+        openapi_mock.return_value = mock_service
 
-        # load json from the service response
-        service_payload = json.loads(result["service_response"][0].content)
+        result = connector.run(messages=messages, service_openapi_spec=spec, service_credentials="fake_key")
 
-        # verify that the service response contains the expected fields
-        assert "url" in service_payload and "files" in service_payload
+        openapi_mock.assert_called_once_with(spec)
+        mock_service.authenticate.assert_called_once_with("apikey", "fake_key")
+        mock_service.call_compare_branches.assert_called_once_with(
+            parameters={"basehead": "main...some_branch", "owner": "deepset-ai", "repo": "haystack"}
+        )
+
+        assert result == {"service_response": [ChatMessage.from_user('"some_data"')]}
