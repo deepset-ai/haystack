@@ -9,11 +9,14 @@ TEMPLATE_FILE_EXTENSION = ".yaml.jinja2"
 TEMPLATE_HOME_DIR = Path(__file__).resolve().parent / "predefined"
 
 
-class PredefinedTemplate(Enum):
+class PipelineType(Enum):
     """
     Enumeration of predefined pipeline templates that can be used to create a `PipelineTemplate` using `TemplateSource`.
     See `TemplateSource.from_predefined` for usage.
     """
+
+    # when type is empty, the template source must be provided to the PipelineTemplate before calling build()
+    EMPTY = "empty"
 
     # maintain 1-to-1 mapping between the enum name and the template file name in templates directory
     QA = "qa"
@@ -21,12 +24,12 @@ class PredefinedTemplate(Enum):
     INDEXING = "indexing"
 
 
-class TemplateSource:
+class _templateSource:
     """
-    TemplateSource loads template content from various inputs, including strings, files, predefined templates, and URLs.
+    _templateSource loads template content from various inputs, including strings, files, predefined templates, and URLs.
     The class provides mechanisms to load templates dynamically and ensure they contain valid Jinja2 syntax.
 
-    TemplateSource is used by `PipelineTemplate` to load pipeline templates from various sources.
+    _templateSource is used by `PipelineTemplate` to load pipeline templates from various sources.
     For example:
     ```python
     # Load a predefined indexing pipeline template
@@ -49,7 +52,7 @@ class TemplateSource:
         self._template = template
 
     @classmethod
-    def from_str(cls, template_str: str) -> "TemplateSource":
+    def from_str(cls, template_str: str) -> "_templateSource":
         """
         Create a TemplateSource from a string.
         :param template_str: The template string to use. Must contain valid Jinja2 syntax.
@@ -60,7 +63,7 @@ class TemplateSource:
         return cls(template_str)
 
     @classmethod
-    def from_file(cls, file_path: Union[Path, str]) -> "TemplateSource":
+    def from_file(cls, file_path: Union[Path, str]) -> "_templateSource":
         """
         Create a TemplateSource from a file.
         :param file_path: The path to the file containing the template. Must contain valid Jinja2 syntax.
@@ -70,7 +73,7 @@ class TemplateSource:
             return cls.from_str(file.read())
 
     @classmethod
-    def from_predefined(cls, predefined_template: PredefinedTemplate) -> "TemplateSource":
+    def from_predefined(cls, predefined_template: PipelineType) -> "_templateSource":
         """
         Create a TemplateSource from a predefined template. See `PredefinedTemplate` for available options.
         :param predefined_template: The name of the predefined template to use.
@@ -80,7 +83,7 @@ class TemplateSource:
         return cls.from_file(template_path)
 
     @classmethod
-    def from_url(cls, url: str) -> "TemplateSource":
+    def from_url(cls, url: str) -> "_templateSource":
         """
         Create a TemplateSource from a URL.
         :param url: The URL to fetch the template from. Must contain valid Jinja2 syntax.
