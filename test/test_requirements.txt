@@ -21,7 +21,6 @@ openai-whisper>=20231106                        # LocalWhisperTranscriber
 # OpenAPI
 jsonref                                        # OpenAPIServiceConnector, OpenAPIServiceToFunctions
 openapi3
-flask
 
 # Validation
 jsonschema
