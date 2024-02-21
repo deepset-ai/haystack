@@ -26,6 +26,15 @@ class Span(abc.ABC):
         for key, value in tags.items():
             self.set_tag(key, value)
 
+    def raw_span(self) -> Any:
+        """Provides access to the underlying span object of the tracer.
+
+        Use this if you need full access to the underlying span object.
+
+        :return: The underlying span object.
+        """
+        return self
+
 
 class Tracer(abc.ABC):
     """Interface for instrumenting code by creating and submitting spans."""
@@ -48,16 +57,6 @@ class Tracer(abc.ABC):
         :return: Currently active span or `None` if no span is active.
         """
         pass
-
-    def current_raw_span(self) -> Optional[Any]:
-        """Provides access to the underlying span object of the tracer.
-
-        Use this if you need full access to the underlying span object.
-
-        :return: The underlying span object or `None` if no span is active.
-        """
-        # By default, we just return the span object, but this can be overridden by subclasses if they need to return
-        return self.current_span()
 
 
 class NullSpan(Span):

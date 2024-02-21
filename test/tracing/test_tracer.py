@@ -21,7 +21,7 @@ class TestNullTracer:
             span.set_tags({"key": "value"})
 
         assert isinstance(get_tracer().current_span(), NullSpan)
-        assert isinstance(get_tracer().current_raw_span(), NullSpan)
+        assert isinstance(get_tracer().current_span().raw_span(), NullSpan)
 
 
 class TestConfigureTracer:
