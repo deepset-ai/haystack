@@ -134,6 +134,9 @@ def auto_enable_tracing() -> None:
         logger.info("Tracing disabled via '%s'", HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR)
         return
 
+    if is_tracing_enabled():
+        return  # tracing already enabled
+
     tracer = _auto_configured_opentelemetry_tracer()
     if tracer:
         enable_tracing(tracer)

@@ -1,3 +1,5 @@
+import builtins
+import sys
 from unittest.mock import Mock
 
 import opentelemetry.trace
@@ -89,6 +91,7 @@ class TestAutoEnableTracer:
 
         # unfortunately, there's no cleaner way to reset the global tracer provider
         opentelemetry.trace._TRACER_PROVIDER = None
+        disable_tracing()
 
     def test_skip_auto_enable_tracer_if_already_configured(self) -> None:
         my_tracker = Mock(spec=Tracer)  # anything else than `NullTracer` works for this test
@@ -115,3 +118,12 @@ class TestAutoEnableTracer:
         activated_tracer = tracer.actual_tracer
         assert isinstance(activated_tracer, OpenTelemetryTracer)
         assert is_tracing_enabled()
+
+    def test_skip_enable_opentelemetry_tracer_if_import_error(self, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.delitem(sys.modules, "opentelemetry", raising=False)
+        monkeypatch.setattr(builtins, "__import__", Mock(side_effect=ImportError))
+        auto_enable_tracing()
+
+        activated_tracer = get_tracer()
+        assert isinstance(activated_tracer, NullTracer)
+        assert not is_tracing_enabled()
