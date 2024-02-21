@@ -788,17 +788,17 @@ class Pipeline:
                         res = comp.run(**last_inputs[name])
                         self.graph.nodes[name]["visits"] += 1
 
+                        if not isinstance(res, Mapping):
+                            raise PipelineRuntimeError(
+                                f"Component '{name}' didn't return a dictionary. "
+                                "Components must always return dictionaries: check the the documentation."
+                            )
+
                         span.set_tags(
                             tags={
                                 "haystack.component.outputs": {k: type(v).__name__ for k, v in res.items()},
                                 "haystack.component.visits": self.graph.nodes[name]["visits"],
                             }
-                        )
-
-                    if not isinstance(res, Mapping):
-                        raise PipelineRuntimeError(
-                            f"Component '{name}' didn't return a dictionary. "
-                            "Components must always return dictionaries: check the the documentation."
                         )
 
                     # Reset the waiting for input previous states, we managed to run a component
