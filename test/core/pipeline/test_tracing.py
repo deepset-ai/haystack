@@ -1,12 +1,8 @@
-import contextlib
-import dataclasses
-from typing import Dict, Any, List, Optional, Iterator
-
 import pytest
 
 from haystack import component, Pipeline
-from haystack.tracing import Tracer, Span
 from haystack.tracing.tracer import enable_tracing
+from test.tracing.utils import SpyingSpan, SpyingTracer
 
 
 @component
@@ -20,31 +16,6 @@ class Hello:
         return {"output": f"Hello, {word}!"}
 
 
-@dataclasses.dataclass
-class SpyingSpan(Span):
-    operation_name: str
-    tags: Dict[str, Any] = dataclasses.field(default_factory=dict)
-
-    def set_tag(self, key: str, value: Any) -> None:
-        self.tags[key] = value
-
-
-class SpyingTracer(Tracer):
-    def current_span(self) -> Optional[Span]:
-        return self.spans[-1] if self.spans else None
-
-    def __init__(self) -> None:
-        self.spans: List[Span] = []
-
-    @contextlib.contextmanager
-    def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
-        new_span = SpyingSpan(operation_name, tags)
-
-        self.spans.append(new_span)
-
-        yield new_span
-
-
 @pytest.fixture()
 def pipeline() -> Pipeline:
     pipeline = Pipeline()
@@ -55,10 +26,7 @@ def pipeline() -> Pipeline:
 
 
 class TestTracing:
-    def test_with_enabled_tracing(self, pipeline: Pipeline) -> None:
-        spying_tracer = SpyingTracer()
-        enable_tracing(spying_tracer)
-
+    def test_with_enabled_tracing(self, pipeline: Pipeline, spying_tracer: SpyingTracer) -> None:
         pipeline.run(data={"word": "world"})
 
         assert len(spying_tracer.spans) == 3
