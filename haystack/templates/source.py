@@ -6,7 +6,7 @@ from typing import Union
 import requests
 
 TEMPLATE_FILE_EXTENSION = ".yaml.jinja2"
-TEMPLATE_HOME_DIR = Path(__file__).resolve().parent
+TEMPLATE_HOME_DIR = Path(__file__).resolve().parent / "predefined"
 
 
 class PredefinedTemplate(Enum):

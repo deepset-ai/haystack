@@ -16,7 +16,7 @@ on:
       - ready_for_review
     paths:
       - "haystack/**/*.py"
-      - "haystack/templates/*.yaml.jinja2"
+      - "haystack/templates/predefined/*"
       - "test/**/*.py"
       - "test/test_requirements.txt"
 
