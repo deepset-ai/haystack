@@ -57,7 +57,7 @@ class TestOpenTelemetryTracer:
 
             current_span.set_tag("key1", "value1")
 
-            raw_span = tracer.current_raw_span()
+            raw_span = current_span.raw_span()
             assert raw_span is not None
             assert isinstance(raw_span, opentelemetry.trace.Span)
 

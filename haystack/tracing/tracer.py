@@ -151,13 +151,15 @@ def _auto_configured_opentelemetry_tracer() -> Optional[Tracer]:
         # but that's not part of the public API and could change in the future
         with opentelemetry.trace.get_tracer("haystack").start_as_current_span("haystack.tracing.auto_enable") as span:
             if isinstance(span, opentelemetry.trace.NonRecordingSpan):
-                return
-            else:
-                from haystack.tracing.opentelemetry import OpenTelemetryTracer
+                return None
 
-                return enable_tracing(OpenTelemetryTracer(opentelemetry.trace.get_tracer("haystack")))
+            from haystack.tracing.opentelemetry import OpenTelemetryTracer
+
+            return OpenTelemetryTracer(opentelemetry.trace.get_tracer("haystack"))
     except ImportError:
-        return None
+        pass
+
+    return None
 
 
 auto_enable_tracing()

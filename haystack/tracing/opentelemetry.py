@@ -19,6 +19,9 @@ class OpenTelemetrySpan(Span):
         coerced_value = tracing_utils.coerce_tag_value(value)
         self._span.set_attribute(key, coerced_value)
 
+    def raw_span(self) -> Any:
+        return self._span
+
 
 class OpenTelemetryTracer(Tracer):
     def __init__(self, tracer: opentelemetry.trace.Tracer) -> None:
@@ -27,8 +30,8 @@ class OpenTelemetryTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
-        with self._tracer.start_as_current_span(operation_name) as span:
-            span = OpenTelemetrySpan(span)
+        with self._tracer.start_as_current_span(operation_name) as raw_span:
+            span = OpenTelemetrySpan(raw_span)
             if tags:
                 span.set_tags(tags)
 
@@ -40,6 +43,3 @@ class OpenTelemetryTracer(Tracer):
             return None
 
         return OpenTelemetrySpan(current_span)
-
-    def current_raw_span(self) -> Optional[Any]:
-        return opentelemetry.trace.get_current_span()
