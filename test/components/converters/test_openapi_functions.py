@@ -239,3 +239,43 @@ class TestOpenAPIServiceToFunctions:
         # check that the metadata is as expected, system_message should not be present
         assert "system_message" not in doc.meta
         assert doc.meta["spec"] == json.loads(json_serperdev_openapi_spec)
+
+    def test_complex_types_conversion(self, test_files_path):
+        service = OpenAPIServiceToFunctions()
+        result = service.run(sources=[test_files_path / "json" / "complex_types_openapi_service.json"])
+        assert len(result["documents"]) == 1
+        pp_spec = {
+            "name": "processPayment",
+            "description": "Process a new payment using the specified payment method",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "transaction_amount": {"type": "number", "description": "The amount to be paid"},
+                    "description": {"type": "string", "description": "A brief description of the payment"},
+                    "payment_method_id": {"type": "string", "description": "The payment method to be used"},
+                    "payer": {
+                        "type": "object",
+                        "description": "Information about the payer, including their name, email, and identification number",
+                        "properties": {
+                            "name": {"type": "string", "description": "The payer's name"},
+                            "email": {"type": "string", "description": "The payer's email address"},
+                            "identification": {
+                                "type": "object",
+                                "description": "The payer's identification number",
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "description": "The type of identification document (e.g., CPF, CNPJ)",
+                                    },
+                                    "number": {"type": "string", "description": "The identification number"},
+                                },
+                                "required": ["type", "number"],
+                            },
+                        },
+                        "required": ["name", "email", "identification"],
+                    },
+                },
+                "required": ["transaction_amount", "description", "payment_method_id", "payer"],
+            },
+        }
+        assert result["documents"][0].content == json.dumps(pp_spec)

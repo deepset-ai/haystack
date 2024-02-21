@@ -200,7 +200,9 @@ class OpenAPIServiceConnector:
         method_call_params: Dict[str, Dict[str, Any]] = defaultdict(dict)
         if operation_dict.get("parameters"):
             for param_name in [param["name"] for param in operation_dict.get("parameters", [])]:
-                method_call_params["parameters"][param_name] = invocation_arguments.pop(param_name, "")
+                param_value = invocation_arguments.pop(param_name, None)
+                if param_value:
+                    method_call_params["parameters"][param_name] = param_value
 
         # Pack request body parameters under "data" key
         if operation_dict.get("requestBody"):
@@ -211,7 +213,9 @@ class OpenAPIServiceConnector:
                 .get("schema", {})
                 .get("properties", {})
             ):
-                method_call_params["data"][param_name] = invocation_arguments.pop(param_name, "")
+                param_value = invocation_arguments.pop(param_name, None)
+                if param_value:
+                    method_call_params["data"][param_name] = param_value
 
         # call the underlying service REST API with the parameters
         return method_to_call(**method_call_params)
