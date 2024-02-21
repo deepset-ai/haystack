@@ -2,7 +2,7 @@
 highlights:
  - |
    Introducing a flexible and dynamic approach to creating NLP pipelines with Haystack's new PipelineTemplate class!
-   This innovative feature utilizes Jinja2 templated YAML files, allowing users to effortlessly construct and customize
+   This innovative feature utilizes Jinja templated YAML files, allowing users to effortlessly construct and customize
    complex data processing pipelines for various NLP tasks. From question answering and document indexing to custom
    pipeline requirements, the PipelineTemplate simplifies configuration and enhances adaptability. Users can now easily
    override default components or integrate custom settings with simple, straightforward code.
@@ -10,10 +10,9 @@ highlights:
    For example, the following pipeline template can be used to create an indexing pipeline:
    ```python
    from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-   from haystack.templates import PipelineTemplate, TemplateSource, PredefinedTemplate
+   from haystack.templates import PipelineTemplate, PipelineType
 
-   ts = TemplateSource.from_predefined(PredefinedTemplate.INDEXING)
-   pt = PipelineTemplate(ts, template_params={"use_pdf_file_converter": True})
+   pt = PipelineTemplate(PipelineType.INDEXING, template_params={"use_pdf_file_converter": True})
    pt.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True))
    pipe = ptb.build()
 
@@ -21,7 +20,7 @@ highlights:
    print(result)
    ```
 
-   In the above example, a PredefinedTemplate.INDEXING enum is used to create a pipeline with a custom instance of
+   In the above example, a PipelineType.INDEXING enum is used to create a pipeline with a custom instance of
    SentenceTransformersDocumentEmbedder and the PDF file converter enabled. The pipeline is then run on a list of
    local files and the result is printed (number of indexed documents).
 
@@ -30,13 +29,12 @@ highlights:
 
    On the other hand, the following pipeline template can be used to create a pre-defined RAG pipeline:
    ```python
-   from haystack.templates import PipelineTemplate, TemplateSource, PredefinedTemplate
+   from haystack.templates import PipelineTemplate, PipelineType
 
-   ts = TemplateSource.from_predefined(PredefinedTemplate.RAG)
-   pipe = PipelineTemplate(ts).build()
+   pipe = PipelineTemplate(PipelineType.RAG).build()
    result = pipe.run(query="What's the meaning of life?")
    print(result)
    ```
 
-   TemplateSource loads template content from various inputs, including strings, files, predefined templates, and URLs.
+   _templateSource loads template content from various inputs, including strings, files, predefined templates, and URLs.
    The class provides mechanisms to load templates dynamically and ensure they contain valid Jinja2 syntax.
