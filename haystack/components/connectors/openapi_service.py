@@ -214,9 +214,7 @@ class OpenAPIServiceConnector:
         Checks if the OpenAPI service has security schemes defined.
 
         :param openapi_service: The OpenAPI service instance.
-        :type openapi_service: OpenAPI
         :return: True if the service has security schemes defined, False otherwise.
-        :rtype: bool
         """
         return bool(self._safe_get_nested_keys(openapi_service.raw_element, ["components", "securitySchemes"]))
 
@@ -225,9 +223,7 @@ class OpenAPIServiceConnector:
         Checks if the OpenAPI operation has parameters defined.
 
         :param openapi_op: The OpenAPI operation instance.
-        :type openapi_op: Operation
         :return: True if the operation has parameters defined, False otherwise.
-        :rtype: bool
         """
         return bool(openapi_op.raw_element.get("parameters"))
 
@@ -236,9 +232,7 @@ class OpenAPIServiceConnector:
         Checks if the OpenAPI operation has a request body defined.
 
         :param openapi_op: The OpenAPI operation instance.
-        :type openapi_op: Operation
         :return: True if the operation has a request body defined, False otherwise.
-        :rtype: bool
         """
         return bool(openapi_op.raw_element.get("requestBody"))
 
@@ -246,20 +240,20 @@ class OpenAPIServiceConnector:
         """
         Extracts the parameter names from the OpenAPI operation.
         :param openapi_op: The OpenAPI operation instance.
-        :type openapi_op: Operation
         :return: A list of parameter names.
-
         """
         return [param.get("name", "") for param in openapi_op.raw_element.get("parameters", [])]
 
     def _body_request_parameter_names(self, openapi_op: Operation) -> List[str]:
         """
         Extracts the parameter names from the request body of the OpenAPI operation.
+        :param openapi_op: The OpenAPI operation instance.
+        :return: A list of parameter names.
         """
         keys_path = ["requestBody", "content", "application/json", "schema", "properties"]
         return self._safe_get_nested_keys(openapi_op.raw_element, keys_path)
 
-    def _safe_get_nested_keys(self, d, keys):
+    def _safe_get_nested_keys(self, d: Dict[str, Any], keys: List[str]) -> List[str]:
         """
         Safely get nested keys from a dictionary
 
