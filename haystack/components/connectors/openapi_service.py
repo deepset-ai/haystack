@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 with LazyImport("Run 'pip install openapi3'") as openapi_imports:
     from openapi3 import OpenAPI
-    from openapi3.paths import Operation
 
 
 @component
