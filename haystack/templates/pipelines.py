@@ -8,7 +8,8 @@ from haystack import Pipeline
 from haystack.core.component import Component
 from haystack.core.errors import PipelineValidationError
 from haystack.core.serialization import component_to_dict
-from haystack.templates.source import TemplateSource
+
+from .source import PipelineType, _templateSource
 
 
 class PipelineTemplate:
@@ -75,7 +76,9 @@ class PipelineTemplate:
     flexibility to customize and extend pipelines as required by advanced users and specific use cases.
     """
 
-    def __init__(self, pipeline_template: TemplateSource, template_params: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self, pipeline_type: PipelineType = PipelineType.EMPTY, template_params: Optional[Dict[str, Any]] = None
+    ):
         """
         Initialize a PipelineTemplate.
 
@@ -83,7 +86,12 @@ class PipelineTemplate:
         templates.
         :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
         """
-        self.template_text = pipeline_template.template
+        if pipeline_type == PipelineType.EMPTY:
+            # This is temporary, to ease the refactoring
+            raise ValueError("Please provide a PipelineType value")
+
+        ts = _templateSource.from_predefined(pipeline_type)
+        self.template_text = ts.template
         env = NativeEnvironment()
         try:
             self.template = env.from_string(self.template_text)
