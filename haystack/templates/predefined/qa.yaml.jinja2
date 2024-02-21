@@ -1,5 +1,4 @@
 components:
-  {% block generator %}
   generator: {{ generator | default({
     "init_parameters": {
       "api_key": {
@@ -11,17 +10,12 @@ components:
     },
     "type": "haystack.components.generators.openai.OpenAIGenerator"
   }, true) | tojson }}
-  {% endblock %}
-
-  {% block prompt_builder %}
   prompt_builder: {{ prompt_builder | default({
     "init_parameters": {
       "template": "\nGiven the question {{question}}\nAnswer it in German only.\n\nAntwort:",
     },
     "type": "haystack.components.builders.prompt_builder.PromptBuilder"
   }, true) | tojson }}
-  {% endblock %}
-
 connections:
 - receiver: generator.prompt
   sender: prompt_builder.prompt
