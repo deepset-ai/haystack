@@ -75,8 +75,6 @@ class PipelineTemplate:
     flexibility to customize and extend pipelines as required by advanced users and specific use cases.
     """
 
-    template_file_extension = ".yaml.jinja2"
-
     def __init__(self, pipeline_template: TemplateSource, template_params: Optional[Dict[str, Any]] = None):
         """
         Initialize a PipelineTemplate.
