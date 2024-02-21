@@ -132,7 +132,7 @@ class OpenAPIServiceConnector:
         :type credentials: dict | str, optional
         :raises ValueError: If authentication fails, is not found, or if appropriate credentials are missing.
         """
-        if self._has_security_schemes(openapi_service):
+        if openapi_service.raw_element.get("components", {}).get("securitySchemes"):
             service_name = openapi_service.info.title
             if not credentials:
                 raise ValueError(f"Service {service_name} requires authentication but no credentials were provided.")
@@ -195,75 +195,24 @@ class OpenAPIServiceConnector:
 
         # get the operation reference from the method_to_call
         operation = method_to_call.operation.__self__
+        operation_dict = operation.raw_element
 
         # Pack URL/query parameters under "parameters" key
         method_call_params: Dict[str, Dict[str, Any]] = defaultdict(dict)
-        for param_name in self._parameter_names(operation):
-            method_call_params["parameters"][param_name] = invocation_arguments.pop(param_name, "")
+        if operation_dict.get("parameters"):
+            for param_name in [param["name"] for param in operation_dict.get("parameters", [])]:
+                method_call_params["parameters"][param_name] = invocation_arguments.pop(param_name, "")
 
         # Pack request body parameters under "data" key
-        if self._has_request_body(operation):
-            for param_name in self._body_request_parameter_names(operation):
+        if operation_dict.get("requestBody"):
+            for param_name in (
+                operation_dict.get("requestBody", {})
+                .get("content", {})
+                .get("application/json", {})
+                .get("schema", {})
+                .get("properties", {})
+            ):
                 method_call_params["data"][param_name] = invocation_arguments.pop(param_name, "")
 
         # call the underlying service REST API with the parameters
         return method_to_call(**method_call_params)
-
-    def _has_security_schemes(self, openapi_service: OpenAPI) -> bool:
-        """
-        Checks if the OpenAPI service has security schemes defined.
-
-        :param openapi_service: The OpenAPI service instance.
-        :return: True if the service has security schemes defined, False otherwise.
-        """
-        return bool(self._safe_get_nested_keys(openapi_service.raw_element, ["components", "securitySchemes"]))
-
-    def _has_parameters(self, openapi_op: Operation) -> bool:
-        """
-        Checks if the OpenAPI operation has parameters defined.
-
-        :param openapi_op: The OpenAPI operation instance.
-        :return: True if the operation has parameters defined, False otherwise.
-        """
-        return bool(openapi_op.raw_element.get("parameters"))
-
-    def _has_request_body(self, openapi_op: Operation) -> bool:
-        """
-        Checks if the OpenAPI operation has a request body defined.
-
-        :param openapi_op: The OpenAPI operation instance.
-        :return: True if the operation has a request body defined, False otherwise.
-        """
-        return bool(openapi_op.raw_element.get("requestBody"))
-
-    def _parameter_names(self, openapi_op: Operation) -> List[str]:
-        """
-        Extracts the parameter names from the OpenAPI operation.
-        :param openapi_op: The OpenAPI operation instance.
-        :return: A list of parameter names.
-        """
-        return [param.get("name", "") for param in openapi_op.raw_element.get("parameters", [])]
-
-    def _body_request_parameter_names(self, openapi_op: Operation) -> List[str]:
-        """
-        Extracts the parameter names from the request body of the OpenAPI operation.
-        :param openapi_op: The OpenAPI operation instance.
-        :return: A list of parameter names.
-        """
-        keys_path = ["requestBody", "content", "application/json", "schema", "properties"]
-        return self._safe_get_nested_keys(openapi_op.raw_element, keys_path)
-
-    def _safe_get_nested_keys(self, d: Dict[str, Any], keys: List[str]) -> List[str]:
-        """
-        Safely get nested keys from a dictionary
-
-        :param d: The dictionary from which to fetch the value.
-        :param keys: A list of keys representing the path to the desired value.
-        :return: The keys of the nested dictionary if present, otherwise an empty list.
-        """
-        for key in keys:
-            if isinstance(d, dict) and key in d:
-                d = d[key]
-            else:
-                return []
-        return list(d.keys()) if isinstance(d, dict) else []
