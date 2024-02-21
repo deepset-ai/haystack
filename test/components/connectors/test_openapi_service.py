@@ -105,7 +105,8 @@ class TestOpenAPIServiceConnector:
             " to get the raw data from the service response"
         )
 
-    def test_run(self, test_files_path):
+    @patch("haystack.components.connectors.openapi_service.OpenAPI")
+    def test_run(self, openapi_mock, test_files_path):
         connector = OpenAPIServiceConnector()
         spec_path = test_files_path / "json" / "github_compare_branch_openapi_spec.json"
         spec = json.loads((spec_path).read_text())
@@ -115,7 +116,7 @@ class TestOpenAPIServiceConnector:
                 {
                     "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
                     "function": {
-                        "arguments": '{"parameters": {"basehead": "main...some_branch", "owner": "deepset-ai", "repo": "haystack"}}',
+                        "arguments": '{"basehead": "main...some_branch", "owner": "deepset-ai", "repo": "haystack"}',
                         "name": "compare_branches",
                     },
                     "type": "function",
@@ -123,20 +124,27 @@ class TestOpenAPIServiceConnector:
             ]
         )
         messages = [ChatMessage.from_assistant(mock_message)]
-        mock_return_value = Mock(_raw_data={"commits": 1, "files": 2, "lines": 3})
-        with patch.object(OpenAPIServiceConnector, "_invoke_method", return_value=mock_return_value) as mock_invoke:
-            result = connector.run(messages=messages, service_openapi_spec=spec, service_credentials="fake_key")
-            assert result["service_response"][0].content == '{"commits": 1, "files": 2, "lines": 3}'
-
-        fc_arg = {
-            "arguments": {"parameters": {"basehead": "main...some_branch", "owner": "deepset-ai", "repo": "haystack"}},
-            "name": "compare_branches",
+        call_compare_branches = Mock(return_value=Mock(_raw_data="some_data"))
+        call_compare_branches.operation.__self__ = Mock()
+        call_compare_branches.operation.__self__.raw_element = {
+            "parameters": [{"name": "basehead"}, {"name": "owner"}, {"name": "repo"}]
         }
-        args, kwargs = mock_invoke.call_args
+        mock_service = Mock(
+            call_compare_branches=call_compare_branches,
+            components=Mock(securitySchemes=Mock(raw_element={"apikey": {"type": "apiKey"}})),
+        )
+        openapi_mock.return_value = mock_service
 
-        assert args[1] == fc_arg
+        connector.run(messages=messages, service_openapi_spec=spec, service_credentials="fake_key")
 
-    def test_run_with_mix_params_request_body(self, test_files_path):
+        openapi_mock.assert_called_once_with(spec)
+        mock_service.authenticate.assert_called_once_with("apikey", "fake_key")
+        mock_service.call_compare_branches.assert_called_once_with(
+            parameters={"basehead": "main...some_branch", "owner": "deepset-ai", "repo": "haystack"}
+        )
+
+    @patch("haystack.components.connectors.openapi_service.OpenAPI")
+    def test_run_with_mix_params_request_body(self, openapi_mock, test_files_path):
         connector = OpenAPIServiceConnector()
         spec_path = test_files_path / "yaml" / "openapi_greeting_service.yml"
         with open(spec_path, "r") as file:
@@ -145,40 +153,25 @@ class TestOpenAPIServiceConnector:
             [
                 {
                     "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
-                    "function": {"arguments": '{"parameters": {"name": "John", "message": "Hello"}}', "name": "greet"},
+                    "function": {"arguments": '{"name": "John", "message": "Hello"}', "name": "greet"},
                     "type": "function",
                 }
             ]
         )
+        call_greet = Mock(return_value=Mock(_raw_data="Hello, John"))
+        call_greet.operation.__self__ = Mock()
+        call_greet.operation.__self__.raw_element = {
+            "parameters": [{"name": "name"}],
+            "requestBody": {
+                "content": {"application/json": {"schema": {"properties": {"message": {"type": "string"}}}}}
+            },
+        }
+
+        mock_service = Mock(call_greet=call_greet)
+        mock_service.raw_element = {}
+        openapi_mock.return_value = mock_service
+
         messages = [ChatMessage.from_assistant(mock_message)]
-        with patch(
-            "haystack.components.connectors.openapi_service.OpenAPIServiceConnector._authenticate_service"
-        ), patch("haystack.components.connectors.openapi_service.OpenAPI") as MockOpenAPI:
-            mock_openapi_instance = MockOpenAPI.return_value
-
-            mock_method_callable = MagicMock()
-            mock_method_callable.return_value = MagicMock(_raw_data={"result": "Hello, John"})
-
-            mock_operation_self = MagicMock()
-            mock_operation_raw_element = {
-                "parameters": [
-                    {"name": "name", "in": "path", "required": True, "schema": {"type": "string"}},
-                    {"name": "message", "in": "query", "schema": {"type": "string"}},
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {"properties": {"message": {"type": "string"}}, "required": ["message"]}
-                        }
-                    }
-                },
-            }
-
-            type(mock_method_callable).operation = PropertyMock(return_value=mock_operation_self)
-            type(mock_operation_self).__self__ = PropertyMock(return_value=mock_operation_self)
-            mock_operation_self.raw_element = mock_operation_raw_element
-
-            setattr(mock_openapi_instance, "call_greet", mock_method_callable)
-            result = connector.run(messages=messages, service_openapi_spec=spec)
-            response = json.loads(result["service_response"][0].content)
-            assert response == {"result": "Hello, John"}
+        result = connector.run(messages=messages, service_openapi_spec=spec)
+        response = json.loads(result["service_response"][0].content)
+        assert response == "Hello, John"
