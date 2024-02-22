@@ -12,7 +12,7 @@ with LazyImport("Run 'pip install opentelemetry-sdk'") as opentelemetry_import:
 
 
 class OpenTelemetrySpan(Span):
-    def __init__(self, span: opentelemetry.trace.Span) -> None:
+    def __init__(self, span: "opentelemetry.trace.Span") -> None:
         self._span = span
 
     def set_tag(self, key: str, value: Any) -> None:
@@ -24,7 +24,7 @@ class OpenTelemetrySpan(Span):
 
 
 class OpenTelemetryTracer(Tracer):
-    def __init__(self, tracer: opentelemetry.trace.Tracer) -> None:
+    def __init__(self, tracer: "opentelemetry.trace.Tracer") -> None:
         opentelemetry_import.check()
         self._tracer = tracer
 
