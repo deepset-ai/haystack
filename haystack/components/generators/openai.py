@@ -9,7 +9,7 @@ from openai.types.chat import ChatCompletionChunk, ChatCompletion
 from haystack import component, default_from_dict, default_to_dict
 from haystack.dataclasses import StreamingChunk, ChatMessage
 from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
+from haystack.utils import serialize_callable, deserialize_callable
 
 logger = logging.getLogger(__name__)
 
