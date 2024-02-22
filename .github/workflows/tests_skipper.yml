@@ -11,7 +11,9 @@ on:
     paths-ignore:
       # we skip the tests unless the code changes. The problem is that GitHub will run the check anyway if any other
       # file outside the code changed (e.g. the release notes). Hence, we need a second filter down below.
+      # keep the list in sync with the paths defined in the `tests.yml` workflow
       - "haystack/**/*.py"
+      - "haystack/templates/predefined/*"
       - "test/**/*.py"
       - "test/test_requirements.txt"
 
@@ -29,9 +31,11 @@ jobs:
         id: changes
         uses: dorny/paths-filter@ebc4d7e9ebcb0b1eb21480bb8f43113e996ac77a
         with:
+          # keep the list in sync with the paths defined in the `tests.yml` workflow
           filters: |
             code_changes:
               - haystack/**/*.py
+              - "haystack/templates/predefined/*"
               - test/**/*.py
               - test/test_requirements.txt
 
