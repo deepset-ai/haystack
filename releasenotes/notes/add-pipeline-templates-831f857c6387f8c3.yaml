@@ -1,6 +1,5 @@
 ---
-highlights:
- - |
+highlights:  >
    Introducing a flexible and dynamic approach to creating NLP pipelines with Haystack's new PipelineTemplate class!
    This innovative feature utilizes Jinja templated YAML files, allowing users to effortlessly construct and customize
    complex data processing pipelines for various NLP tasks. From question answering and document indexing to custom
