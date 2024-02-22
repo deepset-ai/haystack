@@ -149,6 +149,7 @@ class TestAutoEnableTracer:
         assert isinstance(activated_tracer, DatadogTracer)
         assert is_tracing_enabled()
 
+
 class TestTracingContent:
     def test_set_content_tag_with_default_settings(self, spying_tracer: SpyingTracer) -> None:
         with tracer.trace("test") as span:

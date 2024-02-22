@@ -1,6 +1,5 @@
 import abc
 import contextlib
-import dataclasses
 import logging
 import os
 from typing import Dict, Any, Optional, Iterator
