@@ -5,7 +5,7 @@ from jinja2 import meta, Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.utils.type_serialization import serialize_type, deserialize_type
+from haystack.utils import serialize_type, deserialize_type
 
 logger = logging.getLogger(__name__)
 
