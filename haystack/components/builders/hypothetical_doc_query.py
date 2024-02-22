@@ -4,7 +4,7 @@ from haystack.components.generators.openai import OpenAIGenerator
 from haystack.components.builders import PromptBuilder
 
 from typing import List, Dict, Any
-import numpy as np
+from numpy import array, mean
 
 
 @component
@@ -68,8 +68,8 @@ class HyDEBuilder:
     @component.output_types(embedding=List[float])
     def run(self, answers: List[str]):
         embeddings = self.embedder.run([Document(content=answer) for answer in answers])
-        stacked_embeddings = np.array([doc.embedding for doc in embeddings["documents"]])
-        avg_embeddings = np.mean(stacked_embeddings, axis=0)
+        stacked_embeddings = array([doc.embedding for doc in embeddings["documents"]])
+        avg_embeddings = mean(stacked_embeddings, axis=0)
         hyde_vector = avg_embeddings.reshape((1, len(avg_embeddings)))
         return {"hypothetical_documents": answers, "hypothetical_embedding": hyde_vector[0].tolist()}
 
