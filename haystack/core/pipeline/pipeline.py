@@ -39,7 +39,6 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound="Pipeline")
 
 
-# Fake change to test CI
 class Pipeline:
     """
     Components orchestration engine.
