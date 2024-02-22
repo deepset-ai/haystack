@@ -176,7 +176,8 @@ class TestOpenAPIServiceConnector:
         response = json.loads(result["service_response"][0].content)
         assert response == "Hello, John"
 
-    def test_run_with_complex_types(self, test_files_path):
+    @patch("haystack.components.connectors.openapi_service.OpenAPI")
+    def test_run_with_complex_types(self, openapi_mock, test_files_path):
         connector = OpenAPIServiceConnector()
         spec_path = test_files_path / "json" / "complex_types_openapi_service.json"
         with open(spec_path, "r") as file:
@@ -193,54 +194,46 @@ class TestOpenAPIServiceConnector:
                 }
             ]
         )
-        messages = [ChatMessage.from_assistant(mock_message)]
-        with patch(
-            "haystack.components.connectors.openapi_service.OpenAPIServiceConnector._authenticate_service"
-        ), patch("haystack.components.connectors.openapi_service.OpenAPI") as MockOpenAPI:
-            mock_openapi_instance = MockOpenAPI.return_value
 
-            mock_method_callable = MagicMock()
-            mock_method_callable.return_value = MagicMock(_raw_data={"result": "accepted"})
-
-            mock_operation_self = MagicMock()
-            mock_operation_raw_element = {
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "properties": {
-                                    "transaction_amount": {"type": "number", "example": 150.75},
-                                    "description": {"type": "string", "example": "Monthly subscription fee"},
-                                    "payment_method_id": {"type": "string", "example": "visa_ending_in_1234"},
-                                    "payer": {
-                                        "type": "object",
-                                        "properties": {
-                                            "name": {"type": "string", "example": "Alex Smith"},
-                                            "email": {"type": "string", "example": "alex.smith@example.com"},
-                                            "identification": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "type": {"type": "string", "example": "Driver's License"},
-                                                    "number": {"type": "string", "example": "D12345678"},
-                                                },
-                                                "required": ["type", "number"],
+        call_processPayment = Mock(return_value=Mock(_raw_data={"result": "accepted"}))
+        call_processPayment.operation.__self__ = Mock()
+        call_processPayment.operation.__self__.raw_element = {
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "properties": {
+                                "transaction_amount": {"type": "number", "example": 150.75},
+                                "description": {"type": "string", "example": "Monthly subscription fee"},
+                                "payment_method_id": {"type": "string", "example": "visa_ending_in_1234"},
+                                "payer": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {"type": "string", "example": "Alex Smith"},
+                                        "email": {"type": "string", "example": "alex.smith@example.com"},
+                                        "identification": {
+                                            "type": "object",
+                                            "properties": {
+                                                "type": {"type": "string", "example": "Driver's License"},
+                                                "number": {"type": "string", "example": "D12345678"},
                                             },
+                                            "required": ["type", "number"],
                                         },
-                                        "required": ["name", "email", "identification"],
                                     },
+                                    "required": ["name", "email", "identification"],
                                 },
-                                "required": ["transaction_amount", "description", "payment_method_id", "payer"],
-                            }
+                            },
+                            "required": ["transaction_amount", "description", "payment_method_id", "payer"],
                         }
                     }
                 }
             }
+        }
+        mock_service = Mock(call_processPayment=call_processPayment)
+        mock_service.raw_element = {}
+        openapi_mock.return_value = mock_service
 
-            type(mock_method_callable).operation = PropertyMock(return_value=mock_operation_self)
-            type(mock_operation_self).__self__ = PropertyMock(return_value=mock_operation_self)
-            mock_operation_self.raw_element = mock_operation_raw_element
-
-            setattr(mock_openapi_instance, "call_processPayment", mock_method_callable)
-            result = connector.run(messages=messages, service_openapi_spec=spec)
-            response = json.loads(result["service_response"][0].content)
-            assert response == {"result": "accepted"}
+        messages = [ChatMessage.from_assistant(mock_message)]
+        result = connector.run(messages=messages, service_openapi_spec=spec)
+        response = json.loads(result["service_response"][0].content)
+        assert response == {"result": "accepted"}
