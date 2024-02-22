@@ -1,7 +1,7 @@
 import requests
 
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
+from haystack.utils import serialize_callable, deserialize_callable
 
 
 def some_random_callable_for_testing(some_ignored_arg: str):

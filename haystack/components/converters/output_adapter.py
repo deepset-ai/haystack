@@ -6,8 +6,8 @@ from jinja2.nativetypes import NativeEnvironment
 from typing_extensions import TypeAlias
 
 from haystack import component, default_to_dict, default_from_dict
-from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
-from haystack.utils.type_serialization import serialize_type, deserialize_type
+from haystack.utils import serialize_callable, deserialize_callable
+from haystack.utils import serialize_type, deserialize_type
 
 
 class OutputAdaptationException(Exception):

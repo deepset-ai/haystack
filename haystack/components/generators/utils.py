@@ -1,7 +1,7 @@
 from typing import Optional, Callable
 
 from haystack.dataclasses import StreamingChunk
-from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
+from haystack.utils import serialize_callable, deserialize_callable
 
 
 def print_streaming_chunk(chunk: StreamingChunk) -> None:
