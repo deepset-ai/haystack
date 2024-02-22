@@ -782,9 +782,12 @@ class Pipeline:
                         tags={
                             "haystack.component.name": name,
                             "haystack.component.type": comp.__class__.__name__,
-                            "haystack.component.inputs": {k: type(v).__name__ for k, v in last_inputs[name].items()},
+                            "haystack.component.input_types": {
+                                k: type(v).__name__ for k, v in last_inputs[name].items()
+                            },
                         },
                     ) as span:
+                        span.set_content_tag("haystack.component.input", last_inputs[name])
                         res = comp.run(**last_inputs[name])
                         self.graph.nodes[name]["visits"] += 1
 
@@ -796,10 +799,11 @@ class Pipeline:
 
                         span.set_tags(
                             tags={
-                                "haystack.component.outputs": {k: type(v).__name__ for k, v in res.items()},
+                                "haystack.component.output_types": {k: type(v).__name__ for k, v in res.items()},
                                 "haystack.component.visits": self.graph.nodes[name]["visits"],
                             }
                         )
+                        span.set_content_tag("haystack.component.output", res)
 
                     # Reset the waiting for input previous states, we managed to run a component
                     before_last_waiting_for_input = None
