@@ -23,6 +23,7 @@ from haystack.tracing.tracer import (
     ProxyTracer,
     auto_enable_tracing,
     tracer,
+    HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR,
 )
 from test.tracing.utils import SpyingTracer
 
@@ -44,8 +45,6 @@ class TestProxyTracer:
     def test_tracing(self) -> None:
         spying_tracer = SpyingTracer()
         my_tracer = ProxyTracer(provided_tracer=spying_tracer)
-
-        enable_tracing(spying_tracer)
 
         with my_tracer.trace("operation", {"key": "value"}) as span:
             span.set_tag("key", "value")
@@ -86,7 +85,7 @@ class TestAutoEnableTracer:
         processor = SimpleSpanProcessor(InMemorySpanExporter())
         traceProvider.add_span_processor(processor)
 
-        # We can't uset `set_tracer_provider` here, because opentelemetry has a lock to only set it once
+        # We can't unset `set_tracer_provider` here, because opentelemetry has a lock to only set it once
         opentelemetry.trace._TRACER_PROVIDER = traceProvider
 
         yield
@@ -149,3 +148,33 @@ class TestAutoEnableTracer:
         activated_tracer = tracer.actual_tracer
         assert isinstance(activated_tracer, DatadogTracer)
         assert is_tracing_enabled()
+
+class TestTracingContent:
+    def test_set_content_tag_with_default_settings(self, spying_tracer: SpyingTracer) -> None:
+        with tracer.trace("test") as span:
+            span.set_content_tag("my_content", "my_content")
+
+        assert len(spying_tracer.spans) == 1
+        span = spying_tracer.spans[0]
+        assert span.tags == {}
+
+    def test_set_content_tag_with_enabled_content_tracing(
+        self, monkeypatch: MonkeyPatch, spying_tracer: SpyingTracer
+    ) -> None:
+        enable_tracing(spying_tracer)
+        # monkeypatch to avoid impact on other tests
+        monkeypatch.setattr(tracer, "is_content_tracing_enabled", True)
+
+        with tracer.trace("test") as span:
+            span.set_content_tag("my_content", "my_content")
+
+        assert len(spying_tracer.spans) == 1
+        span = spying_tracer.spans[0]
+        assert span.tags == {"my_content": "my_content"}
+
+    def test_set_content_tag_when_enabled_via_env_variable(self, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.setenv(HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR, "true")
+
+        proxy_tracer = ProxyTracer(provided_tracer=SpyingTracer())
+
+        assert proxy_tracer.is_content_tracing_enabled is True

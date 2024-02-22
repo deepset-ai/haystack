@@ -1,10 +1,12 @@
 import abc
 import contextlib
+import dataclasses
 import logging
 import os
 from typing import Dict, Any, Optional, Iterator
 
 HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR = "HAYSTACK_AUTO_TRACE_ENABLED"
+HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR = "HAYSTACK_CONTENT_TRACING_ENABLED"
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,24 @@ class Span(abc.ABC):
         """
         return self
 
+    def set_content_tag(self, key: str, value: Any) -> None:
+        """Set a single tag containing content information.
+
+        Content is sensitive information such as
+        - the content of a query
+        - the content of a document
+        - the content of an answer
+
+        By default, this behavior is disabled. To enable it
+        - set the environment variable `HAYSTACK_CONTENT_TRACING_ENABLED` to `true` or
+        - override the `set_content_tag` method in a custom tracer implementation.
+
+        :param key: the name of the tag.
+        :param value: the value of the tag.
+        """
+        if tracer.is_content_tracing_enabled:
+            self.set_tag(key, value)
+
 
 class Tracer(abc.ABC):
     """Interface for instrumenting code by creating and submitting spans."""
@@ -75,6 +95,7 @@ class ProxyTracer(Tracer):
 
     def __init__(self, provided_tracer: Tracer) -> None:
         self.actual_tracer: Tracer = provided_tracer
+        self.is_content_tracing_enabled = os.getenv(HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR, "false").lower() == "true"
 
     @contextlib.contextmanager
     def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
