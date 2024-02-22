@@ -41,7 +41,7 @@ class Tracer(abc.ABC):
 
     @abc.abstractmethod
     @contextlib.contextmanager
-    def trace(self, operation_name: str, tags: Optional[Dict[str, Any]]) -> Iterator[Span]:
+    def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
         """Trace the execution of a block of code.
 
         :param operation_name: the name of the operation being traced.
@@ -57,6 +57,26 @@ class Tracer(abc.ABC):
         :return: Currently active span or `None` if no span is active.
         """
         pass
+
+
+class ProxyTracer(Tracer):
+    """Container for the actual tracer instance.
+
+    This eases
+    - replacing the actual tracer instance without having to change the global tracer instance
+    - implementing default behavior for the tracer
+    """
+
+    def __init__(self, provided_tracer: Tracer) -> None:
+        self.actual_tracer: Tracer = provided_tracer
+
+    @contextlib.contextmanager
+    def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
+        with self.actual_tracer.trace(operation_name, tags=tags) as span:
+            yield span
+
+    def current_span(self) -> Optional[Span]:
+        return self.actual_tracer.current_span()
 
 
 class NullSpan(Span):
@@ -77,28 +97,22 @@ class NullTracer(Tracer):
         return NullSpan()
 
 
-_tracer: Tracer = NullTracer()
-
-
-# We use a method to access the global tracer instance so that we can conveniently swap out the tracer
-# (if folks would import the object directly, we'd have to monkey-patch it in all of these modules).
-def get_tracer() -> Tracer:
-    """Get the global tracer instance."""
-    return _tracer
+# We use the proxy pattern to allow for easy enabling and disabling of tracing without having to change the global
+# tracer instance. That's especially convenient if users import the object directly
+# (in that case we'd have to monkey-patch it in all of these modules).
+tracer: ProxyTracer = ProxyTracer(provided_tracer=NullTracer())
 
 
 def enable_tracing(provided_tracer: Tracer) -> None:
     """Enable tracing by setting the global tracer instance."""
-    global _tracer  # pylint: disable=global-statement
-    _tracer = provided_tracer
+    tracer.actual_tracer = provided_tracer
 
 
 def disable_tracing() -> None:
     """Disable tracing by setting the global tracer instance to a no-op tracer."""
-    global _tracer  # pylint: disable=global-statement
-    _tracer = NullTracer()
+    tracer.actual_tracer = NullTracer()
 
 
 def is_tracing_enabled() -> bool:
     """Return whether tracing is enabled."""
-    return not isinstance(_tracer, NullTracer)
+    return not isinstance(tracer.actual_tracer, NullTracer)

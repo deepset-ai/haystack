@@ -26,10 +26,10 @@ from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.telemetry import pipeline_running
 from haystack.utils import is_in_jupyter
+from haystack import tracing
 
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
 from .draw import _to_mermaid_image
-from ... import tracing
 
 DEFAULT_MARSHALLER = YamlMarshaller()
 logger = logging.getLogger(__name__)
@@ -745,7 +745,7 @@ class Pipeline:
         # The waiting_for_input list is used to keep track of components that are waiting for input.
         waiting_for_input: List[Tuple[str, Component]] = []
 
-        with tracing.get_tracer().trace(
+        with tracing.tracer.trace(
             "haystack.pipeline.run",
             tags={
                 "haystack.pipeline.debug": debug,
@@ -777,7 +777,7 @@ class Pipeline:
                         msg = f"Maximum loops count ({self.max_loops_allowed}) exceeded for component '{name}'"
                         raise PipelineMaxLoops(msg)
                     # This component has all the inputs it needs to run
-                    with tracing.get_tracer().trace(
+                    with tracing.tracer.trace(
                         "haystack.component.run",
                         tags={
                             "haystack.component.name": name,
