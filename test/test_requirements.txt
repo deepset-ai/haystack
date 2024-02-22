@@ -27,3 +27,4 @@ jsonschema
 
 # Tracing
 opentelemetry-sdk
+ddtrace
