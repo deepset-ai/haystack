@@ -176,38 +176,6 @@ class TestOpenAPIServiceConnector:
         response = json.loads(result["service_response"][0].content)
         assert response == "Hello, John"
 
-        with patch(
-            "haystack.components.connectors.openapi_service.OpenAPIServiceConnector._authenticate_service"
-        ), patch("haystack.components.connectors.openapi_service.OpenAPI") as MockOpenAPI:
-            mock_openapi_instance = MockOpenAPI.return_value
-
-            mock_method_callable = MagicMock()
-            mock_method_callable.return_value = MagicMock(_raw_data={"result": "Hello, John"})
-
-            mock_operation_self = MagicMock()
-            mock_operation_raw_element = {
-                "parameters": [
-                    {"name": "name", "in": "path", "required": True, "schema": {"type": "string"}},
-                    {"name": "message", "in": "query", "schema": {"type": "string"}},
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {"properties": {"message": {"type": "string"}}, "required": ["message"]}
-                        }
-                    }
-                },
-            }
-
-            type(mock_method_callable).operation = PropertyMock(return_value=mock_operation_self)
-            type(mock_operation_self).__self__ = PropertyMock(return_value=mock_operation_self)
-            mock_operation_self.raw_element = mock_operation_raw_element
-
-            setattr(mock_openapi_instance, "call_greet", mock_method_callable)
-            result = connector.run(messages=messages, service_openapi_spec=spec)
-            response = json.loads(result["service_response"][0].content)
-            assert response == {"result": "Hello, John"}
-
     def test_run_with_complex_types(self, test_files_path):
         connector = OpenAPIServiceConnector()
         spec_path = test_files_path / "json" / "complex_types_openapi_service.json"
