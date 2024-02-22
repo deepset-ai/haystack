@@ -24,3 +24,6 @@ openapi3
 
 # Validation
 jsonschema
+
+# Tracing
+opentelemetry-sdk

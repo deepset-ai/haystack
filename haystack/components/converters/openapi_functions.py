@@ -124,43 +124,48 @@ class OpenAPIServiceToFunctions:
             )
 
         functions: List[Dict[str, Any]] = []
-        for path_methods in service_openapi_spec["paths"].values():
-            for method_specification in path_methods.values():
-                resolved_spec = jsonref.replace_refs(method_specification)
-                if isinstance(resolved_spec, dict):
-                    function_name = resolved_spec.get("operationId")
-                    desc = resolved_spec.get("description") or resolved_spec.get("summary", "")
-
-                    schema: Dict[str, Any] = {"type": "object", "properties": {}}
-
-                    req_body = (
-                        resolved_spec.get("requestBody", {})
-                        .get("content", {})
-                        .get("application/json", {})
-                        .get("schema")
-                    )
-                    if req_body:
-                        schema["properties"]["requestBody"] = req_body
-
-                    params = resolved_spec.get("parameters", [])
-                    if params:
-                        param_properties = {param["name"]: param["schema"] for param in params if "schema" in param}
-                        schema["properties"]["parameters"] = {"type": "object", "properties": param_properties}
-
-                    # these three fields are minimal requirement for OpenAI function calling
-                    if function_name and desc and schema:
-                        functions.append({"name": function_name, "description": desc, "parameters": schema})
-                    else:
-                        logger.warning(
-                            "Invalid OpenAPI spec format provided. Could not extract function from %s", resolved_spec
-                        )
-
-                else:
-                    logger.warning(
-                        "Invalid OpenAPI spec format provided. Could not extract function from %s", resolved_spec
-                    )
-
+        for methods in service_openapi_spec["paths"].values():
+            for method_spec in methods.values():
+                function_dict = self._parse_method_spec(method_spec)
+                if function_dict:
+                    functions.append(function_dict)
         return functions
+
+    def _parse_method_spec(self, method_spec: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        resolved_spec = jsonref.replace_refs(method_spec)
+        if not isinstance(resolved_spec, dict):
+            logger.warning("Invalid OpenAPI spec format provided. Could not extract function.")
+            return {}
+
+        function_name = resolved_spec.get("operationId")
+        description = resolved_spec.get("description") or resolved_spec.get("summary", "")
+
+        schema: Dict[str, Any] = {"type": "object", "properties": {}}
+
+        req_body = (
+            resolved_spec.get("requestBody", {})
+            .get("content", {})
+            .get("application/json", {})
+            .get("schema", {})
+            .get("properties", {})
+        )
+
+        params = resolved_spec.get("parameters", [])
+        param_properties = {
+            param["name"]: self._parse_property_attributes(param) for param in params if "schema" in param
+        }
+
+        # merge request body and parameters
+        schema["properties"] = {**req_body, **param_properties}
+        required = [param["name"] for param in params if param.get("required")]
+        if required:
+            schema["required"] = required
+
+        if function_name and description and schema["properties"]:
+            return {"name": function_name, "description": description, "parameters": schema}
+        else:
+            logger.warning("Invalid OpenAPI spec format provided. Could not extract function from %s", resolved_spec)
+            return {}
 
     def _parse_openapi_spec(self, content: str) -> Dict[str, Any]:
         """
@@ -215,3 +220,22 @@ class OpenAPIServiceToFunctions:
         except RequestException as e:
             logger.warning("Error fetching URL: %s. Error: %s", url, e)
             return None
+
+    def _parse_property_attributes(self, property_schema: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Parses the attributes of a property schema and returns them if present.
+
+        :param property_schema: The schema of the property.
+        :type property_schema: dict
+        :return: A dictionary with the parsed attributes of the property.
+        :rtype: dict
+        """
+        # handle only a subset of possible OAS attributes
+        possible_attributes = ["pattern", "description", "examples", "enum"]
+
+        schema = property_schema.get("schema", {})
+        parsed_attributes = {"type": schema.get("type")}
+        for attribute in possible_attributes:
+            if attribute in property_schema:
+                parsed_attributes[attribute] = property_schema[attribute]
+        return parsed_attributes
