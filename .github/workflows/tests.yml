@@ -15,6 +15,7 @@ on:
       - synchronize
       - ready_for_review
     paths:
+      # Keep the list in sync with the paths defined in the `tests_skipper.yml` workflow
       - "haystack/**/*.py"
       - "haystack/templates/predefined/*"
       - "test/**/*.py"
