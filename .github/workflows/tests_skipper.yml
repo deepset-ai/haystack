@@ -9,6 +9,8 @@ on:
       - synchronize
       - ready_for_review
     paths-ignore:
+      # we skip the tests unless the code changes. The problem is that GitHub will run the check anyway if any other
+      # file outside the code changed (e.g. the release notes). Hence, we need a second filter down below.
       - "haystack/**/*.py"
       - "test/**/*.py"
       - "test/test_requirements.txt"
@@ -17,6 +19,20 @@ jobs:
   catch-all:
     name: Catch-all check
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     steps:
+      - uses: actions/checkout@v4
+      - name: Check for changed code
+        # Don't run this check if the PR contains both code and non-code changes (e.g. release notes)
+        id: changes
+        uses: dorny/paths-filter@ebc4d7e9ebcb0b1eb21480bb8f43113e996ac77a
+        with:
+          filters: |
+            code_changes:
+              - haystack/**/*.py
+              - test/**/*.py
+              - test/test_requirements.txt
       - name: Skip tests
+        if: steps.changes.outputs.code_changes == 'false'
         run: echo "Skipped!"
