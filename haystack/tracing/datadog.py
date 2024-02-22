@@ -10,7 +10,7 @@ with LazyImport("Run 'pip install ddtrace'") as ddtrace_import:
 
 
 class DatadogSpan(Span):
-    def __init__(self, span: ddtrace.Span) -> None:
+    def __init__(self, span: "ddtrace.Span") -> None:
         self._span = span
 
     def set_tag(self, key: str, value: Any) -> None:
@@ -22,7 +22,7 @@ class DatadogSpan(Span):
 
 
 class DatadogTracer(Tracer):
-    def __init__(self, tracer: ddtrace.Tracer) -> None:
+    def __init__(self, tracer: "ddtrace.Tracer") -> None:
         ddtrace_import.check()
         self._tracer = tracer
 
