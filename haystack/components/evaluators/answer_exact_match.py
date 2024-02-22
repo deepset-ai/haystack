@@ -32,7 +32,7 @@ class AnswerExactMatchEvaluator:
                 * `result` - A number from 0.0 to 1.0, it represents the proportion of questions where any predicted
                 answer matched one of the ground truth answers.
         """
-        if not (len(questions) == len(ground_truth_answers) == len(predicted_answers)):
+        if not len(questions) == len(ground_truth_answers) == len(predicted_answers):
             raise ValueError("The length of questions, ground_truth_answers, and predicted_answers must be the same.")
 
         matches = 0
