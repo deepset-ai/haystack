@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List, Dict, Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from haystack import component
 from haystack.dataclasses import ChatMessage, ChatRole
@@ -150,11 +150,12 @@ class OpenAPIServiceConnector:
                     if auth_credentials:
                         openapi_service.authenticate(scheme_name, auth_credentials)
                         authenticated = True
-                    else:
-                        raise ValueError(
-                            f"Service {service_name} requires {scheme_name} security scheme but no "
-                            f"credentials were provided for it. Check the service configuration and credentials."
-                        )
+                        break
+
+                    raise ValueError(
+                        f"Service {service_name} requires {scheme_name} security scheme but no "
+                        f"credentials were provided for it. Check the service configuration and credentials."
+                    )
             if not authenticated:
                 raise ValueError(
                     f"Service {service_name} requires authentication but no credentials were provided "
