@@ -124,6 +124,6 @@ class TestAutoEnableTracer:
         monkeypatch.setattr(builtins, "__import__", Mock(side_effect=ImportError))
         auto_enable_tracing()
 
-        activated_tracer = get_tracer()
+        activated_tracer = tracer.actual_tracer
         assert isinstance(activated_tracer, NullTracer)
         assert not is_tracing_enabled()
