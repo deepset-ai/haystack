@@ -11,7 +11,7 @@ from haystack.dataclasses import ChatMessage
 
 @pytest.fixture
 def genuine_fc_message():
-    return """[{"id": "call_NJr1NBz2Th7iUWJpRIJZoJIA", "function": {"arguments": "{\\n  \\"parameters\\": {\\n    \\"basehead\\": \\"main...amzn_chat\\",\\n    \\"owner\\": \\"deepset-ai\\",\\n    \\"repo\\": \\"haystack-core-integrations\\"\\n  }\\n}", "name": "compare_branches"}, "type": "function"}]"""
+    return """[{"id": "call_NJr1NBz2Th7iUWJpRIJZoJIA", "function": {"arguments": "{\\n    \\"basehead\\": \\"main...amzn_chat\\",\\n    \\"owner\\": \\"deepset-ai\\",\\n    \\"repo\\": \\"haystack-core-integrations\\"\\n  }", "name": "compare_branches"}, "type": "function"}]"""
 
 
 @pytest.fixture
@@ -26,23 +26,16 @@ def json_schema_github_compare():
                     "arguments": {
                         "type": "object",
                         "properties": {
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "basehead": {
-                                        "type": "string",
-                                        "pattern": "^[^\\.]+(\\.{3}).+$",
-                                        "description": "Branch names must be in the format 'base_branch...head_branch'",
-                                    },
-                                    "owner": {"type": "string", "description": "Owner of the repository"},
-                                    "repo": {"type": "string", "description": "Name of the repository"},
-                                },
-                                "required": ["basehead", "owner", "repo"],
-                                "description": "Parameters for the function call",
-                            }
+                            "basehead": {
+                                "type": "string",
+                                "pattern": "^[^\\.]+(\\.{3}).+$",
+                                "description": "Branch names must be in the format 'base_branch...head_branch'",
+                            },
+                            "owner": {"type": "string", "description": "Owner of the repository"},
+                            "repo": {"type": "string", "description": "Name of the repository"},
                         },
-                        "required": ["parameters"],
-                        "description": "Arguments for the function",
+                        "required": ["basehead", "owner", "repo"],
+                        "description": "Parameters for the function call",
                     },
                     "name": {"type": "string", "description": "Name of the function to be called"},
                 },
@@ -102,7 +95,7 @@ class TestJsonSchemaValidator:
         result = validator.recursive_json_to_object({"key": genuine_fc_message})
 
         # we need this recursive json conversion to validate the message
-        assert result["key"][0]["function"]["arguments"]["parameters"]["basehead"] == "main...amzn_chat"
+        assert result["key"][0]["function"]["arguments"]["basehead"] == "main...amzn_chat"
 
     #  Validates multiple messages against a provided JSON schema successfully.
     def test_validates_multiple_messages_against_json_schema(self, json_schema_github_compare, genuine_fc_message):
@@ -206,4 +199,4 @@ class TestJsonSchemaValidator:
         result = pipe.run(data={"schema_validator": {"json_schema": json_schema_github_compare}})
         assert "validation_error" in result["schema_validator"]
         assert len(result["schema_validator"]["validation_error"]) > 1
-        assert "Error details" in result["schema_validator"]["validation_error"][1].content
+        assert "Error details" in result["schema_validator"]["validation_error"][0].content
