@@ -8,8 +8,7 @@ from openai.lib.azure import AzureOpenAI
 from haystack import default_to_dict, default_from_dict
 from haystack.components.generators import OpenAIGenerator
 from haystack.dataclasses import StreamingChunk
-from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
+from haystack.utils import Secret, deserialize_secrets_inplace, serialize_callable, deserialize_callable
 
 logger = logging.getLogger(__name__)
 
