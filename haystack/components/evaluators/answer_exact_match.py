@@ -8,6 +8,9 @@ from haystack.core.component import component
 class AnswerExactMatchEvaluator:
     """
     Evaluator that checks if the predicted answers matches any of the ground truth answers exactly.
+    The result is a number from 0.0 to 1.0, it represents the proportion of questions where any predicted answer
+    matched one of the ground truth answers.
+    Each question can have multiple ground truth answers and multiple predicted answers.
     """
 
     def to_dict(self) -> Dict[str, Any]:
@@ -29,7 +32,7 @@ class AnswerExactMatchEvaluator:
         :param ground_truth_answers: A list of expected answers for each question.
         :param predicted_answers: A list of predicted answers for each question.
         :returns: A dictionary with the following outputs:
-                * `result` - A number from 0.0 to 1.0, it represents the proportion of questions where any predicted
+                * `result` - A number from 0.0 to 1.0 that represents the proportion of questions where any predicted
                 answer matched one of the ground truth answers.
         """
         if not len(questions) == len(ground_truth_answers) == len(predicted_answers):
