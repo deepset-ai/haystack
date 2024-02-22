@@ -8,7 +8,7 @@ features:
     To instruct Haystack to use the OpenTelemetry Tracer, you have multiple options:
 
     * Run your Haystack application using the `opentelemetry-instrument` command line tool as described in the
-      the [OpenTelemetry documentation](https://opentelemetry.io/docs/languages/python/automatic/#configuring-the-agent).
+     [OpenTelemetry documentation](https://opentelemetry.io/docs/languages/python/automatic/#configuring-the-agent).
       This behavior can be disabled by setting the `HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR` environment variable to `false`.
     * Configure the tracer manually in your code using the `opentelemetry` package:
       ```python
