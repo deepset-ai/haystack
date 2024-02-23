@@ -37,17 +37,15 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Haystack
-        run: pip install .[dev]
-
-      - name: Install the dependencies needed for tests
-        run: pip install -r test/test_requirements.txt
+      - name: Install Hatch
+        run: pip install hatch
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
         run: |
           mkdir .mypy_cache
-          mypy --install-types --non-interactive --cache-dir=.mypy_cache/ ${{ steps.files.outputs.all_changed_files }}
+          # can't use hatch script due to positional argument
+          hatch run test:mypy --install-types --non-interactive --cache-dir=.mypy_cache/ ${{ steps.files.outputs.all_changed_files }}
 
   pylint:
     runs-on: ubuntu-latest
@@ -70,10 +68,10 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Haystack and the dependencies needed for tests
-        run: pip install -r test/test_requirements.txt
+      - name: Install Hatch
+        run: pip install hatch
 
       - name: Pylint
         if: steps.files.outputs.any_changed == 'true'
         run: |
-          pylint -ry -j 0 ${{ steps.files.outputs.all_changed_files }}
+          hatch run test:pylint -ry -j 0 ${{ steps.files.outputs.all_changed_files }}

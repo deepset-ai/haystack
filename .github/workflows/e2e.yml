@@ -30,13 +30,8 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt install ffmpeg  # for local Whisper tests
-
-    - name: Install Haystack and the dependencies needed for tests
-      run: pip install -r test/test_requirements.txt
+    - name: Install Hatch
+      run: pip install hatch
 
     - name: Run tests
-      run: pytest e2e
+      run: hatch run test:e2e
