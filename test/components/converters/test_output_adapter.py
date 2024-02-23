@@ -5,6 +5,7 @@ import pytest
 from haystack import Pipeline, component
 from haystack.components.converters import OutputAdapter
 from haystack.components.converters.output_adapter import OutputAdaptationException
+from haystack.components.converters.output_adapter_filters import ALL_FILTERS
 
 
 def custom_filter_to_sede(value):
@@ -147,3 +148,18 @@ class TestOutputAdapter:
         result = pipe.run(data={})
         assert result
         assert result["output_adapter"]["output"] == {"framework": "Haystack"}
+
+    def test_sede_pipeline_with_custom_filters(self):
+        pipe = Pipeline()
+        pipe.add_component(
+            name="output_adapter",
+            instance=OutputAdapter(template="{{ irrelevant}}", output_type=str, custom_filters=ALL_FILTERS),
+        )
+        pipeline_serialized = pipe.dumps()
+        assert "custom_filters" in pipeline_serialized
+        assert "prepare_fc_params" in pipeline_serialized
+        assert "tojson" in pipeline_serialized
+        assert "change_role" in pipeline_serialized
+
+        deserialized_pipe = Pipeline.loads(pipeline_serialized)
+        assert deserialized_pipe.get_component("output_adapter").custom_filters == ALL_FILTERS
