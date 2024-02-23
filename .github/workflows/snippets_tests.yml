@@ -17,6 +17,7 @@ on:
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   PYTHON_VERSION: "3.8"
+  HATCH_VERSION: "1.9.3"
 
 jobs:
   black:
@@ -103,7 +104,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Hatch
-        run: pip install hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Get changed files
         id: files

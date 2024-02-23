@@ -18,6 +18,7 @@ on:
 env:
   PYTHON_VERSION: "3.8"
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  HATCH_VERSION: "1.9.3"
 
 jobs:
   run:
@@ -31,7 +32,7 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Hatch
-      run: pip install hatch
+      run: pip install hatch==${{ env.HATCH_VERSION }}
 
     - name: Run tests
       run: hatch run test:e2e

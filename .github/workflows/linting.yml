@@ -12,6 +12,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.8"
+  HATCH_VERSION: "1.9.3"
 
 jobs:
   mypy:
@@ -38,7 +39,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Hatch
-        run: pip install hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
@@ -69,7 +70,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Hatch
-        run: pip install hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Pylint
         if: steps.files.outputs.any_changed == 'true'

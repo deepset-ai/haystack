@@ -29,6 +29,7 @@ env:
   AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PYTHON_VERSION: "3.8"
+  HATCH_VERSION: "1.9.3"
 
 jobs:
   black:
@@ -41,7 +42,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Hatch
-        run: pip install hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Check status
         run: hatch run default:format-check
@@ -93,7 +94,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Hatch
-        run: pip install hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Install dependencies
         # To actually install and sync the dependencies
