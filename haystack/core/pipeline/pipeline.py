@@ -787,11 +787,11 @@ class Pipeline:
                             },
                             "haystack.component.input_spec": {
                                 key: {"type": value.type.__name__, "senders": value.senders}
-                                for key, value in comp.__haystack_input__._sockets_dict.items()
+                                for key, value in comp.__haystack_input__._sockets_dict.items()  # type: ignore
                             },
                             "haystack.component.output_spec": {
                                 key: {"type": value.type.__name__, "senders": value.receivers}
-                                for key, value in comp.__haystack_output__._sockets_dict.items()
+                                for key, value in comp.__haystack_output__._sockets_dict.items()  # type: ignore
                             },
                         },
                     ) as span:
