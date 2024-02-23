@@ -3,12 +3,8 @@ from haystack.components.embedders.sentence_transformers_document_embedder impor
 from haystack.components.generators.openai import OpenAIGenerator
 from haystack.components.builders import PromptBuilder
 
-# from haystack.utils import default_to_dict, default_from_dict
-
 from typing import Dict, Any
 from numpy import array, mean
-
-from haystack.utils import deserialize_secrets_inplace
 
 
 @component
@@ -42,21 +38,20 @@ class HypotheticalDocumentEmbedder:
         """
 
         self.nr_completions = nr_completions
-
+        self.generator = OpenAIGenerator(
+            model=instruct_llm, generation_kwargs={"n": nr_completions, "temperature": 0.75, "max_tokens": 400}
+        )
+        self.prompt_builder = PromptBuilder(
+            template="""
+                Given a question, generate a paragraph of text that answers the question.
+                Question: {{question}}
+                Paragraph:
+                """
+        )
         self.embedder = SentenceTransformersDocumentEmbedder(
             model="sentence-transformers/all-MiniLM-L6-v2", progress_bar=False
         )
         self.embedder.warm_up()
-        self.prompt_builder = PromptBuilder(
-            template="""
-        Given a question, generate a paragraph of text that answers the question.
-        Question: {{question}}
-        Paragraph:
-        """
-        )
-        self.generator = OpenAIGenerator(
-            model=instruct_llm, generation_kwargs={"n": nr_completions, "temperature": 0.75, "max_tokens": 400}
-        )
 
         self.pipeline = Pipeline()
         self.pipeline.add_component(name="prompt_builder", instance=self.prompt_builder)
@@ -64,12 +59,16 @@ class HypotheticalDocumentEmbedder:
         self.pipeline.connect("prompt_builder", "generator")
 
     def to_dict(self) -> Dict[str, Any]:
-        return default_to_dict(self, instruct_llm=self.generator.to_dict(), nr_completions=self.nr_completions)
+        return default_to_dict(
+            self,
+            instruct_llm=self.generator.to_dict(),
+            prompt_builder=self.prompt_builder.to_dict(),
+            embedder=self.embedder.to_dict(),
+        )
 
+    @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HypotheticalDocumentEmbedder":
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
         return default_from_dict(cls, data)
-        pass
 
     @component.output_types(replies=Dict[str, Any])
     def run(self, query: str):
