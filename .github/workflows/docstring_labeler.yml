@@ -5,6 +5,9 @@ on:
     paths:
       - "haystack/**/*.py"
 
+env:
+  PYTHON_VERSION: "3.11"
+
 jobs:
   label:
     runs-on: ubuntu-latest
@@ -24,7 +27,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Get docstrings
         id: base-docstrings

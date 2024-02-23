@@ -39,7 +39,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
         run: pip install hatch==${{ env.HATCH_VERSION }}
@@ -91,7 +91,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
         run: pip install hatch==${{ env.HATCH_VERSION }}
@@ -121,7 +121,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Restore Python dependencies
         uses: actions/cache/restore@v4
@@ -185,7 +185,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install dependencies
         run: |
@@ -244,7 +244,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install dependencies
         run: |
@@ -299,7 +299,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Restore Python dependencies
         uses: actions/cache/restore@v4
