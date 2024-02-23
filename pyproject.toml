@@ -131,6 +131,15 @@ integration = 'pytest --maxfail=5 -m "integration" test'
 integration-mac = 'pytest --maxfail=5 -m "integration" test -k "not tika"'
 integration-windows = 'pytest --maxfail=5 -m "integration" test -k "not tika"'
 
+[tool.hatch.envs.readme]
+detached = true  # To avoid installing the dependencies from the default environment
+dependencies = [
+  "haystack-pydoc-tools",
+]
+
+[tool.hatch.envs.readme.scripts]
+sync = "./.github/utils/pydoc-markdown.sh"
+
 [project.urls]
 "CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"
 "Docs: RTD" = "https://haystack.deepset.ai/overview/intro"
