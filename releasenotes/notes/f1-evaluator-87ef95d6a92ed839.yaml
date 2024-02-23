@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add `AnswerF1Evaluator`, a Component that can be used to calculate the F1 score metric
+    given a list of questions, a list of expected answers for each question and the list of predicted
+    answers for each question.
