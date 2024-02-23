@@ -120,7 +120,7 @@ class ZeroShotTextRouter:
 
     def run(self, text: str) -> Dict[str, str]:
         """
-        Run the TransformersTextRouter. This method routes the text to one of the different edges based on which label
+        Run the ZeroShotTextRouter. This method routes the text to one of the different edges based on which label
         it has been categorized into.
 
         :param text: A str to route to one of the different edges.
@@ -131,7 +131,7 @@ class ZeroShotTextRouter:
             )
 
         if not isinstance(text, str):
-            raise TypeError("TransformersTextRouter expects a str as input.")
+            raise TypeError("ZeroShotTextRouter expects a str as input.")
 
         prediction = self.pipeline(sequences=[text], candidate_labels=self.labels, multi_label=self.multi_label)
         label = prediction[0]["labels"][0]
