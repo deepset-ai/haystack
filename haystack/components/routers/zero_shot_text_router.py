@@ -8,7 +8,6 @@ from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_TASKS = ["zero-shot-classification"]
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import pipeline
@@ -16,7 +15,7 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") a
 
 
 @component
-class TransformersTextRouter:
+class ZeroShotTextRouter:
     """
     Routes a text input onto different output connections depending on which label it has been categorized into.
     This is useful for routing queries to different models in a pipeline depending on their categorization.
@@ -28,10 +27,29 @@ class TransformersTextRouter:
     ```python
     document_store = InMemoryDocumentStore()
     p = Pipeline()
-    p.add_component(instance=TransformersTextRouter(), name="text_router")
-    p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="retriever")
-    p.connect("text_router.en", "retriever.query")
+    p.add_component(instance=ZeroShotTextRouter(labels=["passage", "query"]), name="text_router")
+    p.add_component(
+        instance=SentenceTransformersTextEmbedder(
+            document_store=document_store, model="intfloat/e5-base-v2", prefix="passage: "
+        ),
+        name="passage_embedder"
+    )
+    p.add_component(
+        instance=SentenceTransformersTextEmbedder(
+            document_store=document_store, model="intfloat/e5-base-v2", prefix="query: "
+        ),
+        name="query_embedder"
+    )
+    p.connect("text_router.passage", "passage_embedder.text")
+    p.connect("text_router.query", "query_embedder.text")
+    # Query Example
     p.run({"text_router": {"text": "What's your query?"}})
+    # Passage Example
+    p.run({
+        "text_router":{
+            "text": "Last week I upgraded my iOS version and ever since then my phone has been overheating whenever I use your app."
+        }
+    })
     ```
     """
 
@@ -58,7 +76,7 @@ class TransformersTextRouter:
             huggingface_pipeline_kwargs=pipeline_kwargs,
             model=model,
             task="zero-shot-classification",
-            supported_tasks=SUPPORTED_TASKS,
+            supported_tasks=["zero-shot-classification"],
             device=device,
             token=token,
         )
@@ -92,7 +110,7 @@ class TransformersTextRouter:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TransformersTextRouter":
+    def from_dict(cls, data: Dict[str, Any]) -> "ZeroShotTextRouter":
         """
         Deserialize this component from a dictionary.
         """
