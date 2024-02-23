@@ -782,9 +782,27 @@ class Pipeline:
                         tags={
                             "haystack.component.name": name,
                             "haystack.component.type": comp.__class__.__name__,
-                            "haystack.component.inputs": {k: type(v).__name__ for k, v in last_inputs[name].items()},
+                            "haystack.component.input_types": {
+                                k: type(v).__name__ for k, v in last_inputs[name].items()
+                            },
+                            "haystack.component.input_spec": {
+                                key: {
+                                    "type": value.type.__name__ if isinstance(value.type, type) else str(value.type),
+                                    "senders": value.senders,
+                                }
+                                for key, value in comp.__haystack_input__._sockets_dict.items()  # type: ignore
+                            },
+                            "haystack.component.output_spec": {
+                                key: {
+                                    "type": value.type.__name__ if isinstance(value.type, type) else str(value.type),
+                                    "senders": value.receivers,
+                                }
+                                for key, value in comp.__haystack_output__._sockets_dict.items()  # type: ignore
+                            },
                         },
                     ) as span:
+                        span.set_content_tag("haystack.component.input", last_inputs[name])
+
                         res = comp.run(**last_inputs[name])
                         self.graph.nodes[name]["visits"] += 1
 
@@ -794,12 +812,8 @@ class Pipeline:
                                 "Components must always return dictionaries: check the the documentation."
                             )
 
-                        span.set_tags(
-                            tags={
-                                "haystack.component.outputs": {k: type(v).__name__ for k, v in res.items()},
-                                "haystack.component.visits": self.graph.nodes[name]["visits"],
-                            }
-                        )
+                        span.set_tags(tags={"haystack.component.visits": self.graph.nodes[name]["visits"]})
+                        span.set_content_tag("haystack.component.output", res)
 
                     # Reset the waiting for input previous states, we managed to run a component
                     before_last_waiting_for_input = None
