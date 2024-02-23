@@ -1,6 +1,0 @@
----
-features:
-  - |
-    Add `AnswerExactMatchEvaluator`, a Component that can be used to calculate the Exact Match metric
-    given a list of questions, a list of expected answers for each question and the list of predicted
-    answers for each question.
