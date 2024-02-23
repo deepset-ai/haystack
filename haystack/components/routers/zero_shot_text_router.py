@@ -73,7 +73,7 @@ class ZeroShotTextRouter:
         component.set_output_types(self, **{label: str for label in labels})
 
         pipeline_kwargs = resolve_hf_pipeline_kwargs(
-            huggingface_pipeline_kwargs=pipeline_kwargs,
+            huggingface_pipeline_kwargs=pipeline_kwargs or {},
             model=model,
             task="zero-shot-classification",
             supported_tasks=["zero-shot-classification"],
