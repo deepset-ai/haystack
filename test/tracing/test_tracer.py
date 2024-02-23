@@ -2,6 +2,7 @@ import builtins
 import sys
 from unittest.mock import Mock
 
+import ddtrace
 import opentelemetry.trace
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -10,6 +11,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
+from haystack.tracing.datadog import DatadogTracer
 from haystack.tracing.opentelemetry import OpenTelemetryTracer
 from haystack.tracing.tracer import (
     NullTracer,
@@ -93,6 +95,10 @@ class TestAutoEnableTracer:
         opentelemetry.trace._TRACER_PROVIDER = None
         disable_tracing()
 
+    @pytest.fixture()
+    def uninstalled_ddtrace_package(self, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.setattr(ddtrace.tracer, "enabled", False)
+
     def test_skip_auto_enable_tracer_if_already_configured(self) -> None:
         my_tracker = Mock(spec=Tracer)  # anything else than `NullTracer` works for this test
         enable_tracing(my_tracker)
@@ -127,3 +133,19 @@ class TestAutoEnableTracer:
         activated_tracer = tracer.actual_tracer
         assert isinstance(activated_tracer, NullTracer)
         assert not is_tracing_enabled()
+
+    def test_skip_add_datadog_tracer_if_import_error(self, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.delitem(sys.modules, "ddtrace", raising=False)
+        monkeypatch.setattr(builtins, "__import__", Mock(side_effect=ImportError))
+        auto_enable_tracing()
+
+        activated_tracer = tracer.actual_tracer
+        assert isinstance(activated_tracer, NullTracer)
+        assert not is_tracing_enabled()
+
+    def test_add_datadog_tracer(self) -> None:
+        auto_enable_tracing()
+
+        activated_tracer = tracer.actual_tracer
+        assert isinstance(activated_tracer, DatadogTracer)
+        assert is_tracing_enabled()
