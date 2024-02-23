@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
@@ -9,7 +11,7 @@ from test.tracing.utils import SpyingSpan, SpyingTracer
 @component
 class Hello:
     @component.output_types(output=str)
-    def run(self, word: str):
+    def run(self, word: Optional[str]):  # use optional to spice up the typing tags
         """
         Takes a string in input and returns "Hello, <string>!"
         in output.
@@ -47,7 +49,7 @@ class TestTracing:
                     "haystack.component.name": "hello",
                     "haystack.component.type": "Hello",
                     "haystack.component.input_types": {"word": "str"},
-                    "haystack.component.input_spec": {"word": {"type": "str", "senders": []}},
+                    "haystack.component.input_spec": {"word": {"type": "typing.Union[str, NoneType]", "senders": []}},
                     "haystack.component.output_spec": {"output": {"type": "str", "senders": ["hello2"]}},
                     "haystack.component.visits": 1,
                 },
@@ -58,7 +60,9 @@ class TestTracing:
                     "haystack.component.name": "hello2",
                     "haystack.component.type": "Hello",
                     "haystack.component.input_types": {"word": "str"},
-                    "haystack.component.input_spec": {"word": {"type": "str", "senders": ["hello"]}},
+                    "haystack.component.input_spec": {
+                        "word": {"type": "typing.Union[str, NoneType]", "senders": ["hello"]}
+                    },
                     "haystack.component.output_spec": {"output": {"type": "str", "senders": []}},
                     "haystack.component.visits": 1,
                 },
@@ -89,7 +93,7 @@ class TestTracing:
                     "haystack.component.name": "hello",
                     "haystack.component.type": "Hello",
                     "haystack.component.input_types": {"word": "str"},
-                    "haystack.component.input_spec": {"word": {"type": "str", "senders": []}},
+                    "haystack.component.input_spec": {"word": {"type": "typing.Union[str, NoneType]", "senders": []}},
                     "haystack.component.output_spec": {"output": {"type": "str", "senders": ["hello2"]}},
                     "haystack.component.input": {"word": "world"},
                     "haystack.component.visits": 1,
@@ -102,7 +106,9 @@ class TestTracing:
                     "haystack.component.name": "hello2",
                     "haystack.component.type": "Hello",
                     "haystack.component.input_types": {"word": "str"},
-                    "haystack.component.input_spec": {"word": {"type": "str", "senders": ["hello"]}},
+                    "haystack.component.input_spec": {
+                        "word": {"type": "typing.Union[str, NoneType]", "senders": ["hello"]}
+                    },
                     "haystack.component.output_spec": {"output": {"type": "str", "senders": []}},
                     "haystack.component.input": {"word": "Hello, world!"},
                     "haystack.component.visits": 1,

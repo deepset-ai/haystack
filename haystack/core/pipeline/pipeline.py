@@ -786,11 +786,17 @@ class Pipeline:
                                 k: type(v).__name__ for k, v in last_inputs[name].items()
                             },
                             "haystack.component.input_spec": {
-                                key: {"type": value.type.__name__, "senders": value.senders}
+                                key: {
+                                    "type": value.type.__name__ if isinstance(value.type, type) else str(value.type),
+                                    "senders": value.senders,
+                                }
                                 for key, value in comp.__haystack_input__._sockets_dict.items()  # type: ignore
                             },
                             "haystack.component.output_spec": {
-                                key: {"type": value.type.__name__, "senders": value.receivers}
+                                key: {
+                                    "type": value.type.__name__ if isinstance(value.type, type) else str(value.type),
+                                    "senders": value.receivers,
+                                }
                                 for key, value in comp.__haystack_output__._sockets_dict.items()  # type: ignore
                             },
                         },
