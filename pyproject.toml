@@ -140,6 +140,12 @@ dependencies = [
 [tool.hatch.envs.readme.scripts]
 sync = "./.github/utils/pydoc-markdown.sh"
 
+[tool.hatch.envs.snippets]
+extra-dependencies = [
+  "torch",
+  "pydantic",
+]
+
 [project.urls]
 "CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"
 "Docs: RTD" = "https://haystack.deepset.ai/overview/intro"

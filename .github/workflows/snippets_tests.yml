@@ -102,11 +102,8 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install snippets dependencies
-        run: |
-          pip install --upgrade pip
-          pip install "." torch
-          pip install pydantic
+      - name: Install Hatch
+        run: pip install hatch
 
       - name: Get changed files
         id: files
@@ -119,7 +116,7 @@ jobs:
         run: |
           CHANGED_FILES=${{ steps.files.outputs.all_changed_files }}
           for file in $CHANGED_FILES; do
-            python "$file"
+            hatch run snippets:python "$file"
           done
 
       - name: Calculate alert data
