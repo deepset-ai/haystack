@@ -212,13 +212,12 @@ class OpenAPIServiceToFunctions:
         Parses OpenAPI specification content, supporting both JSON and YAML formats.
 
         :param content: The content of the OpenAPI specification.
-        :type content: str
         :return: The parsed OpenAPI specification.
-        :rtype: Dict[str, Any]
         """
         open_api_spec_content = None
         try:
             open_api_spec_content = json.loads(content)
+            return jsonref.replace_refs(open_api_spec_content)
         except json.JSONDecodeError as json_error:
             # heuristic to confirm that the content is likely malformed JSON
             if content.strip().startswith(("{", "[")):
