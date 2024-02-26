@@ -1,3 +1,4 @@
+This configuration block is defining the setup for generating documentation for the audio API using the `haystack_pydoc_tools` tool. Here's a breakdown of what each section is doing:
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/audio]
@@ -24,3 +25,56 @@ renderer:
     add_method_class_prefix: true
     add_member_class_prefix: false
     filename: audio_api.md
+
+Here's the documentation of the configuration block, incorporating the code blocks:
+
+Configuration for Generating Audio API Documentation
+
+This configuration outlines instructions for generating documentation for the audio API using the haystack_pydoc_tools tool. It's organized into distinct sections for loading, processing, and rendering the documentation.
+
+Configuration Sections
+
+1. Loaders
+
+CustomPythonLoader:
+Purpose: Load specific Python modules for documentation.
+Settings:
+search_path: Paths to search for modules (e.g., [../../../haystack/components/audio]).
+modules: Names of modules to document (e.g., ["whisper_local", "whisper_remote"]).
+ignore_when_discovered: Modules to ignore, even if discovered in search paths (e.g., ["init"]).
+2. Processors
+
+Filter:
+Purpose: Filter documentation content.
+Settings:
+documented_only: Include only elements with docstrings.
+do_not_filter_modules: Preserve empty modules.
+skip_empty_modules: Exclude empty modules.
+Smart:
+Purpose: Apply context-aware processing for better documentation structure.
+Crossref:
+Purpose: Create cross-references for linking related elements.
+3. Renderer
+
+ReadmePreviewRenderer:
+Purpose: Render documentation as a Markdown file for use as a README preview.
+Settings:
+excerpt: Brief description of the API (e.g., "Transcribes audio files.").
+category_slug: Category for organizing documentation.
+title: API documentation title.
+slug: Slug for linking to the documentation.
+order: Display order in a list of documentation pages.
+markdown:
+descriptive_class_title: Include class docstrings in titles (set to false).
+descriptive_module_title: Include module docstrings in titles.
+add_method_class_prefix: Prefix method names with their class.
+add_member_class_prefix: Prefix member names with their class (set to false).
+filename: Output filename for the generated Markdown file (e.g., "audio_api.md").
+Summary
+
+This configuration instructs the haystack_pydoc_tools tool to:
+
+Load specific audio-related Python modules from designated paths.
+Filter the documentation to include only elements with docstrings, excluding empty modules.
+Apply smart processing for improved structure and create cross-references.
+Render the documentation as a Markdown file named "audio_api.md", suitable for use as a README preview with appropriate metadata and formatting.
