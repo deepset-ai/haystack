@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import Dict, Any, Set, Optional, Union
 
 import requests
-from jinja2 import meta, TemplateSyntaxError
+import yaml
+from jinja2 import meta, TemplateSyntaxError, Environment, PackageLoader
 from jinja2.nativetypes import NativeEnvironment
 
 from haystack import Pipeline
@@ -93,7 +94,7 @@ class PipelineTemplate:
     flexibility to customize and extend pipelines as required by advanced users and specific use cases.
     """
 
-    def __init__(self, template_content: str, template_params: Optional[Dict[str, Any]] = None):
+    def __init__(self, template_content: str):
         """
         Initialize a PipelineTemplate.
 
@@ -101,17 +102,18 @@ class PipelineTemplate:
         templates.
         :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
         """
-        self._template_content = template_content
-
-        env = NativeEnvironment()
+        env = Environment(
+            loader=PackageLoader("haystack.templates", "predefined"), trim_blocks=True, lstrip_blocks=True
+        )
         try:
-            self._template = env.from_string(self._template_content)
+            self._template = env.from_string(template_content)
         except TemplateSyntaxError as e:
             raise ValueError(f"Invalid pipeline template: {e.message}") from e
 
-        self.templated_variables = self._extract_variables(env)
-        self.components: Dict[str, Any] = {}
-        self.template_params = template_params or {}
+        # Store the list of undefined variables in the template. Components' names will be part of this list
+        self.template_variables = meta.find_undeclared_variables(env.parse(template_content))
+        self.component_overrides: Dict[str, Any] = {}
+        self._template_content = template_content
 
     def override(self, component_name: str, component_instance: Component) -> "PipelineTemplate":
         """
@@ -127,22 +129,16 @@ class PipelineTemplate:
         `component_instance` is not a valid component.
         """
         # check if the component_name is allowed in the template
-        if component_name not in self.templated_variables:
+        if component_name not in self.template_variables:
             raise PipelineValidationError(f"Component '{component_name}' is not defined in the pipeline template")
+
         if not isinstance(component_instance, Component):
             raise PipelineValidationError(
-                f"'{type(component_instance)}' doesn't seem to be a component. Is this class decorated with @component?"
+                f"'{type(component_instance)}' is not a Component. Is this class decorated with @component?"
             )
-        self.components[component_name] = component_to_dict(component_instance)
+
+        self.component_overrides[component_name] = yaml.safe_dump(component_to_dict(component_instance))
         return self
-
-    def list_variables(self) -> Set[str]:
-        """
-        Lists all templated variables in the pipeline template.
-
-        :return: a list of strings representing the names of templated variables in the pipeline template.
-        """
-        return self.templated_variables
 
     def build(self, template_params: Optional[Dict[str, Any]] = None):
         """
@@ -150,20 +146,9 @@ class PipelineTemplate:
 
         :return: An instance of `Pipeline` constructed from the rendered template and custom component configurations.
         """
-        rendered = self._template.render(**self.components, **self.template_params)
+        template_params = template_params or {}
+        rendered = self._template.render(**self.component_overrides, **template_params)
         return Pipeline.loads(rendered)
-
-    def _extract_variables(self, env: NativeEnvironment) -> Set[str]:
-        """
-        Extracts all variables from a list of Jinja template strings.
-
-        :param env: A Jinja native environment.
-        :return: A set of variable names extracted from the template strings.
-        """
-        variables = set()
-        ast = env.parse(self._template_content)
-        variables.update(meta.find_undeclared_variables(ast))
-        return variables
 
     @classmethod
     def from_str(cls, template_str: str) -> "PipelineTemplate":

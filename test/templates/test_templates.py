@@ -13,15 +13,17 @@ from haystack.templates.pipeline import PipelineTemplate, PredefinedPipeline
 
 @pytest.fixture
 def random_valid_template():
-    template = """components:
-  generator: {{ generator | tojson }}
-  prompt_builder: {{prompt_builder}}
+    template = """
+components:
+  generator:
+    {{ generator | indent }}
+
+  prompt_builder:
+    {{ prompt_builder | indent }}
 
 connections:
-- receiver: generator.prompt
-  sender: prompt_builder.prompt
-max_loops_allowed: 2
-metadata: {}
+  - receiver: generator.prompt
+    sender: prompt_builder.prompt
 """
     return template
 
@@ -95,15 +97,15 @@ class TestPipelineTemplate:
         assert isinstance(pipe.get_component("generator"), HuggingFaceTGIGenerator)
 
     #  Building a pipeline with a custom template that uses Jinja2 syntax to specify components and their connections
-    # @pytest.mark.integration
-    # def test_building_pipeline_with_direct_template(self, random_valid_template):
-    #     pt = PipelineTemplate(TemplateSource.from_str(random_valid_template))
-    #     pt.override("generator", HuggingFaceTGIGenerator())
-    #     pt.override("prompt_builder", PromptBuilder("Some fake prompt"))
-    #     pipe = pt.build()
+    @pytest.mark.integration
+    def test_building_pipeline_with_direct_template(self, random_valid_template):
+        pt = PipelineTemplate.from_str(random_valid_template)
+        pt.override("generator", HuggingFaceTGIGenerator())
+        pt.override("prompt_builder", PromptBuilder("Some fake prompt"))
+        pipe = pt.build()
 
-    #     assert isinstance(pipe, Pipeline)
-    #     assert pipe.get_component("generator")
-    #     assert isinstance(pipe.get_component("generator"), HuggingFaceTGIGenerator)
-    #     assert pipe.get_component("prompt_builder")
-    #     assert isinstance(pipe.get_component("prompt_builder"), PromptBuilder)
+        assert isinstance(pipe, Pipeline)
+        assert pipe.get_component("generator")
+        assert isinstance(pipe.get_component("generator"), HuggingFaceTGIGenerator)
+        assert pipe.get_component("prompt_builder")
+        assert isinstance(pipe.get_component("prompt_builder"), PromptBuilder)
