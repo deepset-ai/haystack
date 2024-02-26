@@ -64,7 +64,7 @@ class TopPSampler:
         :param top_p: Optional. A float to override the cumulative probability threshold set during initialization.
 
         :returns: A dictionary with the following key:
-            - documents: List of Document objects that have been selected based on the top-p sampling.
+            - `documents`: List of Document objects that have been selected based on the top-p sampling.
 
         :raises ValueError: If the top_p value is not within the range [0, 1].
         """
