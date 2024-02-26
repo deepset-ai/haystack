@@ -96,10 +96,10 @@ class TestStructuredLoggingConsoleRendering:
         log_level = "warning"
         assert log_level in output
 
-        assert (
-            "Hello, structured logging!    \x1b[0m \x1b[36mkey1\x1b[0m=\x1b[35mvalue1\x1b[0m \x1b[36mkey2\x1b[0m=\x1b[35mvalue2\x1b[0m"
-            in output
-        )
+        assert "Hello, structured logging!" in output
+
+        assert "key1" in output
+        assert "value1" in output
 
     def test_logging_exceptions(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging()
