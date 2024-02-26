@@ -129,6 +129,7 @@ class TestDiversityRanker:
         with pytest.raises(ComponentError):
             ranker.run(query="test query", documents=documents)
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_empty_query(self, similarity):
         """
@@ -144,6 +145,7 @@ class TestDiversityRanker:
         with pytest.raises(ValueError):
             ranker.run(query=None, documents=documents)
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_top_k(self, similarity):
         """
@@ -175,6 +177,7 @@ class TestDiversityRanker:
         assert len(ranked_docs) == 2
         assert all(isinstance(doc, Document) for doc in ranked_docs)
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_diversity_ranker_negative_top_k(self, similarity):
         """
@@ -193,6 +196,7 @@ class TestDiversityRanker:
         with pytest.raises(ValueError):
             DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=-5)
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_diversity_ranker_top_k_is_none(self, similarity):
         """
@@ -211,6 +215,7 @@ class TestDiversityRanker:
 
         assert len(result["documents"]) == 2
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_with_less_documents_than_top_k(self, similarity):
         """
@@ -224,6 +229,7 @@ class TestDiversityRanker:
 
         assert len(result["documents"]) == 3
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_single_document_corner_case(self, similarity):
         """
@@ -237,6 +243,7 @@ class TestDiversityRanker:
 
         assert len(result["documents"]) == 1
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_no_documents_provided(self, similarity):
         """
@@ -250,6 +257,7 @@ class TestDiversityRanker:
 
         assert len(results["documents"]) == 0
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run(self, similarity):
         """
@@ -274,6 +282,7 @@ class TestDiversityRanker:
 
         assert ranked_order == expected_order
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_real_world_use_case(self, similarity):
         ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity)
