@@ -2,15 +2,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
-from typing import Optional
+from typing import List, Optional
 from unittest.mock import patch
 
 import pytest
 
+from haystack import Document
+from haystack.components.builders import PromptBuilder
+from haystack.components.others import Multiplexer
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.core.errors import PipelineDrawingError, PipelineError, PipelineMaxLoops, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double
 
@@ -25,6 +30,45 @@ class FakeComponent:
     @component.output_types(value=str)
     def run(self, input_: str):
         return {"value": input_}
+
+
+def test_run_with_greedy_variadic_after_component_with_default_input_simple(spying_tracer):
+    """
+    This test verifies that `Pipeline.run()` executes the components in the correct order when
+    there's a greedy Component with variadic input right before a Component with at least one default input.
+
+    We use the `spying_tracer` fixture to simplify the code to verify the order of execution.
+    This creates some coupling between this test and how we trace the Pipeline execution.
+    A worthy tradeoff in my opinion, we will notice right away if we change either the run logic or
+    the tracing logic.
+    """
+    document_store = InMemoryDocumentStore()
+    document_store.write_documents([Document(content="This is a simple document")])
+
+    pipeline = Pipeline()
+    template = "Given this documents: {{ documents|join(', ', attribute='content') }} Answer this question: {{ query }}"
+    pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+    pipeline.add_component("prompt_builder", PromptBuilder(template=template))
+    pipeline.add_component("multiplexer", Multiplexer(List[Document]))
+
+    pipeline.connect("retriever", "multiplexer")
+    pipeline.connect("multiplexer", "prompt_builder.documents")
+    res = pipeline.run({"query": "This is my question"})
+
+    assert res == {
+        "prompt_builder": {
+            "prompt": "Given this documents: This is a simple document Answer this question: This is my question"
+        }
+    }
+
+    assert len(spying_tracer.spans) == 4
+    assert spying_tracer.spans[0].operation_name == "haystack.pipeline.run"
+    assert spying_tracer.spans[1].operation_name == "haystack.component.run"
+    assert spying_tracer.spans[1].tags["haystack.component.name"] == "retriever"
+    assert spying_tracer.spans[2].operation_name == "haystack.component.run"
+    assert spying_tracer.spans[2].tags["haystack.component.name"] == "multiplexer"
+    assert spying_tracer.spans[3].operation_name == "haystack.component.run"
+    assert spying_tracer.spans[3].tags["haystack.component.name"] == "prompt_builder"
 
 
 def test_pipeline_resolution_simple_input():
