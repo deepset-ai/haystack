@@ -72,7 +72,7 @@ class DocumentLanguageClassifier:
         :returns: A dictionary with the following key:
             - `documents`: List of Documents with an added metadata field called `language`.
 
-        :raises: TypeError if the input is not a list of Documents.
+        :raises TypeError: if the input is not a list of Documents.
         """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
