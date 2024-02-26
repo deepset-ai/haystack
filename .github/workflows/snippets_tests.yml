@@ -17,6 +17,7 @@ on:
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   PYTHON_VERSION: "3.8"
+  HATCH_VERSION: "1.9.3"
 
 jobs:
   black:
@@ -26,7 +27,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Black
         run: |
@@ -100,13 +101,10 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install snippets dependencies
-        run: |
-          pip install --upgrade pip
-          pip install "." torch
-          pip install pydantic
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Get changed files
         id: files
@@ -119,7 +117,7 @@ jobs:
         run: |
           CHANGED_FILES=${{ steps.files.outputs.all_changed_files }}
           for file in $CHANGED_FILES; do
-            python "$file"
+            hatch run snippets:python "$file"
           done
 
       - name: Calculate alert data
