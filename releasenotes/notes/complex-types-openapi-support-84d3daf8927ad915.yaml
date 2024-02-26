@@ -1,4 +1,4 @@
 ---
 features:
  - |
-   Enhanced OpenAPI integration by handling complex user types in OpenAPIServiceConnector and OpenAPIServiceToFunctions.
+   Enhanced OpenAPI integration by handling complex types of requests and responses in OpenAPIServiceConnector and OpenAPIServiceToFunctions.
