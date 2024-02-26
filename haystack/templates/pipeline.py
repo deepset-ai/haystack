@@ -50,11 +50,10 @@ class PipelineTemplate:
 
     - **Default Build**: Instantiating a pipeline with default settings for a "question answering" (qa) task.
       ```python
-      from haystack.templates import PipelineTemplate, TemplateSource, PredefinedTemplate
+      from haystack.templates import PipelineTemplate, PredefinedPipeline
 
       # Create a pipeline with default components for a QA task
-      ts = TemplateSource.from_predefined(PredefinedTemplate.QA)
-      pipe = PipelineTemplate(ts).build()
+      pipe = PipelineTemplate.from_predefined(PredefinedPipeline.QA).build()
       print(pipe.run(data={"question": "What's the capital of Bosnia and Herzegovina? Be brief"}))
       ```
 
@@ -63,13 +62,14 @@ class PipelineTemplate:
       ```python
       from haystack.components.generators import OpenAIGenerator
       from haystack.components.generators.utils import print_streaming_chunk
-      from haystack.templates import PipelineTemplate, TemplateSource, PredefinedTemplate
+      from haystack.templates import PipelineTemplate, PredefinedPipeline
 
       # Customize the pipeline with a streaming-capable generator
-      ts = TemplateSource.from_predefined(PredefinedTemplate.QA)
-      streaming_pipe = PipelineTemplate(ts).override("generator",
-                                                               OpenAIGenerator(
-                                                                   streaming_callback=print_streaming_chunk)).build()
+      streaming_pipe = (
+        PipelineTemplate.from_predefined(PredefinedTemplate.QA)
+        .override("generator", OpenAIGenerator(streaming_callback=print_streaming_chunk))
+        .build()
+      )
       streaming_pipe.run(data={"question": "What's the capital of Germany? Tell me about it"})
       ```
 
@@ -77,16 +77,15 @@ class PipelineTemplate:
     to the task.
       ```python
       from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-      from haystack.templates import PipelineTemplate, TemplateSource, PredefinedTemplate
+      from haystack.templates import PipelineTemplate, PredefinedPipeline
 
       # Customize the pipeline for document indexing with specific components, include PDF file converter
       ts = TemplateSource.from_predefined(PredefinedTemplate.INDEXING)
-      ptb = PipelineTemplate(ts, template_params={"use_pdf_file_converter": True})
+      ptb = PipelineTemplate.from_predefined(PredefinedTemplate.INDEXING)
       ptb.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True))
-      pipe = ptb.build()
+      pipe = ptb.build(template_params={"use_pdf_file_converter": True})
 
-      result = pipe.run(data={
-          "sources": ["some_text_file.txt", "another_pdf_file.pdf"]})
+      result = pipe.run(data={"sources": ["some_text_file.txt", "another_pdf_file.pdf"]})
       print(result)
       ```
 
