@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 from collections import defaultdict
 from typing import List, Dict, Any, Optional, Literal, Callable
 from dateutil.parser import parse as date_parse

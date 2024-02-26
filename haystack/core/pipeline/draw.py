@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import base64
-import logging
+from haystack import logging
 
 import networkx  # type:ignore
 import requests
@@ -72,7 +72,7 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     base64_string = base64_bytes.decode("ascii")
     url = f"https://mermaid.ink/img/{base64_string}?type=png"
 
-    logging.debug("Rendeding graph at %s", url)
+    logger.debug("Rendering graph at %s", url)
     try:
         resp = requests.get(url, timeout=10)
         if resp.status_code >= 400:

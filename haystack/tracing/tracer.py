@@ -1,6 +1,6 @@
 import abc
 import contextlib
-import logging
+from haystack import logging
 import os
 from typing import Dict, Any, Optional, Iterator
 

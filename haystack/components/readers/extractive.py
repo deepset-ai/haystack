@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 import math
 import warnings
 from pathlib import Path

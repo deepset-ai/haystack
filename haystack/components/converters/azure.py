@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
-import logging
+from haystack import logging
 
 from haystack.lazy_imports import LazyImport
 from haystack import component, Document, default_to_dict, default_from_dict

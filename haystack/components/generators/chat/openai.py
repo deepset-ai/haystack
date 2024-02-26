@@ -1,7 +1,8 @@
 import copy
 import dataclasses
 import json
-import logging
+from haystack import logging
+import warnings
 from typing import Optional, List, Callable, Dict, Any, Union
 
 from openai import OpenAI, Stream  # type: ignore

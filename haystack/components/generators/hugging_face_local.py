@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 from typing import Any, Dict, List, Literal, Optional
 
 from haystack import component, default_from_dict, default_to_dict

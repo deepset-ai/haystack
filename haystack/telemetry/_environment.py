@@ -1,5 +1,5 @@
 # pylint: disable=global-statement
-import logging
+from haystack import logging
 import os
 import platform
 import sys

@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 
 import importlib
 
-import logging
+from haystack import logging
 
 from haystack import component, Document, default_from_dict, default_to_dict, DeserializationError
 from haystack.document_stores.types import DocumentStore

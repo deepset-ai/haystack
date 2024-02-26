@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 import mimetypes
 from collections import defaultdict
 from pathlib import Path

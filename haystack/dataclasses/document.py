@@ -1,6 +1,6 @@
 import hashlib
 import io
-import logging
+from haystack import logging
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Dict, List, Optional
 

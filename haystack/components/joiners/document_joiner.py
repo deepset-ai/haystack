@@ -1,5 +1,5 @@
 import itertools
-import logging
+from haystack import logging
 from collections import defaultdict
 from math import inf
 from typing import List, Optional

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import Union, get_args, get_origin, Any
 
-import logging
+from haystack import logging
 
 
 logger = logging.getLogger(__name__)

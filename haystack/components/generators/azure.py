@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 import os
 from typing import Optional, Callable, Dict, Any
 

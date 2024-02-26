@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 import sys
 from typing import Any, Dict
 

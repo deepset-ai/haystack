@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Iterable, Callable
 from urllib.parse import urlparse

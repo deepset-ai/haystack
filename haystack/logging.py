@@ -1,4 +1,5 @@
 import builtins
+import functools
 import logging
 import os
 import sys
@@ -7,12 +8,95 @@ from typing import List, Optional
 
 import haystack.tracing.tracer
 import haystack.utils.jupyter
+from typing import List, Any
 
 if typing.TYPE_CHECKING:
     from structlog.typing import Processor, WrappedLogger, EventDict
 
 HAYSTACK_LOGGING_USE_JSON_ENV_VAR = "HAYSTACK_LOGGING_USE_JSON"
 HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR = "HAYSTACK_LOGGING_IGNORE_STRUCTLOG"
+
+
+class PatchedLogger(typing.Protocol):
+    """Class which enables using type checkers to find wrong logger usage."""
+
+    def debug(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+        ...
+
+    def info(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+        ...
+
+    def warn(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+        ...
+
+    def warning(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+        ...
+
+    def error(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+        ...
+
+    def critical(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+        ...
+
+    def exception(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+        ...
+
+    def fatal(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+        ...
+
+    def log(self, level: int, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+        ...
+
+    def setLevel(self, level: int) -> None:
+        ...
+
+
+def patched_log_method(func: typing.Callable) -> typing.Callable:
+    """A decorator to make sure that a function is only called with keyword arguments."""
+
+    @functools.wraps(func)
+    def log_only_with_kwargs(msg, *, _: Any = None, **kwargs: Any) -> Any:
+        existing_extra = kwargs.pop("extra", {})
+        return func(msg, extra={**existing_extra, **kwargs})
+
+    return log_only_with_kwargs
+
+
+def patched_log_with_level_method(func: typing.Callable) -> typing.Callable:
+    """A decorator to make sure that a function is only called with keyword arguments."""
+
+    @functools.wraps(func)
+    def log_only_with_kwargs(level, msg, *, _: Any = None, **kwargs: Any) -> Any:
+        existing_extra = kwargs.pop("extra", {})
+        return func(level, msg, extra={**existing_extra, **kwargs})
+
+    return log_only_with_kwargs
+
+
+def patched_make_records(original_make_records: typing.Callable) -> typing.Callable:
+    @functools.wraps(original_make_records)
+    def wrapper(name, level, fn, lno, msg, args, exc_info, func=None, extra=None, sinfo=None) -> Any:
+        safe_extra = extra or {}
+        interpolated_msg = msg.format(**safe_extra)
+        return original_make_records(name, level, fn, lno, interpolated_msg, (), exc_info, func, extra, sinfo)
+
+    return wrapper
+
+
+def getLogger(name: str) -> PatchedLogger:
+    logger = logging.getLogger(name)
+    logger.debug = patched_log_method(logger.debug)
+    logger.info = patched_log_method(logger.info)
+    logger.warn = patched_log_method(logger.warn)
+    logger.warning = patched_log_method(logger.warning)
+    logger.error = patched_log_method(logger.error)
+    logger.critical = patched_log_method(logger.critical)
+    logger.exception = patched_log_method(logger.exception)
+    logger.fatal = patched_log_method(logger.fatal)
+    logger.log = patched_log_with_level_method(logger.log)
+    logger.makeRecord = patched_make_records(logger.makeRecord)
+
+    return typing.cast(PatchedLogger, logger)
 
 
 def correlate_logs_with_traces(_: "WrappedLogger", __: str, event_dict: "EventDict") -> "EventDict":

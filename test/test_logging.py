@@ -359,3 +359,122 @@ class TestLogTraceCorrelation:
             "level": "warning",
             "timestamp": ANY,
         }
+
+
+class TestCompositeLogger:
+    @pytest.mark.parametrize(
+        "method, expected_level",
+        [
+            ("debug", "debug"),
+            ("info", "info"),
+            ("warning", "warning"),
+            ("error", "error"),
+            ("fatal", "critical"),
+            ("exception", "exception"),
+            ("critical", "critical"),
+        ],
+    )
+    def test_various_levels(self, capfd: LogCaptureFixture, method: str, expected_level: str) -> None:
+        haystack_logging.configure_logging(use_json=True)
+
+        logger = haystack_logging.getLogger(__name__)
+
+        logger.setLevel(logging.DEBUG)
+
+        getattr(logger, method)("Hello, structured {key}!", key="logging", key1="value1", key2="value2")
+
+        output = capfd.readouterr().err
+        parsed_output = json.loads(output)  # should not raise an error
+
+        assert parsed_output == {
+            "event": "Hello, structured logging!",
+            "key": "logging",
+            "key1": "value1",
+            "key2": "value2",
+            "level": expected_level,
+            "timestamp": ANY,
+        }
+
+    def test_log(self, capfd: LogCaptureFixture) -> None:
+        haystack_logging.configure_logging(use_json=True)
+
+        logger = haystack_logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+
+        logger.log(logging.DEBUG, "Hello, structured {key}!", key="logging", key1="value1", key2="value2")
+
+        output = capfd.readouterr().err
+        parsed_output = json.loads(output)
+
+        assert parsed_output == {
+            "event": "Hello, structured logging!",
+            "key": "logging",
+            "key1": "value1",
+            "key2": "value2",
+            "level": "debug",
+            "timestamp": ANY,
+        }
+
+    @pytest.mark.parametrize(
+        "method, expected_level",
+        [
+            ("debug", "debug"),
+            ("info", "info"),
+            ("warning", "warning"),
+            ("error", "error"),
+            ("fatal", "critical"),
+            ("exception", "exception"),
+            ("critical", "critical"),
+        ],
+    )
+    def test_haystack_logger_with_positional_args(self, method: str, expected_level: str) -> None:
+        haystack_logging.configure_logging(use_json=True)
+
+        logger = haystack_logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+
+        with pytest.raises(TypeError):
+            getattr(logger, method)("Hello, structured logging %s!", "logging")
+
+    @pytest.mark.parametrize(
+        "method, expected_level",
+        [
+            ("debug", "debug"),
+            ("info", "info"),
+            ("warning", "warning"),
+            ("error", "error"),
+            ("fatal", "critical"),
+            ("exception", "exception"),
+            ("critical", "critical"),
+        ],
+    )
+    def test_haystack_logger_with_old_interpolation(self, method: str, expected_level: str) -> None:
+        haystack_logging.configure_logging(use_json=True)
+
+        logger = haystack_logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+
+        # does not raise - hence we need to check this separately
+        getattr(logger, method)("Hello, structured logging %s!", key="logging")
+
+    def test_that_haystack_logger_is_used(self) -> None:
+        """Forces the usage of the Haystack logger instead of the standard library logger."""
+        allowed_list = [Path("haystack") / "logging.py"]
+        for root, dirs, files in os.walk("haystack"):
+            for file in files:
+                path = Path(root) / file
+
+                if not path.suffix.endswith(".py"):
+                    continue
+
+                if path in allowed_list:
+                    continue
+
+                content = path.read_text(encoding="utf-8")
+
+                # that looks like somebody is using our standard logger
+                if " logging.getLogger" in content:
+                    assert "from haystack import logging" in content, (
+                        f"{path} doesn't use the Haystack logger. Please use the Haystack logger instead of the "
+                        f"standard library logger and add plenty of keyword arguments."
+                    )

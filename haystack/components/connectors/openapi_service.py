@@ -1,5 +1,5 @@
 import json
-import logging
+from haystack import logging
 from collections import defaultdict
 from copy import copy
 from typing import List, Dict, Any, Optional, Union

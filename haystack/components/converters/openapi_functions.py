@@ -1,5 +1,5 @@
 import json
-import logging
+from haystack import logging
 import os
 from pathlib import Path
 from typing import List, Dict, Any, Union, Optional

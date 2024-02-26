@@ -69,7 +69,7 @@
 """
 
 import inspect
-import logging
+from haystack import logging
 from copy import deepcopy
 from types import new_class
 from typing import Any, Optional, Protocol, runtime_checkable
@@ -162,7 +162,7 @@ class ComponentMeta(type):
         # We can have this information only at instance creation time, so we do it here.
         is_variadic = any(socket.is_variadic for socket in instance.__haystack_input__._sockets_dict.values())
         if not is_variadic and cls.__haystack_is_greedy__:
-            logging.warning(
+            logger.warning(
                 "Component '%s' has no variadic input, but it's marked as greedy. "
                 "This is not supported and can lead to unexpected behavior.",
                 cls.__name__,

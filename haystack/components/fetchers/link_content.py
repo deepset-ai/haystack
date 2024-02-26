@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, List, Optional, Tuple

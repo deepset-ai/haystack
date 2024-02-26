@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
 import io

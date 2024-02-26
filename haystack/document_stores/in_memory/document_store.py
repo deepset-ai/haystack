@@ -1,7 +1,7 @@
 import re
 from typing import Literal, Any, Dict, List, Optional, Iterable
 
-import logging
+from haystack import logging
 
 import numpy as np
 from haystack_bm25 import rank_bm25

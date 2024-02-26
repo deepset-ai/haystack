@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 from typing import List, Dict, Optional
 
 from haystack import component, Document

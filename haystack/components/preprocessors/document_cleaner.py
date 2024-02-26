@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 import re
 from copy import deepcopy
 from functools import partial, reduce

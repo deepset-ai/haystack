@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any, Union, Literal, get_args
 
-import logging
+from haystack import logging
 import tempfile
 from pathlib import Path
 

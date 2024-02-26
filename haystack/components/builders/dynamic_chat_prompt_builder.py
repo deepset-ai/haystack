@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 from typing import Dict, Any, Optional, List, Set
 
 from jinja2 import Template, meta

@@ -1,5 +1,6 @@
 import datetime
 import logging
+from haystack import logging as haystack_logging
 import os
 import uuid
 from collections import defaultdict
@@ -22,7 +23,7 @@ CONFIG_PATH = Path("~/.haystack/config.yaml").expanduser()
 MIN_SECONDS_BETWEEN_EVENTS = 60
 
 
-logger = logging.getLogger(__name__)
+logger = haystack_logging.getLogger(__name__)
 
 
 class Telemetry:

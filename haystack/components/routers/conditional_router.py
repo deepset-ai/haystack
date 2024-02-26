@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 from typing import List, Dict, Any, Set
 
 from jinja2 import meta, Environment, TemplateSyntaxError

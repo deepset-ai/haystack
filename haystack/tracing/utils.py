@@ -1,5 +1,5 @@
 import json
-import logging
+from haystack import logging
 from typing import Any, Union
 
 

@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 from typing import List, Optional
 
 from haystack import ComponentError, Document, component

@@ -1,4 +1,4 @@
-import logging
+from haystack import logging
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 

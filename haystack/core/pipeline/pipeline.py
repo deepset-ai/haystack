@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import importlib
 import itertools
-import logging
+from haystack import logging
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime

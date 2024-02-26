@@ -1,5 +1,5 @@
 from typing import Protocol, Optional, Dict, Any, List
-import logging
+from haystack import logging
 
 from haystack.dataclasses import Document
 

@@ -1,5 +1,5 @@
 import importlib
-import logging
+from haystack import logging
 
 from typing import Dict, List, Any, Optional
 

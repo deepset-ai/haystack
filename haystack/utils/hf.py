@@ -1,6 +1,6 @@
 import copy
 import inspect
-import logging
+from haystack import logging
 from enum import Enum
 from typing import Any, Dict, Optional, List, Union, Callable
 
