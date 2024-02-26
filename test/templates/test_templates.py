@@ -8,8 +8,7 @@ from haystack.components.builders import PromptBuilder
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 from haystack.components.generators import HuggingFaceTGIGenerator
 from haystack.core.errors import PipelineValidationError
-from haystack.templates.pipelines import PipelineTemplate
-from haystack.templates.source import _templateSource, PipelineType
+from haystack.templates.pipeline import PipelineTemplate, PredefinedPipeline
 
 
 @pytest.fixture
@@ -27,48 +26,36 @@ metadata: {}
     return template
 
 
-class TestTemplateSource:
-    #  If the provided template does not contain Jinja2 syntax.
+class TestPipelineTemplate:
     def test_from_str(self):
         with pytest.raises(ValueError):
-            _templateSource.from_str("invalid_template")
+            PipelineTemplate.from_str("{{ invalid template }")
 
-    #  If the provided template contains Jinja2 syntax.
-    def test_from_str_valid(self):
-        ts = _templateSource.from_str("{{ valid_template }}")
-        assert ts.template == "{{ valid_template }}"
+        assert PipelineTemplate.from_str("{{ valid_template }}").template_content == "{{ valid_template }}"
 
-    #  If the provided file path does not exist.
-    def test_from_file_invalid_path(self):
+    def test_from_file(self, random_valid_template):
         with pytest.raises(FileNotFoundError):
-            _templateSource.from_file("invalid_path")
+            PipelineTemplate.from_file("invalid/path")
 
-    #  If the provided file path exists.
-    @pytest.mark.skipif(sys.platform == "win32", reason="Fails on Windows CI with permission denied")
-    def test_from_file_valid_path(self, random_valid_template):
-        temp_file = tempfile.NamedTemporaryFile(mode="w")
-        temp_file.write(random_valid_template)
-        temp_file.flush()
-        ts = _templateSource.from_file(temp_file.name)
-        assert ts.template == random_valid_template
+        with tempfile.NamedTemporaryFile(mode="w") as fp:
+            fp.write(random_valid_template)
+            fp.seek(0)
+            assert PipelineTemplate.from_file(fp.name).template_content == random_valid_template
 
-    # Use predefined template
-    def test_from_predefined_invalid_template(self):
-        ts = _templateSource.from_predefined(PipelineType.INDEXING)
-        assert len(ts.template) > 0
+    def test_from_predefined(self):
+        tpl = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING)
+        assert len(tpl.template_content)
 
-
-class TestPipelineTemplate:
     #  Raises PipelineValidationError when attempting to override a non-existent component
     def test_override_nonexistent_component(self):
         with pytest.raises(PipelineValidationError):
-            PipelineTemplate(PipelineType.INDEXING).override(
+            PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING).override(
                 "nonexistent_component", SentenceTransformersDocumentEmbedder()
             )
 
     #  Building a pipeline directly using all default components specified in a predefined or custom template.
     def test_build_pipeline_with_default_components(self):
-        pipeline = PipelineTemplate(PipelineType.INDEXING).build()
+        pipeline = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING).build()
         assert isinstance(pipeline, Pipeline)
 
         # pipeline has components
@@ -82,7 +69,7 @@ class TestPipelineTemplate:
 
     # Customizing pipelines by overriding default components with custom component settings
     def test_customize_pipeline_with_overrides(self):
-        pt = PipelineTemplate(PipelineType.INDEXING)
+        pt = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING)
 
         pt.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True, batch_size=64))
         pipe = pt.build()
@@ -98,7 +85,11 @@ class TestPipelineTemplate:
     @pytest.mark.integration
     def test_override_component(self):
         # integration because we'll fetch the tokenizer
-        pipe = PipelineTemplate(PipelineType.QA).override("generator", HuggingFaceTGIGenerator()).build()
+        pipe = (
+            PipelineTemplate.from_predefined(PredefinedPipeline.QA)
+            .override("generator", HuggingFaceTGIGenerator())
+            .build()
+        )
         assert isinstance(pipe, Pipeline)
         assert pipe.get_component("generator")
         assert isinstance(pipe.get_component("generator"), HuggingFaceTGIGenerator)

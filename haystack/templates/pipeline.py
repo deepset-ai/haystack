@@ -1,6 +1,8 @@
-from typing import Dict, Any, Set, Optional
+from enum import Enum
+from pathlib import Path
+from typing import Dict, Any, Set, Optional, Union
 
-import yaml
+import requests
 from jinja2 import meta, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 
@@ -9,7 +11,23 @@ from haystack.core.component import Component
 from haystack.core.errors import PipelineValidationError
 from haystack.core.serialization import component_to_dict
 
-from .source import PipelineType, _templateSource
+
+TEMPLATE_FILE_EXTENSION = ".yaml.jinja2"
+TEMPLATE_HOME_DIR = Path(__file__).resolve().parent / "predefined"
+
+
+class PredefinedPipeline(Enum):
+    """
+    Enumeration of predefined pipeline templates that can be used to create a `PipelineTemplate`.
+    """
+
+    # When type is empty, the template source must be provided to the PipelineTemplate before calling build()
+    EMPTY = "empty"
+
+    # Maintain 1-to-1 mapping between the enum name and the template file name in templates directory
+    QA = "qa"
+    RAG = "rag"
+    INDEXING = "indexing"
 
 
 class PipelineTemplate:
@@ -76,9 +94,7 @@ class PipelineTemplate:
     flexibility to customize and extend pipelines as required by advanced users and specific use cases.
     """
 
-    def __init__(
-        self, pipeline_type: PipelineType = PipelineType.EMPTY, template_params: Optional[Dict[str, Any]] = None
-    ):
+    def __init__(self, template_content: str, template_params: Optional[Dict[str, Any]] = None):
         """
         Initialize a PipelineTemplate.
 
@@ -86,17 +102,14 @@ class PipelineTemplate:
         templates.
         :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
         """
-        if pipeline_type == PipelineType.EMPTY:
-            # This is temporary, to ease the refactoring
-            raise ValueError("Please provide a PipelineType value")
+        self._template_content = template_content
 
-        ts = _templateSource.from_predefined(pipeline_type)
-        self.template_text = ts.template
         env = NativeEnvironment()
         try:
-            self.template = env.from_string(self.template_text)
+            self._template = env.from_string(self._template_content)
         except TemplateSyntaxError as e:
-            raise ValueError(f"Invalid pipeline template, template syntax error: {e.message}") from e
+            raise ValueError(f"Invalid pipeline template: {e.message}") from e
+
         self.templated_variables = self._extract_variables(env)
         self.components: Dict[str, Any] = {}
         self.template_params = template_params or {}
@@ -132,15 +145,14 @@ class PipelineTemplate:
         """
         return self.templated_variables
 
-    def build(self):
+    def build(self, template_params: Optional[Dict[str, Any]] = None):
         """
         Constructs a `Pipeline` instance based on the template and any overridden components.
 
         :return: An instance of `Pipeline` constructed from the rendered template and custom component configurations.
         """
-        rendered_yaml = self.template.render(**self.components, **self.template_params)
-        pipeline_yaml = yaml.safe_load(rendered_yaml)
-        return Pipeline.from_dict(pipeline_yaml)
+        rendered = self._template.render(**self.components, **self.template_params)
+        return Pipeline.loads(rendered)
 
     def _extract_variables(self, env: NativeEnvironment) -> Set[str]:
         """
@@ -150,6 +162,57 @@ class PipelineTemplate:
         :return: A set of variable names extracted from the template strings.
         """
         variables = set()
-        ast = env.parse(self.template_text)
+        ast = env.parse(self._template_content)
         variables.update(meta.find_undeclared_variables(ast))
         return variables
+
+    @classmethod
+    def from_str(cls, template_str: str) -> "PipelineTemplate":
+        """
+        Create a TemplateSource from a string.
+        :param template_str: The template string to use. Must contain valid Jinja syntax.
+        :return: An instance of `TemplateSource`.
+        """
+        return cls(template_str)
+
+    @classmethod
+    def from_file(cls, file_path: Union[Path, str]) -> "PipelineTemplate":
+        """
+        Create a TemplateSource from a file.
+        :param file_path: The path to the file containing the template. Must contain valid Jinja2 syntax.
+        :return: An instance of `TemplateSource`.
+        """
+        with open(file_path, "r") as file:
+            return cls.from_str(file.read())
+
+    @classmethod
+    def from_predefined(cls, predefined_pipeline: PredefinedPipeline) -> "PipelineTemplate":
+        """
+        Create a TemplateSource from a predefined template. See `PredefinedTemplate` for available options.
+        :param predefined_template: The name of the predefined template to use.
+        :return: An instance of `TemplateSource`.
+        """
+        if predefined_pipeline == PredefinedPipeline.EMPTY:
+            # This is temporary, to ease the refactoring
+            raise ValueError("Please provide a PipelineType value")
+
+        template_path = f"{TEMPLATE_HOME_DIR}/{predefined_pipeline.value}{TEMPLATE_FILE_EXTENSION}"
+        return cls.from_file(template_path)
+
+    @classmethod
+    def from_url(cls, url: str) -> "PipelineTemplate":
+        """
+        Create a TemplateSource from a URL.
+        :param url: The URL to fetch the template from. Must contain valid Jinja2 syntax.
+        :return: An instance of `TemplateSource`.
+        """
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return cls.from_str(response.text)
+
+    @property
+    def template_content(self) -> str:
+        """
+        Returns the raw template string as a read-only property.
+        """
+        return self._template_content
