@@ -45,8 +45,7 @@ jobs:
         if: steps.files.outputs.any_changed == 'true'
         run: |
           mkdir .mypy_cache
-          # can't use hatch script due to positional argument
-          hatch run test:mypy --install-types --non-interactive --cache-dir=.mypy_cache/ ${{ steps.files.outputs.all_changed_files }}
+          hatch run test:types ${{ steps.files.outputs.all_changed_files }}
 
   pylint:
     runs-on: ubuntu-latest
@@ -75,4 +74,4 @@ jobs:
       - name: Pylint
         if: steps.files.outputs.any_changed == 'true'
         run: |
-          hatch run test:pylint -ry -j 0 ${{ steps.files.outputs.all_changed_files }}
+          hatch run test:lint ${{ steps.files.outputs.all_changed_files }}
