@@ -13,6 +13,7 @@ from _pytest.logging import LogCaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
 
 from haystack import logging as haystack_logging
+from test.tracing.utils import SpyingTracer
 
 
 @pytest.fixture(autouse=True)
@@ -203,4 +204,74 @@ class TestStructuredLoggingJSONRendering:
                     ],
                 }
             ],
+        }
+
+
+class TestLogTraceCorrelation:
+    def test_trace_log_correlation_python_logs_with_console_rendering(
+        self, spying_tracer: SpyingTracer, capfd: CaptureFixture
+    ) -> None:
+        haystack_logging.configure_logging(use_json=False)
+
+        with spying_tracer.trace("test-operation"):
+            logger = logging.getLogger(__name__)
+            logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
+
+        output = capfd.readouterr().err
+        assert "trace_id" not in output
+
+    def test_trace_log_correlation_python_logs(self, spying_tracer: SpyingTracer, capfd: CaptureFixture) -> None:
+        haystack_logging.configure_logging(use_json=True)
+
+        with spying_tracer.trace("test-operation") as span:
+            logger = logging.getLogger(__name__)
+            logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
+
+        output = capfd.readouterr().err
+        parsed_output = json.loads(output)
+
+        assert parsed_output == {
+            "event": "Hello, structured logging!",
+            "key1": "value1",
+            "key2": "value2",
+            "level": "warning",
+            "timestamp": ANY,
+            "trace_id": span.trace_id,
+            "span_id": span.span_id,
+        }
+
+    def test_trace_log_correlation_no_span(self, spying_tracer: SpyingTracer, capfd: CaptureFixture) -> None:
+        haystack_logging.configure_logging(use_json=True)
+
+        logger = logging.getLogger(__name__)
+
+        logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
+
+        output = capfd.readouterr().err
+        parsed_output = json.loads(output)
+
+        assert parsed_output == {
+            "event": "Hello, structured logging!",
+            "key1": "value1",
+            "key2": "value2",
+            "level": "warning",
+            "timestamp": ANY,
+        }
+
+    def test_trace_log_correlation_no_tracer(self, capfd: CaptureFixture) -> None:
+        haystack_logging.configure_logging(use_json=True)
+
+        logger = logging.getLogger(__name__)
+
+        logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
+
+        output = capfd.readouterr().err
+        parsed_output = json.loads(output)
+
+        assert parsed_output == {
+            "event": "Hello, structured logging!",
+            "key1": "value1",
+            "key2": "value2",
+            "level": "warning",
+            "timestamp": ANY,
         }

@@ -60,6 +60,12 @@ class Span(abc.ABC):
         if tracer.is_content_tracing_enabled:
             self.set_tag(key, value)
 
+    def get_correlation_data_for_logs(self) -> Dict[str, Any]:
+        """Return a dictionary with correlation data for logs.
+
+        This is useful if you want to correlate logs with traces."""
+        return {}
+
 
 class Tracer(abc.ABC):
     """Interface for instrumenting code by creating and submitting spans."""
