@@ -277,31 +277,3 @@ class OpenAIGenerator:
             logger.warning(
                 "The completion for index %s has been truncated due to the content filter.", message.meta["index"]
             )
-
-
-class GPTGenerator(OpenAIGenerator):
-    def __init__(
-        self,
-        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "gpt-3.5-turbo",
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
-        api_base_url: Optional[str] = None,
-        organization: Optional[str] = None,
-        system_prompt: Optional[str] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-    ):
-        warnings.warn(
-            "GPTGenerator is deprecated and will be removed in the next beta release. "
-            "Please use OpenAIGenerator instead.",
-            UserWarning,
-            stacklevel=2,
-        )
-        super().__init__(
-            api_key=api_key,
-            model=model,
-            streaming_callback=streaming_callback,
-            api_base_url=api_base_url,
-            organization=organization,
-            system_prompt=system_prompt,
-            generation_kwargs=generation_kwargs,
-        )
