@@ -1,3 +1,4 @@
+from haystack.components.embedders.hypothetical_doc_embedder import HypotheticalDocumentEmbedder
 from haystack.components.embedders.hugging_face_tei_text_embedder import HuggingFaceTEITextEmbedder
 from haystack.components.embedders.hugging_face_tei_document_embedder import HuggingFaceTEIDocumentEmbedder
 from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
@@ -8,6 +9,7 @@ from haystack.components.embedders.azure_text_embedder import AzureOpenAITextEmb
 from haystack.components.embedders.azure_document_embedder import AzureOpenAIDocumentEmbedder
 
 __all__ = [
+    "HypotheticalDocumentEmbedder",
     "HuggingFaceTEITextEmbedder",
     "HuggingFaceTEIDocumentEmbedder",
     "SentenceTransformersTextEmbedder",

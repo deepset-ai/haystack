@@ -23,7 +23,7 @@ class HypotheticalDocumentEmbedder:
 
     see: "Precise Zero-Shot Dense Retrieval without Relevance Labels" (https://aclanthology.org/2023.acl-long.99/)
 
-    Usage example:
+    Usage as a stand-alone example:
     ```python
     from haystack.components.embedders import HypotheticalDocumentEmbedder
     hyde = HypotheticalDocumentEmbedder(model="gpt-3.5-turbo", nr_completions=5)
@@ -32,12 +32,29 @@ class HypotheticalDocumentEmbedder:
     # {'hypothetical_documents': ['When visiting the capital of France, ....', '....', '...', '...', '...'],
     # 'hypothetical_embedding': [0.0990725576877594, -0.017647066991776227, 0.05918873250484467, ...]}
     ```
+
+    Incorporating into an existing Pipeline, and assuming a DocumentStore `doc_store` is already set up:
+    ```python
+    retriever = InMemoryEmbeddingRetriever(document_store=doc_store)
+    hyde = HypotheticalDocumentEmbedder(instruct_llm="gpt-3.5-turbo", nr_completions=5)
+
+    extractive_qa_pipeline = Pipeline()
+    extractive_qa_pipeline.add_component(instance=hyde, name="builder")
+    extractive_qa_pipeline.add_component(instance=retriever, name="retriever")
+    extractive_qa_pipeline.connect("builder.hypothetical_embedding", "retriever.query_embedding")
+
+    query = "What's the capital of France?"
+    extractive_hyde_pipeline.run(data={"builder": {"query": query}, "retriever": {"top_k": 5}})
+
+    NOTE: The hypothetical document embedder needs to use the same Embedder model as the DocumentStore used to index
+    the documents, so that the embeddings are comparable in the same vector space.
+
     """
 
     def __init__(
         self,
         instruct_llm: str = "gpt-3.5-turbo",
-        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        instruct_llm_api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         nr_completions: int = 5,
         embedder_model: str = "sentence-transformers/all-MiniLM-L6-v2",
     ):
@@ -50,7 +67,7 @@ class HypotheticalDocumentEmbedder:
         :param embedder_model: Name of the SentenceTransformers model to use for encoding the hypothetical documents.
         """
         self.instruct_llm = instruct_llm
-        self.instruct_llm_api_key = api_key
+        self.instruct_llm_api_key = instruct_llm_api_key
         self.nr_completions = nr_completions
         self.embedder_model = embedder_model
         self.generator = OpenAIGenerator(
@@ -73,7 +90,13 @@ class HypotheticalDocumentEmbedder:
         self.pipeline.connect("prompt_builder", "generator")
 
     def to_dict(self) -> Dict[str, Any]:
-        data = default_to_dict(self, instruct_llm=self.instruct_llm, nr_completions=self.nr_completions)
+        data = default_to_dict(
+            self,
+            instruct_llm=self.instruct_llm,
+            instruct_llm_api_key=self.instruct_llm_api_key,
+            nr_completions=self.nr_completions,
+            embedder_model=self.embedder_model,
+        )
         data["pipeline"] = self.pipeline.to_dict()
         return data
 
