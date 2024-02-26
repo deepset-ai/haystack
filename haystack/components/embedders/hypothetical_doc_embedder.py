@@ -1,4 +1,5 @@
 from haystack import Pipeline, component, Document, default_to_dict, default_from_dict
+from haystack.components.converters import OutputAdapter
 from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
 from haystack.components.generators.openai import OpenAIGenerator
 from haystack.components.builders import PromptBuilder
@@ -81,13 +82,24 @@ class HypotheticalDocumentEmbedder:
             Paragraph:
             """
         )
+
+        self.adapter = OutputAdapter(
+            template="{{answers | build_doc}}",
+            output_type=List[Document],
+            custom_filters={"build_doc": lambda data: [Document(content=d) for d in data]},
+        )
+
         self.embedder = SentenceTransformersDocumentEmbedder(model=embedder_model, progress_bar=False)
         self.embedder.warm_up()
 
         self.pipeline = Pipeline()
         self.pipeline.add_component(name="prompt_builder", instance=self.prompt_builder)
         self.pipeline.add_component(name="generator", instance=self.generator)
+        self.pipeline.add_component(name="adapter", instance=self.adapter)
+        self.pipeline.add_component(name="embedder", instance=self.embedder)
         self.pipeline.connect("prompt_builder", "generator")
+        self.pipeline.connect("generator.replies", "adapter.answers")
+        self.pipeline.connect("adapter.output", "embedder.documents")
 
     def to_dict(self) -> Dict[str, Any]:
         data = default_to_dict(
@@ -109,10 +121,8 @@ class HypotheticalDocumentEmbedder:
     @component.output_types(hypothetical_embedding=List[float])
     def run(self, query: str):
         result = self.pipeline.run(data={"prompt_builder": {"question": query}})
-        answers = result["generator"]["replies"]
-        # embed the hypothetical documents and average the embeddings
-        embeddings = self.embedder.run([Document(content=answer) for answer in answers])
-        stacked_embeddings = array([doc.embedding for doc in embeddings["documents"]])
+        # return a single query vector embedding representing the average of the hypothetical document embeddings
+        stacked_embeddings = array([doc.embedding for doc in result["embedder"]["documents"]])
         avg_embeddings = mean(stacked_embeddings, axis=0)
         hyde_vector = avg_embeddings.reshape((1, len(avg_embeddings)))
         return {"hypothetical_embedding": hyde_vector[0].tolist()}
