@@ -81,7 +81,6 @@ class PipelineTemplate:
       from haystack.templates import PipelineTemplate, PredefinedPipeline
 
       # Customize the pipeline for document indexing with specific components, include PDF file converter
-      ts = TemplateSource.from_predefined(PredefinedTemplate.INDEXING)
       ptb = PipelineTemplate.from_predefined(PredefinedTemplate.INDEXING)
       ptb.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True))
       pipe = ptb.build(template_params={"use_pdf_file_converter": True})

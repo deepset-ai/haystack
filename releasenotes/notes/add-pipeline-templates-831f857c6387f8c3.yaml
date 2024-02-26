@@ -9,17 +9,17 @@ highlights:  >
    For example, the following pipeline template can be used to create an indexing pipeline:
    ```python
    from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-   from haystack.templates import PipelineTemplate, PipelineType
+   from haystack.templates import PipelineTemplate, PredefinedPipeline
 
-   pt = PipelineTemplate(PipelineType.INDEXING, template_params={"use_pdf_file_converter": True})
+   pt = PipelineTemplate(PredefinedPipeline.INDEXING)
    pt.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True))
-   pipe = ptb.build()
+   pipe = ptb.build(template_params={"use_pdf_file_converter": True})
 
    result = pipe.run(data={"sources": ["some_local_dir/and_text_file.txt", "some_other_local_dir/and_pdf_file.pdf"]})
    print(result)
    ```
 
-   In the above example, a PipelineType.INDEXING enum is used to create a pipeline with a custom instance of
+   In the above example, a PredefinedPipeline.INDEXING enum is used to create a pipeline with a custom instance of
    SentenceTransformersDocumentEmbedder and the PDF file converter enabled. The pipeline is then run on a list of
    local files and the result is printed (number of indexed documents).
 
@@ -28,12 +28,11 @@ highlights:  >
 
    On the other hand, the following pipeline template can be used to create a pre-defined RAG pipeline:
    ```python
-   from haystack.templates import PipelineTemplate, PipelineType
+   from haystack.templates import PipelineTemplate, PredefinedPipeline
 
-   pipe = PipelineTemplate(PipelineType.RAG).build()
+   pipe = PipelineTemplate(PredefinedPipeline.RAG).build()
    result = pipe.run(query="What's the meaning of life?")
    print(result)
    ```
 
-   _templateSource loads template content from various inputs, including strings, files, predefined templates, and URLs.
-   The class provides mechanisms to load templates dynamically and ensure they contain valid Jinja2 syntax.
+   PipelineTemplate can load templates from various inputs, including strings, files, predefined templates, and URLs.
