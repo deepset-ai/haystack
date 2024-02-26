@@ -17,8 +17,6 @@ def datadog_tracer(monkeypatch: MonkeyPatch) -> ddtrace.Tracer:
 
     tracer = ddtrace.Tracer()
 
-    # monkeypatch.setattr(ddtrace, "tracer", tracer)
-
     return tracer
 
 
