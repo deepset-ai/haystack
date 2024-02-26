@@ -18,7 +18,10 @@ class DiversityRanker:
     """
     Implements a document ranking algorithm that orders documents in such a way as to maximize the overall diversity
     of the documents.
-    It uses a pre-trained Sentence Transformers model to embed the query and the Documents.
+
+    This component provides functionality to rank a list of documents based on their similarity with respect to the
+    query to maximize the overall diversity. It uses a pre-trained Sentence Transformers model to embed the query and
+    the Documents.
 
     Usage example:
     ```python
@@ -26,12 +29,12 @@ class DiversityRanker:
     from haystack.components.rankers import DiversityRanker
 
     ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine")
+    ranker.warm_up()
+
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "What is the capital of germany?"
     output = ranker.run(query=query, documents=docs)
     docs = output["documents"]
-    assert len(docs) == 2
-    assert docs[0].content == "Paris"
     ```
     """
 
@@ -92,7 +95,7 @@ class DiversityRanker:
 
     def warm_up(self):
         """
-        Warm up the model used for scoring the Documents.
+        Initializes the component.
         """
         if self.model is None:
             self.model = SentenceTransformer(
@@ -103,7 +106,10 @@ class DiversityRanker:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         return default_to_dict(
             self,
@@ -123,7 +129,12 @@ class DiversityRanker:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DiversityRanker":
         """
-        Deserialize this component from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
         """
         serialized_device = data["init_parameters"]["device"]
         data["init_parameters"]["device"] = ComponentDevice.from_dict(serialized_device)
@@ -198,13 +209,16 @@ class DiversityRanker:
     @component.output_types(documents=List[Document])
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
-        Rank the documents based on their diversity and return the top_k documents.
+        Rank the documents based on their diversity.
 
-        :param query: The query.
-        :param documents: A list of Document objects that should be ranked.
-        :param top_k: The maximum number of documents to return.
+        :param query: The search query.
+        :param documents: List of Document objects to be ranker.
+        :param top_k: Optional. An integer to override the top_k set during initialization.
 
-        :return: A list of top_k documents ranked based on diversity.
+        :returns: A dictionary with the following key:
+            - `documents`: List of Document objects that have been selected based on the diversity ranking.
+
+        :raises ValueError: If the top_k value is less than or equal to 0.
         """
         if not documents:
             return {"documents": []}
