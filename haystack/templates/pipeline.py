@@ -1,11 +1,10 @@
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Any, Set, Optional, Union
+from typing import Dict, Any, Optional, Union
 
 import requests
 import yaml
 from jinja2 import meta, TemplateSyntaxError, Environment, PackageLoader
-from jinja2.nativetypes import NativeEnvironment
 
 from haystack import Pipeline
 from haystack.core.component import Component
