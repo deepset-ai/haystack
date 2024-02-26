@@ -1,8 +1,10 @@
 import logging
 import os
+import typing
 from typing import List
 
-from structlog.typing import Processor
+if typing.TYPE_CHECKING:
+    from structlog.typing import Processor
 
 HAYSTACK_LOGGING_USE_JSON_ENV_VAR = "HAYSTACK_LOGGING_USE_JSON"
 HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR = "HAYSTACK_LOGGING_IGNORE_STRUCTLOG"

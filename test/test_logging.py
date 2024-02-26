@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import ANY, Mock
 
 import pytest
@@ -186,14 +187,14 @@ class TestStructuredLoggingJSONRendering:
                     "is_cause": False,
                     "frames": [
                         {
-                            "filename": f"{os.getcwd()}/test/test_logging.py",
+                            "filename": str(Path.cwd() / "test" / "test_logging.py"),
                             "lineno": ANY,  # otherwise the test breaks if you add a line :-)
                             "name": "test_logging_exceptions_json",
                             "line": "",
                             "locals": None,
                         },
                         {
-                            "filename": f"{os.getcwd()}/test/test_logging.py",
+                            "filename": str(Path.cwd() / "test" / "test_logging.py"),
                             "lineno": ANY,  # otherwise the test breaks if you add a line :-)
                             "name": "function_that_raises_and_adds_to_stack_trace",
                             "line": "",
