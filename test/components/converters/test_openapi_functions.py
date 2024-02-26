@@ -187,7 +187,7 @@ class TestOpenAPIServiceToFunctions:
         assert (
             doc.content
             == '{"name": "search", "description": "Search the web with Google", "parameters": {"type": "object", '
-            '"properties": {"requestBody": {"type": "object", "properties": {"q": {"type": "string"}}}}}}'
+            '"properties": {"q": {"type": "string"}}}}'
         )
 
         # check that the metadata is as expected
@@ -213,7 +213,7 @@ class TestOpenAPIServiceToFunctions:
             assert (
                 doc.content
                 == '{"name": "search", "description": "Search the web with Google", "parameters": {"type": "object", '
-                '"properties": {"requestBody": {"type": "object", "properties": {"q": {"type": "string"}}}}}}'
+                '"properties": {"q": {"type": "string"}}}}'
             )
 
             # check that the metadata is as expected
@@ -233,7 +233,7 @@ class TestOpenAPIServiceToFunctions:
         assert (
             doc.content
             == '{"name": "search", "description": "Search the web with Google", "parameters": {"type": "object", '
-            '"properties": {"requestBody": {"type": "object", "properties": {"q": {"type": "string"}}}}}}'
+            '"properties": {"q": {"type": "string"}}}}'
         )
 
         # check that the metadata is as expected, system_message should not be present

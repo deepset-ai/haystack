@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic
-from haystack.utils.type_serialization import deserialize_type, serialize_type
+from haystack.utils import deserialize_type, serialize_type
 
 if sys.version_info < (3, 10):
     from typing_extensions import TypeAlias

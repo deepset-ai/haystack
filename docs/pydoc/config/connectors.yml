@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/evaluators]
-    modules: ["sas_evaluator", "statistical_evaluator"]
+    search_path: [../../../haystack/components/connectors]
+    modules: ["openapi_service"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Enables evaluation of LLMs generated answers.
+  excerpt: Various connectors to integrate with external services.
   category_slug: haystack-api
-  title: Evaluation
-  slug: eval-api
-  order: 63
+  title: Connectors
+  slug: connectors-api
+  order: 15
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: eval_api.md
+    filename: connectors_api.md

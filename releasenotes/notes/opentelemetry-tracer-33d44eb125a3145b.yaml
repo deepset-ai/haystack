@@ -1,0 +1,39 @@
+---
+features:
+  - |
+    Added out-of-the-box support for the OpenTelemetry Tracer. This allows you to instrument pipeline and component
+    runs using OpenTelemetry and send traces to your preferred backend.
+
+    To use the OpenTelemetry Tracer you need to have the `opentelemetry-sdk` package installed in your environment.
+    To instruct Haystack to use the OpenTelemetry Tracer, you have multiple options:
+
+    * Run your Haystack application using the `opentelemetry-instrument` command line tool as described in the
+     [OpenTelemetry documentation](https://opentelemetry.io/docs/languages/python/automatic/#configuring-the-agent).
+      This behavior can be disabled by setting the `HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR` environment variable to `false`.
+    * Configure the tracer manually in your code using the `opentelemetry` package:
+      ```python
+      from opentelemetry import trace
+      from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+      from opentelemetry.sdk.trace import TracerProvider
+      from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+      # Service name is required for most backends
+      resource = Resource(attributes={
+          SERVICE_NAME: "haystack"
+      })
+
+      traceProvider = TracerProvider(resource=resource)
+      processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces"))
+      traceProvider.add_span_processor(processor)
+      trace.set_tracer_provider(traceProvider)
+
+      # Auto-configuration
+      import haystack.tracing
+      haystack.tracing.auto_enable_tracing()
+
+      # Or explicitly
+      from haystack.tracing import OpenTelemetryTracer
+
+      tracer = traceProvider.get_tracer("my_application")
+      tracing.enable_tracing(OpenTelemetryTracer(tracer))
+      ```

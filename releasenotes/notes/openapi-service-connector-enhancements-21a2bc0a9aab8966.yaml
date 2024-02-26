@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Enhanced OpenAPI service connector to better handle method invocation with support for security schemes, refined handling of method arguments including URL/query parameters and request body, alongside improved error validation for method calls. This update enables more versatile interactions with OpenAPI services, ensuring compatibility with a wide range of API specifications.

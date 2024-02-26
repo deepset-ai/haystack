@@ -1,12 +1,15 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Generator
 from unittest.mock import Mock, patch
 
 import pytest
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 
+from haystack import tracing
 from haystack.testing.test_utils import set_all_seeds
+from test.tracing.utils import SpyingTracer
 
 set_all_seeds(0)
 
@@ -68,3 +71,14 @@ def request_blocker(request: pytest.FixtureRequest, monkeypatch):
         raise RuntimeError(f"The test was about to {method} {self.scheme}://{self.host}{url}")
 
     monkeypatch.setattr("urllib3.connectionpool.HTTPConnectionPool.urlopen", urlopen_mock)
+
+
+@pytest.fixture()
+def spying_tracer() -> Generator[SpyingTracer, None, None]:
+    tracer = SpyingTracer()
+    tracing.enable_tracing(tracer)
+
+    yield tracer
+
+    # Make sure to disable tracing after the test to avoid affecting other tests
+    tracing.disable_tracing()

@@ -6,8 +6,7 @@ from haystack import component, default_to_dict, default_from_dict
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice
-from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
+from haystack.utils import Secret, deserialize_secrets_inplace, serialize_callable, deserialize_callable
 
 logger = logging.getLogger(__name__)
 
