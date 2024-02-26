@@ -14,8 +14,10 @@ class TestDiversityRanker:
         assert component.device == ComponentDevice.resolve_device(None)
         assert component.similarity == "dot_product"
         assert component.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
-        assert component.prefix == ""
-        assert component.suffix == ""
+        assert component.query_prefix == ""
+        assert component.document_prefix == ""
+        assert component.query_suffix == ""
+        assert component.document_suffix == ""
         assert component.meta_fields_to_embed == []
         assert component.embedding_separator == "\n"
 
@@ -26,8 +28,10 @@ class TestDiversityRanker:
             device=ComponentDevice.from_str("cuda:0"),
             token=Secret.from_token("fake-api-token"),
             similarity="cosine",
-            prefix="query:",
-            suffix="document:",
+            query_prefix="query:",
+            document_prefix="document:",
+            query_suffix="query suffix",
+            document_suffix="document suffix",
             meta_fields_to_embed=["meta_field"],
             embedding_separator="--",
         )
@@ -36,8 +40,10 @@ class TestDiversityRanker:
         assert component.device == ComponentDevice.from_str("cuda:0")
         assert component.similarity == "cosine"
         assert component.token == Secret.from_token("fake-api-token")
-        assert component.prefix == "query:"
-        assert component.suffix == "document:"
+        assert component.query_prefix == "query:"
+        assert component.document_prefix == "document:"
+        assert component.query_suffix == "query suffix"
+        assert component.document_suffix == "document suffix"
         assert component.meta_fields_to_embed == ["meta_field"]
         assert component.embedding_separator == "--"
 
@@ -52,8 +58,10 @@ class TestDiversityRanker:
                 "device": ComponentDevice.resolve_device(None).to_dict(),
                 "similarity": "dot_product",
                 "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
-                "prefix": "",
-                "suffix": "",
+                "query_prefix": "",
+                "document_prefix": "",
+                "query_suffix": "",
+                "document_suffix": "",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
             },
@@ -66,8 +74,10 @@ class TestDiversityRanker:
         assert ranker.device == ComponentDevice.resolve_device(None)
         assert ranker.similarity == "dot_product"
         assert ranker.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
-        assert ranker.prefix == ""
-        assert ranker.suffix == ""
+        assert ranker.query_prefix == ""
+        assert ranker.document_prefix == ""
+        assert ranker.query_suffix == ""
+        assert ranker.document_suffix == ""
         assert ranker.meta_fields_to_embed == []
         assert ranker.embedding_separator == "\n"
 
@@ -78,8 +88,10 @@ class TestDiversityRanker:
             device=ComponentDevice.from_str("cuda:0"),
             token=Secret.from_env_var("ENV_VAR", strict=False),
             similarity="cosine",
-            prefix="query:",
-            suffix="document:",
+            query_prefix="query:",
+            document_prefix="document:",
+            query_suffix="query suffix",
+            document_suffix="document suffix",
             meta_fields_to_embed=["meta_field"],
             embedding_separator="--",
         )
@@ -92,8 +104,10 @@ class TestDiversityRanker:
                 "device": ComponentDevice.from_str("cuda:0").to_dict(),
                 "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "similarity": "cosine",
-                "prefix": "query:",
-                "suffix": "document:",
+                "query_prefix": "query:",
+                "document_prefix": "document:",
+                "query_suffix": "query suffix",
+                "document_suffix": "document suffix",
                 "meta_fields_to_embed": ["meta_field"],
                 "embedding_separator": "--",
             },
@@ -106,8 +120,10 @@ class TestDiversityRanker:
         assert ranker.device == ComponentDevice.from_str("cuda:0")
         assert ranker.similarity == "cosine"
         assert ranker.token == Secret.from_env_var("ENV_VAR", strict=False)
-        assert ranker.prefix == "query:"
-        assert ranker.suffix == "document:"
+        assert ranker.query_prefix == "query:"
+        assert ranker.document_prefix == "document:"
+        assert ranker.query_suffix == "query suffix"
+        assert ranker.document_suffix == "document suffix"
         assert ranker.meta_fields_to_embed == ["meta_field"]
         assert ranker.embedding_separator == "--"
 
@@ -133,17 +149,18 @@ class TestDiversityRanker:
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_empty_query(self, similarity):
         """
-        Test that run method raises ValueError if query is empty or None.
+        Test that ranker can be run with an empty query.
         """
         ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", top_k=3, similarity=similarity)
         ranker.warm_up()
         documents = [Document(content="doc1"), Document(content="doc2")]
 
-        with pytest.raises(ValueError):
-            ranker.run(query="", documents=documents)
+        result = ranker.run(query="", documents=documents)
+        ranked_docs = result["documents"]
 
-        with pytest.raises(ValueError):
-            ranker.run(query=None, documents=documents)
+        assert isinstance(ranked_docs, list)
+        assert len(ranked_docs) == 2
+        assert all(isinstance(doc, Document) for doc in ranked_docs)
 
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])

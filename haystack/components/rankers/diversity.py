@@ -42,8 +42,10 @@ class DiversityRanker:
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         similarity: Literal["dot_product", "cosine"] = "dot_product",
-        prefix: str = "",
-        suffix: str = "",
+        query_prefix: str = "",
+        document_prefix: str = "",
+        query_suffix: str = "",
+        document_suffix: str = "",
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
     ):
@@ -58,10 +60,14 @@ class DiversityRanker:
         :param token: The API token used to download private models from Hugging Face.
         :param similarity: Similarity metric for comparing embeddings. Can be set to "dot_product" (default) or
             "cosine".
-        :param prefix: A string to add to the beginning of each Document text before embedding.
+        :param query_prefix: A string to add to the beginning of the query text before ranking.
+            Can be used to prepend the text with an instruction, as required by some re-ranking models,
+            such as E5 and BGE.
+        :param document_prefix: A string to add to the beginning of each Document text before ranking.
             Can be used to prepend the text with an instruction, as required by some embedding models,
-            such as E5 and bge.
-        :param suffix: A string to add to the end of each Document text before embedding.
+            such as E5 and BGE.
+        :param query_suffix: A string to add to the end of the query text before ranking.
+        :param document_suffix: A string to add to the end of each Document text before ranking.
         :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document content.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document content.
         """
@@ -77,8 +83,10 @@ class DiversityRanker:
         if similarity not in ["dot_product", "cosine"]:
             raise ValueError(f"Similarity must be one of 'dot_product' or 'cosine', but got {similarity}.")
         self.similarity = similarity
-        self.prefix = prefix
-        self.suffix = suffix
+        self.query_prefix = query_prefix
+        self.document_prefix = document_prefix
+        self.query_suffix = query_suffix
+        self.document_suffix = document_suffix
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
@@ -104,8 +112,10 @@ class DiversityRanker:
             token=self.token.to_dict() if self.token else None,
             top_k=self.top_k,
             similarity=self.similarity,
-            prefix=self.prefix,
-            suffix=self.suffix,
+            query_prefix=self.query_prefix,
+            document_prefix=self.document_prefix,
+            query_suffix=self.query_suffix,
+            document_suffix=self.document_suffix,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
         )
@@ -143,13 +153,15 @@ class DiversityRanker:
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
             text_to_embed = (
-                self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""]) + self.suffix
+                self.document_prefix
+                + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
+                + self.document_suffix
             )
             texts_to_embed.append(text_to_embed)
 
         # Calculate embeddings
         doc_embeddings = self.model.encode(texts_to_embed, convert_to_tensor=True)  # type: ignore[attr-defined]
-        query_embedding = self.model.encode([query], convert_to_tensor=True)  # type: ignore[attr-defined]
+        query_embedding = self.model.encode([self.query_prefix + query + self.query_suffix], convert_to_tensor=True)  # type: ignore[attr-defined]
 
         # Normalize embeddings to unit length for computing cosine similarity
         if self.similarity == "cosine":
@@ -194,9 +206,6 @@ class DiversityRanker:
 
         :return: A list of top_k documents ranked based on diversity.
         """
-        if query is None or len(query) == 0:
-            raise ValueError("Query is empty")
-
         if not documents:
             return {"documents": []}
 
