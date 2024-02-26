@@ -66,7 +66,11 @@ def configure_logging(use_json: bool = False) -> None:
     formatter = structlog.stdlib.ProcessorFormatter(
         # These run ONLY on `logging` entries that do NOT originate within
         # structlog.
-        foreign_pre_chain=shared_processors + [structlog.stdlib.ExtraAdder()],
+        foreign_pre_chain=shared_processors
+        + [
+            # Add the information from the `logging` `extras` to the event dictionary
+            structlog.stdlib.ExtraAdder()
+        ],
         # These run on ALL entries after the pre_chain is done.
         processors=[
             # Remove _record & _from_structlog. to avoid that this metadata is added to the final log record
