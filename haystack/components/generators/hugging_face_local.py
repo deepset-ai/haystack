@@ -204,7 +204,6 @@ class HuggingFaceLocalGenerator:
         :returns:
             A dictionary containing the generated replies.
             - replies: A list of strings representing the generated replies.
-
         """
         if self.pipeline is None:
             raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
