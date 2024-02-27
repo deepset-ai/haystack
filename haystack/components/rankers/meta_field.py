@@ -302,9 +302,9 @@ class MetaFieldRanker:
                     logger.warning("The score wasn't provided; defaulting to 0.")
                 elif document.score < 0 or document.score > 1:
                     logger.warning(
-                        "The score %s for Document %s is outside the [0,1] range; defaulting to 0",
-                        document.score,
-                        document.id,
+                        "The score {score} for Document {document_id} is outside the [0,1] range; defaulting to 0",
+                        score=document.score,
+                        document_id=document.id,
                     )
                 else:
                     score = document.score

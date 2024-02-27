@@ -28,7 +28,7 @@ def coerce_tag_value(value: Any) -> Union[bool, str, int, float]:
         serializable = _serializable_value(value)
         return json.dumps(serializable)
     except Exception as error:
-        logger.debug("Failed to coerce tag value to string: %s", error, exc_info=True)
+        logger.debug("Failed to coerce tag value to string: {error}", error=error, exc_info=True)
 
         # Our last resort is to convert the value to a string
         return str(value)
