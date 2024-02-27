@@ -39,7 +39,7 @@ class TestPipelineTemplate:
         with pytest.raises(FileNotFoundError):
             PipelineTemplate.from_file("invalid/path")
 
-        with tempfile.NamedTemporaryFile(mode="w") as fp:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as fp:
             fp.write(random_valid_template)
             fp.seek(0)
             assert PipelineTemplate.from_file(fp.name).template_content == random_valid_template
