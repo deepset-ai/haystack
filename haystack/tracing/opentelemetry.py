@@ -22,6 +22,10 @@ class OpenTelemetrySpan(Span):
     def raw_span(self) -> Any:
         return self._span
 
+    def get_correlation_data_for_logs(self) -> Dict[str, Any]:
+        span_context = self._span.get_span_context()
+        return {"trace_id": span_context.trace_id, "span_id": span_context.span_id}
+
 
 class OpenTelemetryTracer(Tracer):
     def __init__(self, tracer: "opentelemetry.trace.Tracer") -> None:

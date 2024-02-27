@@ -1,4 +1,5 @@
 from typing import Optional
+from unittest.mock import ANY
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -42,6 +43,8 @@ class TestTracing:
                     "haystack.pipeline.metadata": {},
                     "haystack.pipeline.max_loops_allowed": 100,
                 },
+                trace_id=ANY,
+                span_id=ANY,
             ),
             SpyingSpan(
                 operation_name="haystack.component.run",
@@ -53,6 +56,8 @@ class TestTracing:
                     "haystack.component.output_spec": {"output": {"type": "str", "senders": ["hello2"]}},
                     "haystack.component.visits": 1,
                 },
+                trace_id=ANY,
+                span_id=ANY,
             ),
             SpyingSpan(
                 operation_name="haystack.component.run",
@@ -66,6 +71,8 @@ class TestTracing:
                     "haystack.component.output_spec": {"output": {"type": "str", "senders": []}},
                     "haystack.component.visits": 1,
                 },
+                trace_id=ANY,
+                span_id=ANY,
             ),
         ]
 
@@ -86,6 +93,8 @@ class TestTracing:
                     "haystack.pipeline.metadata": {},
                     "haystack.pipeline.max_loops_allowed": 100,
                 },
+                trace_id=ANY,
+                span_id=ANY,
             ),
             SpyingSpan(
                 operation_name="haystack.component.run",
@@ -99,6 +108,8 @@ class TestTracing:
                     "haystack.component.visits": 1,
                     "haystack.component.output": {"output": "Hello, world!"},
                 },
+                trace_id=ANY,
+                span_id=ANY,
             ),
             SpyingSpan(
                 operation_name="haystack.component.run",
@@ -114,5 +125,7 @@ class TestTracing:
                     "haystack.component.visits": 1,
                     "haystack.component.output": {"output": "Hello, Hello, world!!"},
                 },
+                trace_id=ANY,
+                span_id=ANY,
             ),
         ]

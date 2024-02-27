@@ -1,5 +1,6 @@
 import contextlib
 import dataclasses
+import uuid
 from typing import Dict, Any, Optional, List, Iterator
 
 from haystack.tracing import Span, Tracer
@@ -10,8 +11,14 @@ class SpyingSpan(Span):
     operation_name: str
     tags: Dict[str, Any] = dataclasses.field(default_factory=dict)
 
+    trace_id: Optional[str] = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
+    span_id: Optional[str] = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
+
     def set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
+
+    def get_correlation_data_for_logs(self) -> Dict[str, Any]:
+        return {"trace_id": self.trace_id, "span_id": self.span_id}
 
 
 class SpyingTracer(Tracer):
