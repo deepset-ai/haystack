@@ -215,7 +215,7 @@ class OpenAPIServiceConnector:
             schema = request_body.get("content", {}).get("application/json", {}).get("schema", {})
             required_params = schema.get("required", [])
             for param_name in schema.get("properties", {}):
-                param_value = invocation_arguments.pop(param_name, None)
+                param_value = invocation_arguments.get(param_name)
                 if param_value:
                     method_call_params["data"][param_name] = param_value
                 else:
