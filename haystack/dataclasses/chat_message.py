@@ -17,10 +17,14 @@ class ChatMessage:
     """
     Represents a message in a LLM chat conversation.
 
-    :param content: The text content of the message.
-    :param role: The role of the entity sending the message.
-    :param name: The name of the function being called (only applicable for role FUNCTION).
-    :param meta: Additional metadata associated with the message.
+    :param content:
+        The text content of the message.
+    :param role:
+        The role of the entity sending the message.
+    :param name:
+        The name of the function being called (only applicable for role FUNCTION).
+    :param meta:
+        Additional metadata associated with the message.
     """
 
     content: str
@@ -32,8 +36,10 @@ class ChatMessage:
         """
         Check if the message is from a specific role.
 
-        :param role: The role to check against.
-        :return: True if the message is from the specified role, False otherwise.
+        :param role:
+            The role to check against.
+        :returns:
+            True if the message is from the specified role, False otherwise.
         """
         return self.role == role
 
@@ -42,9 +48,12 @@ class ChatMessage:
         """
         Create a message from the assistant.
 
-        :param content: The text content of the message.
-        :param meta: Additional metadata associated with the message.
-        :return: A new ChatMessage instance.
+        :param content:
+            The text content of the message.
+        :param meta:
+            Additional metadata associated with the message.
+        :returns:
+            A new ChatMessage instance.
         """
         return cls(content, ChatRole.ASSISTANT, None, meta or {})
 
@@ -53,8 +62,10 @@ class ChatMessage:
         """
         Create a message from the user.
 
-        :param content: The text content of the message.
-        :return: A new ChatMessage instance.
+        :param content:
+            The text content of the message.
+        :returns:
+            A new ChatMessage instance.
         """
         return cls(content, ChatRole.USER, None)
 
@@ -63,8 +74,10 @@ class ChatMessage:
         """
         Create a message from the system.
 
-        :param content: The text content of the message.
-        :return: A new ChatMessage instance.
+        :param content:
+            The text content of the message.
+        :returns:
+            A new ChatMessage instance.
         """
         return cls(content, ChatRole.SYSTEM, None)
 
@@ -73,8 +86,11 @@ class ChatMessage:
         """
         Create a message from a function call.
 
-        :param content: The text content of the message.
-        :param name: The name of the function being called.
-        :return: A new ChatMessage instance.
+        :param content:
+            The text content of the message.
+        :param name:
+            The name of the function being called.
+        :returns:
+            A new ChatMessage instance.
         """
         return cls(content, ChatRole.FUNCTION, name)

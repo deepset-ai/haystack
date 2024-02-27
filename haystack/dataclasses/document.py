@@ -118,9 +118,11 @@ class Document(metaclass=_BackwardCompatible):
     def to_dict(self, flatten=True) -> Dict[str, Any]:
         """
         Converts Document into a dictionary.
-        `dataframe` and `blob` fields are converted to JSON-serializable types.
 
-        :param flatten: Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
+        NOTE: `dataframe` and `blob` fields are converted to JSON-serializable types.
+
+        :param flatten:
+            Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
         """
         data = asdict(self)
         if (dataframe := data.get("dataframe")) is not None:
@@ -138,7 +140,8 @@ class Document(metaclass=_BackwardCompatible):
     def from_dict(cls, data: Dict[str, Any]) -> "Document":
         """
         Creates a new Document object from a dictionary.
-        `dataframe` and `blob` fields are converted to their original types.
+
+        NOTE: `dataframe` and `blob` fields are converted to their original types.
         """
         if (dataframe := data.get("dataframe")) is not None:
             data["dataframe"] = read_json(io.StringIO(dataframe))
