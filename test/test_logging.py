@@ -60,7 +60,7 @@ class TestSkipLoggingConfiguration:
 
 class TestStructuredLoggingConsoleRendering:
     def test_log_filtering_when_using_debug(self, capfd: CaptureFixture) -> None:
-        haystack_logging.configure_logging()
+        haystack_logging.configure_logging(use_json=False)
 
         logger = logging.getLogger(__name__)
         logger.debug("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
@@ -70,7 +70,7 @@ class TestStructuredLoggingConsoleRendering:
         assert output == ""
 
     def test_log_filtering_when_using_debug_and_log_level_is_debug(self, capfd: CaptureFixture) -> None:
-        haystack_logging.configure_logging()
+        haystack_logging.configure_logging(use_json=False)
 
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.DEBUG)
