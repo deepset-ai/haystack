@@ -239,3 +239,13 @@ class TestOpenAPIServiceToFunctions:
         # check that the metadata is as expected, system_message should not be present
         assert "system_message" not in doc.meta
         assert doc.meta["spec"] == json.loads(json_serperdev_openapi_spec)
+
+    def test_complex_types_conversion(self, test_files_path):
+        # ensure that complex types from OpenAPI spec are converted to the expected format in OpenAI function calling
+        service = OpenAPIServiceToFunctions()
+        result = service.run(sources=[test_files_path / "json" / "complex_types_openapi_service.json"])
+        assert len(result["documents"]) == 1
+
+        with open(test_files_path / "json" / "complex_types_openai_spec.json") as openai_spec_file:
+            desired_output = json.load(openai_spec_file)
+        assert result["documents"][0].content == json.dumps(desired_output)
