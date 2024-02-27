@@ -53,8 +53,6 @@ class HuggingFaceLocalGenerator:
         Creates an instance of a HuggingFaceLocalGenerator.
 
         :param model: The name or path of a Hugging Face model for text generation,
-            for example, "google/flan-t5-large".
-            If the model is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
         :param task: The task for the Hugging Face pipeline.
             Possible values are "text-generation" and "text2text-generation".
             Generally, decoder-only models like GPT support "text-generation",
