@@ -31,9 +31,9 @@ connections:
 class TestPipelineTemplate:
     def test_from_str(self):
         with pytest.raises(ValueError):
-            PipelineTemplate.from_str("{{ invalid template }")
+            PipelineTemplate.from_string("{{ invalid template }")
 
-        assert PipelineTemplate.from_str("{{ valid_template }}").template_content == "{{ valid_template }}"
+        assert PipelineTemplate.from_string("{{ valid_template }}").template_content == "{{ valid_template }}"
 
     def test_from_file(self, random_valid_template):
         with pytest.raises(FileNotFoundError):
@@ -99,7 +99,7 @@ class TestPipelineTemplate:
     #  Building a pipeline with a custom template that uses Jinja2 syntax to specify components and their connections
     @pytest.mark.integration
     def test_building_pipeline_with_direct_template(self, random_valid_template):
-        pt = PipelineTemplate.from_str(random_valid_template)
+        pt = PipelineTemplate.from_string(random_valid_template)
         pt.override("generator", HuggingFaceTGIGenerator())
         pt.override("prompt_builder", PromptBuilder("Some fake prompt"))
         pipe = pt.build()

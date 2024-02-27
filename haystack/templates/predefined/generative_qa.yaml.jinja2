@@ -19,7 +19,7 @@
     {{ prompt_builder | indent }}
   {% else %}
     init_parameters:
-      template: {% raw %}Answer the question {{question}}.\n\nAnswer:{% endraw +%}
+      template: {% raw %}"Answer the question {{question}}.\n\nAnswer:"{% endraw +%}
     type: "haystack.components.builders.prompt_builder.PromptBuilder"
   {% endif %}
 {% endblock %}
