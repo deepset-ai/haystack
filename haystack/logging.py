@@ -3,6 +3,7 @@ import os
 import sys
 import typing
 from typing import List, Optional
+import builtins
 
 import haystack.tracing.tracer
 
@@ -60,10 +61,10 @@ def configure_logging(use_json: Optional[bool] = None) -> None:
         use_json_env_var = os.getenv(HAYSTACK_LOGGING_USE_JSON_ENV_VAR)
         if use_json_env_var is None:
             # Automatically enable JSON logging if stderr is not a TTY
-            use_json = not sys.stderr.isatty()
+            use_json = not (sys.stderr.isatty() or hasattr(builtins, "__IPYTHON__"))
         else:
             # User gave us an explicit value via environment variable
-            use_json = use_json_env_var == "true"
+            use_json = use_json_env_var.lower() == "true"
 
     shared_processors: List[Processor] = [
         # Add the log level to the event_dict for structlog to use
