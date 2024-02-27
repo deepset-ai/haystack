@@ -110,7 +110,9 @@ class OpenAIGenerator:
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
-        :return: The serialized component as a dictionary.
+
+        :returns:
+            The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
@@ -127,8 +129,11 @@ class OpenAIGenerator:
     def from_dict(cls, data: Dict[str, Any]) -> "OpenAIGenerator":
         """
         Deserialize this component from a dictionary.
-        :param data: The dictionary representation of this component.
-        :return: The deserialized component instance.
+
+        :param data:
+            The dictionary representation of this component.
+        :returns:
+            The deserialized component instance.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         init_params = data.get("init_parameters", {})
@@ -142,12 +147,14 @@ class OpenAIGenerator:
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
 
-        :param prompt: The string prompt to use for text generation.
-        :param generation_kwargs: Additional keyword arguments for text generation. These parameters will
-        potentially override the parameters passed in the __init__ method.
-        For more details on the parameters supported by the OpenAI API, refer to the
-        OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
-        :return: A list of strings containing the generated responses and a list of dictionaries containing the metadata
+        :param prompt:
+            The string prompt to use for text generation.
+        :param generation_kwargs:
+            Additional keyword arguments for text generation. These parameters will potentially override the parameters
+            passed in the __init__ method. For more details on the parameters supported by the OpenAI API, refer to the
+            OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
+        :returns:
+            A list of strings containing the generated responses and a list of dictionaries containing the metadata
         for each response.
         """
         message = ChatMessage.from_user(prompt)
@@ -199,8 +206,12 @@ class OpenAIGenerator:
     def _convert_to_openai_format(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
         """
         Converts the list of ChatMessage to the list of messages in the format expected by the OpenAI API.
-        :param messages: The list of ChatMessage.
-        :return: The list of messages in the format expected by the OpenAI API.
+
+        :param messages:
+            The list of ChatMessage.
+
+        :return:
+            The list of messages in the format expected by the OpenAI API.
         """
         openai_chat_message_format = {"role", "content", "name"}
         openai_formatted_messages = []
@@ -228,9 +239,13 @@ class OpenAIGenerator:
     def _build_message(self, completion: Any, choice: Any) -> ChatMessage:
         """
         Converts the response from the OpenAI API to a ChatMessage.
-        :param completion: The completion returned by the OpenAI API.
-        :param choice: The choice returned by the OpenAI API.
-        :return: The ChatMessage.
+
+        :param completion:
+            The completion returned by the OpenAI API.
+        :param choice:
+            The choice returned by the OpenAI API.
+        :returns:
+            The ChatMessage.
         """
         # function or tools calls are not going to happen in non-chat generation
         # as users can not send ChatMessage with function or tools calls
@@ -248,9 +263,12 @@ class OpenAIGenerator:
     def _build_chunk(self, chunk: Any) -> StreamingChunk:
         """
         Converts the response from the OpenAI API to a StreamingChunk.
-        :param chunk: The chunk returned by the OpenAI API.
-        :param choice: The choice returned by the OpenAI API.
-        :return: The StreamingChunk.
+
+        :param chunk:
+            The chunk returned by the OpenAI API.
+
+        :returns:
+            The StreamingChunk.
         """
         # function or tools calls are not going to happen in non-chat generation
         # as users can not send ChatMessage with function or tools calls
@@ -264,7 +282,9 @@ class OpenAIGenerator:
         """
         Check the `finish_reason` returned with the OpenAI completions.
         If the `finish_reason` is `length`, log a warning to the user.
-        :param message: The message returned by the LLM.
+
+        :param message:
+            The message returned by the LLM.
         """
         if message.meta["finish_reason"] == "length":
             logger.warning(
