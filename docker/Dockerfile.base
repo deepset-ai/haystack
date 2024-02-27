@@ -28,6 +28,7 @@ FROM $base_image AS final
 
 COPY --from=build-image /opt/venv /opt/venv
 COPY --from=deepset/xpdf:latest /opt/pdftotext /usr/local/bin
+COPY --from=deepset/xpdf:latest /xpdf-4.04/xpdf/pdfinfo /usr/local/bin
 
 # pdftotext requires fontconfig runtime
 RUN apt-get update && apt-get install -y libfontconfig && rm -rf /var/lib/apt/lists/*
