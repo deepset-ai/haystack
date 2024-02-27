@@ -139,7 +139,7 @@ class PipelineTemplate:
         self.component_overrides[component_name] = yaml.safe_dump(component_to_dict(component_instance))
         return self
 
-    def build(self, template_params: Optional[Dict[str, Any]] = None):
+    def build(self, template_params: Optional[Dict[str, Any]] = None) -> Pipeline:
         """
         Constructs a `Pipeline` instance based on the template and any overridden components.
 
