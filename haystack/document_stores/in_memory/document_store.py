@@ -63,7 +63,10 @@ class InMemoryDocumentStore:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serializes this store to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         return default_to_dict(
             self,
@@ -76,7 +79,12 @@ class InMemoryDocumentStore:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "InMemoryDocumentStore":
         """
-        Deserializes the store from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
         """
         return default_from_dict(cls, data)
 
@@ -93,7 +101,7 @@ class InMemoryDocumentStore:
         For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol documentation.
 
         :param filters: The filters to apply to the document list.
-        :return: A list of Documents that match the given filters.
+        :returns: A list of Documents that match the given filters.
         """
         if filters:
             if "operator" not in filters and "conditions" not in filters:
@@ -132,7 +140,7 @@ class InMemoryDocumentStore:
     def delete_documents(self, document_ids: List[str]) -> None:
         """
         Deletes all documents with matching document_ids from the DocumentStore.
-        :param object_ids: The object_ids to delete.
+        :param document_ids: The object_ids to delete.
         """
         for doc_id in document_ids:
             if doc_id not in self.storage.keys():
@@ -149,7 +157,7 @@ class InMemoryDocumentStore:
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The number of top documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved documents. Default is False.
-        :return: A list of the top_k documents most relevant to the query.
+        :returns: A list of the top_k documents most relevant to the query.
         """
         if not query:
             raise ValueError("Query should be a non-empty string")
@@ -242,7 +250,7 @@ class InMemoryDocumentStore:
         :param top_k: The number of top documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved Documents. Default is False.
         :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
-        :return: A list of the top_k documents most relevant to the query.
+        :returns: A list of the top_k documents most relevant to the query.
         """
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
@@ -287,7 +295,7 @@ class InMemoryDocumentStore:
         :param embedding: Embedding of the query.
         :param documents: A list of Documents.
         :param scale_score: Whether to scale the scores of the Documents. Default is False.
-        :return: A list of scores.
+        :returns: A list of scores.
         """
 
         query_embedding = np.array(embedding)
