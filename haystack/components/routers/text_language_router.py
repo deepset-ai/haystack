@@ -14,12 +14,12 @@ with LazyImport("Run 'pip install langdetect'") as langdetect_import:
 class TextLanguageRouter:
     """
     Routes a text input onto one of different output connections depending on its language.
-    This is useful for routing queries to different models in a pipeline depending on their language.
-    The set of supported languages can be specified.
-    For routing Documents based on their language use the related DocumentLanguageClassifier component to first
-    classify the documents and then the MetaDataRouter to route them.
 
-    Example usage in a retrieval pipeline that passes only English language queries to the retriever:
+    The set of supported languages can be specified.
+    For routing Documents based on their language use the `DocumentLanguageClassifier` component to first
+    classify the documents and then the `MetaDataRouter` to route them.
+
+    Usage example in a retrieval pipeline that passes only English language queries to the retriever:
 
     ```python
     document_store = InMemoryDocumentStore()

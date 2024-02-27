@@ -13,7 +13,7 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Routes data to the right component based on its file type or metadata.
+  excerpt: Routers is a group of components that route queries or Documents to other components that can handle them best.
   category_slug: haystack-api
   title: Routers
   slug: routers-api
