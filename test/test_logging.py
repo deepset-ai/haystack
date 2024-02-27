@@ -13,6 +13,7 @@ from _pytest.monkeypatch import MonkeyPatch
 
 from haystack import logging as haystack_logging
 from test.tracing.utils import SpyingTracer
+import haystack.utils.jupyter
 
 
 @pytest.fixture(autouse=True)
@@ -97,10 +98,26 @@ class TestStructuredLoggingConsoleRendering:
         assert "Hello, structured logging!" in output
         assert "{" not in output, "Seems JSON rendering is enabled when it should not be"
 
-    def test_console_rendered_structured_log_even_if_in_jupyter(
+    def test_console_rendered_structured_log_if_in_ipython(
         self, capfd: CaptureFixture, monkeypatch: MonkeyPatch
     ) -> None:
         monkeypatch.setattr(builtins, "__IPYTHON__", "true", raising=False)
+
+        haystack_logging.configure_logging()
+
+        logger = logging.getLogger(__name__)
+        logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
+
+        # Use `capfd` to capture the output of the final structlog rendering result
+        output = capfd.readouterr().err
+
+        assert "Hello, structured logging!" in output
+        assert "{" not in output, "Seems JSON rendering is enabled when it should not be"
+
+    def test_console_rendered_structured_log_even_in_jupyter(
+        self, capfd: CaptureFixture, monkeypatch: MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(haystack.utils.jupyter, haystack.utils.jupyter.is_in_jupyter.__name__, lambda: True)
 
         haystack_logging.configure_logging()
 

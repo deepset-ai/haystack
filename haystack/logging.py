@@ -1,11 +1,12 @@
+import builtins
 import logging
 import os
 import sys
 import typing
 from typing import List, Optional
-import builtins
 
 import haystack.tracing.tracer
+import haystack.utils.jupyter
 
 if typing.TYPE_CHECKING:
     from structlog.typing import Processor, WrappedLogger, EventDict
@@ -60,8 +61,11 @@ def configure_logging(use_json: Optional[bool] = None) -> None:
     if use_json is None:  # explicit parameter takes precedence over everything else
         use_json_env_var = os.getenv(HAYSTACK_LOGGING_USE_JSON_ENV_VAR)
         if use_json_env_var is None:
-            # Automatically enable JSON logging if stderr is not a TTY
-            use_json = not (sys.stderr.isatty() or hasattr(builtins, "__IPYTHON__"))
+            # We try to guess if we are in an interactive terminal or not
+            interactive_terminal = (
+                sys.stderr.isatty() or hasattr(builtins, "__IPYTHON__") or haystack.utils.jupyter.is_in_jupyter()
+            )
+            use_json = not interactive_terminal
         else:
             # User gave us an explicit value via environment variable
             use_json = use_json_env_var.lower() == "true"
