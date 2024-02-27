@@ -1,0 +1,16 @@
+# If you change this name also do it in tests.yml and ci_metrics.yml
+# We use a separate workflow to skip the tests if the PR contains both code and non-code changes (e.g. release notes).
+# Skipping the job unfortunately doesn't work because GitHub will treat these jobs as successful even if they are
+# skipped. Hence, we need to revert to a separate workflow.
+name: Tes
+on:
+  workflow_call:
+
+jobs:
+  catch-all:
+    # Don't run this check if the PR contains both code and non-code changes (e.g. release notes)
+    name: Catch-all check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip tests
+        run: echo "Skipped!"
