@@ -13,7 +13,7 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: "Preprocess your Documents and texts: clean, split, and more."
+  excerpt: Preprocess your Documents and texts. Clean, split, and more.
   category_slug: haystack-api
   title: PreProcessors
   slug: preprocessors-api
