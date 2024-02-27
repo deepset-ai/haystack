@@ -4,7 +4,7 @@
 # skipped. Hence, we need to revert to a separate workflow.
 name: Tests
 on:
-  workflow_dispatch:
+  workflow_call:
 
 jobs:
   catch-all:

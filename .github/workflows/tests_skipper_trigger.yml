@@ -38,14 +38,9 @@ jobs:
               - test/**/*.py
               - "pyproject.toml"
 
-  catch-all-trigger:
+  catch-all:
     # Don't run this check if the PR contains both code and non-code changes (e.g. release notes)
+    name: Catch-all check
     needs: check_if_changed
     if: needs.check_if_changed.outputs.code_changes == 'false'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Invoke workflow without inputs
-        uses: benc-uk/workflow-dispatch@v1
-        with:
-          workflow: tests_skipper.yml
-          ref: "ci/fix-catch-all2"
+    uses: deepset-ai/haystack/.github/workflows/tests_skipper_workflow.yml@ci/fix-catch-all2
