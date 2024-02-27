@@ -64,8 +64,8 @@
     {{ splitter | indent }}
   {% else %}
     init_parameters:
-      split_by: "sentence"
-      split_length: 250
+      split_by: "word"
+      split_length: 200
       split_overlap: 30
     type: "haystack.components.preprocessors.document_splitter.DocumentSplitter"
   {% endif %}
