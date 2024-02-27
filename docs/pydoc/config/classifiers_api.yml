@@ -13,7 +13,7 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Detects the language of the Documents and routes them appropriately.
+  excerpt: Detects the language of the Documents and adds it to the metadata.
   category_slug: haystack-api
   title: Classifiers
   slug: classifiers-api
