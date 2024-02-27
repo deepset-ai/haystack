@@ -151,7 +151,7 @@ class OpenAIGenerator:
             The string prompt to use for text generation.
         :param generation_kwargs:
             Additional keyword arguments for text generation. These parameters will potentially override the parameters
-            passed in the __init__ method. For more details on the parameters supported by the OpenAI API, refer to the
+            passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to the
             OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :returns:
             A list of strings containing the generated responses and a list of dictionaries containing the metadata
