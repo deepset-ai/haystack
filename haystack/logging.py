@@ -3,11 +3,28 @@ import os
 import typing
 from typing import List
 
+import haystack.tracing.tracer
+
 if typing.TYPE_CHECKING:
-    from structlog.typing import Processor
+    from structlog.typing import Processor, WrappedLogger, EventDict
 
 HAYSTACK_LOGGING_USE_JSON_ENV_VAR = "HAYSTACK_LOGGING_USE_JSON"
 HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR = "HAYSTACK_LOGGING_IGNORE_STRUCTLOG"
+
+
+def correlate_logs_with_traces(_: "WrappedLogger", __: str, event_dict: "EventDict") -> "EventDict":
+    """Add correlation data for logs.
+
+    This is useful if you want to correlate logs with traces.
+    """
+    if not haystack.tracing.is_tracing_enabled():
+        return event_dict
+
+    current_span = haystack.tracing.tracer.current_span()
+    if current_span:
+        event_dict.update(current_span.get_correlation_data_for_logs())
+
+    return event_dict
 
 
 def configure_logging(use_json: bool = False) -> None:
@@ -38,12 +55,18 @@ def configure_logging(use_json: bool = False) -> None:
     # https://www.structlog.org/en/stable/standard-library.html#rendering-using-structlog-based-formatters-within-logging
     # This means that we use structlog to format the log entries for entries emitted via `logging` and `structlog`.
 
+    use_json = os.getenv(HAYSTACK_LOGGING_USE_JSON_ENV_VAR, "false").lower() == "true" or use_json
+
     shared_processors: List[Processor] = [
         # Add the log level to the event_dict for structlog to use
         structlog.stdlib.add_log_level,
         # Adds the current timestamp in ISO format to logs
         structlog.processors.TimeStamper(fmt="iso"),
     ]
+
+    if use_json:
+        # We only need that in sophisticated production setups where we want to correlate logs with traces
+        shared_processors.append(correlate_logs_with_traces)
 
     structlog.configure(
         processors=shared_processors + [structlog.stdlib.ProcessorFormatter.wrap_for_formatter],
@@ -54,7 +77,7 @@ def configure_logging(use_json: bool = False) -> None:
     )
 
     renderers: List[Processor]
-    if os.getenv(HAYSTACK_LOGGING_USE_JSON_ENV_VAR, "false").lower() == "true" or use_json:
+    if use_json:
         renderers = [
             ExceptionRenderer(
                 # don't show locals in production logs - this can be quite sensitive information

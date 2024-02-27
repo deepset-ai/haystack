@@ -77,3 +77,14 @@ class TestOpenTelemetryTracer:
         spans = list(span_exporter.get_finished_spans())
         assert len(spans) == 1
         assert spans[0].attributes == {"key": '{"a": 1, "b": [2, 3, 4]}'}
+
+    def test_log_correlation_info(self, opentelemetry_tracer: opentelemetry.trace.Tracer) -> None:
+        tracer = OpenTelemetryTracer(opentelemetry_tracer)
+        with tracer.trace("test") as span:
+            span.set_tag("key", "value")
+
+        correlation_data = span.get_correlation_data_for_logs()
+        assert correlation_data == {
+            "trace_id": span.raw_span().get_span_context().trace_id,
+            "span_id": span.raw_span().get_span_context().span_id,
+        }
