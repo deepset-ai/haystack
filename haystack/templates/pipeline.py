@@ -80,9 +80,9 @@ class PipelineTemplate:
       from haystack.templates import PipelineTemplate, PredefinedPipeline
 
       # Customize the pipeline for document indexing with specific components, include PDF file converter
-      ptb = PipelineTemplate.from_predefined(PredefinedTemplate.INDEXING)
-      ptb.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True))
-      pipe = ptb.build(template_params={"use_pdf_file_converter": True})
+      pt = PipelineTemplate.from_predefined(PredefinedTemplate.INDEXING)
+      pt.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True))
+      pipe = pt.build(template_params={"use_pdf_file_converter": True})
 
       result = pipe.run(data={"sources": ["some_text_file.txt", "another_pdf_file.pdf"]})
       print(result)
@@ -94,11 +94,11 @@ class PipelineTemplate:
 
     def __init__(self, template_content: str):
         """
-        Initialize a PipelineTemplate.
+        Initialize a PipelineTemplate. Besides calling the constructor directly, a set of utility methods is provided
+        for conveniently create an instance of `PipelineTemplate` from different sources. See `from_string`,
+        `from_file`, `from_predefined` and `from_url`.
 
-        :param pipeline_template: The template source to use. See `TemplateSource` for available methods to load
-        templates.
-        :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
+        :param template_content: The raw template source to use in the template.
         """
         env = Environment(
             loader=PackageLoader("haystack.templates", "predefined"), trim_blocks=True, lstrip_blocks=True
@@ -149,7 +149,7 @@ class PipelineTemplate:
         return Pipeline.loads(rendered)
 
     @classmethod
-    def from_str(cls, template_str: str) -> "PipelineTemplate":
+    def from_string(cls, template_str: str) -> "PipelineTemplate":
         """
         Create a PipelineTemplate from a string.
         :param template_str: The template string to use. Must contain valid Jinja syntax.
@@ -165,7 +165,7 @@ class PipelineTemplate:
         :return: An instance of `PipelineTemplate `.
         """
         with open(file_path, "r") as file:
-            return cls.from_str(file.read())
+            return cls(file.read())
 
     @classmethod
     def from_predefined(cls, predefined_pipeline: PredefinedPipeline) -> "PipelineTemplate":
@@ -190,7 +190,7 @@ class PipelineTemplate:
         """
         response = requests.get(url, timeout=10)
         response.raise_for_status()
-        return cls.from_str(response.text)
+        return cls(response.text)
 
     @property
     def template_content(self) -> str:
