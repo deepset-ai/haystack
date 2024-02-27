@@ -79,7 +79,54 @@ class TestStructuredLoggingConsoleRendering:
 
         # Use `capfd` to capture the output of the final structlog rendering result
         output = capfd.readouterr().err
-        assert output != ""
+        assert "Hello, structured logging" in output
+        assert "{" not in output, "Seems JSON rendering is enabled when it should not be"
+
+    def test_console_rendered_structured_log_even_if_no_tty_but_python_config(
+        self, capfd: CaptureFixture, monkeypatch: MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+
+        haystack_logging.configure_logging(use_json=False)
+
+        logger = logging.getLogger(__name__)
+        logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
+
+        # Use `capfd` to capture the output of the final structlog rendering result
+        output = capfd.readouterr().err
+
+        # Only check for the minute to be a bit more robust
+        today = datetime.now(tz=timezone.utc).isoformat(timespec="minutes").replace("+00:00", "")
+        assert today in output
+
+        log_level = "warning"
+        assert log_level in output
+
+        assert "Hello, structured logging!" in output
+        assert "{" not in output, "Seems JSON rendering is enabled when it should not be"
+
+    def test_console_rendered_structured_log_even_if_no_tty_but_forced_through_env(
+        self, capfd: CaptureFixture, monkeypatch: MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("HAYSTACK_LOGGING_USE_JSON", "false")
+
+        haystack_logging.configure_logging()
+
+        logger = logging.getLogger(__name__)
+        logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
+
+        # Use `capfd` to capture the output of the final structlog rendering result
+        output = capfd.readouterr().err
+
+        # Only check for the minute to be a bit more robust
+        today = datetime.now(tz=timezone.utc).isoformat(timespec="minutes").replace("+00:00", "")
+        assert today in output
+
+        log_level = "warning"
+        assert log_level in output
+
+        assert "Hello, structured logging!" in output
+        assert "{" not in output, "Seems JSON rendering is enabled when it should not be"
 
     def test_console_rendered_structured_log(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging()
@@ -122,6 +169,25 @@ class TestStructuredLoggingConsoleRendering:
 
 
 class TestStructuredLoggingJSONRendering:
+    def test_logging_as_json_if_not_atty(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+        haystack_logging.configure_logging()
+
+        logger = logging.getLogger(__name__)
+        logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
+
+        # Use `capfd` to capture the output of the final structlog rendering result
+        output = capfd.readouterr().err
+        parsed_output = json.loads(output)  # should not raise an error
+
+        assert parsed_output == {
+            "event": "Hello, structured logging!",
+            "key1": "value1",
+            "key2": "value2",
+            "level": "warning",
+            "timestamp": ANY,
+        }
+
     def test_logging_as_json(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 

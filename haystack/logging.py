@@ -1,7 +1,8 @@
 import logging
 import os
+import sys
 import typing
-from typing import List
+from typing import List, Optional
 
 import haystack.tracing.tracer
 
@@ -27,7 +28,7 @@ def correlate_logs_with_traces(_: "WrappedLogger", __: str, event_dict: "EventDi
     return event_dict
 
 
-def configure_logging(use_json: bool = False) -> None:
+def configure_logging(use_json: Optional[bool] = None) -> None:
     """Configure logging for Haystack.
 
     - If `structlog` is not installed, we keep everything as it is. The user is responsible for configuring logging
@@ -55,7 +56,14 @@ def configure_logging(use_json: bool = False) -> None:
     # https://www.structlog.org/en/stable/standard-library.html#rendering-using-structlog-based-formatters-within-logging
     # This means that we use structlog to format the log entries for entries emitted via `logging` and `structlog`.
 
-    use_json = os.getenv(HAYSTACK_LOGGING_USE_JSON_ENV_VAR, "false").lower() == "true" or use_json
+    if use_json is None:  # explicit parameter takes precedence over everything else
+        use_json_env_var = os.getenv(HAYSTACK_LOGGING_USE_JSON_ENV_VAR)
+        if use_json_env_var is None:
+            # Automatically enable JSON logging if stderr is not a TTY
+            use_json = not sys.stderr.isatty()
+        else:
+            # User gave us an explicit value via environment variable
+            use_json = use_json_env_var == "true"
 
     shared_processors: List[Processor] = [
         # Add the log level to the event_dict for structlog to use
