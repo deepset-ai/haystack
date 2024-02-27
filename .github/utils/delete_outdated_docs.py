@@ -63,12 +63,10 @@ if __name__ == "__main__":
 
         remote_docs[category_slug] = docs
 
-    print(remote_docs)
     for config in configs:
         doc_slug = config["renderer"]["slug"]
         category_slug = config["renderer"]["category_slug"]
         if doc_slug in remote_docs[category_slug]:
             continue
 
-        print(f"Deleting {doc_slug} from {args.version}")
-        # delete_doc(doc_slug, args.version)
+        delete_doc(doc_slug, args.version)
