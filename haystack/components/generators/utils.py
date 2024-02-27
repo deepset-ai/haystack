@@ -15,8 +15,10 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
 def serialize_callback_handler(streaming_callback: Callable[[StreamingChunk], None]) -> str:
     """
     Serializes the streaming callback handler.
-    :param streaming_callback: The streaming callback handler function
-    :return: The full path of the streaming callback handler function
+    :param streaming_callback:
+        The streaming callback handler function
+    :returns:
+        The full path of the streaming callback handler function
     """
     return serialize_callable(streaming_callback)
 
@@ -24,8 +26,11 @@ def serialize_callback_handler(streaming_callback: Callable[[StreamingChunk], No
 def deserialize_callback_handler(callback_name: str) -> Optional[Callable[[StreamingChunk], None]]:
     """
     Deserializes the streaming callback handler.
-    :param callback_name: The full path of the streaming callback handler function
-    :return: The streaming callback handler function
-    :raises DeserializationError: If the streaming callback handler function cannot be found
+    :param callback_name:
+        The full path of the streaming callback handler function
+    :returns:
+        The streaming callback handler function
+    :raises DeserializationError:
+        If the streaming callback handler function cannot be found
     """
     return deserialize_callable(callback_name)

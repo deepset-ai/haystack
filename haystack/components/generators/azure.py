@@ -29,9 +29,10 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     ```python
     from haystack.components.generators import AzureOpenAIGenerator
     from haystack.utils import Secret
-    client = AzureOpenAIGenerator(azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
-                                api_key=Secret.from_token("<your-api-key>"),
-                            azure_deployment="<this a model name, e.g. gpt-35-turbo>")
+    client = AzureOpenAIGenerator(
+        azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
+        api_key=Secret.from_token("<your-api-key>"),
+        azure_deployment="<this a model name, e.g. gpt-35-turbo>")
     response = client.run("What's Natural Language Processing? Be brief.")
     print(response)
 
@@ -134,7 +135,9 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
-        :return: The serialized component as a dictionary.
+
+        :returns:
+            The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
@@ -154,8 +157,11 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAIGenerator":
         """
         Deserialize this component from a dictionary.
-        :param data: The dictionary representation of this component.
-        :return: The deserialized component instance.
+
+        :param data:
+            The dictionary representation of this component.
+        :returns:
+            The deserialized component instance.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
         init_params = data.get("init_parameters", {})
