@@ -142,6 +142,8 @@ class PipelineTemplate:
         """
         Constructs a `Pipeline` instance based on the template and any overridden components.
 
+        :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
+
         :return: An instance of `Pipeline` constructed from the rendered template and custom component configurations.
         """
         template_params = template_params or {}
