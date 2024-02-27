@@ -2,7 +2,7 @@
 # We use a separate workflow to skip the tests if the PR contains both code and non-code changes (e.g. release notes).
 # Skipping the job unfortunately doesn't work because GitHub will treat these jobs as successful even if they are
 # skipped. Hence, we need to revert to a separate workflow.
-name: Tes
+name: Tests
 on:
   workflow_call:
 
