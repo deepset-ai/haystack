@@ -1,61 +1,73 @@
-components:
-  answer_builder: {{ answer_builder | default({
-    "init_parameters": {},
-    "type": "haystack.components.builders.answer_builder.AnswerBuilder"
-  }, true) | tojson }}
-  generator: {{ generator | default({
-    "init_parameters": {
-      "api_key": {
-        "env_vars": [ "OPENAI_API_KEY" ],
-        "strict": true,
-        "type": "env_var"
-      },
-      "model": "gpt-3.5-turbo"
-    },
-    "type": "haystack.components.generators.openai.OpenAIGenerator"
-  }, true) | tojson }}
-  retriever: {{ retriever | default({
-      "init_parameters": {
-        "document_store": {
-            "init_parameters": {
-              "bm25_algorithm": "BM25L",
-              "bm25_parameters": {},
-              "bm25_tokenization_regex": "(?u)\\b\\w\\w+\\b",
-              "embedding_similarity_function": "dot_product"
-            },
-            "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore"
-        },
-        "filters": None,
-        "return_embedding": false,
-        "scale_score": false,
-        "top_k": 10
-      },
-      "type": "haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever"
-  }, true) | tojson }}
-  text_embedder: {{ text_embedder | default({
-    "init_parameters": {
-      "batch_size": 32,
-      "device": {"type": "single", "device": "cpu"},
-      "model": "sentence-transformers/all-mpnet-base-v2",
-      "normalize_embeddings": false,
-      "prefix": "",
-      "progress_bar": true,
-      "suffix": "",
-      "token": {
-        "env_vars": [ "HF_API_TOKEN" ],
-        "strict": false,
-        "type": "env_var"
-      }
-    },
-    "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder"
-  }, true) | tojson }}
-  prompt_builder: {{ prompt_builder | default({
-    "init_parameters": {
-      "template": "\nGiven these documents, answer the question.\n\nDocuments:\n{% for doc in documents %}\n{{ doc.content }}\n {% endfor %}\n\nQuestion: {{question}}\n\nAnswer:\n",
-    },
-    "type": "haystack.components.builders.prompt_builder.PromptBuilder"
-  }, true) | tojson }}
-connections:
+{% extends "base.yaml.jinja2" %}
+
+{% block components %}
+  answer_builder:
+  {% if answer_builder %}
+    {{ answer_builder }}
+  {% else %}
+    init_parameters: {}
+    type: "haystack.components.builders.answer_builder.AnswerBuilder"
+  {% endif %}
+
+  generator:
+  {% if generator %}
+    {{ generator }}
+  {% else %}
+    init_parameters:
+      api_key:
+        env_vars: [ "OPENAI_API_KEY" ]
+        strict: true
+        type: "env_var"
+      model: "gpt-3.5-turbo"
+    type: "haystack.components.generators.openai.OpenAIGenerator"
+  {% endif %}
+
+  retriever:
+  {% if retriever %}
+    {{ retriever }}
+  {% else %}
+    init_parameters:
+      document_store:
+        init_parameters:
+          bm25_algorithm": "BM25L"
+          bm25_parameters": {}
+          bm25_tokenization_regex": "(?u)\\b\\w\\w+\\b"
+          embedding_similarity_function": "dot_product"
+        type: "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore"
+      filters: None,
+      return_embedding: false,
+      scale_score: false,
+      top_k: 10
+    type: "haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever"
+  {% endif %}
+
+  text_embedder:
+  {% if text_embedder %}
+    {{ text_embedder }}
+  {% else %}
+    init_parameters:
+      batch_size": 32
+      device:
+        type: "single"
+        device: "cpu"
+      model: "sentence-transformers/all-mpnet-base-v2"
+      normalize_embeddings: false
+      prefix: ""
+      progress_bar: true
+      suffix: ""
+    type: "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder"
+  {% endif %}
+
+  prompt_builder:
+  {% if prompt_builder %}
+    init_parameters:
+      template: |
+        {% raw %}"\nGiven these documents, answer the question.\n\nDocuments:\n{% for doc in documents %}\n{{ doc.content }}\n {% endfor %}\n\nQuestion: {{question}}\n\nAnswer:\n"{% endraw %}
+    type: "haystack.components.builders.prompt_builder.PromptBuilder"
+  {% endif %}
+{% endblock %}
+
+{% block connections %}
 - receiver: retriever.query_embedding
   sender: text_embedder.embedding
 - receiver: prompt_builder.documents
@@ -68,5 +80,4 @@ connections:
   sender: generator.replies
 - receiver: answer_builder.meta
   sender: generator.meta
-max_loops_allowed: 100
-metadata: {}
+{% endblock %}
