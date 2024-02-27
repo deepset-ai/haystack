@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceTGIGenerator:
     """
-    Enables text generation using HuggingFace Hub hosted non-chat LLMs. This component is designed to seamlessly
-    inference models deployed on the Text Generation Inference (TGI) backend.
+    Enables text generation using HuggingFace Hub hosted non-chat LLMs.
 
+    This component is designed to seamlessly inference models deployed on the Text Generation Inference (TGI) backend.
     You can use this component for LLMs hosted on Hugging Face inference endpoints, the rate-limited
     Inference API tier:
 
@@ -121,8 +121,10 @@ class HuggingFaceTGIGenerator:
 
     def warm_up(self) -> None:
         """
+        Initializes the component.
+
         If the url is not provided, check if the model is deployed on the free tier of the HF inference API.
-        Load the tokenizer
+        Loads the tokenizer
         """
 
         # is this user using HF free tier inference API?
@@ -144,7 +146,8 @@ class HuggingFaceTGIGenerator:
         """
         Serialize this component to a dictionary.
 
-        :return: A dictionary containing the serialized component.
+        :returns:
+            A dictionary containing the serialized component.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
@@ -180,10 +183,13 @@ class HuggingFaceTGIGenerator:
         """
         Invoke the text generation inference for the given prompt and generation parameters.
 
-        :param prompt: A string representing the prompt.
-        :param generation_kwargs: Additional keyword arguments for text generation.
-        :return: A dictionary containing the generated replies and metadata. Both are lists of length n.
-        Replies are strings and metadata are dictionaries.
+        :param prompt:
+            A string representing the prompt.
+        :param generation_kwargs:
+            Additional keyword arguments for text generation.
+        :returns:
+            A dictionary containing the generated replies and metadata. Both are lists of length n.
+            - replies: A list of strings representing the generated replies.
         """
         # check generation kwargs given as parameters to override the default ones
         additional_params = ["n", "stop_words"]

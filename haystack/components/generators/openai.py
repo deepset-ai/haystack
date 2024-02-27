@@ -209,8 +209,7 @@ class OpenAIGenerator:
 
         :param messages:
             The list of ChatMessage.
-
-        :return:
+        :returns:
             The list of messages in the format expected by the OpenAI API.
         """
         openai_chat_message_format = {"role", "content", "name"}
@@ -266,7 +265,6 @@ class OpenAIGenerator:
 
         :param chunk:
             The chunk returned by the OpenAI API.
-
         :returns:
             The StreamingChunk.
         """
