@@ -122,6 +122,9 @@ extra-dependencies = [
   # Tracing
   "opentelemetry-sdk",
   "ddtrace",
+
+  # Structured logging
+  "structlog",
 ]
 
 [tool.hatch.envs.test.scripts]
