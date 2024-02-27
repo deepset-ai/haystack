@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: iterative/setup-cml@v2
+      - uses: iterative/setup-cml@v3
 
       - name: AWS authentication
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
