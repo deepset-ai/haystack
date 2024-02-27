@@ -7,6 +7,7 @@ import yaml
 from jinja2 import meta, TemplateSyntaxError, Environment, PackageLoader
 
 from haystack import Pipeline
+from haystack.core.errors import PipelineUnmarshalError
 from haystack.core.component import Component
 from haystack.core.errors import PipelineValidationError
 from haystack.core.serialization import component_to_dict
@@ -148,7 +149,12 @@ class PipelineTemplate:
         """
         template_params = template_params or {}
         rendered = self._template.render(**self.component_overrides, **template_params)
-        return Pipeline.loads(rendered)
+        try:
+            return Pipeline.loads(rendered)
+        except Exception as e:
+            msg = f"Error unmarshalling pipeline: {e}\n"
+            msg += f"Source:\n{rendered}"
+            raise PipelineUnmarshalError(msg)
 
     @classmethod
     def from_string(cls, template_str: str) -> "PipelineTemplate":
