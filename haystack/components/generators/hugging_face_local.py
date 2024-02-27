@@ -52,8 +52,7 @@ class HuggingFaceLocalGenerator:
         stop_words: Optional[List[str]] = None,
     ):
         """
-        Creates an instance of a HuggingFaceLocalGenerator. Unless specified otherwise in the `model`, the instance will
-        be initialized with the `google/flan-t5-base` model.
+        Creates an instance of a HuggingFaceLocalGenerator.
 
         :param model: The name or path of a Hugging Face model for text generation,
             for example, "google/flan-t5-large".
