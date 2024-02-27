@@ -151,18 +151,18 @@ class PipelineTemplate:
     @classmethod
     def from_str(cls, template_str: str) -> "PipelineTemplate":
         """
-        Create a TemplateSource from a string.
+        Create a PipelineTemplate from a string.
         :param template_str: The template string to use. Must contain valid Jinja syntax.
-        :return: An instance of `TemplateSource`.
+        :return: An instance of `PipelineTemplate `.
         """
         return cls(template_str)
 
     @classmethod
     def from_file(cls, file_path: Union[Path, str]) -> "PipelineTemplate":
         """
-        Create a TemplateSource from a file.
+        Create a PipelineTemplate from a file.
         :param file_path: The path to the file containing the template. Must contain valid Jinja2 syntax.
-        :return: An instance of `TemplateSource`.
+        :return: An instance of `PipelineTemplate `.
         """
         with open(file_path, "r") as file:
             return cls.from_str(file.read())
@@ -170,9 +170,9 @@ class PipelineTemplate:
     @classmethod
     def from_predefined(cls, predefined_pipeline: PredefinedPipeline) -> "PipelineTemplate":
         """
-        Create a TemplateSource from a predefined template. See `PredefinedTemplate` for available options.
-        :param predefined_template: The name of the predefined template to use.
-        :return: An instance of `TemplateSource`.
+        Create a PipelineTemplate from a predefined template. See `PredefinedPipeline` for available options.
+        :param predefined_pipeline: The predefined pipeline to use.
+        :return: An instance of `PipelineTemplate `.
         """
         if predefined_pipeline == PredefinedPipeline.EMPTY:
             # This is temporary, to ease the refactoring
@@ -184,9 +184,9 @@ class PipelineTemplate:
     @classmethod
     def from_url(cls, url: str) -> "PipelineTemplate":
         """
-        Create a TemplateSource from a URL.
+        Create a PipelineTemplate from a URL.
         :param url: The URL to fetch the template from. Must contain valid Jinja2 syntax.
-        :return: An instance of `TemplateSource`.
+        :return: An instance of `PipelineTemplate `.
         """
         response = requests.get(url, timeout=10)
         response.raise_for_status()

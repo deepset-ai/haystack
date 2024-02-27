@@ -13,7 +13,7 @@ highlights:  >
 
    pt = PipelineTemplate(PredefinedPipeline.INDEXING)
    pt.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True))
-   pipe = ptb.build(template_params={"use_pdf_file_converter": True})
+   pipe = pt.build(template_params={"use_pdf_file_converter": True})
 
    result = pipe.run(data={"sources": ["some_local_dir/and_text_file.txt", "some_other_local_dir/and_pdf_file.pdf"]})
    print(result)
