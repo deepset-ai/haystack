@@ -203,7 +203,7 @@ class OpenAPIServiceConnector:
 
         for param in parameters:
             param_name = param["name"]
-            param_value = invocation_arguments.pop(param_name, None)
+            param_value = invocation_arguments.get(param_name)
             if param_value:
                 method_call_params["parameters"][param_name] = param_value
             else:
