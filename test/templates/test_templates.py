@@ -88,7 +88,7 @@ class TestPipelineTemplate:
     def test_override_component(self):
         # integration because we'll fetch the tokenizer
         pipe = (
-            PipelineTemplate.from_predefined(PredefinedPipeline.QA)
+            PipelineTemplate.from_predefined(PredefinedPipeline.GENERATIVE_QA)
             .override("generator", HuggingFaceTGIGenerator())
             .build()
         )

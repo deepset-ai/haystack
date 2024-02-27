@@ -25,7 +25,7 @@ class PredefinedPipeline(Enum):
     EMPTY = "empty"
 
     # Maintain 1-to-1 mapping between the enum name and the template file name in templates directory
-    QA = "qa"
+    GENERATIVE_QA = "generative_qa"
     RAG = "rag"
     INDEXING = "indexing"
 
@@ -52,8 +52,8 @@ class PipelineTemplate:
       ```python
       from haystack.templates import PipelineTemplate, PredefinedPipeline
 
-      # Create a pipeline with default components for a QA task
-      pipe = PipelineTemplate.from_predefined(PredefinedPipeline.QA).build()
+      # Create a pipeline with default components for an extractive QA task
+      pipe = PipelineTemplate.from_predefined(PredefinedPipeline.GENERATIVE_QA).build()
       print(pipe.run(data={"question": "What's the capital of Bosnia and Herzegovina? Be brief"}))
       ```
 
@@ -64,9 +64,9 @@ class PipelineTemplate:
       from haystack.components.generators.utils import print_streaming_chunk
       from haystack.templates import PipelineTemplate, PredefinedPipeline
 
-      # Customize the pipeline with a streaming-capable generator
+      # Customize the pipeline with a streaming-capable question-answering generator
       streaming_pipe = (
-        PipelineTemplate.from_predefined(PredefinedTemplate.QA)
+        PipelineTemplate.from_predefined(PredefinedTemplate.GENERATIVE_QA)
         .override("generator", OpenAIGenerator(streaming_callback=print_streaming_chunk))
         .build()
       )
