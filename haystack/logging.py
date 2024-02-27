@@ -1,9 +1,12 @@
+import builtins
 import logging
 import os
+import sys
 import typing
-from typing import List
+from typing import List, Optional
 
 import haystack.tracing.tracer
+import haystack.utils.jupyter
 
 if typing.TYPE_CHECKING:
     from structlog.typing import Processor, WrappedLogger, EventDict
@@ -27,7 +30,7 @@ def correlate_logs_with_traces(_: "WrappedLogger", __: str, event_dict: "EventDi
     return event_dict
 
 
-def configure_logging(use_json: bool = False) -> None:
+def configure_logging(use_json: Optional[bool] = None) -> None:
     """Configure logging for Haystack.
 
     - If `structlog` is not installed, we keep everything as it is. The user is responsible for configuring logging
@@ -55,7 +58,17 @@ def configure_logging(use_json: bool = False) -> None:
     # https://www.structlog.org/en/stable/standard-library.html#rendering-using-structlog-based-formatters-within-logging
     # This means that we use structlog to format the log entries for entries emitted via `logging` and `structlog`.
 
-    use_json = os.getenv(HAYSTACK_LOGGING_USE_JSON_ENV_VAR, "false").lower() == "true" or use_json
+    if use_json is None:  # explicit parameter takes precedence over everything else
+        use_json_env_var = os.getenv(HAYSTACK_LOGGING_USE_JSON_ENV_VAR)
+        if use_json_env_var is None:
+            # We try to guess if we are in an interactive terminal or not
+            interactive_terminal = (
+                sys.stderr.isatty() or hasattr(builtins, "__IPYTHON__") or haystack.utils.jupyter.is_in_jupyter()
+            )
+            use_json = not interactive_terminal
+        else:
+            # User gave us an explicit value via environment variable
+            use_json = use_json_env_var.lower() == "true"
 
     shared_processors: List[Processor] = [
         # Add the log level to the event_dict for structlog to use
