@@ -10,7 +10,10 @@ from haystack import component, Document
 class DocumentSplitter:
     """
     Splits a list of text documents into a list of text documents with shorter texts.
-    This is useful for splitting documents with long texts that otherwise would not fit into the maximum text length of language models.
+
+    Splitting documents with long texts is a common preprocessing step during indexing.
+    This allows Embedders to create significant semantic representations
+    and avoids exceeding the maximum context length of language models.
     """
 
     def __init__(
@@ -21,7 +24,7 @@ class DocumentSplitter:
     ):
         """
         :param split_by: The unit by which the document should be split. Choose from "word" for splitting by " ",
-        "sentence" for splitting by ".", "page" for splitting by "\f" or "passage" for splitting by "\\n\\n".
+            "sentence" for splitting by ".", "page" for splitting by "\\f" or "passage" for splitting by "\\n\\n".
         :param split_length: The maximum number of units in each split.
         :param split_overlap: The number of units that each split should overlap.
         """
@@ -39,12 +42,18 @@ class DocumentSplitter:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
-        Splits the documents by split_by after split_length units with an overlap of split_overlap units.
-        Returns a list of documents with the split texts.
-        A metadata field "source_id" is added to each document to keep track of the original document that was split.
-        Other metadata are copied from the original document.
+        Splits documents by the unit expressed in `split_by`, with a length of `split_length`
+        and an overlap of `split_overlap`.
+
         :param documents: The documents to split.
-        :return: A list of documents with the split texts.
+
+        :returns: A dictionary with the following key:
+            - `documents`: List of documents with the split texts. A metadata field "source_id" is added to each
+            document to keep track of the original document that was split. Other metadata are copied from the original
+            document.
+
+        :raises TypeError: if the input is not a list of Documents.
+        :raises ValueError: if the content of a document is None.
         """
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
