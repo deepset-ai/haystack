@@ -343,7 +343,7 @@ jobs:
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   trigger-catch-all:
-    name: Catch-all check
+    name: Trigger-catch-all-check
     # This job will be executed only after all the other tests
     # are successful.
     # This way we'll be able to mark only this test as required
