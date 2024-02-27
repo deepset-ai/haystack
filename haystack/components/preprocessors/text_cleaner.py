@@ -10,6 +10,7 @@ class TextCleaner:
     """
     A preprocessor component to clean text data. It can remove substrings matching a list of regular expressions,
     convert text to lowercase, remove punctuation, and remove numbers.
+
     This is useful to cleanup text data before evaluation.
     """
 
@@ -21,13 +22,11 @@ class TextCleaner:
         remove_numbers: bool = False,
     ):
         """
-        Creates a new instance of TextCleaner.
-
         :param remove_regexps: A list of regular expressions. If provided, it removes substrings
-            matching these regular expressions from the text. Defaults to None.
-        :param convert_to_lowercase: If True, converts all characters to lowercase. Defaults to False.
-        :param remove_punctuation: If True, removes punctuation from the text. Defaults to False.
-        :param remove_numbers: If True, removes numerical digits from the text. Defaults to False.
+            matching these regular expressions from the text.
+        :param convert_to_lowercase: If True, converts all characters to lowercase.
+        :param remove_punctuation: If True, removes punctuation from the text.
+        :param remove_numbers: If True, removes numerical digits from the text.
         """
         self._remove_regexps = remove_regexps
         self._convert_to_lowercase = convert_to_lowercase
@@ -47,12 +46,12 @@ class TextCleaner:
 
     @component.output_types(texts=List[str])
     def run(self, texts: List[str]) -> Dict[str, Any]:
-        r"""
-        Run the TextCleaner on the given list of strings.
+        """
+        Cleans up the given list of strings.
 
         :param texts: List of strings to clean.
-        :returns: A dictionary with the following outputs:
-                * `texts` - The cleaned list of strings.
+        :returns: A dictionary with the following key:
+            - `texts`:  the cleaned list of strings.
         """
 
         if self._regex:
