@@ -105,7 +105,7 @@ class DocumentStore(Protocol):
         }
 
         :param filters: the filters to apply to the document list.
-        :return: a list of Documents that match the given filters.
+        :returns: a list of Documents that match the given filters.
         """
         ...
 
@@ -120,7 +120,7 @@ class DocumentStore(Protocol):
             - `DuplicatePolicy.OVERWRITE`: If a Document with the same id already exists, it is overwritten.
             - `DuplicatePolicy.FAIL`: If a Document with the same id already exists, an error is raised.
         :raises DuplicateError: If `policy` is set to `DuplicatePolicy.FAIL` and a Document with the same id already exists.
-        :return: The number of Documents written.
+        :returns: The number of Documents written.
             If `DuplicatePolicy.OVERWRITE` is used, this number is always equal to the number of documents in input.
             If `DuplicatePolicy.SKIP` is used, this number can be lower than the number of documents in the input list.
         """
@@ -129,8 +129,9 @@ class DocumentStore(Protocol):
     def delete_documents(self, document_ids: List[str]) -> None:
         """
         Deletes all documents with a matching document_ids from the DocumentStore.
+
         Fails with `MissingDocumentError` if no document with this id is present in the DocumentStore.
 
-        :param object_ids: the object_ids to delete
+        :param document_ids: the object_ids to delete
         """
         ...
