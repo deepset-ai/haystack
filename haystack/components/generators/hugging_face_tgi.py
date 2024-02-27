@@ -84,14 +84,17 @@ class HuggingFaceTGIGenerator:
         """
         Initialize the HuggingFaceTGIGenerator instance.
 
-        :param model: A string representing the model id on HF Hub. Default is "mistralai/Mistral-7B-v0.1".
-        :param url: An optional string representing the URL of the TGI endpoint.
+        :param model:
+            A string representing the model id on HF Hub. Default is "mistralai/Mistral-7B-v0.1".
+        :param url:
+            An optional string representing the URL of the TGI endpoint. If the url is not provided, check if the model
+            is deployed on the free tier of the HF inference API.
         :param token: The HuggingFace token to use as HTTP bearer authorization
-            You can find your HF token at https://huggingface.co/settings/tokens
-        :param generation_kwargs: A dictionary containing keyword arguments to customize text generation.
-            Some examples: `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
-            See Hugging Face's documentation for more information at:
-            https://huggingface.co/docs/huggingface_hub/v0.18.0.rc0/en/package_reference/inference_client#huggingface_hub.inference._text_generation.TextGenerationParameters
+            You can find your HF token at [link](https://huggingface.co/settings/tokens)
+        :param generation_kwargs:
+            A dictionary containing keyword arguments to customize text generation.
+                Some examples: `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
+                See Hugging Face's documentation for more information at: [TextGenerationParameters](https://huggingface.co/docs/huggingface_hub/v0.18.0.rc0/en/package_reference/inference_client#huggingface_hub.inference._text_generation.TextGenerationParameters
         :param stop_words: An optional list of strings representing the stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
@@ -122,9 +125,6 @@ class HuggingFaceTGIGenerator:
     def warm_up(self) -> None:
         """
         Initializes the component.
-
-        If the url is not provided, check if the model is deployed on the free tier of the HF inference API.
-        Loads the tokenizer
         """
 
         # is this user using HF free tier inference API?
