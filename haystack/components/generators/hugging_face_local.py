@@ -199,7 +199,8 @@ class HuggingFaceLocalGenerator:
 
         :param prompt:
             A string representing the prompt.
-            :param generation_kwargs: Additional keyword arguments for text generation.
+            :param generation_kwargs: 
+            	Additional keyword arguments for text generation.
 
         :returns:
             A dictionary containing the generated replies.
