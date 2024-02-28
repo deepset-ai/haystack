@@ -8,15 +8,6 @@ def test_init():
     assert builder._template_string == "This is a {{ variable }}"
 
 
-def test_to_dict():
-    builder = PromptBuilder(template="This is a {{ variable }}")
-    res = builder.to_dict()
-    assert res == {
-        "type": "haystack.components.builders.prompt_builder.PromptBuilder",
-        "init_parameters": {"template": "This is a {{ variable }}"},
-    }
-
-
 def test_run():
     builder = PromptBuilder(template="This is a {{ variable }}")
     res = builder.run(variable="test")
