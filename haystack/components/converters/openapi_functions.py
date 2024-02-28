@@ -20,30 +20,33 @@ with LazyImport("Run 'pip install jsonref'") as openapi_imports:
 @component
 class OpenAPIServiceToFunctions:
     """
-    OpenAPIServiceToFunctions is responsible for converting an OpenAPI service specification into a format suitable
-    for OpenAI function calling, based on the provided OpenAPI specification. Given an OpenAPI specification,
-    OpenAPIServiceToFunctions processes it, and extracts function definitions that can be invoked via OpenAI's
-    function calling mechanism. The format of the extracted functions is compatible with OpenAI's function calling
-    JSON format.
+    Converts OpenAPI service definitions to a format suitable for OpenAI function calling.
 
-    Minimal requirements for OpenAPI specification:
-    - OpenAPI version 3.0.0 or higher
-    - Each path must have:
-        - a unique operationId
-        - a description
-        - a requestBody or parameters or both
-        - a schema for the requestBody and/or parameters
+    The definition must respect OpenAPI specification 3.0.0 or higher.
+    It can be specified in JSON or YAML format.
+    Each function must have:
+        - unique operationId
+        - description
+        - requestBody and/or parameters
+        - schema for the requestBody and/or parameters
+    For more details on OpenAPI specification see the [official documentation](https://github.com/OAI/OpenAPI-Specification).
+    For more details on OpenAI function calling see the [official documentation](https://platform.openai.com/docs/guides/function-calling).
 
+    Usage example:
+    ```python
+    from haystack.components.converters import OpenAPIServiceToFunctions
 
-    See https://github.com/OAI/OpenAPI-Specification for more details on OpenAPI specification.
-    See https://platform.openai.com/docs/guides/function-calling for more details on OpenAI function calling.
+    converter = OpenAPIServiceToFunctions()
+    result = converter.run(sources=["path/to/openapi_definition.yaml"])
+    assert result["documents"]
+    ```
     """
 
     MIN_REQUIRED_OPENAPI_SPEC_VERSION = 3
 
     def __init__(self):
         """
-        Initializes the OpenAPIServiceToFunctions instance
+        Create a OpenAPIServiceToFunctions component.
         """
         openapi_imports.check()
 
@@ -52,19 +55,21 @@ class OpenAPIServiceToFunctions:
         self, sources: List[Union[str, Path, ByteStream]], system_messages: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
-        Processes OpenAPI specification URLs or files to extract functions that can be invoked via OpenAI function
-        calling mechanism. Each source is paired with an optional system message. The system message can be potentially
-        used in LLM response generation.
+        Converts OpenAPI definitions in OpenAI function calling format.
 
-        :param sources: A list of OpenAPI specification sources, which can be URLs, file paths, or ByteStream objects.
-        :type sources: List[Union[str, Path, ByteStream]]
-        :param system_messages: A list of optional system messages corresponding to each source.
-        :type system_messages: Optional[List[str]]
-        :return: A dictionary with a key 'documents' containing a list of Document objects. Each Document object
-                 encapsulates a function definition and relevant metadata.
-        :rtype: Dict[str, Any]
-        :raises RuntimeError: If the OpenAPI specification cannot be downloaded or processed.
-        :raises ValueError: If the source type is not recognized or no functions are found in the OpenAPI specification.
+        :param sources:
+            File paths, URLs or ByteStream objects of OpenAPI definitions.
+        :param system_messages:
+            Optional system messages for each source.
+
+        :returns:
+            A dictionary with the following keys:
+            - documents: Documents containing a function definition and relevant metadata
+
+        :raises RuntimeError:
+            If the OpenAPI definitions cannot be downloaded or processed.
+        :raises ValueError:
+            If the source type is not recognized or no functions are found in the OpenAPI definitions.
         """
         documents: List[Document] = []
         system_messages = system_messages or [""] * len(sources)

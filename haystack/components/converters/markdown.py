@@ -23,10 +23,10 @@ class MarkdownToDocument:
 
     Usage example:
     ```python
-    from haystack.components.converters.markdown import MarkdownToDocument
+    from haystack.components.converters import MarkdownToDocument
 
     converter = MarkdownToDocument()
-    results = converter.run(sources=["sample.md"], meta={"date_added": datetime.now().isoformat()})
+    results = converter.run(sources=["path/to/sample.md"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
     # 'This is a text from the markdown file.'
@@ -35,8 +35,12 @@ class MarkdownToDocument:
 
     def __init__(self, table_to_single_line: bool = False, progress_bar: bool = True):
         """
-        :param table_to_single_line: Convert contents of the table into a single line. Defaults to False.
-        :param progress_bar: Show a progress bar for the conversion. Defaults to True.
+        Create a MarkdownToDocument component.
+
+        :param table_to_single_line:
+            If True converts table contents into a single line.
+        :param progress_bar:
+            If True shows a progress bar when running.
         """
         markdown_conversion_imports.check()
 
@@ -50,15 +54,20 @@ class MarkdownToDocument:
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ):
         """
-        Reads text from a markdown file and executes optional preprocessing steps.
+        Converts a list of Markdown files to Documents.
 
-        :param sources: A list of markdown data sources (file paths or binary objects)
-        :param meta: Optional metadata to attach to the Documents.
-          This value can be either a list of dictionaries or a single dictionary.
-          If it's a single dictionary, its content is added to the metadata of all produced Documents.
-          If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
-          Defaults to `None`.
-        :return: A dictionary containing a list of Document objects under the 'documents' key.
+        :param sources:
+            List of file paths or ByteStream objects.
+        :param meta:
+            Optional metadata to attach to the Documents.
+            This value can be either a list of dictionaries or a single dictionary.
+            If it's a single dictionary, its content is added to the metadata of all produced Documents.
+            If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+            If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: List of created Documents
         """
         parser = MarkdownIt(renderer_cls=RendererPlain)
         if self.table_to_single_line:
