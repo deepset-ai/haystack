@@ -173,7 +173,7 @@ class ConditionalRouter:
         :returns: A dictionary where the key is the `output_name` of the selected route and the value is the `output`
             of the selected route.
 
-        :raises NoRouteSelectedException: If no `condition' in the routes is True.
+        :raises NoRouteSelectedException: If no `condition' in the routes is `True`.
         :raises RouteConditionException: If there is an error parsing or evaluating the `condition` expression in the routes.
         """
         # Create a Jinja native environment to evaluate the condition templates as Python expressions
