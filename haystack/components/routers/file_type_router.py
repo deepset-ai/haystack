@@ -88,7 +88,7 @@ class FileTypeRouter:
 
         :param path: The file path to get the MIME type for.
 
-        :returns: The MIME type of the provided file path, or None if the MIME type cannot be determined.
+        :returns: The MIME type of the provided file path, or `None` if the MIME type cannot be determined.
         """
         extension = path.suffix.lower()
         mime_type = mimetypes.guess_type(path.as_posix())[0]
