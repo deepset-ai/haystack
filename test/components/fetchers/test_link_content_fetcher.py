@@ -5,8 +5,8 @@ import requests
 
 from haystack.components.fetchers.link_content import (
     LinkContentFetcher,
-    text_content_handler,
-    binary_content_handler,
+    _text_content_handler,
+    _binary_content_handler,
     DEFAULT_USER_AGENT,
 )
 
@@ -43,10 +43,10 @@ class TestLinkContentFetcher:
         assert fetcher.retry_attempts == 2
         assert fetcher.timeout == 3
         assert fetcher.handlers == {
-            "text/html": text_content_handler,
-            "text/plain": text_content_handler,
-            "application/pdf": binary_content_handler,
-            "application/octet-stream": binary_content_handler,
+            "text/html": _text_content_handler,
+            "text/plain": _text_content_handler,
+            "application/pdf": _binary_content_handler,
+            "application/octet-stream": _binary_content_handler,
         }
         assert hasattr(fetcher, "_get_response")
 

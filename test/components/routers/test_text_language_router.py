@@ -24,7 +24,7 @@ class TestTextLanguageRouter:
 
     def test_detect_language(self):
         classifier = TextLanguageRouter()
-        detected_language = classifier.detect_language("This is an english sentence.")
+        detected_language = classifier._detect_language("This is an english sentence.")
         assert detected_language == "en"
 
     def test_route_to_en(self):
