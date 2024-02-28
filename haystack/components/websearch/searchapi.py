@@ -95,7 +95,9 @@ class SearchApiWebSearch:
         Uses [SearchApi](https://www.searchapi.io/) to search the web.
 
         :param query: Search query.
-        :returns: The documents with the content of the search results and the links to the search results.
+        :returns: A dictionary with the following keys:
+            - "documents": List of documents returned by the search engine.
+            - "links": List of links returned by the search engine.
         :raises TimeoutError: If the request to the SearchApi API times out.
         :raises SearchApiError: If an error occurs while querying the SearchApi API.
         """
