@@ -57,7 +57,7 @@ class TextLanguageRouter:
 
     def run(self, text: str) -> Dict[str, str]:
         """
-        This method routes the text to one of different output connections based on its language.
+        Route the text to one of different output connections based on its language.
         If the text does not match any of the languages specified at initialization, it is routed to
         a connection named "unmatched".
 
