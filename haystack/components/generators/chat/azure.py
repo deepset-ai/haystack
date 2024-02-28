@@ -15,15 +15,28 @@ logger = logging.getLogger(__name__)
 
 class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     """
-    Enables text generation using OpenAI's large language models (LLMs) on Azure. It supports gpt-4 and gpt-3.5-turbo
+    Enables text generation using OpenAI's large language models (LLMs) on Azure. It supports `gpt-4` and `gpt-3.5-turbo`
     family of models accessed through the chat completions API endpoint.
 
     Users can pass any text generation parameters valid for the `openai.ChatCompletion.create` method
-    directly to this component via the `**generation_kwargs` parameter in __init__ or the `**generation_kwargs`
+    directly to this component via the `generation_kwargs` parameter in `__init__` or the `generation_kwargs`
     parameter in `run` method.
 
     For more details on OpenAI models deployed on Azure, refer to the Microsoft
     [documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/).
+
+    Key Features and Compatibility:
+     - Primary Compatibility: Designed to work seamlessly with the OpenAI API Chat Completion endpoint.
+     - Streaming Support: Supports streaming responses from the OpenAI API Chat Completion endpoint.
+     - Customizability: Supports all parameters supported by the OpenAI API Chat Completion endpoint.
+
+    Input and Output Format:
+      - ChatMessage Format: This component uses the ChatMessage format for structuring both input and output, ensuring
+        coherent and contextually relevant responses in chat-based text generation scenarios.
+     - Details on the ChatMessage format can be found [here](https://docs.haystack.deepset.ai/v2.0/docs/data-classes#chatmessage).
+
+
+    Usage example:
 
     ```python
     from haystack.components.generators.chat import AzureOpenAIGenerator
@@ -49,16 +62,6 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
          'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
     }
     ```
-
-     Key Features and Compatibility:
-       - Primary Compatibility: Designed to work seamlessly with the OpenAI API Chat Completion endpoint and gpt-4 and gpt-3.5-turbo family of models.
-       - Streaming Support: Supports streaming responses from the OpenAI API Chat Completion endpoint.
-       - Customizability: Supports all parameters supported by the OpenAI API Chat Completion endpoint.
-
-     Input and Output Format:
-       - ChatMessage Format: This component uses the ChatMessage format for structuring both input and output, ensuring
-         coherent and contextually relevant responses in chat-based text generation scenarios.
-     - Details on the ChatMessage format can be found [here](https://github.com/openai/openai-python/blob/main/chatml.md.)
     """
 
     # pylint: disable=super-init-not-called

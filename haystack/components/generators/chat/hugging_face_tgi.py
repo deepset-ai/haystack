@@ -24,7 +24,28 @@ class HuggingFaceTGIChatGenerator:
     inference chat-based models deployed on the Text Generation Inference (TGI) backend.
 
     You can use this component for chat LLMs hosted on Hugging Face inference endpoints, the rate-limited
-    Inference API tier:
+    Inference API tier.
+
+    Key Features and Compatibility:
+     - Primary Compatibility: designed to work seamlessly with any chat-based model deployed using the TGI
+       framework. For more information on TGI, visit [text-generation-inference](https://github.com/huggingface/text-generation-inference)
+    - Hugging Face Inference Endpoints: Supports inference of TGI chat LLMs deployed on Hugging Face
+       inference endpoints. For more details, refer to [inference-endpoints](https://huggingface.co/inference-endpoints)
+
+    - Inference API Support: supports inference of TGI chat LLMs hosted on the rate-limited Inference
+      API tier. Learn more about the Inference API at [inference-api](https://huggingface.co/inference-api).
+      Discover available chat models using the following command: `wget -qO- https://api-inference.huggingface.co/framework/text-generation-inference | grep chat`
+      and simply use the model ID as the model parameter for this component. You'll also need to provide a valid
+      Hugging Face API token as the token parameter.
+
+    - Custom TGI Endpoints: supports inference of TGI chat LLMs deployed on custom TGI endpoints. Anyone can
+      deploy their own TGI endpoint using the TGI framework. For more details, refer to [inference-endpoints](https://huggingface.co/inference-endpoints)
+
+    Input and Output Format:
+      - ChatMessage Format: This component uses the ChatMessage format to structure both input and output,
+        ensuring coherent and contextually relevant responses in chat-based text generation scenarios. Details on the
+        ChatMessage format can be found [here](https://docs.haystack.deepset.ai/v2.0/docs/data-classes#chatmessage).
+
 
     ```python
     from haystack.components.generators.chat import HuggingFaceTGIChatGenerator
@@ -58,28 +79,6 @@ class HuggingFaceTGIChatGenerator:
     response = client.run(messages, generation_kwargs={"max_new_tokens": 120})
     print(response)
     ```
-
-     Key Features and Compatibility:
-       - Primary Compatibility: designed to work seamlessly with any chat-based model deployed using the TGI
-          framework. For more information on TGI, visit [text-generation-inference](https://github.com/huggingface/text-generation-inference)
-       - Hugging Face Inference Endpoints: Supports inference of TGI chat LLMs deployed on Hugging Face
-          inference endpoints. For more details, refer to [inference-endpoints](https://huggingface.co/inference-endpoints)
-
-       - Inference API Support: supports inference of TGI chat LLMs hosted on the rate-limited Inference
-          API tier. Learn more about the Inference API at [inference-api](https://huggingface.co/inference-api).
-
-       - Discover available chat models using the following command: `wget -qO- https://api-inference.huggingface.co/framework/text-generation-inference | grep chat`
-           and simply use the model ID as the model parameter for this component. You'll also need to provide a valid
-           Hugging Face API token as the token parameter.
-
-       - Custom TGI Endpoints: supports inference of TGI chat LLMs deployed on custom TGI endpoints. Anyone can
-           deploy their own TGI endpoint using the TGI framework. For more details, refer to [text-generation-inference project](https://github.com/huggingface/text-generation-inference)
-
-     Input and Output Format:
-       - ChatMessage Format: This component uses the ChatMessage format to structure both input and output,
-         ensuring coherent and contextually relevant responses in chat-based text generation scenarios. Details on the
-         ChatMessage format can be found [here](https://github.com/openai/openai-python/blob/main/chatml.md.)
-
     """
 
     def __init__(

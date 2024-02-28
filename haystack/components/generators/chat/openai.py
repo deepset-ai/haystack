@@ -60,7 +60,7 @@ class OpenAIChatGenerator:
      Input and Output Format:
        - ChatMessage Format: this component uses the ChatMessage format for structuring both input and output,
          ensuring coherent and contextually relevant responses in chat-based text generation scenarios. Details on the
-         ChatMessage format can be found at [here](https://github.com/openai/openai-python/blob/main/chatml.md).
+         ChatMessage format can be found at [here](https://docs.haystack.deepset.ai/v2.0/docs/data-classes#chatmessage).
     """
 
     def __init__(
