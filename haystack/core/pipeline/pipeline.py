@@ -20,6 +20,7 @@ from haystack.core.errors import (
     PipelineMaxLoops,
     PipelineRuntimeError,
     PipelineValidationError,
+    PipelineUnmarshalError,
 )
 from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
@@ -30,6 +31,7 @@ from haystack import tracing
 
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
 from .draw import _to_mermaid_image
+from .template import PipelineTemplate, PredefinedPipeline
 
 DEFAULT_MARSHALLER = YamlMarshaller()
 logger = logging.getLogger(__name__)
@@ -982,6 +984,30 @@ class Pipeline:
                 unresolved_kwargs[input_name] = input_value
 
         return pipeline_input_data, unresolved_kwargs
+
+    @classmethod
+    def from_predefined(
+        cls, predefined_pipeline: PredefinedPipeline, template_params: Optional[Dict[str, Any]] = None
+    ) -> "Pipeline":
+        """
+        Create a Pipeline from a predefined template. See `PredefinedPipeline` for available options.
+
+        :param predefined_pipeline: The predefined pipeline to use.
+        :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
+        :return: An instance of `Pipeline`.
+        """
+        tpl = PipelineTemplate.from_predefined(predefined_pipeline)
+        # If tpl.render() fails, we let bubble up the original error
+        rendered = tpl.render(template_params)
+
+        # If there was a problem with the rendered version of the
+        # template, we add it to the error stack for debugging
+        try:
+            return cls.loads(rendered)
+        except Exception as e:
+            msg = f"Error unmarshalling pipeline: {e}\n"
+            msg += f"Source:\n{rendered}"
+            raise PipelineUnmarshalError(msg)
 
 
 def _connections_status(
