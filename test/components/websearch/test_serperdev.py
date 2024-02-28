@@ -174,7 +174,7 @@ class TestSerperDevSearchAPI:
         ws = SerperDevWebSearch(top_k=10)
         results = ws.run(query="Who is the boyfriend of Olivia Wilde?")
         documents = results["documents"]
-        links = results["documents"]
+        links = results["links"]
         assert len(documents) == len(links) == 10
         assert all(isinstance(doc, Document) for doc in results)
         assert all(isinstance(link, str) for link in links)
