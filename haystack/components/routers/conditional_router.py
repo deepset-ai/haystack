@@ -58,12 +58,13 @@ class ConditionalRouter:
     assert result == {"enough_streams": [1, 2, 3]}
     ```
 
-    In this example, we configure two routes. The first route sends the `streams` value to `enough_streams` if the
-    stream count exceeds two. Conversely, the second route directs `streams` to `insufficient_streams` when there
+    In this example, we configure two routes. The first route sends the 'streams' value to 'enough_streams' if the
+    stream count exceeds two. Conversely, the second route directs 'streams' to 'insufficient_streams' when there
     are two or fewer streams.
+
     In the pipeline setup, the router is connected to other components using the output names. For example, the
-    `enough_streams` output might be connected to another component that processes the streams, while the
-    `insufficient_streams` output might be connected to a component that fetches more streams, and so on.
+    'enough_streams' output might be connected to another component that processes the streams, while the
+    'insufficient_streams' output might be connected to a component that fetches more streams, and so on.
 
 
     Here is a pseudocode example of a pipeline that uses the `ConditionalRouter` and routes fetched `ByteStreams` to
@@ -163,11 +164,10 @@ class ConditionalRouter:
 
     def run(self, **kwargs):
         """
-        Executes the routing logic by evaluating the specified boolean condition expressions for each route in the
-         order they are listed. The method directs the flow of data to the output specified in the first route whose
-         `condition` is True.
+        Executes the routing logic by evaluating the specified boolean condition expressions for each route in the order they are listed.
+        The method directs the flow of data to the output specified in the first route whose `condition` is True.
 
-        :param **kwargs: All variables used in the `condition` expressed in the routes. When the component is used in a
+        :param kwargs: All variables used in the `condition` expressed in the routes. When the component is used in a
             pipeline, these variables are passed from the previous component's output.
 
         :returns: A dictionary where the key is the `output_name` of the selected route and the value is the `output`

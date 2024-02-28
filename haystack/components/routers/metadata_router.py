@@ -72,9 +72,8 @@ class MetadataRouter:
 
     def run(self, documents: List[Document]):
         """
-        This method routes the documents to different edges based on their fields content and
-        the rules specified during initialization. If a document does not match any of the rules, it is routed to
-        a connection named "unmatched".
+        This method routes the documents to different edges based on their fields content and the rules specified during initialization.
+        If a document does not match any of the rules, it is routed to a connection named "unmatched".
 
         :param documents: A list of documents to route to different edges.
 
