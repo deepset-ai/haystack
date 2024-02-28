@@ -200,6 +200,7 @@ def _patch_structlog_call_information(logger: logging.Logger) -> None:
         if not isinstance(logger, _FixedFindCallerLogger):
             return
 
+        # completely copied from structlog. We only add `haystack.logging` to the list of ignored frames
         def findCaller(stack_info: bool = False, stacklevel: int = 1) -> typing.Tuple[str, int, str, Optional[str]]:
             try:
                 sinfo: Optional[str]
