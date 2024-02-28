@@ -1,5 +1,5 @@
 import json
-from typing import List, Any, Dict, Optional, Union
+from typing import List, Any, Dict, Optional
 
 from haystack import component
 from haystack.dataclasses import ChatMessage
@@ -105,9 +105,9 @@ class JsonSchemaValidator:
             is used.
         :param error_template: A custom template string for formatting the error message in case of validation. If not
             provided, the `error_template` from the component init is used.
-        :return: If the last message is valid, a dictionary with the "validated" key and the list of messages. If the
-            last message is invalid, a dictionary with the "validation_error" key and the list of messages.
-
+        :return:  A dictionary with the following keys:
+            - "validated": A list of messages if the last message is valid.
+            - "validation_error": A list of messages if the last message is invalid.
         :raises ValueError: If no JSON schema is provided or if the message content is not a dictionary or a list of
             dictionaries.
         """
