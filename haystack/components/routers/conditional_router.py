@@ -236,7 +236,7 @@ class ConditionalRouter:
 
         :param env: A Jinja environment.
         :param template_text: A Jinja template string.
-        :returns: True if the template is valid, False otherwise.
+        :returns: `True` if the template is valid, `False` otherwise.
         """
         try:
             env.parse(template_text)
