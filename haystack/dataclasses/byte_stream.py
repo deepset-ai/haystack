@@ -55,7 +55,7 @@ class ByteStream:
         Convert the ByteStream to a string, metadata will not be included.
 
         :param encoding: The encoding used to convert the bytes to a string. Defaults to "utf-8".
-        :return: The string representation of the ByteStream.
-        :raises UnicodeDecodeError: If the ByteStream data cannot be decoded with the specified encoding.
+        :returns: The string representation of the ByteStream.
+        :raises: UnicodeDecodeError: If the ByteStream data cannot be decoded with the specified encoding.
         """
         return self.data.decode(encoding)
