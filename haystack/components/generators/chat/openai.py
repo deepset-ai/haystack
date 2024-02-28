@@ -23,7 +23,7 @@ class OpenAIChatGenerator:
     family of models accessed through the chat completions API endpoint.
 
     Users can pass any text generation parameters valid for the `openai.ChatCompletion.create` method
-    directly to this component via the `**generation_kwargs` parameter in `__init__` or the `**generation_kwargs`
+    directly to this component via the `generation_kwargs` parameter in `__init__` or the `generation_kwargs`
     parameter in `run` method.
 
     For more details on the parameters supported by the OpenAI API, refer to the OpenAI
