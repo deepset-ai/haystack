@@ -77,7 +77,7 @@ class MetadataRouter:
 
         :param documents: A list of documents to route to different edges.
 
-        :returns: A dictionary where the keys are the names of the output connections (including "unmatched")
+        :returns: A dictionary where the keys are the names of the output connections (including `"unmatched"`)
             and the values are lists of routed documents.
         """
         unmatched_documents = []
