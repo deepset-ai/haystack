@@ -47,4 +47,4 @@ jobs:
         if: github.ref_name == 'main' && github.event_name == 'push'
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
-        run: python ./.github/utils/delete_outdated_docs.py --version=v2.0 --config-path ./docs/pydoc/config
+        run: hatch run readme:delete-outdated  --version=v2.0 --config-path ./docs/pydoc/config
