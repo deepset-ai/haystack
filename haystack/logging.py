@@ -4,10 +4,10 @@ import logging
 import os
 import sys
 import typing
-from typing import List, Any, Optional
+from typing import Any, List, Optional
 
 if typing.TYPE_CHECKING:
-    from structlog.typing import Processor, WrappedLogger, EventDict
+    from structlog.typing import EventDict, Processor, WrappedLogger
 
 HAYSTACK_LOGGING_USE_JSON_ENV_VAR = "HAYSTACK_LOGGING_USE_JSON"
 HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR = "HAYSTACK_LOGGING_IGNORE_STRUCTLOG"

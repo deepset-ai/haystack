@@ -1,6 +1,6 @@
-from typing import List, Any, Union, Dict
 from dataclasses import fields
 from datetime import datetime
+from typing import Any, Dict, List, Union
 
 import pandas as pd
 

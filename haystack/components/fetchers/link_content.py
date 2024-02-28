@@ -1,4 +1,3 @@
-from haystack import logging
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, List, Optional, Tuple
@@ -8,7 +7,7 @@ from requests import Response
 from requests.exceptions import HTTPError
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from haystack import component
+from haystack import component, logging
 from haystack.dataclasses import ByteStream
 from haystack.version import __version__
 

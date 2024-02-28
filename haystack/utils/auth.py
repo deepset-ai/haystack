@@ -1,8 +1,8 @@
-from enum import Enum
 import os
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 
 class SecretType(Enum):

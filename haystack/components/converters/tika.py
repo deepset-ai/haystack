@@ -1,13 +1,11 @@
-from haystack import logging
-from pathlib import Path
-from typing import List, Union, Dict, Any, Optional
 import io
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-from haystack.lazy_imports import LazyImport
-from haystack import component, Document
-from haystack.dataclasses import ByteStream
+from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
-
+from haystack.dataclasses import ByteStream
+from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install tika'") as tika_import:
     from tika import parser as tika_parser

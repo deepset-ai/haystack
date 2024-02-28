@@ -1,12 +1,12 @@
-from typing import Optional, Dict, Any, Set, Callable
+from typing import Any, Callable, Dict, Optional, Set
 
 import jinja2.runtime
 from jinja2 import TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
 from typing_extensions import TypeAlias
 
-from haystack import component, default_to_dict, default_from_dict
-from haystack.utils import serialize_callable, deserialize_callable, serialize_type, deserialize_type
+from haystack import component, default_from_dict, default_to_dict
+from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
 
 
 class OutputAdaptationException(Exception):

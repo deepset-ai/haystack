@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import importlib
 import itertools
-from haystack import logging
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
@@ -12,6 +11,7 @@ from typing import Any, Dict, List, Mapping, Optional, Set, TextIO, Tuple, Type,
 
 import networkx  # type:ignore
 
+from haystack import logging, tracing
 from haystack.core.component import Component, InputSocket, OutputSocket, component
 from haystack.core.errors import (
     PipelineConnectError,
@@ -26,7 +26,6 @@ from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.telemetry import pipeline_running
 from haystack.utils import is_in_jupyter
-from haystack import tracing
 
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
 from .draw import _to_mermaid_image

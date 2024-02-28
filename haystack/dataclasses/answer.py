@@ -1,6 +1,6 @@
 import io
+from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
-from dataclasses import dataclass, field, asdict
 
 from pandas import DataFrame, read_json
 

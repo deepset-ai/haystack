@@ -1,9 +1,7 @@
-from haystack import logging
 import re
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from haystack import component, GeneratedAnswer, Document
-
+from haystack import Document, GeneratedAnswer, component, logging
 
 logger = logging.getLogger(__name__)
 

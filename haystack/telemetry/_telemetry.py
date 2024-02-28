@@ -1,6 +1,5 @@
 import datetime
 import logging
-from haystack import logging as haystack_logging
 import os
 import uuid
 from collections import defaultdict
@@ -10,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 import posthog
 import yaml
 
+from haystack import logging as haystack_logging
 from haystack.telemetry._environment import collect_system_specs
 
 if TYPE_CHECKING:

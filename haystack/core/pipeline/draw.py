@@ -2,11 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import base64
-from haystack import logging
 
 import networkx  # type:ignore
 import requests
 
+from haystack import logging
 from haystack.core.errors import PipelineDrawingError
 from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
 from haystack.core.type_utils import _type_name

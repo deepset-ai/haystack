@@ -1,10 +1,9 @@
 import json
-from haystack import logging
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 import requests
 
-from haystack import Document, component, default_to_dict, ComponentError, default_from_dict
+from haystack import ComponentError, Document, component, default_from_dict, default_to_dict, logging
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)

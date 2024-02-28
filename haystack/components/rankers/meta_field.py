@@ -1,10 +1,9 @@
-from haystack import logging
 from collections import defaultdict
-from typing import List, Dict, Any, Optional, Literal, Callable
+from typing import Any, Callable, Dict, List, Literal, Optional
+
 from dateutil.parser import parse as date_parse
 
-
-from haystack import Document, component, default_to_dict
+from haystack import Document, component, default_to_dict, logging
 
 logger = logging.getLogger(__name__)
 

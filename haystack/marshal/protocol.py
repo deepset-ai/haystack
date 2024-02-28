@@ -1,4 +1,4 @@
-from typing import Protocol, Dict, Any, Union
+from typing import Any, Dict, Protocol, Union
 
 
 class Marshaller(Protocol):

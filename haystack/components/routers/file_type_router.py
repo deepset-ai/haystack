@@ -1,10 +1,9 @@
-from haystack import logging
 import mimetypes
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Union, Optional, Dict
+from typing import Dict, List, Optional, Union
 
-from haystack import component
+from haystack import component, logging
 from haystack.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)

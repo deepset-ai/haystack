@@ -1,9 +1,9 @@
 import os
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from openai.lib.azure import AzureOpenAI
 
-from haystack import component, Document, default_to_dict, default_from_dict
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 

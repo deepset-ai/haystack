@@ -1,11 +1,9 @@
-from haystack import logging
 from pathlib import Path
-from typing import List, Union, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Union
 
-from haystack import Document, component
-from haystack.dataclasses import ByteStream
+from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
-
+from haystack.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
 

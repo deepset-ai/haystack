@@ -69,11 +69,11 @@
 """
 
 import inspect
-from haystack import logging
 from copy import deepcopy
 from types import new_class
 from typing import Any, Optional, Protocol, runtime_checkable
 
+from haystack import logging
 from haystack.core.errors import ComponentError
 
 from .sockets import Sockets

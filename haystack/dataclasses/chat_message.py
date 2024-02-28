@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 
 class ChatRole(str, Enum):

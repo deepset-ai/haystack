@@ -1,8 +1,9 @@
 import abc
 import contextlib
-from haystack import logging
 import os
-from typing import Dict, Any, Optional, Iterator
+from typing import Any, Dict, Iterator, Optional
+
+from haystack import logging
 
 HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR = "HAYSTACK_AUTO_TRACE_ENABLED"
 HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR = "HAYSTACK_CONTENT_TRACING_ENABLED"
@@ -197,6 +198,7 @@ def _auto_configured_datadog_tracer() -> Optional[Tracer]:
     # we implement this here and not in the `datadog` module to avoid import warnings when Datadog is not installed
     try:
         from ddtrace import tracer
+
         from haystack.tracing.datadog import DatadogTracer
 
         if tracer.enabled:

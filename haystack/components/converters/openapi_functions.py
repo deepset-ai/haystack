@@ -1,14 +1,13 @@
 import json
-from haystack import logging
 import os
 from pathlib import Path
-from typing import List, Dict, Any, Union, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 import yaml
 from requests import RequestException
 
-from haystack import component, Document
+from haystack import Document, component, logging
 from haystack.dataclasses.byte_stream import ByteStream
 from haystack.lazy_imports import LazyImport
 

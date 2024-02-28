@@ -1,13 +1,12 @@
-from haystack import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from tqdm import tqdm
 
-from haystack import Document, component
+from haystack import Document, component, logging
+from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
-from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 
 with LazyImport("Run 'pip install markdown-it-py mdit_plain'") as markdown_conversion_imports:
     from markdown_it import MarkdownIt

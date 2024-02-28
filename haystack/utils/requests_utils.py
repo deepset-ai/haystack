@@ -1,9 +1,8 @@
-from typing import Optional, List
-
 import logging
+from typing import List, Optional
 
-from tenacity import retry, wait_exponential, retry_if_exception_type, stop_after_attempt, before_log, after_log
 import requests
+from tenacity import after_log, before_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__file__)
 

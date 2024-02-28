@@ -1,12 +1,10 @@
 import itertools
-from haystack import logging
 from collections import defaultdict
 from math import inf
 from typing import List, Optional
+
+from haystack import Document, component, logging
 from haystack.core.component.types import Variadic
-
-from haystack import component, Document
-
 
 logger = logging.getLogger(__name__)
 

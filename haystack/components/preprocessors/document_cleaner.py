@@ -1,11 +1,10 @@
-from haystack import logging
 import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
 from typing import Generator, List, Optional, Set
 
-from haystack import Document, component
+from haystack import Document, component, logging
 
 logger = logging.getLogger(__name__)
 

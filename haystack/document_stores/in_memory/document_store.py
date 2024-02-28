@@ -1,18 +1,16 @@
 import re
-from typing import Literal, Any, Dict, List, Optional, Iterable
-
-from haystack import logging
+from typing import Any, Dict, Iterable, List, Literal, Optional
 
 import numpy as np
 from haystack_bm25 import rank_bm25
 from tqdm.auto import tqdm
 
-from haystack import default_from_dict, default_to_dict
+from haystack import default_from_dict, default_to_dict, logging
 from haystack.dataclasses import Document
+from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.utils.filters import document_matches_filter, convert
-from haystack.document_stores.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.utils import expit
+from haystack.utils.filters import convert, document_matches_filter
 
 logger = logging.getLogger(__name__)
 

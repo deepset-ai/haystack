@@ -1,17 +1,16 @@
-from haystack import logging
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Iterable, Callable
+from typing import Any, Callable, Dict, Iterable, List, Optional
 from urllib.parse import urlparse
 
-from haystack import component, default_to_dict, default_from_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
-from haystack.utils import Secret, deserialize_secrets_inplace, serialize_callable, deserialize_callable
-from haystack.utils.hf import check_valid_model, HFModelType, check_generation_params, list_inference_deployed_models
+from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils.hf import HFModelType, check_generation_params, check_valid_model, list_inference_deployed_models
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
-    from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, TextGenerationResponse, Token
+    from huggingface_hub.inference._text_generation import TextGenerationResponse, TextGenerationStreamResponse, Token
     from transformers import AutoTokenizer
 
 

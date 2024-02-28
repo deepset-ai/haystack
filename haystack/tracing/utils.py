@@ -1,7 +1,7 @@
 import json
-from haystack import logging
 from typing import Any, Union
 
+from haystack import logging
 
 logger = logging.getLogger(__name__)
 

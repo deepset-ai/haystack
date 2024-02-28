@@ -1,11 +1,11 @@
-from haystack import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Literal
+from typing import Any, Dict, List, Literal, Optional, Union
+
 from boilerpy3 import extractors
 
-from haystack import Document, component, default_from_dict, default_to_dict
-from haystack.dataclasses import ByteStream
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
 

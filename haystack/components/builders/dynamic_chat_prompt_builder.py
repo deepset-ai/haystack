@@ -1,9 +1,8 @@
-from haystack import logging
-from typing import Dict, Any, Optional, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 from jinja2 import Template, meta
 
-from haystack import component
+from haystack import component, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 
 logger = logging.getLogger(__name__)

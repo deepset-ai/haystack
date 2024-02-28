@@ -1,10 +1,10 @@
 # pylint: disable=global-statement
-from haystack import logging
 import os
 import platform
 import sys
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
+from haystack import logging
 from haystack.version import __version__
 
 logger = logging.getLogger(__name__)

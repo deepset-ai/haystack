@@ -1,10 +1,8 @@
-from typing import List, Optional, Dict, Any, Union, Literal, get_args
-
-from haystack import logging
 import tempfile
 from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional, Union, get_args
 
-from haystack import component, Document, default_to_dict, ComponentError, default_from_dict
+from haystack import ComponentError, Document, component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice

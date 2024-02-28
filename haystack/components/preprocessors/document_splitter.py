@@ -3,7 +3,7 @@ from typing import List, Literal
 
 from more_itertools import windowed
 
-from haystack import component, Document
+from haystack import Document, component
 
 
 @component

@@ -1,8 +1,9 @@
 import os
 import random
-from haystack import logging
+
 import numpy as np
 
+from haystack import logging
 
 logger = logging.getLogger(__name__)
 

@@ -9,9 +9,8 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils.device import ComponentDevice
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
-    from transformers import AutoModelForTokenClassification, AutoTokenizer
+    from transformers import AutoModelForTokenClassification, AutoTokenizer, pipeline
     from transformers import Pipeline as HfPipeline
-    from transformers import pipeline
 
 with LazyImport(message="Run 'pip install spacy'") as spacy_import:
     import spacy

@@ -1,11 +1,8 @@
 import importlib
-from haystack import logging
+from typing import Any, Dict, List, Optional
 
-from typing import Dict, List, Any, Optional
-
-from haystack import component, Document, default_to_dict, default_from_dict, DeserializationError
+from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
-
 
 logger = logging.getLogger(__name__)
 

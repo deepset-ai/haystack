@@ -1,7 +1,6 @@
-from haystack import logging
 from typing import List, Optional
 
-from haystack import ComponentError, Document, component
+from haystack import ComponentError, Document, component, logging
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)

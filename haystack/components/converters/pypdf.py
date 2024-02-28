@@ -1,12 +1,11 @@
 import io
-from haystack import logging
-from typing import List, Union, Protocol, Dict, Any, Optional
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Protocol, Union
 
+from haystack import Document, component, default_to_dict, logging
+from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
-from haystack import Document, component, default_to_dict
-from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 
 with LazyImport("Run 'pip install pypdf'") as pypdf_import:
     from pypdf import PdfReader

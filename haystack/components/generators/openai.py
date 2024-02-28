@@ -1,14 +1,12 @@
 import dataclasses
-from haystack import logging
-from typing import Optional, List, Callable, Dict, Any, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
-from openai.types.chat import ChatCompletionChunk, ChatCompletion
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
-from haystack import component, default_from_dict, default_to_dict
-from haystack.dataclasses import StreamingChunk, ChatMessage
-from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils import serialize_callable, deserialize_callable
+from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
 
