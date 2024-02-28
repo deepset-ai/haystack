@@ -11,25 +11,37 @@ logger = logging.getLogger(__name__)
 @component
 class AnswerBuilder:
     """
-    A component to parse the output of a Generator to `Answer` objects using regular expressions.
+    Takes a query and the replies a Generator returns as input and parses them into GeneratedAnswer objects.
+    Optionally, it also takes Documents and metadata from the Generator as inputs to enrich the GeneratedAnswer objects.
+
+    Usage example:
+    ```python
+    from haystack.components.builders import AnswerBuilder
+
+    builder = AnswerBuilder(pattern="Answer: (.*)")
+    builder.run(query="What's the answer?", replies=["This is an argument. Answer: This is the answer."])
+    ```
     """
 
     def __init__(self, pattern: Optional[str] = None, reference_pattern: Optional[str] = None):
         """
-        :param pattern: The regular expression pattern to use to extract the answer text from the generator output.
-                        If not specified, the whole string is used as the answer. The regular expression can have at
-                        most one capture group. If a capture group is present, the text matched by the capture group
-                        is used as the answer. If no capture group is present, the whole match is used as the answer.
-                        Examples:
-                            `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
-                            `Answer: (.*)` finds "this is an answer" in a string "this is an argument. Answer: this is an answer".
-                        Default: `None`.
-        :param reference_pattern: The regular expression pattern to use for parsing the document references.
-                                  We assume that references are specified as indices of the input documents and that
-                                  indices start at 1.
-                                  Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
-                                  If not specified, no parsing is done, and all documents are referenced.
-                                  Default: `None`.
+        Creates an instance of the AnswerBuilder component.
+
+        :param pattern:
+            The regular expression pattern to use to extract the answer text from the generator output.
+            If not specified, the whole string is used as the answer. The regular expression can have at
+            most one capture group. If a capture group is present, the text matched by the capture group
+            is used as the answer. If no capture group is present, the whole match is used as the answer.
+            Examples:
+                `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
+                `Answer: (.*)` finds "this is an answer" in a string "this is an argument. Answer: this is an answer".
+
+        :param reference_pattern:
+            The regular expression pattern to use for parsing the document references.
+            We assume that references are specified as indices of the input documents and that
+            indices start at 1.
+            Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
+            If not specified, no parsing is done, and all documents are referenced.
         """
         if pattern:
             AnswerBuilder._check_num_groups_in_regex(pattern)
@@ -48,31 +60,34 @@ class AnswerBuilder:
         reference_pattern: Optional[str] = None,
     ):
         """
-        Parse the output of a Generator to `Answer` objects using regular expressions.
+        Turns the output of a Generator into `Answer` objects using regular expressions.
 
-        :param query: The query used in the prompts for the Generator as a string.
-        :param replies: The output of the Generator. A list of strings.
-        :param meta: The metadata returned by the Generator. An optional list of dictionaries. If not specified,
-                            the generated answer will contain no metadata.
-        :param documents: The documents used as input to the Generator. A list of `Document` objects. If
-                          `documents` are specified, they are added to the `Answer` objects.
-                          If both `documents` and `reference_pattern` are specified, the documents referenced in the
-                          Generator output are extracted from the input documents and added to the `Answer` objects.
-                          Default: `None`.
-        :param pattern: The regular expression pattern to use to extract the answer text from the generator output.
-                        If not specified, the whole string is used as the answer. The regular expression can have at
-                        most one capture group. If a capture group is present, the text matched by the capture group
-                        is used as the answer. If no capture group is present, the whole match is used as the answer.
-                        Examples:
-                            `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
-                            `Answer: (.*)` finds "this is an answer" in a string "this is an argument. Answer: this is an answer".
-                        Default: `None`.
-        :param reference_pattern: The regular expression pattern to use for parsing the document references.
-                                  We assume that references are specified as indices of the input documents and that
-                                  indices start at 1.
-                                  Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
-                                  If not specified, no parsing is done, and all documents are referenced.
-                                  Default: `None`.
+        :param query:
+            The query used in the prompts for the Generator as a string.
+        :param replies:
+            The output of the Generator. A list of strings.
+        :param meta:
+            The metadata returned by the Generator. If not specified, the generated answer will contain no metadata.
+        :param documents:
+            The documents used as input to the Generator. If `documents` are specified, they are added to the `Answer`
+            objects. If both `documents` and `reference_pattern` are specified, the documents referenced in the
+            Generator output are extracted from the input documents and added to the `Answer` objects.
+        :param pattern:
+            The regular expression pattern to use to extract the answer text from the generator output.
+            If not specified, the whole string is used as the answer. The regular expression can have at
+            most one capture group. If a capture group is present, the text matched by the capture group
+            is used as the answer. If no capture group is present, the whole match is used as the answer.
+                Examples:
+                    `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
+                    `Answer: (.*)` finds "this is an answer" in a string "this is an argument. Answer: this is an answer".
+        :param reference_pattern:
+            The regular expression pattern to use for parsing the document references.
+            We assume that references are specified as indices of the input documents and that indices start at 1.
+            Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
+            If not specified, no parsing is done, and all documents are referenced.
+
+        :returns: A dictionary with the following keys:
+            - `answers`: The answers obtained from the output of the generator
         """
         if not meta:
             meta = [{}] * len(replies)
@@ -113,8 +128,10 @@ class AnswerBuilder:
         Extract the answer string from the generator output using the specified pattern.
         If no pattern is specified, the whole string is used as the answer.
 
-        :param replies: The output of the Generator. A string.
-        :param pattern: The regular expression pattern to use to extract the answer text from the generator output.
+        :param replies:
+            The output of the Generator. A string.
+        :param pattern:
+            The regular expression pattern to use to extract the answer text from the generator output.
         """
         if pattern is None:
             return reply
