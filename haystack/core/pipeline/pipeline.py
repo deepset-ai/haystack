@@ -994,7 +994,7 @@ class Pipeline:
 
         :param predefined_pipeline: The predefined pipeline to use.
         :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
-        :return: An instance of `Pipeline`.
+        :returns: An instance of `Pipeline`.
         """
         tpl = PipelineTemplate.from_predefined(predefined_pipeline)
         # If tpl.render() fails, we let bubble up the original error
