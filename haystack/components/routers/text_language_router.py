@@ -67,7 +67,9 @@ class TextLanguageRouter:
     def detect_language(self, text: str) -> Optional[str]:
         try:
             language = langdetect.detect(text)
-        except langdetect.LangDetectException:
-            logger.warning("Langdetect cannot detect the language of text: %s", text)
+        except langdetect.LangDetectException as exception:
+            logger.warning("Langdetect cannot detect the language of text. Error: %s", exception)
+            # Only log the text in debug mode, as it might contain sensitive information
+            logger.debug("Langdetect cannot detect the language of text: %s", text)
             language = None
         return language
