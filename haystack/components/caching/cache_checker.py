@@ -15,9 +15,10 @@ logger = logging.getLogger(__name__)
 class CacheChecker:
     """
     Checks for the presence of documents in a Document Store based on a specified
-    field in each document's metadata. If matching documents are found, they are
-    returned as hits. If not, the items are returned as misses, indicating they are
-    not in the cache.
+    field in each document's metadata. 
+    
+    If matching documents are found, they are returned as hits. If not, the items 
+    are returned as misses, indicating they are not in the cache.
 
     Usage example:
     ```python
