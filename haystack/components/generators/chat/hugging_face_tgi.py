@@ -73,7 +73,7 @@ class HuggingFaceTGIChatGenerator:
            Hugging Face API token as the token parameter.
 
        - Custom TGI Endpoints: supports inference of TGI chat LLMs deployed on custom TGI endpoints. Anyone can
-           deploy their own TGI endpoint using the TGI framework. For more details, refer to [inference-endpoints](https://huggingface.co/inference-endpoints)
+           deploy their own TGI endpoint using the TGI framework. For more details, refer to [text-generation-inference project](https://github.com/huggingface/text-generation-inference)
 
      Input and Output Format:
        - ChatMessage Format: This component uses the ChatMessage format to structure both input and output,
