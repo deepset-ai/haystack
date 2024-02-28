@@ -90,7 +90,7 @@ class SearchApiWebSearch:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document], links=Union[List[Document], List[str]])
-    def run(self, query: str) -> Dict[str, Union[List[Document], List[str]]]:
+    def run(self, query: str) -> Dict[str, Any]:
         """
         Uses [SearchApi](https://www.searchapi.io/) to search the web.
 
