@@ -46,7 +46,7 @@ class RemoteWhisperTranscriber:
             OpenAI API key.
         :param model:
             Name of the model to use. It now accepts only `whisper-1`.
-        :param organization: 
+        :param organization:
             The Organization ID. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param api_base:
