@@ -322,7 +322,7 @@ class _Component:
         """
         Decorator validating the structure of the component and registering it in the components registry.
         """
-        logger.debug("Registering %s as a component", cls)
+        logger.debug("Registering {component} as a component", component=cls)
 
         # Check for required methods and fail as soon as possible
         if not hasattr(cls, "run"):
@@ -351,13 +351,13 @@ class _Component:
         if class_path in self.registry:
             # Corner case, but it may occur easily in notebooks when re-running cells.
             logger.debug(
-                "Component %s is already registered. Previous imported from '%s', new imported from '%s'",
-                class_path,
-                self.registry[class_path],
-                cls,
+                "Component {component} is already registered. Previous imported from '{module}', new imported from '{new_module}'",
+                component=class_path,
+                module=self.registry[class_path],
+                new_module=cls,
             )
         self.registry[class_path] = cls
-        logger.debug("Registered Component %s", cls)
+        logger.debug("Registered Component {component}", component=cls)
 
         # Override the __repr__ method with a default one
         cls.__repr__ = _component_repr

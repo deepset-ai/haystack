@@ -403,14 +403,34 @@ class TestCompositeLogger:
         logger = haystack_logging.getLogger(__name__)
         logger.setLevel(logging.DEBUG)
 
-        logger.log(logging.DEBUG, "Hello, structured {key}!", key="logging", key1="value1", key2="value2")
+        logger.log(logging.DEBUG, "Hello, structured '{key}'!", key="logging", key1="value1", key2="value2")
 
         output = capfd.readouterr().err
         parsed_output = json.loads(output)
 
         assert parsed_output == {
-            "event": "Hello, structured logging!",
+            "event": "Hello, structured 'logging'!",
             "key": "logging",
+            "key1": "value1",
+            "key2": "value2",
+            "level": "debug",
+            "timestamp": ANY,
+        }
+
+    def test_log_with_string_cast(self, capfd: LogCaptureFixture) -> None:
+        haystack_logging.configure_logging(use_json=True)
+
+        logger = haystack_logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+
+        logger.log(logging.DEBUG, "Hello, structured '{key}'!", key=LogCaptureFixture, key1="value1", key2="value2")
+
+        output = capfd.readouterr().err
+        parsed_output = json.loads(output)
+
+        assert parsed_output == {
+            "event": "Hello, structured '<class '_pytest.logging.LogCaptureFixture'>'!",
+            "key": "<class '_pytest.logging.LogCaptureFixture'>",
             "key1": "value1",
             "key2": "value2",
             "level": "debug",

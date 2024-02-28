@@ -131,7 +131,7 @@ class InMemoryDocumentStore:
                 if policy == DuplicatePolicy.FAIL:
                     raise DuplicateDocumentError(f"ID '{document.id}' already exists.")
                 if policy == DuplicatePolicy.SKIP:
-                    logger.warning("ID '%s' already exists", document.id)
+                    logger.warning("ID '{document_id}' already exists", document_id=document.id)
                     written_documents -= 1
                     continue
             self.storage[document.id] = document
@@ -181,15 +181,17 @@ class InMemoryDocumentStore:
         lower_case_documents = []
         for doc in all_documents:
             if doc.content is None and doc.dataframe is None:
-                logger.info("Document '%s' has no text or dataframe content. Skipping it.", doc.id)
+                logger.info(
+                    "Document '{document_id}' has no text or dataframe content. Skipping it.", document_id=doc.id
+                )
             else:
                 if doc.content is not None:
                     lower_case_documents.append(doc.content.lower())
                     if doc.dataframe is not None:
                         logger.warning(
-                            "Document '%s' has both text and dataframe content. "
+                            "Document '{document_id}' has both text and dataframe content. "
                             "Using text content and skipping dataframe content.",
-                            doc.id,
+                            document_id=doc.id,
                         )
                         continue
                 if doc.dataframe is not None:

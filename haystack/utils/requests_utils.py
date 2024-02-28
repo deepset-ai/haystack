@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from haystack import logging
+import logging
 
 from tenacity import retry, wait_exponential, retry_if_exception_type, stop_after_attempt, before_log, after_log
 import requests

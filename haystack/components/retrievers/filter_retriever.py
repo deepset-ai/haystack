@@ -74,7 +74,7 @@ class FilterRetriever:
             raise DeserializationError("Missing 'type' in document store's serialization data")
         try:
             module_name, type_ = init_params["document_store"]["type"].rsplit(".", 1)
-            logger.debug("Trying to import %s", module_name)
+            logger.debug("Trying to import module '{module}'", module=module_name)
             module = importlib.import_module(module_name)
         except (ImportError, DeserializationError) as e:
             raise DeserializationError(

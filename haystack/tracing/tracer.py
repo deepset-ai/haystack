@@ -157,7 +157,9 @@ def auto_enable_tracing() -> None:
     Note that it will only work correctly if tracing was configured _before_ Haystack is imported.
     """
     if os.getenv(HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR, "true").lower() == "false":
-        logger.info("Tracing disabled via '%s'", HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR)
+        logger.info(
+            "Tracing disabled via environment variable '{env_key}'", env_key=HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR
+        )
         return
 
     if is_tracing_enabled():
@@ -166,7 +168,7 @@ def auto_enable_tracing() -> None:
     tracer = _auto_configured_opentelemetry_tracer() or _auto_configured_datadog_tracer()
     if tracer:
         enable_tracing(tracer)
-        logger.info("Tracing enabled via '%s'", tracer.__class__.__name__)
+        logger.info("Auto-enabled tracing for '{tracer}'", tracer=tracer.__class__.__name__)
 
 
 def _auto_configured_opentelemetry_tracer() -> Optional[Tracer]:

@@ -140,5 +140,9 @@ class SerperDevWebSearch:
 
         links = [result["link"] for result in json_result["organic"]]
 
-        logger.debug("Serper Dev returned %s documents for the query '%s'", len(documents), query)
+        logger.debug(
+            "Serper Dev returned {number_documents} documents for the query '{query}'",
+            number_documents=len(documents),
+            query=query,
+        )
         return {"documents": documents[: self.top_k], "links": links[: self.top_k]}

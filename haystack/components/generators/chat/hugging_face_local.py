@@ -322,8 +322,8 @@ class HuggingFaceLocalChatGenerator:
         if stop_words and not all(isinstance(word, str) for word in stop_words):
             logger.warning(
                 "Invalid stop words provided. Stop words must be specified as a list of strings. "
-                "Ignoring stop words: %s",
-                stop_words,
+                "Ignoring stop words: {stop_words}",
+                stop_words=stop_words,
             )
             return None
 

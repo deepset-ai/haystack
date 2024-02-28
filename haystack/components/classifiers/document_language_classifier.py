@@ -96,6 +96,8 @@ class DocumentLanguageClassifier:
         try:
             language = langdetect.detect(document.content)
         except langdetect.LangDetectException:
-            logger.warning("Langdetect cannot detect the language of Document with id: %s", document.id)
+            logger.warning(
+                "Langdetect cannot detect the language of Document with id: {document_id}", document_id=document.id
+            )
             language = None
         return language

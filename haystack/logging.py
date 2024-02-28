@@ -69,7 +69,7 @@ def patched_log_with_level_method(func: typing.Callable) -> typing.Callable:
     return log_only_with_kwargs
 
 
-def patched_make_records(original_make_records: typing.Callable) -> typing.Callable:
+def patch_make_records_to_use_kwarg_string_interpolation(original_make_records: typing.Callable) -> typing.Callable:
     @functools.wraps(original_make_records)
     def wrapper(name, level, fn, lno, msg, args, exc_info, func=None, extra=None, sinfo=None) -> Any:
         safe_extra = extra or {}
@@ -81,16 +81,21 @@ def patched_make_records(original_make_records: typing.Callable) -> typing.Calla
 
 def getLogger(name: str) -> PatchedLogger:
     logger = logging.getLogger(name)
-    logger.debug = patched_log_method(logger.debug)
-    logger.info = patched_log_method(logger.info)
-    logger.warn = patched_log_method(logger.warn)
-    logger.warning = patched_log_method(logger.warning)
-    logger.error = patched_log_method(logger.error)
-    logger.critical = patched_log_method(logger.critical)
-    logger.exception = patched_log_method(logger.exception)
-    logger.fatal = patched_log_method(logger.fatal)
-    logger.log = patched_log_with_level_method(logger.log)
-    logger.makeRecord = patched_make_records(logger.makeRecord)
+    # We patch the default logger methods to make sure that they are only called with keyword arguments.
+    # We enforce keyword-arguments because
+    # - it brings in consistency
+    # - it makes structure logging effective, not just an available feature
+    logger.debug = patched_log_method(logger.debug)  # type: ignore
+    logger.info = patched_log_method(logger.info)  # type: ignore
+    logger.warn = patched_log_method(logger.warn)  # type: ignore
+    logger.warning = patched_log_method(logger.warning)  # type: ignore
+    logger.error = patched_log_method(logger.error)  # type: ignore
+    logger.critical = patched_log_method(logger.critical)  # type: ignore
+    logger.exception = patched_log_method(logger.exception)  # type: ignore
+    logger.fatal = patched_log_method(logger.fatal)  # type: ignore
+    logger.log = patched_log_with_level_method(logger.log)  # type: ignore
+
+    logger.makeRecord = patch_make_records_to_use_kwarg_string_interpolation(logger.makeRecord)  # type: ignore
 
     return typing.cast(PatchedLogger, logger)
 

@@ -1,6 +1,5 @@
 import dataclasses
 from haystack import logging
-import warnings
 from typing import Optional, List, Callable, Dict, Any, Union
 
 from openai import OpenAI, Stream
@@ -287,11 +286,14 @@ class OpenAIGenerator:
         """
         if message.meta["finish_reason"] == "length":
             logger.warning(
-                "The completion for index %s has been truncated before reaching a natural stopping point. "
+                "The completion for index {index} has been truncated before reaching a natural stopping point. "
                 "Increase the max_tokens parameter to allow for longer completions.",
-                message.meta["index"],
+                index=message.meta["index"],
+                finish_reason=message.meta["finish_reason"],
             )
         if message.meta["finish_reason"] == "content_filter":
             logger.warning(
-                "The completion for index %s has been truncated due to the content filter.", message.meta["index"]
+                "The completion for index {index} has been truncated due to the content filter.",
+                index=message.meta["index"],
+                finish_reason=message.meta["finish_reason"],
             )

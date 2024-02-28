@@ -73,8 +73,8 @@ class DocumentCleaner:
         for doc in documents:
             if doc.content is None:
                 logger.warning(
-                    "DocumentCleaner only cleans text documents but document.content for document ID %s is None.",
-                    doc.id,
+                    "DocumentCleaner only cleans text documents but document.content for document ID %{document_id} is None.",
+                    document_id=doc.id,
                 )
                 cleaned_docs.append(doc)
                 continue
@@ -174,7 +174,9 @@ class DocumentCleaner:
         if found_footer:
             pages = [page.replace(found_footer, "") for page in pages]
 
-        logger.debug("Removed header '%s' and footer '%s' in document", found_header, found_footer)
+        logger.debug(
+            "Removed header '{header}' and footer '{footer}' in document", header=found_header, footer=found_footer
+        )
         text = "\f".join(pages)
         return text
 

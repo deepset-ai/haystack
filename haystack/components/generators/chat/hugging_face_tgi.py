@@ -162,10 +162,10 @@ class HuggingFaceTGIChatGenerator:
         chat_template = getattr(self.tokenizer, "chat_template", None)
         if not chat_template and not self.chat_template:
             logger.warning(
-                "The model '%s' doesn't have a default chat_template, and no chat_template was supplied during "
+                "The model '{model}' doesn't have a default chat_template, and no chat_template was supplied during "
                 "this component's initialization. It’s possible that the model doesn't support ChatML inference "
                 "format, potentially leading to unexpected behavior.",
-                self.model,
+                model=self.model,
             )
 
     def to_dict(self) -> Dict[str, Any]:

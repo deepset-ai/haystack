@@ -142,5 +142,9 @@ class SearchApiWebSearch:
 
         links = [result["link"] for result in json_result["organic_results"]]
 
-        logger.debug("SearchApi returned %s documents for the query '%s'", len(documents), query)
+        logger.debug(
+            "SearchApi returned {number_documents} documents for the query '{query}'",
+            number_documents=len(documents),
+            query=query,
+        )
         return {"documents": documents[: self.top_k], "links": links[: self.top_k]}

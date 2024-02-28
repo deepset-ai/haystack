@@ -105,13 +105,15 @@ class PyPDFToDocument:
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
-                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
                 pdf_reader = PdfReader(io.BytesIO(bytestream.data))
                 document = self._converter.convert(pdf_reader)
             except Exception as e:
-                logger.warning("Could not read %s and convert it to Document, skipping. %s", source, e)
+                logger.warning(
+                    "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e
+                )
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}

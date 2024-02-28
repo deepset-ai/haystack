@@ -74,12 +74,16 @@ class TikaDocumentConverter:
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
-                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
                 text = tika_parser.from_buffer(io.BytesIO(bytestream.data), serverEndpoint=self.tika_url)["content"]
             except Exception as conversion_e:
-                logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
+                logger.warning(
+                    "Failed to extract text from {source}. Skipping it. Error: {error}",
+                    source=source,
+                    error=conversion_e,
+                )
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}

@@ -178,7 +178,7 @@ class Pipeline:
                     try:
                         # Import the module first...
                         module, _ = component_data["type"].rsplit(".", 1)
-                        logger.debug("Trying to import %s", module)
+                        logger.debug("Trying to import {module}", module=module)
                         importlib.import_module(module)
                         # ...then try again
                         if component_data["type"] not in component.registry:
@@ -296,7 +296,7 @@ class Pipeline:
         setattr(instance, "__haystack_added_to_pipeline__", self)
 
         # Add component to the graph, disconnected
-        logger.debug("Adding component '%s' (%s)", name, instance)
+        logger.debug("Adding component '{component_name}' ({component})", component_name=name, component=instance)
         # We're completely sure the fields exist so we ignore the type error
         self.graph.add_node(
             name,
@@ -435,11 +435,11 @@ class Pipeline:
             raise PipelineConnectError(msg)
 
         logger.debug(
-            "Connecting '%s.%s' to '%s.%s'",
-            sender_component_name,
-            sender_socket.name,
-            receiver_component_name,
-            receiver_socket.name,
+            "Connecting '{sender_component}.{sender_socket_name}' to '{receiver_component}.{receiver_socket_name}'",
+            sender_component=sender_component_name,
+            sender_socket_name=sender_socket.name,
+            receiver_component=receiver_component_name,
+            receiver_socket_name=receiver_socket.name,
         )
 
         if receiver_component_name in sender_socket.receivers and sender_component_name in receiver_socket.senders:
@@ -681,8 +681,8 @@ class Pipeline:
             data, unresolved_inputs = self._prepare_component_input_data(data)
             if unresolved_inputs:
                 logger.warning(
-                    "Inputs %s were not matched to any component inputs, please check your run parameters.",
-                    list(unresolved_inputs.keys()),
+                    "Inputs {input_keys} were not matched to any component inputs, please check your run parameters.",
+                    input_keys=list(unresolved_inputs.keys()),
                 )
 
         # Raise if input is malformed in some way

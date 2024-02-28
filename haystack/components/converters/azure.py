@@ -83,7 +83,7 @@ class AzureOCRDocumentConverter:
             try:
                 bytestream = get_bytestream_from_source(source=source)
             except Exception as e:
-                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
 
             poller = self.document_analysis_client.begin_analyze_document(
