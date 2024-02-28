@@ -116,8 +116,8 @@ class JsonSchemaValidator:
 
         # fc payload is json object but subtree `parameters` is string - we need to convert to json object
         # we need complete json to validate it against schema
-        last_message_json = self.recursive_json_to_object(last_message_content)
-        using_openai_schema: bool = self.is_openai_function_calling_schema(json_schema)
+        last_message_json = self._recursive_json_to_object(last_message_content)
+        using_openai_schema: bool = self._is_openai_function_calling_schema(json_schema)
         if using_openai_schema:
             validation_schema = json_schema["parameters"]
         else:
@@ -137,13 +137,13 @@ class JsonSchemaValidator:
 
             error_template = error_template or self.default_error_template
 
-            recovery_prompt = self.construct_error_recovery_message(
+            recovery_prompt = self._construct_error_recovery_message(
                 error_template, str(e), error_path, error_schema_path, validation_schema
             )
             complete_message_list = [ChatMessage.from_user(recovery_prompt)] + messages
             return {"validation_error": complete_message_list}
 
-    def construct_error_recovery_message(
+    def _construct_error_recovery_message(
         self,
         error_template: str,
         error_message: str,
@@ -169,7 +169,7 @@ class JsonSchemaValidator:
             json_schema=json_schema,
         )
 
-    def is_openai_function_calling_schema(self, json_schema: Dict[str, Any]) -> bool:
+    def _is_openai_function_calling_schema(self, json_schema: Dict[str, Any]) -> bool:
         """
         Checks if the provided schema is a valid OpenAI function calling schema.
 
@@ -178,7 +178,7 @@ class JsonSchemaValidator:
         """
         return all(key in json_schema for key in ["name", "description", "parameters"])
 
-    def recursive_json_to_object(self, data: Any) -> Any:
+    def _recursive_json_to_object(self, data: Any) -> Any:
         """
         Recursively traverses a data structure (dictionary or list), converting any string values
         that are valid JSON objects into dictionary objects, and returns a new data structure.
@@ -187,7 +187,7 @@ class JsonSchemaValidator:
         :return: A new data structure with JSON strings converted to dictionary objects.
         """
         if isinstance(data, list):
-            return [self.recursive_json_to_object(item) for item in data]
+            return [self._recursive_json_to_object(item) for item in data]
 
         if isinstance(data, dict):
             new_dict = {}
@@ -196,14 +196,14 @@ class JsonSchemaValidator:
                     try:
                         json_value = json.loads(value)
                         new_dict[key] = (
-                            self.recursive_json_to_object(json_value)
+                            self._recursive_json_to_object(json_value)
                             if isinstance(json_value, (dict, list))
                             else json_value
                         )
                     except json.JSONDecodeError:
                         new_dict[key] = value
                 elif isinstance(value, dict):
-                    new_dict[key] = self.recursive_json_to_object(value)
+                    new_dict[key] = self._recursive_json_to_object(value)
                 else:
                     new_dict[key] = value
             return new_dict
