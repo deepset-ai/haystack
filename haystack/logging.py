@@ -4,11 +4,7 @@ import logging
 import os
 import sys
 import typing
-from typing import List, Optional
-
-import haystack.tracing.tracer
-import haystack.utils.jupyter
-from typing import List, Any
+from typing import List, Any, Optional
 
 if typing.TYPE_CHECKING:
     from structlog.typing import Processor, WrappedLogger, EventDict
@@ -104,6 +100,8 @@ def correlate_logs_with_traces(_: "WrappedLogger", __: str, event_dict: "EventDi
 
     This is useful if you want to correlate logs with traces.
     """
+    import haystack.tracing.tracer  # to avoid circular imports
+
     if not haystack.tracing.is_tracing_enabled():
         return event_dict
 
@@ -125,6 +123,8 @@ def configure_logging(use_json: Optional[bool] = None) -> None:
         - setting the `use_json` parameter to `True` when calling this function
         - setting the environment variable `HAYSTACK_LOGGING_USE_JSON` to `true`
     """
+    import haystack.utils.jupyter  # to avoid circular imports
+
     try:
         import structlog
         from structlog.processors import ExceptionRenderer
