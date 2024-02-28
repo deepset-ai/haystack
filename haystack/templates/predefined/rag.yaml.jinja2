@@ -2,17 +2,10 @@
 
 {% block components %}
   answer_builder:
-  {% if answer_builder %}
-    {{ answer_builder }}
-  {% else %}
     init_parameters: {}
     type: "haystack.components.builders.answer_builder.AnswerBuilder"
-  {% endif %}
 
   generator:
-  {% if generator %}
-    {{ generator }}
-  {% else %}
     init_parameters:
       api_key:
         env_vars: [ "OPENAI_API_KEY" ]
@@ -20,12 +13,8 @@
         type: "env_var"
       model: "gpt-3.5-turbo"
     type: "haystack.components.generators.openai.OpenAIGenerator"
-  {% endif %}
 
   retriever:
-  {% if retriever %}
-    {{ retriever }}
-  {% else %}
     init_parameters:
       document_store:
         init_parameters:
@@ -39,12 +28,8 @@
       scale_score: false,
       top_k: 10
     type: "haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever"
-  {% endif %}
 
   text_embedder:
-  {% if text_embedder %}
-    {{ text_embedder }}
-  {% else %}
     init_parameters:
       batch_size": 32
       device:
@@ -56,15 +41,12 @@
       progress_bar: true
       suffix: ""
     type: "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder"
-  {% endif %}
 
   prompt_builder:
-  {% if prompt_builder %}
     init_parameters:
       template: |
         {% raw %}"\nGiven these documents, answer the question.\n\nDocuments:\n{% for doc in documents %}\n{{ doc.content }}\n {% endfor %}\n\nQuestion: {{question}}\n\nAnswer:\n"{% endraw %}
     type: "haystack.components.builders.prompt_builder.PromptBuilder"
-  {% endif %}
 {% endblock %}
 
 {% block connections %}
