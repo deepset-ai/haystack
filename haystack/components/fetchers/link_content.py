@@ -73,11 +73,11 @@ class LinkContentFetcher:
         Initializes the component.
 
         :param raise_on_failure: If `True`, raises an exception if it fails to fetch a single URL.
-            For multiple URLs, it logs errors and returns the content it successfully fetched. Default is `True`.
+            For multiple URLs, it logs errors and returns the content it successfully fetched.
         :param user_agents: [User agents](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent)
             for fetching content. If `None`, a default user agent is used.
-        :param retry_attempts: Specifies how many times you want it to retry to fetch the URL's content. Default is `2`.
-        :param timeout: Timeout in seconds for the request. Default is `3`.
+        :param retry_attempts: Specifies how many times you want it to retry to fetch the URL's content.
+        :param timeout: Timeout in seconds for the request.
         """
         self.raise_on_failure = raise_on_failure
         self.user_agents = user_agents or [DEFAULT_USER_AGENT]
