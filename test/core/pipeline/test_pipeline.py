@@ -10,7 +10,7 @@ import pytest
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.core.errors import PipelineDrawingError, PipelineError, PipelineMaxLoops, PipelineRuntimeError
-from haystack.core.pipeline import Pipeline
+from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double
 
@@ -654,3 +654,14 @@ def test_describe_no_outputs():
     p.connect("a.x", "c.x")
     p.connect("b.y", "c.y")
     assert p.outputs() == {}
+
+
+def test_from_predefined():
+    pipe = Pipeline.from_predefined(PredefinedPipeline.INDEXING)
+    assert pipe.get_component("cleaner")
+    with pytest.raises(ValueError):
+        pipe.get_component("pdf_file_converter")
+
+    pipe = Pipeline.from_predefined(PredefinedPipeline.INDEXING, template_params={"use_pdf_file_converter": True})
+    assert pipe.get_component("cleaner")
+    assert pipe.get_component("pdf_file_converter")
