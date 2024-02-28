@@ -63,7 +63,7 @@ class TextLanguageRouter:
 
         :param text: A string to route to different edges based on its language.
 
-        :returns: A dictionary of length one in which the key is the language (or "unmatched")
+        :returns: A dictionary of length one in which the key is the language (or `"unmatched"`)
             and the value is the text.
 
         :raises TypeError: If the input is not a string.
