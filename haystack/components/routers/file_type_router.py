@@ -40,7 +40,7 @@ class FileTypeRouter:
     def __init__(self, mime_types: List[str]):
         """
         :param mime_types: A list of file mime types to consider when routing files
-            (e.g. ["text/plain", "audio/x-wav", "image/jpeg"]).
+            (e.g. `["text/plain", "audio/x-wav", "image/jpeg"]`).
         """
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
