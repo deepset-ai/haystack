@@ -18,6 +18,7 @@ on:
 env:
   PYTHON_VERSION: "3.8"
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  HATCH_VERSION: "1.9.3"
 
 jobs:
   run:
@@ -28,15 +29,10 @@ jobs:
 
     - uses: actions/setup-python@v5
       with:
-        python-version: ${{ env.PYTHON_VERSION }}
+        python-version: "${{ env.PYTHON_VERSION }}"
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt install ffmpeg  # for local Whisper tests
-
-    - name: Install Haystack and the dependencies needed for tests
-      run: pip install -r test/test_requirements.txt
+    - name: Install Hatch
+      run: pip install hatch==${{ env.HATCH_VERSION }}
 
     - name: Run tests
-      run: pytest e2e
+      run: hatch run test:e2e

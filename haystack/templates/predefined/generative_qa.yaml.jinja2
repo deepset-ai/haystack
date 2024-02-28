@@ -1,0 +1,24 @@
+{% extends "base.yaml.jinja2" %}
+
+{% block components %}
+  generator:
+    init_parameters:
+      api_key:
+        env_vars: [ "OPENAI_API_KEY" ]
+        strict: true
+        type: "env_var"
+      model: "gpt-3.5-turbo"
+    type: "haystack.components.generators.openai.OpenAIGenerator"
+
+  prompt_builder:
+    init_parameters:
+      template: {% raw %}"Answer the question {{question}}.\n\nAnswer:"{% endraw +%}
+    type: "haystack.components.builders.prompt_builder.PromptBuilder"
+
+{% endblock %}
+
+
+{% block connections %}
+- receiver: generator.prompt
+  sender: prompt_builder.prompt
+{% endblock %}

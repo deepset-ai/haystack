@@ -1,4 +1,3 @@
-from haystack.templates.pipelines import PipelineTemplate
-from haystack.templates.source import PipelineType
+from haystack.templates.pipeline import PipelineTemplate, PredefinedPipeline
 
-__all__ = ["PipelineTemplate", "PipelineType"]
+__all__ = ["PipelineTemplate", "PredefinedPipeline"]

@@ -19,7 +19,9 @@ WORKDIR /opt/haystack
 RUN python3 -m venv --system-site-packages /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Upgrade setuptools due to https://nvd.nist.gov/vuln/detail/CVE-2022-40897
 RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -U setuptools && \
     pip install --no-cache-dir .
 
 FROM $base_image AS final

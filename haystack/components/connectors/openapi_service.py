@@ -1,6 +1,8 @@
 import json
 import logging
-from typing import Any, Dict, List, Optional, Union
+from collections import defaultdict
+from copy import copy
+from typing import List, Dict, Any, Optional, Union
 
 from haystack import component
 from haystack.dataclasses import ChatMessage, ChatRole
@@ -129,8 +131,8 @@ class OpenAPIServiceConnector:
         :type credentials: dict | str, optional
         :raises ValueError: If authentication fails, is not found, or if appropriate credentials are missing.
         """
-        service_name = openapi_service.info.title
-        if openapi_service.components.securitySchemes:
+        if openapi_service.raw_element.get("components", {}).get("securitySchemes"):
+            service_name = openapi_service.info.title
             if not credentials:
                 raise ValueError(f"Service {service_name} requires authentication but no credentials were provided.")
 
@@ -164,28 +166,62 @@ class OpenAPIServiceConnector:
 
     def _invoke_method(self, openapi_service: OpenAPI, method_invocation_descriptor: Dict[str, Any]) -> Any:
         """
-        Invokes the specified method on the OpenAPI service.
+        Invokes the specified method on the OpenAPI service. The method name and arguments are passed in the
+        method_invocation_descriptor.
 
         :param openapi_service: The OpenAPI service instance.
         :type openapi_service: OpenAPI
-        :param method_invocation_descriptor: The method name and arguments.
+        :param method_invocation_descriptor: The method name and arguments to be passed to the method. The payload
+        should contain the method name (key: "name") and the arguments (key: "arguments"). The name is a string, and
+        the arguments are a dictionary of key-value pairs.
         :type method_invocation_descriptor: Dict[str, Any]
         :return: A service JSON response.
         :rtype: Any
         :raises RuntimeError: If the method is not found or invocation fails.
         """
-        name = method_invocation_descriptor["name"]
-        # a bit convoluted, but we need to pass parameters, data, or both to the method
-        # depending on the openapi operation specification, can't use None as a default value
-        method_call_params = {}
-        if (parameters := method_invocation_descriptor["arguments"].get("parameters")) is not None:
-            method_call_params["parameters"] = parameters
-        if (arguments := method_invocation_descriptor["arguments"].get("requestBody")) is not None:
-            method_call_params["data"] = arguments
+        name = method_invocation_descriptor.get("name", None)
+        invocation_arguments = copy(method_invocation_descriptor.get("arguments", {}))
+        if not name or not invocation_arguments:
+            raise ValueError(
+                f"Invalid function calling descriptor: {method_invocation_descriptor} . It should contain "
+                f"a method name and arguments."
+            )
 
+        # openapi3 specific method to call the operation, do we have it?
         method_to_call = getattr(openapi_service, f"call_{name}", None)
         if not callable(method_to_call):
             raise RuntimeError(f"Operation {name} not found in OpenAPI specification {openapi_service.info.title}")
 
-        # this will call the underlying service REST API
+        # get the operation reference from the method_to_call
+        operation = method_to_call.operation.__self__
+        operation_dict = operation.raw_element
+
+        # Pack URL/query parameters under "parameters" key
+        method_call_params: Dict[str, Dict[str, Any]] = defaultdict(dict)
+        parameters = operation_dict.get("parameters", [])
+        request_body = operation_dict.get("requestBody", {})
+
+        for param in parameters:
+            param_name = param["name"]
+            param_value = invocation_arguments.get(param_name)
+            if param_value:
+                method_call_params["parameters"][param_name] = param_value
+            else:
+                if param.get("required", False):
+                    raise ValueError(f"Missing parameter: '{param_name}' required for the '{name}' operation.")
+
+        # Pack request body parameters under "data" key
+        if request_body:
+            schema = request_body.get("content", {}).get("application/json", {}).get("schema", {})
+            required_params = schema.get("required", [])
+            for param_name in schema.get("properties", {}):
+                param_value = invocation_arguments.get(param_name)
+                if param_value:
+                    method_call_params["data"][param_name] = param_value
+                else:
+                    if param_name in required_params:
+                        raise ValueError(
+                            f"Missing requestBody parameter: '{param_name}' required for the '{name}' operation."
+                        )
+        # call the underlying service REST API with the parameters
         return method_to_call(**method_call_params)

@@ -47,8 +47,9 @@ class _BackwardCompatible(type):
 class Document(metaclass=_BackwardCompatible):
     """
     Base data class containing some data to be queried.
-    Can contain text snippets, tables, and file paths to images or audios.
-    Documents can be sorted by score and saved to/from dictionary and JSON.
+
+    Can contain text snippets, tables, and file paths to images or audios. Documents can be sorted by score and saved
+    to/from dictionary and JSON.
 
     :param id: Unique identifier for the document. When not set, it's generated based on the Document fields' values.
     :param content: Text of the document, if the document contains text.
@@ -89,6 +90,7 @@ class Document(metaclass=_BackwardCompatible):
     def __eq__(self, other):
         """
         Compares Documents for equality.
+
         Two Documents are considered equals if their dictionary representation is identical.
         """
         if type(self) != type(other):
@@ -118,9 +120,11 @@ class Document(metaclass=_BackwardCompatible):
     def to_dict(self, flatten=True) -> Dict[str, Any]:
         """
         Converts Document into a dictionary.
+
         `dataframe` and `blob` fields are converted to JSON-serializable types.
 
-        :param flatten: Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
+        :param flatten:
+            Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
         """
         data = asdict(self)
         if (dataframe := data.get("dataframe")) is not None:
@@ -138,7 +142,8 @@ class Document(metaclass=_BackwardCompatible):
     def from_dict(cls, data: Dict[str, Any]) -> "Document":
         """
         Creates a new Document object from a dictionary.
-        `dataframe` and `blob` fields are converted to their original types.
+
+        The `dataframe` and `blob` fields are converted to their original types.
         """
         if (dataframe := data.get("dataframe")) is not None:
             data["dataframe"] = read_json(io.StringIO(dataframe))
@@ -172,9 +177,11 @@ class Document(metaclass=_BackwardCompatible):
     def content_type(self):
         """
         Returns the type of the content for the document.
+
         This is necessary to keep backward compatibility with 1.x.
-        A ValueError will be raised if both `text` and `dataframe` fields are set
-        or both are missing.
+
+        :raises ValueError:
+            If both `text` and `dataframe` fields are set or both are missing.
         """
         if self.content is not None and self.dataframe is not None:
             raise ValueError("Both text and dataframe are set.")

@@ -6,8 +6,7 @@ from urllib.parse import urlparse
 from haystack import component, default_to_dict, default_from_dict
 from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
-from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
+from haystack.utils import Secret, deserialize_secrets_inplace, serialize_callable, deserialize_callable
 from haystack.utils.hf import check_valid_model, HFModelType, check_generation_params, list_inference_deployed_models
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
@@ -22,9 +21,9 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceTGIGenerator:
     """
-    Enables text generation using HuggingFace Hub hosted non-chat LLMs. This component is designed to seamlessly
-    inference models deployed on the Text Generation Inference (TGI) backend.
+    Enables text generation using HuggingFace Hub hosted non-chat LLMs.
 
+    This component is designed to seamlessly inference models deployed on the Text Generation Inference (TGI) backend.
     You can use this component for LLMs hosted on Hugging Face inference endpoints, the rate-limited
     Inference API tier:
 
@@ -85,14 +84,17 @@ class HuggingFaceTGIGenerator:
         """
         Initialize the HuggingFaceTGIGenerator instance.
 
-        :param model: A string representing the model id on HF Hub. Default is "mistralai/Mistral-7B-v0.1".
-        :param url: An optional string representing the URL of the TGI endpoint.
+        :param model:
+            A string representing the model id on HF Hub. Default is "mistralai/Mistral-7B-v0.1".
+        :param url:
+            An optional string representing the URL of the TGI endpoint. If the url is not provided, check if the model
+            is deployed on the free tier of the HF inference API.
         :param token: The HuggingFace token to use as HTTP bearer authorization
-            You can find your HF token at https://huggingface.co/settings/tokens
-        :param generation_kwargs: A dictionary containing keyword arguments to customize text generation.
-            Some examples: `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
-            See Hugging Face's documentation for more information at:
-            https://huggingface.co/docs/huggingface_hub/v0.18.0.rc0/en/package_reference/inference_client#huggingface_hub.inference._text_generation.TextGenerationParameters
+            You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
+        :param generation_kwargs:
+            A dictionary containing keyword arguments to customize text generation.
+                Some examples: `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
+                See Hugging Face's documentation for more information at: [TextGenerationParameters](https://huggingface.co/docs/huggingface_hub/v0.18.0.rc0/en/package_reference/inference_client#huggingface_hub.inference._text_generation.TextGenerationParameters
         :param stop_words: An optional list of strings representing the stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
@@ -122,8 +124,7 @@ class HuggingFaceTGIGenerator:
 
     def warm_up(self) -> None:
         """
-        If the url is not provided, check if the model is deployed on the free tier of the HF inference API.
-        Load the tokenizer
+        Initializes the component.
         """
 
         # is this user using HF free tier inference API?
@@ -145,7 +146,8 @@ class HuggingFaceTGIGenerator:
         """
         Serialize this component to a dictionary.
 
-        :return: A dictionary containing the serialized component.
+        :returns:
+            A dictionary containing the serialized component.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
@@ -181,10 +183,13 @@ class HuggingFaceTGIGenerator:
         """
         Invoke the text generation inference for the given prompt and generation parameters.
 
-        :param prompt: A string representing the prompt.
-        :param generation_kwargs: Additional keyword arguments for text generation.
-        :return: A dictionary containing the generated replies and metadata. Both are lists of length n.
-        Replies are strings and metadata are dictionaries.
+        :param prompt:
+            A string representing the prompt.
+        :param generation_kwargs:
+            Additional keyword arguments for text generation.
+        :returns:
+            A dictionary containing the generated replies and metadata. Both are lists of length n.
+            - replies: A list of strings representing the generated replies.
         """
         # check generation kwargs given as parameters to override the default ones
         additional_params = ["n", "stop_words"]

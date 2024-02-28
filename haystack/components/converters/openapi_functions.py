@@ -29,10 +29,11 @@ class OpenAPIServiceToFunctions:
 
     Minimal requirements for OpenAPI specification:
     - OpenAPI version 3.0.0 or higher
-    - Each function must have a unique operationId
-    - Each function must have a description
-    - Each function must have a requestBody or parameters or both
-    - Each function must have a schema for the requestBody and/or parameters
+    - Each path must have:
+        - a unique operationId
+        - a description
+        - a requestBody or parameters or both
+        - a schema for the requestBody and/or parameters
 
 
     See https://github.com/OAI/OpenAPI-Specification for more details on OpenAPI specification.
@@ -124,68 +125,115 @@ class OpenAPIServiceToFunctions:
             )
 
         functions: List[Dict[str, Any]] = []
-        for path_methods in service_openapi_spec["paths"].values():
-            for method_specification in path_methods.values():
-                resolved_spec = jsonref.replace_refs(method_specification)
-                if isinstance(resolved_spec, dict):
-                    function_name = resolved_spec.get("operationId")
-                    desc = resolved_spec.get("description") or resolved_spec.get("summary", "")
-
-                    schema: Dict[str, Any] = {"type": "object", "properties": {}}
-
-                    req_body = (
-                        resolved_spec.get("requestBody", {})
-                        .get("content", {})
-                        .get("application/json", {})
-                        .get("schema")
-                    )
-                    if req_body:
-                        schema["properties"]["requestBody"] = req_body
-
-                    params = resolved_spec.get("parameters", [])
-                    if params:
-                        param_properties = {param["name"]: param["schema"] for param in params if "schema" in param}
-                        schema["properties"]["parameters"] = {"type": "object", "properties": param_properties}
-
-                    # these three fields are minimal requirement for OpenAI function calling
-                    if function_name and desc and schema:
-                        functions.append({"name": function_name, "description": desc, "parameters": schema})
-                    else:
-                        logger.warning(
-                            "Invalid OpenAPI spec format provided. Could not extract function from %s", resolved_spec
-                        )
-
-                else:
-                    logger.warning(
-                        "Invalid OpenAPI spec format provided. Could not extract function from %s", resolved_spec
-                    )
-
+        for paths in service_openapi_spec["paths"].values():
+            for path_spec in paths.values():
+                function_dict = self._parse_endpoint_spec(path_spec)
+                if function_dict:
+                    functions.append(function_dict)
         return functions
+
+    def _parse_endpoint_spec(self, resolved_spec: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if not isinstance(resolved_spec, dict):
+            logger.warning("Invalid OpenAPI spec format provided. Could not extract function.")
+            return {}
+
+        function_name = resolved_spec.get("operationId")
+        description = resolved_spec.get("description") or resolved_spec.get("summary", "")
+
+        schema: Dict[str, Any] = {"type": "object", "properties": {}}
+
+        # requestBody section
+        req_body_schema = (
+            resolved_spec.get("requestBody", {}).get("content", {}).get("application/json", {}).get("schema", {})
+        )
+        if "properties" in req_body_schema:
+            for prop_name, prop_schema in req_body_schema["properties"].items():
+                schema["properties"][prop_name] = self._parse_property_attributes(prop_schema)
+
+            if "required" in req_body_schema:
+                schema.setdefault("required", []).extend(req_body_schema["required"])
+
+        # parameters section
+        for param in resolved_spec.get("parameters", []):
+            if "schema" in param:
+                schema_dict = self._parse_property_attributes(param["schema"])
+                # these attributes are not in param[schema] level but on param level
+                useful_attributes = ["description", "pattern", "enum"]
+                schema_dict.update({key: param[key] for key in useful_attributes if param.get(key)})
+                schema["properties"][param["name"]] = schema_dict
+                if param.get("required", False):
+                    schema.setdefault("required", []).append(param["name"])
+
+        if function_name and description and schema["properties"]:
+            return {"name": function_name, "description": description, "parameters": schema}
+        else:
+            logger.warning("Invalid OpenAPI spec format provided. Could not extract function from %s", resolved_spec)
+            return {}
+
+    def _parse_property_attributes(
+        self, property_schema: Dict[str, Any], include_attributes: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Recursively parses the attributes of a property schema, including nested objects and arrays,
+        and includes specified attributes like description, pattern, etc.
+
+        :param property_schema: The schema of the property to parse.
+        :param include_attributes: The list of attributes to include in the parsed schema.
+        :return: The parsed schema of the property including the specified attributes.
+        """
+        include_attributes = include_attributes or ["description", "pattern", "enum"]
+
+        schema_type = property_schema.get("type")
+
+        parsed_schema = {"type": schema_type} if schema_type else {}
+        for attr in include_attributes:
+            if attr in property_schema:
+                parsed_schema[attr] = property_schema[attr]
+
+        if schema_type == "object":
+            properties = property_schema.get("properties", {})
+            parsed_properties = {
+                prop_name: self._parse_property_attributes(prop, include_attributes)
+                for prop_name, prop in properties.items()
+            }
+            parsed_schema["properties"] = parsed_properties
+
+            if "required" in property_schema:
+                parsed_schema["required"] = property_schema["required"]
+
+        elif schema_type == "array":
+            items = property_schema.get("items", {})
+            parsed_schema["items"] = self._parse_property_attributes(items, include_attributes)
+
+        return parsed_schema
 
     def _parse_openapi_spec(self, content: str) -> Dict[str, Any]:
         """
         Parses OpenAPI specification content, supporting both JSON and YAML formats.
 
         :param content: The content of the OpenAPI specification.
-        :type content: str
         :return: The parsed OpenAPI specification.
-        :rtype: Dict[str, Any]
         """
+        open_api_spec_content = None
         try:
-            return json.loads(content)
+            open_api_spec_content = json.loads(content)
+            return jsonref.replace_refs(open_api_spec_content)
         except json.JSONDecodeError as json_error:
             # heuristic to confirm that the content is likely malformed JSON
             if content.strip().startswith(("{", "[")):
                 raise json_error
 
         try:
-            return yaml.safe_load(content)
+            open_api_spec_content = yaml.safe_load(content)
         except yaml.YAMLError:
             error_message = (
                 "Failed to parse the OpenAPI specification. "
                 "The content does not appear to be valid JSON or YAML.\n\n"
             )
             raise RuntimeError(error_message, content)
+
+        # Replace references in the object with their resolved values, if any
+        return jsonref.replace_refs(open_api_spec_content)
 
     def _read_from_file(self, path: Union[str, Path]) -> Optional[str]:
         """

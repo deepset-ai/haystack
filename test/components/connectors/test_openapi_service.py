@@ -1,5 +1,5 @@
 import json
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, patch, PropertyMock
 
 import pytest
 from openapi3 import OpenAPI
@@ -60,44 +60,42 @@ class TestOpenAPIServiceConnector:
             connector._parse_message(ChatMessage.from_assistant('[{"function": {"name": "test_method"}}]'))
 
     def test_authenticate_service_missing_authentication_token(self, connector, openapi_service_mock):
-        securitySchemes_mock = MagicMock()
-        securitySchemes_mock.raw_element = {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}
+        security_schemes_dict = {
+            "components": {"securitySchemes": {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}}
+        }
+        openapi_service_mock.raw_element = security_schemes_dict
+
         with pytest.raises(ValueError):
             connector._authenticate_service(openapi_service_mock)
 
     def test_authenticate_service_having_authentication_token(self, connector, openapi_service_mock):
-        securitySchemes_mock = MagicMock()
-        securitySchemes_mock.raw_element = {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}
-        openapi_service_mock.components.securitySchemes = securitySchemes_mock
+        security_schemes_dict = {
+            "components": {"securitySchemes": {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}}
+        }
+        openapi_service_mock.raw_element = security_schemes_dict
+        openapi_service_mock.components.securitySchemes.raw_element = {
+            "apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}
+        }
         connector._authenticate_service(openapi_service_mock, "some_fake_token")
 
     def test_authenticate_service_having_authentication_dict(self, connector, openapi_service_mock):
-        securitySchemes_mock = MagicMock()
-        securitySchemes_mock.raw_element = {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}
-        openapi_service_mock.components.securitySchemes = securitySchemes_mock
+        security_schemes_dict = {
+            "components": {"securitySchemes": {"apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}}}
+        }
+        openapi_service_mock.raw_element = security_schemes_dict
+        openapi_service_mock.components.securitySchemes.raw_element = {
+            "apiKey": {"in": "header", "name": "x-api-key", "type": "apiKey"}
+        }
         connector._authenticate_service(openapi_service_mock, {"apiKey": "some_fake_token"})
 
     def test_authenticate_service_having_authentication_dict_but_unsupported_auth(
         self, connector, openapi_service_mock
     ):
-        securitySchemes_mock = MagicMock()
-        securitySchemes_mock.raw_element = {"oauth2": {"type": "oauth2"}}
-        openapi_service_mock.components.securitySchemes = securitySchemes_mock
+        security_schemes_dict = {"components": {"securitySchemes": {"oauth2": {"type": "oauth2"}}}}
+        openapi_service_mock.raw_element = security_schemes_dict
+        openapi_service_mock.components.securitySchemes.raw_element = {"oauth2": {"type": "oauth2"}}
         with pytest.raises(ValueError):
             connector._authenticate_service(openapi_service_mock, {"apiKey": "some_fake_token"})
-
-    def test_invoke_method_valid(self, connector, openapi_service_mock):
-        # Test valid method invocation
-        method_invocation_descriptor = {"name": "test_method", "arguments": {}}
-        openapi_service_mock.call_test_method = Mock(return_value="response")
-        result = connector._invoke_method(openapi_service_mock, method_invocation_descriptor)
-        assert result == "response"
-
-    def test_invoke_method_invalid(self, connector, openapi_service_mock):
-        # Test invalid method invocation
-        method_invocation_descriptor = {"name": "invalid_method", "arguments": {}}
-        with pytest.raises(RuntimeError):
-            connector._invoke_method(openapi_service_mock, method_invocation_descriptor)
 
     def test_for_internal_raw_data_field(self):
         # see https://github.com/deepset-ai/haystack/pull/6772 for details
@@ -118,7 +116,7 @@ class TestOpenAPIServiceConnector:
                 {
                     "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
                     "function": {
-                        "arguments": '{"parameters": {"basehead": "main...some_branch", "owner": "deepset-ai", "repo": "haystack"}}',
+                        "arguments": '{"basehead": "main...some_branch", "owner": "deepset-ai", "repo": "haystack"}',
                         "name": "compare_branches",
                     },
                     "type": "function",
@@ -126,19 +124,207 @@ class TestOpenAPIServiceConnector:
             ]
         )
         messages = [ChatMessage.from_assistant(mock_message)]
-
+        call_compare_branches = Mock(return_value=Mock(_raw_data="some_data"))
+        call_compare_branches.operation.__self__ = Mock()
+        call_compare_branches.operation.__self__.raw_element = {
+            "parameters": [{"name": "basehead"}, {"name": "owner"}, {"name": "repo"}]
+        }
         mock_service = Mock(
-            call_compare_branches=Mock(return_value=Mock(_raw_data="some_data")),
+            call_compare_branches=call_compare_branches,
             components=Mock(securitySchemes=Mock(raw_element={"apikey": {"type": "apiKey"}})),
         )
         openapi_mock.return_value = mock_service
 
-        result = connector.run(messages=messages, service_openapi_spec=spec, service_credentials="fake_key")
+        connector.run(messages=messages, service_openapi_spec=spec, service_credentials="fake_key")
 
         openapi_mock.assert_called_once_with(spec)
         mock_service.authenticate.assert_called_once_with("apikey", "fake_key")
+
+        # verify call went through on the wire with the correct parameters
         mock_service.call_compare_branches.assert_called_once_with(
             parameters={"basehead": "main...some_branch", "owner": "deepset-ai", "repo": "haystack"}
         )
 
-        assert result == {"service_response": [ChatMessage.from_user('"some_data"')]}
+    @patch("haystack.components.connectors.openapi_service.OpenAPI")
+    def test_run_with_mix_params_request_body(self, openapi_mock, test_files_path):
+        connector = OpenAPIServiceConnector()
+        spec_path = test_files_path / "yaml" / "openapi_greeting_service.yml"
+        with open(spec_path, "r") as file:
+            spec = json.loads(file.read())
+        mock_message = json.dumps(
+            [
+                {
+                    "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
+                    "function": {"arguments": '{"name": "John", "message": "Hello"}', "name": "greet"},
+                    "type": "function",
+                }
+            ]
+        )
+        call_greet = Mock(return_value=Mock(_raw_data="Hello, John"))
+        call_greet.operation.__self__ = Mock()
+        call_greet.operation.__self__.raw_element = {
+            "parameters": [{"name": "name"}],
+            "requestBody": {
+                "content": {"application/json": {"schema": {"properties": {"message": {"type": "string"}}}}}
+            },
+        }
+
+        mock_service = Mock(call_greet=call_greet)
+        mock_service.raw_element = {}
+        openapi_mock.return_value = mock_service
+
+        messages = [ChatMessage.from_assistant(mock_message)]
+        result = connector.run(messages=messages, service_openapi_spec=spec)
+
+        # verify call went through on the wire
+        mock_service.call_greet.assert_called_once_with(parameters={"name": "John"}, data={"message": "Hello"})
+
+        response = json.loads(result["service_response"][0].content)
+        assert response == "Hello, John"
+
+    @patch("haystack.components.connectors.openapi_service.OpenAPI")
+    def test_run_with_complex_types(self, openapi_mock, test_files_path):
+        connector = OpenAPIServiceConnector()
+        spec_path = test_files_path / "json" / "complex_types_openapi_service.json"
+        with open(spec_path, "r") as file:
+            spec = json.loads(file.read())
+        mock_message = json.dumps(
+            [
+                {
+                    "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
+                    "function": {
+                        "arguments": '{"transaction_amount": 150.75, "description": "Monthly subscription fee", "payment_method_id": "visa_ending_in_1234", "payer": {"name": "Alex Smith", "email": "alex.smith@example.com", "identification": {"type": "Driver\'s License", "number": "D12345678"}}}',
+                        "name": "processPayment",
+                    },
+                    "type": "function",
+                }
+            ]
+        )
+
+        call_processPayment = Mock(return_value=Mock(_raw_data={"result": "accepted"}))
+        call_processPayment.operation.__self__ = Mock()
+        call_processPayment.operation.__self__.raw_element = {
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "properties": {
+                                "transaction_amount": {"type": "number", "example": 150.75},
+                                "description": {"type": "string", "example": "Monthly subscription fee"},
+                                "payment_method_id": {"type": "string", "example": "visa_ending_in_1234"},
+                                "payer": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {"type": "string", "example": "Alex Smith"},
+                                        "email": {"type": "string", "example": "alex.smith@example.com"},
+                                        "identification": {
+                                            "type": "object",
+                                            "properties": {
+                                                "type": {"type": "string", "example": "Driver's License"},
+                                                "number": {"type": "string", "example": "D12345678"},
+                                            },
+                                            "required": ["type", "number"],
+                                        },
+                                    },
+                                    "required": ["name", "email", "identification"],
+                                },
+                            },
+                            "required": ["transaction_amount", "description", "payment_method_id", "payer"],
+                        }
+                    }
+                }
+            }
+        }
+        mock_service = Mock(call_processPayment=call_processPayment)
+        mock_service.raw_element = {}
+        openapi_mock.return_value = mock_service
+
+        messages = [ChatMessage.from_assistant(mock_message)]
+        result = connector.run(messages=messages, service_openapi_spec=spec)
+
+        # verify call went through on the wire
+        mock_service.call_processPayment.assert_called_once_with(
+            data={
+                "transaction_amount": 150.75,
+                "description": "Monthly subscription fee",
+                "payment_method_id": "visa_ending_in_1234",
+                "payer": {
+                    "name": "Alex Smith",
+                    "email": "alex.smith@example.com",
+                    "identification": {"type": "Driver's License", "number": "D12345678"},
+                },
+            }
+        )
+
+        response = json.loads(result["service_response"][0].content)
+        assert response == {"result": "accepted"}
+
+    @patch("haystack.components.connectors.openapi_service.OpenAPI")
+    def test_run_with_request_params_missing_in_invocation_args(self, openapi_mock, test_files_path):
+        connector = OpenAPIServiceConnector()
+        spec_path = test_files_path / "yaml" / "openapi_greeting_service.yml"
+        with open(spec_path, "r") as file:
+            spec = json.loads(file.read())
+        mock_message = json.dumps(
+            [
+                {
+                    "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
+                    "function": {"arguments": '{"message": "Hello"}', "name": "greet"},
+                    "type": "function",
+                }
+            ]
+        )
+        call_greet = Mock(return_value=Mock(_raw_data="Hello, John"))
+        call_greet.operation.__self__ = Mock()
+        call_greet.operation.__self__.raw_element = {
+            "parameters": [{"name": "name", "required": True}],
+            "requestBody": {
+                "content": {"application/json": {"schema": {"properties": {"message": {"type": "string"}}}}}
+            },
+        }
+
+        mock_service = Mock(call_greet=call_greet)
+        mock_service.raw_element = {}
+        openapi_mock.return_value = mock_service
+
+        messages = [ChatMessage.from_assistant(mock_message)]
+        with pytest.raises(ValueError, match="Missing parameter: 'name' required for the 'greet' operation."):
+            connector.run(messages=messages, service_openapi_spec=spec)
+
+    @patch("haystack.components.connectors.openapi_service.OpenAPI")
+    def test_run_with_body_properties_missing_in_invocation_args(self, openapi_mock, test_files_path):
+        connector = OpenAPIServiceConnector()
+        spec_path = test_files_path / "yaml" / "openapi_greeting_service.yml"
+        with open(spec_path, "r") as file:
+            spec = json.loads(file.read())
+        mock_message = json.dumps(
+            [
+                {
+                    "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
+                    "function": {"arguments": '{"name": "John"}', "name": "greet"},
+                    "type": "function",
+                }
+            ]
+        )
+        call_greet = Mock(return_value=Mock(_raw_data="Hello, John"))
+        call_greet.operation.__self__ = Mock()
+        call_greet.operation.__self__.raw_element = {
+            "parameters": [{"name": "name"}],
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "schema": {"properties": {"message": {"type": "string"}}, "required": ["message"]}
+                    }
+                }
+            },
+        }
+
+        mock_service = Mock(call_greet=call_greet)
+        mock_service.raw_element = {}
+        openapi_mock.return_value = mock_service
+
+        messages = [ChatMessage.from_assistant(mock_message)]
+        with pytest.raises(
+            ValueError, match="Missing requestBody parameter: 'message' required for the 'greet' operation."
+        ):
+            connector.run(messages=messages, service_openapi_spec=spec)
