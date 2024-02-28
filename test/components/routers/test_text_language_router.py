@@ -1,5 +1,6 @@
 import logging
 import pytest
+from _pytest.logging import LogCaptureFixture
 
 from haystack import Document
 from haystack.components.routers import TextLanguageRouter
@@ -38,8 +39,15 @@ class TestTextLanguageRouter:
         result = classifier.run(text=german_sentence)
         assert result == {"unmatched": german_sentence}
 
-    def test_warning_if_no_language_detected(self, caplog):
+    def test_warning_if_no_language_detected(self, caplog: LogCaptureFixture):
         with caplog.at_level(logging.WARNING):
             classifier = TextLanguageRouter()
             classifier.run(text=".")
+            assert "Langdetect cannot detect the language of text. Error: No features in text." in caplog.text
+
+    def test_warning_if_no_language_detected_if_debug(self, caplog: LogCaptureFixture):
+        with caplog.at_level(logging.DEBUG):
+            classifier = TextLanguageRouter()
+            classifier.run(text=".")
+            assert "Langdetect cannot detect the language of text. Error: No features in text." in caplog.text
             assert "Langdetect cannot detect the language of text: ." in caplog.text
