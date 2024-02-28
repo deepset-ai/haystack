@@ -1,20 +1,20 @@
 import builtins
 import json
 import logging
-import sys
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import ANY, Mock
+from test.tracing.utils import SpyingTracer
+from unittest.mock import ANY
 
 import pytest
 from _pytest.capture import CaptureFixture
 from _pytest.logging import LogCaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
 
-from haystack import logging as haystack_logging
-from test.tracing.utils import SpyingTracer
 import haystack.utils.jupyter
+from haystack import logging as haystack_logging
 
 
 @pytest.fixture(autouse=True)
@@ -40,24 +40,6 @@ class TestSkipLoggingConfiguration:
 
         # Nothing should be captured by capfd since structlog is not configured
         assert capfd.readouterr().err == ""
-
-    # TODO: Figure out why this breaks≠
-    # def test_skip_logging_if_structlog_not_installed(
-    #     self, monkeypatch: MonkeyPatch, capfd: CaptureFixture, caplog: LogCaptureFixture
-    # ) -> None:
-    #     monkeypatch.delitem(sys.modules, "structlog", raising=False)
-    #     monkeypatch.setattr(builtins, "__import__", Mock(side_effect=ImportError))
-    #
-    #     haystack_logging.configure_logging()
-    #
-    #     logger = logging.getLogger(__name__)
-    #     logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
-    #
-    #     # the pytest fixture caplog only captures logs being rendered from the stdlib logging module
-    #     assert caplog.messages == ["Hello, structured logging!"]
-    #     #
-    #     # Nothing should be captured by capfd since structlog is not configured
-    #     assert capfd.readouterr().err == ""
 
 
 class TestStructuredLoggingConsoleRendering:
