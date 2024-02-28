@@ -16,31 +16,113 @@ HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR = "HAYSTACK_LOGGING_IGNORE_STRUCTLOG"
 class PatchedLogger(typing.Protocol):
     """Class which enables using type checkers to find wrong logger usage."""
 
-    def debug(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
+    def debug(
+        self,
+        msg: str,
+        *,
+        _: Any = None,
+        exc_info: Any = None,
+        stack_info: Any = False,
+        stacklevel: int = 1,
+        **kwargs: Any,
+    ) -> None:
         ...
 
-    def info(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
+    def info(
+        self,
+        msg: str,
+        *,
+        _: Any = None,
+        exc_info: Any = None,
+        stack_info: Any = False,
+        stacklevel: int = 1,
+        **kwargs: Any,
+    ) -> None:
         ...
 
-    def warn(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
+    def warn(
+        self,
+        msg: str,
+        *,
+        _: Any = None,
+        exc_info: Any = None,
+        stack_info: Any = False,
+        stacklevel: int = 1,
+        **kwargs: Any,
+    ) -> None:
         ...
 
-    def warning(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
+    def warning(
+        self,
+        msg: str,
+        *,
+        _: Any = None,
+        exc_info: Any = None,
+        stack_info: Any = False,
+        stacklevel: int = 1,
+        **kwargs: Any,
+    ) -> None:
         ...
 
-    def error(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
+    def error(
+        self,
+        msg: str,
+        *,
+        _: Any = None,
+        exc_info: Any = None,
+        stack_info: Any = False,
+        stacklevel: int = 1,
+        **kwargs: Any,
+    ) -> None:
         ...
 
-    def critical(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
+    def critical(
+        self,
+        msg: str,
+        *,
+        _: Any = None,
+        exc_info: Any = None,
+        stack_info: Any = False,
+        stacklevel: int = 1,
+        **kwargs: Any,
+    ) -> None:
         ...
 
-    def exception(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
+    def exception(
+        self,
+        msg: str,
+        *,
+        _: Any = None,
+        exc_info: Any = None,
+        stack_info: Any = False,
+        stacklevel: int = 1,
+        **kwargs: Any,
+    ) -> None:
         ...
 
-    def fatal(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
+    def fatal(
+        self,
+        msg: str,
+        *,
+        _: Any = None,
+        exc_info: Any = None,
+        stack_info: Any = False,
+        stacklevel: int = 1,
+        **kwargs: Any,
+    ) -> None:
         ...
 
-    def log(self, level: int, msg: str, *, _: Any = None, **kwargs: Any) -> None:
+    def log(
+        self,
+        level: int,
+        msg: str,
+        *,
+        _: Any = None,
+        exc_info: Any = None,
+        stack_info: Any = False,
+        stacklevel: int = 1,
+        **kwargs: Any,
+    ) -> None:
         ...
 
     def setLevel(self, level: int) -> None:
@@ -51,9 +133,13 @@ def patch_log_method_to_kwargs_only(func: typing.Callable) -> typing.Callable:
     """A decorator to make sure that a function is only called with keyword arguments."""
 
     @functools.wraps(func)
-    def log_only_with_kwargs(msg, *, _: Any = None, **kwargs: Any) -> Any:  # we need the `_` to avoid a syntax error
+    def log_only_with_kwargs(
+        msg, *, _: Any = None, exc_info: Any = None, stack_info: Any = False, stacklevel: int = 1, **kwargs: Any
+    ) -> Any:  # we need the `_` to avoid a syntax error
         existing_extra = kwargs.pop("extra", {})
-        return func(msg, extra={**existing_extra, **kwargs})
+        return func(
+            msg, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra={**existing_extra, **kwargs}
+        )
 
     return log_only_with_kwargs
 
@@ -63,10 +149,24 @@ def patch_log_with_level_method_to_kwargs_only(func: typing.Callable) -> typing.
 
     @functools.wraps(func)
     def log_only_with_kwargs(
-        level, msg, *, _: Any = None, **kwargs: Any  # we need the `_` to avoid a syntax error
+        level,
+        msg,
+        *,
+        _: Any = None,
+        exc_info: Any = None,
+        stack_info: Any = False,
+        stacklevel: int = 1,
+        **kwargs: Any,  # we need the `_` to avoid a syntax error
     ) -> Any:
         existing_extra = kwargs.pop("extra", {})
-        return func(level, msg, extra={**existing_extra, **kwargs})
+        return func(
+            level,
+            msg,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+            extra={**existing_extra, **kwargs},
+        )
 
     return log_only_with_kwargs
 

@@ -202,7 +202,7 @@ class MetaFieldRanker:
         # If all docs are missing self.meta_field return original documents
         if len(docs_with_meta_field) == 0:
             logger.warning(
-                "The parameter <meta_field> is currently set to {meta_field}', but none of the provided Documents with IDs {document_ids} have this meta key.\n"
+                "The parameter <meta_field> is currently set to '{meta_field}', but none of the provided Documents with IDs {document_ids} have this meta key.\n"
                 "Set <meta_field> to the name of a field that is present within the provided Documents.\n"
                 "Returning the <top_k> of the original Documents since there are no values to rank.",
                 meta_field=self.meta_field,
@@ -212,7 +212,7 @@ class MetaFieldRanker:
 
         if len(docs_missing_meta_field) > 0:
             logger.warning(
-                "The parameter <meta_field> is currently set to {meta_field}' but the Documents with IDs {document_ids} don't have this meta key.\n"
+                "The parameter <meta_field> is currently set to '{meta_field}' but the Documents with IDs {document_ids} don't have this meta key.\n"
                 "These Documents will be placed at the end of the sorting order.",
                 meta_field=self.meta_field,
                 document_ids=",".join([doc.id for doc in docs_missing_meta_field]),
@@ -254,7 +254,7 @@ class MetaFieldRanker:
         unique_meta_values = {doc.meta[self.meta_field] for doc in docs_with_meta_field}
         if not all(isinstance(meta_value, str) for meta_value in unique_meta_values):
             logger.warning(
-                "The parameter <meta_value_type> is currently set to {meta_field}', but not all of meta values in the "
+                "The parameter <meta_value_type> is currently set to '{meta_field}', but not all of meta values in the "
                 "provided Documents with IDs {document_ids} are strings.\n"
                 "Skipping parsing of the meta values.\n"
                 "Set all meta values found under the <meta_field> parameter to strings to use <meta_value_type>.",

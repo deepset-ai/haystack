@@ -354,7 +354,7 @@ class TestCompositeLogger:
             ("warning", "warning"),
             ("error", "error"),
             ("fatal", "critical"),
-            ("exception", "exception"),
+            ("exception", "error"),
             ("critical", "critical"),
         ],
     )
