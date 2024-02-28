@@ -32,30 +32,33 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
 
     messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 
-    client = AzureOpenAIGenerator(azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
-                                api_key=Secret.from_token("<your-api-key>"),
-                                azure_deployment="<this a model name, e.g. gpt-35-turbo>")
+    client = AzureOpenAIGenerator(
+        azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
+        api_key=Secret.from_token("<your-api-key>"),
+        azure_deployment="<this a model name, e.g. gpt-35-turbo>")
     response = client.run(messages)
     print(response)
+    ```
 
-    >>{'replies': [ChatMessage(content='Natural Language Processing (NLP) is a branch of artificial intelligence
-    >>that focuses on enabling computers to understand, interpret, and generate human language in a way that is
-    >>meaningful and useful.', role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
-    >>meta={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop',
-    >>'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
-
+    ```
+    {'replies':
+        [ChatMessage(content='Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
+         enabling computers to understand, interpret, and generate human language in a way that is meaningful and useful.',
+         role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
+         meta={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop',
+         'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
+    }
     ```
 
      Key Features and Compatibility:
-         - **Primary Compatibility**: Designed to work seamlessly with the OpenAI API Chat Completion endpoint
-            and gpt-4 and gpt-3.5-turbo family of models.
-         - **Streaming Support**: Supports streaming responses from the OpenAI API Chat Completion endpoint.
-         - **Customizability**: Supports all parameters supported by the OpenAI API Chat Completion endpoint.
+       - Primary Compatibility: Designed to work seamlessly with the OpenAI API Chat Completion endpoint and gpt-4 and gpt-3.5-turbo family of models.
+       - Streaming Support: Supports streaming responses from the OpenAI API Chat Completion endpoint.
+       - Customizability: Supports all parameters supported by the OpenAI API Chat Completion endpoint.
 
      Input and Output Format:
-         - **ChatMessage Format**: This component uses the ChatMessage format for structuring both input and output,
-           ensuring coherent and contextually relevant responses in chat-based text generation scenarios. Details on the
-           ChatMessage format can be found at: https://github.com/openai/openai-python/blob/main/chatml.md.
+       - ChatMessage Format: This component uses the ChatMessage format for structuring both input and output, ensuring
+         coherent and contextually relevant responses in chat-based text generation scenarios.
+     - Details on the ChatMessage format can be found [here](https://github.com/openai/openai-python/blob/main/chatml.md.)
     """
 
     # pylint: disable=super-init-not-called
@@ -71,11 +74,11 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        :param azure_endpoint: The endpoint of the deployed model, e.g. `https://example-resource.azure.openai.com/`
+        :param azure_endpoint: The endpoint of the deployed model, e.g. [example](https://example-resource.azure.openai.com/)
         :param api_version: The version of the API to use. Defaults to 2023-05-15
         :param azure_deployment: The deployment of the model, usually the model name.
         :param api_key: The API key to use for authentication.
-        :param azure_ad_token: Azure Active Directory token, see https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id
+        :param azure_ad_token: [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id)
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
@@ -138,7 +141,9 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
-        :return: The serialized component as a dictionary.
+
+        :returns:
+            The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
@@ -157,8 +162,10 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAIChatGenerator":
         """
         Deserialize this component from a dictionary.
+
         :param data: The dictionary representation of this component.
-        :return: The deserialized component instance.
+        :returns:
+            The deserialized component instance.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
         init_params = data.get("init_parameters", {})
