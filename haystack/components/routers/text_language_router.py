@@ -47,7 +47,7 @@ class TextLanguageRouter:
         """
         :param languages: A list of languages in ISO code, each corresponding to a different output connection.
             For supported languages, see the [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
-            If not specified, the default is ["en"].
+            If not specified, the default is `["en"]`.
         """
         langdetect_import.check()
         if not languages:
