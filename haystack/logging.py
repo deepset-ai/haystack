@@ -201,6 +201,7 @@ def _patch_structlog_call_information(logger: logging.Logger) -> None:
             return
 
         # completely copied from structlog. We only add `haystack.logging` to the list of ignored frames
+        # pylint: disable=unused-variable
         def findCaller(stack_info: bool = False, stacklevel: int = 1) -> typing.Tuple[str, int, str, Optional[str]]:
             try:
                 sinfo: Optional[str]
@@ -212,7 +213,7 @@ def _patch_structlog_call_information(logger: logging.Logger) -> None:
 
             return f.f_code.co_filename, f.f_lineno, f.f_code.co_name, sinfo
 
-        logger.findCaller = findCaller
+        logger.findCaller = findCaller  # type: ignore
     except ImportError:
         pass
 
@@ -234,26 +235,8 @@ def getLogger(name: str) -> PatchedLogger:
     logger.log = patch_log_with_level_method_to_kwargs_only(logger.log)  # type: ignore
 
     _patch_structlog_call_information(logger)
+
     # We also patch the `makeRecord` method to use keyword string interpolation
-    try:
-        from structlog._frames import _find_first_app_frame_and_name, _format_stack
-        from structlog.stdlib import _FixedFindCallerLogger
-
-        if isinstance(logger, _FixedFindCallerLogger):
-
-            def findCaller(stack_info: bool = False, stacklevel: int = 1) -> typing.Tuple[str, int, str, Optional[str]]:
-                try:
-                    sinfo: Optional[str]
-                    f, name = _find_first_app_frame_and_name(["logging", "haystack.logging"])
-                    sinfo = _format_stack(f) if stack_info else None
-                except Exception as error:
-                    print(f"Error in findCaller: {error}")
-
-                return f.f_code.co_filename, f.f_lineno, f.f_code.co_name, sinfo
-
-            logger.findCaller = findCaller
-    except ImportError:
-        pass
     logger.makeRecord = patch_make_records_to_use_kwarg_string_interpolation(logger.makeRecord)  # type: ignore
 
     return typing.cast(PatchedLogger, logger)
