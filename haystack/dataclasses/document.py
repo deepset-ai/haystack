@@ -143,7 +143,7 @@ class Document(metaclass=_BackwardCompatible):
         """
         Creates a new Document object from a dictionary.
 
-        NOTE: `dataframe` and `blob` fields are converted to their original types.
+        The `dataframe` and `blob` fields are converted to their original types.
         """
         if (dataframe := data.get("dataframe")) is not None:
             data["dataframe"] = read_json(io.StringIO(dataframe))
