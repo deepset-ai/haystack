@@ -101,7 +101,7 @@ class FileTypeRouter:
 
         :param mime_type: The MIME type to check.
 
-        :returns: True if the provided MIME type is a valid MIME type format, False otherwise.
+        :returns: `True` if the provided MIME type is a valid MIME type format, `False` otherwise.
         """
         return mime_type in mimetypes.types_map.values() or mime_type in self._get_custom_mime_mappings().values()
 
