@@ -71,14 +71,12 @@ class DynamicChatPromptBuilder:
         """
         Constructs a DynamicChatPromptBuilder component.
 
-        These variable names are used to resolve variables and their values during pipeline runtime execution.
-        The values associated with variables from the pipeline runtime are then injected into template placeholders
-        of a ChatMessage that is provided to the `run` method.
-
         :param runtime_variables:
             A list of template variable names you can use in chat prompt construction. For example,
             if `runtime_variables` contains the string `documents`, the component will create an input called
-            `documents` of type `Any`.
+            `documents` of type `Any`. These variable names are used to resolve variables and their values during
+            pipeline execution. The values associated with variables from the pipeline runtime are then injected into
+            template placeholders of a ChatMessage that is provided to the `run` method.
         """
         runtime_variables = runtime_variables or []
 
