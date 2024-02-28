@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 @component
 class OpenAIChatGenerator:
     """
-    Enables text generation using OpenAI's large language models (LLMs). It supports gpt-4 and gpt-3.5-turbo
+    Enables text generation using OpenAI's large language models (LLMs). It supports `gpt-4` and `gpt-3.5-turbo`
     family of models accessed through the chat completions API endpoint.
 
     Users can pass any text generation parameters valid for the `openai.ChatCompletion.create` method
-    directly to this component via the `**generation_kwargs` parameter in __init__ or the `**generation_kwargs`
+    directly to this component via the `generation_kwargs` parameter in `__init__` or the `generation_kwargs`
     parameter in `run` method.
 
     For more details on the parameters supported by the OpenAI API, refer to the OpenAI
@@ -38,25 +38,29 @@ class OpenAIChatGenerator:
     client = OpenAIChatGenerator()
     response = client.run(messages)
     print(response)
-
-    >>{'replies': [ChatMessage(content='Natural Language Processing (NLP) is a branch of artificial intelligence
-    >>that focuses on enabling computers to understand, interpret, and generate human language in a way that is
-    >>meaningful and useful.', role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
-    >>meta={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop',
-    >>'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
-
+    ```
+    Output:
+    ```
+    {'replies':
+        [ChatMessage(content='Natural Language Processing (NLP) is a branch of artificial intelligence
+                              that focuses on enabling computers to understand, interpret, and generate human language in
+                              a way that is meaningful and useful.',
+         role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
+         meta={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop',
+         'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})
+        ]
+    }
     ```
 
      Key Features and Compatibility:
-         - **Primary Compatibility**: Designed to work seamlessly with the OpenAI API Chat Completion endpoint
-            and gpt-4 and gpt-3.5-turbo family of models.
-         - **Streaming Support**: Supports streaming responses from the OpenAI API Chat Completion endpoint.
-         - **Customizability**: Supports all parameters supported by the OpenAI API Chat Completion endpoint.
+      - Primary Compatibility: designed to work seamlessly with the OpenAI API Chat Completion endpoint and `gpt-4` and `gpt-3.5-turbo` family of models.
+      - Streaming Support: supports streaming responses from the OpenAI API Chat Completion endpoint.
+      - Customizability: supports all parameters supported by the OpenAI API Chat Completion endpoint.
 
      Input and Output Format:
-         - **ChatMessage Format**: This component uses the ChatMessage format for structuring both input and output,
-           ensuring coherent and contextually relevant responses in chat-based text generation scenarios. Details on the
-           ChatMessage format can be found at: https://github.com/openai/openai-python/blob/main/chatml.md.
+       - ChatMessage Format: this component uses the ChatMessage format for structuring both input and output,
+         ensuring coherent and contextually relevant responses in chat-based text generation scenarios. Details on the
+         ChatMessage format can be found at [here](https://docs.haystack.deepset.ai/v2.0/docs/data-classes#chatmessage).
     """
 
     def __init__(
@@ -116,7 +120,9 @@ class OpenAIChatGenerator:
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
-        :return: The serialized component as a dictionary.
+
+        :returns:
+            The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
@@ -133,8 +139,10 @@ class OpenAIChatGenerator:
     def from_dict(cls, data: Dict[str, Any]) -> "OpenAIChatGenerator":
         """
         Deserialize this component from a dictionary.
+
         :param data: The dictionary representation of this component.
-        :return: The deserialized component instance.
+        :returns:
+            The deserialized component instance.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         init_params = data.get("init_parameters", {})
@@ -150,10 +158,12 @@ class OpenAIChatGenerator:
 
         :param messages: A list of ChatMessage instances representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation. These parameters will
-        potentially override the parameters passed in the __init__ method.
-        For more details on the parameters supported by the OpenAI API, refer to the
-        OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
-        :return: A list containing the generated responses as ChatMessage instances.
+                                  potentially override the parameters passed in the `__init__` method.
+                                  For more details on the parameters supported by the OpenAI API, refer to the
+                                  OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
+
+        :returns:
+            A list containing the generated responses as ChatMessage instances.
         """
 
         # update generation kwargs by merging with the generation kwargs passed to the run method
