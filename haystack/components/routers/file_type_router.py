@@ -60,7 +60,7 @@ class FileTypeRouter:
 
         :param sources: A list of file paths or byte streams to categorize.
 
-        :returns: A dictionary where the keys are MIME types (or "unclassified") and the values are lists of data sources.
+        :returns: A dictionary where the keys are MIME types (or `"unclassified"`) and the values are lists of data sources.
         """
 
         mime_types = defaultdict(list)
