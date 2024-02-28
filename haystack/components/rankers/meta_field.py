@@ -22,14 +22,14 @@ class MetaFieldRanker:
 
     ranker = MetaFieldRanker(meta_field="rating")
     docs = [
-        Document(text="Paris", meta={"rating": 1.3}),
-        Document(text="Berlin", meta={"rating": 0.7}),
-        Document(text="Barcelona", meta={"rating": 2.1}),
+        Document(content="Paris", meta={"rating": 1.3}),
+        Document(content="Berlin", meta={"rating": 0.7}),
+        Document(content="Barcelona", meta={"rating": 2.1}),
     ]
 
     output = ranker.run(documents=docs)
     docs = output["documents"]
-    assert docs[0].text == "Barcelona"
+    assert docs[0].content == "Barcelona"
     """
 
     def __init__(
