@@ -46,11 +46,11 @@ class RemoteWhisperTranscriber:
             OpenAI API key.
         :param model:
             Name of the model to use. It now accepts only `whisper-1`.
-        :param organization: T
-            he Organization ID, defaults to `None`. See
+        :param organization: 
+            The Organization ID. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param api_base:
-            An optional URL to use as the API base. Defaults to `None`. See OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
+            An optional URL to use as the API base. See OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
         :param kwargs:
             Other parameters to use for the model. These parameters are all sent directly to the OpenAI
             endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio) for more details.
