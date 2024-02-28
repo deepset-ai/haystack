@@ -16,53 +16,55 @@ HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR = "HAYSTACK_LOGGING_IGNORE_STRUCTLOG"
 class PatchedLogger(typing.Protocol):
     """Class which enables using type checkers to find wrong logger usage."""
 
-    def debug(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+    def debug(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
         ...
 
-    def info(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+    def info(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
         ...
 
-    def warn(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+    def warn(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
         ...
 
-    def warning(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+    def warning(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
         ...
 
-    def error(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+    def error(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
         ...
 
-    def critical(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+    def critical(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
         ...
 
-    def exception(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+    def exception(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
         ...
 
-    def fatal(self, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+    def fatal(self, msg: str, *, _: Any = None, **kwargs: Any) -> None:
         ...
 
-    def log(self, level: int, msg: str, *, _: Any = None, **kwargs: Any) -> Any:
+    def log(self, level: int, msg: str, *, _: Any = None, **kwargs: Any) -> None:
         ...
 
     def setLevel(self, level: int) -> None:
         ...
 
 
-def patched_log_method(func: typing.Callable) -> typing.Callable:
+def patch_log_method_to_kwargs_only(func: typing.Callable) -> typing.Callable:
     """A decorator to make sure that a function is only called with keyword arguments."""
 
     @functools.wraps(func)
-    def log_only_with_kwargs(msg, *, _: Any = None, **kwargs: Any) -> Any:
+    def log_only_with_kwargs(msg, *, _: Any = None, **kwargs: Any) -> Any:  # we need the `_` to avoid a syntax error
         existing_extra = kwargs.pop("extra", {})
         return func(msg, extra={**existing_extra, **kwargs})
 
     return log_only_with_kwargs
 
 
-def patched_log_with_level_method(func: typing.Callable) -> typing.Callable:
+def patch_log_with_level_method_to_kwargs_only(func: typing.Callable) -> typing.Callable:
     """A decorator to make sure that a function is only called with keyword arguments."""
 
     @functools.wraps(func)
-    def log_only_with_kwargs(level, msg, *, _: Any = None, **kwargs: Any) -> Any:
+    def log_only_with_kwargs(
+        level, msg, *, _: Any = None, **kwargs: Any  # we need the `_` to avoid a syntax error
+    ) -> Any:
         existing_extra = kwargs.pop("extra", {})
         return func(level, msg, extra={**existing_extra, **kwargs})
 
@@ -85,15 +87,15 @@ def getLogger(name: str) -> PatchedLogger:
     # We enforce keyword-arguments because
     # - it brings in consistency
     # - it makes structure logging effective, not just an available feature
-    logger.debug = patched_log_method(logger.debug)  # type: ignore
-    logger.info = patched_log_method(logger.info)  # type: ignore
-    logger.warn = patched_log_method(logger.warn)  # type: ignore
-    logger.warning = patched_log_method(logger.warning)  # type: ignore
-    logger.error = patched_log_method(logger.error)  # type: ignore
-    logger.critical = patched_log_method(logger.critical)  # type: ignore
-    logger.exception = patched_log_method(logger.exception)  # type: ignore
-    logger.fatal = patched_log_method(logger.fatal)  # type: ignore
-    logger.log = patched_log_with_level_method(logger.log)  # type: ignore
+    logger.debug = patch_log_method_to_kwargs_only(logger.debug)  # type: ignore
+    logger.info = patch_log_method_to_kwargs_only(logger.info)  # type: ignore
+    logger.warn = patch_log_method_to_kwargs_only(logger.warn)  # type: ignore
+    logger.warning = patch_log_method_to_kwargs_only(logger.warning)  # type: ignore
+    logger.error = patch_log_method_to_kwargs_only(logger.error)  # type: ignore
+    logger.critical = patch_log_method_to_kwargs_only(logger.critical)  # type: ignore
+    logger.exception = patch_log_method_to_kwargs_only(logger.exception)  # type: ignore
+    logger.fatal = patch_log_method_to_kwargs_only(logger.fatal)  # type: ignore
+    logger.log = patch_log_with_level_method_to_kwargs_only(logger.log)  # type: ignore
 
     logger.makeRecord = patch_make_records_to_use_kwarg_string_interpolation(logger.makeRecord)  # type: ignore
 
