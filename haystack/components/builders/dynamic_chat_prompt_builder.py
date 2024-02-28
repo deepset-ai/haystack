@@ -69,7 +69,7 @@ class DynamicChatPromptBuilder:
 
     def __init__(self, runtime_variables: Optional[List[str]] = None):
         """
-        Initializes DynamicChatPromptBuilder with the provided variable names.
+        Constructs a DynamicChatPromptBuilder component.
 
         These variable names are used to resolve variables and their values during pipeline runtime execution.
         The values associated with variables from the pipeline runtime are then injected into template placeholders
@@ -102,13 +102,13 @@ class DynamicChatPromptBuilder:
             A list of `ChatMessage` instances. We make an assumption that the last user message has
             the template for the chat prompt
         :param template_variables:
-            An optional dictionary of template variables. Template variables provided at initialization are required
+            A dictionary of template variables. Template variables provided at initialization are required
             to resolve pipeline variables, and these are additional variables users can provide directly to this method.
         :param kwargs:
             Additional keyword arguments, typically resolved from a pipeline, which are merged with the provided template variables.
 
         :returns: A dictionary with the following keys:
-            - `prompt`: the updated list of `ChatMessage` instances after rendering the string template.
+            - `prompt`: The updated list of `ChatMessage` instances after rendering the string template.
         """
         kwargs = kwargs or {}
         template_variables = template_variables or {}

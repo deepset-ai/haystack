@@ -70,7 +70,7 @@ class DynamicPromptBuilder:
 
     def __init__(self, runtime_variables: Optional[List[str]] = None):
         """
-        Initializes DynamicPromptBuilder with the provided variable names.
+        Constructs a DynamicPromptBuilder component.
 
         These variable names are used to resolve variables and their values during pipeline runtime execution.
         The values associated with variables from the pipeline runtime are then injected into template placeholders
@@ -112,7 +112,7 @@ class DynamicPromptBuilder:
             template variables.
 
         :returns: A dictionary with the following keys:
-            - `prompt`: the updated prompt text after rendering the string template.
+            - `prompt`: The updated prompt text after rendering the string template.
         """
         kwargs = kwargs or {}
         template_variables = template_variables or {}

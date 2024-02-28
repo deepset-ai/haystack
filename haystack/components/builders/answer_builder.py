@@ -63,9 +63,9 @@ class AnswerBuilder:
         Turns the output of a Generator into `Answer` objects using regular expressions.
 
         :param query:
-            The query used in the prompts for the Generator as a string.
+            The query used in the prompts for the Generator.
         :param replies:
-            The output of the Generator. A list of strings.
+            The output of the Generator.
         :param meta:
             The metadata returned by the Generator. If not specified, the generated answer will contain no metadata.
         :param documents:

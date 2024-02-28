@@ -21,7 +21,7 @@ class PromptBuilder:
 
     def __init__(self, template: str):
         """
-        Initializes the component with a template string.
+        Constructs a PromptBuilder component.
 
         :param template: A Jinja2 template string, e.g. "Summarize this document: {documents}\\nSummary:"
         """
@@ -39,6 +39,6 @@ class PromptBuilder:
             The variables that will be used to render the prompt template.
 
         :returns: A dictionary with the following keys:
-            - `prompt`: the updated prompt text after rendering the prompt template.
+            - `prompt`: The updated prompt text after rendering the prompt template.
         """
         return {"prompt": self.template.render(kwargs)}
