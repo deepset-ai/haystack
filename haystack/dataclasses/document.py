@@ -180,8 +180,8 @@ class Document(metaclass=_BackwardCompatible):
 
         This is necessary to keep backward compatibility with 1.x.
 
-        :raises:
-            ValueError will be raised if both `text` and `dataframe` fields are set or both are missing.
+        :raises ValueError:
+            If both `text` and `dataframe` fields are set or both are missing.
         """
         if self.content is not None and self.dataframe is not None:
             raise ValueError("Both text and dataframe are set.")
