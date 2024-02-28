@@ -1,35 +1,23 @@
 ---
 highlights:  >
-   Introducing a flexible and dynamic approach to creating NLP pipelines with Haystack's new PipelineTemplate class!
-   This innovative feature utilizes Jinja templated YAML files, allowing users to effortlessly construct and customize
-   complex data processing pipelines for various NLP tasks. From question answering and document indexing to custom
-   pipeline requirements, the PipelineTemplate simplifies configuration and enhances adaptability. Users can now easily
-   override default components or integrate custom settings with simple, straightforward code.
+   Introducing a flexible and dynamic approach to creating NLP pipelines with predefined templates.
+   This innovative feature allows users to easily construct and customize complex data processing pipelines for various
+   NLP tasks.
 
    For example, the following pipeline template can be used to create an indexing pipeline:
    ```python
-   from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-   from haystack.templates import PipelineTemplate, PredefinedPipeline
+   from haystack import Pipeline, PredefinedPipeline
 
-   pt = PipelineTemplate(PredefinedPipeline.INDEXING)
-   pipe = pt.build(template_params={"use_pdf_file_converter": True})
-   result = pipe.run(data={"sources": ["some_local_dir/and_text_file.txt", "some_other_local_dir/and_pdf_file.pdf"]})
-   print(result)
+   pipe = Pipeline.from_predefined(PredefinedPipeline.INDEXING)
+   result = pipe.run(data={"sources": ["some_local_dir/and_text_file.txt"]})
    ```
 
-   In the above example, a PredefinedPipeline.INDEXING enum is used to create a pipeline with the PDF file converter
-   enabled. The pipeline is then run on a list of local files and the result is printed (number of indexed documents).
+   The above example creates a PredefinedPipeline.INDEXING pipeline ready to be used. We can use the same template
+   to create a slightly different indexing pipeline, adding a PDF to text converter:
 
-   We could have of course used the same PipelineTemplate class to create any other pre-defined pipeline or even a
-   custom pipeline with custom components and settings.
-
-   On the other hand, the following pipeline template can be used to create a pre-defined RAG pipeline:
    ```python
-   from haystack.templates import PipelineTemplate, PredefinedPipeline
+   from haystack import Pipeline, PredefinedPipeline
 
-   pipe = PipelineTemplate(PredefinedPipeline.RAG).build()
+   pipe = PipelineTemplate(PredefinedPipeline.INDEXING, template_params={"use_pdf_file_converter": True})
    result = pipe.run(query="What's the meaning of life?")
-   print(result)
    ```
-
-   PipelineTemplate can load templates from various inputs, including strings, files, and predefined templates.
