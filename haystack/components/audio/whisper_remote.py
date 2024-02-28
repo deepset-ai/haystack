@@ -18,7 +18,7 @@ class RemoteWhisperTranscriber:
     Transcribes audio files using the Whisper API from OpenAI.
 
     The component requires an API key, see the relative
-    [OpenAI blog post](https://beta.openai.com/docs/api-reference/whisper) for more details.
+    [OpenAI documentation](https://platform.openai.com/docs/api-reference/authentication) for more details.
     For the supported audio formats, languages, and other parameters, see the
     [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text)
 
