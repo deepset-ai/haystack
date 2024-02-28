@@ -68,7 +68,7 @@ class JsonSchemaValidator:
 
     # Default error description template
     default_error_template = (
-        "The JSON content in the previous message does not conform to the provided schema.\n"
+        "The JSON content in the next message does not conform to the provided schema.\n"
         "Error details:\n- Message: {error_message}\n"
         "- Error Path in JSON: {error_path}\n"
         "- Schema Path: {error_schema_path}\n"
@@ -126,7 +126,7 @@ class JsonSchemaValidator:
             last_message_json = [last_message_json] if not isinstance(last_message_json, list) else last_message_json
             for content in last_message_json:
                 if using_openai_schema:
-                    validate(instance=content["function"]["arguments"]["parameters"], schema=validation_schema)
+                    validate(instance=content["function"]["arguments"], schema=validation_schema)
                 else:
                     validate(instance=content, schema=validation_schema)
 
@@ -140,7 +140,7 @@ class JsonSchemaValidator:
             recovery_prompt = self.construct_error_recovery_message(
                 error_template, str(e), error_path, error_schema_path, validation_schema
             )
-            complete_message_list = messages + [ChatMessage.from_user(recovery_prompt)]
+            complete_message_list = [ChatMessage.from_user(recovery_prompt)] + messages
             return {"validation_error": complete_message_list}
 
     def construct_error_recovery_message(

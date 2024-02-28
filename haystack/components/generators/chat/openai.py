@@ -2,7 +2,6 @@ import copy
 import dataclasses
 import json
 import logging
-import warnings
 from typing import Optional, List, Callable, Dict, Any, Union
 
 from openai import OpenAI, Stream  # type: ignore
@@ -12,8 +11,7 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.dataclasses import StreamingChunk, ChatMessage
-from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
+from haystack.utils import Secret, deserialize_secrets_inplace, serialize_callable, deserialize_callable
 
 logger = logging.getLogger(__name__)
 
@@ -332,29 +330,3 @@ class OpenAIChatGenerator:
             logger.warning(
                 "The completion for index %s has been truncated due to the content filter.", message.meta["index"]
             )
-
-
-class GPTChatGenerator(OpenAIChatGenerator):
-    def __init__(
-        self,
-        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "gpt-3.5-turbo",
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
-        api_base_url: Optional[str] = None,
-        organization: Optional[str] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-    ):
-        warnings.warn(
-            "GPTChatGenerator is deprecated and will be removed in the next beta release. "
-            "Please use OpenAIChatGenerator instead.",
-            UserWarning,
-            stacklevel=2,
-        )
-        super().__init__(
-            api_key=api_key,
-            model=model,
-            streaming_callback=streaming_callback,
-            api_base_url=api_base_url,
-            organization=organization,
-            generation_kwargs=generation_kwargs,
-        )

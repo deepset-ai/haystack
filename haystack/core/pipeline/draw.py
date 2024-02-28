@@ -70,7 +70,7 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     graphbytes = graph_styled.encode("ascii")
     base64_bytes = base64.b64encode(graphbytes)
     base64_string = base64_bytes.decode("ascii")
-    url = "https://mermaid.ink/img/" + base64_string
+    url = f"https://mermaid.ink/img/{base64_string}?type=png"
 
     logging.debug("Rendeding graph at %s", url)
     try:

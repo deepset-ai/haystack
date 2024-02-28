@@ -29,6 +29,7 @@ env:
   AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PYTHON_VERSION: "3.8"
+  HATCH_VERSION: "1.9.3"
 
 jobs:
   black:
@@ -38,19 +39,13 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install Black
-        run: |
-          pip install --upgrade pip
-          pip install .[dev]
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Check status
-        run: |
-          if ! black . --check; then
-            git status
-            exit 1
-          fi
+        run: hatch run default:format-check
 
       - name: Calculate alert data
         id: calculator
@@ -96,10 +91,14 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install Haystack and the dependencies needed for tests
-        run: pip install -r test/test_requirements.txt
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
+
+      - name: Install dependencies
+        # To actually install and sync the dependencies
+        run: hatch run test:pip list
 
       - uses: actions/cache@v4
         with:
@@ -122,7 +121,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Restore Python dependencies
         uses: actions/cache/restore@v4
@@ -131,7 +130,7 @@ jobs:
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
       - name: Run
-        run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integration" test
+        run: hatch run test:unit
 
       - name: Coveralls
         # We upload only coverage for ubuntu as handling both os
@@ -186,7 +185,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install dependencies
         run: |
@@ -200,7 +199,7 @@ jobs:
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
       - name: Run
-        run: pytest --maxfail=5 -m "integration" test
+        run: hatch run test:integration
 
       - name: Calculate alert data
         id: calculator
@@ -245,7 +244,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install dependencies
         run: |
@@ -258,7 +257,7 @@ jobs:
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
       - name: Run
-        run: pytest --maxfail=5 -m "integration" test -k 'not tika'
+        run: hatch run test:integration-mac
 
       - name: Calculate alert data
         id: calculator
@@ -300,7 +299,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Restore Python dependencies
         uses: actions/cache/restore@v4
@@ -309,7 +308,7 @@ jobs:
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
 
       - name: Run
-        run: pytest --maxfail=5 -m "integration" test -k 'not tika'
+        run: hatch run test:integration-windows
 
       - name: Calculate alert data
         id: calculator

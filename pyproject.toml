@@ -57,12 +57,12 @@ dependencies = [
   "pyyaml",
   "more-itertools",  # TextDocumentSplitter
   "networkx", # Pipeline graphs
-  "typing_extensions", # typing support for Python 3.8
+  "typing_extensions>=3.7", # typing support for Python 3.8
   "boilerpy3", # Fulltext extraction from HTML pages
 ]
 
-[project.optional-dependencies]
-dev = [
+[tool.hatch.envs.default]
+dependencies = [
   "pre-commit",
   # Type check
   "mypy",
@@ -89,6 +89,67 @@ dev = [
   # Version specified following Black stability policy:
   # https://black.readthedocs.io/en/stable/the_black_code_style/index.html#stability-policy
   "black[jupyter]~=23.0",
+]
+
+[tool.hatch.envs.default.scripts]
+format = "black ."
+format-check = "black --check ."
+
+[tool.hatch.envs.test]
+extra-dependencies = [
+  "transformers[torch,sentencepiece]==4.37.2",  # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
+  "spacy>=3.7,<3.8",  # NamedEntityExtractor
+  "spacy-curated-transformers>=0.2,<=0.3",  # NamedEntityExtractor
+  "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",  # NamedEntityExtractor
+
+  # Converters
+  "pypdf",  # PyPDFConverter
+  "markdown-it-py",  # MarkdownToDocument
+  "mdit_plain",  # MarkdownToDocument
+  "tika",  # TikaDocumentConverter
+  "azure-ai-formrecognizer>=3.2.0b2",  # AzureOCRDocumentConverter
+  "langdetect",  # TextLanguageRouter and DocumentLanguageClassifier
+  "sentence-transformers>=2.2.0",  # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
+  "openai-whisper>=20231106",  # LocalWhisperTranscriber
+
+  # OpenAPI
+  "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
+  "openapi3",
+
+  # Validation
+  "jsonschema",
+
+  # Tracing
+  "opentelemetry-sdk",
+  "ddtrace",
+
+  # Structured logging
+  "structlog",
+]
+
+[tool.hatch.envs.test.scripts]
+e2e = "pytest e2e"
+unit = 'pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integration" test'
+integration = 'pytest --maxfail=5 -m "integration" test'
+integration-mac = 'pytest --maxfail=5 -m "integration" test -k "not tika"'
+integration-windows = 'pytest --maxfail=5 -m "integration" test -k "not tika"'
+types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack}"
+lint = "pylint -ry -j 0 {args:haystack}"
+
+[tool.hatch.envs.readme]
+detached = true  # To avoid installing the dependencies from the default environment
+dependencies = [
+  "haystack-pydoc-tools",
+]
+
+[tool.hatch.envs.readme.scripts]
+sync = "./.github/utils/pydoc-markdown.sh"
+delete-outdated = "python ./.github/utils/delete_outdated_docs.py {args}"
+
+[tool.hatch.envs.snippets]
+extra-dependencies = [
+  "torch",
+  "pydantic",
 ]
 
 [project.urls]

@@ -7,7 +7,7 @@ from haystack import component, default_to_dict, default_from_dict
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils.callable_serialization import serialize_callable, deserialize_callable
+from haystack.utils import serialize_callable, deserialize_callable
 from haystack.utils.hf import check_valid_model, HFModelType, check_generation_params, list_inference_deployed_models
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:

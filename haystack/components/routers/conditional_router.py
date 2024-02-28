@@ -5,7 +5,7 @@ from jinja2 import meta, Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.utils.type_serialization import serialize_type, deserialize_type
+from haystack.utils import serialize_type, deserialize_type
 
 logger = logging.getLogger(__name__)
 
@@ -21,20 +21,20 @@ class RouteConditionException(Exception):
 @component
 class ConditionalRouter:
     """
-    ConditionalRouter in Haystack 2.x pipelines is designed to manage data routing based on specific conditions.
-    This is achieved by defining a list named 'routes'. Each element in this list is a dictionary representing a
-    single route.
+    `ConditionalRouter` allows data routing based on specific conditions.
 
+    This is achieved by defining a list named `routes`. Each element in this list is a dictionary representing a
+    single route.
     A route dictionary comprises four key elements:
-    - 'condition': A Jinja2 string expression that determines if the route is selected.
-    - 'output': A Jinja2 expression defining the route's output value.
-    - 'output_type': The type of the output data (e.g., str, List[int]).
-    - 'output_name': The name under which the `output` value of the route is published. This name is used to connect
+    - `condition`: A Jinja2 string expression that determines if the route is selected.
+    - `output`: A Jinja2 expression defining the route's output value.
+    - `output_type`: The type of the output data (e.g., `str`, `List[int]`).
+    - `output_name`: The name under which the `output` value of the route is published. This name is used to connect
     the router to other components in the pipeline.
 
-    Here's an example:
-
+    Usage example:
     ```python
+    from typing import List
     from haystack.components.routers import ConditionalRouter
 
     routes = [
@@ -66,10 +66,10 @@ class ConditionalRouter:
     'enough_streams' output might be connected to another component that processes the streams, while the
     'insufficient_streams' output might be connected to a component that fetches more streams, and so on.
 
-    Here is a pseudocode example of a pipeline that uses the ConditionalRouter and routes fetched ByteStreams to
-    different components depending on the number of streams fetched:
 
-    ```
+    Here is a pseudocode example of a pipeline that uses the `ConditionalRouter` and routes fetched `ByteStreams` to
+    different components depending on the number of streams fetched:
+    ```python
     from typing import List
     from haystack import Pipeline
     from haystack.dataclasses import ByteStream
@@ -101,11 +101,15 @@ class ConditionalRouter:
 
     def __init__(self, routes: List[Dict]):
         """
-        Initializes the ConditionalRouter with a list of routes detailing the conditions for routing.
+        Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
 
-        :param routes: A list of dictionaries, each defining a route with a boolean condition expression
-                       ('condition'), an output value ('output'), the output type ('output_type') and
-                       ('output_name') that defines the output name for the variable defined in 'output'.
+        :param routes: A list of dictionaries, each defining a route.
+            A route dictionary comprises four key elements:
+            - `condition`: A Jinja2 string expression that determines if the route is selected.
+            - `output`: A Jinja2 expression defining the route's output value.
+            - `output_type`: The type of the output data (e.g., str, List[int]).
+            - `output_name`: The name under which the `output` value of the route is published. This name is used to connect
+            the router to other components in the pipeline.
         """
         self._validate_routes(routes)
         self.routes: List[dict] = routes
@@ -129,6 +133,12 @@ class ConditionalRouter:
         component.set_output_types(self, **output_types)
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
         for route in self.routes:
             # output_type needs to be serialized to a string
             route["output_type"] = serialize_type(route["output_type"])
@@ -137,6 +147,14 @@ class ConditionalRouter:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConditionalRouter":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
+        """
         init_params = data.get("init_parameters", {})
         routes = init_params.get("routes")
         for route in routes:
@@ -146,19 +164,17 @@ class ConditionalRouter:
 
     def run(self, **kwargs):
         """
-        Executes the routing logic by evaluating the specified boolean condition expressions
-        for each route in the order they are listed. The method directs the flow
-        of data to the output specified in the first route, whose expression
-        evaluates to True. If no route's expression evaluates to True, an exception
-        is raised.
+        Executes the routing logic by evaluating the specified boolean condition expressions for each route in the order they are listed.
+        The method directs the flow of data to the output specified in the first route whose `condition` is True.
 
-        :param kwargs: A dictionary containing the pipeline variables, which should
-                   include all variables used in the "condition" templates.
+        :param kwargs: All variables used in the `condition` expressed in the routes. When the component is used in a
+            pipeline, these variables are passed from the previous component's output.
 
-        :return: A dictionary containing the output and the corresponding result,
-             based on the first route whose expression evaluates to True.
+        :returns: A dictionary where the key is the `output_name` of the selected route and the value is the `output`
+            of the selected route.
 
-        :raises NoRouteSelectedException: If no route's expression evaluates to True.
+        :raises NoRouteSelectedException: If no `condition' in the routes is `True`.
+        :raises RouteConditionException: If there is an error parsing or evaluating the `condition` expression in the routes.
         """
         # Create a Jinja native environment to evaluate the condition templates as Python expressions
         env = NativeEnvironment()
@@ -182,7 +198,6 @@ class ConditionalRouter:
         Validates a list of routes.
 
         :param routes: A list of routes.
-        :type routes: List[Dict]
         """
         env = NativeEnvironment()
         for route in routes:
@@ -206,10 +221,8 @@ class ConditionalRouter:
         Extracts all variables from a list of Jinja template strings.
 
         :param env: A Jinja environment.
-        :type env: Environment
         :param templates: A list of Jinja template strings.
-        :type templates: List[str]
-        :return: A set of variable names.
+        :returns: A set of variable names.
         """
         variables = set()
         for template in templates:
@@ -222,10 +235,8 @@ class ConditionalRouter:
         Validates a template string by parsing it with Jinja.
 
         :param env: A Jinja environment.
-        :type env: Environment
         :param template_text: A Jinja template string.
-        :type template_text: str
-        :return: True if the template is valid, False otherwise.
+        :returns: `True` if the template is valid, `False` otherwise.
         """
         try:
             env.parse(template_text)
