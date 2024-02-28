@@ -104,7 +104,10 @@ class ZeroShotTextRouter:
         Serialize this component to a dictionary.
         """
         serialization_dict = default_to_dict(
-            self, pipeline_kwargs=self.pipeline_kwargs, token=self.token.to_dict() if self.token else None
+            self,
+            labels=self.labels,
+            pipeline_kwargs=self.pipeline_kwargs,
+            token=self.token.to_dict() if self.token else None,
         )
 
         pipeline_kwargs = serialization_dict["init_parameters"]["pipeline_kwargs"]

@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch
 from haystack.components.routers.zero_shot_text_router import ZeroShotTextRouter
+from haystack.utils import ComponentDevice, Secret
 
 
 @pytest.fixture
@@ -9,13 +10,46 @@ def text_router():
 
 
 class TestFileTypeRouter:
-    # def test_to_dict(self):
-    #     router = ZeroShotTextRouter(labels=["query", "passage"])
-    #     router_dict = router.to_dict()
-    #     pass
+    def test_to_dict(self):
+        router = ZeroShotTextRouter(labels=["query", "passage"])
+        router_dict = router.to_dict()
+        assert router_dict == {
+            "type": "haystack.components.routers.zero_shot_text_router.ZeroShotTextRouter",
+            "init_parameters": {
+                "labels": ["query", "passage"],
+                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "pipeline_kwargs": {
+                    "model": "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
+                    "device": ComponentDevice.resolve_device(None).to_hf(),
+                    "task": "zero-shot-classification",
+                },
+            },
+        }
 
-    # def test_from_dict(self):
-    #     pass
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.routers.zero_shot_text_router.ZeroShotTextRouter",
+            "init_parameters": {
+                "labels": ["query", "passage"],
+                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "pipeline_kwargs": {
+                    "model": "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
+                    "device": ComponentDevice.resolve_device(None).to_hf(),
+                    "task": "zero-shot-classification",
+                },
+            },
+        }
+
+        component = ZeroShotTextRouter.from_dict(data)
+        assert component.labels == ["query", "passage"]
+        assert component.pipeline is None
+        assert component.token == Secret.from_dict({"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"})
+        assert component.pipeline_kwargs == {
+            "model": "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
+            "device": ComponentDevice.resolve_device(None).to_hf(),
+            "task": "zero-shot-classification",
+            "token": None,
+        }
 
     def test_run_error(self):
         router = ZeroShotTextRouter(labels=["query", "passage"])
