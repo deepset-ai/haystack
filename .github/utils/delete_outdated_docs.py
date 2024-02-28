@@ -12,9 +12,9 @@ VERSION_VALIDATOR = re.compile(r"^[0-9]+\.[0-9]+$")
 
 
 def readme_token():
-    api_key = os.getenv("RDME_API_KEY", None)
+    api_key = os.getenv("README_API_KEY", None)
     if not api_key:
-        raise Exception("RDME_API_KEY env var is not set")
+        raise Exception("README_API_KEY env var is not set")
 
     api_key = f"{api_key}:"
     return base64.b64encode(api_key.encode("utf-8")).decode("utf-8")
