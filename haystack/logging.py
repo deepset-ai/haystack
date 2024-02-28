@@ -138,7 +138,13 @@ def patch_log_method_to_kwargs_only(func: typing.Callable) -> typing.Callable:
     ) -> Any:  # we need the `_` to avoid a syntax error
         existing_extra = kwargs.pop("extra", {})
         return func(
-            msg, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra={**existing_extra, **kwargs}
+            # we need to increase the stacklevel by 1 to point to the correct caller
+            # (otherwise it points to this function)
+            msg,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel + 1,
+            extra={**existing_extra, **kwargs},
         )
 
     return log_only_with_kwargs
@@ -159,12 +165,15 @@ def patch_log_with_level_method_to_kwargs_only(func: typing.Callable) -> typing.
         **kwargs: Any,  # we need the `_` to avoid a syntax error
     ) -> Any:
         existing_extra = kwargs.pop("extra", {})
+
         return func(
             level,
             msg,
             exc_info=exc_info,
             stack_info=stack_info,
-            stacklevel=stacklevel,
+            # we need to increase the stacklevel by 1 to point to the correct caller
+            # (otherwise it points to this function)
+            stacklevel=stacklevel + 1,
             extra={**existing_extra, **kwargs},
         )
 
@@ -179,6 +188,32 @@ def patch_make_records_to_use_kwarg_string_interpolation(original_make_records: 
         return original_make_records(name, level, fn, lno, interpolated_msg, (), exc_info, func, extra, sinfo)
 
     return wrapper
+
+
+def _patch_structlog_call_information(logger: logging.Logger) -> None:
+    # structlog patches the findCaller to hide itself from the traceback.
+    # We need to patch their patch to hide `haystack.logging` from the traceback.
+    try:
+        from structlog._frames import _find_first_app_frame_and_name, _format_stack
+        from structlog.stdlib import _FixedFindCallerLogger
+
+        if not isinstance(logger, _FixedFindCallerLogger):
+            return
+
+        def findCaller(stack_info: bool = False, stacklevel: int = 1) -> typing.Tuple[str, int, str, Optional[str]]:
+            try:
+                sinfo: Optional[str]
+                # we need to exclude `haystack.logging` from the stack
+                f, name = _find_first_app_frame_and_name(["logging", "haystack.logging"])
+                sinfo = _format_stack(f) if stack_info else None
+            except Exception as error:
+                print(f"Error in findCaller: {error}")
+
+            return f.f_code.co_filename, f.f_lineno, f.f_code.co_name, sinfo
+
+        logger.findCaller = findCaller
+    except ImportError:
+        pass
 
 
 def getLogger(name: str) -> PatchedLogger:
@@ -197,9 +232,42 @@ def getLogger(name: str) -> PatchedLogger:
     logger.fatal = patch_log_method_to_kwargs_only(logger.fatal)  # type: ignore
     logger.log = patch_log_with_level_method_to_kwargs_only(logger.log)  # type: ignore
 
+    _patch_structlog_call_information(logger)
+    # We also patch the `makeRecord` method to use keyword string interpolation
+    try:
+        from structlog._frames import _find_first_app_frame_and_name, _format_stack
+        from structlog.stdlib import _FixedFindCallerLogger
+
+        if isinstance(logger, _FixedFindCallerLogger):
+
+            def findCaller(stack_info: bool = False, stacklevel: int = 1) -> typing.Tuple[str, int, str, Optional[str]]:
+                try:
+                    sinfo: Optional[str]
+                    f, name = _find_first_app_frame_and_name(["logging", "haystack.logging"])
+                    sinfo = _format_stack(f) if stack_info else None
+                except Exception as error:
+                    print(f"Error in findCaller: {error}")
+
+                return f.f_code.co_filename, f.f_lineno, f.f_code.co_name, sinfo
+
+            logger.findCaller = findCaller
+    except ImportError:
+        pass
     logger.makeRecord = patch_make_records_to_use_kwarg_string_interpolation(logger.makeRecord)  # type: ignore
 
     return typing.cast(PatchedLogger, logger)
+
+
+def add_line_and_file(_: "WrappedLogger", __: str, event_dict: "EventDict") -> "EventDict":
+    """Add line and file to log entries."""
+    stdlib_record = event_dict.get("_record")
+    if not stdlib_record:
+        return event_dict
+
+    event_dict["lineno"] = stdlib_record.lineno
+    event_dict["module"] = stdlib_record.name
+
+    return event_dict
 
 
 def correlate_logs_with_traces(_: "WrappedLogger", __: str, event_dict: "EventDict") -> "EventDict":
@@ -266,6 +334,7 @@ def configure_logging(use_json: Optional[bool] = None) -> None:
         structlog.stdlib.add_log_level,
         # Adds the current timestamp in ISO format to logs
         structlog.processors.TimeStamper(fmt="iso"),
+        add_line_and_file,
     ]
 
     if use_json:
@@ -274,7 +343,7 @@ def configure_logging(use_json: Optional[bool] = None) -> None:
 
     structlog.configure(
         processors=shared_processors + [structlog.stdlib.ProcessorFormatter.wrap_for_formatter],
-        logger_factory=structlog.stdlib.LoggerFactory(),
+        logger_factory=structlog.stdlib.LoggerFactory(ignore_frame_names=["haystack.logging"]),
         cache_logger_on_first_use=True,
         # This is a filter that will filter out log entries that are below the log level of the root logger.
         wrapper_class=structlog.make_filtering_bound_logger(min_level=logging.root.getEffectiveLevel()),

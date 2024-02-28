@@ -188,6 +188,8 @@ class TestStructuredLoggingJSONRendering:
             "key2": "value2",
             "level": "warning",
             "timestamp": ANY,
+            "lineno": ANY,
+            "module": "test.test_logging",
         }
 
     def test_logging_as_json(self, capfd: CaptureFixture) -> None:
@@ -206,6 +208,8 @@ class TestStructuredLoggingJSONRendering:
             "key2": "value2",
             "level": "warning",
             "timestamp": ANY,
+            "lineno": ANY,
+            "module": "test.test_logging",
         }
 
     def test_logging_as_json_enabling_via_env(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
@@ -225,6 +229,8 @@ class TestStructuredLoggingJSONRendering:
             "key2": "value2",
             "level": "warning",
             "timestamp": ANY,
+            "lineno": ANY,
+            "module": "test.test_logging",
         }
 
     def test_logging_exceptions_json(self, capfd: CaptureFixture) -> None:
@@ -248,6 +254,8 @@ class TestStructuredLoggingJSONRendering:
             "event": "An error happened ",
             "level": "error",
             "timestamp": ANY,
+            "lineno": ANY,
+            "module": "test.test_logging",
             "exception": [
                 {
                     "exc_type": "ValueError",
@@ -306,6 +314,8 @@ class TestLogTraceCorrelation:
             "timestamp": ANY,
             "trace_id": span.trace_id,
             "span_id": span.span_id,
+            "lineno": ANY,
+            "module": "test.test_logging",
         }
 
     def test_trace_log_correlation_no_span(self, spying_tracer: SpyingTracer, capfd: CaptureFixture) -> None:
@@ -324,6 +334,8 @@ class TestLogTraceCorrelation:
             "key2": "value2",
             "level": "warning",
             "timestamp": ANY,
+            "lineno": ANY,
+            "module": "test.test_logging",
         }
 
     def test_trace_log_correlation_no_tracer(self, capfd: CaptureFixture) -> None:
@@ -342,10 +354,39 @@ class TestLogTraceCorrelation:
             "key2": "value2",
             "level": "warning",
             "timestamp": ANY,
+            "lineno": ANY,
+            "module": "test.test_logging",
         }
 
 
 class TestCompositeLogger:
+    def test_correct_stack_level_with_stdlib_rendering(
+        self, monkeypatch: MonkeyPatch, capfd: CaptureFixture, caplog: LogCaptureFixture
+    ) -> None:
+        monkeypatch.setenv("HAYSTACK_LOGGING_IGNORE_STRUCTLOG", "true")
+        haystack_logging.configure_logging()
+
+        logger = logging.getLogger(__name__)
+        logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
+
+        # the pytest fixture caplog only captures logs being rendered from the stdlib logging module
+        assert caplog.messages == ["Hello, structured logging!"]
+        assert caplog.records[0].name == "test.test_logging"
+        assert caplog.records[0].lineno == 370
+
+        # Nothing should be captured by capfd since structlog is not configured
+        assert capfd.readouterr().err == ""
+
+    def test_correct_stack_level_with_consoler_rendering(self, capfd: CaptureFixture) -> None:
+        haystack_logging.configure_logging(use_json=False)
+
+        logger = haystack_logging.getLogger(__name__)
+        logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
+
+        output = capfd.readouterr().err
+        assert "test.test_logging" in output
+        assert "384" in output
+
     @pytest.mark.parametrize(
         "method, expected_level",
         [
@@ -377,6 +418,8 @@ class TestCompositeLogger:
             "key2": "value2",
             "level": expected_level,
             "timestamp": ANY,
+            "lineno": ANY,
+            "module": "test.test_logging",
         }
 
     def test_log(self, capfd: LogCaptureFixture) -> None:
@@ -397,6 +440,8 @@ class TestCompositeLogger:
             "key2": "value2",
             "level": "debug",
             "timestamp": ANY,
+            "lineno": ANY,
+            "module": "test.test_logging",
         }
 
     def test_log_with_string_cast(self, capfd: LogCaptureFixture) -> None:
@@ -417,6 +462,8 @@ class TestCompositeLogger:
             "key2": "value2",
             "level": "debug",
             "timestamp": ANY,
+            "lineno": ANY,
+            "module": "test.test_logging",
         }
 
     @pytest.mark.parametrize(
@@ -478,7 +525,8 @@ class TestCompositeLogger:
 
                 # that looks like somebody is using our standard logger
                 if " logging.getLogger" in content:
-                    assert "from haystack import logging" in content, (
+                    haystack_logger_in_content = " haystack import logging" in content or ", logging" in content
+                    assert haystack_logger_in_content, (
                         f"{path} doesn't use the Haystack logger. Please use the Haystack logger instead of the "
                         f"standard library logger and add plenty of keyword arguments."
                     )
