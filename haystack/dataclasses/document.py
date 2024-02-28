@@ -121,7 +121,7 @@ class Document(metaclass=_BackwardCompatible):
         """
         Converts Document into a dictionary.
 
-        NOTE: `dataframe` and `blob` fields are converted to JSON-serializable types.
+        `dataframe` and `blob` fields are converted to JSON-serializable types.
 
         :param flatten:
             Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
