@@ -1,5 +1,5 @@
 import json
-from typing import List, Any, Dict, Optional
+from typing import List, Any, Dict, Optional, Union
 
 from haystack import component
 from haystack.dataclasses import ChatMessage
@@ -12,14 +12,14 @@ with LazyImport(message="Run 'pip install jsonschema'") as jsonschema_import:
 @component
 class JsonSchemaValidator:
     """
-    JsonSchemaValidator validates JSON content of ChatMessage against a specified JSON schema.
+    Validates JSON content of `ChatMessage` against a specified [JSON Schema](https://json-schema.org/).
 
     If JSON content of a message conforms to the provided schema, the message is passed along the "validated" output.
     If the JSON content does not conform to the schema, the message is passed along the "validation_error" output.
-    In the latter case, the error message is constructed using the provided error_template or a default template.
+    In the latter case, the error message is constructed using the provided `error_template` or a default template.
     These error ChatMessages can be used by LLMs in Haystack 2.x recovery loops.
 
-    Here is a small example of how to use this component in a pipeline implementing schema validation recovery loop:
+    Usage example:
 
     ```python
     from typing import List
@@ -52,15 +52,13 @@ class JsonSchemaValidator:
     p.connect("llm.replies", "schema_validator.messages")
     p.connect("schema_validator.validation_error", "mx_for_llm")
 
-
-
     result = p.run(
         data={"message_producer": {"messages":[ChatMessage.from_user("Generate JSON for person with name 'John' and age 30")]},
               "schema_validator": {"json_schema": {"type": "object",
                                                    "properties": {"name": {"type": "string"},
                                                                   "age": {"type": "integer"}}}}})
     print(result)
-    >> {'schema_validator': {'validated': [ChatMessage(content='\n{\n  "name": "John",\n  "age": 30\n}',
+    >> {'schema_validator': {'validated': [ChatMessage(content='\\n{\\n  "name": "John",\\n  "age": 30\\n}',
     role=<ChatRole.ASSISTANT: 'assistant'>, name=None, meta={'model': 'gpt-4-1106-preview', 'index': 0,
     'finish_reason': 'stop', 'usage': {'completion_tokens': 17, 'prompt_tokens': 20, 'total_tokens': 37}})]}}
     ```
@@ -79,9 +77,8 @@ class JsonSchemaValidator:
 
     def __init__(self, json_schema: Optional[Dict[str, Any]] = None, error_template: Optional[str] = None):
         """
-        Initializes a new JsonSchemaValidator instance.
-
-        :param json_schema: A dictionary representing the JSON schema against which the messages' content is validated.
+        :param json_schema: A dictionary representing the [JSON schema](https://json-schema.org/) against which
+            the messages' content is validated.
         :param error_template: A custom template string for formatting the error message in case of validation failure.
         """
         jsonschema_import.check()
@@ -94,16 +91,25 @@ class JsonSchemaValidator:
         messages: List[ChatMessage],
         json_schema: Optional[Dict[str, Any]] = None,
         error_template: Optional[str] = None,
-    ):
+    ) -> Dict[str, List[ChatMessage]]:
         """
-        Checks if the last message and its content field conforms to json_schema. If it does, the message is passed
-        along the "validated" output. If it does not, the message is passed along the "validation_error" output.
+        Validates the last of the provided messages against the specified json schema.
+
+        If it does, the message is passed along the "validated" output. If it does not, the message is passed along
+        the "validation_error" output.
 
         :param messages: A list of ChatMessage instances to be validated. The last message in this list is the one
-        that is validated.
-        :param json_schema: A dictionary representing the JSON schema against which the messages' content is validated.
-        :param error_template: A custom template string for formatting the error message in case of validation
-        failure, by default None.
+            that is validated.
+        :param json_schema: A dictionary representing the [JSON schema](https://json-schema.org/)
+            against which the messages' content is validated. If not provided, the schema from the component init
+            is used.
+        :param error_template: A custom template string for formatting the error message in case of validation. If not
+            provided, the `error_template` from the component init is used.
+        :return: If the last message is valid, a dictionary with the "validated" key and the list of messages. If the
+            last message is invalid, a dictionary with the "validation_error" key and the list of messages.
+
+        :raises ValueError: If no JSON schema is provided or if the message content is not a dictionary or a list of
+            dictionaries.
         """
         last_message = messages[-1]
         last_message_content = json.loads(last_message.content)
@@ -174,7 +180,7 @@ class JsonSchemaValidator:
         Checks if the provided schema is a valid OpenAI function calling schema.
 
         :param json_schema: The JSON schema to check
-        :return: True if the schema is a valid OpenAI function calling schema; otherwise, False.
+        :return: `True` if the schema is a valid OpenAI function calling schema; otherwise, `False`.
         """
         return all(key in json_schema for key in ["name", "description", "parameters"])
 
