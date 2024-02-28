@@ -1,13 +1,8 @@
-import sys
 import tempfile
 
 import pytest
 
 from haystack import Pipeline
-from haystack.components.builders import PromptBuilder
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-from haystack.components.generators import HuggingFaceTGIGenerator
-from haystack.core.errors import PipelineValidationError
 from haystack.templates.pipeline import PipelineTemplate, PredefinedPipeline
 
 
@@ -31,9 +26,9 @@ connections:
 class TestPipelineTemplate:
     def test_from_str(self):
         with pytest.raises(ValueError):
-            PipelineTemplate.from_string("{{ invalid template }")
+            PipelineTemplate("{{ invalid template }")
 
-        assert PipelineTemplate.from_string("{{ valid_template }}").template_content == "{{ valid_template }}"
+        assert PipelineTemplate("{{ valid_template }}").template_content == "{{ valid_template }}"
 
     def test_from_file(self, random_valid_template):
         with pytest.raises(FileNotFoundError):
@@ -48,13 +43,6 @@ class TestPipelineTemplate:
         tpl = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING)
         assert len(tpl.template_content)
 
-    #  Raises PipelineValidationError when attempting to override a non-existent component
-    def test_override_nonexistent_component(self):
-        with pytest.raises(PipelineValidationError):
-            PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING).override(
-                "nonexistent_component", SentenceTransformersDocumentEmbedder()
-            )
-
     #  Building a pipeline directly using all default components specified in a predefined or custom template.
     def test_build_pipeline_with_default_components(self):
         pipeline = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING).build()
@@ -68,44 +56,3 @@ class TestPipelineTemplate:
         # pipeline should have inputs and outputs
         assert len(pipeline.inputs()) > 0
         assert len(pipeline.outputs()) > 0
-
-    # Customizing pipelines by overriding default components with custom component settings
-    def test_customize_pipeline_with_overrides(self):
-        pt = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING)
-
-        pt.override("embedder", SentenceTransformersDocumentEmbedder(progress_bar=True, batch_size=64))
-        pipe = pt.build()
-
-        assert isinstance(pipe, Pipeline)
-        assert pipe.get_component("embedder")
-        embedder: SentenceTransformersDocumentEmbedder = pipe.get_component("embedder")
-        embedder_dict = embedder.to_dict()
-        assert embedder_dict["init_parameters"]["progress_bar"]
-        assert embedder_dict["init_parameters"]["batch_size"] == 64
-
-    #  Overrides a generator component specified in the pipeline template with a completely different generator
-    @pytest.mark.integration
-    def test_override_component(self):
-        # integration because we'll fetch the tokenizer
-        pipe = (
-            PipelineTemplate.from_predefined(PredefinedPipeline.GENERATIVE_QA)
-            .override("generator", HuggingFaceTGIGenerator())
-            .build()
-        )
-        assert isinstance(pipe, Pipeline)
-        assert pipe.get_component("generator")
-        assert isinstance(pipe.get_component("generator"), HuggingFaceTGIGenerator)
-
-    #  Building a pipeline with a custom template that uses Jinja2 syntax to specify components and their connections
-    @pytest.mark.integration
-    def test_building_pipeline_with_direct_template(self, random_valid_template):
-        pt = PipelineTemplate.from_string(random_valid_template)
-        pt.override("generator", HuggingFaceTGIGenerator())
-        pt.override("prompt_builder", PromptBuilder("Some fake prompt"))
-        pipe = pt.build()
-
-        assert isinstance(pipe, Pipeline)
-        assert pipe.get_component("generator")
-        assert isinstance(pipe.get_component("generator"), HuggingFaceTGIGenerator)
-        assert pipe.get_component("prompt_builder")
-        assert isinstance(pipe.get_component("prompt_builder"), PromptBuilder)
