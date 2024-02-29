@@ -11,6 +11,14 @@ def component_to_dict(obj: Any) -> Dict[str, Any]:
     """
     The marshaller used by the Pipeline. If a `to_dict` method is present in the
     component instance, that will be used instead of the default method.
+
+    :param obj:
+        The component to be serialized.
+    :returns:
+        A dictionary representation of the component.
+
+    :raises SerializationError:
+        If the component doesn't have a `to_dict` method and the values of the init parameters can't be determined.
     """
     if hasattr(obj, "to_dict"):
         return obj.to_dict()
@@ -43,6 +51,13 @@ def component_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     """
     The unmarshaller used by the Pipeline. If a `from_dict` method is present in the
     component instance, that will be used instead of the default method.
+
+    :param cls:
+        The class to be used for deserialization.
+    :param data:
+        The serialized data.
+    :returns:
+        The deserialized component.
     """
     if hasattr(cls, "from_dict"):
         return cls.from_dict(data)
@@ -80,6 +95,13 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
         },
     }
     ```
+
+    :param obj:
+        The object to be serialized.
+    :param init_parameters:
+        The parameters used to create a new instance of the class.
+    :returns:
+        A dictionary representation of the instance.
     """
     return {"type": f"{obj.__class__.__module__}.{obj.__class__.__name__}", "init_parameters": init_parameters}
 
@@ -94,6 +116,16 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
 
     If `data` contains an `init_parameters` field it will be used as parameters to create
     a new instance of `cls`.
+
+    :param cls:
+        The class to be used for deserialization.
+    :param data:
+        The serialized data.
+    :returns:
+        The deserialized object.
+
+    :raises DeserializationError:
+        If the `type` field in `data` is missing or it doesn't match the type of `cls`.
     """
     init_params = data.get("init_parameters", {})
     if "type" not in data:

@@ -58,12 +58,14 @@ class Pipeline:
         """
         Creates the Pipeline.
 
-        Args:
-            metadata: arbitrary dictionary to store metadata about this pipeline. Make sure all the values contained in
-                this dictionary can be serialized and deserialized if you wish to save this pipeline to file with
-                `save_pipelines()/load_pipelines()`.
-            max_loops_allowed: how many times the pipeline can run the same node before throwing an exception.
-            debug_path: when debug is enabled in `run()`, where to save the debug data.
+        :param metadata:
+            Arbitrary dictionary to store metadata about this pipeline. Make sure all the values contained in
+            this dictionary can be serialized and deserialized if you wish to save this pipeline to file with
+            `save_pipelines()/load_pipelines()`.
+        :param max_loops_allowed:
+            How many times the pipeline can run the same node before throwing an exception.
+        :param debug_path:
+            When debug is enabled in `run()`, where to save the debug data.
         """
         self._telemetry_runs = 0
         self._last_telemetry_sent: Optional[datetime] = None
@@ -112,8 +114,11 @@ class Pipeline:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Returns this Pipeline instance as a dictionary.
+        Serializes the pipeline to a dictionary.
         This is meant to be an intermediate representation but it can be also used to save a pipeline to file.
+
+        :returns:
+            Dictionary with serialized data.
         """
         components = {}
         for name, instance in self.graph.nodes(data="instance"):  # type:ignore
@@ -134,34 +139,14 @@ class Pipeline:
     @classmethod
     def from_dict(cls: Type[T], data: Dict[str, Any], **kwargs) -> T:
         """
-        Creates a Pipeline instance from a dictionary.
-        A sample `data` dictionary could be formatted like so:
-        ```
-        {
-            "metadata": {"test": "test"},
-            "max_loops_allowed": 100,
-            "components": {
-                "add_two": {
-                    "type": "AddFixedValue",
-                    "init_parameters": {"add": 2},
-                },
-                "add_default": {
-                    "type": "AddFixedValue",
-                    "init_parameters": {"add": 1},
-                },
-                "double": {
-                    "type": "Double",
-                },
-            },
-            "connections": [
-                {"sender": "add_two.result", "receiver": "double.value"},
-                {"sender": "double.value", "receiver": "add_default.value"},
-            ],
-        }
-        ```
+        Deserializes the pipeline from a dictionary.
 
-        Supported kwargs:
-        `components`: a dictionary of {name: instance} to reuse instances of components instead of creating new ones.
+        :param data:
+            Dictionary to deserialize from.
+        :param kwargs:
+            `components`: a dictionary of {name: instance} to reuse instances of components instead of creating new ones.
+        :returns:
+            Deserialized component.
         """
         metadata = data.get("metadata", {})
         max_loops_allowed = data.get("max_loops_allowed", 100)
@@ -210,10 +195,10 @@ class Pipeline:
         Returns the string representation of this pipeline according to the
         format dictated by the `Marshaller` in use.
 
-        :params marshaller: The Marshaller used to create the string representation. Defaults to
-                            `YamlMarshaller`
-
-        :returns: A string representing the pipeline.
+        :param marshaller:
+            The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
+        :returns:
+            A string representing the pipeline.
         """
         return marshaller.marshal(self.to_dict())
 
@@ -222,9 +207,10 @@ class Pipeline:
         Writes the string representation of this pipeline to the file-like object
         passed in the `fp` argument.
 
-        :params fp: A file-like object ready to be written to.
-        :params marshaller: The Marshaller used to create the string representation. Defaults to
-                            `YamlMarshaller`.
+        :param fp:
+            A file-like object ready to be written to.
+        :param marshaller:
+            The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
         """
         fp.write(marshaller.marshal(self.to_dict()))
 
@@ -233,11 +219,12 @@ class Pipeline:
         """
         Creates a `Pipeline` object from the string representation passed in the `data` argument.
 
-        :params data: The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
-        :params marshaller: the Marshaller used to create the string representation. Defaults to
-                            `YamlMarshaller`
-
-        :returns: A `Pipeline` object.
+        :param data:
+            The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
+        :param marshaller:
+            The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
+        :returns:
+            A `Pipeline` object.
         """
         return cls.from_dict(marshaller.unmarshal(data))
 
@@ -247,32 +234,33 @@ class Pipeline:
         Creates a `Pipeline` object from the string representation read from the file-like
         object passed in the `fp` argument.
 
-        :params data: The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
-        :params fp: A file-like object ready to be read from.
-        :params marshaller: the Marshaller used to create the string representation. Defaults to
-                            `YamlMarshaller`
-
-        :returns: A `Pipeline` object.
+        :param data:
+            The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
+        :param fp:
+            A file-like object ready to be read from.
+        :param marshaller:
+            The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
+        :returns:
+            A `Pipeline` object.
         """
         return cls.from_dict(marshaller.unmarshal(fp.read()))
 
     def add_component(self, name: str, instance: Component) -> None:
         """
-        Create a component for the given component. Components are not connected to anything by default:
-        use `Pipeline.connect()` to connect components together.
+        Add the given component to the pipeline.
 
+        Components are not connected to anything by default: use `Pipeline.connect()` to connect components together.
         Component names must be unique, but component instances can be reused if needed.
 
-        Args:
-            name: the name of the component.
-            instance: the component instance.
+        :param name:
+            The name of the component to add.
+        :param instance:
+            The component instance to add.
 
-        Returns:
-            None
-
-        Raises:
-            ValueError: if a component with the same name already exists
-            PipelineValidationError: if the given instance is not a Canals component
+        :raises ValueError:
+            If a component with the same name already exists.
+        :raises PipelineValidationError:
+            If the given instance is not a Canals component.
         """
         # Component names are unique
         if name in self.graph.nodes:
@@ -310,22 +298,24 @@ class Pipeline:
 
     def connect(self, sender: str, receiver: str) -> "Pipeline":
         """
-        Connects two components together. All components to connect must exist in the pipeline.
+        Connects two components together.
+
+        All components to connect must exist in the pipeline.
         If connecting to an component that has several output connections, specify the inputs and output names as
         'component_name.connections_name'.
 
-        Args:
-            sender: the component that delivers the value. This can be either just a component name or can be
-                in the format `component_name.connection_name` if the component has multiple outputs.
-            receiver: the component that receives the value. This can be either just a component name or can be
-                in the format `component_name.connection_name` if the component has multiple inputs.
+        :param sender:
+            The component that delivers the value. This can be either just a component name or can be
+            in the format `component_name.connection_name` if the component has multiple outputs.
+        :param receiver:
+            The component that receives the value. This can be either just a component name or can be
+            in the format `component_name.connection_name` if the component has multiple inputs.
+        :returns:
+            The Pipeline instance.
 
-        Returns:
-            The Pipeline instance
-
-        Raises:
-            PipelineConnectError: if the two components cannot be connected (for example if one of the components is
-                not present in the pipeline, or the connections don't match by type, and so on).
+        :raises PipelineConnectError:
+            If the two components cannot be connected (for example if one of the components is
+            not present in the pipeline, or the connections don't match by type, and so on).
         """
         # Edges may be named explicitly by passing 'node_name.edge_name' to connect().
         sender_component_name, sender_socket_name = parse_connect_string(sender)
@@ -474,16 +464,15 @@ class Pipeline:
 
     def get_component(self, name: str) -> Component:
         """
-        Returns an instance of a component.
+        Get the component with the specified name from the pipeline.
 
-        Args:
-            name: the name of the component
-
-        Returns:
+        :param name:
+            The name of the component.
+        :returns:
             The instance of that component.
 
-        Raises:
-            ValueError: if a component with that name is not present in the pipeline.
+        :raises ValueError:
+            If a component with that name is not present in the pipeline.
         """
         try:
             return self.graph.nodes[name]["instance"]
@@ -492,8 +481,12 @@ class Pipeline:
 
     def get_component_name(self, instance: Component) -> str:
         """
-        Returns the name of a Component instance. If the Component has not been added to this Pipeline,
-        returns an empty string.
+        Returns the name of the Component instance if it has been added to this Pipeline or an empty string otherwise.
+
+        :param instance:
+            The Component instance to look for.
+        :returns:
+            The name of the Component instance.
         """
         for name, inst in self.graph.nodes(data="instance"):
             if inst == instance:
@@ -506,7 +499,7 @@ class Pipeline:
         corresponds to a component name, and its value is another dictionary that describes the
         input sockets of that component, including their types and whether they are optional.
 
-        Returns:
+        :returns:
             A dictionary where each key is a pipeline component name and each value is a dictionary of
             inputs sockets of that component.
         """
@@ -528,7 +521,7 @@ class Pipeline:
         corresponds to a component name, and its value is another dictionary that describes the
         output sockets of that component.
 
-        Returns:
+        :returns:
             A dictionary where each key is a pipeline component name and each value is a dictionary of
             output sockets of that component.
         """
@@ -557,6 +550,9 @@ class Pipeline:
     def draw(self, path: Path) -> None:
         """
         Save an image representing this `Pipeline` to `path`.
+
+        :param path:
+            The path to save the image to.
         """
         # Before drawing we edit a bit the graph, to avoid modifying the original that is
         # used for running the pipeline we copy it.
@@ -583,7 +579,11 @@ class Pipeline:
         * Each Component has only one input per input socket, if not variadic
         * Each Component doesn't receive inputs that are already sent by another Component
 
-        Raises ValueError if any of the above is not true.
+        :param data:
+            A dictionary of inputs for the pipeline's components. Each key is a component name.
+
+        :raises ValueError:
+            If inputs are invalid according to the above.
         """
         for component_name, component_inputs in data.items():
             if component_name not in self.graph.nodes:
@@ -614,11 +614,16 @@ class Pipeline:
         """
         Runs the pipeline with given input data.
 
-        :param data: A dictionary of inputs for the pipeline's components. Each key is a component name
-        and its value is a dictionary of that component's input parameters.
-        :param debug: Set to True to collect and return debug information.
-        :return: A dictionary containing the pipeline's output.
-        :raises PipelineRuntimeError: If a component fails or returns unexpected output.
+        :param data:
+            A dictionary of inputs for the pipeline's components. Each key is a component name
+            and its value is a dictionary of that component's input parameters.
+        :param debug:
+            Set to True to collect and return debug information.
+        :returns:
+            A dictionary containing the pipeline's output.
+
+        :raises PipelineRuntimeError:
+            If a component fails or returns unexpected output.
 
         Example a - Using named components:
         Consider a 'Hello' component that takes a 'word' input and outputs a greeting.
@@ -956,12 +961,12 @@ class Pipeline:
         and its corresponding value. It distributes these inputs to the appropriate pipeline components based on
         their input requirements. Inputs that don't match any component's input slots are classified as unresolved.
 
-        :param data: A dictionary with input names as keys and input values as values.
-        :type data: Dict[str, Any]
-        :return: A tuple containing two elements:
+        :param data:
+            A dictionary with input names as keys and input values as values.
+        :returns:
+            A tuple containing two elements:
              1. A dictionary mapping component names to their respective matched inputs.
              2. A dictionary of inputs that were not matched to any component, termed as unresolved keyword arguments.
-        :rtype: Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]
         """
         pipeline_input_data: Dict[str, Dict[str, Any]] = defaultdict(dict)
         unresolved_kwargs = {}
@@ -992,9 +997,12 @@ class Pipeline:
         """
         Create a Pipeline from a predefined template. See `PredefinedPipeline` for available options.
 
-        :param predefined_pipeline: The predefined pipeline to use.
-        :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
-        :returns: An instance of `Pipeline`.
+        :param predefined_pipeline:
+            The predefined pipeline to use.
+        :param template_params:
+            An optional dictionary of parameters to use when rendering the pipeline template.
+        :returns:
+            An instance of `Pipeline`.
         """
         tpl = PipelineTemplate.from_predefined(predefined_pipeline)
         # If tpl.render() fails, we let bubble up the original error
@@ -1037,7 +1045,12 @@ def _connections_status(
 
 def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:
     """
-    Returns component-connection pairs from a connect_to/from string
+    Returns component-connection pairs from a connect_to/from string.
+
+    :param connection:
+        The connection string.
+    :returns:
+        A tuple containing the component name and the connection name.
     """
     if "." in connection:
         split_str = connection.split(".", maxsplit=1)

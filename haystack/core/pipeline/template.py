@@ -84,7 +84,7 @@ class PipelineTemplate:
 
         :param template_params: An optional dictionary of parameters to use when rendering the pipeline template.
 
-        :return: An instance of `Pipeline` constructed from the rendered template and custom component configurations.
+        :returns: An instance of `Pipeline` constructed from the rendered template and custom component configurations.
         """
         template_params = template_params or {}
         return self._template.render(**template_params)
@@ -94,7 +94,7 @@ class PipelineTemplate:
         """
         Create a PipelineTemplate from a file.
         :param file_path: The path to the file containing the template. Must contain valid Jinja2 syntax.
-        :return: An instance of `PipelineTemplate `.
+        :returns: An instance of `PipelineTemplate`.
         """
         with open(file_path, "r") as file:
             return cls(file.read())
@@ -104,7 +104,7 @@ class PipelineTemplate:
         """
         Create a PipelineTemplate from a predefined template. See `PredefinedPipeline` for available options.
         :param predefined_pipeline: The predefined pipeline to use.
-        :return: An instance of `PipelineTemplate `.
+        :returns: An instance of `PipelineTemplate `.
         """
         template_path = f"{TEMPLATE_HOME_DIR}/{predefined_pipeline.value}{TEMPLATE_FILE_EXTENSION}"
         return cls.from_file(template_path)
