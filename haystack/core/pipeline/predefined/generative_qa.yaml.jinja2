@@ -1,6 +1,6 @@
-{% extends "base.yaml.jinja2" %}
+---
 
-{% block components %}
+components:
   generator:
     init_parameters:
       api_key:
@@ -12,13 +12,13 @@
 
   prompt_builder:
     init_parameters:
-      template: {% raw %}"Answer the question {{question}}.\n\nAnswer:"{% endraw +%}
+      template: {% raw %}"Answer the question {{question}}.\n\nAnswer:\n"{% endraw %}
     type: "haystack.components.builders.prompt_builder.PromptBuilder"
 
-{% endblock %}
 
-
-{% block connections %}
+connections:
 - receiver: generator.prompt
   sender: prompt_builder.prompt
-{% endblock %}
+
+metadata:
+  {}
