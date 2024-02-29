@@ -85,6 +85,8 @@ class OpenAPIServiceConnector:
         Currently, only the http and apiKey OpenAPI security schemes are supported.
 
         :return: A dictionary with a key `"service_response"`, containing the response from the OpenAPI service.
+        The value of the key is a list of `ChatMessage` objects, each containing the response from the service. The
+        response is in JSON format, and the `content` attribute of the `ChatMessage` contains the JSON string.
         :raises ValueError: If the last message is not from the assistant or if it does not contain the correct payload
         to invoke a method on the service.
         """
