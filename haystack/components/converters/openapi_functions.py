@@ -79,6 +79,8 @@ class OpenAPIServiceToFunctions:
                     logger.warning("OpenAPI specification file not found: %s", source)
             elif isinstance(source, ByteStream):
                 openapi_spec_content = source.data.decode("utf-8")
+                if not openapi_spec_content:
+                    logger.warning("Invalid OpenAPI specification content provided: %s", openapi_spec_content)
             else:
                 logger.warning(
                     "Invalid source type {source}. Only str, Path, and ByteStream are supported.", source=type(source)

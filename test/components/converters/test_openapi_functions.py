@@ -212,6 +212,20 @@ class TestOpenAPIServiceToFunctions:
                 "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
             }
 
+    def test_run_with_invalid_file_source(self, caplog):
+        # test invalid source
+        service = OpenAPIServiceToFunctions()
+        result = service.run(sources=["invalid_source"])
+        assert result["functions"] == []
+        assert "not found" in caplog.text
+
+    def test_run_with_invalid_bytestream_source(self, caplog):
+        # test invalid source
+        service = OpenAPIServiceToFunctions()
+        result = service.run(sources=[ByteStream.from_string("")])
+        assert result["functions"] == []
+        assert "Invalid OpenAPI specification" in caplog.text
+
     def test_complex_types_conversion(self, test_files_path):
         # ensure that complex types from OpenAPI spec are converted to the expected format in OpenAI function calling
         service = OpenAPIServiceToFunctions()
@@ -221,3 +235,22 @@ class TestOpenAPIServiceToFunctions:
         with open(test_files_path / "json" / "complex_types_openai_spec.json") as openai_spec_file:
             desired_output = json.load(openai_spec_file)
         assert result["functions"][0] == desired_output
+
+    def test_simple_and_complex_at_once(self, test_files_path, json_serperdev_openapi_spec):
+        # ensure multiple functions are extracted from multiple paths in OpenAPI spec
+        service = OpenAPIServiceToFunctions()
+        sources = [
+            ByteStream.from_string(json_serperdev_openapi_spec),
+            test_files_path / "json" / "complex_types_openapi_service.json",
+        ]
+        result = service.run(sources=sources)
+        assert len(result["functions"]) == 2
+
+        with open(test_files_path / "json" / "complex_types_openai_spec.json") as openai_spec_file:
+            desired_output = json.load(openai_spec_file)
+        assert result["functions"][0] == {
+            "name": "search",
+            "description": "Search the web with Google",
+            "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
+        }
+        assert result["functions"][1] == desired_output
