@@ -11,8 +11,7 @@ from haystack.utils import Secret, deserialize_secrets_inplace
 @component
 class AzureOpenAIDocumentEmbedder:
     """
-    A component for computing Document embeddings using OpenAI models.
-    The embedding of each Document is stored in the `embedding` field of the Document.
+    A component for computing Document embeddings using OpenAI models on Azure.
 
     Usage example:
     ```python
@@ -48,20 +47,35 @@ class AzureOpenAIDocumentEmbedder:
         """
         Create an AzureOpenAITextEmbedder component.
 
-        :param azure_endpoint: The endpoint of the deployed model, e.g. `https://example-resource.azure.openai.com/`
-        :param api_version: The version of the API to use. Defaults to 2023-05-15
-        :param azure_deployment: The deployment of the model, usually the model name.
-        :param api_key: The API key to use for authentication.
-        :param azure_ad_token: Azure Active Directory token, see https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id
-        :param organization: The Organization ID, defaults to `None`. See
-        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
-        :param prefix: A string to add to the beginning of each text.
-        :param suffix: A string to add to the end of each text.
-        :param batch_size: Number of Documents to encode at once.
-        :param progress_bar: Whether to show a progress bar or not. Can be helpful to disable in production deployments
-                             to keep the logs clean.
-        :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document text.
-        :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
+        :param azure_endpoint:
+            The endpoint of the deployed model.
+        :param api_version:
+            The version of the API to use.
+        :param azure_deployment:
+            The deployment of the model, usually matches the model name.
+        :param api_key:
+            The API key used for authentication.
+        :param azure_ad_token:
+            Microsoft Entra ID token, see Microsoft's official
+            [Entra ID](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id)
+            documentation for more information.
+            Used to be called Azure Active Directory.
+        :param organization:
+            The Organization ID. See OpenAI's
+            [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
+            for more information.
+        :param prefix:
+            A string to add at the beginning of each text.
+        :param suffix:
+            A string to add at the end of each text.
+        :param batch_size:
+            Number of Documents to encode at once.
+        :param progress_bar:
+            If True shows a progress bar when running.
+        :param meta_fields_to_embed:
+            List of meta fields that will be embedded along with the Document text.
+        :param embedding_separator:
+            Separator used to concatenate the meta fields to the Document text.
         """
         # if not provided as a parameter, azure_endpoint is read from the env var AZURE_OPENAI_ENDPOINT
         azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -100,6 +114,12 @@ class AzureOpenAIDocumentEmbedder:
         return {"model": self.azure_deployment}
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
         return default_to_dict(
             self,
             azure_endpoint=self.azure_endpoint,
@@ -118,6 +138,14 @@ class AzureOpenAIDocumentEmbedder:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAIDocumentEmbedder":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized component.
+        """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
         return default_from_dict(cls, data)
 
@@ -164,11 +192,17 @@ class AzureOpenAIDocumentEmbedder:
         return all_embeddings, meta
 
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
-    def run(self, documents: List[Document]):
+    def run(self, documents: List[Document]) -> Dict[str, Any]:
         """
-        Embed a list of Documents. The embedding of each Document is stored in the `embedding` field of the Document.
+        Embed a list of Documents.
 
-        :param documents: A list of Documents to embed.
+        :param documents:
+            Documents to embed.
+
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: Documents with embeddings
+            - `meta`: Information about the usage of the model.
         """
         if not (isinstance(documents, list) and all(isinstance(doc, Document) for doc in documents)):
             raise TypeError("Input must be a list of Document instances. For strings, use AzureOpenAITextEmbedder.")
