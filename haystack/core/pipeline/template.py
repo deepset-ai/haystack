@@ -17,6 +17,7 @@ class PredefinedPipeline(Enum):
     GENERATIVE_QA = "generative_qa"
     RAG = "rag"
     INDEXING = "indexing"
+    CHAT_WITH_WEBSITE = "chat_with_website"
 
 
 class PipelineTemplate:
