@@ -36,27 +36,27 @@ class OpenAPIServiceConnector:
 
     Usage example:
 
-     ```python
-        import json
-        import requests
+    ```python
+    import json
+    import requests
 
-        from haystack.components.connectors import OpenAPIServiceConnector
-        from haystack.dataclasses import ChatMessage
+    from haystack.components.connectors import OpenAPIServiceConnector
+    from haystack.dataclasses import ChatMessage
 
 
-        fc_payload = [{'function': {'arguments': '{\n  "q": "Why was Sam Altman ousted from OpenAI?"\n}', 'name': 'search'},
-                       'id': 'call_PmEBYvZ7mGrQP5PUASA5m9wO', 'type': 'function'}]
+    fc_payload = [{'function': {'arguments': '{\n  "q": "Why was Sam Altman ousted from OpenAI?"\n}', 'name': 'search'},
+                   'id': 'call_PmEBYvZ7mGrQP5PUASA5m9wO', 'type': 'function'}]
 
-        serper_token = <your_serper_dev_token>
-        serperdev_openapi_spec = json.loads(requests.get("https://bit.ly/serper_dev_spec").text)
-        service_connector = OpenAPIServiceConnector()
-        result = service_connector.run(messages=[ChatMessage.from_assistant(json.dumps(fc_payload))],
-                                       service_openapi_spec=serperdev_openapi_spec, service_credentials=serper_token)
-        print(result)
-        >> {'service_response': [ChatMessage(content='{"searchParameters": {"q": "Why was Sam Altman ousted from OpenAI?",
-        >> "type": "search", "engine": "google"}, "answerBox": {"snippet": "Concerns over AI safety and OpenAI\'s role
-        >> in protecting were at the center of Altman\'s brief ouster from the company."...
-     ```
+    serper_token = <your_serper_dev_token>
+    serperdev_openapi_spec = json.loads(requests.get("https://bit.ly/serper_dev_spec").text)
+    service_connector = OpenAPIServiceConnector()
+    result = service_connector.run(messages=[ChatMessage.from_assistant(json.dumps(fc_payload))],
+                                   service_openapi_spec=serperdev_openapi_spec, service_credentials=serper_token)
+    print(result)
+    >> {'service_response': [ChatMessage(content='{"searchParameters": {"q": "Why was Sam Altman ousted from OpenAI?",
+    >> "type": "search", "engine": "google"}, "answerBox": {"snippet": "Concerns over AI safety and OpenAI\'s role
+    >> in protecting were at the center of Altman\'s brief ouster from the company."...
+    ```
     """
 
     def __init__(self):
