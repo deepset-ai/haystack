@@ -60,13 +60,25 @@ class ZeroShotTextRouter:
     def __init__(
         self,
         labels: List[str],
+        multi_label: bool = False,
         model: str = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         pipeline_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        :param labels:
+        :param labels: The set of possible class labels to classify each sequence into. Can be a single label,
+            a string of comma-separated labels, or a list of labels.
+        :param multi_label: Whether or not multiple candidate labels can be true.
+            If False, the scores are normalized such that the sum of the label likelihoods for each sequence is 1.
+            If True, the labels are considered independent and probabilities are normalized for each candidate by
+            doing a softmax of the entailment score vs. the contradiction score.
+        :param model: The name or path of a Hugging Face model for zero-shot text classification.
+        :param device: The device on which the model is loaded. If `None`, the default device is automatically
+            selected. If a device/device map is specified in `pipeline_kwargs`, it overrides this parameter.
+        :param token: The API token used to download private models from Hugging Face.
+            If this parameter is set to `True`, the token generated when running
+            `transformers-cli login` (stored in ~/.huggingface) is used.
         :param pipeline_kwargs: Dictionary containing keyword arguments used to initialize the
             Hugging Face pipeline for zero shot text classification.
         """
@@ -74,6 +86,7 @@ class ZeroShotTextRouter:
 
         self.token = token
         self.labels = labels
+        self.multi_label = multi_label
         component.set_output_types(self, **{label: str for label in labels})
 
         pipeline_kwargs = resolve_hf_pipeline_kwargs(
@@ -141,5 +154,7 @@ class ZeroShotTextRouter:
             raise TypeError("ZeroShotTextRouter expects a str as input.")
 
         prediction = self.pipeline(sequences=[text], candidate_labels=self.labels, multi_label=self.multi_label)
-        label = prediction[0]["labels"][0]
+        predicted_scores = prediction[0]["scores"]
+        max_score_index = max(range(len(predicted_scores)), key=predicted_scores.__getitem__)
+        label = prediction[0]["labels"][max_score_index]
         return {label: text}

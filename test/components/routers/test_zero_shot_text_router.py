@@ -4,11 +4,6 @@ from haystack.components.routers.zero_shot_text_router import ZeroShotTextRouter
 from haystack.utils import ComponentDevice, Secret
 
 
-@pytest.fixture
-def text_router():
-    return ZeroShotTextRouter(labels=["query", "passage"])
-
-
 class TestFileTypeRouter:
     def test_to_dict(self):
         router = ZeroShotTextRouter(labels=["query", "passage"])
@@ -64,6 +59,10 @@ class TestFileTypeRouter:
         with pytest.raises(TypeError):
             router.run(text=["wrong_input"])
 
-    # @pytest.mark.integration
-    # def test_run(self):
-    #     pass
+    @pytest.mark.integration
+    def test_run(self):
+        router = ZeroShotTextRouter(labels=["query", "passage"])
+        router.warm_up()
+        out = router.run("What is the color of the sky?")
+        assert router.pipeline is not None
+        assert out == {"query": "What is the color of the sky?"}
