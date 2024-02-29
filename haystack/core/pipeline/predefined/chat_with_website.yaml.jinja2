@@ -30,9 +30,15 @@ components:
   prompt:
     init_parameters:
       template: |
-      {% raw %}"\nAccording to the contents of this website:\n{% for document in\
-        \ documents %}\n  {{document.content}}\n{% endfor %}\nAnswer the given question:\
-        \ {{query}}\nAnswer:\n"{% endraw %}
+      {% raw %}
+        "According to the contents of this website:
+        {% for document in documents %}
+          {{document.content}}
+        {% endfor %}
+        Answer the given question: {{query}}
+        Answer:
+        "
+      {% endraw %}
     type: haystack.components.builders.prompt_builder.PromptBuilder
 
 connections:
