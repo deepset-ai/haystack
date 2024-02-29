@@ -49,8 +49,16 @@ def test_for_missing_dependencies() -> None:
     project_dependencies = PyProject.project_table_parser.parse(only_dependencies["project"], set_defaults=True)[
         "dependencies"
     ]
-    project_dpendency_modules = {dep.name.replace("-", "_") for dep in project_dependencies}
+
+    library_module_mapper = {"python-dateutil": "dateutil"}
+
+    project_dependency_modules = set()
+    for dep in project_dependencies:
+        if dep.name in library_module_mapper:
+            project_dependency_modules.add(library_module_mapper[dep.name])
+
+        project_dependency_modules.add(dep.name.replace("-", "_"))
 
     #### And now finally; the check
     for module in third_party_modules:
-        assert module in project_dpendency_modules, f"Module {module} is not in the dependencies"
+        assert module in project_dependency_modules, f"Module {module} is not in the dependencies"
