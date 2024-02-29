@@ -42,9 +42,10 @@ CONVERTERS_REGISTRY: Dict[str, PyPDFConverter] = {"default": DefaultConverter()}
 @component
 class PyPDFToDocument:
     """
-    Converts PDF files to Document objects.
-    It uses a converter that follows the PyPDFConverter protocol to perform the conversion.
-    A default text extraction converter is used if no custom converter is provided.
+    Converts PDF files to Documents.
+
+    Uses `pypdf` compatible converters to convert PDF files to Documents.
+    A default text extraction converter is used if one is not provided.
 
     Usage example:
     ```python
@@ -60,9 +61,10 @@ class PyPDFToDocument:
 
     def __init__(self, converter_name: str = "default"):
         """
-        Initializes the PyPDFToDocument component with an optional custom converter.
-        :param converter_name: A converter name that is registered in the CONVERTERS_REGISTRY.
-            Defaults to 'default'.
+        Create an PyPDFToDocument component.
+
+        :param converter_name:
+            Name of the registered converter to use.
         """
         pypdf_import.check()
 
@@ -77,6 +79,12 @@ class PyPDFToDocument:
         self._converter: PyPDFConverter = converter
 
     def to_dict(self):
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
         # do not serialize the _converter instance
         return default_to_dict(self, converter_name=self.converter_name)
 
@@ -87,15 +95,20 @@ class PyPDFToDocument:
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ):
         """
-        Converts a list of PDF sources into Document objects using the configured converter.
+        Converts PDF files to Documents.
 
-        :param sources: A list of PDF data sources, which can be file paths or ByteStream objects.
-        :param meta: Optional metadata to attach to the Documents.
-          This value can be either a list of dictionaries or a single dictionary.
-          If it's a single dictionary, its content is added to the metadata of all produced Documents.
-          If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
-          Defaults to `None`.
-        :return: A dictionary containing a list of Document objects under the 'documents' key.
+        :param sources:
+            List of HTML file paths or ByteStream objects.
+        :param meta:
+            Optional metadata to attach to the Documents.
+            This value can be either a list of dictionaries or a single dictionary.
+            If it's a single dictionary, its content is added to the metadata of all produced Documents.
+            If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+            If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: Created Documents
         """
         documents = []
         meta_list = normalize_metadata(meta, sources_count=len(sources))

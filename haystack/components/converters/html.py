@@ -17,15 +17,14 @@ class HTMLToDocument:
 
     Usage example:
     ```python
-    from haystack.components.converters.html import HTMLToDocument
+    from haystack.components.converters import HTMLToDocument
 
     converter = HTMLToDocument()
-    results = converter.run(sources=["sample.html"])
+    results = converter.run(sources=["path/to/sample.html"])
     documents = results["documents"]
     print(documents[0].content)
     # 'This is a text from the HTML file.'
     ```
-
     """
 
     def __init__(
@@ -43,17 +42,32 @@ class HTMLToDocument:
         """
         Create an HTMLToDocument component.
 
-        :param extractor_type: The type of boilerpy3 extractor to use. Defaults to `DefaultExtractor`.
-          For more information on the different types of extractors,
-          see [boilerpy3 documentation](https://github.com/jmriebold/BoilerPy3?tab=readme-ov-file#extractors).
+        :param
+            extractor_type: Name of the extractor class to use. Defaults to `DefaultExtractor`.
+            For more information on the different types of extractors,
+            see [boilerpy3 documentation](https://github.com/jmriebold/BoilerPy3?tab=readme-ov-file#extractors).
         """
         self.extractor_type = extractor_type
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
         return default_to_dict(self, extractor_type=self.extractor_type)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HTMLToDocument":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
+        """
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
@@ -65,13 +79,18 @@ class HTMLToDocument:
         """
         Converts a list of HTML files to Documents.
 
-        :param sources: List of HTML file paths or ByteStream objects.
-        :param meta: Optional metadata to attach to the Documents.
-          This value can be either a list of dictionaries or a single dictionary.
-          If it's a single dictionary, its content is added to the metadata of all produced Documents.
-          If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
-          Defaults to `None`.
-        :return: A dictionary containing a list of Document objects under the 'documents' key.
+        :param sources:
+            List of HTML file paths or ByteStream objects.
+        :param meta:
+            Optional metadata to attach to the Documents.
+            This value can be either a list of dictionaries or a single dictionary.
+            If it's a single dictionary, its content is added to the metadata of all produced Documents.
+            If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+            If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: Created Documents
         """
 
         documents = []
