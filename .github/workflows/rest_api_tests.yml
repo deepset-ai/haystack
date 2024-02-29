@@ -110,7 +110,7 @@ jobs:
       - name: Install REST API
         run: |
           pip install -U "./rest_api[dev]"
-          pip install ".[inference,dev]"
+          pip install ".[inference,dev,preprocessing]"
           pip install .
 
       - name: Run tests
