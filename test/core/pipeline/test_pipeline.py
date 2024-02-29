@@ -656,12 +656,12 @@ def test_describe_no_outputs():
     assert p.outputs() == {}
 
 
-def test_from_predefined():
-    pipe = Pipeline.from_predefined(PredefinedPipeline.INDEXING)
+def test_from_template():
+    pipe = Pipeline.from_template(PredefinedPipeline.INDEXING)
     assert pipe.get_component("cleaner")
     with pytest.raises(ValueError):
         pipe.get_component("pdf_file_converter")
 
-    pipe = Pipeline.from_predefined(PredefinedPipeline.INDEXING, template_params={"use_pdf_file_converter": True})
+    pipe = Pipeline.from_template(PredefinedPipeline.INDEXING, template_params={"use_pdf_file_converter": True})
     assert pipe.get_component("cleaner")
     assert pipe.get_component("pdf_file_converter")

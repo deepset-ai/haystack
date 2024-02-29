@@ -8,7 +8,7 @@ highlights:  >
    ```python
    from haystack import Pipeline, PredefinedPipeline
 
-   pipe = Pipeline.from_predefined(PredefinedPipeline.INDEXING)
+   pipe = Pipeline.from_template(PredefinedPipeline.INDEXING)
    result = pipe.run(data={"sources": ["some_local_dir/and_text_file.txt"]})
    ```
 
@@ -18,6 +18,6 @@ highlights:  >
    ```python
    from haystack import Pipeline, PredefinedPipeline
 
-   pipe = PipelineTemplate(PredefinedPipeline.INDEXING, template_params={"use_pdf_file_converter": True})
+   pipe = Pipeline.from_template(PredefinedPipeline.INDEXING, template_params={"use_pdf_file_converter": True})
    result = pipe.run(query="What's the meaning of life?")
    ```

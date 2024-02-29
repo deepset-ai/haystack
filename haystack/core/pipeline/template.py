@@ -14,9 +14,6 @@ class PredefinedPipeline(Enum):
     Enumeration of predefined pipeline templates that can be used to create a `PipelineTemplate`.
     """
 
-    # When type is empty, the template source must be provided to the PipelineTemplate before calling build()
-    EMPTY = "empty"
-
     # Maintain 1-to-1 mapping between the enum name and the template file name in templates directory
     GENERATIVE_QA = "generative_qa"
     RAG = "rag"
@@ -109,10 +106,6 @@ class PipelineTemplate:
         :param predefined_pipeline: The predefined pipeline to use.
         :return: An instance of `PipelineTemplate `.
         """
-        if predefined_pipeline == PredefinedPipeline.EMPTY:
-            # This is temporary, to ease the refactoring
-            raise ValueError("Please provide a PipelineType value")
-
         template_path = f"{TEMPLATE_HOME_DIR}/{predefined_pipeline.value}{TEMPLATE_FILE_EXTENSION}"
         return cls.from_file(template_path)
 

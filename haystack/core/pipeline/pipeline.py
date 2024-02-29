@@ -986,7 +986,7 @@ class Pipeline:
         return pipeline_input_data, unresolved_kwargs
 
     @classmethod
-    def from_predefined(
+    def from_template(
         cls, predefined_pipeline: PredefinedPipeline, template_params: Optional[Dict[str, Any]] = None
     ) -> "Pipeline":
         """
