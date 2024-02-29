@@ -1,4 +1,3 @@
-import logging
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, List, Optional, Tuple
@@ -8,7 +7,7 @@ from requests import Response
 from requests.exceptions import HTTPError
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from haystack import component
+from haystack import component, logging
 from haystack.dataclasses import ByteStream
 from haystack.version import __version__
 
@@ -173,7 +172,7 @@ class LinkContentFetcher:
             if self.raise_on_failure:
                 raise e
             # less verbose log as this is expected to happen often (requests failing, blocked, etc.)
-            logger.debug("Couldn't retrieve content from %s because %s", url, str(e))
+            logger.debug("Couldn't retrieve content from {url} because {error}", url=url, error=str(e))
 
         finally:
             self.current_user_agent_idx = 0
@@ -194,7 +193,7 @@ class LinkContentFetcher:
             try:
                 return self._fetch(url)
             except Exception as e:
-                logger.warning("Error fetching %s: %s", url, str(e))
+                logger.warning("Error fetching {url}: {error}", url=url, error=str(e))
                 return {"content_type": "Unknown", "url": url}, None
         else:
             return self._fetch(url)
@@ -217,4 +216,4 @@ class LinkContentFetcher:
         :param retry_state: The retry state (unused, required by tenacity).
         """
         self.current_user_agent_idx = (self.current_user_agent_idx + 1) % len(self.user_agents)
-        logger.debug("Switched user agent to %s", self.user_agents[self.current_user_agent_idx])
+        logger.debug("Switched user agent to {user_agent}", user_agent=self.user_agents[self.current_user_agent_idx])

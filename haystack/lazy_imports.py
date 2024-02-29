@@ -1,7 +1,7 @@
-from typing import Optional, Type
 from types import TracebackType
-from lazy_imports.try_import import _DeferredImportExceptionContextManager
+from typing import Optional, Type
 
+from lazy_imports.try_import import _DeferredImportExceptionContextManager
 
 DEFAULT_IMPORT_ERROR_MSG = "Try 'pip install {}'"
 

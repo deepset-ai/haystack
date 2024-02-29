@@ -1,13 +1,11 @@
-import logging
-from pathlib import Path
-from typing import List, Union, Dict, Any, Optional
 import io
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-from haystack.lazy_imports import LazyImport
-from haystack import component, Document
-from haystack.dataclasses import ByteStream
+from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
-
+from haystack.dataclasses import ByteStream
+from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install tika'") as tika_import:
     from tika import parser as tika_parser
@@ -74,12 +72,16 @@ class TikaDocumentConverter:
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
-                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
                 text = tika_parser.from_buffer(io.BytesIO(bytestream.data), serverEndpoint=self.tika_url)["content"]
             except Exception as conversion_e:
-                logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
+                logger.warning(
+                    "Failed to extract text from {source}. Skipping it. Error: {error}",
+                    source=source,
+                    error=conversion_e,
+                )
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}

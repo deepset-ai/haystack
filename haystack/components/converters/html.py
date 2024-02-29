@@ -1,11 +1,11 @@
-import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Literal
+from typing import Any, Dict, List, Literal, Optional, Union
+
 from boilerpy3 import extractors
 
-from haystack import Document, component, default_from_dict, default_to_dict
-from haystack.dataclasses import ByteStream
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
 
@@ -84,13 +84,17 @@ class HTMLToDocument:
             try:
                 bytestream = get_bytestream_from_source(source=source)
             except Exception as e:
-                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
                 file_content = bytestream.data.decode("utf-8")
                 text = extractor.get_content(file_content)
             except Exception as conversion_e:
-                logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
+                logger.warning(
+                    "Failed to extract text from {source}. Skipping it. Error: {error}",
+                    source=source,
+                    error=conversion_e,
+                )
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}

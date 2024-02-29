@@ -1,12 +1,12 @@
 import hashlib
 import io
-import logging
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Dict, List, Optional
 
 from numpy import ndarray
 from pandas import DataFrame, read_json
 
+from haystack import logging
 from haystack.dataclasses.byte_stream import ByteStream
 
 logger = logging.getLogger(__name__)

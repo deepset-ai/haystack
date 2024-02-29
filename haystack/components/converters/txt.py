@@ -1,11 +1,9 @@
-import logging
 from pathlib import Path
-from typing import List, Union, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Union
 
-from haystack import Document, component
-from haystack.dataclasses import ByteStream
+from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
-
+from haystack.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
 
@@ -64,13 +62,15 @@ class TextFileToDocument:
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
-                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
                 encoding = bytestream.meta.get("encoding", self.encoding)
                 text = bytestream.data.decode(encoding)
             except Exception as e:
-                logger.warning("Could not convert file %s. Skipping it. Error message: %s", source, e)
+                logger.warning(
+                    "Could not convert file {source}. Skipping it. Error message: {error}", source=source, error=e
+                )
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}

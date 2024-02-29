@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Union, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from haystack.dataclasses import ByteStream
 

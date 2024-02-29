@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import importlib
 import itertools
-import logging
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
@@ -12,6 +11,7 @@ from typing import Any, Dict, List, Mapping, Optional, Set, TextIO, Tuple, Type,
 
 import networkx  # type:ignore
 
+from haystack import logging, tracing
 from haystack.core.component import Component, InputSocket, OutputSocket, component
 from haystack.core.errors import (
     PipelineConnectError,
@@ -19,15 +19,14 @@ from haystack.core.errors import (
     PipelineError,
     PipelineMaxLoops,
     PipelineRuntimeError,
-    PipelineValidationError,
     PipelineUnmarshalError,
+    PipelineValidationError,
 )
 from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.telemetry import pipeline_running
 from haystack.utils import is_in_jupyter
-from haystack import tracing
 
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
 from .draw import _to_mermaid_image
@@ -180,7 +179,7 @@ class Pipeline:
                     try:
                         # Import the module first...
                         module, _ = component_data["type"].rsplit(".", 1)
-                        logger.debug("Trying to import %s", module)
+                        logger.debug("Trying to import {module}", module=module)
                         importlib.import_module(module)
                         # ...then try again
                         if component_data["type"] not in component.registry:
@@ -298,7 +297,7 @@ class Pipeline:
         setattr(instance, "__haystack_added_to_pipeline__", self)
 
         # Add component to the graph, disconnected
-        logger.debug("Adding component '%s' (%s)", name, instance)
+        logger.debug("Adding component '{component_name}' ({component})", component_name=name, component=instance)
         # We're completely sure the fields exist so we ignore the type error
         self.graph.add_node(
             name,
@@ -437,11 +436,11 @@ class Pipeline:
             raise PipelineConnectError(msg)
 
         logger.debug(
-            "Connecting '%s.%s' to '%s.%s'",
-            sender_component_name,
-            sender_socket.name,
-            receiver_component_name,
-            receiver_socket.name,
+            "Connecting '{sender_component}.{sender_socket_name}' to '{receiver_component}.{receiver_socket_name}'",
+            sender_component=sender_component_name,
+            sender_socket_name=sender_socket.name,
+            receiver_component=receiver_component_name,
+            receiver_socket_name=receiver_socket.name,
         )
 
         if receiver_component_name in sender_socket.receivers and sender_component_name in receiver_socket.senders:
@@ -572,7 +571,7 @@ class Pipeline:
         """
         for node in self.graph.nodes:
             if hasattr(self.graph.nodes[node]["instance"], "warm_up"):
-                logger.info("Warming up component %s...", node)
+                logger.info("Warming up component {node}...", node=node)
                 self.graph.nodes[node]["instance"].warm_up()
 
     def _validate_input(self, data: Dict[str, Any]):
@@ -683,8 +682,8 @@ class Pipeline:
             data, unresolved_inputs = self._prepare_component_input_data(data)
             if unresolved_inputs:
                 logger.warning(
-                    "Inputs %s were not matched to any component inputs, please check your run parameters.",
-                    list(unresolved_inputs.keys()),
+                    "Inputs {input_keys} were not matched to any component inputs, please check your run parameters.",
+                    input_keys=list(unresolved_inputs.keys()),
                 )
 
         # Raise if input is malformed in some way

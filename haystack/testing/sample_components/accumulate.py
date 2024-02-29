@@ -1,14 +1,14 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Callable, Optional, Dict, Any
-import sys
 import builtins
+import sys
 from importlib import import_module
+from typing import Any, Callable, Dict, Optional
 
-from haystack.core.serialization import default_to_dict
 from haystack.core.component import component
 from haystack.core.errors import ComponentDeserializationError
+from haystack.core.serialization import default_to_dict
 
 
 def _default_function(first: int, second: int) -> int:

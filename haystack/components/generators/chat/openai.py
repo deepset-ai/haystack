@@ -1,17 +1,16 @@
 import copy
 import dataclasses
 import json
-import logging
-from typing import Optional, List, Callable, Dict, Any, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream  # type: ignore
-from openai.types.chat import ChatCompletionChunk, ChatCompletion, ChatCompletionMessage
+from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
-from haystack import component, default_from_dict, default_to_dict
-from haystack.dataclasses import StreamingChunk, ChatMessage
-from haystack.utils import Secret, deserialize_secrets_inplace, serialize_callable, deserialize_callable
+from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
 
@@ -332,11 +331,14 @@ class OpenAIChatGenerator:
         """
         if message.meta["finish_reason"] == "length":
             logger.warning(
-                "The completion for index %s has been truncated before reaching a natural stopping point. "
+                "The completion for index {index} has been truncated before reaching a natural stopping point. "
                 "Increase the max_tokens parameter to allow for longer completions.",
-                message.meta["index"],
+                index=message.meta["index"],
+                finish_reason=message.meta["finish_reason"],
             )
         if message.meta["finish_reason"] == "content_filter":
             logger.warning(
-                "The completion for index %s has been truncated due to the content filter.", message.meta["index"]
+                "The completion for index {index} has been truncated due to the content filter.",
+                index=message.meta["index"],
+                finish_reason=message.meta["finish_reason"],
             )

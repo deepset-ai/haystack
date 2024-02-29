@@ -1,12 +1,8 @@
-from typing import List, Dict, Any
-
 import importlib
+from typing import Any, Dict, List
 
-import logging
-
-from haystack import component, Document, default_from_dict, default_to_dict, DeserializationError
+from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
-
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +76,7 @@ class CacheChecker:
 
         try:
             module_name, type_ = init_params["document_store"]["type"].rsplit(".", 1)
-            logger.debug("Trying to import %s", module_name)
+            logger.debug("Trying to import module '{module}'", module=module_name)
             module = importlib.import_module(module_name)
         except (ImportError, DeserializationError) as e:
             raise DeserializationError(

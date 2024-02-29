@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
 from typing import Dict, Type, Union
 
+from haystack import logging
 from haystack.core.type_utils import _type_name
 
 from .types import InputSocket, OutputSocket

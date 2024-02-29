@@ -1,14 +1,13 @@
 import json
-import logging
 import os
 from pathlib import Path
-from typing import List, Dict, Any, Union, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 import yaml
 from requests import RequestException
 
-from haystack import component, Document
+from haystack import Document, component, logging
 from haystack.dataclasses.byte_stream import ByteStream
 from haystack.lazy_imports import LazyImport
 
@@ -80,7 +79,9 @@ class OpenAPIServiceToFunctions:
             elif isinstance(source, ByteStream):
                 openapi_spec_content = source.data.decode("utf-8")
             else:
-                logger.warning("Invalid source type %s. Only str, Path, and ByteStream are supported.", type(source))
+                logger.warning(
+                    "Invalid source type {source}. Only str, Path, and ByteStream are supported.", source=type(source)
+                )
                 continue
 
             if openapi_spec_content:
@@ -94,7 +95,9 @@ class OpenAPIServiceToFunctions:
                         doc = Document(content=json.dumps(function), meta=meta)
                         documents.append(doc)
                 except Exception as e:
-                    logger.error("Error processing OpenAPI specification from source %s: %s", source, e)
+                    logger.error(
+                        "Error processing OpenAPI specification from source {source}: {error}", source=source, error=e
+                    )
 
         return {"documents": documents}
 
@@ -167,7 +170,9 @@ class OpenAPIServiceToFunctions:
         if function_name and description and schema["properties"]:
             return {"name": function_name, "description": description, "parameters": schema}
         else:
-            logger.warning("Invalid OpenAPI spec format provided. Could not extract function from %s", resolved_spec)
+            logger.warning(
+                "Invalid OpenAPI spec format provided. Could not extract function from {spec}", spec=resolved_spec
+            )
             return {}
 
     def _parse_property_attributes(
@@ -246,7 +251,7 @@ class OpenAPIServiceToFunctions:
             with open(path, "r") as f:
                 return f.read()
         except IOError as e:
-            logger.warning("IO error reading file: %s. Error: %s", path, e)
+            logger.warning("IO error reading file: {path}. Error: {error}", path=path, error=e)
             return None
 
     def _read_from_url(self, url: str) -> Optional[str]:
@@ -261,5 +266,5 @@ class OpenAPIServiceToFunctions:
             response.raise_for_status()
             return response.text
         except RequestException as e:
-            logger.warning("Error fetching URL: %s. Error: %s", url, e)
+            logger.warning("Error fetching URL: {url}. Error: {error}", url=url, error=e)
             return None

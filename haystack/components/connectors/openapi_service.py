@@ -1,10 +1,9 @@
 import json
-import logging
 from collections import defaultdict
 from copy import copy
-from typing import List, Dict, Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
-from haystack import component
+from haystack import component, logging
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.lazy_imports import LazyImport
 
@@ -179,7 +178,7 @@ class OpenAPIServiceConnector:
         :rtype: Any
         :raises RuntimeError: If the method is not found or invocation fails.
         """
-        name = method_invocation_descriptor.get("name", None)
+        name = method_invocation_descriptor.get("name")
         invocation_arguments = copy(method_invocation_descriptor.get("arguments", {}))
         if not name or not invocation_arguments:
             raise ValueError(

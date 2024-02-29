@@ -1,12 +1,12 @@
 import json
-from typing import List, Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from haystack import component
 from haystack.dataclasses import ChatMessage
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install jsonschema'") as jsonschema_import:
-    from jsonschema import validate, ValidationError
+    from jsonschema import ValidationError, validate
 
 
 @component
