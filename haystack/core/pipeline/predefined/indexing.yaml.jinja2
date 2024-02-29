@@ -1,6 +1,6 @@
-{% extends "base.yaml.jinja2" %}
+---
 
-{% block components %}
+components:
   cleaner:
     init_parameters:
       remove_empty_lines: true
@@ -73,9 +73,8 @@
         type: "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore"
       policy: "FAIL"
     type: "haystack.components.writers.document_writer.DocumentWriter"
-{% endblock %}
 
-{% block connections %}
+connections:
 - receiver: text_file_converter.sources
   sender: file_type_router.text/plain
 - receiver: doc_joiner.documents
@@ -94,4 +93,6 @@
   sender: splitter.documents
 - receiver: writer.documents
   sender: embedder.documents
-{% endblock %}
+
+metadata:
+  {}
