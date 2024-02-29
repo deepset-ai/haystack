@@ -343,7 +343,7 @@ jobs:
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   trigger-catch-all:
-    name: Trigger-catch-all-check
+    name: Tests completed
     # This job will be executed only after all the other tests
     # are successful.
     # This way we'll be able to mark only this test as required
@@ -353,3 +353,5 @@ jobs:
       - integration-tests-macos
       - integration-tests-windows
     uses: deepset-ai/haystack/.github/workflows/tests_skipper_workflow.yml@ci/fix-catch-all2
+    with:
+      tests_were_skipped: false

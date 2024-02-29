@@ -5,6 +5,10 @@
 name: Tests
 on:
   workflow_call:
+    inputs:
+      tests_were_skipped:
+        type: boolean
+        required: true
 
 jobs:
   catch-all:
@@ -13,4 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Skip tests
+        if: ${{ github.event.inputs.tests_were_skipped }}
         run: echo "Skipped!"
+      - name: Tests completed successfully
+        if: ${{ !github.event.inputs.tests_were_skipped }}
+        run: echo "Tests completed!"
