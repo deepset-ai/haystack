@@ -45,7 +45,15 @@ components:
   prompt_builder:
     init_parameters:
       template: |
-        {% raw %}"\nGiven these documents, answer the question.\n\nDocuments:\n{% for doc in documents %}\n{{ doc.content }}\n {% endfor %}\n\nQuestion: {{question}}\n\nAnswer:\n"{% endraw %}
+        {% raw %}
+          "Given these documents, answer the question.
+          Documents:
+          {% for doc in documents %}
+            {{ doc.content }}
+          {% endfor %}
+          Question: {{question}}
+          Answer:\n"
+        {% endraw %}
     type: "haystack.components.builders.prompt_builder.PromptBuilder"
 
 connections:
