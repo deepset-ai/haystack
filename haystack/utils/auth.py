@@ -24,6 +24,15 @@ class SecretType(Enum):
 class Secret(ABC):
     """
     Encapsulates a secret used for authentication.
+
+    Usage example:
+    ```python
+    from haystack.components.generators import OpenAIGenerator
+    from haystack.utils import Secret
+
+    generator = OpenAIGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
+    ...
+    ```
     """
 
     @staticmethod
