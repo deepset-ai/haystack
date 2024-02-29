@@ -1,6 +1,6 @@
-{% extends "base.yaml.jinja2" %}
+---
 
-{% block components %}
+components:
   answer_builder:
     init_parameters: {}
     type: "haystack.components.builders.answer_builder.AnswerBuilder"
@@ -47,9 +47,8 @@
       template: |
         {% raw %}"\nGiven these documents, answer the question.\n\nDocuments:\n{% for doc in documents %}\n{{ doc.content }}\n {% endfor %}\n\nQuestion: {{question}}\n\nAnswer:\n"{% endraw %}
     type: "haystack.components.builders.prompt_builder.PromptBuilder"
-{% endblock %}
 
-{% block connections %}
+connections:
 - receiver: retriever.query_embedding
   sender: text_embedder.embedding
 - receiver: prompt_builder.documents
@@ -62,4 +61,6 @@
   sender: generator.replies
 - receiver: answer_builder.meta
   sender: generator.meta
-{% endblock %}
+
+metadata:
+  {}
