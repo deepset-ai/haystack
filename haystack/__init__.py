@@ -1,7 +1,7 @@
 import haystack.logging
 from haystack.core.component import component
 from haystack.core.errors import ComponentError, DeserializationError
-from haystack.core.pipeline import Pipeline
+from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import Answer, Document, ExtractedAnswer, GeneratedAnswer
 
@@ -16,6 +16,7 @@ __all__ = [
     "DeserializationError",
     "ComponentError",
     "Pipeline",
+    "PredefinedPipeline",
     "Document",
     "Answer",
     "GeneratedAnswer",

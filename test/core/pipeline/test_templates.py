@@ -3,7 +3,7 @@ import tempfile
 import pytest
 
 from haystack import Pipeline
-from haystack.templates.pipeline import PipelineTemplate, PredefinedPipeline
+from haystack.core.pipeline.template import PipelineTemplate, PredefinedPipeline
 
 
 @pytest.fixture
@@ -45,8 +45,8 @@ class TestPipelineTemplate:
 
     #  Building a pipeline directly using all default components specified in a predefined or custom template.
     def test_build_pipeline_with_default_components(self):
-        pipeline = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING).build()
-        assert isinstance(pipeline, Pipeline)
+        rendered = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING).render()
+        pipeline = Pipeline.loads(rendered)
 
         # pipeline has components
         assert pipeline.get_component("cleaner")
