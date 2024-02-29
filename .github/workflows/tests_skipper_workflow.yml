@@ -13,7 +13,7 @@ on:
 jobs:
   catch-all:
     # Don't run this check if the PR contains both code and non-code changes (e.g. release notes)
-    name: Catch-all check
+    name: Mark tests as completed
     runs-on: ubuntu-latest
     steps:
       - name: Skip tests
