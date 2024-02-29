@@ -88,7 +88,7 @@ class SearchApiWebSearch:
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document], links=Union[List[Document], List[str]])
+    @component.output_types(documents=List[Document], links=List[str])
     def run(self, query: str) -> Dict[str, Union[List[Document], List[str]]]:
         """
         Uses [SearchApi](https://www.searchapi.io/) to search the web.
