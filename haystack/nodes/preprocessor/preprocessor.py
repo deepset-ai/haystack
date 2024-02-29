@@ -641,6 +641,9 @@ class PreProcessor(BasePreProcessor):
                     else:
                         num_page_breaks = len(processed_units)
                     cur_page += num_page_breaks
+            else:
+                if self.add_page_number and split_at == "\f":
+                    cur_page += 1
 
         return text_splits, splits_pages, splits_start_idxs
 
