@@ -40,15 +40,22 @@ class OpenAITextEmbedder:
         """
         Create an OpenAITextEmbedder component.
 
-        :param api_key: The OpenAI API key.
-        :param model: The name of the OpenAI model to use. For more details on the available models,
-            see [OpenAI documentation](https://platform.openai.com/docs/guides/embeddings/embedding-models).
-        :param dimensions: The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.
-        :param organization: The Organization ID, defaults to `None`. See
-        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
-        :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
-        :param prefix: A string to add to the beginning of each text.
-        :param suffix: A string to add to the end of each text.
+        :param api_key:
+            The OpenAI API key.
+        :param model:
+            The name of the model to use.
+        :param dimensions:
+            The number of dimensions the resulting output embeddings should have. Only supported in `text-embedding-3` and later models.
+        :param api_base_url:
+            Overrides default base url for all HTTP requests.
+        :param organization:
+            The Organization ID. See OpenAI's
+            [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
+            for more information.
+        :param prefix:
+            A string to add at the beginning of each text.
+        :param suffix:
+            A string to add at the end of each text.
         """
         self.model = model
         self.dimensions = dimensions
@@ -67,6 +74,12 @@ class OpenAITextEmbedder:
         return {"model": self.model}
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
         return default_to_dict(
             self,
             model=self.model,
@@ -80,12 +93,30 @@ class OpenAITextEmbedder:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "OpenAITextEmbedder":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized component.
+        """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     @component.output_types(embedding=List[float], meta=Dict[str, Any])
     def run(self, text: str):
-        """Embed a string."""
+        """
+        Embed a single string.
+
+        :param text:
+            Text to embed.
+
+        :returns:
+            A dictionary with the following keys:
+            - `embedding`: The embedding of the input text.
+            - `meta`: Information about the usage of the model.
+        """
         if not isinstance(text, str):
             raise TypeError(
                 "OpenAITextEmbedder expects a string as an input."
