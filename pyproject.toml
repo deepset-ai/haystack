@@ -284,6 +284,10 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [tool.ruff]
+line-length = 1486
+target-version = "py38"
+
+[tool.ruff.lint]
 select = [
   "AIR",    # Airflow
   "ASYNC",  # flake8-async
@@ -311,8 +315,7 @@ select = [
   # "PT",   # flake8-pytest-style
   # "UP",   # pyupgrade
 ]
-line-length = 1486
-target-version = "py38"
+
 ignore = [
   "F401",     # unused-import
   "PERF203",	# `try`-`except` within a loop incurs performance overhead
@@ -327,15 +330,15 @@ ignore = [
   "SIM118",   # in-dict-keys
 ]
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 28
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "examples/basic_qa_pipeline.py" = ["C416"]
 "haystack/preview/testing/document_store.py" = ["C416", "F821"]
 "haystack/telemetry.py" = ["F821"]
 
-[tool.ruff.pylint]
+[tool.ruff.lint.pylint]
 allow-magic-value-types = ["float", "int", "str"]
 max-args = 38  # Default is 5
 max-branches = 32  # Default is 12
