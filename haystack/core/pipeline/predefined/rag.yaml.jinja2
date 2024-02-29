@@ -18,10 +18,10 @@ components:
     init_parameters:
       document_store:
         init_parameters:
-          bm25_algorithm": "BM25L"
-          bm25_parameters": {}
-          bm25_tokenization_regex": "(?u)\\b\\w\\w+\\b"
-          embedding_similarity_function": "dot_product"
+          bm25_algorithm: "BM25L"
+          bm25_parameters: {}
+          bm25_tokenization_regex: "(?u)\\b\\w\\w+\\b"
+          embedding_similarity_function: "dot_product"
         type: "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore"
       filters: None,
       return_embedding: false,
@@ -31,7 +31,7 @@ components:
 
   text_embedder:
     init_parameters:
-      batch_size": 32
+      batch_size: 32
       device:
         type: "single"
         device: "cpu"
@@ -45,7 +45,15 @@ components:
   prompt_builder:
     init_parameters:
       template: |
-        {% raw %}"\nGiven these documents, answer the question.\n\nDocuments:\n{% for doc in documents %}\n{{ doc.content }}\n {% endfor %}\n\nQuestion: {{question}}\n\nAnswer:\n"{% endraw %}
+        {% raw %}
+          "Given these documents, answer the question.
+          Documents:
+          {% for doc in documents %}
+            {{ doc.content }}
+          {% endfor %}
+          Question: {{question}}
+          Answer:\n"
+        {% endraw %}
     type: "haystack.components.builders.prompt_builder.PromptBuilder"
 
 connections:
