@@ -179,20 +179,16 @@ class TestOpenAPIServiceToFunctions:
     def test_run_with_bytestream_source(self, json_serperdev_openapi_spec):
         service = OpenAPIServiceToFunctions()
         spec_stream = ByteStream.from_string(json_serperdev_openapi_spec)
-        result = service.run(sources=[spec_stream], system_messages=["Some system message we don't care about here"])
-        assert len(result["documents"]) == 1
-        doc = result["documents"][0]
+        result = service.run(sources=[spec_stream])
+        assert len(result["functions"]) == 1
+        fc = result["functions"][0]
 
-        # check that the content is as expected
-        assert (
-            doc.content
-            == '{"name": "search", "description": "Search the web with Google", "parameters": {"type": "object", '
-            '"properties": {"q": {"type": "string"}}}}'
-        )
-
-        # check that the metadata is as expected
-        assert doc.meta["system_message"] == "Some system message we don't care about here"
-        assert doc.meta["spec"] == json.loads(json_serperdev_openapi_spec)
+        # check that fc definition is as expected
+        assert fc == {
+            "name": "search",
+            "description": "Search the web with Google",
+            "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
+        }
 
     @pytest.mark.skipif(
         sys.platform in ["win32", "cygwin"],
@@ -205,47 +201,23 @@ class TestOpenAPIServiceToFunctions:
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write(json_serperdev_openapi_spec.encode("utf-8"))
             tmp.seek(0)
-            result = service.run(sources=[tmp.name], system_messages=["Some system message we don't care about here"])
-            assert len(result["documents"]) == 1
-            doc = result["documents"][0]
+            result = service.run(sources=[tmp.name])
+            assert len(result["functions"]) == 1
+            fc = result["functions"][0]
 
-            # check that the content is as expected
-            assert (
-                doc.content
-                == '{"name": "search", "description": "Search the web with Google", "parameters": {"type": "object", '
-                '"properties": {"q": {"type": "string"}}}}'
-            )
-
-            # check that the metadata is as expected
-            assert doc.meta["system_message"] == "Some system message we don't care about here"
-            assert doc.meta["spec"] == json.loads(json_serperdev_openapi_spec)
-
-    def test_run_with_file_source_and_none_system_messages(self, json_serperdev_openapi_spec):
-        service = OpenAPIServiceToFunctions()
-        spec_stream = ByteStream.from_string(json_serperdev_openapi_spec)
-
-        # we now omit the system_messages argument
-        result = service.run(sources=[spec_stream])
-        assert len(result["documents"]) == 1
-        doc = result["documents"][0]
-
-        # check that the content is as expected
-        assert (
-            doc.content
-            == '{"name": "search", "description": "Search the web with Google", "parameters": {"type": "object", '
-            '"properties": {"q": {"type": "string"}}}}'
-        )
-
-        # check that the metadata is as expected, system_message should not be present
-        assert "system_message" not in doc.meta
-        assert doc.meta["spec"] == json.loads(json_serperdev_openapi_spec)
+            # check that fc definition is as expected
+            assert fc == {
+                "name": "search",
+                "description": "Search the web with Google",
+                "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
+            }
 
     def test_complex_types_conversion(self, test_files_path):
         # ensure that complex types from OpenAPI spec are converted to the expected format in OpenAI function calling
         service = OpenAPIServiceToFunctions()
         result = service.run(sources=[test_files_path / "json" / "complex_types_openapi_service.json"])
-        assert len(result["documents"]) == 1
+        assert len(result["functions"]) == 1
 
         with open(test_files_path / "json" / "complex_types_openai_spec.json") as openai_spec_file:
             desired_output = json.load(openai_spec_file)
-        assert result["documents"][0].content == json.dumps(desired_output)
+        assert result["functions"][0] == desired_output
