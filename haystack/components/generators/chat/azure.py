@@ -1,14 +1,13 @@
-import logging
 import os
-from typing import Optional, Callable, Dict, Any
+from typing import Any, Callable, Dict, Optional
 
 # pylint: disable=import-error
 from openai.lib.azure import AzureOpenAI
 
-from haystack import default_to_dict, default_from_dict
+from haystack import default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import StreamingChunk
-from haystack.utils import Secret, deserialize_secrets_inplace, serialize_callable, deserialize_callable
+from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
 

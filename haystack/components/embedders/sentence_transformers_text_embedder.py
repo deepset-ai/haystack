@@ -1,10 +1,10 @@
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
-from haystack import component, default_to_dict, default_from_dict
+from haystack import component, default_from_dict, default_to_dict
 from haystack.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
-from haystack.utils import Secret, deserialize_secrets_inplace, ComponentDevice
+from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 
 
 @component

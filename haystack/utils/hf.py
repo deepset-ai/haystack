@@ -1,11 +1,11 @@
 import copy
 import inspect
-import logging
 from enum import Enum
-from typing import Any, Dict, Optional, List, Union, Callable
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import requests
 
+from haystack import logging
 from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
@@ -15,8 +15,8 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_import
     import torch
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
+    from huggingface_hub import HfApi, InferenceClient
     from huggingface_hub.utils import RepositoryNotFoundError
-    from huggingface_hub import InferenceClient, HfApi
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +173,7 @@ def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepte
 
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
-    from transformers import StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer
+    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteria, TextStreamer
 
     transformers_import.check()
     torch_import.check()

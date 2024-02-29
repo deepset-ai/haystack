@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import inspect
-from typing import Type, Dict, Any
+from typing import Any, Dict, Type
 
 from haystack.core.errors import DeserializationError, SerializationError
 

@@ -1,9 +1,7 @@
-import logging
 import re
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from haystack import component, GeneratedAnswer, Document
-
+from haystack import Document, GeneratedAnswer, component, logging
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +112,9 @@ class AnswerBuilder:
                     try:
                         referenced_docs.append(documents[idx])
                     except IndexError:
-                        logger.warning("Document index '%s' referenced in Generator output is out of range. ", idx + 1)
+                        logger.warning(
+                            "Document index '{index}' referenced in Generator output is out of range. ", index=idx + 1
+                        )
 
             answer_string = AnswerBuilder._extract_answer_string(reply, pattern)
             answer = GeneratedAnswer(data=answer_string, query=query, documents=referenced_docs, meta=metadata)

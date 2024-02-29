@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret

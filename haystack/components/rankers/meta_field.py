@@ -1,10 +1,9 @@
-import logging
 from collections import defaultdict
-from typing import List, Dict, Any, Optional, Literal, Callable
+from typing import Any, Callable, Dict, List, Literal, Optional
+
 from dateutil.parser import parse as date_parse
 
-
-from haystack import Document, component, default_to_dict
+from haystack import Document, component, default_to_dict, logging
 
 logger = logging.getLogger(__name__)
 
@@ -203,20 +202,20 @@ class MetaFieldRanker:
         # If all docs are missing self.meta_field return original documents
         if len(docs_with_meta_field) == 0:
             logger.warning(
-                "The parameter <meta_field> is currently set to '%s', but none of the provided Documents with IDs %s have this meta key.\n"
+                "The parameter <meta_field> is currently set to '{meta_field}', but none of the provided Documents with IDs {document_ids} have this meta key.\n"
                 "Set <meta_field> to the name of a field that is present within the provided Documents.\n"
                 "Returning the <top_k> of the original Documents since there are no values to rank.",
-                self.meta_field,
-                ",".join([doc.id for doc in documents]),
+                meta_field=self.meta_field,
+                document_ids=",".join([doc.id for doc in documents]),
             )
             return {"documents": documents[:top_k]}
 
         if len(docs_missing_meta_field) > 0:
             logger.warning(
-                "The parameter <meta_field> is currently set to '%s' but the Documents with IDs %s don't have this meta key.\n"
+                "The parameter <meta_field> is currently set to '{meta_field}' but the Documents with IDs {document_ids} don't have this meta key.\n"
                 "These Documents will be placed at the end of the sorting order.",
-                self.meta_field,
-                ",".join([doc.id for doc in docs_missing_meta_field]),
+                meta_field=self.meta_field,
+                document_ids=",".join([doc.id for doc in docs_missing_meta_field]),
             )
 
         # If meta_value_type is provided try to parse the meta values
@@ -230,10 +229,10 @@ class MetaFieldRanker:
         except TypeError as error:
             # Return original documents if mixed types that are not comparable are returned (e.g. int and list)
             logger.warning(
-                "Tried to sort Documents with IDs %s, but got TypeError with the message: %s\n"
+                "Tried to sort Documents with IDs {document_ids}, but got TypeError with the message: {error}\n"
                 "Returning the <top_k> of the original Documents since meta field ranking is not possible.",
-                ",".join([doc.id for doc in docs_with_meta_field]),
-                error,
+                document_ids=",".join([doc.id for doc in docs_with_meta_field]),
+                error=error,
             )
             return {"documents": documents[:top_k]}
 
@@ -255,12 +254,12 @@ class MetaFieldRanker:
         unique_meta_values = {doc.meta[self.meta_field] for doc in docs_with_meta_field}
         if not all(isinstance(meta_value, str) for meta_value in unique_meta_values):
             logger.warning(
-                "The parameter <meta_value_type> is currently set to '%s', but not all of meta values in the "
-                "provided Documents with IDs %s are strings.\n"
+                "The parameter <meta_value_type> is currently set to '{meta_field}', but not all of meta values in the "
+                "provided Documents with IDs {document_ids} are strings.\n"
                 "Skipping parsing of the meta values.\n"
                 "Set all meta values found under the <meta_field> parameter to strings to use <meta_value_type>.",
-                meta_value_type,
-                ",".join([doc.id for doc in docs_with_meta_field]),
+                meta_field=meta_value_type,
+                document_ids=",".join([doc.id for doc in docs_with_meta_field]),
             )
             return [d.meta[self.meta_field] for d in docs_with_meta_field]
 
@@ -276,10 +275,10 @@ class MetaFieldRanker:
             meta_values = [parse_fn(d.meta[self.meta_field]) for d in docs_with_meta_field]
         except ValueError as error:
             logger.warning(
-                "Tried to parse the meta values of Documents with IDs %s, but got ValueError with the message: %s\n"
+                "Tried to parse the meta values of Documents with IDs {document_ids}, but got ValueError with the message: {error}\n"
                 "Skipping parsing of the meta values.",
-                ",".join([doc.id for doc in docs_with_meta_field]),
-                error,
+                document_ids=",".join([doc.id for doc in docs_with_meta_field]),
+                error=error,
             )
             meta_values = [d.meta[self.meta_field] for d in docs_with_meta_field]
 
@@ -302,9 +301,9 @@ class MetaFieldRanker:
                     logger.warning("The score wasn't provided; defaulting to 0.")
                 elif document.score < 0 or document.score > 1:
                     logger.warning(
-                        "The score %s for Document %s is outside the [0,1] range; defaulting to 0",
-                        document.score,
-                        document.id,
+                        "The score {score} for Document {document_id} is outside the [0,1] range; defaulting to 0",
+                        score=document.score,
+                        document_id=document.id,
                     )
                 else:
                     score = document.score

@@ -1,9 +1,8 @@
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Any, Optional, Union
+from typing import Any, Dict, Optional, Union
 
-from jinja2 import meta, TemplateSyntaxError, Environment, PackageLoader
-
+from jinja2 import Environment, PackageLoader, TemplateSyntaxError, meta
 
 TEMPLATE_FILE_EXTENSION = ".yaml.jinja2"
 TEMPLATE_HOME_DIR = Path(__file__).resolve().parent / "predefined"

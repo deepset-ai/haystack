@@ -1,11 +1,10 @@
 import io
-import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from openai import OpenAI
 
-from haystack import Document, component, default_from_dict, default_to_dict
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ByteStream
 from haystack.utils import Secret, deserialize_secrets_inplace
 

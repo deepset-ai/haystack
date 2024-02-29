@@ -1,14 +1,13 @@
-import logging
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from tqdm import tqdm
 
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import Document
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils.hf import check_valid_model, HFModelType
-from haystack import component, default_to_dict, default_from_dict
+from haystack.utils.hf import HFModelType, check_valid_model
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient

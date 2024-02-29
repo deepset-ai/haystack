@@ -1,14 +1,12 @@
 import dataclasses
-import logging
-from typing import Optional, List, Callable, Dict, Any, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
-from openai.types.chat import ChatCompletionChunk, ChatCompletion
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
-from haystack import component, default_from_dict, default_to_dict
-from haystack.dataclasses import StreamingChunk, ChatMessage
-from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils import serialize_callable, deserialize_callable
+from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
 
@@ -286,11 +284,14 @@ class OpenAIGenerator:
         """
         if message.meta["finish_reason"] == "length":
             logger.warning(
-                "The completion for index %s has been truncated before reaching a natural stopping point. "
+                "The completion for index {index} has been truncated before reaching a natural stopping point. "
                 "Increase the max_tokens parameter to allow for longer completions.",
-                message.meta["index"],
+                index=message.meta["index"],
+                finish_reason=message.meta["finish_reason"],
             )
         if message.meta["finish_reason"] == "content_filter":
             logger.warning(
-                "The completion for index %s has been truncated due to the content filter.", message.meta["index"]
+                "The completion for index {index} has been truncated due to the content filter.",
+                index=message.meta["index"],
+                finish_reason=message.meta["finish_reason"],
             )

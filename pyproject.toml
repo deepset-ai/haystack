@@ -297,6 +297,7 @@ select = [
   "T10",    # flake8-debugger
   "W",      # pycodestyle
   "YTT",    # flake8-2020
+  "I"       # isort
   # "E",    # pycodestyle
   # "NPY",  # NumPy-specific rules
   # "PD",   # pandas-vet

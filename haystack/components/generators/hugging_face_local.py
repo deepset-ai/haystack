@@ -1,12 +1,9 @@
-import logging
 from typing import Any, Dict, List, Literal, Optional
 
-from haystack import component, default_from_dict, default_to_dict
-
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice
+from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
-from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +12,7 @@ SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
     from huggingface_hub import model_info
     from transformers import StoppingCriteriaList, pipeline
+
     from haystack.utils.hf import StopWordsCriteria  # pylint: disable=ungrouped-imports
 
 

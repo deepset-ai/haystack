@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 import posthog
 import yaml
 
+from haystack import logging as haystack_logging
 from haystack.telemetry._environment import collect_system_specs
 
 if TYPE_CHECKING:
@@ -22,7 +23,7 @@ CONFIG_PATH = Path("~/.haystack/config.yaml").expanduser()
 MIN_SECONDS_BETWEEN_EVENTS = 60
 
 
-logger = logging.getLogger(__name__)
+logger = haystack_logging.getLogger(__name__)
 
 
 class Telemetry:
@@ -64,7 +65,9 @@ class Telemetry:
                     if "user_id" in config:
                         self.user_id = config["user_id"]
             except Exception as e:
-                logger.debug("Telemetry could not read the config file %s", CONFIG_PATH, exc_info=e)
+                logger.debug(
+                    "Telemetry could not read the config file {config_path}", config_path=CONFIG_PATH, exc_info=e
+                )
         else:
             # Create the config file
             logger.info(
@@ -80,7 +83,9 @@ class Telemetry:
                 with open(CONFIG_PATH, "w") as outfile:
                     yaml.dump({"user_id": self.user_id}, outfile, default_flow_style=False)
             except Exception as e:
-                logger.debug("Telemetry could not write config file to %s", CONFIG_PATH, exc_info=e)
+                logger.debug(
+                    "Telemetry could not write config file to {config_path}", config_path=CONFIG_PATH, exc_info=e
+                )
 
         self.event_properties = collect_system_specs()
 

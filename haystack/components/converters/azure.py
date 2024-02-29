@@ -1,17 +1,16 @@
 from pathlib import Path
-from typing import List, Union, Dict, Any, Optional
-import logging
+from typing import Any, Dict, List, Optional, Union
 
-from haystack.lazy_imports import LazyImport
-from haystack import component, Document, default_to_dict, default_from_dict
-from haystack.dataclasses import ByteStream
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack.dataclasses import ByteStream
+from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
 with LazyImport(message="Run 'pip install \"azure-ai-formrecognizer>=3.2.0b2\"'") as azure_import:
-    from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
+    from azure.ai.formrecognizer import AnalyzeResult, DocumentAnalysisClient
     from azure.core.credentials import AzureKeyCredential
 
 
@@ -83,7 +82,7 @@ class AzureOCRDocumentConverter:
             try:
                 bytestream = get_bytestream_from_source(source=source)
             except Exception as e:
-                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
 
             poller = self.document_analysis_client.begin_analyze_document(
