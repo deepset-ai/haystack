@@ -79,6 +79,7 @@ dependencies = [
   "psutil",
   # Linting
   "pylint",
+  "ruff",
   # Documentation
   "toml",
   "reno",
