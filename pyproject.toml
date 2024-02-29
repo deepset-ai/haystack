@@ -125,6 +125,10 @@ extra-dependencies = [
 
   # Structured logging
   "structlog",
+
+  # Looking for missing imports
+  "isort",
+  "pyproject-parser",
 ]
 
 [tool.hatch.envs.test.scripts]
