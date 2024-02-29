@@ -569,7 +569,7 @@ class Pipeline:
         """
         for node in self.graph.nodes:
             if hasattr(self.graph.nodes[node]["instance"], "warm_up"):
-                logger.info("Warming up component %s...", node)
+                logger.info("Warming up component {node}...", node=node)
                 self.graph.nodes[node]["instance"].warm_up()
 
     def _validate_input(self, data: Dict[str, Any]):
