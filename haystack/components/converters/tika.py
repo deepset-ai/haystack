@@ -16,13 +16,12 @@ logger = logging.getLogger(__name__)
 @component
 class TikaDocumentConverter:
     """
-    A component for converting files of different types (pdf, docx, html, etc.) to Documents.
+    Converts files of different types to Documents.
+
     This component uses [Apache Tika](https://tika.apache.org/) for parsing the files and, therefore,
     requires a running Tika server.
-
-    The easiest way to run Tika is to use Docker: `docker run -d -p 127.0.0.1:9998:9998 apache/tika:latest`.
-    For more options on running Tika on Docker,
-    see the [documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
+    For more options on running Tika,
+    see the [official documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
 
     Usage example:
     ```python
@@ -43,7 +42,8 @@ class TikaDocumentConverter:
         """
         Create a TikaDocumentConverter component.
 
-        :param tika_url: URL of the Tika server. Default: `"http://localhost:9998/tika"`
+        :param tika_url:
+            Tika server URL.
         """
         tika_import.check()
         self.tika_url = tika_url
@@ -55,15 +55,20 @@ class TikaDocumentConverter:
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ):
         """
-        Convert files to Documents.
+        Converts files to Documents.
 
-        :param sources: List of file paths or ByteStream objects.
-        :param meta: Optional metadata to attach to the Documents.
-          This value can be either a list of dictionaries or a single dictionary.
-          If it's a single dictionary, its content is added to the metadata of all produced Documents.
-          If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
-          Defaults to `None`.
-        :return: A dictionary containing a list of Document objects under the 'documents' key.
+        :param sources:
+            List of HTML file paths or ByteStream objects.
+        :param meta:
+            Optional metadata to attach to the Documents.
+            This value can be either a list of dictionaries or a single dictionary.
+            If it's a single dictionary, its content is added to the metadata of all produced Documents.
+            If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+            If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: Created Documents
         """
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))

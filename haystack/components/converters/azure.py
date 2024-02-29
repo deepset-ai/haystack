@@ -21,17 +21,17 @@ class AzureOCRDocumentConverter:
     Supported file formats are: PDF, JPEG, PNG, BMP, TIFF, DOCX, XLSX, PPTX, and HTML.
 
     In order to be able to use this component, you need an active Azure account
-    and a Document Intelligence or Cognitive Services resource. Please follow the steps described in the
+    and a Document Intelligence or Cognitive Services resource. Follow the steps described in the
     [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api)
     to set up your resource.
 
     Usage example:
     ```python
-    from haystack.components.converters.azure import AzureOCRDocumentConverter
+    from haystack.components.converters import AzureOCRDocumentConverter
     from haystack.utils import Secret
 
     converter = AzureOCRDocumentConverter(endpoint="<url>", api_key=Secret.from_token("<your-api-key>"))
-    results = converter.run(sources=["image-based-document.pdf"], meta={"date_added": datetime.now().isoformat()})
+    results = converter.run(sources=["path/to/document_with_images.pdf"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
     # 'This is a text from the PDF file.'
@@ -44,9 +44,12 @@ class AzureOCRDocumentConverter:
         """
         Create an AzureOCRDocumentConverter component.
 
-        :param endpoint: The endpoint of your Azure resource.
-        :param api_key: The key of your Azure resource.
-        :param model_id: The model ID of the model you want to use. Please refer to [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
+        :param endpoint:
+            The endpoint of your Azure resource.
+        :param api_key:
+            The key of your Azure resource.
+        :param model_id:
+            The model ID of the model you want to use. Please refer to [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
             for a list of available models. Default: `"prebuilt-read"`.
         """
         azure_import.check()
@@ -59,20 +62,21 @@ class AzureOCRDocumentConverter:
     @component.output_types(documents=List[Document], raw_azure_response=List[Dict])
     def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
         """
-        Convert files to Documents using Azure's Document Intelligence service.
+        Convert a list of files to Documents using Azure's Document Intelligence service.
 
-        This component creates two outputs: `documents` and `raw_azure_response`. The `documents` output contains
-        a list of Documents that were created from the files. The `raw_azure_response` output contains a list of
-        the raw responses from Azure's Document Intelligence service.
+        :param sources:
+            List of file paths or ByteStream objects.
+        :param meta:
+            Optional metadata to attach to the Documents.
+            This value can be either a list of dictionaries or a single dictionary.
+            If it's a single dictionary, its content is added to the metadata of all produced Documents.
+            If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+            If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
 
-        :param sources: List of file paths or ByteStream objects.
-        :param meta: Optional metadata to attach to the Documents.
-          This value can be either a list of dictionaries or a single dictionary.
-          If it's a single dictionary, its content is added to the metadata of all produced Documents.
-          If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
-          Defaults to `None`.
-        :return: A dictionary containing a list of Document objects under the 'documents' key
-          and the raw Azure response under the 'raw_azure_response' key.
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: List of created Documents
+            - `raw_azure_response`: List of raw Azure responses used to create the Documents
         """
         documents = []
         azure_output = []
@@ -104,14 +108,22 @@ class AzureOCRDocumentConverter:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         return default_to_dict(self, api_key=self.api_key.to_dict(), endpoint=self.endpoint, model_id=self.model_id)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AzureOCRDocumentConverter":
         """
-        Deserialize this component from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
