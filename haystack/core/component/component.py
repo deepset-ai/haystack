@@ -69,6 +69,7 @@
 """
 
 import inspect
+import sys
 from collections.abc import Callable
 from copy import deepcopy
 from types import new_class
@@ -114,7 +115,11 @@ class Component(Protocol):
     # arguments. Even defining here a method with `**kwargs` doesn't work as the
     # expected signature must be identical.
     # This makes most Language Servers and type checkers happy and shows less errors.
-    run: Callable[..., Dict[str, Any]]
+    # NOTE: This check can be removed when we drop Python 3.8 support.
+    if sys.version_info >= (3, 9):
+        run: Callable[..., Dict[str, Any]]
+    else:
+        run: Callable
 
 
 class ComponentMeta(type):
