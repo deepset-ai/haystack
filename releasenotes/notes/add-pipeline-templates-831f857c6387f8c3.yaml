@@ -9,15 +9,5 @@ highlights:  >
    from haystack import Pipeline, PredefinedPipeline
 
    pipe = Pipeline.from_template(PredefinedPipeline.INDEXING)
-   result = pipe.run(data={"sources": ["some_local_dir/and_text_file.txt"]})
-   ```
-
-   The above example creates a PredefinedPipeline.INDEXING pipeline ready to be used. We can use the same template
-   to create a slightly different indexing pipeline, adding a PDF to text converter:
-
-   ```python
-   from haystack import Pipeline, PredefinedPipeline
-
-   pipe = Pipeline.from_template(PredefinedPipeline.INDEXING, template_params={"use_pdf_file_converter": True})
-   result = pipe.run(query="What's the meaning of life?")
+   result = pipe.run({"converter": {"sources": ["some_file.txt"]}})
    ```
