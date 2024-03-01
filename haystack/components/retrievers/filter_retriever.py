@@ -30,9 +30,7 @@ class FilterRetriever:
     # if passed in the run method, filters will override those provided at initialization
     result = retriever.run(filters={"field": "lang", "operator": "==", "value": "de"})
 
-    assert "documents" in result
-    assert len(result["documents"]) == 1
-    assert result["documents"][0].content == "python ist eine beliebte Programmiersprache"
+    print(result["documents"])
     ```
     """
 
@@ -40,8 +38,10 @@ class FilterRetriever:
         """
         Create the FilterRetriever component.
 
-        :param document_store: An instance of a DocumentStore.
-        :param filters: A dictionary with filters to narrow down the search space. Defaults to `None`.
+        :param document_store:
+            An instance of a DocumentStore.
+        :param filters:
+            A dictionary with filters to narrow down the search space.
         """
         self.document_store = document_store
         self.filters = filters
@@ -54,7 +54,10 @@ class FilterRetriever:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         docstore = self.document_store.to_dict()
         return default_to_dict(self, document_store=docstore, filters=self.filters)
@@ -62,7 +65,12 @@ class FilterRetriever:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FilterRetriever":
         """
-        Deserialize this component from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
         """
         init_params = data.get("init_parameters", {})
         if "document_store" not in init_params:
@@ -87,8 +95,10 @@ class FilterRetriever:
         """
         Run the FilterRetriever on the given input data.
 
-        :param filters: A dictionary with filters to narrow down the search space.
+        :param filters:
+            A dictionary with filters to narrow down the search space.
             If not specified, the FilterRetriever uses the value provided at initialization.
-        :return: The retrieved documents.
+        :returns:
+            The retrieved documents.
         """
         return {"documents": self.document_store.filter_documents(filters=filters or self.filters)}
