@@ -1,9 +1,9 @@
-from typing import List, Optional, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from openai import OpenAI
 from tqdm import tqdm
 
-from haystack import component, Document, default_to_dict, default_from_dict
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 
@@ -11,7 +11,6 @@ from haystack.utils import Secret, deserialize_secrets_inplace
 class OpenAIDocumentEmbedder:
     """
     A component for computing Document embeddings using OpenAI models.
-    The embedding of each Document is stored in the `embedding` field of the Document.
 
     Usage example:
     ```python
@@ -45,19 +44,31 @@ class OpenAIDocumentEmbedder:
     ):
         """
         Create a OpenAIDocumentEmbedder component.
-        :param api_key: The OpenAI API key.
-        :param model: The name of the model to use.
-        :param dimensions: The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.
-        :param api_base_url: The OpenAI API Base url, defaults to None. For more details, see OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
-        :param organization: The Organization ID, defaults to `None`. See
-        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
-        :param prefix: A string to add to the beginning of each text.
-        :param suffix: A string to add to the end of each text.
-        :param batch_size: Number of Documents to encode at once.
-        :param progress_bar: Whether to show a progress bar or not. Can be helpful to disable in production deployments
-                             to keep the logs clean.
-        :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document text.
-        :param embedding_separator: Separator used to concatenate the meta fields to the Document text.
+
+        :param api_key:
+            The OpenAI API key.
+        :param model:
+            The name of the model to use.
+        :param dimensions:
+            The number of dimensions the resulting output embeddings should have. Only supported in `text-embedding-3` and later models.
+        :param api_base_url:
+            Overrides default base url for all HTTP requests.
+        :param organization:
+            The Organization ID. See OpenAI's
+            [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
+            for more information.
+        :param prefix:
+            A string to add at the beginning of each text.
+        :param suffix:
+            A string to add at the end of each text.
+        :param batch_size:
+            Number of Documents to encode at once.
+        :param progress_bar:
+            If True shows a progress bar when running.
+        :param meta_fields_to_embed:
+            List of meta fields that will be embedded along with the Document text.
+        :param embedding_separator:
+            Separator used to concatenate the meta fields to the Document text.
         """
         self.api_key = api_key
         self.model = model
@@ -81,8 +92,10 @@ class OpenAIDocumentEmbedder:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        This method overrides the default serializer in order to avoid leaking the `api_key` value passed
-        to the constructor.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         return default_to_dict(
             self,
@@ -101,6 +114,14 @@ class OpenAIDocumentEmbedder:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "OpenAIDocumentEmbedder":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized component.
+        """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
@@ -156,9 +177,14 @@ class OpenAIDocumentEmbedder:
     def run(self, documents: List[Document]):
         """
         Embed a list of Documents.
-        The embedding of each Document is stored in the `embedding` field of the Document.
 
-        :param documents: A list of Documents to embed.
+        :param documents:
+            Documents to embed.
+
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: Documents with embeddings
+            - `meta`: Information about the usage of the model.
         """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(

@@ -1,9 +1,9 @@
-import logging
 import os
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, Optional, Tuple, Union
 
+from haystack import logging
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)

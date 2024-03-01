@@ -1,12 +1,8 @@
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Any, Optional, Union
+from typing import Any, Dict, Optional, Union
 
-from jinja2 import meta, TemplateSyntaxError, Environment, PackageLoader
-
-from haystack import Pipeline
-from haystack.core.errors import PipelineUnmarshalError
-
+from jinja2 import Environment, PackageLoader, TemplateSyntaxError, meta
 
 TEMPLATE_FILE_EXTENSION = ".yaml.jinja2"
 TEMPLATE_HOME_DIR = Path(__file__).resolve().parent / "predefined"
@@ -17,13 +13,11 @@ class PredefinedPipeline(Enum):
     Enumeration of predefined pipeline templates that can be used to create a `PipelineTemplate`.
     """
 
-    # When type is empty, the template source must be provided to the PipelineTemplate before calling build()
-    EMPTY = "empty"
-
     # Maintain 1-to-1 mapping between the enum name and the template file name in templates directory
     GENERATIVE_QA = "generative_qa"
     RAG = "rag"
     INDEXING = "indexing"
+    CHAT_WITH_WEBSITE = "chat_with_website"
 
 
 class PipelineTemplate:
@@ -73,7 +67,7 @@ class PipelineTemplate:
         :param template_content: The raw template source to use in the template.
         """
         env = Environment(
-            loader=PackageLoader("haystack.templates", "predefined"), trim_blocks=True, lstrip_blocks=True
+            loader=PackageLoader("haystack.core.pipeline", "predefined"), trim_blocks=True, lstrip_blocks=True
         )
         try:
             self._template = env.from_string(template_content)
@@ -84,7 +78,7 @@ class PipelineTemplate:
         self.template_variables = meta.find_undeclared_variables(env.parse(template_content))
         self._template_content = template_content
 
-    def build(self, template_params: Optional[Dict[str, Any]] = None) -> Pipeline:
+    def render(self, template_params: Optional[Dict[str, Any]] = None) -> str:
         """
         Constructs a `Pipeline` instance based on the template.
 
@@ -93,13 +87,7 @@ class PipelineTemplate:
         :return: An instance of `Pipeline` constructed from the rendered template and custom component configurations.
         """
         template_params = template_params or {}
-        rendered = self._template.render(**template_params)
-        try:
-            return Pipeline.loads(rendered)
-        except Exception as e:
-            msg = f"Error unmarshalling pipeline: {e}\n"
-            msg += f"Source:\n{rendered}"
-            raise PipelineUnmarshalError(msg)
+        return self._template.render(**template_params)
 
     @classmethod
     def from_file(cls, file_path: Union[Path, str]) -> "PipelineTemplate":
@@ -118,10 +106,6 @@ class PipelineTemplate:
         :param predefined_pipeline: The predefined pipeline to use.
         :return: An instance of `PipelineTemplate `.
         """
-        if predefined_pipeline == PredefinedPipeline.EMPTY:
-            # This is temporary, to ease the refactoring
-            raise ValueError("Please provide a PipelineType value")
-
         template_path = f"{TEMPLATE_HOME_DIR}/{predefined_pipeline.value}{TEMPLATE_FILE_EXTENSION}"
         return cls.from_file(template_path)
 

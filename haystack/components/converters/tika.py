@@ -1,13 +1,11 @@
-import logging
-from pathlib import Path
-from typing import List, Union, Dict, Any, Optional
 import io
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-from haystack.lazy_imports import LazyImport
-from haystack import component, Document
-from haystack.dataclasses import ByteStream
+from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
-
+from haystack.dataclasses import ByteStream
+from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install tika'") as tika_import:
     from tika import parser as tika_parser
@@ -18,13 +16,12 @@ logger = logging.getLogger(__name__)
 @component
 class TikaDocumentConverter:
     """
-    A component for converting files of different types (pdf, docx, html, etc.) to Documents.
+    Converts files of different types to Documents.
+
     This component uses [Apache Tika](https://tika.apache.org/) for parsing the files and, therefore,
     requires a running Tika server.
-
-    The easiest way to run Tika is to use Docker: `docker run -d -p 127.0.0.1:9998:9998 apache/tika:latest`.
-    For more options on running Tika on Docker,
-    see the [documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
+    For more options on running Tika,
+    see the [official documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
 
     Usage example:
     ```python
@@ -45,7 +42,8 @@ class TikaDocumentConverter:
         """
         Create a TikaDocumentConverter component.
 
-        :param tika_url: URL of the Tika server. Default: `"http://localhost:9998/tika"`
+        :param tika_url:
+            Tika server URL.
         """
         tika_import.check()
         self.tika_url = tika_url
@@ -57,15 +55,20 @@ class TikaDocumentConverter:
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ):
         """
-        Convert files to Documents.
+        Converts files to Documents.
 
-        :param sources: List of file paths or ByteStream objects.
-        :param meta: Optional metadata to attach to the Documents.
-          This value can be either a list of dictionaries or a single dictionary.
-          If it's a single dictionary, its content is added to the metadata of all produced Documents.
-          If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
-          Defaults to `None`.
-        :return: A dictionary containing a list of Document objects under the 'documents' key.
+        :param sources:
+            List of HTML file paths or ByteStream objects.
+        :param meta:
+            Optional metadata to attach to the Documents.
+            This value can be either a list of dictionaries or a single dictionary.
+            If it's a single dictionary, its content is added to the metadata of all produced Documents.
+            If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+            If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: Created Documents
         """
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
@@ -74,12 +77,16 @@ class TikaDocumentConverter:
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
-                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
                 text = tika_parser.from_buffer(io.BytesIO(bytestream.data), serverEndpoint=self.tika_url)["content"]
             except Exception as conversion_e:
-                logger.warning("Failed to extract text from %s. Skipping it. Error: %s", source, conversion_e)
+                logger.warning(
+                    "Failed to extract text from {source}. Skipping it. Error: {error}",
+                    source=source,
+                    error=conversion_e,
+                )
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}

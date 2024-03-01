@@ -1,12 +1,12 @@
-from typing import Optional, Dict, Any, Set, Callable
+from typing import Any, Callable, Dict, Optional, Set
 
 import jinja2.runtime
 from jinja2 import TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
 from typing_extensions import TypeAlias
 
-from haystack import component, default_to_dict, default_from_dict
-from haystack.utils import serialize_callable, deserialize_callable, serialize_type, deserialize_type
+from haystack import component, default_from_dict, default_to_dict
+from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
 
 
 class OutputAdaptationException(Exception):
@@ -16,61 +16,38 @@ class OutputAdaptationException(Exception):
 @component
 class OutputAdapter:
     """
-    OutputAdapter in Haystack 2.x pipelines is designed to adapt the output of one component
-    to be compatible with the input of another component using Jinja2 template expressions.
+    Adapts output of a Component using Jinja templates.
 
-    The component configuration requires specifying the adaptation rules. Each rule comprises:
-    - 'template': A Jinja2 template string that defines how to adapt the input data.
-    - 'output_type': The type of the output data (e.g., str, List[int]).
-    - 'custom_filters': A dictionary of custom Jinja2 filters to be used in the template.
-
-    Example configuration:
-
+    Usage example:
     ```python
+    from haystack import Document
     from haystack.components.converters import OutputAdapter
+
     adapter = OutputAdapter(template="{{ documents[0].content }}", output_type=str)
+    documents = [Document(content="Test content"]
+    result = adapter.run(documents=documents)
 
-    input_data = {"documents": [{"content": "Test content"}]}
-    expected_output = {"output": "Test content"}
-
-    assert adapter.run(**input_data) == expected_output
-    ```
-
-    In the pipeline setup, the adapter is placed between components that require output/input adaptation.
-    The name under which the adapted value is published is `output`. Use this name to connect the OutputAdapter
-    to downstream components in the pipeline.
-
-    Example pipeline setup:
-
-    ```python
-    from haystack import Pipeline, component
-    from haystack.components.converters import OutputAdapter
-
-    @component
-    class DocumentProducer:
-        @component.output_types(documents=dict)
-        def run(self):
-            return {"documents": [{"content": '{"framework": "Haystack"}'}]}
-
-    pipe = Pipeline()
-    pipe.add_component(
-        name="output_adapter",
-        instance=OutputAdapter(template="{{ documents[0].content | json_loads}}", output_type=str),
-    )
-    pipe.add_component(name="document_producer", instance=DocumentProducer())
-    pipe.connect("document_producer", "output_adapter")
-    result = pipe.run(data={})
-    assert result["output_adapter"]["output"] == {"framework": "Haystack"}
+    assert result["output"] == "Test content"
     ```
     """
 
     def __init__(self, template: str, output_type: TypeAlias, custom_filters: Optional[Dict[str, Callable]] = None):
         """
-        Initializes the OutputAdapter with a set of adaptation rules.
-        :param template: A Jinja2 template string that defines how to adapt the output data to the input of the
-        downstream component.
-        :param output_type: The type of the output data (e.g., str, List[int]).
-        :param custom_filters: A dictionary of custom Jinja2 filters to be used in the template.
+        Create an OutputAdapter component.
+
+        :param template:
+            A Jinja template that defines how to adapt the input data.
+            The variables in the template define the input of this instance.
+            e.g.
+            With this template:
+            ```
+            {{ documents[0].content }}
+            ```
+            The Component input will be `documents`.
+        :param output_type:
+            The type of output this instance will return.
+        :param custom_filters:
+            A dictionary of custom Jinja filters used in the template.
         """
         self.custom_filters = {**(custom_filters or {})}
         input_types: Set[str] = set()
@@ -98,12 +75,15 @@ class OutputAdapter:
 
     def run(self, **kwargs):
         """
-        Executes the output adaptation logic by applying the specified Jinja template expressions
-        to adapt the incoming data to a format suitable for downstream components.
+        Renders the Jinja template with the provided inputs.
 
-        :param kwargs: A dictionary containing the pipeline variables, which are inputs to the adaptation templates.
-        :return: A dictionary containing the adapted outputs, based on the adaptation rules.
-        :raises OutputAdaptationException: If there's an error during the adaptation process.
+        :param kwargs:
+            Must contain all variables used in the `template` string.
+        :returns:
+            A dictionary with the following keys:
+            - `output`: Rendered Jinja template.
+
+        :raises OutputAdaptationException: If template rendering fails.
         """
         # check if kwargs are empty
         if not kwargs:
@@ -124,6 +104,12 @@ class OutputAdapter:
         return adapted_outputs
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
         se_filters = {name: serialize_callable(filter_func) for name, filter_func in self.custom_filters.items()}
         return default_to_dict(
             self, template=self.template, output_type=serialize_type(self.output_type), custom_filters=se_filters
@@ -131,6 +117,14 @@ class OutputAdapter:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "OutputAdapter":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
+        """
         init_params = data.get("init_parameters", {})
         init_params["output_type"] = deserialize_type(init_params["output_type"])
         for name, filter_func in init_params.get("custom_filters", {}).items():

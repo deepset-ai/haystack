@@ -1,7 +1,6 @@
-import logging
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
-from haystack import component
+from haystack import component, logging
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
@@ -87,8 +86,8 @@ class TextLanguageRouter:
         try:
             language = langdetect.detect(text)
         except langdetect.LangDetectException as exception:
-            logger.warning("Langdetect cannot detect the language of text. Error: %s", exception)
+            logger.warning("Langdetect cannot detect the language of text. Error: {error}", error=exception)
             # Only log the text in debug mode, as it might contain sensitive information
-            logger.debug("Langdetect cannot detect the language of text: %s", text)
+            logger.debug("Langdetect cannot detect the language of text: {text}", text=text)
             language = None
         return language

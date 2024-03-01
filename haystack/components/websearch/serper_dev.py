@@ -1,10 +1,9 @@
 import json
-import logging
-from typing import Dict, List, Optional, Any, Union
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 
-from haystack import Document, component, default_to_dict, ComponentError, default_from_dict
+from haystack import ComponentError, Document, component, default_from_dict, default_to_dict, logging
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
@@ -163,5 +162,9 @@ class SerperDevWebSearch:
 
         links = [result["link"] for result in json_result["organic"]]
 
-        logger.debug("Serper Dev returned %s documents for the query '%s'", len(documents), query)
+        logger.debug(
+            "Serper Dev returned {number_documents} documents for the query '{query}'",
+            number_documents=len(documents),
+            query=query,
+        )
         return {"documents": documents[: self.top_k], "links": links[: self.top_k]}

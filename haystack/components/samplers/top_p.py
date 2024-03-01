@@ -1,7 +1,6 @@
-import logging
 from typing import List, Optional
 
-from haystack import ComponentError, Document, component
+from haystack import ComponentError, Document, component, logging
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
@@ -102,9 +101,9 @@ class TopPSampler:
         # return at least one document
         if not selected_docs:
             logger.warning(
-                "Top-p sampling with p=%s resulted in no documents being selected. "
+                "Top-p sampling with p={top_p} resulted in no documents being selected. "
                 "Returning the document with the highest similarity score.",
-                top_p,
+                top_p=top_p,
             )
             highest_prob_indices = torch.argsort(probs, descending=True)
             selected_docs = [documents[int(highest_prob_indices[0].item())]]

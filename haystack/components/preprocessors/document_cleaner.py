@@ -1,11 +1,10 @@
-import logging
 import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
 from typing import Generator, List, Optional, Set
 
-from haystack import Document, component
+from haystack import Document, component, logging
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +72,8 @@ class DocumentCleaner:
         for doc in documents:
             if doc.content is None:
                 logger.warning(
-                    "DocumentCleaner only cleans text documents but document.content for document ID %s is None.",
-                    doc.id,
+                    "DocumentCleaner only cleans text documents but document.content for document ID %{document_id} is None.",
+                    document_id=doc.id,
                 )
                 cleaned_docs.append(doc)
                 continue
@@ -174,7 +173,9 @@ class DocumentCleaner:
         if found_footer:
             pages = [page.replace(found_footer, "") for page in pages]
 
-        logger.debug("Removed header '%s' and footer '%s' in document", found_header, found_footer)
+        logger.debug(
+            "Removed header '{header}' and footer '{footer}' in document", header=found_header, footer=found_footer
+        )
         text = "\f".join(pages)
         return text
 

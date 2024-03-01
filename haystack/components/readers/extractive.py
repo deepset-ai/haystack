@@ -1,19 +1,18 @@
-import logging
 import math
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from haystack import ComponentError, Document, ExtractedAnswer, component, default_from_dict, default_to_dict
+from haystack import ComponentError, Document, ExtractedAnswer, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, DeviceMap
-from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs, resolve_hf_device_map
+from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
+    import accelerate  # pylint: disable=unused-import # the library is used but not directly referenced
     import torch
     from tokenizers import Encoding
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
-    import accelerate  # pylint: disable=unused-import # the library is used but not directly referenced
 
 
 logger = logging.getLogger(__name__)

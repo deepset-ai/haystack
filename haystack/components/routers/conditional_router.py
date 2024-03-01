@@ -1,11 +1,10 @@
-import logging
-from typing import List, Dict, Any, Set
+from typing import Any, Dict, List, Set
 
-from jinja2 import meta, Environment, TemplateSyntaxError
+from jinja2 import Environment, TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
 
-from haystack import component, default_from_dict, default_to_dict
-from haystack.utils import serialize_type, deserialize_type
+from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.utils import deserialize_type, serialize_type
 
 logger = logging.getLogger(__name__)
 

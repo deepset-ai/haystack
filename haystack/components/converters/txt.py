@@ -1,11 +1,9 @@
-import logging
 from pathlib import Path
-from typing import List, Union, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Union
 
-from haystack import Document, component
-from haystack.dataclasses import ByteStream
+from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
-
+from haystack.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +11,7 @@ logger = logging.getLogger(__name__)
 @component
 class TextFileToDocument:
     """
-    A component for converting a text file to a Document.
+    Converts text files to Documents.
 
     Usage example:
     ```python
@@ -31,9 +29,10 @@ class TextFileToDocument:
         """
         Create a TextFileToDocument component.
 
-        :param encoding: The default encoding of the text files. Default: `"utf-8"`.
-            Note that if the encoding is specified in the metadata of a ByteStream,
-            it will override this default.
+        :param encoding:
+            The encoding of the text files.
+            Note that if the encoding is specified in the metadata of a source ByteStream,
+            it will override this value.
         """
         self.encoding = encoding
 
@@ -44,17 +43,20 @@ class TextFileToDocument:
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ):
         """
-        Convert text files to Documents.
+        Converts text files to Documents.
 
-        :param sources: A list of paths to text files or ByteStream objects.
-          Note that if an encoding is specified in the metadata of a ByteStream,
-          it will override the component's default.
-        :param meta: Optional metadata to attach to the Documents.
-          This value can be either a list of dictionaries or a single dictionary.
-          If it's a single dictionary, its content is added to the metadata of all produced Documents.
-          If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
-          Defaults to `None`.
-        :return: A dictionary containing a list of Document objects under the 'documents' key.
+        :param sources:
+            List of HTML file paths or ByteStream objects.
+        :param meta:
+            Optional metadata to attach to the Documents.
+            This value can be either a list of dictionaries or a single dictionary.
+            If it's a single dictionary, its content is added to the metadata of all produced Documents.
+            If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+            If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: Created Documents
         """
         documents = []
 
@@ -64,13 +66,15 @@ class TextFileToDocument:
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
-                logger.warning("Could not read %s. Skipping it. Error: %s", source, e)
+                logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
                 encoding = bytestream.meta.get("encoding", self.encoding)
                 text = bytestream.data.decode(encoding)
             except Exception as e:
-                logger.warning("Could not convert file %s. Skipping it. Error message: %s", source, e)
+                logger.warning(
+                    "Could not convert file {source}. Skipping it. Error message: {error}", source=source, error=e
+                )
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}

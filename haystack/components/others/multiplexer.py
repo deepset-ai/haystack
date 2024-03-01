@@ -1,8 +1,7 @@
-import logging
 import sys
 from typing import Any, Dict
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
 from haystack.utils import deserialize_type, serialize_type
 
