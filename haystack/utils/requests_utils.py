@@ -18,10 +18,6 @@ def request_with_retry(
 
     :param attempts: Maximum number of attempts to retry the request, defaults to 3
     :param status_codes_to_retry: List of HTTP status codes that will trigger a retry, defaults to [408, 418, 429, 503]:
-        - `408: Request Timeout`
-        - `418`
-        - `429: Too Many Requests`
-        - `503: Service Unavailable`
     :param **kwargs: Optional arguments that ``request`` takes.
     :return: :class:`Response <Response>` object
 
