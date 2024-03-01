@@ -268,7 +268,6 @@ def test_is_greedy_flag_without_variadic_input(caplog):
     assert caplog.text == ""
     assert MockComponent().__haystack_is_greedy__
     assert (
-        caplog.text
-        == "WARNING  haystack.core.component.component:component.py:165 Component 'MockComponent' has no variadic input, but it's marked as greedy."
-        " This is not supported and can lead to unexpected behavior.\n"
+        "Component 'MockComponent' has no variadic input, but it's marked as greedy."
+        " This is not supported and can lead to unexpected behavior.\n" in caplog.text
     )
