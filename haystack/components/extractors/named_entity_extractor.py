@@ -43,13 +43,9 @@ class NamedEntityExtractorBackend(Enum, metaclass=_BackendEnumMeta):
     NLP backend to use for Named Entity Recognition.
     """
 
-    #: Hugging Face.
-    #:
     #: Uses an Hugging Face model and pipeline.
     HUGGING_FACE = "hugging_face"
 
-    #: spaCy.
-    #:
     #: Uses a spaCy model and pipeline.
     SPACY = "spacy"
 
@@ -77,6 +73,33 @@ class NamedEntityAnnotation:
 
 @component
 class NamedEntityExtractor:
+    """
+    Annotates named entities in a collection of documents.
+
+    The component supports two backends: Hugging Face and spaCy. The
+    former can be used with any sequence classification model from the
+    [Hugging Face model hub](https://huggingface.co/models), while the
+    latter can be used with any [spaCy model](https://spacy.io/models)
+    that contains an NER component. Annotations are stored as metadata
+    in the documents.
+
+    Usage example:
+    ```python
+    from haystack import Document
+    from haystack.components.extractors.named_entity_extractor import NamedEntityExtractor
+
+    documents = [
+        Document(content="I'm Merlin, the happy pig!"),
+        Document(content="My name is Clara and I live in Berkeley, California."),
+    ]
+    extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
+    extractor.warm_up()
+    results = extractor.run(documents=documents)["documents"]
+    annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in results]
+    print(annotations)
+    ```
+    """
+
     _METADATA_KEY = "named_entities"
 
     def __init__(
@@ -88,27 +111,22 @@ class NamedEntityExtractor:
         device: Optional[ComponentDevice] = None,
     ) -> None:
         """
-        Construct a Named Entity extractor component.
+        Create a Named Entity extractor component.
 
         :param backend:
             Backend to use for NER.
         :param model:
             Name of the model or a path to the model on
-            the local disk.
-
-            Dependent on the backend.
+            the local disk. Dependent on the backend.
         :param pipeline_kwargs:
             Keyword arguments passed to the pipeline. The
-            pipeline can override these arguments.
-
-            Dependent on the backend.
+            pipeline can override these arguments. Dependent on the backend.
         :param device:
             The device on which the model is loaded. If `None`,
-            the default device is automatically selected.
-
-            If a device/device map is specified in `pipeline_kwargs`,
-            it overrides this parameter (only applicable to the HuggingFace
-            backend).
+            the default device is automatically selected. If a
+            device/device map is specified in `pipeline_kwargs`,
+            it overrides this parameter (only applicable to the
+            HuggingFace backend).
         """
 
         if isinstance(backend, str):
@@ -126,7 +144,10 @@ class NamedEntityExtractor:
 
     def warm_up(self):
         """
-        Initialize the named entity extractor backend.
+        Initialize the component.
+
+        :raises ComponentError:
+            If the backend fails to initialize successfully.
         """
         try:
             self._backend.initialize()
@@ -138,14 +159,17 @@ class NamedEntityExtractor:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document], batch_size: int = 1) -> Dict[str, Any]:
         """
-         Run the named-entity extractor.
+        Annotate named entities in each document and store
+        the annotations in the document's metadata.
 
         :param documents:
-             Documents to process.
+            Documents to process.
         :param batch_size:
-             Batch size used for processing the documents.
+            Batch size used for processing the documents.
         :returns:
-             The processed documents.
+            Processed documents.
+        :raises ComponentError:
+            If the backend fails to process a document.
         """
         texts = [doc.content if doc.content is not None else "" for doc in documents]
         annotations = self._backend.annotate(texts, batch_size=batch_size)
@@ -163,7 +187,10 @@ class NamedEntityExtractor:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         return default_to_dict(
             self,
@@ -176,10 +203,12 @@ class NamedEntityExtractor:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "NamedEntityExtractor":
         """
-        Deserialize the component from a dictionary.
+        Deserializes the component from a dictionary.
 
         :param data:
-            The dictionary to deserialize from.
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized component.
         """
         try:
             init_params = data["init_parameters"]
@@ -266,8 +295,8 @@ class _NerBackend(ABC):
     @property
     def device(self) -> ComponentDevice:
         """
-        Returns the identifier of the device on which
-        the backend's model is loaded.
+        :returns:
+            The device on which the backend's model is loaded.
         """
         return self._device
 
