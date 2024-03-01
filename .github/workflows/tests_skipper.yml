@@ -13,7 +13,7 @@ on:
       # file outside the code changed (e.g. the release notes). Hence, we need a second filter down below.
       # keep the list in sync with the paths defined in the `tests.yml` workflow
       - "haystack/**/*.py"
-      - "haystack/templates/predefined/*"
+      - "haystack/core/pipeline/predefined/*"
       - "test/**/*.py"
       - "test/test_requirements.txt"
 
