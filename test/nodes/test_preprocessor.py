@@ -266,6 +266,20 @@ def test_preprocess_page_split_and_split_overlap():
 
 
 @pytest.mark.unit
+def test_preprocess_page_split_with_empty_pages():
+    doc = Document(
+        content="This is a document on page 1.\f\fThis is a document on page 3.\f\fThis is a document on page 5."
+    )
+    output = PreProcessor(
+        split_by="page", split_length=1, split_respect_sentence_boundary=False, split_overlap=0, add_page_number=True
+    ).run([doc])[0]["documents"]
+    assert len(output) == 3
+    assert output[0] == Document(content="This is a document on page 1.", meta={"_split_id": 0, "page": 1})
+    assert output[1] == Document(content="This is a document on page 3.", meta={"_split_id": 1, "page": 3})
+    assert output[2] == Document(content="This is a document on page 5.", meta={"_split_id": 2, "page": 5})
+
+
+@pytest.mark.unit
 def test_preprocess_tiktoken_token_split(mock_tiktoken_tokenizer):
     raw_docs = [
         "This is a document. It has two sentences and eleven words.",
