@@ -12,18 +12,14 @@ logger = logging.getLogger(__name__)
 @component
 class DocumentJoiner:
     """
-    A component that joins input lists of Documents from multiple connections and outputs them as one list.
+    A component that joins multiple list of Documents into a single list.
 
-    The component allows multiple join modes:
-    * concatenate: Combine Documents from multiple components. Discards duplicate Documents.
-                    Documents get their scores from the last component in the pipeline that assigns scores.
-                    This join mode doesn't influence Document scores.
-    * merge: Merge scores of duplicate Documents coming from multiple components.
-            Optionally, you can assign a weight to the scores and set the top_k limit for this join mode.
-            You can also use this join mode to rerank retrieved Documents.
-    * reciprocal_rank_fusion: Combine Documents into a single list based on their ranking received from multiple components.
+    It supports different joins modes:
+    - concatenate: Keeps the highest scored Document in case of duplicates.
+    - merge: Merge a calculate a weighted sum of the scores of duplicate Documents.
+    - reciprocal_rank_fusion: Merge and assign scores based on reciprocal rank fusion.
 
-    Example usage in a hybrid retrieval pipeline:
+    Usage example:
     ```python
     document_store = InMemoryDocumentStore()
     p = Pipeline()
@@ -38,8 +34,7 @@ class DocumentJoiner:
     p.connect("embedding_retriever", "joiner")
     p.connect("text_embedder", "embedding_retriever")
     query = "What is the capital of France?"
-    p.run(data={"bm25_retriever": {"query": query},
-                "text_embedder": {"text": query}})
+    p.run(data={"query": query})
     ```
     """
 
@@ -51,17 +46,21 @@ class DocumentJoiner:
         sort_by_score: bool = True,
     ):
         """
-        Initialize the DocumentJoiner.
+        Create an DocumentJoiner component.
 
-        :param join_mode: Specifies the join mode to use. Available modes: `concatenate` to combine Documents from multiple Retrievers, `merge` to aggregate the scores of
-                          individual Documents, `reciprocal_rank_fusion` to apply rank-based scoring.
-        :param weights: A component-wise list (the length of the list must be equal to the number of input components) of weights for
-                        adjusting Document scores when using the `merge` join_mode. By default, equal weight is given
-                        to each Retriever score. This param is not compatible with the `concatenate` join_mode.
-        :param top_k: The maximum number of Documents to be returned as output. By default, returns all Documents.
-        :param sort_by_score: Whether the output list of Documents should be sorted by Document scores in descending order.
-                              By default, the output is sorted.
-                              Documents without score are handled as if their score was -infinity.
+        :param join_mode:
+            Specifies the join mode to use. Available modes:
+            - `concatenate`
+            - `merge`
+            - `reciprocal_rank_fusion`
+        :param weights:
+            Weight for each list of Documents received, must have the same length as the number of inputs.
+            If `join_mode` is `concatenate` this parameter is ignored.
+        :param top_k:
+            The maximum number of Documents to return.
+        :param sort_by_score:
+            If True sorts the Documents by score in descending order.
+            If a Document has no score, it is handled as if its score is -infinity.
         """
         if join_mode not in ["concatenate", "merge", "reciprocal_rank_fusion"]:
             raise ValueError(f"DocumentJoiner component does not support '{join_mode}' join_mode.")
@@ -73,9 +72,14 @@ class DocumentJoiner:
     @component.output_types(documents=List[Document])
     def run(self, documents: Variadic[List[Document]]):
         """
-        Run the DocumentJoiner. This method joins the input lists of Documents into one output list based on the join_mode specified during initialization.
+        Joins multiple lists of Documents into a single list depending on the `join_mode` parameter.
 
-        :param documents: An arbitrary number of lists of Documents to join.
+        :param documents:
+            List of list of Documents to be merged.
+
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: Merged list of Documents
         """
         output_documents = []
         if self.join_mode == "concatenate":
