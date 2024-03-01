@@ -32,6 +32,8 @@ class HuggingFaceLocalGenerator:
         task="text2text-generation",
         generation_kwargs={"max_new_tokens": 100, "temperature": 0.9})
 
+    generator.warm_up()
+
     print(generator.run("Who is the best American actor?"))
     # {'replies': ['John Cusack']}
     ```
