@@ -30,6 +30,8 @@ def serialize_hf_model_kwargs(kwargs: Dict[str, Any]):
     """
     Recursively serialize HuggingFace specific model keyword arguments
     in-place to make them JSON serializable.
+
+    :param kwargs: The keyword arguments to serialize
     """
     torch_import.check()
 
@@ -46,6 +48,8 @@ def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]):
     """
     Recursively deserialize HuggingFace specific model keyword arguments
     in-place to make them JSON serializable.
+
+    :param kwargs: The keyword arguments to deserialize
     """
     torch_import.check()
 
@@ -99,7 +103,6 @@ def list_inference_deployed_models(headers: Optional[Dict] = None) -> List[str]:
     List all currently deployed models on HF TGI free tier
 
     :param headers: Optional dictionary of headers to include in the request
-    :type headers: Optional[Dict]
     :return: list of all currently deployed models
     :raises Exception: If the request to the TGI API fails
 
@@ -180,7 +183,7 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
 
     class StopWordsCriteria(StoppingCriteria):
         """
-        Stops text generation if any one of the stop words is generated.
+        Stops text generation in HuggingFace generators if any one of the stop words is generated.
 
         Note: When a stop word is encountered, the generation of new text is stopped.
         However, if the stop word is in the prompt itself, it can stop generating new text
@@ -226,6 +229,15 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
             return result
 
     class HFTokenStreamingHandler(TextStreamer):
+        """
+        Streaming handler for HuggingFaceLocalGenerator and HuggingFaceLocalChatGenerator.
+
+        Note: This is a helper class for HuggingFaceLocalGenerator & HuggingFaceLocalChatGenerator enabling streaming
+        of generated text via Haystack Callable[StreamingChunk, None] callbacks.
+
+        Do not use this class directly.
+        """
+
         def __init__(
             self,
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
