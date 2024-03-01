@@ -14,25 +14,19 @@ def test_for_missing_dependencies() -> None:
 
     #### Collect imports
     top_level_imports = set()
-    for root, dirs, files in os.walk("haystack"):
-        for file in files:
-            path = Path(root) / file
+    for path in Path("haystack").glob("**/*.py"):
+        content = path.read_text(encoding="utf-8")
+        tree = ast.parse(content)
+        for item in tree.body:
+            if isinstance(item, Import):
+                module = item.names[0].name
+            elif isinstance(item, ImportFrom) and item.level == 0:  # level > 1 are relative imports
+                module = item.module
+            else:
+                # we only care about imports
+                break
 
-            if not path.suffix.endswith(".py"):
-                continue
-
-            content = path.read_text(encoding="utf-8")
-            tree = ast.parse(content)
-            for item in tree.body:
-                if isinstance(item, Import):
-                    module = item.names[0].name
-                elif isinstance(item, ImportFrom) and item.level == 0:  # level > 1 are relative imports
-                    module = item.module
-                else:
-                    # we only care about imports
-                    break
-
-                top_level_imports.add(module.split(".")[0])
+            top_level_imports.add(module.split(".")[0])
 
     custom_std_libs = {"yaml"}
     third_party_modules = {
