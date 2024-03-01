@@ -146,6 +146,9 @@ class NamedEntityExtractor:
     def warm_up(self):
         """
         Initialize the component.
+
+        :raises ComponentError:
+            If the backend fails to initialize successfully.
         """
         try:
             self._backend.initialize()
@@ -166,6 +169,8 @@ class NamedEntityExtractor:
             Batch size used for processing the documents.
         :returns:
             Processed documents.
+        :raises ComponentError:
+            If the backend fails to process a document.
         """
         texts = [doc.content if doc.content is not None else "" for doc in documents]
         annotations = self._backend.annotate(texts, batch_size=batch_size)
