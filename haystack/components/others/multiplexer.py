@@ -17,18 +17,18 @@ logger = logging.getLogger(__name__)
 @component(is_greedy=True)
 class Multiplexer:
     """
-    `Multiplexer` is an important component offering the ability to both receive data connections from multiple other
-    components and to distribute it to various other components thus enhancing the functionality of complex data
+    `Multiplexer` offers the ability to both receive data connections from multiple other
+    components and to distribute it to various other components, enhancing the functionality of complex data
     processing pipelines.
 
-    `Multiplexer` is essential for spreading outputs from a single source like a Large Language Model (LLM) across
-    different branches of a pipeline and is especially valuable in error correction loops by rerouting data for
-    reevaluation if errors are detected. For instance, in an example pipeline below `Multiplexer` aids the creation of
-    a schema valid JSON object (given a person's data) in concert with an `OpenAIChatGenerator` and a `JsonSchemaValidator`.
-    In case the generated JSON object fails schema validation, `JsonSchemaValidator` initiates a correction loop, sending
+    `Multiplexer` is important for spreading outputs from a single source like a Large Language Model (LLM) across
+    different branches of a pipeline. It is especially valuable in error correction loops by rerouting data for
+    reevaluation if errors are detected. For instance, in an example pipeline below, `Multiplexer` helps create
+    a schema valid JSON object (given a person's data) with the help of an `OpenAIChatGenerator` and a `JsonSchemaValidator`.
+    In case the generated JSON object fails schema validation, `JsonSchemaValidator` starts a correction loop, sending
     the data back through the `Multiplexer` to the `OpenAIChatGenerator` until it passes schema validation. If we didn't
-    have `Multiplexer`, we wouldn't be able to loop back the data to `OpenAIChatGenerator` for re-generation as components
-    offer only one input connection for the declared run method parameters.
+    have `Multiplexer`, we wouldn't be able to loop back the data to `OpenAIChatGenerator` for regeneration, as components
+    accept only one input connection for the declared run method parameters.
 
     Usage example:
 
@@ -77,16 +77,16 @@ class Multiplexer:
     >> 'Superhero', 'age': 23, 'location': 'New York City'}
     ```
 
-    One of the things to note is that the `Multiplexer` is created with a single type parameter. The type determines the
-    type of the data that the `Multiplexer` will receive from the upstream connected components and, of course, also the
-    type of the data that the `Multiplexer` will distribute to the downstream connected components. In the example
-    above, the `Multiplexer` is created with the type `List[ChatMessage]` - meaning `Multiplexer` will receive
+    Note that `Multiplexer` is created with a single type parameter. This determines the
+    type of data that `Multiplexer` will receive from the upstream connected components and also the
+    type of data that `Multiplexer` will distribute to the downstream connected components. In the example
+    above, the `Multiplexer` is created with the type `List[ChatMessage]`. This means `Multiplexer` will receive
     a list of `ChatMessage` objects from the upstream connected components and also distribute a list of `ChatMessage`
     objects to the downstream connected components.
 
-    In the example above the `Multiplexer` receives a looped back `List[ChatMessage]` from the `JsonSchemaValidator` and
+    In the code example, `Multiplexer` receives a looped back `List[ChatMessage]` from the `JsonSchemaValidator` and
     sends it down to the `OpenAIChatGenerator` for re-generation. We can have multiple loop back connections in the
-    pipeline. In this example, the downstream component is only one, the `OpenAIChatGenerator`, but it can have more
+    pipeline. In this instance, the downstream component is only one – the `OpenAIChatGenerator` – but the pipeline can have more
     than one downstream component.
     """
 
