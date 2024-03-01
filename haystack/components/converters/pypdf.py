@@ -19,7 +19,7 @@ class PyPDFConverter(Protocol):
     A protocol that defines a converter which takes a PdfReader object and converts it into a Document object.
     """
 
-    def convert(self, reader: "PdfReader") -> Document:
+    def convert(self, reader: "PdfReader", **kwargs) -> Document:
         ...
 
 
@@ -28,15 +28,39 @@ class DefaultConverter:
     The default converter class that extracts text from a PdfReader object's pages and returns a Document.
     """
 
-    def convert(self, reader: "PdfReader") -> Document:
+    def convert(self, reader: "PdfReader", **kwargs) -> Document:
         """Extract text from the PDF and return a Document object with the text content."""
         text = "\f".join(page.extract_text() for page in reader.pages)
         return Document(content=text)
 
 
+class CustomConverter:
+    """
+    A custom converter class that extracts text from specified pages of a PdfReader object and returns a Document.
+    It considers parameters like start_page and end_page.
+    """
+
+    def convert(self, reader: "PdfReader", **kwargs) -> Document:
+        # Extract start_page and end_page parameters from kwargs, with default values
+        start_page = kwargs.get("start_page", 0)
+        end_page = kwargs.get("end_page", len(reader.pages) - 1)
+
+        # If end_page is set to -1 or has an invalid value, process until the end of the document
+        if 0 > end_page > len(reader.pages) - 1:
+            end_page = len(reader.pages) - 1
+
+        # if start_page has an invalid value, set it to 0
+        if 0 > start_page > end_page:
+            start_page = 0
+
+        text = "\f".join(page.extract_text() for page in reader.pages[start_page : end_page + 1])
+
+        return Document(content=text)
+
+
 # This registry is used to store converters names and instances.
 # It can be used to register custom converters.
-CONVERTERS_REGISTRY: Dict[str, PyPDFConverter] = {"default": DefaultConverter()}
+CONVERTERS_REGISTRY: Dict[str, PyPDFConverter] = {"default": DefaultConverter(), "custom": CustomConverter()}
 
 
 @component
@@ -59,7 +83,7 @@ class PyPDFToDocument:
     ```
     """
 
-    def __init__(self, converter_name: str = "default"):
+    def __init__(self, converter_name: str = "default", conversion_params: dict = None):
         """
         Create an PyPDFToDocument component.
 
@@ -77,6 +101,7 @@ class PyPDFToDocument:
             raise ValueError(msg) from KeyError
         self.converter_name = converter_name
         self._converter: PyPDFConverter = converter
+        self.conversion_params = conversion_params or {}
 
     def to_dict(self):
         """
@@ -86,7 +111,7 @@ class PyPDFToDocument:
             Dictionary with serialized data.
         """
         # do not serialize the _converter instance
-        return default_to_dict(self, converter_name=self.converter_name)
+        return default_to_dict(self, converter_name=self.converter_name, conversion_params=self.conversion_params)
 
     @component.output_types(documents=List[Document])
     def run(
@@ -121,7 +146,7 @@ class PyPDFToDocument:
                 continue
             try:
                 pdf_reader = PdfReader(io.BytesIO(bytestream.data))
-                document = self._converter.convert(pdf_reader)
+                document = self._converter.convert(pdf_reader, **self.conversion_params)
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e
