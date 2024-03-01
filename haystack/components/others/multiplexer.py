@@ -27,7 +27,7 @@ class Multiplexer:
     a schema valid JSON object (given a person's data) with the help of an `OpenAIChatGenerator` and a `JsonSchemaValidator`.
     In case the generated JSON object fails schema validation, `JsonSchemaValidator` starts a correction loop, sending
     the data back through the `Multiplexer` to the `OpenAIChatGenerator` until it passes schema validation. If we didn't
-    have `Multiplexer`, we wouldn't be able to loop back the data to `OpenAIChatGenerator` for regeneration, as components
+    have `Multiplexer`, we wouldn't be able to loop back the data to `OpenAIChatGenerator` for re-generation, as components
     accept only one input connection for the declared run method parameters.
 
     Usage example:
