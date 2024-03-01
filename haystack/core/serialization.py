@@ -9,7 +9,7 @@ from haystack.core.errors import DeserializationError, SerializationError
 
 def component_to_dict(obj: Any) -> Dict[str, Any]:
     """
-    The marshaller used by the Pipeline. If a `to_dict` method is present in the
+    Converts a component instance into a dictionary. If a `to_dict` method is present in the
     component instance, that will be used instead of the default method.
 
     :param obj:
@@ -49,8 +49,8 @@ def component_to_dict(obj: Any) -> Dict[str, Any]:
 
 def component_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     """
-    The unmarshaller used by the Pipeline. If a `from_dict` method is present in the
-    component instance, that will be used instead of the default method.
+    Creates a component instance from a dictionary. If a `from_dict` method is present in the
+    component class, that will be used instead of the default method.
 
     :param cls:
         The class to be used for deserialization.
