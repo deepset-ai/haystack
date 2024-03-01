@@ -17,13 +17,18 @@ SocketsIOType = Union[Type[InputSocket], Type[OutputSocket]]
 
 class Sockets:
     """
-    This class is used to represent the inputs or outputs of a `Component`.
+    Represents the inputs or outputs of a `Component`.
+
     Depending on the type passed to the constructor, it will represent either the inputs or the outputs of
     the `Component`.
 
     Usage:
     ```python
+    from typing import Any
     from haystack.components.builders.prompt_builder import PromptBuilder
+    from haystack.core.component.sockets import Sockets
+    from haystack.core.component.types import InputSocket, OutputSocket
+
 
     prompt_template = \"""
     Given these documents, answer the question.\nDocuments:
@@ -37,9 +42,9 @@ class Sockets:
 
     prompt_builder = PromptBuilder(template=prompt_template)
     sockets = {"question": InputSocket("question", Any), "documents": InputSocket("documents", Any)}
-    inputs = Sockets(component=prompt_builder, sockets=sockets, sockets_type=InputSocket)
+    inputs = Sockets(component=prompt_builder, sockets_dict=sockets, sockets_io_type=InputSocket)
     inputs
-    >>> PromptBuilder inputs:
+    >>> Inputs:
     >>>   - question: Any
     >>>   - documents: Any
 
@@ -57,10 +62,18 @@ class Sockets:
     ):
         """
         Create a new Sockets object.
+
         We don't do any enforcement on the types of the sockets here, the `sockets_type` is only used for
         the `__repr__` method.
         We could do without it and use the type of a random value in the `sockets` dict, but that wouldn't
         work for components that have no sockets at all. Either input or output.
+
+        :param component:
+            The component that these sockets belong to.
+        :param sockets_dict:
+            A dictionary of sockets.
+        :param sockets_io_type:
+            The type of the sockets.
         """
         self._sockets_io_type = sockets_io_type
         self._component = component
