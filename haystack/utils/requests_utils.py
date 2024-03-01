@@ -17,7 +17,7 @@ def request_with_retry(
     All kwargs will be passed to ``requests.request``, so it accepts the same arguments.
 
     :param attempts: Maximum number of attempts to retry the request, defaults to 3
-    :param status_codes_to_retry: List of HTTP status codes that will trigger a retry, defaults to [408, 418, 429, 503]:
+    :param status_codes_to_retry: List of HTTP status codes that will trigger a retry. When param is `None`,  HTTP 408, 418, 429 and 503 will be retried.
     :param **kwargs: Optional arguments that ``request`` takes.
     :return: :class:`Response <Response>` object
 
