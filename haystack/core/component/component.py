@@ -69,9 +69,11 @@
 """
 
 import inspect
+import sys
+from collections.abc import Callable
 from copy import deepcopy
 from types import new_class
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, Optional, Protocol, runtime_checkable
 
 from haystack import logging
 from haystack.core.errors import ComponentError
@@ -108,8 +110,16 @@ class Component(Protocol):
         isinstance(MyComponent, Component)
     """
 
-    def run(self, *args: Any, **kwargs: Any):  # pylint: disable=missing-function-docstring
-        ...
+    # This is the most reliable way to define the protocol for the `run` method.
+    # Defining a method doesn't work as different Components will have different
+    # arguments. Even defining here a method with `**kwargs` doesn't work as the
+    # expected signature must be identical.
+    # This makes most Language Servers and type checkers happy and shows less errors.
+    # NOTE: This check can be removed when we drop Python 3.8 support.
+    if sys.version_info >= (3, 9):
+        run: Callable[..., Dict[str, Any]]
+    else:
+        run: Callable
 
 
 class ComponentMeta(type):
