@@ -25,12 +25,12 @@ class OpenAIGenerator:
     [documentation](https://platform.openai.com/docs/api-reference/chat).
 
     Key Features and Compatibility:
-        - Primary Compatibility: Designed to work seamlessly with gpt-4, gpt-3.5-turbo family of models.
-        - Streaming Support: Supports streaming responses from the OpenAI API.
-        - Customizability: Supports all parameters supported by the OpenAI API.
+     - Primary Compatibility: Designed to work seamlessly with gpt-4, gpt-3.5-turbo family of models.
+     - Streaming Support: Supports streaming responses from the OpenAI API.
+     - Customizability: Supports all parameters supported by the OpenAI API.
 
      Input and Output Format:
-         - String Format: This component uses the strings for both input and output.
+      - String Format: This component uses the strings for both input and output.
 
     ```python
     from haystack.components.generators import OpenAIGenerator
@@ -57,8 +57,7 @@ class OpenAIGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates an instance of OpenAIGenerator. Unless specified otherwise in the `model`, this is for OpenAI's
-        GPT-3.5 model.
+        Creates an instance of OpenAIGenerator. Unless specified otherwise in the `model`, this is for OpenAI's GPT-3.5 model.
 
         :param api_key: The OpenAI API key.
         :param model: The name of the model to use.
