@@ -145,17 +145,16 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
 
     # Collect info about components
     components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-    for component_name, component_data in pipeline.graph.nodes._nodes.items():
-        component_type = str(type(component_data["instance"]))
-        instance = pipeline.get_component(component_name)
+    for component_name, instance in pipeline.graph.nodes(data="instance"):
+        component_qualified_class_name = ".".join([type(instance).__module__, type(instance).__name__])
         if hasattr(instance, "_get_telemetry_data"):
             telemetry_data = getattr(instance, "_get_telemetry_data")()
             try:
-                components[component_type].append({"name": component_name, **telemetry_data})
+                components[component_qualified_class_name].append({"name": component_name, **telemetry_data})
             except TypeError:
-                components[component_type].append({"name": component_name})
+                components[component_qualified_class_name].append({"name": component_name})
         else:
-            components[component_type].append({"name": component_name})
+            components[component_qualified_class_name].append({"name": component_name})
 
     # Data sent to Posthog
     return "Pipeline run (2.x)", {
