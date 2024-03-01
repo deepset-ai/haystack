@@ -4,6 +4,7 @@ import pytest
 
 from haystack import Pipeline, component
 from haystack.telemetry._telemetry import pipeline_running
+from haystack.utils.auth import TokenSecret, Secret
 
 
 @patch("haystack.telemetry._telemetry.telemetry")
@@ -48,6 +49,35 @@ def test_pipeline_running(telemetry):
         {
             "pipeline_id": str(id(pipe)),
             "runs": 3,
+            "components": {"test.test_telemetry.Component": [{"name": "component", "key": "values"}]},
+        },
+    )
+
+
+@patch("haystack.telemetry._telemetry.telemetry")
+def test_pipeline_running_with_non_serializable_component(telemetry):
+    telemetry.send_event = Mock()
+
+    @component
+    class Component:
+        def __init__(self, api_key: Secret = TokenSecret("api_key")):
+            self.api_key = api_key
+
+        def _get_telemetry_data(self):
+            return {"key": "values"}
+
+        @component.output_types(value=int)
+        def run(self):
+            pass
+
+    pipe = Pipeline()
+    pipe.add_component("component", Component())
+    pipeline_running(pipe)
+    telemetry.send_event.assert_called_once_with(
+        "Pipeline run (2.x)",
+        {
+            "pipeline_id": str(id(pipe)),
+            "runs": 1,
             "components": {"test.test_telemetry.Component": [{"name": "component", "key": "values"}]},
         },
     )
