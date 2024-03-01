@@ -860,6 +860,17 @@ class Pipeline:
                             last_inputs[receiver_component_name][edge_data["to_socket"].name] = value
 
                         pair = (receiver_component_name, self.graph.nodes[receiver_component_name]["instance"])
+                        is_greedy = pair[1].__haystack_is_greedy__
+                        is_variadic = edge_data["to_socket"].is_variadic
+                        if is_variadic and is_greedy:
+                            # If the receiver is greedy, we can run it right away.
+                            # First we remove it from the lists it's in if it's there or we risk running it multiple times.
+                            if pair in to_run:
+                                to_run.remove(pair)
+                            if pair in waiting_for_input:
+                                waiting_for_input.remove(pair)
+                            to_run.append(pair)
+
                         if pair not in waiting_for_input and pair not in to_run:
                             to_run.append(pair)
 
