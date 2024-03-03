@@ -7,7 +7,7 @@ from haystack.core.pipeline import Pipeline
 from haystack.core.component import component
 from haystack.core.errors import DeserializationError
 from haystack.testing import factory
-from haystack.core.serialization import default_to_dict, default_from_dict
+from haystack.core.serialization import default_to_dict, default_from_dict, generate_qualified_class_name
 
 
 def test_default_component_to_dict():
@@ -77,3 +77,10 @@ def test_from_dict_import_type():
     from haystack.testing.sample_components.greet import Greet
 
     assert type(p.get_component("greeter")) == Greet
+
+
+def test_get_qualified_class_name():
+    MyComponent = factory.component_class("MyComponent")
+    comp = MyComponent()
+    res = generate_qualified_class_name(type(comp))
+    assert res == "haystack.testing.factory.MyComponent"

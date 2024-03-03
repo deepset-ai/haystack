@@ -10,6 +10,7 @@ import posthog
 import yaml
 
 from haystack import logging as haystack_logging
+from haystack.core.serialization import generate_qualified_class_name
 from haystack.telemetry._environment import collect_system_specs
 
 if TYPE_CHECKING:
@@ -146,7 +147,7 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
     # Collect info about components
     components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for component_name, instance in pipeline.graph.nodes(data="instance"):
-        component_qualified_class_name = ".".join([type(instance).__module__, type(instance).__name__])
+        component_qualified_class_name = generate_qualified_class_name(type(instance))
         if hasattr(instance, "_get_telemetry_data"):
             telemetry_data = getattr(instance, "_get_telemetry_data")()
             try:
