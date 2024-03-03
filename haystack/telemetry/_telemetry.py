@@ -146,7 +146,7 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
 
     # Collect info about components
     components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-    for component_name, instance in pipeline.graph.nodes(data="instance"):
+    for component_name, instance in pipeline.walk():
         component_qualified_class_name = generate_qualified_class_name(type(instance))
         if hasattr(instance, "_get_telemetry_data"):
             telemetry_data = getattr(instance, "_get_telemetry_data")()

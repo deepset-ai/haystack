@@ -7,7 +7,7 @@ from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, List, Mapping, Optional, Set, TextIO, Tuple, Type, TypeVar, Union, Iterator
 
 import networkx  # type:ignore
 
@@ -557,6 +557,17 @@ class Pipeline:
         # used for running the pipeline we copy it.
         image_data = _to_mermaid_image(self.graph)
         Path(path).write_bytes(image_data)
+
+    def walk(self) -> Iterator[Tuple[str, Component]]:
+        """
+        Walks the pipeline, yielding tuples of component name and component instance in BFS order.
+        :returns:
+            An iterator of tuples of component name and component instance.
+        """
+        sources = [node for node, degree in self.graph.in_degree(self.graph.nodes()) if degree == 0]  # type: ignore
+        for layer in networkx.bfs_layers(self.graph, sources):
+            for component_name in layer:
+                yield component_name, self.get_component(component_name)
 
     def warm_up(self):
         """

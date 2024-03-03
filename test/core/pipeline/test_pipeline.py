@@ -659,3 +659,46 @@ def test_describe_no_outputs():
 def test_from_template():
     pipe = Pipeline.from_template(PredefinedPipeline.INDEXING)
     assert pipe.get_component("cleaner")
+
+
+def test_walk_pipeline():
+    """
+    This pipeline has two source nodes, hello1 and hello2 and one sink node, joiner.
+    The walk() method should return the nodes in BFS traversal order, which means joiner comes before hello3.
+    This order differs from the order in which the components are run in pipeline.run.
+    """
+
+    @component
+    class Hello:
+        @component.output_types(output=str)
+        def run(self, word: str):
+            """
+            Takes a string in input and returns "Hello, <string>!" in output.
+            """
+            return {"output": f"Hello, {word}!"}
+
+    @component
+    class Joiner:
+        @component.output_types(output=str)
+        def run(self, word1: str, word2: str):
+            """
+            Takes two strings in input and returns "Hello, <string1> and <string2>!" in output.
+            """
+            return {"output": f"Hello, {word1} and {word2}!"}
+
+    pipeline = Pipeline()
+    hello1 = Hello()
+    hello2 = Hello()
+    hello3 = Hello()
+    joiner = Joiner()
+    pipeline.add_component("hello1", hello1)
+    pipeline.add_component("hello2", hello2)
+    pipeline.add_component("hello3", hello3)
+    pipeline.add_component("joiner", joiner)
+
+    pipeline.connect("hello1", "joiner.word1")
+    pipeline.connect("hello2", "hello3")
+    pipeline.connect("hello3", "joiner.word2")
+
+    expected_order = [("hello1", hello1), ("hello2", hello2), ("joiner", joiner), ("hello3", hello3)]
+    assert expected_order == list(pipeline.walk())
