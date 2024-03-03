@@ -1,10 +1,9 @@
 import datetime
 from unittest.mock import Mock, patch
-import pytest
 
 from haystack import Pipeline, component
 from haystack.telemetry._telemetry import pipeline_running
-from haystack.utils.auth import TokenSecret, Secret
+from haystack.utils.auth import Secret, TokenSecret
 
 
 @patch("haystack.telemetry._telemetry.telemetry")
