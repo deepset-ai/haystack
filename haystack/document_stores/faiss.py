@@ -326,7 +326,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def _validate_embedding_dimension(self, retriever: DenseRetriever):
         """
-        Check if the embedding dimension set in the document store and embedding dimension of the retriever are the same.
+        Verify if the embedding dimension set in the document store and embedding dimension of the retriever are the same.
         This check is done before calculating embeddings for all documents.
         :param retriever: Retriever to use to get embeddings for text
         :return: None
