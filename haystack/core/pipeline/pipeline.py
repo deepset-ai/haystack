@@ -560,14 +560,13 @@ class Pipeline:
 
     def walk(self) -> Iterator[Tuple[str, Component]]:
         """
-        Walks the pipeline, yielding tuples of component name and component instance in BFS order.
+        Walks the pipeline, yielding tuples of name and instance of each component exactly once in no guaranteed order.
+
         :returns:
             An iterator of tuples of component name and component instance.
         """
-        sources = [node for node, degree in self.graph.in_degree(self.graph.nodes()) if degree == 0]  # type: ignore
-        for layer in networkx.bfs_layers(self.graph, sources):
-            for component_name in layer:
-                yield component_name, self.get_component(component_name)
+        for component_name, instance in self.graph.nodes(data="instance"):
+            yield component_name, instance
 
     def warm_up(self):
         """
