@@ -6,11 +6,17 @@ from haystack import Document, component
 @component
 class LostInTheMiddleRanker:
     """
-    Ranks documents based on the "lost in the middle" order so that relevant documents are at the beginning or end.
+    Ranks documents based on the 'lost in the middle' order so that the most relevant documents are either at the
+    beginning or end, while the least relevant are in the middle.
 
-    "Lost in the Middle: How Language Models Use Long Contexts" paper by Liu et al. aims to lay out paragraphs into LLM
-    context so that the relevant paragraphs are at the beginning or end of the input context, while the least relevant
-    information is in the middle of the context. See [the paper](https://arxiv.org/abs/2307.03172) for more details.
+    LostInTheMiddleRanker assumes that some prior component in the pipeline has already ranked documents by relevance
+    and requires no query as input but only documents. It is typically used as the last component before building a
+    prompt for an LLM to prepare the input context for the LLM.
+
+    Lost in the Middle ranking lays out document contents into LLM context so that the most relevant contents are at
+    the beginning or end of the input context, while the least relevant is in the middle of the context. See the
+    paper ["Lost in the Middle: How Language Models Use Long Contexts"](https://arxiv.org/abs/2307.03172) for more
+    details.
 
     Usage example:
     ```python
