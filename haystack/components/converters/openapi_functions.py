@@ -54,7 +54,7 @@ class OpenAPIServiceToFunctions:
         Converts OpenAPI definitions in OpenAI function calling format.
 
         :param sources:
-            File paths, URLs or ByteStream objects of OpenAPI definitions (in JSON or YAML format).
+            File paths or ByteStream objects of OpenAPI definitions (in JSON or YAML format).
 
         :returns:
             A dictionary with the following keys:
