@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import yaml
 
-from haystack import Document, component, logging
+from haystack import component, logging
 from haystack.dataclasses.byte_stream import ByteStream
 from haystack.lazy_imports import LazyImport
 
