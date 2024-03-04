@@ -7,7 +7,7 @@ from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Set, TextIO, Tuple, Type, TypeVar, Union, Iterator
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
 
 import networkx  # type:ignore
 
