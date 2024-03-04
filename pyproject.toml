@@ -67,7 +67,7 @@ dependencies = [
   # Type check
   "mypy",
   # Test
-  "pytest",
+  "pytest<8.1.0",
   "pytest-cov",
   "pytest-custom_exit_code",  # used in the CI
   "pytest-asyncio",
