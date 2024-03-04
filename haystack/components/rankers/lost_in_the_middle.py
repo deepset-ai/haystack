@@ -1,17 +1,28 @@
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
-from haystack import Document, component, default_to_dict
+from haystack import Document, component
 
 
 @component
 class LostInTheMiddleRanker:
     """
-    The LostInTheMiddleRanker implements a ranker that reorders documents based on the "lost in the middle" order.
+    Ranks documents based on the "lost in the middle" order so that relevant documents are at the beginning or end.
+
     "Lost in the Middle: How Language Models Use Long Contexts" paper by Liu et al. aims to lay out paragraphs into LLM
     context so that the relevant paragraphs are at the beginning or end of the input context, while the least relevant
-    information is in the middle of the context.
+    information is in the middle of the context. See [the paper](https://arxiv.org/abs/2307.03172) for more details.
 
-    See https://arxiv.org/abs/2307.03172 for more details.
+    Usage example:
+    ```python
+    from haystack.components.rankers import LostInTheMiddleRanker
+    from haystack import Document
+
+    ranker = LostInTheMiddleRanker()
+    docs = [Document(content="Paris"), Document(content="Berlin"), Document(content="Madrid")]
+    result = ranker.run(documents=docs)
+    for doc in result["documents"]:
+        print(doc.content)
+    ```
     """
 
     def __init__(self, word_count_threshold: Optional[int] = None, top_k: Optional[int] = None):
@@ -34,23 +45,22 @@ class LostInTheMiddleRanker:
         self.word_count_threshold = word_count_threshold
         self.top_k = top_k
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize object to a dictionary.
-        """
-        return default_to_dict(self, word_count_threshold=self.word_count_threshold, top_k=self.top_k)
-
+    @component.output_types(documents=List[Document])
     def run(
         self, documents: List[Document], top_k: Optional[int] = None, word_count_threshold: Optional[int] = None
     ) -> Dict[str, List[Document]]:
         """
         Reranks documents based on the "lost in the middle" order.
-        Returns a list of Documents reordered based on the input query.
-        :param documents: List of Documents to reorder.
-        :param top_k: The number of documents to return.
-        :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.
 
-        :return: The reordered documents.
+        :param documents: List of Documents to reorder.
+        :param top_k: The maximum number of documents to return.
+        :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: Reranked list of Documents
+
+        :raises ValueError:
+            If any of the documents is not textual.
         """
         if isinstance(word_count_threshold, int) and word_count_threshold <= 0:
             raise ValueError(
