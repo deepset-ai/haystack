@@ -54,11 +54,12 @@ class OpenAPIServiceToFunctions:
         Converts OpenAPI definitions in OpenAI function calling format.
 
         :param sources:
-            File paths, URLs or ByteStream objects of OpenAPI definitions.
+            File paths, URLs or ByteStream objects of OpenAPI definitions (in JSON or YAML format).
 
         :returns:
             A dictionary with the following keys:
             - functions: Function definitions in JSON object format
+            - openapi_specs: OpenAPI specs in JSON/YAML object format with resolved references
 
         :raises RuntimeError:
             If the OpenAPI definitions cannot be downloaded or processed.
@@ -66,6 +67,7 @@ class OpenAPIServiceToFunctions:
             If the source type is not recognized or no functions are found in the OpenAPI definitions.
         """
         all_extracted_fc_definitions: List[Dict[str, Any]] = []
+        all_openapi_specs = []
         for source in sources:
             openapi_spec_content = None
             if isinstance(source, (str, Path)):
@@ -97,6 +99,7 @@ class OpenAPIServiceToFunctions:
                     service_openapi_spec = self._parse_openapi_spec(openapi_spec_content)
                     functions: List[Dict[str, Any]] = self._openapi_to_functions(service_openapi_spec)
                     all_extracted_fc_definitions.extend(functions)
+                    all_openapi_specs.append(service_openapi_spec)
                 except Exception as e:
                     logger.error(
                         "Error processing OpenAPI specification from source {source}: {error}", source=source, error=e
@@ -105,7 +108,7 @@ class OpenAPIServiceToFunctions:
         if not all_extracted_fc_definitions:
             logger.warning("No OpenAI function definitions extracted from the provided OpenAPI specification sources.")
 
-        return {"functions": all_extracted_fc_definitions}
+        return {"functions": all_extracted_fc_definitions, "openapi_specs": all_openapi_specs}
 
     def _openapi_to_functions(self, service_openapi_spec: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
