@@ -661,11 +661,10 @@ def test_from_template():
     assert pipe.get_component("cleaner")
 
 
-def test_walk_pipeline():
+def test_walk_pipeline_with_no_cycles():
     """
-    This pipeline has two source nodes, hello1 and hello2 and one sink node, joiner.
-    The walk() method should return the nodes in BFS traversal order, which means joiner comes before hello3.
-    This order differs from the order in which the components are run in pipeline.run.
+    This pipeline has two source nodes, source1 and source2, one hello3 node in between, and one sink node, joiner.
+    pipeline.walk() should return each component exactly once. The order is not guaranteed.
     """
 
     @component
@@ -687,18 +686,46 @@ def test_walk_pipeline():
             return {"output": f"Hello, {word1} and {word2}!"}
 
     pipeline = Pipeline()
-    hello1 = Hello()
-    hello2 = Hello()
+    source1 = Hello()
+    source2 = Hello()
     hello3 = Hello()
     joiner = Joiner()
-    pipeline.add_component("hello1", hello1)
-    pipeline.add_component("hello2", hello2)
+    pipeline.add_component("source1", source1)
+    pipeline.add_component("source2", source2)
     pipeline.add_component("hello3", hello3)
     pipeline.add_component("joiner", joiner)
 
-    pipeline.connect("hello1", "joiner.word1")
-    pipeline.connect("hello2", "hello3")
+    pipeline.connect("source1", "joiner.word1")
+    pipeline.connect("source2", "hello3")
     pipeline.connect("hello3", "joiner.word2")
 
-    expected_order = [("hello1", hello1), ("hello2", hello2), ("joiner", joiner), ("hello3", hello3)]
-    assert expected_order == list(pipeline.walk())
+    expected_components = [("source1", source1), ("source2", source2), ("joiner", joiner), ("hello3", hello3)]
+    assert sorted(expected_components) == sorted(pipeline.walk())
+
+
+def test_walk_pipeline_with_cycles():
+    """
+    This pipeline consists of one component, which would run three times in a loop.
+    pipeline.walk() should return this component exactly once. The order is not guaranteed.
+    """
+
+    @component
+    class Hello:
+        def __init__(self):
+            self.iteration_counter = 0
+
+        @component.output_types(intermediate=str, final=str)
+        def run(self, word: str, intermediate: Optional[str] = None):
+            """
+            Takes a string in input and returns "Hello, <string>!" in output.
+            """
+            if self.iteration_counter < 3:
+                self.iteration_counter += 1
+                return {"intermediate": f"Hello, {intermediate or word}!"}
+            return {"final": f"Hello, {intermediate or word}!"}
+
+    pipeline = Pipeline()
+    hello = Hello()
+    pipeline.add_component("hello", hello)
+    pipeline.connect("hello.intermediate", "hello.intermediate")
+    assert [("hello", hello)] == list(pipeline.walk())
