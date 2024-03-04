@@ -214,7 +214,7 @@ class TransformersSimilarityRanker:
             If `top_k` is not > 0.
             If `scale_score` is True and `calibration_factor` is not provided.
         :raises ComponentError:
-            If the model is not loaded because warm_up() was not called before.
+            If the model is not loaded because `warm_up()` was not called before.
         """
         if not documents:
             return {"documents": []}

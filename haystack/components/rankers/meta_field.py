@@ -49,7 +49,7 @@ class MetaFieldRanker:
         :param weight:
             In range [0,1].
             0 disables ranking by a meta field.
-            0.5 ranking from previous component and based on meta field have the same.
+            0.5 ranking from previous component and based on meta field have the same weight.
             1 ranking by a meta field only.
         :param top_k:
             The maximum number of Documents to return per query.
@@ -154,7 +154,7 @@ class MetaFieldRanker:
         :param weight:
             In range [0,1].
             0 disables ranking by a meta field.
-            0.5 ranking from previous component and based on meta field have the same.
+            0.5 ranking from previous component and based on meta field have the same weight.
             1 ranking by a meta field only.
             If not provided, the weight provided at initialization time is used.
         :param ranking_mode:
@@ -185,7 +185,7 @@ class MetaFieldRanker:
             If `weight` is not in range [0,1].
             If `ranking_mode` is not 'reciprocal_rank_fusion' or 'linear_score'.
             If `sort_order` is not 'ascending' or 'descending'.
-            If `meta_value_type` is not 'float', 'int', 'date' or None.
+            If `meta_value_type` is not 'float', 'int', 'date' or `None`.
         """
         if not documents:
             return {"documents": []}
