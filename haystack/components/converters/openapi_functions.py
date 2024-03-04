@@ -48,7 +48,7 @@ class OpenAPIServiceToFunctions:
         """
         openapi_imports.check()
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(functions=List[Dict[str, Any]])
     def run(self, sources: List[Union[str, Path, ByteStream]]) -> Dict[str, Any]:
         """
         Converts OpenAPI definitions in OpenAI function calling format.
