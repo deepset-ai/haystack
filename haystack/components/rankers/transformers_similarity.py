@@ -30,6 +30,7 @@ class TransformersSimilarityRanker:
     ranker = TransformersSimilarityRanker()
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "City in Germany"
+    ranker.warm_up()
     result = ranker.run(query=query, documents=docs)
     docs = result["documents"]
     ```
