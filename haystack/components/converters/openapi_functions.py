@@ -248,17 +248,3 @@ class OpenAPIServiceToFunctions:
 
         # Replace references in the object with their resolved values, if any
         return jsonref.replace_refs(open_api_spec_content)
-
-    def _read_from_file(self, path: Union[str, Path]) -> Optional[str]:
-        """
-        Reads the content of a file, given its path.
-        :param path: The path of the file.
-        :type path: Union[str, Path]
-        :return: The content of the file or None if the file cannot be read.
-        """
-        try:
-            with open(path, "r") as f:
-                return f.read()
-        except IOError as e:
-            logger.warning("IO error reading file: {path}. Error: {error}", path=path, error=e)
-            return None
