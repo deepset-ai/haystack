@@ -560,7 +560,8 @@ class Pipeline:
 
     def walk(self) -> Iterator[Tuple[str, Component]]:
         """
-        Walks the pipeline, yielding tuples of name and instance of each component exactly once in no guaranteed order.
+        Visits each component in the pipeline exactly once and yields its name and instance.
+        No guarantees are provided on the visiting order.
 
         :returns:
             An iterator of tuples of component name and component instance.
