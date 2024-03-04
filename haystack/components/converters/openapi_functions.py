@@ -74,13 +74,18 @@ class OpenAPIServiceToFunctions:
                         with open(source, "r") as f:
                             openapi_spec_content = f.read()
                     except IOError as e:
-                        logger.warning("IO error reading OpenAPI specification file: %s. Error: %s", source, e)
+                        logger.warning(
+                            "IO error reading OpenAPI specification file: {source}. Error: {e}", source=source, e=e
+                        )
                 else:
-                    logger.warning("OpenAPI specification file not found: %s", source)
+                    logger.warning(f"OpenAPI specification file not found: {source}")
             elif isinstance(source, ByteStream):
                 openapi_spec_content = source.data.decode("utf-8")
                 if not openapi_spec_content:
-                    logger.warning("Invalid OpenAPI specification content provided: %s", openapi_spec_content)
+                    logger.warning(
+                        "Invalid OpenAPI specification content provided: {openapi_spec_content}",
+                        openapi_spec_content=openapi_spec_content,
+                    )
             else:
                 logger.warning(
                     "Invalid source type {source}. Only str, Path, and ByteStream are supported.", source=type(source)
