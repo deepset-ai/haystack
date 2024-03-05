@@ -1,4 +1,5 @@
 import mimetypes
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -44,11 +45,10 @@ class FileTypeRouter:
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
 
+        self.mime_type_patterns = []
         for mime_type in mime_types:
-            if not self._is_valid_mime_type_format(mime_type):
-                raise ValueError(
-                    f"Unknown mime type: '{mime_type}'. Ensure you passed a list of strings in the 'mime_types' parameter"
-                )
+            pattern = re.compile(mime_type)
+            self.mime_type_patterns.append(pattern)
 
         component.set_output_types(self, unclassified=List[Path], **{mime_type: List[Path] for mime_type in mime_types})
         self.mime_types = mime_types
@@ -74,9 +74,13 @@ class FileTypeRouter:
             else:
                 raise ValueError(f"Unsupported data source type: {type(source)}")
 
-            if mime_type in self.mime_types:
-                mime_types[mime_type].append(source)
-            else:
+            matched = False
+            for pattern in self.mime_type_patterns:
+                if pattern.match(mime_type):
+                    mime_types[pattern.pattern].append(source)
+                    matched = True
+                    break
+            if not matched:
                 mime_types["unclassified"].append(source)
 
         return mime_types
@@ -93,16 +97,6 @@ class FileTypeRouter:
         mime_type = mimetypes.guess_type(path.as_posix())[0]
         # lookup custom mappings if the mime type is not found
         return self._get_custom_mime_mappings().get(extension, mime_type)
-
-    def _is_valid_mime_type_format(self, mime_type: str) -> bool:
-        """
-        Check if the provided MIME type is in valid format
-
-        :param mime_type: The MIME type to check.
-
-        :returns: `True` if the provided MIME type is a valid MIME type format, `False` otherwise.
-        """
-        return mime_type in mimetypes.types_map.values() or mime_type in self._get_custom_mime_mappings().values()
 
     @staticmethod
     def _get_custom_mime_mappings() -> Dict[str, str]:
