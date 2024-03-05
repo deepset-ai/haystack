@@ -24,7 +24,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     For more details on OpenAI models deployed on Azure, refer to the Microsoft
     [documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/).
 
-
+    Usage example:
     ```python
     from haystack.components.generators import AzureOpenAIGenerator
     from haystack.utils import Secret
@@ -34,21 +34,15 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         azure_deployment="<this a model name, e.g. gpt-35-turbo>")
     response = client.run("What's Natural Language Processing? Be brief.")
     print(response)
+    ```
 
+    ```
     >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
     >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
     >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
     >> 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
     >> 'completion_tokens': 49, 'total_tokens': 65}}]}
     ```
-
-     Key Features and Compatibility:
-         - **Primary Compatibility**: Designed to work seamlessly with gpt-4, gpt-3.5-turbo family of models.
-         - **Streaming Support**: Supports streaming responses from the OpenAI API.
-         - **Customizability**: Supports all parameters supported by the OpenAI API.
-
-     Input and Output Format:
-         - **String Format**: This component uses the strings for both input and output.
     """
 
     # pylint: disable=super-init-not-called
@@ -69,7 +63,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         :param api_version: The version of the API to use. Defaults to 2023-05-15
         :param azure_deployment: The deployment of the model, usually the model name.
         :param api_key: The API key to use for authentication.
-        :param azure_ad_token: Azure Active Directory token, see https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id
+        :param azure_ad_token: [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id)
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param streaming_callback: A callback function that is called when a new token is received from the stream.

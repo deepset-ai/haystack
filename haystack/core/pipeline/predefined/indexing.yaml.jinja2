@@ -5,88 +5,56 @@ components:
     init_parameters:
       remove_empty_lines: true
       remove_extra_whitespaces: true
-      remove_regex: None
+      remove_regex: null
       remove_repeated_substrings: false
-      remove_substrings: None
-    type: "haystack.components.preprocessors.document_cleaner.DocumentCleaner"
+      remove_substrings: null
+    type: haystack.components.preprocessors.document_cleaner.DocumentCleaner
+
+  converter:
+    init_parameters:
+      encoding: utf-8
+    type: haystack.components.converters.txt.TextFileToDocument
 
   embedder:
     init_parameters:
+      api_base_url: null
+      api_key:
+        env_vars:
+        - OPENAI_API_KEY
+        strict: true
+        type: env_var
       batch_size: 32
-      device:
-        type: "single"
-        device: "cpu"
-      embedding_separator: "\\n"
-      model: "sentence-transformers/all-MiniLM-L6-v2"
-      normalize_embeddings: false
-      prefix: ""
+      dimensions: null
+      embedding_separator: '\n'
+      meta_fields_to_embed: []
+      model: text-embedding-ada-002
+      organization: null
+      prefix: ''
       progress_bar: true
-      suffix: ""
-    type: "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder"
-
-  # FileTypeRouter is used to route different file types to different file converters
-  # The default mime types are set to text/plain. If we'll handle PDF files, we'll add application/pdf to mime types
-  # Let's configure that part dynamically based on the use_pdf_file_converter flag
-
-  file_type_router:
-  {% with %}
-  {% set default_mime_types = ["text/plain"] %}
-  {% set additional_mime_types = ["application/pdf"] if use_pdf_file_converter | default(false) else [] %}
-  {% set file_type_router_mime_types = default_mime_types + additional_mime_types %}
-    init_parameters:
-      mime_types: {{ file_type_router_mime_types }}
-    type: "haystack.components.routers.file_type_router.FileTypeRouter"
-  {% endwith %}
-
-  doc_joiner:
-    init_parameters:
-      join_mode: "concatenate"
-    type: "haystack.components.joiners.document_joiner.DocumentJoiner"
+      suffix: ''
+    type: haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder
 
   splitter:
     init_parameters:
-      split_by: "word"
+      split_by: word
       split_length: 200
-      split_overlap: 30
-    type: "haystack.components.preprocessors.document_splitter.DocumentSplitter"
-
-  {% if use_pdf_file_converter %}
-  pdf_file_converter:
-    init_parameters:
-      converter_name: "default"
-    type: "haystack.components.converters.pypdf.PyPDFToDocument"
-  {% endif %}
-
-  text_file_converter:
-    init_parameters:
-      encoding: "utf-8"
-    type: "haystack.components.converters.txt.TextFileToDocument"
+      split_overlap: 0
+    type: haystack.components.preprocessors.document_splitter.DocumentSplitter
 
   writer:
     init_parameters:
       document_store:
         init_parameters:
-          bm25_algorithm: "BM25Okapi"
-          bm25_parameters: {}
-          bm25_tokenization_regex: "(?u)\\b\\w\\w+\\b"
-          embedding_similarity_function: "dot_product"
-        type: "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore"
-      policy: "FAIL"
-    type: "haystack.components.writers.document_writer.DocumentWriter"
+          collection_name: documents
+          embedding_function: default
+          persist_path: .
+        type: haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore
+      policy: NONE
+    type: haystack.components.writers.document_writer.DocumentWriter
 
 connections:
-- receiver: text_file_converter.sources
-  sender: file_type_router.text/plain
-- receiver: doc_joiner.documents
-  sender: text_file_converter.documents
-  {% if use_pdf_file_converter %}
-- receiver: pdf_file_converter.sources
-  sender: file_type_router.application/pdf
-- receiver: doc_joiner.documents
-  sender: pdf_file_converter.documents
-  {% endif %}
 - receiver: cleaner.documents
-  sender: doc_joiner.documents
+  sender: converter.documents
 - receiver: splitter.documents
   sender: cleaner.documents
 - receiver: embedder.documents
@@ -94,5 +62,4 @@ connections:
 - receiver: writer.documents
   sender: embedder.documents
 
-metadata:
-  {}
+metadata: {}

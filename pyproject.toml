@@ -74,7 +74,7 @@ dependencies = [
   "pytest-cov",
   "pytest-custom_exit_code",  # used in the CI
   "pytest-asyncio",
-  "flaky",
+  "pytest-rerunfailures",
   "responses",
   "tox",
   "coverage",
@@ -82,6 +82,7 @@ dependencies = [
   "psutil",
   # Linting
   "pylint",
+  "ruff",
   # Documentation
   "toml",
   "reno",
@@ -114,6 +115,7 @@ extra-dependencies = [
   "langdetect",  # TextLanguageRouter and DocumentLanguageClassifier
   "sentence-transformers>=2.2.0",  # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
   "openai-whisper>=20231106",  # LocalWhisperTranscriber
+  "chroma-haystack",  # pipeline predefined templates
 
   # OpenAPI
   "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
@@ -141,7 +143,14 @@ integration = 'pytest --maxfail=5 -m "integration" test'
 integration-mac = 'pytest --maxfail=5 -m "integration" test -k "not tika"'
 integration-windows = 'pytest --maxfail=5 -m "integration" test -k "not tika"'
 types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack}"
-lint = "pylint -ry -j 0 {args:haystack}"
+lint = [
+  "ruff {args:haystack}",
+  "pylint -ry -j 0 {args:haystack}"
+]
+lint-fix = [
+  "black .",
+  "ruff {args:haystack} --fix",
+]
 
 [tool.hatch.envs.readme]
 detached = true  # To avoid installing the dependencies from the default environment
@@ -284,6 +293,10 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [tool.ruff]
+line-length = 1486
+target-version = "py38"
+
+[tool.ruff.lint]
 select = [
   "AIR",    # Airflow
   "ASYNC",  # flake8-async
@@ -311,8 +324,7 @@ select = [
   # "PT",   # flake8-pytest-style
   # "UP",   # pyupgrade
 ]
-line-length = 1486
-target-version = "py38"
+
 ignore = [
   "F401",     # unused-import
   "PERF203",	# `try`-`except` within a loop incurs performance overhead
@@ -327,15 +339,15 @@ ignore = [
   "SIM118",   # in-dict-keys
 ]
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 28
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "examples/basic_qa_pipeline.py" = ["C416"]
 "haystack/preview/testing/document_store.py" = ["C416", "F821"]
 "haystack/telemetry.py" = ["F821"]
 
-[tool.ruff.pylint]
+[tool.ruff.lint.pylint]
 allow-magic-value-types = ["float", "int", "str"]
 max-args = 38  # Default is 5
 max-branches = 32  # Default is 12
