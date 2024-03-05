@@ -96,7 +96,7 @@ class MetaFieldRanker:
                 "Parameter <weight> must be in range [0,1] but is currently set to '%s'.\n'0' disables sorting by a "
                 "meta field, '0.5' assigns equal weight to the previous relevance scores and the meta field, and "
                 "'1' ranks by the meta field only.\nChange the <weight> parameter to a value in range 0 to 1 when "
-                "initializing the MetaFieldRanker." % self.weight
+                "initializing the MetaFieldRanker." % weight
             )
 
         if ranking_mode not in ["reciprocal_rank_fusion", "linear_score"]:
@@ -239,7 +239,7 @@ class MetaFieldRanker:
         # Add the docs missing the meta_field back on the end
         sorted_by_meta = [doc for meta, doc in tuple_sorted_by_meta]
         sorted_documents = sorted_by_meta + docs_missing_meta_field
-        sorted_documents = self._merge_rankings(documents, sorted_documents)
+        sorted_documents = self._merge_rankings(documents, sorted_documents, weight)
         return {"documents": sorted_documents[:top_k]}
 
     def _parse_meta(
@@ -284,7 +284,9 @@ class MetaFieldRanker:
 
         return meta_values
 
-    def _merge_rankings(self, documents: List[Document], sorted_documents: List[Document]) -> List[Document]:
+    def _merge_rankings(
+        self, documents: List[Document], sorted_documents: List[Document], weight: float
+    ) -> List[Document]:
         """
         Merge the two different rankings for Documents sorted both by their content and by their meta field.
         """
@@ -292,8 +294,8 @@ class MetaFieldRanker:
 
         if self.ranking_mode == "reciprocal_rank_fusion":
             for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents)):
-                scores_map[document.id] += self._calculate_rrf(rank=i) * (1 - self.weight)
-                scores_map[sorted_doc.id] += self._calculate_rrf(rank=i) * self.weight
+                scores_map[document.id] += self._calculate_rrf(rank=i) * (1 - weight)
+                scores_map[sorted_doc.id] += self._calculate_rrf(rank=i) * weight
         elif self.ranking_mode == "linear_score":
             for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents)):
                 score = float(0)
@@ -308,8 +310,8 @@ class MetaFieldRanker:
                 else:
                     score = document.score
 
-                scores_map[document.id] += score * (1 - self.weight)
-                scores_map[sorted_doc.id] += self._calc_linear_score(rank=i, amount=len(sorted_documents)) * self.weight
+                scores_map[document.id] += score * (1 - weight)
+                scores_map[sorted_doc.id] += self._calc_linear_score(rank=i, amount=len(sorted_documents)) * weight
 
         for document in documents:
             document.score = scores_map[document.id]
