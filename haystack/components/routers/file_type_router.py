@@ -74,6 +74,10 @@ class FileTypeRouter:
             else:
                 raise ValueError(f"Unsupported data source type: {type(source)}")
 
+            if mime_type is None:
+                mime_types["unclassified"].append(source)
+                continue
+
             matched = False
             for pattern in self.mime_type_patterns:
                 if pattern.match(mime_type):
