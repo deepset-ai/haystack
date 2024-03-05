@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from haystack import ComponentError, Document, ExtractedAnswer, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, DeviceMap
+from haystack.utils import ComponentDevice, DeviceMap, Secret, deserialize_secrets_inplace
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
@@ -51,7 +51,7 @@ class ExtractiveReader:
         self,
         model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
         device: Optional[ComponentDevice] = None,
-        token: Union[bool, str, None] = None,
+        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         top_k: int = 20,
         score_threshold: Optional[float] = None,
         max_seq_length: int = 384,
@@ -140,7 +140,7 @@ class ExtractiveReader:
             self,
             model=self.model_name_or_path,
             device=None,
-            token=self.token if not isinstance(self.token, str) else None,
+            token=self.token.to_dict() if self.token else None,
             max_seq_length=self.max_seq_length,
             top_k=self.top_k,
             score_threshold=self.score_threshold,
@@ -166,6 +166,7 @@ class ExtractiveReader:
             Deserialized component.
         """
         init_params = data["init_parameters"]
+        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         if init_params["device"] is not None:
             init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         deserialize_hf_model_kwargs(init_params["model_kwargs"])
@@ -179,9 +180,11 @@ class ExtractiveReader:
         # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
         if self.model is None:
             self.model = AutoModelForQuestionAnswering.from_pretrained(
-                self.model_name_or_path, token=self.token, **self.model_kwargs
+                self.model_name_or_path, token=self.token.resolve_value() if self.token else None, **self.model_kwargs
             )
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, token=self.token)
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name_or_path, token=self.token.resolve_value() if self.token else None
+            )
             self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
     def _flatten_documents(
