@@ -43,17 +43,12 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
             )
 
     @pytest.mark.unit
-    def test_error_raised_if_docustore_and_retriever_embedding_dim_unequal(self, tmp_path, documents):
-        document_store = FAISSDocumentStore(
-            sql_url=f"sqlite:////{tmp_path/'haystack_test_docustore_retreiver_unequal_embed.db'}",
-            faiss_index_factory_str="Flat",
-            embedding_dim=384,
-        )
-        retriever = MockDenseRetriever(document_store=document_store)
-        document_store.write_documents(documents)
-        assert document_store.get_document_count() == len(documents)
+    def test_error_raised_if_docustore_and_retriever_embedding_dim_unequal(self, ds, documents):
+        retriever = MockDenseRetriever(document_store=ds, embedding_dim=384)
+        ds.write_documents(documents)
+        assert ds.get_document_count() == len(documents)
         with pytest.raises(RuntimeError):
-            document_store._validate_embedding_dimension(retriever)
+            ds._validate_embedding_dimension(retriever)
 
     @pytest.mark.integration
     def test_delete_index(self, ds, documents):
