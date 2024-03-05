@@ -19,19 +19,20 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") a
 class TransformersSimilarityRanker:
     """
     Ranks Documents based on their similarity to the query.
-
     It uses a pre-trained cross-encoder model (from the Hugging Face Hub) to embed the query and the Documents.
 
     Usage example:
-    ```python
+    ```
     from haystack import Document
     from haystack.components.rankers import TransformersSimilarityRanker
 
     ranker = TransformersSimilarityRanker()
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "City in Germany"
-    result = ranker.run(query=query, documents=docs)
-    docs = result["documents"]
+    output = ranker.run(query=query, documents=docs)
+    docs = output["documents"]
+    assert len(docs) == 2
+    assert docs[0].content == "Berlin"
     ```
     """
 
@@ -53,39 +54,30 @@ class TransformersSimilarityRanker:
         """
         Creates an instance of TransformersSimilarityRanker.
 
-        :param model:
-            The name or path of a pre-trained cross-encoder model from the Hugging Face Hub.
-        :param device:
-            The device on which the model is loaded. If `None`, the default device is automatically selected.
-        :param token:
-            The API token used to download private models from Hugging Face.
-        :param top_k:
-            The maximum number of Documents to return per query.
-        :param query_prefix:
-            A string to add to the beginning of the query text before ranking.
-            Can be used to prepend the text with an instruction, as required by some reranking models, such as bge.
-        :param document_prefix:
-            A string to add to the beginning of each Document text before ranking. Can be used to prepend the text with
-            an instruction, as required by some embedding models, such as bge.
-        :param meta_fields_to_embed:
-            List of meta fields that should be embedded along with the Document content.
-        :param embedding_separator:
-            Separator used to concatenate the meta fields to the Document content.
-        :param scale_score:
-            Whether the raw logit predictions will be scaled using a Sigmoid activation function.
+        :param model: The name or path of a pre-trained cross-encoder model
+            from the Hugging Face Hub.
+        :param device: The device on which the model is loaded. If `None`, the default device is automatically
+            selected.
+        :param token: The API token used to download private models from Hugging Face.
+            If this parameter is set to `True`, the token generated when running
+            `transformers-cli login` (stored in ~/.huggingface) is used.
+        :param top_k: The maximum number of Documents to return per query.
+        :param query_prefix: A string to add to the beginning of the query text before ranking.
+            Can be used to prepend the text with an instruction, as required by some reranking models,
+            such as bge.
+        :param document_prefix: A string to add to the beginning of each Document text before ranking.
+            Can be used to prepend the text with an instruction, as required by some embedding models,
+            such as bge.
+        :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document content.
+        :param embedding_separator: Separator used to concatenate the meta fields to the Document content.
+        :param scale_score: Whether the raw logit predictions will be scaled using a Sigmoid activation function.
             Set this to False if you do not want any scaling of the raw logit predictions.
-        :param calibration_factor:
-            Factor used for calibrating probabilities calculated by `sigmoid(logits * calibration_factor)`.
-            This is only used if `scale_score` is set to True.
-        :param score_threshold:
-            If provided only returns documents with a score above this threshold.
+        :param calibration_factor: Factor used for calibrating probabilities calculated by
+            `sigmoid(logits * calibration_factor)`. This is only used if `scale_score` is set to True.
+        :param score_threshold: If provided only returns documents with a score above this threshold.
         :param model_kwargs: Additional keyword arguments passed to `AutoModelForSequenceClassification.from_pretrained`
             when loading the model specified in `model`. For details on what kwargs you can pass,
             see the model's documentation.
-
-        :raises ValueError:
-            If `top_k` is not > 0.
-            If `scale_score` is True and `calibration_factor` is not provided.
         """
         torch_and_transformers_import.check()
 
@@ -123,7 +115,7 @@ class TransformersSimilarityRanker:
 
     def warm_up(self):
         """
-        Initializes the component.
+        Warm up the model and tokenizer used for scoring the Documents.
         """
         if self.model is None:
             self.model = AutoModelForSequenceClassification.from_pretrained(
@@ -136,10 +128,7 @@ class TransformersSimilarityRanker:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serializes the component to a dictionary.
-
-        :returns:
-            Dictionary with serialized data.
+        Serialize this component to a dictionary.
         """
         serialization_dict = default_to_dict(
             self,
@@ -163,12 +152,7 @@ class TransformersSimilarityRanker:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TransformersSimilarityRanker":
         """
-        Deserializes the component from a dictionary.
-
-        :param data:
-            Dictionary to deserialize from.
-        :returns:
-            Deserialized component.
+        Deserialize this component from a dictionary.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         init_params = data["init_parameters"]
@@ -191,29 +175,15 @@ class TransformersSimilarityRanker:
         """
         Returns a list of Documents ranked by their similarity to the given query.
 
-        :param query:
-            Query string.
-        :param documents:
-            List of Documents.
-        :param top_k:
-            The maximum number of Documents you want the Ranker to return.
-        :param scale_score:
-            Whether the raw logit predictions will be scaled using a Sigmoid activation function.
+        :param query: Query string.
+        :param documents: List of Documents.
+        :param top_k: The maximum number of Documents you want the Ranker to return.
+        :param scale_score: Whether the raw logit predictions will be scaled using a Sigmoid activation function.
             Set this to False if you do not want any scaling of the raw logit predictions.
-        :param calibration_factor:
-            Factor used for calibrating probabilities calculated by
+        :param calibration_factor: Factor used for calibrating probabilities calculated by
             `sigmoid(logits * calibration_factor)`. This is only used if `scale_score` is set to True.
-        :param score_threshold:
-            If provided only returns documents with a score above this threshold.
-        :returns:
-            A dictionary with the following keys:
-            - `documents`: List of Documents most similar to the given query in descending order of similarity.
-
-        :raises ValueError:
-            If `top_k` is not > 0.
-            If `scale_score` is True and `calibration_factor` is not provided.
-        :raises ComponentError:
-            If the model is not loaded because warm_up() was not called before.
+        :param score_threshold: If provided only returns documents with a score above this threshold.
+        :return: List of Documents sorted by their similarity to the query with the most similar Documents appearing first.
         """
         if not documents:
             return {"documents": []}

@@ -7,6 +7,43 @@ from haystack.components.rankers.meta_field import MetaFieldRanker
 
 
 class TestMetaFieldRanker:
+    def test_to_dict(self):
+        component = MetaFieldRanker(meta_field="rating")
+        data = component.to_dict()
+        assert data == {
+            "type": "haystack.components.rankers.meta_field.MetaFieldRanker",
+            "init_parameters": {
+                "meta_field": "rating",
+                "weight": 1.0,
+                "top_k": None,
+                "ranking_mode": "reciprocal_rank_fusion",
+                "sort_order": "descending",
+                "meta_value_type": None,
+            },
+        }
+
+    def test_to_dict_with_custom_init_parameters(self):
+        component = MetaFieldRanker(
+            meta_field="rating",
+            weight=0.5,
+            top_k=5,
+            ranking_mode="linear_score",
+            sort_order="ascending",
+            meta_value_type="date",
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "haystack.components.rankers.meta_field.MetaFieldRanker",
+            "init_parameters": {
+                "meta_field": "rating",
+                "weight": 0.5,
+                "top_k": 5,
+                "ranking_mode": "linear_score",
+                "sort_order": "ascending",
+                "meta_value_type": "date",
+            },
+        }
+
     @pytest.mark.parametrize("meta_field_values, expected_first_value", [([1.3, 0.7, 2.1], 2.1), ([1, 5, 8], 8)])
     def test_run(self, meta_field_values, expected_first_value):
         """
