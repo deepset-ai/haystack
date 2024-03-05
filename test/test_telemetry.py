@@ -1,5 +1,8 @@
 import datetime
+import logging
 from unittest.mock import Mock, patch
+
+import pytest
 
 from haystack import Pipeline, component
 from haystack.telemetry._telemetry import pipeline_running
@@ -80,3 +83,24 @@ def test_pipeline_running_with_non_serializable_component(telemetry):
             "components": {"test.test_telemetry.Component": [{"name": "component", "key": "values"}]},
         },
     )
+
+
+def test_pipeline_running_with_non_dict_telemetry_data(caplog):
+    @component
+    class Component:
+        def __init__(self, api_key: Secret = TokenSecret("api_key")):
+            self.api_key = api_key
+
+        # telemetry data should be a dictionary but is a list
+        def _get_telemetry_data(self):
+            return ["values"]
+
+        @component.output_types(value=int)
+        def run(self):
+            pass
+
+    pipe = Pipeline()
+    pipe.add_component("my_component", Component())
+    with caplog.at_level(logging.DEBUG):
+        pipeline_running(pipe)
+        assert "TypeError: Telemetry data for component my_component must be a dictionary" in caplog.text
